@@ -101,6 +101,10 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	if app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0 {
 		configured, configuredPrimary = true, app.Status.EnvPort
 	}
+	configuredPort := int32(0)
+	if configured {
+		configuredPort = configuredPrimary
+	}
 	// A prebuilt image arrives as its tag, which the cache records as Source:
 	// the tag is re-resolved once per release, as Render re-pulls it on each
 	// deploy, never once per reconcile (w4/m243 t008).
@@ -108,8 +112,8 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	// rollback or redeploy returns to the image's own port (w8/210).
 	if cached := app.Status.ImageNetwork; cached != nil &&
 		(cached.Image == image || cached.Source == image && cached.Revision == releaseRevision(app)) &&
-		(!configured || cached.PrimaryPort == configuredPrimary) &&
-		(configured || cached.HTTPSelection != appv1alpha1.HTTPSelectionConfigured) {
+		cached.ConfiguredPort != nil && *cached.ConfiguredPort == configuredPort &&
+		(!configured || cached.PrimaryPort == configuredPrimary) {
 		cached.Revision = releaseRevision(app)
 		retainWebHTTPSelection(app, cached, configured)
 		return cached.Image, int(cached.PrimaryPort), nil
@@ -174,7 +178,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	image = prefix + "@" + metadata.Digest
 	network := &appv1alpha1.ImageNetworkStatus{
 		Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports,
-		NoDeclaredPorts: len(metadata.TCPPorts) == 0,
+		NoDeclaredPorts: len(metadata.TCPPorts) == 0, ConfiguredPort: new(configuredPort),
 	}
 	retainWebHTTPSelection(app, network, configured)
 	app.Status.ImageNetwork = network

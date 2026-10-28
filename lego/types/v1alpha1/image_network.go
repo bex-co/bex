@@ -62,6 +62,13 @@ func IsReservedImagePort(port int32) bool {
 // ImageNetworkStatus binds a private port set to an immutable image and release.
 type ImageNetworkStatus struct {
 	Image string `json:"image"`
+	// ConfiguredPort records the configuration used to resolve this network:
+	// zero means no configured port, a positive value is the explicit PORT or
+	// service port, and nil is legacy data whose provenance must be refreshed.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	ConfiguredPort *int32 `json:"configuredPort,omitempty"`
 	// HTTPSelection is the completed web listener decision. Empty means the
 	// first candidate still needs runtime discovery; private networks ignore it.
 	// +optional

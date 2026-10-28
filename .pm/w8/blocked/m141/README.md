@@ -20,7 +20,7 @@
 - A web-image candidate without explicit port/PORT selects the lowest port returning an HTTP status line, including401, before promotion; private and explicit port choices remain unchanged.
 - Pending discovery cannot promote a binary TCP listener or drain the prior release; startup scan is bounded and noHTTP uses the recorded fallback.
 - NoEXPOSE listeners can be discovered without advertising invented10000; fallback diagnostics truthfully name an empty EXPOSE set.
-- A completed decision is reused per digest, including later releases; legacy already-serving choices are retained on operator upgrade.
+- A completed decision is reused per digest and matching configured-port input, including later releases. Legacy choices require safe provenance/equivalent fresh metadata, as amended by w8/m142.
 - Exact successful deploy history contains Detected HTTP on port N narration, and old deploys cannot borrow another image's choice.
 - Hosted RabbitMQ serves15672, nginx serves80 and the noEXPOSE control works; fixtures are deleted by ID with404 proofs. Relevant suites and simplify pass.
 
@@ -40,3 +40,8 @@ Full operator and types suites, protocol race/socket tests and targeted operator
 ## Parked gate — 2026-10-28
 
 The final full operator suite, types suite, workspace lint/dead-code and fresh-dependency backend ship gate all passed, including migration0172 and exact-release historical port persistence. **BLOCKED:** release pipeline deploys the operator/API/CRD and migration, then QA runs t007: fresh RabbitMQ noPORT reaches management15672 with its historical Detected HTTP narration, nginx remains80, and a noEXPOSE image selects its runtime HTTP port. Confirm explicitPORT/private controls remain unchanged and delete all fixtures by ID with404 proofs. No production fixture was created before the new build was available.
+
+
+## Subsequent retention correction — 2026-10-28
+
+w8/m142 records configured-port provenance and prevents HTTP selection from retaining a deleted PORT. Its conservative legacy migration supersedes the blanket legacy-choice retention described above: unknown records refresh metadata once and may retain completion only for an exactly matching fresh port tuple. Hosted m141 checks remain pending; this does not claim them complete.

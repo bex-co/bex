@@ -18,7 +18,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strconv"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -33,13 +37,16 @@ import (
 // reader (App.ServingPort). An unusable value is ignored with a log line, and
 // spec.port applies, rather than taking the service off the network.
 //
-// It reads the configuration the projection currently serves. A release that
-// changes PORT is snapshotted later in the same pass, so it first rolls out
-// still serving on the old port (the injected PORT keeps the process there),
-// and the next pass moves it to the new one: two rollouts, never a mismatch
-// between the port the process binds and the port the platform routes to.
+// Historical selections read their recorded inline values and selected Secret
+// sources even before their new record is materialized. Saved configuration
+// stays unchanged. Ordinary deployments retain the existing snapshot projection
+// until their new inputs are snapshotted later in the pass.
 func (r *AppReconciler) envPort(ctx context.Context, app *appv1alpha1.App, specPort int) (int, error) {
-	value, set, err := r.configuredEnv(ctx, app, portEnvName)
+	runtime, err := r.portRuntimeApp(ctx, app)
+	if err != nil {
+		return 0, err
+	}
+	value, set, err := r.configuredEnv(ctx, runtime, portEnvName)
 	if err != nil {
 		return 0, err
 	}
@@ -54,4 +61,41 @@ func (r *AppReconciler) envPort(ctx context.Context, app *appv1alpha1.App, specP
 	}
 	app.Status.EnvPort = int32(port)
 	return port, nil
+}
+
+// portRuntimeApp selects only the inputs PORT will read; it never materializes
+// configuration or changes the saved App. envPort runs before that commit point.
+func (r *AppReconciler) portRuntimeApp(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
+	if heldRelease(app) {
+		return r.selectedRuntimeApp(ctx, app)
+	}
+	ref := app.ActiveReleaseConfig()
+	if ref == nil || ref.SourceGeneration == 0 || canceledOverServed(app) {
+		return app, nil
+	}
+	runtime, err := r.selectedRuntimeApp(ctx, app)
+	if err == nil {
+		runtime.Status.ConfigSnapshotGeneration = ref.Generation
+		return runtime, nil
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	// The selected release has not copied its sources yet. Read the same
+	// names copySelectedSources will consume, including live rollback groups
+	// and historical own/restart values, without waiting for those copies.
+	record, err := r.readRuntimeConfigRecord(ctx, app, ref.SourceGeneration)
+	if err != nil {
+		return nil, fmt.Errorf("read selected release %d: %w", ref.SourceGeneration, err)
+	}
+	runtime = record.projectRuntimeApp(app, ref.SourceGeneration)
+	runtime.Status.ConfigSnapshotGeneration = 0
+	runtime.Spec.EnvFromSecrets = slices.Clone(runtime.Spec.EnvFromSecrets)
+	for i, source := range runtime.Spec.EnvFromSecrets {
+		runtime.Spec.EnvFromSecrets[i] = selectedSourceName(app, ref, record, source)
+	}
+	if source := runtime.Spec.EnvFromSecret; source != "" {
+		runtime.Spec.EnvFromSecret = selectedSourceName(app, ref, record, source)
+	}
+	return runtime, nil
 }
