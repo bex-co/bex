@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **430** — [A port-changing rollout still drops 1–2 requests at promotion (a 502, or the activator's "service not ready"), after w4/428](430.md) (~45m) ← live `/qa-find-bugs w4` loop run 92e2, 2026-10-28 UTC (`muse.env`, pin `dfbb006c1bf2`; minor). A 0.25 s poll across `HTTP_PORT`/`PORT` 8080→9090 gave 155 × 200 + 1 × 502, and 9090→8080 gave 134 × 200 + 2 × 503 `{"error":"service not ready"}` from the activator via the platform-host fallback route.
+
 - [ ] **429** — [Free datastore storage written before w4/427 still prices: October's Free Postgres/Key Value rows carry no tier, and their Stripe events were already sent](429.md) (~45m) ← live `/qa-find-bugs w4` loop run 4513, 2026-10-28 UTC (`muse.env`, pin `d368e383fcb1`; minor). On the fixed pin, Billing still shows the Free `qa-20261017-64552e-pg14` at $0.01: `dd525ed52` tiers only new storage rows ("no window already written is re-keyed"), so the period's earlier rows keep the storage rate, and Stripe credits for collected workspaces are undecided.
 
 - [x] **428** — [A port-changing rollout of an image-port service still leaves its Services without a ready endpoint between the old pod's drain and promotion](done/428.md) (~1h) ← split from w4/m243 t012 in the loopx w4 drain, 2026-10-28. — **DONE 2026-10-28** (loopx w4: old pods held 15 s while routing moves to the first Ready new pod; prior network restored on failure)
