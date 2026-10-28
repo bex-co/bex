@@ -64,7 +64,7 @@ export type AgentEnvironmentInput = {
   networkTier?: InputMaybe<AgentNetworkTier>;
 };
 
-/** Sandbox network access for a workspace's agent sessions. FULL is stored but currently enforced as REGISTRIES. */
+/** Sandbox network access for a workspace's agent sessions. FULL reaches any public host over HTTP(S) through the bex egress proxy (model providers stay blocked; no raw TCP or SSH). */
 export enum AgentNetworkTier {
   Custom = 'CUSTOM',
   Full = 'FULL',

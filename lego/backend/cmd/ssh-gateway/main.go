@@ -23,6 +23,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -52,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/dbrole"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/egressproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	sandboxfilegateway "github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxfiles"
@@ -243,6 +245,11 @@ func main() {
 	// gateway-only HMAC secret, the same source-pod resolver, an internal-only
 	// listener. It keeps the BYO model key on the gateway→vendor hop.
 	model := &modelproxy.Broker{Metrics: metrics}
+	// w10/m19: the egress proxy for full-tier sandboxes. Same trust model
+	// again (source-Pod binding, gateway-only HMAC to bex-api for the tier
+	// grant); it reaches the public internet on the allowed ports only and
+	// refuses the model providers and private ranges itself.
+	egress := &egressproxy.Broker{Metrics: metrics}
 	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
 		apiURL := envOr("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
 		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
@@ -280,6 +287,27 @@ func main() {
 		// dimension.
 		model.MaxRequestsPerSession = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_SESSION", 1000)
 		model.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_WORKSPACE", 5000)
+
+		egress.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		egress.API = &agentsession.EgressGrantClient{
+			URL:    envOr("BEX_AGENT_EGRESS_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEgressGrantPath),
+			Secret: []byte(secret),
+			HTTP:   &http.Client{Timeout: 10 * time.Second},
+		}
+		egress.Audit = st
+		egress.Limits = sshgateway.NewSessionLimiter(
+			intEnv("BEX_AGENT_EGRESS_MAX_CONNS", 256),
+			intEnv("BEX_AGENT_EGRESS_MAX_CONNS_PER_POD", 32),
+		)
+		egress.Ports = portsEnv("BEX_AGENT_EGRESS_PORTS", egressproxy.DefaultPorts)
+		egress.DenyPrefixes = prefixesEnv("BEX_AGENT_EGRESS_DENY_CIDRS")
+		egress.IdleTimeout = durationEnv("BEX_AGENT_EGRESS_IDLE_TIMEOUT", 5*time.Minute)
+		egress.MaxDuration = durationEnv("BEX_AGENT_EGRESS_MAX_DURATION", time.Hour)
+		// Cumulative budgets: they bound a runaway loop in one session or
+		// workspace; 0 disables a dimension.
+		egress.MaxConnectionsPerSession = intEnvAllowZero("BEX_AGENT_EGRESS_MAX_CONNECTIONS_PER_SESSION", 20000)
+		egress.MaxConnectionsPerWorkspace = intEnvAllowZero("BEX_AGENT_EGRESS_MAX_CONNECTIONS_PER_WORKSPACE", 100000)
+		egress.MaxBytesPerSession = int64(intEnvAllowZero("BEX_AGENT_EGRESS_MAX_BYTES_PER_SESSION", 20<<30))
 	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
@@ -398,6 +426,20 @@ func main() {
 				server.IdleTimeout = 2 * time.Minute
 			})()
 	}
+	// Agent-session egress proxy (w10/m19). Internal-only (sandbox → gateway →
+	// internet on :8085 by default); only full-tier session policies admit
+	// this hop. Serves CONNECT and absolute-form HTTP, so it takes the broker
+	// handler directly rather than a path mux. Same start gate as the others.
+	if egress.Enabled() {
+		defer startAuxListener("agent egress proxy", "agent egress proxy", envOr("BEX_AGENT_EGRESS_PROXY_ADDR", ":8085"), egress.Handler(), stop, metrics,
+			func(server *http.Server) {
+				// Bounds a plain-HTTP request body; CONNECT tunnels clear the
+				// deadline after the hijack and run under their own idle and
+				// total timeouts.
+				server.ReadTimeout = durationEnv("BEX_AGENT_EGRESS_READ_TIMEOUT", 2*time.Minute)
+				server.IdleTimeout = 2 * time.Minute
+			})()
+	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream
 	// to this listener (t006). Started only when BEX_SHELL_TICKET_SECRET is set.
@@ -429,9 +471,13 @@ func main() {
 // the caller defers, keeping the process-exit LIFO order at the call sites.
 // Each opt may still shape the server (e.g. a request-read deadline for a
 // body-carrying proxy listener); the defaults suit streaming listeners.
-func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc, metrics *sshgateway.Metrics, opts ...func(*http.Server)) func() {
-	mux.HandleFunc("GET /healthz", healthzOK)
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+func startAuxListener(name, logName, addr string, handler http.Handler, stop context.CancelFunc, metrics *sshgateway.Metrics, opts ...func(*http.Server)) func() {
+	// A path mux gets the shared health route; a raw handler (the egress
+	// proxy, which must see CONNECT) answers /healthz itself.
+	if mux, ok := handler.(*http.ServeMux); ok {
+		mux.HandleFunc("GET /healthz", healthzOK)
+	}
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
 	for _, opt := range opts {
 		opt(server)
 	}
@@ -450,6 +496,11 @@ func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop conte
 	case "agent model proxy":
 		global = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS", global)
 		perSource = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS_PER_SOURCE", perSource)
+	case "agent egress proxy":
+		// Held for a tunnel's whole life, so the global cap sits above the
+		// broker's concurrent-tunnel limiter rather than below it.
+		global = intEnv("BEX_AGENT_EGRESS_MAX_PREAUTH_CONNS", 512)
+		perSource = intEnv("BEX_AGENT_EGRESS_MAX_PREAUTH_CONNS_PER_SOURCE", 64)
 	}
 	listener = newAdmissionListener(listener, global, perSource, metrics)
 	go func() {
@@ -587,6 +638,41 @@ func durationEnv(name string, fallback time.Duration) time.Duration {
 		log.Fatalf("ssh gateway: %s must be a positive duration", name)
 	}
 	return duration
+}
+
+// portsEnv parses a comma-separated TCP port list (BEX_AGENT_EGRESS_PORTS);
+// unset keeps fallback, and any malformed entry refuses startup.
+func portsEnv(name string, fallback []int) []int {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	var ports []int
+	for _, part := range splitCSV(value) {
+		n, err := strconv.Atoi(part)
+		if err != nil || n <= 0 || n > 65535 {
+			log.Fatalf("ssh gateway: %s must be a comma-separated list of TCP ports", name)
+		}
+		ports = append(ports, n)
+	}
+	if len(ports) == 0 {
+		log.Fatalf("ssh gateway: %s must name at least one port", name)
+	}
+	return ports
+}
+
+// prefixesEnv parses a comma-separated CIDR list (BEX_AGENT_EGRESS_DENY_CIDRS);
+// any malformed entry refuses startup.
+func prefixesEnv(name string) []netip.Prefix {
+	var prefixes []netip.Prefix
+	for _, part := range splitCSV(os.Getenv(name)) {
+		prefix, err := netip.ParsePrefix(part)
+		if err != nil {
+			log.Fatalf("ssh gateway: %s entry %q is not a CIDR", name, part)
+		}
+		prefixes = append(prefixes, prefix.Masked())
+	}
+	return prefixes
 }
 
 // splitCSV parses a comma-separated env value (e.g. BEX_API_CORS_ORIGIN) into a

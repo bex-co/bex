@@ -11,6 +11,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -44,7 +45,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
 	placeholder := agentsession.ModelKeyPlaceholder("ags-session")
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it", "BEX_AGENT_TURN": "2"})
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, sessionegress.Egress{Hosts: []string{"docs.example.com"}}, map[string]string{"BEX_AGENT_PROMPT": "do it", "BEX_AGENT_TURN": "2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +79,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 			t.Fatal("model proxy placeholder leaked into sandbox metadata")
 		}
 	}
-	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1", "https://api.openai.com/v1", []string{"docs.example.com"}); err != nil {
+	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1", "https://api.openai.com/v1", sessionegress.Egress{Hosts: []string{"docs.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := lifecycle.ResumeAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
@@ -108,7 +109,7 @@ func TestAgentSessionLifecycleRejectsReusableOrMissingModelCredential(t *testing
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
 	for _, credential := range []string{"", "sk-tenant-secret", agentsession.ModelKeyPlaceholder("ags-other")} {
-		if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", credential, nil, nil); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+		if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", credential, sessionegress.Egress{}, nil); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
 			t.Fatalf("credential %q error = %v, want agent sessions unavailable", credential, err)
 		}
 	}

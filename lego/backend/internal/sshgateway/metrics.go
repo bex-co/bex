@@ -37,6 +37,8 @@ type Metrics struct {
 	reauths         *prometheus.CounterVec
 	gitUpstream     *prometheus.CounterVec
 	modelUsage      *prometheus.CounterVec
+	egressConns     *prometheus.CounterVec
+	egressBytes     *prometheus.CounterVec
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -96,8 +98,16 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "model_proxy_usage_reports_total",
 			Help: "Platform model route token-usage reports (w10/m14) by bounded result: reported, retried, unparsed, dropped_queue_full, dropped_failed.",
 		}, []string{"result"}),
+		egressConns: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "egress_proxy_connections_total",
+			Help: "Agent-session egress proxy requests (w10/m19) by bounded result: allowed, or the refusal reason (provider, private, port, tier, sni, dns, dial, budget, ...). No host, URL or session label.",
+		}, []string{"result"}),
+		egressBytes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "egress_proxy_bytes_total",
+			Help: "Bytes relayed by the agent-session egress proxy, by direction (upstream = sandbox to internet, downstream = internet to sandbox).",
+		}, []string{"direction"}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes)
 	return m
 }
 
@@ -180,5 +190,21 @@ func (m *Metrics) GitProxyUpstreamFailure(cause string) {
 func (m *Metrics) ModelUsageReport(result string) {
 	if m != nil {
 		m.modelUsage.WithLabelValues(result).Inc()
+	}
+}
+
+// EgressProxyConnection records one egress proxy request outcome (w10/m19):
+// "allowed" or a bounded refusal reason. Hosts and URLs never become labels.
+func (m *Metrics) EgressProxyConnection(result string) {
+	if m != nil {
+		m.egressConns.WithLabelValues(result).Inc()
+	}
+}
+
+// EgressProxyBytes adds n relayed bytes in direction ("upstream" sandbox to
+// internet, "downstream" internet to sandbox).
+func (m *Metrics) EgressProxyBytes(direction string, n int64) {
+	if m != nil && n > 0 {
+		m.egressBytes.WithLabelValues(direction).Add(float64(n))
 	}
 }

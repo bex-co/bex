@@ -150,6 +150,11 @@ spec:
               value: ":8084"
             - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-model-credentials
+            # w10/m19: egress proxy for full-tier sessions.
+            - name: BEX_AGENT_EGRESS_PROXY_ADDR
+              value: ":8085"
+            - name: BEX_AGENT_EGRESS_GRANT_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-egress-grants
             # Agent-session conversation transport (ADR047 D9). dev-env.sh
             # port-forwards this listener to the host so the dashboard's
             # useChat can reach it; the CORS origin is the dev-N dashboard.
@@ -174,6 +179,8 @@ spec:
               containerPort: 8083
             - name: agent-model
               containerPort: 8084
+            - name: agent-egress
+              containerPort: 8085
           readinessProbe:
             httpGet:
               path: /healthz
@@ -226,6 +233,9 @@ spec:
     - name: agent-model
       port: 8084
       targetPort: agent-model
+    - name: agent-egress
+      port: 8085
+      targetPort: agent-egress
     - name: sandbox-exec
       port: 8081
       targetPort: sandbox-exec

@@ -44,9 +44,19 @@ const (
 	allowAnnotation = "bex.co/egress-allowlist"
 	hashAnnotation  = "bex.co/egress-allowlist-hash"
 	modelAnnotation = "bex.co/model-endpoint"
+	// postureAnnotation marks the full-internet posture (w10/m19): no public
+	// FQDN rule at all, only filtered DNS for the gateway and the gateway hops
+	// (Git, model, egress proxy). The bex-api-session-egress admission policy
+	// admits the egress-proxy hop only on a policy carrying this marker, and
+	// such a policy may carry no FQDN rule. Allowlist postures carry none.
+	postureAnnotation = "bex.co/egress-posture"
+	postureFull       = "full"
 
 	credentialGatewayHost = "bex-ssh-gateway.bex-system.svc.cluster.local"
 	credentialGatewayPort = uint16(8082)
+	// DefaultEgressProxyPort is the gateway egress proxy listener (w10/m19,
+	// BEX_AGENT_EGRESS_PROXY_ADDR on the gateway).
+	DefaultEgressProxyPort = uint16(8085)
 
 	maxExtraDestinations = 32
 )
@@ -60,6 +70,27 @@ var (
 	// others it is reached only through the gateway model proxy.
 	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"}
 )
+
+// NetworkTierFull is the workspace agent-environment tier whose sessions
+// reach any public host over HTTP(S) through the gateway egress proxy
+// (w10/m19). It lives here, beside the policy it selects, so bex-api's tier
+// store, the egress grant verb and the renderer share one literal.
+const NetworkTierFull = "full"
+
+// ModelProviderDomains is the registered model-provider API host list. These
+// hosts are reachable only through the gateway model proxy: never a tenant
+// widening and never an egress-proxy destination.
+func ModelProviderDomains() []string { return slices.Clone(modelProviderDomains) }
+
+// Egress is the destination set one session policy renders. FullInternet
+// selects the proxy posture: no direct public egress at all, and every
+// outbound HTTP(S) connection goes through the gateway egress proxy, which
+// refuses model providers and private ranges itself. Otherwise Hosts is the
+// validated tenant widening on top of GitHub and the registry catalog.
+type Egress struct {
+	FullInternet bool
+	Hosts        []string
+}
 
 // Phase marks where one sandbox generation of an agent session is in its
 // lifecycle: setup (clone + dependency install, before the agent runs) or agent.
@@ -90,6 +121,10 @@ type Config struct {
 	// renderer for tests/migrations, but the agent-session service refuses new
 	// mutation work when the proxy is absent (ADR064).
 	ModelProxyPort uint16
+	// EgressProxyPort is the gateway egress proxy port a full-internet session
+	// policy admits (BEX_AGENT_EGRESS_PROXY_URL's port). 0 selects
+	// DefaultEgressProxyPort.
+	EgressProxyPort uint16
 }
 
 // Manager converges namespaced, per-session Cilium policies. A nil Client is
@@ -147,7 +182,7 @@ func ExtraDestinations(entries []string) ([]string, error) {
 			return nil, invalidAllowlist("ip_literal", raw, "IP literals are not supported")
 		case len(validation.IsDNS1123Subdomain(host)) != 0 || !strings.Contains(host, "."):
 			return nil, invalidAllowlist("not_a_hostname", raw, "destination must be a valid multi-label DNS hostname")
-		case privateOrClusterHost(host):
+		case PrivateOrClusterHost(host):
 			return nil, invalidAllowlist("private_name", raw, "private and cluster-local destinations cannot be allowlisted")
 		}
 		if _, exists := seen[host]; exists {
@@ -185,6 +220,9 @@ func (c Config) normalized() (Config, error) {
 		return Config{}, fmt.Errorf("session egress: BEX_AGENT_SETUP_REGISTRIES: %w", err)
 	}
 	c.SetupRegistryDomains = validated
+	if c.EgressProxyPort == 0 {
+		c.EgressProxyPort = DefaultEgressProxyPort
+	}
 	return c, nil
 }
 
@@ -238,17 +276,20 @@ func ModelEndpointHost(raw string) (string, error) {
 	}
 	modelHost := strings.ToLower(u.Hostname())
 	if net.ParseIP(modelHost) != nil || len(validation.IsDNS1123Subdomain(modelHost)) != 0 ||
-		!strings.Contains(modelHost, ".") || privateOrClusterHost(modelHost) {
+		!strings.Contains(modelHost, ".") || PrivateOrClusterHost(modelHost) {
 		return "", core.NewBadRequestError("AGENT_SESSION_MODEL_ENDPOINT_INVALID", "modelEndpoint must use a DNS hostname", nil)
 	}
 	return modelHost, nil
 }
 
-// privateOrClusterHost reports whether host is a loopback or cluster-local name
+// PrivateOrClusterHost reports whether host is a loopback or cluster-local name
 // that must never enter a tenant egress allowlist or be used as a model
 // endpoint. Both validators share this reserved-suffix set so it lives in one
 // place and cannot drift (m40/t005).
-func privateOrClusterHost(host string) bool {
+//
+// The gateway egress proxy refuses the same reserved names before it resolves
+// anything.
+func PrivateOrClusterHost(host string) bool {
 	return host == "localhost" ||
 		strings.HasSuffix(host, ".localhost") ||
 		strings.HasSuffix(host, ".local") ||
@@ -264,30 +305,31 @@ func privateOrClusterHost(host string) bool {
 // allowlist are resolved again for every dispatch. The setup posture admits
 // nothing the agent posture does not, so re-entering setup never reopens a
 // destination the agent phase had closed.
-func (m *Manager) PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error {
-	return m.apply(ctx, namespace, sessionID, PhaseSetup, modelEndpoint, extra)
+func (m *Manager) PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, egress Egress) error {
+	return m.apply(ctx, namespace, sessionID, PhaseSetup, modelEndpoint, egress)
 }
 
 // TransitionToAgent moves the session policy into the agent phase. It keeps the
 // package registries (ADR047 D5 amendment 2026-10-27) and verifies that the
 // tenant widening is byte-for-byte the one setup was prepared with, so a
 // transition cannot smuggle in a new destination.
-func (m *Manager) TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error {
-	return m.apply(ctx, namespace, sessionID, PhaseAgent, modelEndpoint, extra)
+func (m *Manager) TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, egress Egress) error {
+	return m.apply(ctx, namespace, sessionID, PhaseAgent, modelEndpoint, egress)
 }
 
-func (m *Manager) apply(ctx context.Context, namespace, sessionID string, phase Phase, modelEndpoint string, extra []string) error {
+func (m *Manager) apply(ctx context.Context, namespace, sessionID string, phase Phase, modelEndpoint string, egress Egress) error {
 	if m == nil || m.Client == nil {
 		return errors.New("session egress: Kubernetes policy client is not configured")
 	}
 	if len(validation.IsDNS1123Label(sessionID)) != 0 {
 		return fmt.Errorf("session egress: invalid session id %q", sessionID)
 	}
-	extra, err := ExtraDestinations(extra)
+	extra, err := ExtraDestinations(egress.Hosts)
 	if err != nil {
 		return err
 	}
-	desired, err := m.policy(namespace, sessionID, phase, modelEndpoint, extra)
+	egress.Hosts = extra
+	desired, err := m.policy(namespace, sessionID, phase, modelEndpoint, egress)
 	if err != nil {
 		return err
 	}
@@ -338,10 +380,16 @@ func (m *Manager) Delete(ctx context.Context, namespace, sessionID string) error
 	return nil
 }
 
-func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint string, extra []string) (*unstructured.Unstructured, error) {
+func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint string, egress Egress) (*unstructured.Unstructured, error) {
 	modelHost, err := ModelEndpointHost(modelEndpoint)
 	if err != nil {
 		return nil, err
+	}
+	extra := egress.Hosts
+	if egress.FullInternet {
+		// The proxy reaches every public host, so a widening adds nothing; it
+		// is dropped rather than rendered as a direct FQDN rule.
+		extra = []string{}
 	}
 	for _, domain := range extra {
 		if domain == modelHost || slices.Contains(modelProviderDomains, domain) || slices.Contains(githubDomains, domain) {
@@ -352,11 +400,74 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	// The model host stays in the immutable identity/hash (it is still the
 	// session's logical model target) even when the proxy narrowing omits it from
 	// the reachable domains, so the allowlist-immutability check is unaffected.
+	// Full is omitted when false so every allowlist posture keeps the identity
+	// hash it had before the full tier existed (a session prepared before a
+	// rollout still transitions after it).
 	identityJSON, _ := json.Marshal(struct {
 		Model string   `json:"model"`
 		Extra []string `json:"extra"`
-	}{Model: modelHost, Extra: extra})
+		Full  bool     `json:"full,omitempty"`
+	}{Model: modelHost, Extra: extra, Full: egress.FullInternet})
 	digest := sha256.Sum256(identityJSON)
+	annotations := map[string]any{
+		phaseAnnotation: string(phase),
+		allowAnnotation: string(allowJSON),
+		hashAnnotation:  hex.EncodeToString(digest[:]),
+		modelAnnotation: modelHost,
+	}
+	var egressRules []any
+	if egress.FullInternet {
+		// Full internet (w10/m19): no public FQDN rule, so a direct connection
+		// to any public address is dropped by the sandbox default-deny. DNS
+		// resolves only the gateway; HTTP(S) reaches the internet through the
+		// egress proxy hop, model traffic through the model proxy hop and Git
+		// through the Git hop. The model proxy is mandatory here: without it
+		// the agent would have no model route at all.
+		if m.Config.ModelProxyPort == 0 {
+			return nil, errors.New("session egress: the full-internet posture requires the gateway model proxy")
+		}
+		annotations[postureAnnotation] = postureFull
+		egressRules = []any{
+			dnsRule([]string{credentialGatewayHost}),
+			gatewayRule(credentialGatewayPort),
+			gatewayRule(m.Config.ModelProxyPort),
+			gatewayRule(m.egressProxyPort()),
+		}
+	} else {
+		egressRules = m.allowlistRules(modelHost, extra)
+	}
+	obj := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "cilium.io/v2",
+		"kind":       "CiliumNetworkPolicy",
+		"metadata": map[string]any{
+			"name":      policyName(sessionID),
+			"namespace": namespace,
+			"labels": map[string]any{
+				managedByLabel: managedByValue,
+				SessionLabel:   sessionID,
+			},
+			"annotations": annotations,
+		},
+		"spec": map[string]any{
+			"endpointSelector": map[string]any{"matchLabels": map[string]any{SessionLabel: sessionID}},
+			"egress":           egressRules,
+		},
+	}}
+	obj.SetGroupVersionKind(ciliumPolicyGVK)
+	return obj, nil
+}
+
+func (m *Manager) egressProxyPort() uint16 {
+	if m.Config.EgressProxyPort != 0 {
+		return m.Config.EgressProxyPort
+	}
+	return DefaultEgressProxyPort
+}
+
+// allowlistRules renders the registries/custom posture: filtered DNS, one
+// exact FQDN+SNI rule (GitHub, the registry catalog and the tenant widening),
+// and the Git and model gateway hops.
+func (m *Manager) allowlistRules(modelHost string, extra []string) []any {
 	domains := append([]string{}, githubDomains...)
 	// ADR062 narrowing: with the model proxy on, the tenant pod cannot resolve or
 	// reach the vendor host directly — the agent talks to it only through the
@@ -382,31 +493,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	if m.Config.ModelProxyPort != 0 {
 		egressRules = append(egressRules, gatewayRule(m.Config.ModelProxyPort))
 	}
-
-	obj := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "cilium.io/v2",
-		"kind":       "CiliumNetworkPolicy",
-		"metadata": map[string]any{
-			"name":      policyName(sessionID),
-			"namespace": namespace,
-			"labels": map[string]any{
-				managedByLabel: managedByValue,
-				SessionLabel:   sessionID,
-			},
-			"annotations": map[string]any{
-				phaseAnnotation: string(phase),
-				allowAnnotation: string(allowJSON),
-				hashAnnotation:  hex.EncodeToString(digest[:]),
-				modelAnnotation: modelHost,
-			},
-		},
-		"spec": map[string]any{
-			"endpointSelector": map[string]any{"matchLabels": map[string]any{SessionLabel: sessionID}},
-			"egress":           egressRules,
-		},
-	}}
-	obj.SetGroupVersionKind(ciliumPolicyGVK)
-	return obj, nil
+	return egressRules
 }
 
 // matchNames renders a domain list as Cilium's `{"matchName": <domain>}` form,

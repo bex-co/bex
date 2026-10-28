@@ -29,6 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -86,8 +87,8 @@ type Template struct {
 // creation, make the setup→agent transition one-way, and leave the structural
 // sandbox default-deny in place during cleanup.
 type SessionEgress interface {
-	PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error
-	TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error
+	PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, egress sessionegress.Egress) error
+	TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, egress sessionegress.Egress) error
 	Delete(ctx context.Context, namespace, sessionID string) error
 }
 
@@ -554,7 +555,7 @@ const ModelAPIKeyEnvVar = agentsession.ModelKeyField
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (Sandbox, error) {
 	s := l.service
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
@@ -587,7 +588,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 		bindings[agentsession.LabelDispatchTurn] = turn
 	}
 	namespace := store.SandboxNamespace(workspaceID)
-	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egressAllowlist); err != nil {
+	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egress); err != nil {
 		return Sandbox{}, err
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
@@ -622,7 +623,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry
 // access to its immutable agent baseline. Durable sandbox metadata, rather than
 // transition-call input, supplies the model endpoint and tenant widening.
-func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error {
+func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egress sessionegress.Egress) error {
 	s := l.service
 	if s.SessionEgress == nil {
 		return core.ErrAgentSessionsUnavailable
@@ -637,7 +638,7 @@ func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, work
 	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
 		return err
 	}
-	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, modelEndpoint, egressAllowlist)
+	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, modelEndpoint, egress)
 }
 
 // ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for

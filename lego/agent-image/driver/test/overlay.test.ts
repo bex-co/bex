@@ -106,6 +106,23 @@ test("a repo-less session gets the scratch overlay without Git delivery", () => 
   assert.doesNotMatch(text, /open_or_update_draft_pr|git push/);
 });
 
+test("only the full network tier explains the egress proxy, in both overlays", () => {
+  const proxyLine = /bex egress proxy .*non-HTTP protocols are not available/;
+  const scratch = { ...repoContext, deliver: false, repoUrl: "", branch: "" };
+  for (const context of [repoContext, scratch]) {
+    assert.match(
+      platformOverlay({ ...context, networkTier: "full" }),
+      proxyLine,
+    );
+    for (const networkTier of [undefined, "", "registries", "custom"]) {
+      assert.doesNotMatch(
+        platformOverlay({ ...context, networkTier }),
+        /egress proxy/,
+      );
+    }
+  }
+});
+
 test("an advertised systemPrompt capability carries the overlay on session/new and session/load", async () => {
   for (const load of [false, true]) {
     const config = await tempConfig({

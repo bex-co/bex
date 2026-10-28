@@ -138,6 +138,22 @@ spec:
               value: 2m
             - name: BEX_AGENT_MODEL_MAX_DURATION
               value: 2h
+            # Egress proxy for full-tier agent sessions (w10/m19, ADR047 D5
+            # amendment 2026-10-28). Internal-only: only a full-tier session's
+            # Cilium policy admits :8085. The gateway binds the source Pod,
+            # asks bex-api for the workspace tier over the same HMAC, and relays
+            # HTTP CONNECT / plain HTTP to public hosts on 443/80 only, refusing
+            # the model providers (name, IP, SNI) and private/metadata ranges.
+            # The gateway's own egress is unrestricted by policy (no egress
+            # policy selects it), which is what lets it reach world:443/80.
+            - name: BEX_AGENT_EGRESS_PROXY_ADDR
+              value: ":8085"
+            - name: BEX_AGENT_EGRESS_GRANT_API_URL
+              value: http://bex-api.bex-system.svc:8091/v1/agent-session-egress-grants
+            - name: BEX_AGENT_EGRESS_MAX_CONNS
+              value: "256"
+            - name: BEX_AGENT_EGRESS_MAX_CONNS_PER_POD
+              value: "32"
             # Agent-session conversation transport (ADR047 D9, w3/m43). A
             # browser-facing plain-HTTP SSE listener Traefik terminates TLS onto:
             # the edge path-routes api.bex.co/v1/agent-sessions/{id}/stream here
@@ -177,6 +193,9 @@ spec:
               protocol: TCP
             - name: agent-model
               containerPort: 8084
+              protocol: TCP
+            - name: agent-egress
+              containerPort: 8085
               protocol: TCP
           readinessProbe:
             httpGet:
