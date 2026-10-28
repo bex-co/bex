@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28
+
 - [ ] **m142** — [Clear image-network choices when PORT intent changes](blocked/m142/README.md) (8 tasks) ← from w8/210 — **BLOCKED (2026-10-28: t001–t005/t008 done; source d66f96c06 and all local gates pass. Release pipeline deploys operator/CRD, then QA verifies removed/saved PORT rollback and fresh-deploy controls with ID/404 cleanup; zero-error hosted continuity also depends on the unresolved w4/430 promotion burst)**
 
 - [ ] **m141** — [HTTP-aware Docker web listener selection](blocked/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **BLOCKED (2026-10-28: hosted t007 on pin `d66f96c06991` NOT MET — nginx 80 and the no-EXPOSE `http.server` 8000 detection with narration pass, but 1 of 2 identical RabbitMQ fixtures served Prometheus 15692 (404 on `/`, management unreachable) instead of management 15672; likely the 1 s per-port HTTP probe losing to a cold management handler on a Free CPU; see t007)**
@@ -403,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **213** — [Platform-generated responses carry no `x-render-routing` header (`no-server`/`suspend`/`hibernate-pending-wake`), so an edge 404/503 looks like the app's own](213.md) (~30m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: Render tags its unknown-host 404, suspended 503 and wake page; bex's activator sets only `rndr-id`
 
-- [ ] **212** — [`bex skills install` installs Render's agent skills: 22 `render-*` skills that send the user's agent to `render` CLI, `mcp.render.com` and `dashboard.render.com`](212.md) (~3h, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: sandboxed install wrote 188 Render-directing files and 0 mentioning bex; the m29 "branding residual" acceptance missed the functional effect
+- [x] **212** — [`bex skills install` installs Render's agent skills: 22 `render-*` skills that send the user's agent to `render` CLI, `mcp.render.com` and `dashboard.render.com`](done/212.md) (~3h, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: sandboxed install wrote 188 Render-directing files and 0 mentioning bex; the m29 "branding residual" acceptance missed the functional effect — **PROMOTED 2026-10-28 to m143; evidence retained**
 
 - [ ] **211** — [Service URLs offer no HTTP/3: Render serves every service over HTTP/3 (`alt-svc: h3`), bex's edge is TCP-only](blocked/211.md) (~2h + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: four `onrender.com`/`docs.render.com` hosts advertise `alt-svc: h3=":443"`; bex service URLs advertise nothing, and the Hetzner TCP Load Balancer cannot carry QUIC — **BLOCKED (2026-10-28: user decision — UDP/QUIC needs a production edge change with recurring spend: (1) paid per-node Hetzner IPs + UDP 443 firewall + Traefik http3, optionally an alt-svc alternate host `h3.onbex.co` so tenant DNS stays on the TCP LB; (2) Cloudflare-proxied *.onbex.co; or (3) sign off an ADR018 'HTTP/3 not offered' divergence)**
 
