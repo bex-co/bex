@@ -372,16 +372,19 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - cron jobs and static sites;
   - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
 
-## Deploy commit provenance (w9/001, public-repo fallback w4/m108 t004)
+## Deploy commit provenance (w9/001, public-repo fallbacks w4/m108 t004 + w8/209)
 
 Repo-backed deploy rows are stamped with commit provenance **at deploy-open time** — before the build runs — so REST/GraphQL/MCP and the dashboard Deploys tab can name the code being shipped (`commit.id` / `commit.message` / `commit.createdAt`). Resolution goes through one seam (`github.Service.resolveCommit` → `deploys` Trigger, `apps` create-path first deploy, and blueprint redeploy):
 
 1. **GitHub App installation for the repo owner** — mint an installation token and `GET /repos/{owner}/{repo}/commits/{ref}`. This is the connected-repo path (w9/001).
-2. **No installation (Public Git URL)** — unauthenticated `GET /repos/{owner}/{repo}/commits/{ref}` for **github.com public repos only**, with a short per-`(owner/repo, ref)` TTL cache (positive ~10s, miss ~2m) and a 5s timeout so GitHub's anonymous 60 req/h/IP budget is not burned and a hung provider cannot delay deploy open (w4/m108 t004). The positive entry only absorbs a burst, such as a Blueprint's services built from one repository. A resolved tip pins the build, and the earlier five-minute entry built a commit from before the latest push. A refused or missing lookup leaves the build unpinned, on the branch (w5/152).
+2. **GitHub without an installation (Public Git URL)** — unauthenticated `GET /repos/{owner}/{repo}/commits/{ref}`, preserving the message and author time (w4/m108 t004).
+3. **Other public HTTPS Git URLs** — anonymous smart-HTTP `info/refs?service=git-upload-pack` discovery resolves an advertised branch, tag (peeled for annotated tags), `HEAD`, or full advertised SHA (w8/209). This works with the GitHub App disabled and needs no provider integration. The deploy row carries the verified SHA and the build pins that SHA through the existing seam. Discovery follows Git's [smart-HTTP advertisement](https://git-scm.com/docs/http-protocol#_smart_server_response) and [reference discovery](https://git-scm.com/docs/pack-protocol#_reference_discovery) contracts. It does not fetch commit objects, so message and author time remain empty on this path.
 
-**Why not report the SHA back from the build?** That would cover any git host and close the resolution-vs-clone window, but it needs a new operator→backend write path and leaves the row briefly commit-less. The unauthenticated fallback reuses the existing seam, reaches every deploy-opening caller, and stamps hash+message+authorAt immediately — enough for the Public Git URL create-form path.
+Both public paths share positive (~10s) and miss (~2m) TTLs and a 5s request deadline. A positive entry only absorbs a burst, such as a Blueprint's services built from one repository. The earlier five-minute entry built a commit from before the latest push (w5/152). Smart-HTTP reads are bounded; HTTPS redirects stay bounded and pass the same public-IP dial guard at every hop, with no ambient proxy, credentials, or cookies.
 
-**Honest omission, never fabrication.** Non-github.com URLs, private repos without a connection, unknown refs, and provider failures all leave `commit` omitted (`ok=false`). 404 and 403 collapse to the same miss so the public path is not an existence oracle. Callers treat any resolution failure as "no metadata" and still open the deploy.
+**Why not report the SHA back from the build?** Resolving before build reuses the existing seam and reaches every deploy-opening caller. The exact returned SHA pins the checkout, so a branch moving after resolution cannot change the build's code. No new operator→backend write path is needed.
+
+**Honest omission, never fabrication.** Non-HTTPS generic URLs, private repos without a connection, unadvertised refs, malformed advertisements, and provider failures leave `commit` omitted (`ok=false`). All public lookup failures collapse to the same miss, so the path does not distinguish private from missing repositories. Callers still open the deploy; an unresolved branch remains unpinned.
 
 ## Render's default environment variables (w5/m148)
 

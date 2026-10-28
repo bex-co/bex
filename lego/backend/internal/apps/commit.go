@@ -24,7 +24,7 @@ import (
 )
 
 // CommitResolver resolves a repo ref (branch, tag, or SHA) to the exact
-// commit it points at, via workspaceID's GitHub App connection —
+// commit it points at, via a GitHub connection or anonymous public lookup —
 // github.Service's DeployCommitSource satisfies it, the CloneTokenSource
 // precedent (w9/001). nil on the Service ⇒ deploy rows this package opens
 // (the create-path first deploy, the blueprint redeploy) carry no commit

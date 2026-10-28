@@ -80,7 +80,7 @@ type DeployStore interface {
 }
 
 // CommitResolver resolves a repo ref (branch, tag, or SHA) to the exact
-// commit it points at, via workspaceID's GitHub App connection —
+// commit it points at, via a GitHub connection or anonymous public lookup —
 // github.Service's DeployCommitSource satisfies it (w9/001). nil on the
 // Service ⇒ deploy rows carry no commit metadata (omitted, not faked).
 // ok=false (nil err) means "nothing to resolve" (no connection, repo not in
@@ -872,9 +872,9 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, s
 // resolveCommit resolves the ref a trigger will build — the explicit
 // commitId, else the App's branch (the operator's own default-"main"
 // fallback, app_controller.go) — to its exact commit via the App's OWN
-// workspace's GitHub connection (its core.LabelTenant label, the
-// apps.deployWorkspace precedent, so the identity-less deploy hook resolves
-// the right connection too). Best-effort by design (w9/001): an image-backed
+// workspace's GitHub connection or anonymous public lookup. core.LabelTenant
+// selects the connection (the apps.deployWorkspace precedent), including for
+// identity-less deploy hooks. Best-effort by design (w9/001): an image-backed
 // App, a missing resolver, or any resolution failure returns the zero
 // CommitInfo — the deploy row simply carries no commit metadata, mirroring
 // the "omitted, not faked" contract the views hold.
