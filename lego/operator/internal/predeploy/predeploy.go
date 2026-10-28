@@ -144,8 +144,12 @@ func Job(o Options) *batchv1.Job {
 	ttl := int32(jobTTL)
 
 	container := corev1.Container{
-		Name:            containerName,
-		Image:           o.Image,
+		Name:  containerName,
+		Image: o.Image,
+		// Always, digest or not: a cached image would otherwise start without
+		// the pod's pull credentials, so another workspace naming a private
+		// image@sha256 on a shared node could run it (w4/426).
+		ImagePullPolicy: corev1.PullAlways,
 		Command:         o.Command,
 		Env:             o.Env,
 		EnvFrom:         o.EnvFrom,
