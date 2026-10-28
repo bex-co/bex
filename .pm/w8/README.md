@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m141** — [HTTP-aware Docker web listener selection](m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28
+- [ ] **m141** — [HTTP-aware Docker web listener selection](blocked/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done; release pipeline deploys operator/API/CRD + migration0172, then QA runs RabbitMQ15672/narration, nginx80 and noEXPOSE runtime-discovery acceptance with explicit/private controls and cleanup by ID/404 proofs)**
 
 - [ ] **m140** — [Password-free internal Key Value connections](blocked/m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **BLOCKED (2026-10-28: t001–t007 done; release pipeline deploys operator/API + CRD and the proxy image pulls in tenant namespaces, then QA runs t008 webdis/old-URL/external-AUTH/isolation/CONFIG matrix with cleanup and 404 proofs; no Valkey restart)**
 
