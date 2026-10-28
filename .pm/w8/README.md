@@ -399,6 +399,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay
+
 - [ ] **209** — [A service deployed from a public non-GitHub repository (GitLab, …) gets deploys with no commit: commit resolution is GitHub-only](209.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6a81 2026-10-27: `gitlab.com/pages/plain-html` deployed and served with no `commit` on its deploy
 
 - [ ] **208** — [A prebuilt-image deploy reports the linux/amd64 platform-manifest digest as `image.sha`, not the tag's index digest; a by-digest service's `ref` and `sha` disagree (w4/m243 regressed w8/m122)](208.md) (~40m, minor) ← `/qa-find-bugs-cli` loop sweep 1c70 2026-10-27, found running w8/m122/t007
