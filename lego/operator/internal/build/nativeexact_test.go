@@ -87,13 +87,17 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 }
 
 func TestExactVersionLeavesLineRequestsAlone(t *testing.T) {
+	reviewed, ok := nativeToolchains["python"].find("3.11")
+	if !ok {
+		t.Fatal("missing reviewed Python 3.11 toolchain")
+	}
 	for name, tc := range map[string]struct {
 		runtime string
 		env     map[string]string
 		files   map[string]string
 	}{
 		"line only":       {"python", nil, map[string]string{".python-version": "3.11\n"}},
-		"reviewed patch":  {"python", map[string]string{"PYTHON_VERSION": "3.11.17"}, nil},
+		"reviewed patch":  {"python", map[string]string{"PYTHON_VERSION": reviewed.version}, nil},
 		"node major":      {"node", map[string]string{"NODE_VERSION": "18"}, nil},
 		"node range":      {"node", map[string]string{"NODE_VERSION": ">=18 <19"}, nil},
 		"no signal":       {"python", nil, nil},
