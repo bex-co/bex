@@ -804,6 +804,14 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			// Restore the projection metadata too, including when its recorded
 			// pod template is unavailable. Keep ArtifactImage for a later deploy.
 			serving := app.Status.ServingNetwork
+			// A port change that routed early and then failed has moved
+			// ServingNetwork to the candidate; the network it replaced is the
+			// served one (w4/428).
+			if prior := app.Status.PriorServingNetwork; prior != nil && serving != nil &&
+				serving.Revision != app.Status.ActiveRevision && prior.Revision == app.Status.ActiveRevision {
+				serving = prior
+				app.Status.ServingNetwork, app.Status.PriorServingNetwork = prior.DeepCopy(), nil
+			}
 			if serving == nil || serving.Revision != app.Status.ActiveRevision || serving.Image == "" {
 				return r.fail(ctx, app, "ImageMetadataUnavailable", fmt.Errorf("served release has no matching image network metadata"))
 			}
@@ -3101,6 +3109,19 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
+	// A port change routes to its first ready pod while the old ones are
+	// held (w4/428), then completes as any rollout does.
+	early, err := r.promotePortChangeEarly(ctx, app, dep, image, port)
+	if err != nil {
+		res, err := r.fail(ctx, app, "ServiceFailed", err)
+		return res, true, err
+	}
+	if early && directRoute && len(hosts) > 0 {
+		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, app.Name, app.ActiveImageNetwork().PrimaryPort); err != nil {
+			res, err := r.fail(ctx, app, reason, err)
+			return res, true, err
+		}
+	}
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Image = image
 		res, err := r.reportRolloutProgress(ctx, app, dep, replicas, port,
@@ -3112,6 +3133,8 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 		res, err := r.fail(ctx, app, "ServiceFailed", err)
 		return res, true, err
 	}
+	// The rollout is complete: no old pod remains to pin around (w4/428).
+	app.Status.PriorServingNetwork = nil
 	// The route this pass applied named the old primary; the promoted
 	// Services no longer carry it.
 	if moved && directRoute && len(hosts) > 0 {
