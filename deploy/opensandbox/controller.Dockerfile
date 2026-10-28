@@ -14,7 +14,7 @@
 #   docker build -f deploy/opensandbox/controller.Dockerfile \
 #     -t <registry>/opensandbox-controller:<ver> deploy/opensandbox
 
-FROM golang:1.25.12-alpine@sha256:56961d79ea8129efddcc0b8643fd8a5416b4e6228cfd477e3fd61deb2672c587 AS builder
+FROM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -49,7 +49,7 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \
 
 # Upstream ships the runtime on golang:alpine (nsenter via util-linux
 # availability rationale); keep the same base so behavior matches.
-FROM golang:1.25.12-alpine@sha256:56961d79ea8129efddcc0b8643fd8a5416b4e6228cfd477e3fd61deb2672c587
+FROM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade
 ARG USERID=65532
 WORKDIR /workspace
 COPY --from=builder /src/opensandbox/kubernetes/server .
