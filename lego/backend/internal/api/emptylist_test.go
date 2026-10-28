@@ -108,6 +108,7 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/postgres/{id}/ip-allow-list", path: "/v1/postgres/pg1/ip-allow-list", field: "cidrs", withApp: true},
 	{route: "GET /v1/key-value/{id}/ip-allow-list", path: "/v1/key-value/kv1/ip-allow-list", field: "cidrs", withApp: true},
 	{route: "GET /v1/agent-sessions/capabilities", path: "/v1/agent-sessions/capabilities", field: "agents"},
+	{route: "GET /v1/agent-environment", path: "/v1/agent-environment", field: "customHosts"},
 }
 
 // neverEmptyArrayRoutes are array routes whose contents are a build-time

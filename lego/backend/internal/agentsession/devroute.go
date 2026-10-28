@@ -208,6 +208,25 @@ func PlatformModelKeyReady(workspaceID string) bool {
 	return activePlatformModelRoute.Load().covers(workspaceID)
 }
 
+// PlatformPinnedModel is the model the platform route pins for workspaceID's
+// claude sessions — the gateway refuses any other request model with a 403 —
+// and whether the workspace is on that route at all. Session create refuses a
+// different explicit model up front (AGENT_SESSION_MODEL_PINNED) and the
+// workspace agent environment reports it as read-only (w10/m17).
+func PlatformPinnedModel(workspaceID string) (string, bool) {
+	route := activePlatformModelRoute.Load()
+	if !route.covers(workspaceID) {
+		return "", false
+	}
+	return route.model, true
+}
+
+// PinnedAgent reports whether agent is the profile a model route serves, so
+// a pinned workspace's other profiles keep their own model choice.
+func PinnedAgent(agent string) bool {
+	return strings.ToLower(strings.TrimSpace(agent)) == openRouterAgent
+}
+
 // registeredEndpoint is the endpoint a profile resolves to for workspaceID:
 // the release manifest's, unless a route covers that workspace and profile.
 func registeredEndpoint(workspaceID string, profile AgentProfile) string {

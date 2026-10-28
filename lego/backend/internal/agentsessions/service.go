@@ -183,6 +183,14 @@ type Service struct {
 	// SandboxMetrics counts durable teardown failures from the accept path
 	// (steer). nil ⇒ no observation.
 	SandboxMetrics *sandbox.Metrics
+	// Environments stores the per-workspace agent environment (w10/m17):
+	// network tier, custom hosts, default model. nil (store off) ⇒ every
+	// workspace has the defaults and updates are unavailable.
+	Environments EnvironmentStore
+	// RegistryHosts is the package-registry catalog session policies render
+	// (sessionegress.Manager.RegistryDomains), reported by the environment
+	// for display. Empty ⇒ the built-in catalog.
+	RegistryHosts []string
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -355,6 +363,11 @@ func validateCreate(req *CreateRequest) error {
 	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.ModelEndpoint) > 2048 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agent session input exceeds its size limit", nil)
 	}
+	// The model reaches the sandbox env (ANTHROPIC_MODEL), so it must be a
+	// plain model id.
+	if req.AgentConfig.Model = strings.TrimSpace(req.AgentConfig.Model); req.AgentConfig.Model != "" && !modelIDPattern.MatchString(req.AgentConfig.Model) {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agentConfig.model must be a model id without spaces", map[string]any{"field": "agentConfig.model"})
+	}
 	// Repo-less (chat-only) mode: with no repository the session just runs the
 	// agent against the prompt in an empty sandbox — no clone, no branch, and no
 	// PR delivery (driverEnv sets BEX_AGENT_DELIVER=0, and a turn that pushes
@@ -415,7 +428,16 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, req.EgressAllowlist)
+	// The workspace agent environment (w10/m17) supplies the network tier's
+	// hosts and the default model; the request's explicit fields still win.
+	env, err := s.workspaceEnvironment(ctx, workspaceID)
+	if err != nil {
+		return View{}, err
+	}
+	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
+		return View{}, err
+	}
+	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist)
 	if err != nil {
 		return View{}, err
 	}
@@ -1085,10 +1107,16 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 	// a hung model call or a runaway tool loop would hold the sandbox for hours.
 	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default.
 	env["BEX_AGENT_TURN_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnTimeout().Milliseconds())
+	// The session's model (agentConfig.model, else the workspace default) for
+	// the claude profile, whose CLI reads ANTHROPIC_MODEL. Other profiles keep
+	// their release default. Pod env, not BEX_AGENT_ENV_JSON, because the driver
+	// requires that to equal the release profile's env exactly.
+	if config.Model != "" && agentsession.PinnedAgent(config.Agent) {
+		env["ANTHROPIC_MODEL"] = config.Model
+	}
 	// Model route (ADR090, dev or workspace-allowlisted platform): the model id
-	// Claude Code must ask the OpenRouter endpoint for. Pod env, not
-	// BEX_AGENT_ENV_JSON, because the driver requires that to equal the release
-	// profile's env exactly.
+	// Claude Code must ask the OpenRouter endpoint for. It overrides the line
+	// above, so a platform-route sandbox always carries the pinned model.
 	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent) {
 		env[name] = value
 	}
@@ -1169,7 +1197,16 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, req.EgressAllowlist)
+	// Every dispatch re-resolves the workspace environment, so a tier, host or
+	// default-model change applies from the session's next turn.
+	workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
+	if err != nil {
+		return View{}, err
+	}
+	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
+		return View{}, err
+	}
+	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, effectiveHosts(workspaceEnv), req.EgressAllowlist)
 	if err != nil {
 		return View{}, err
 	}
