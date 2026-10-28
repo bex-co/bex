@@ -1,18 +1,18 @@
 # w8 · m140 — Password-free internal Key Value connections
 
-**Worker:** worker1 **Goal:** Render's host/port-only Key Value clients work in every workspace without restarting Valkey. **Status:** todo (t001–t006 done; full ship gate and hosted acceptance pending)
+**Worker:** worker1 **Goal:** Render's host/port-only Key Value clients work in every workspace without restarting Valkey. **Status:** blocked (t001–t007 done; t008 hosted acceptance and t009 closeout pending deployment)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 — **DONE** | Implement transparent authenticated internal transport | 40m | — |
-| t002 — **DONE** | Integrate a readiness-gated stable Service cutover | 50m | t001 |
-| t003 — **DONE** | Preserve workspace and environment isolation on both hops | 30m | t002 |
-| t004 — **DONE** | Publish Render-shaped internal connection URLs | 25m | t003 |
-| t005 — **DONE** | Render parity | 20m | t004 |
-| t006 — **DONE** | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t006 |
+| t001 | Implement transparent authenticated internal transport — **DONE** | 40m | — |
+| t002 | Integrate a readiness-gated stable Service cutover — **DONE** | 50m | t001 |
+| t003 | Preserve workspace and environment isolation on both hops — **DONE** | 30m | t002 |
+| t004 | Publish Render-shaped internal connection URLs — **DONE** | 25m | t003 |
+| t005 | Render parity — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t006 |
 | t008 | Hosted acceptance | 40m | t007 |
 | t009 | Closeout | 10m | t008 |
 
@@ -36,3 +36,7 @@
 ## Verification checkpoint — 2026-10-28
 
 Protocol race/socket tests, types and Key Value API suites, full operator `make test`, and real-Valkey smoke checks pass. The real Valkey check exercised unauthenticated PING/binary SET/GET, CONFIG denial under the default ACL, old credentialed AUTH, backend auth enforcement and authenticated readiness; its Docker fixture was removed. Simplify completed all three reviews and applied reuse, admission bookkeeping and proxy reservation fixes. Full fresh-dependency backend ship gate and workspace lint must pass before push; hosted acceptance remains pending deployment.
+
+## Parked gate — 2026-10-28
+
+Full operator, types and fresh-dependency backend suites, proxy race tests, real-Valkey smoke check, and workspace lint/dead-code checks passed. **BLOCKED:** the release pipeline must deploy the operator/API image containing `/kv-internal-proxy` and the status-field CRD, then QA must complete t008: webdis host/port PING/SET/GET, old credentialed internal URL, correct/wrong/missing external AUTH, cross-workspace/environment denial and CONFIG denial, with fixture deletion by ID and 404 proofs. Confirm the proxy image pulls in tenant namespaces. Valkey templates remain unchanged during migration. No production fixture was created before this build was deployed.
