@@ -114,7 +114,7 @@ export function WebhooksPanel() {
           <PanelCenteredState
             icon={<Webhook />}
             title={t("webhooks.emptyTitle")}
-            body={t("webhooks.emptyBody")}
+            body={t(proPlan ? "webhooks.emptyBody" : "webhooks.planGate")}
           />
         ) : (
           <div className="space-y-4">
