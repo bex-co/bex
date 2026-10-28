@@ -220,9 +220,6 @@ func (c Config) normalized() (Config, error) {
 		return Config{}, fmt.Errorf("session egress: BEX_AGENT_SETUP_REGISTRIES: %w", err)
 	}
 	c.SetupRegistryDomains = validated
-	if c.EgressProxyPort == 0 {
-		c.EgressProxyPort = DefaultEgressProxyPort
-	}
 	return c, nil
 }
 

@@ -53,9 +53,9 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.tierFullDescription": {
     message:
-      "可通过 bex 出站代理以 HTTP(S) 访问任何公共网站。模型提供商仍被屏蔽，且不支持 SSH 及其他非 HTTP 协议。",
+      "可通过 bex 出站代理以 HTTP(S) 访问任何公共网站。直接调用模型提供商 API 仍被屏蔽（智能体自身的模型不受影响），且不支持 SSH 及其他非 HTTP 协议。",
     description:
-      "Description of the full-internet tier: HTTP(S) via the egress proxy, model providers blocked, no SSH/non-HTTP",
+      "Description of the full-internet tier: HTTP(S) via the egress proxy, direct model-provider API calls blocked, no SSH/non-HTTP",
   },
   "agentEnvironment.registryHostsSummary_other": {
     message: "包含的软件包仓库（{count} 个主机）",
