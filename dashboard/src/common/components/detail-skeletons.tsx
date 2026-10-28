@@ -57,7 +57,15 @@ export function AgentsPageSkeleton({
             className="mx-auto w-full max-w-[40rem] space-y-3"
             data-skeleton-region="composer"
           >
-            <Skeleton className="h-[11.75rem] w-full rounded-xl sm:h-[9.5rem]" />
+            {/* The prompt box: a 112px editor over a toolbar (agent select,
+                attachment chip, Start) that wraps by viewport. Measured in
+                Chromium (en) once the Advanced trigger left the toolbar
+                (w10/m17): three rows (224px) below 345px, two (188px) below
+                469px, one (152px) from there on. */}
+            <Skeleton
+              className="h-[14rem] w-full rounded-xl min-[21.5625rem]:h-[11.75rem] min-[29.3125rem]:h-[9.5rem]"
+              data-skeleton-region="composer-box"
+            />
             <Skeleton
               className="h-4 w-64 max-w-full"
               data-skeleton-region="composer-hint"

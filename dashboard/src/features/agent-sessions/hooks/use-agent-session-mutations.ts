@@ -33,13 +33,12 @@ export interface CreateAgentSessionInput {
   /** The `bex-agent/*` working branch. */
   branch: string;
   agent: string;
-  model?: string;
   /** The initial fire-and-forget prompt. */
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
   template?: string;
-  /** Extra egress FQDNs beyond the model endpoint + built-in setup registries. */
-  egressAllowlist?: string[];
+  // No model / egressAllowlist: the dashboard leaves both to the workspace's
+  // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
 
 export interface UseAgentSessionMutationsResult {
@@ -182,13 +181,9 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               branch: input.branch,
               agentConfig: {
                 agent: input.agent,
-                model: input.model || undefined,
                 task: input.task,
                 template: input.template || undefined,
               },
-              egressAllowlist: input.egressAllowlist?.length
-                ? input.egressAllowlist
-                : undefined,
             },
             fetchPolicy: "no-cache",
           }),

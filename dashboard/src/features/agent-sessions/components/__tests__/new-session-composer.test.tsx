@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
@@ -155,9 +155,13 @@ describe("NewSessionComposer", () => {
         branch: "bex-agent/refactor-the-mapper",
         agent: "claude",
         task: "refactor the mapper",
-        egressAllowlist: [],
       }),
     );
+    // The model and sandbox network come from the workspace's agent
+    // environment (w10/m17); the composer never sends either.
+    const input = create.mock.calls[0][0];
+    expect(input).not.toHaveProperty("model");
+    expect(input).not.toHaveProperty("egressAllowlist");
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith({
         to: "/agents/$agentSessionId",
@@ -417,65 +421,38 @@ describe("NewSessionComposer", () => {
     );
   });
 
-  it("rejects more than 32 egress hostnames before ever calling create", async () => {
-    const user = userEvent.setup();
-    render(<NewSessionComposer />);
-    await typeTask(user);
-    await pickRepo(user);
+  it("renders only the task box, the attachment control and the agent select", async () => {
+    const { container } = render(<NewSessionComposer />);
+    await screen.findByLabelText("Task");
 
-    // Open the Configuration popover, then paste 33 comma-separated hostnames.
-    await user.click(screen.getByRole("button", { name: "Advanced" }));
-    const egress = await screen.findByLabelText("Egress allowlist");
-    const many = Array.from({ length: 33 }, (_, i) => `h${i}.example.com`).join(
-      ",",
-    );
-    fireEvent.change(egress, { target: { value: many } });
-
-    await user.click(screen.getByRole("button", { name: "Start session" }));
-
+    // No Advanced panel: no branch, model or hostname fields anywhere.
     expect(
-      await screen.findByText(
-        "Too many hostnames — the allowlist allows at most 32 entries.",
-      ),
-    ).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
+      screen.queryByRole("button", { name: "Advanced" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /branch/i })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /model/i })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /egress|host/i })).toBeNull();
+    // The task box is the rich editor; no plain input or textarea remains.
+    expect(container.querySelectorAll("input, textarea")).toHaveLength(0);
+    expect(screen.getByLabelText("Agent")).toBeInTheDocument();
+    expect(attachmentControl()).toBeInTheDocument();
   });
 
-  it("accepts exactly 32 egress hostnames (boundary) and calls create", async () => {
+  it("derives a valid bex-agent/* branch even when the task has no ASCII slug", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    await typeTask(user);
+    await user.type(
+      await screen.findByLabelText("Task", undefined, { timeout: 5_000 }),
+      "修复测试",
+    );
     await pickRepo(user);
-
-    await user.click(screen.getByRole("button", { name: "Advanced" }));
-    const hostnames = Array.from({ length: 32 }, (_, i) => `h${i}.example.com`);
-    fireEvent.change(await screen.findByLabelText("Egress allowlist"), {
-      target: { value: hostnames.join("\n") },
-    });
 
     await user.click(screen.getByRole("button", { name: "Start session" }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create.mock.calls[0][0].egressAllowlist).toEqual(hostnames);
-  });
-
-  it("enforces the bex-agent/* branch namespace when the branch is hand-edited", async () => {
-    const user = userEvent.setup();
-    render(<NewSessionComposer />);
-    await typeTask(user);
-    await pickRepo(user);
-
-    await user.click(screen.getByRole("button", { name: "Advanced" }));
-    const branch = await screen.findByLabelText("Branch");
-    await user.clear(branch);
-    await user.type(branch, "main");
-
-    await user.click(screen.getByRole("button", { name: "Start session" }));
-
-    expect(
-      await screen.findByText("The branch must be under bex-agent/."),
-    ).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
+    expect(create.mock.calls[0][0].branch).toMatch(
+      /^bex-agent\/session-[0-9a-z]+$/,
+    );
   });
 
   it("renders the house callout when the backend reports the feature unavailable (503)", async () => {
@@ -559,7 +536,7 @@ describe("NewSessionComposer", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("anchors an egress-allowlist code to the egress field and opens Configuration", async () => {
+  it("surfaces an egress-allowlist code as a form-level error", async () => {
     create.mockRejectedValue(
       new AgentSessionError(
         "AGENT_SESSION_EGRESS_ALLOWLIST_INVALID",
@@ -574,14 +551,16 @@ describe("NewSessionComposer", () => {
 
     await user.click(screen.getByRole("button", { name: "Start session" }));
 
-    // The i18n-resolved, param-interpolated message anchors to the egress
-    // field, and the Configuration popover auto-opens so it's visible.
+    // There is no egress field to anchor to any more; the i18n-resolved,
+    // param-interpolated message lands in the form-level alert.
     expect(
-      await screen.findByText(
+      await screen.findByText("Couldn't start the session"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         'Egress allowlist entry "http://x" is invalid: must be a hostname',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Egress allowlist")).toBeInTheDocument();
   });
 
   it("surfaces a model-endpoint code as a form-level error (no endpoint field)", async () => {
@@ -628,7 +607,7 @@ describe("NewSessionComposer", () => {
     expect(screen.getByText(/That input isn't valid/)).toBeInTheDocument();
   });
 
-  it("lets the toolbar agent select change the create payload without Advanced", async () => {
+  it("lets the toolbar agent select change the create payload", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
