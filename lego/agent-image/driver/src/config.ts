@@ -82,6 +82,10 @@ export interface AgentDriverConfig {
   // only the placeholder the gateway swaps for the real key upstream.
   modelBaseUrl: string;
   modelBaseUrlEnvName: string;
+  // The workspace's agent network tier (BEX_AGENT_NETWORK_TIER: registries,
+  // custom or full), only for the overlay's wording. "" when absent or
+  // unknown (an older bex-api); the network itself is enforced outside.
+  networkTier: string;
 }
 
 // modelProxyPlaceholder mirrors agentsession.ModelKeyPlaceholder (Go). The
@@ -160,6 +164,12 @@ function optionalNonNegativeInt(
     throw new Error(`${name} must be a non-negative integer`);
   }
   return n;
+}
+
+const networkTiers = new Set(["registries", "custom", "full"]);
+
+function networkTier(value: string | undefined): string {
+  return value && networkTiers.has(value) ? value : "";
 }
 
 // model proxy routing is release-locked in agent-profiles.json (w5/m77).
@@ -280,5 +290,6 @@ export function loadConfig(
     agentEnv,
     modelBaseUrl,
     modelBaseUrlEnvName,
+    networkTier: networkTier(env.BEX_AGENT_NETWORK_TIER),
   };
 }

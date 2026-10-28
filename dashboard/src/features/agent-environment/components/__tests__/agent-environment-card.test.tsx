@@ -62,19 +62,31 @@ describe("AgentEnvironmentCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the three tiers, Full disabled, and the registry hosts", async () => {
+  it("renders the three selectable tiers and the registry hosts", async () => {
     const { user } = setup();
     expect(radio(/^Package registries/)).toHaveAttribute(
       "aria-checked",
       "true",
     );
     expect(radio(/^Custom/)).toBeEnabled();
-    expect(radio(/Full internet/)).toBeDisabled();
-    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+    expect(radio(/Full internet/)).toBeEnabled();
+    expect(screen.queryByText("Coming soon")).toBeNull();
     expect(screen.queryByLabelText("Additional hostnames")).toBeNull();
     await user.click(screen.getByText("Included package registries (3 hosts)"));
     expect(screen.getByText("pypi.org")).toBeVisible();
     expect(save()).toBeDisabled();
+  });
+
+  it("saves the Full internet tier without a hostname list", async () => {
+    const { user, update } = setup();
+    await user.click(radio(/Full internet/));
+    expect(radio(/Full internet/)).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText(/through the bex egress proxy/)).toBeVisible();
+    expect(screen.queryByLabelText("Additional hostnames")).toBeNull();
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith({
+      networkTier: AgentNetworkTier.Full,
+    });
   });
 
   it("validates custom hosts client-side before saving", async () => {

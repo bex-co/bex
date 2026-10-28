@@ -49,17 +49,13 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.tierFullTitle": {
     message: "完整互联网",
-    description: "Network tier option: any host (not yet available)",
+    description: "Network tier option: any public host over HTTP(S)",
   },
   "agentEnvironment.tierFullDescription": {
     message:
-      "暂不可用：沙箱网络策略目前还无法放行任意主机。请使用“自定义”添加所需的主机。",
+      "可通过 bex 出站代理以 HTTP(S) 访问任何公共网站。模型提供商仍被屏蔽，且不支持 SSH 及其他非 HTTP 协议。",
     description:
-      "Description of the disabled full-internet tier; explains it is not enforced yet",
-  },
-  "agentEnvironment.comingSoon": {
-    message: "即将推出",
-    description: "Badge on the disabled full-internet tier",
+      "Description of the full-internet tier: HTTP(S) via the egress proxy, model providers blocked, no SSH/non-HTTP",
   },
   "agentEnvironment.registryHostsSummary_other": {
     message: "包含的软件包仓库（{count} 个主机）",

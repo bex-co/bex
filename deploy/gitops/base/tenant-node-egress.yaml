@@ -423,7 +423,8 @@ spec:
             - port: "8081"
               protocol: TCP
 ---
-# Agent Git/model credential hops are cluster-internal and sandbox-originated.
+# Agent Git/model credential hops and the full-tier egress proxy (:8085,
+# w10/m19) are cluster-internal and sandbox-originated.
 # Network identity is the first gate; the gateway then maps the direct source IP
 # to a Pod and verifies its exact session binding before minting.
 apiVersion: cilium.io/v2
@@ -448,6 +449,8 @@ spec:
               protocol: TCP
             - port: "8084"
               protocol: TCP
+            - port: "8085"
+              protocol: TCP
     - fromEntities:
         - world
         - host
@@ -458,6 +461,8 @@ spec:
               protocol: TCP
             - port: "8084"
               protocol: TCP
+            - port: "8085"
+              protocol: TCP
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -467,6 +472,8 @@ spec:
             - port: "8082"
               protocol: TCP
             - port: "8084"
+              protocol: TCP
+            - port: "8085"
               protocol: TCP
 ---
 # A lifecycle-server compromise must not turn its control-plane bearer into an

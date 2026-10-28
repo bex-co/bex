@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -35,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -110,8 +113,8 @@ type TupleWriter interface {
 type SandboxLifecycle interface {
 	CleanupAgentDispatches(context.Context, []store.AgentDispatch) error
 	ReconcileWorkspaceInventory(ctx context.Context, workspaceID, apiKey string, now time.Time, lookup sandbox.SessionClaimLookup) (sandbox.InventoryCounts, error)
-	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error)
-	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error
+	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (sandbox.Sandbox, error)
+	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egress sessionegress.Egress) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
@@ -158,6 +161,10 @@ type Service struct {
 	// value disables agent-session create/steer rather than placing the
 	// reusable key in an untrusted sandbox environment.
 	ModelProxyURL string
+	// EgressProxyURL (BEX_AGENT_EGRESS_PROXY_URL) is the gateway egress proxy
+	// origin full-tier sandboxes use (w10/m19); empty uses
+	// defaultEgressProxyURL.
+	EgressProxyURL string
 	// ModelKeys supplies key-readiness for Capabilities. The gateway-only
 	// ModelMinter reads the same store lazily for each provider exchange; session
 	// creation never reads or receives the reusable credential.
@@ -476,8 +483,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		template:      strings.TrimSpace(req.AgentConfig.Template),
 		modelEndpoint: modelEndpoint,
 		modelAPIKey:   modelAPIKey,
-		egress:        egressAllowlist,
-		env:           s.driverEnv(req.AgentConfig, record),
+		egress:        sessionEgress(env, egressAllowlist),
+		env:           s.withNetworkEnv(s.driverEnv(req.AgentConfig, record), env.NetworkTier, record),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -491,7 +498,7 @@ type dispatchSpec struct {
 	template          string
 	modelEndpoint     string
 	modelAPIKey       string
-	egress            []string
+	egress            sessionegress.Egress
 	env               map[string]string
 	delivery          string
 	turn              int
@@ -1183,6 +1190,53 @@ func (s *Service) turnTimeout() time.Duration {
 	return defaultTurnTimeout
 }
 
+// defaultEgressProxyURL is the gateway egress proxy origin a full-tier
+// sandbox's HTTPS_PROXY names (w10/m19). Like defaultCredentialURL it must be
+// the fully-qualified name: the session's DNS filter admits only that name.
+const defaultEgressProxyURL = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8085"
+
+func (s *Service) egressProxyURL() string {
+	if strings.TrimSpace(s.EgressProxyURL) != "" {
+		return strings.TrimSpace(s.EgressProxyURL)
+	}
+	return defaultEgressProxyURL
+}
+
+// withNetworkEnv adds the network-tier env to a driver env. Every session
+// learns its tier (BEX_AGENT_NETWORK_TIER, read by the driver overlay). A
+// full-tier session also gets the proxy variables in both spellings, which
+// curl, npm, pip, Go, git (libcurl) and Claude Code honour, and NO_PROXY for
+// the gateway and loopback, so Git and model traffic keep their dedicated
+// Pod-bound proxies and local servers stay local.
+func (s *Service) withNetworkEnv(env map[string]string, tier string, record store.AgentSession) map[string]string {
+	if tier == "" {
+		tier = NetworkTierRegistries
+	}
+	env["BEX_AGENT_NETWORK_TIER"] = tier
+	if tier != NetworkTierFull {
+		return env
+	}
+	proxy, err := agentsession.EgressProxyURL(s.egressProxyURL(), store.SandboxNamespace(record.WorkspaceID), record.ID)
+	if err != nil {
+		// A malformed BEX_AGENT_EGRESS_PROXY_URL leaves the sandbox without
+		// internet but still fully confined; startup validation rejects it.
+		log.Printf("agent-session dispatch: egress proxy URL invalid (session=%s): %v", record.ID, err)
+		return env
+	}
+	noProxy := []string{"localhost", "127.0.0.1", "::1"}
+	for _, raw := range []string{s.gitProxyURL(), s.modelProxyBaseURL(), s.egressProxyURL()} {
+		if u, err := url.Parse(raw); err == nil && u.Hostname() != "" && !slices.Contains(noProxy, u.Hostname()) {
+			noProxy = append(noProxy, u.Hostname())
+		}
+	}
+	for _, name := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		env[name] = proxy
+	}
+	env["NO_PROXY"] = strings.Join(noProxy, ",")
+	env["no_proxy"] = env["NO_PROXY"]
+	return env
+}
+
 // modelProxyBaseURL is the internal gateway model-proxy origin (BEX_AGENT_MODEL_
 // PROXY_URL). Agent-session mutation verbs fail closed when it is empty.
 func (s *Service) modelProxyBaseURL() string { return strings.TrimSpace(s.ModelProxyURL) }
@@ -1273,13 +1327,13 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
-	env := s.driverEnv(config, record)
+	env := s.withNetworkEnv(s.driverEnv(config, record), workspaceEnv.NetworkTier, record)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),
 		modelEndpoint:     modelEndpoint,
 		modelAPIKey:       modelAPIKey,
-		egress:            egressAllowlist,
+		egress:            sessionEgress(workspaceEnv, egressAllowlist),
 		env:               env,
 		delivery:          DeliveryRedispatch,
 		turn:              record.Turns,

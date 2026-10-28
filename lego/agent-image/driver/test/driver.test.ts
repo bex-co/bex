@@ -58,6 +58,16 @@ test("configuration accepts only operator-owned adapter paths", () => {
   assert.deepEqual(config.args, ["--acp"]);
   assert.deepEqual(config.agentEnv, {});
   assert.equal(config.prRecordPath, "/var/run/bex-agent/pull-request.json");
+  assert.equal(config.networkTier, "");
+  assert.equal(
+    loadConfig(hosted({ BEX_AGENT_NETWORK_TIER: "full" })).networkTier,
+    "full",
+  );
+  // An unknown tier (a newer bex-api) only drops the overlay wording.
+  assert.equal(
+    loadConfig(hosted({ BEX_AGENT_NETWORK_TIER: "everything" })).networkTier,
+    "",
+  );
   assert.throws(
     () => loadConfig(hosted({ BEX_AGENT_ARGS: "--flag" })),
     /JSON array/,

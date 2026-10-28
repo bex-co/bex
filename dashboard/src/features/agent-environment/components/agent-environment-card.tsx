@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
-import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -59,12 +58,7 @@ const TIERS = [
   },
 ] as const;
 
-// FULL is stored but enforced as REGISTRIES until the cluster admission policy
-// can express "any host" (agentsessions NetworkTierFull), so it is not offered.
-const SELECTABLE_TIERS = [
-  AgentNetworkTier.Registries,
-  AgentNetworkTier.Custom,
-] as const;
+const TIER_VALUES = TIERS.map(({ tier }) => tier);
 
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
@@ -158,7 +152,7 @@ function AgentEnvironmentForm({
   }
 
   const radio = useCardRadioGroup(
-    SELECTABLE_TIERS,
+    TIER_VALUES,
     draft.networkTier,
     (tier) => edit({ networkTier: tier }, ["hosts", "form"]),
     readOnly,
@@ -217,21 +211,19 @@ function AgentEnvironmentForm({
           >
             {TIERS.map(({ tier, titleKey, descriptionKey }) => {
               const checked = draft.networkTier === tier;
-              const unavailable = tier === AgentNetworkTier.Full;
               return (
                 <button
                   key={tier}
-                  {...(unavailable ? { tabIndex: -1 } : radio(tier))}
+                  {...radio(tier)}
                   type="button"
                   role="radio"
                   aria-checked={checked}
-                  disabled={readOnly || unavailable}
+                  disabled={readOnly}
                   onClick={() => edit({ networkTier: tier }, ["hosts", "form"])}
                   className={cn(
                     TIER_OPTION_CLASS,
                     "text-left transition-colors disabled:cursor-not-allowed",
-                    unavailable && "opacity-60",
-                    !readOnly && !unavailable && "hover:border-foreground/50",
+                    !readOnly && "hover:border-foreground/50",
                     checked
                       ? "border-primary ring-2 ring-primary"
                       : "border-border",
@@ -239,11 +231,6 @@ function AgentEnvironmentForm({
                 >
                   <span className="flex items-center gap-2 text-sm font-medium">
                     {t(titleKey)}
-                    {unavailable ? (
-                      <Badge variant="secondary">
-                        {t("agentEnvironment.comingSoon")}
-                      </Badge>
-                    ) : null}
                   </span>
                   <span className="text-muted-foreground text-sm">
                     {t(descriptionKey)}

@@ -913,11 +913,12 @@ if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.c
 fi
 # Traefik reaches 2222 (native SSH) + 8080 (Browser Web Shell); monitoring
 # scrapes 9090; sandbox-regime namespaces reach only ADR047/ADR062's source-Pod-
-# bound Git/model credential listeners on 8082/8084. Enumerate every port per
-# rule so a stray added port can't slip past a ports[0]-only check.
+# bound Git/model credential listeners on 8082/8084 and the full-tier egress
+# proxy on 8085 (w10/m19). Enumerate every port per rule so a stray added port
+# can't slip past a ports[0]-only check.
 ssh_ingress="$(yq -N '.spec.ingress[] | [(.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" // .from[0].namespaceSelector.matchLabels."app.bex.co/regime"), (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
-if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082,8084' ]; then
-  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox Git/model credential hops only" >&2
+if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082,8084,8085' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox Git/model credential + egress-proxy hops only" >&2
   fail=1
 fi
 ssh_rendered="$(kubectl kustomize lego/operator/config/default)"
@@ -1848,7 +1849,7 @@ if [ -f "$EGRESS" ]; then
        .spec.ingress[0].fromEndpoints[0].matchLabels."app.bex.co/regime",
        (.spec.ingress[0].toPorts[0].ports | map(.protocol + ":" + .port) | join(","))] | join(":")' \
     "$EGRESS" | tr -d '\n')"
-  [ "$credential_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:2:sandbox:TCP:8082,TCP:8084" ] \
+  [ "$credential_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:2:sandbox:TCP:8082,TCP:8084,TCP:8085" ] \
     || { echo "FAIL: agent credential-gateway ingress identity is '$credential_gateway_ingress'" >&2; fail=1; }
   credential_gateway_deny_key="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
@@ -1858,7 +1859,7 @@ if [ -f "$EGRESS" ]; then
   credential_gateway_deny_ports="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
       .spec.ingressDeny[].toPorts[].ports[].port' "$EGRESS" | sort -u | paste -sd, -)"
-  [ "$credential_gateway_deny_ports" = "8082,8084" ] \
+  [ "$credential_gateway_deny_ports" = "8082,8084,8085" ] \
     || { echo "FAIL: agent credential-gateway deny ports drifted: '$credential_gateway_deny_ports'" >&2; fail=1; }
 
   server_selector="$(yq -N \
@@ -2166,6 +2167,12 @@ for required_guard in \
   "rule.toPorts[0].ports[0].port == '443'" \
   "rule.toPorts[0].ports[0].port == '8082'" \
   "rule.toPorts[0].ports[0].port == '8084'" \
+  "annotations['bex.co/egress-posture'].orValue('') == 'full'" \
+  "annotations['bex.co/egress-posture'].orValue('') in ['', 'full']" \
+  "filter(rule, has(rule.toFQDNs)).size() == (variables.full ? 0 : 1)" \
+  "filter(rule, has(rule.toEndpoints)).size() == (variables.full ? 4 : 3)" \
+  "(variables.full && rule.toPorts[0].ports[0].port == '8085')" \
+  "rule.toPorts[0].ports[0].port == '8085').size() == (variables.full ? 1 : 0)" \
   "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \

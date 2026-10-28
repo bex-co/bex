@@ -186,10 +186,14 @@ spec:
 # no CIDR/entity rule, wildcard FQDN, arbitrary endpoint, plaintext public port,
 # or broad endpoint selector is admissible even if bex-api is compromised.
 # The package registries stay in the exact FQDN rule for both phases (ADR047 D5
-# amendment 2026-10-27). A workspace's `full` network tier is deliberately NOT
-# expressible here: "any public host" needs a world/CIDR rule plus a wildcard
-# DNS filter, and Cilium deny rules cannot carve the model-provider FQDNs back
-# out of it. bex-api stores that tier but renders it as `registries`.
+# amendment 2026-10-27). A workspace's `full` network tier (ADR047 D5 amendment
+# 2026-10-28, w10/m19) is NOT a world/CIDR rule: it is the narrowest shape of
+# all. A policy annotated `bex.co/egress-posture: full` must carry NO public
+# FQDN rule, DNS filtered to the gateway host only, and exactly the Git (8082),
+# model (8084) and egress-proxy (8085) gateway hops; the gateway's egress proxy
+# then relays HTTP(S) and refuses the model providers and private ranges. Every
+# other policy keeps the allowlist shape (one exact FQDN rule, 3 endpoint
+# rules) and may never open 8085.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -218,6 +222,9 @@ spec:
     - name: model
       expression: >-
         variables.target.metadata.?annotations['bex.co/model-endpoint'].orValue('')
+    - name: full
+      expression: >-
+        variables.target.metadata.?annotations['bex.co/egress-posture'].orValue('') == 'full'
     - name: canonicalNamespace
       expression: >-
         namespaceObject != null &&
@@ -235,6 +242,7 @@ spec:
         variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-session-egress' &&
         variables.session.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && size(variables.session) <= 63 &&
         variables.target.metadata.?annotations['bex.co/egress-phase'].orValue('') in ['setup', 'agent'] &&
+        variables.target.metadata.?annotations['bex.co/egress-posture'].orValue('') in ['', 'full'] &&
         size(variables.model) <= 253 &&
         variables.model.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
         !variables.model.endsWith('.localhost') && !variables.model.endsWith('.local') &&
@@ -258,7 +266,7 @@ spec:
       message: session egress policies may contain only exact FQDN or approved endpoint rules
     - expression: >-
         request.operation == 'DELETE' ||
-        (variables.target.spec.egress.filter(rule, has(rule.toFQDNs)).size() == 1 &&
+        (variables.target.spec.egress.filter(rule, has(rule.toFQDNs)).size() == (variables.full ? 0 : 1) &&
          variables.target.spec.egress.filter(rule, has(rule.toFQDNs)).all(rule,
            rule.toFQDNs.size() > 0 &&
            rule.toFQDNs.all(fqdn, has(fqdn.matchName) && !has(fqdn.matchPattern) &&
@@ -279,10 +287,10 @@ spec:
            rule.toFQDNs.all(fqdn, rule.toPorts[0].serverNames.exists(name, name == fqdn.matchName)) &&
            rule.toPorts[0].serverNames.all(name, rule.toFQDNs.exists(fqdn, fqdn.matchName == name))))
       reason: Forbidden
-      message: public session egress must use exact non-provider DNS names with matching TLS SNI on TCP 443
+      message: public session egress must use exact non-provider DNS names with matching TLS SNI on TCP 443 (and none at all in the full posture)
     - expression: >-
         request.operation == 'DELETE' ||
-        (variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).size() == 3 &&
+        (variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).size() == (variables.full ? 4 : 3) &&
          variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).all(rule,
            rule.toEndpoints.size() == 1 && has(rule.toPorts) && rule.toPorts.size() == 1 &&
            rule.toPorts[0].ports.size() == 1 &&
@@ -297,7 +305,8 @@ spec:
                   public.toFQDNs.exists(fqdn, fqdn.matchName == name.matchName)))) &&
              variables.target.spec.egress.filter(public, has(public.toFQDNs)).all(public,
                public.toFQDNs.all(fqdn, rule.toPorts[0].rules.dns.exists(name, name.matchName == fqdn.matchName)))) ||
-            (rule.toPorts[0].ports[0].port in ['8082', '8084'] &&
+            ((rule.toPorts[0].ports[0].port in ['8082', '8084'] ||
+              (variables.full && rule.toPorts[0].ports[0].port == '8085')) &&
              rule.toPorts[0].ports[0].protocol == 'TCP' &&
              rule.toEndpoints[0].matchLabels['k8s:io.kubernetes.pod.namespace'] == 'bex-system' &&
              rule.toEndpoints[0].matchLabels['k8s:io.cilium.k8s.policy.serviceaccount'] == 'bex-ssh-gateway' &&
@@ -306,9 +315,11 @@ spec:
          variables.target.spec.egress.filter(rule,
            has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8082').size() == 1 &&
          variables.target.spec.egress.filter(rule,
-           has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8084').size() == 1)
+           has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8084').size() == 1 &&
+         variables.target.spec.egress.filter(rule,
+           has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8085').size() == (variables.full ? 1 : 0))
       reason: Forbidden
-      message: endpoint session egress is limited to filtered CoreDNS and exact Git/model gateway hops
+      message: endpoint session egress is limited to filtered CoreDNS and exact Git/model gateway hops (plus the egress-proxy hop in the full posture)
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

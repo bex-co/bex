@@ -48,3 +48,9 @@ spec:
       port: 8084
       targetPort: agent-model
       protocol: TCP
+    # Egress proxy for full-tier agent sessions (w10/m19). Cluster-internal
+    # only; no edge route.
+    - name: agent-egress
+      port: 8085
+      targetPort: agent-egress
+      protocol: TCP

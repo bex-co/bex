@@ -392,26 +392,56 @@ func sessionWithEnvironment(t *testing.T, row *store.AgentEnvironment) (*Service
 	return svc, st, lifecycle
 }
 
-// The tier decides which workspace hosts widen the session: only `custom`
-// opens its hosts; `full` is enforced as `registries`. The API allowlist is
-// merged in every tier.
+// The tier decides the session's egress: only `custom` opens its hosts, and
+// `full` selects the proxy posture (w10/m19) with the proxy env on the
+// driver. The API allowlist is merged in every tier; under `full` the policy
+// renderer drops it, since the proxy reaches any public host.
 func TestCreateEgressFollowsTheWorkspaceTier(t *testing.T) {
 	hosts := []string{"internal-mirror.example.com"}
 	for _, tc := range []struct {
 		tier string
 		want []string
+		full bool
 	}{
-		{NetworkTierRegistries, []string{"docs.example.com"}},
-		{NetworkTierCustom, []string{"docs.example.com", "internal-mirror.example.com"}},
-		{NetworkTierFull, []string{"docs.example.com"}},
+		{NetworkTierRegistries, []string{"docs.example.com"}, false},
+		{NetworkTierCustom, []string{"docs.example.com", "internal-mirror.example.com"}, false},
+		{NetworkTierFull, []string{"docs.example.com"}, true},
 	} {
 		t.Run(tc.tier, func(t *testing.T) {
 			svc, _, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: tc.tier, CustomHosts: hosts})
-			if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+			view, err := svc.Create(caller("alice"), createInput())
+			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(lifecycle.egressAllowlist, tc.want) {
-				t.Fatalf("egress = %v, want %v", lifecycle.egressAllowlist, tc.want)
+			if !slices.Equal(lifecycle.egressAllowlist, tc.want) || lifecycle.fullInternet != tc.full {
+				t.Fatalf("egress = %v full=%v, want %v full=%v", lifecycle.egressAllowlist, lifecycle.fullInternet, tc.want, tc.full)
+			}
+			env := lifecycle.driverEnv
+			if env["BEX_AGENT_NETWORK_TIER"] != tc.tier {
+				t.Fatalf("BEX_AGENT_NETWORK_TIER = %q, want %q", env["BEX_AGENT_NETWORK_TIER"], tc.tier)
+			}
+			if !tc.full {
+				for _, name := range []string{"HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy", "NO_PROXY"} {
+					if _, ok := env[name]; ok {
+						t.Fatalf("%s tier sandbox carries %s", tc.tier, name)
+					}
+				}
+				return
+			}
+			want, _ := agentsession.EgressProxyURL(defaultEgressProxyURL, store.SandboxNamespace("tea-a"), view.ID)
+			for _, name := range []string{"HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"} {
+				if env[name] != want {
+					t.Fatalf("%s = %q, want %q", name, env[name], want)
+				}
+			}
+			noProxy := strings.Split(env["NO_PROXY"], ",")
+			for _, host := range []string{"localhost", "127.0.0.1", "bex-ssh-gateway.bex-system.svc.cluster.local"} {
+				if !slices.Contains(noProxy, host) {
+					t.Fatalf("NO_PROXY %q misses %s, so Git/model traffic would leave its dedicated proxy", env["NO_PROXY"], host)
+				}
+			}
+			if env["no_proxy"] != env["NO_PROXY"] {
+				t.Fatalf("no_proxy = %q, want NO_PROXY", env["no_proxy"])
 			}
 		})
 	}

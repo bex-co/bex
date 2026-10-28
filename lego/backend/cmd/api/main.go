@@ -399,6 +399,7 @@ func main() {
 	// mutation unavailable. Set before wireSandboxes so session egress derives its
 	// port from this one value (single source of truth).
 	deps.AgentModelProxyURL = cfg.AgentModelProxyURL
+	deps.AgentEgressProxyURL = cfg.AgentEgressProxyURL
 	wireSandboxes(ctx, cfg, &deps, cl, st)
 	wireAgentSessions(&deps, cfg)
 	wireDiskSnapshots(&deps, cfg)
@@ -1010,6 +1011,14 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			verification.Resolve = workspaces.NewKratosIdentities(cfg.KratosAdminURL).EmailVerification
 		}
 		internalRoot.Handle(agentsession.InternalEmailVerificationPath, verification)
+		// w10/m19: the gateway egress proxy asks here whether a Pod-bound
+		// session's workspace runs the `full` network tier. Same gateway-only
+		// HMAC + internal-only listener; it releases no credential.
+		internalRoot.Handle(agentsession.InternalEgressGrantPath, &agentsession.EgressGrantHandler{
+			Secret:  []byte(cfg.SandboxExecSecret),
+			Granter: &agentsession.EgressGranter{Sessions: st, Environments: st, Audit: st},
+			Nonce:   st,
+		})
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
 		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
 		// reachable (modelKeys non-nil), so a deployment without the BYO key store
@@ -1171,6 +1180,9 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// from the same deps.AgentModelProxyURL the agentsessions Service uses, so
 			// the two can never disagree on which port to open.
 			ModelProxyPort: cfg.ModelProxyPort,
+			// w10/m19: the full-internet posture admits the gateway egress proxy
+			// on the port the sandbox's HTTPS_PROXY names (same source URL).
+			EgressProxyPort: cfg.EgressProxyPort,
 		})
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)

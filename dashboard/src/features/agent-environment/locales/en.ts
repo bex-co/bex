@@ -50,17 +50,13 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.tierFullTitle": {
     message: "Full internet",
-    description: "Network tier option: any host (not yet available)",
+    description: "Network tier option: any public host over HTTP(S)",
   },
   "agentEnvironment.tierFullDescription": {
     message:
-      "Not available yet: the sandbox network policy can't allow any host yet. Use Custom to add the hosts you need.",
+      "Any public website over HTTP(S) through the bex egress proxy. Model providers stay blocked, and SSH and other non-HTTP protocols aren't available.",
     description:
-      "Description of the disabled full-internet tier; explains it is not enforced yet",
-  },
-  "agentEnvironment.comingSoon": {
-    message: "Coming soon",
-    description: "Badge on the disabled full-internet tier",
+      "Description of the full-internet tier: HTTP(S) via the egress proxy, model providers blocked, no SSH/non-HTTP",
   },
   "agentEnvironment.registryHostsSummary_one": {
     message: "Included package registries ({count} host)",

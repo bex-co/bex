@@ -54,11 +54,11 @@ spec:
         - protocol: TCP
           port: 53
 ---
-# The sandbox's two outbound broker paths: the Git smart-HTTP proxy (:8082,
-# ADR047 D2) and the credential-injecting model proxy (:8084, ADR062). The
-# sandbox holds neither a GitHub token nor a model key; both are injected by the
-# gateway on its own upstream hop, which is why these two ports are the entire
-# sanctioned egress surface.
+# The sandbox's outbound broker paths: the Git smart-HTTP proxy (:8082,
+# ADR047 D2), the credential-injecting model proxy (:8084, ADR062) and the
+# full-tier egress proxy (:8085, w10/m19; the gateway refuses it unless the
+# workspace runs the full tier). The sandbox holds neither a GitHub token nor a
+# model key; both are injected by the gateway on its own upstream hop.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -82,6 +82,8 @@ spec:
           port: 8082
         - protocol: TCP
           port: 8084
+        - protocol: TCP
+          port: 8085
 ---
 # The one sanctioned INBOUND path: the isolated gateway dialing the in-sandbox
 # driver's AI-SDK stream port (ADR047 D9). Production grants this with the

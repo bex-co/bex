@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -163,7 +164,7 @@ func TestCompleterObservesTurnAndProvisionMetrics(t *testing.T) {
 
 type timedProvisionFailure struct{ SandboxLifecycle }
 
-func (timedProvisionFailure) CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, string, []string, map[string]string) (sandbox.Sandbox, error) {
+func (timedProvisionFailure) CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, string, sessionegress.Egress, map[string]string) (sandbox.Sandbox, error) {
 	// Virtual time models provisioning work. An instant fake can take zero clock
 	// ticks, which observeProvision deliberately excludes from the histogram.
 	time.Sleep(time.Second)

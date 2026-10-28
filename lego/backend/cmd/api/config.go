@@ -214,7 +214,13 @@ type Config struct {
 	// Derived from AgentModelProxyURL's origin (ADR062) so egress narrowing and
 	// the agentsessions Service always agree on the port; validated only when
 	// the OpenSandbox leg is on, like the inline parse it replaced.
-	ModelProxyPort       uint16
+	ModelProxyPort uint16
+	// AgentEgressProxyURL (BEX_AGENT_EGRESS_PROXY_URL) is the gateway egress
+	// proxy origin full-tier sandboxes use (w10/m19); empty uses the in-cluster
+	// default on :8085. EgressProxyPort is derived from it so the session
+	// policy and the sandbox's HTTPS_PROXY always agree on the port.
+	AgentEgressProxyURL  string
+	EgressProxyPort      uint16
 	SandboxImage         string
 	AgentSessionImage    string
 	AgentSetupRegistries string
@@ -490,12 +496,17 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		port, err := modelProxyPort(cfg.AgentModelProxyURL)
 		p.err(err)
 		cfg.ModelProxyPort = port
+		cfg.AgentEgressProxyURL = getenv("BEX_AGENT_EGRESS_PROXY_URL")
+		egressPort, err := egressProxyPort(cfg.AgentEgressProxyURL)
+		p.err(err)
+		cfg.EgressProxyPort = egressPort
 		// These are exactly the inputs sessionegress.NewManager will normalize
 		// at wiring time — reject a malformed registry catalog here, before
 		// any side effect.
 		if err := (sessionegress.Config{
 			SetupRegistryDomains: sessionegress.RegistryConfig(cfg.AgentSetupRegistries),
 			ModelProxyPort:       cfg.ModelProxyPort,
+			EgressProxyPort:      cfg.EgressProxyPort,
 		}).Validate(); err != nil {
 			p.err(err)
 		}
@@ -599,6 +610,27 @@ func modelProxyPort(raw string) (uint16, error) {
 	n, err := strconv.ParseUint(port, 10, 16)
 	if err != nil || n == 0 {
 		return 0, fmt.Errorf("bad BEX_AGENT_MODEL_PROXY_URL port %q", port)
+	}
+	return uint16(n), nil
+}
+
+// egressProxyPort derives the session-policy port from
+// BEX_AGENT_EGRESS_PROXY_URL. Unset is the in-cluster default (:8085); a set
+// value must be a plain-HTTP origin, the scheme sandbox proxy clients speak.
+func egressProxyPort(raw string) (uint16, error) {
+	if raw == "" {
+		return sessionegress.DefaultEgressProxyPort, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "http" || u.Hostname() == "" || u.User != nil || (u.Path != "" && u.Path != "/") {
+		return 0, fmt.Errorf("bad BEX_AGENT_EGRESS_PROXY_URL %q: want http://host:port", raw)
+	}
+	if u.Port() == "" {
+		return 80, nil
+	}
+	n, err := strconv.ParseUint(u.Port(), 10, 16)
+	if err != nil || n == 0 {
+		return 0, fmt.Errorf("bad BEX_AGENT_EGRESS_PROXY_URL port %q", u.Port())
 	}
 	return uint16(n), nil
 }

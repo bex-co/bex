@@ -23,6 +23,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -732,6 +733,7 @@ type fakeLifecycle struct {
 	created, entered, resumed, canceled int
 	modelEndpoint, modelAPIKey          string
 	egressAllowlist                     []string
+	fullInternet                        bool
 	repository, branch                  string
 	driverEnv                           map[string]string
 	sandboxSeq                          int
@@ -748,7 +750,7 @@ type fakeLifecycle struct {
 	cleanupErr                      error
 }
 
-func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
+func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (sandbox.Sandbox, error) {
 	if f.createErr != nil {
 		return sandbox.Sandbox{}, f.createErr
 	}
@@ -757,11 +759,12 @@ func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, re
 	f.repository, f.branch = repository, branch
 	f.modelEndpoint = modelEndpoint
 	f.modelAPIKey = modelAPIKey
-	f.egressAllowlist = append([]string(nil), egressAllowlist...)
+	f.egressAllowlist = append([]string(nil), egress.Hosts...)
+	f.fullInternet = egress.FullInternet
 	f.driverEnv = driverEnv
 	return sandbox.Sandbox{ID: fmt.Sprintf("sandbox-%d", f.sandboxSeq), Status: sandbox.StatusRunning}, nil
 }
-func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ string, _ []string) error {
+func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ string, _ sessionegress.Egress) error {
 	f.entered++
 	return nil
 }

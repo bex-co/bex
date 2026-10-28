@@ -377,6 +377,9 @@ type Deps struct {
 	// model credential + this per-session base URL, and the session egress policy
 	// admits the proxy in place of the vendor host. Empty disables session mutation.
 	AgentModelProxyURL string
+	// AgentEgressProxyURL (BEX_AGENT_EGRESS_PROXY_URL) is the gateway egress
+	// proxy origin full-tier sandboxes use (w10/m19); empty uses the default.
+	AgentEgressProxyURL string
 	// AgentSandboxIdleTTL is the idle grace (w2/m67, w10/m15): a finished
 	// session's sandbox is terminated once it has been idle this long. Zero ⇒
 	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
@@ -985,9 +988,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
-			GitProxyURL:   d.AgentGitProxyURL,
-			ModelProxyURL: d.AgentModelProxyURL,
-			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
+			GitProxyURL:    d.AgentGitProxyURL,
+			ModelProxyURL:  d.AgentModelProxyURL,
+			EgressProxyURL: d.AgentEgressProxyURL,
+			SSHHost:        sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 			TurnTimeout:      d.AgentTurnTimeout,
 			Environments:     d.AgentEnvironmentStore,

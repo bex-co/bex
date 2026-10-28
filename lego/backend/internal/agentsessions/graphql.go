@@ -66,7 +66,7 @@ var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 var agentNetworkTierGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 	Name:        "AgentNetworkTier",
-	Description: "Sandbox network access for a workspace's agent sessions. FULL is stored but currently enforced as REGISTRIES.",
+	Description: "Sandbox network access for a workspace's agent sessions. FULL reaches any public host over HTTP(S) through the bex egress proxy (model providers stay blocked; no raw TCP or SSH).",
 	Values: graphql.EnumValueConfigMap{
 		"REGISTRIES": &graphql.EnumValueConfig{Value: NetworkTierRegistries},
 		"FULL":       &graphql.EnumValueConfig{Value: NetworkTierFull},
