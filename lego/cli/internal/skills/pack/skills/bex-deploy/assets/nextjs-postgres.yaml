@@ -1,0 +1,35 @@
+# Next.js Application with PostgreSQL
+# Full-stack Next.js app with database
+
+services:
+  - type: web
+    name: nextjs-app
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm ci && npm run build
+    # NextAuth.js v4 needs its canonical URL. Use bex's injected hostname by default;
+    # set NEXTAUTH_URL explicitly if the application should use a custom domain instead.
+    startCommand: NEXTAUTH_URL="${NEXTAUTH_URL:-https://$RENDER_EXTERNAL_HOSTNAME}" npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postgres
+          property: connectionString
+      - key: NEXTAUTH_SECRET
+        sync: false  # User provides in Dashboard
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: postgres
+    databaseName: nextjs_production
+    user: nextjs_user
+    plan: free
+    postgresMajorVersion: "15"
+    ipAllowList: []  # Internal access only

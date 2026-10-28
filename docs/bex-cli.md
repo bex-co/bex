@@ -189,12 +189,13 @@ At the current pin (**v2.27.0**, `a764810a7682`) that yields the following. The 
 - `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet."
 - `cmd/kvcreate.go:51` — the `--workspace` flag help citing `'render workspace set'`
 
+**`bex skills` installs bex's own skills (w8/m143).** The launcher replaces upstream's `skills` tree. Upstream clones `render-oss/skills`, whose skills drive the `render` CLI, `mcp.render.com` and `dashboard.render.com`. The bex tree installs a pack embedded in the binary, derived from that MIT-licensed repository at a pinned commit by `lego/cli/internal/skills/packgen` and regenerated with `lego/cli/hack/sync-skills.sh`. The pack's 20 `bex-*` skills operate bex (`bex` CLI, `https://api.bex.co/mcp`, `dashboard.bex.co`, `onbex.co`). They keep Render's docs as the behavior reference and drop Render Workflows and sandboxes. The subcommands and flags are Render's (`install`, `list`, `update`, `remove`; `--tool`, `--skill`, `--scope`, `--dry-run`, `--all`, `--force`). State is `bex-skills.yaml` in the bex config directory. Selections are always explicit `bex-*` names, so a user's genuine `render-*` skills and `~/.render/skills.yaml` are never touched. The commands have no TUI picker: a terminal with no `--output` prints text, and `list`/`update` no longer panic non-interactively. The previous "accepted branding residual" (w8/m29 t004) was withdrawn because its effect was functional, not copy.
+
 **Identity, storage and copy that branding deliberately leaves alone:**
 
 - login TUI / non-interactive copy saying “Render Dashboard”
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
-- `~/.render/skills.yaml` + `render-oss/skills` for `bex skills`
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
 
 Strings inside commands Bex does not serve (`render workflows …` deprecation notices, `render ea sandboxes snapshots …` help) are in the grep output but are not user-reachable residuals here — the underlying operations are non-goals in [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md).
