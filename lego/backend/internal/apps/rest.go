@@ -371,12 +371,42 @@ func (r patchServiceRequest) unsupportedField() string {
 // so the shared part is the field, not the struct.
 func unsupportedPreviewsField(previews, pullRequestPreviewsEnabled json.RawMessage) string {
 	switch {
-	case len(previews) > 0:
+	case len(previews) > 0 && !previewsDisabledJSON(previews, false):
 		return "previews"
-	case len(pullRequestPreviewsEnabled) > 0:
+	case len(pullRequestPreviewsEnabled) > 0 && !previewsDisabledJSON(pullRequestPreviewsEnabled, true):
 		return "pullRequestPreviewsEnabled"
 	}
 	return ""
+}
+
+// previewsDisabled accepts only the no-op form of Render's preview object.
+// Extra options remain refused rather than silently enabling unsupported behavior.
+func previewsDisabled(value any) bool {
+	object, ok := value.(map[string]any)
+	if !ok || object["generation"] != "off" {
+		return false
+	}
+	for field := range object {
+		if field != "generation" && field != "expireAfterDays" {
+			return false
+		}
+	}
+	if expiry, present := object["expireAfterDays"]; present {
+		encoded, err := json.Marshal(expiry)
+		if err != nil {
+			return false
+		}
+		days, err := strconv.ParseUint(string(encoded), 10, 64)
+		if err != nil || days == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func previewsDisabledJSON(raw json.RawMessage, legacy bool) bool {
+	var value any
+	return json.Unmarshal(raw, &value) == nil && ((legacy && value == "no") || (!legacy && previewsDisabled(value)))
 }
 
 // decodeRegistryCredentialID preserves the PATCH tri-state: omitted => nil,

@@ -67,7 +67,7 @@ This launcher record does not replace the unmodified server oracle below: that c
 - **Blueprint size (w8/m48):** bex limits decoded YAML to **512 KiB** before parsing. Oversized `blueprints validate` uploads receive a named 413 for that limit. Render documents a [10 MB total multipart request bound](https://api-docs.render.com/reference/validate-blueprint); bex keeps the smaller pre-decode amplification guard. Request-envelope allowance is separate from the YAML budget.
 
 - `--region` is accepted but **platform-stamped** from `BEX_REGION` (`local-capd` in dev-9, `fsn1` in production); the submitted hint is not persisted. Both truthful installation values sit outside the CLI's closed Render-region enum, so a bare `services create --from` clone fails client-side and needs an explicit `--region`.
-- `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
+- `--previews off` is accepted as a no-op; `manual` and `automatic` are refused (`400 "not supported by this platform"`).
 - Postgres Datadog forwarding is not implemented. Supplying `--datadog-api-key` or `--datadog-site` on create or update returns a named 400; bex never accepts or persists the credential.
 - `services update --runtime` is rejected inside the unmodified CLI by design (`cannot switch runtimes via the CLI`) before any bex request.
 - **Usage analytics go to bex-api, never Render** (w5/m92). Upstream analytics stay opt-out-shaped, but the launcher no longer force-disables them: events (command path, duration, exit code, install id, workspace — no args or secrets) POST to bex-api's `POST /v1/cli-telemetry-events`, attributed server-side and retained under the audit-retention window. `BEX_CLI_DISABLE_ANALYTICS=1` (or `DO_NOT_TRACK`) opts out; an explicit `RENDER_CLI_DISABLE_ANALYTICS` is left untouched. The upstream one-time notice block still prints once per machine with Render copy — documented in the Bex CLI guide, not reworded. **Release attribution (w5/m94):** the launcher stamps `X-Bex-CLI-Version` on requests to the configured bex host only, and bex-api stores it beside the upstream pin. The request **body stays byte-identical to upstream's `CliTelemetryEventPOSTInput`** — verified field-for-field against the pinned client (18 fields, no additions, no omissions), so an unmodified `render` binary pointed at bex still ingests and simply records the release as unknown. The header is a bex extension: Render has no equivalent, and `User-Agent` keeps naming the upstream release this checklist tracks. **Two launcher-owned paths now report themselves** because upstream's post-run hook cannot see them — a provider launch (`bex code`/`bex glm`/…) emits immediately before it replaces the process, and root `--version` emits with completion kind `version`, a deliberate divergence from upstream, which treats version as a non-event. `bex upgrade` needed nothing: it is an ordinary command on the imported root and already emitted through upstream's hook (measured, not assumed). GraphQL/MCP telemetry twins remain deliberately absent, matching upstream, which exposes telemetry over REST only.
@@ -193,7 +193,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--cron-schedule` — on `cron_job`
     - [x] `--health-check-path`
     - [x] `--auto-deploy`
-    - [-] `--previews` — `400 "not supported by this platform"` (deliberate non-goal)
+    - [~] `--previews off` — accepted; `manual` / `automatic` refused (preview creation is a deliberate non-goal)
     - [x] `--publish-directory` — on `static_site`
     - [x] `--root-directory` — on repo services
     - [x] `--env-var KEY=VALUE` — exact configured App readback
@@ -222,7 +222,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--cron-schedule`
     - [x] `--health-check-path`
     - [x] `--auto-deploy`
-    - [-] `--previews` — `400 "not supported by this platform"`
+    - [~] `--previews off` — accepted; `manual` / `automatic` refused
     - [x] `--publish-directory` — on `static_site`
     - [x] `--root-directory` — on repo services (image services correctly `400`)
     - [x] `--registry-credential` — distinct credential A→B replacement plus authenticated rollout
