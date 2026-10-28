@@ -411,6 +411,7 @@ func (rec *runtimeConfigRecord) launch(app *appv1alpha1.App) launchMode {
 		case len(c.Command) == 0:
 			return launchImage
 		case slices.Equal(c.Command, shellCommand(rec.spec.StartCommand)),
+			slices.Equal(c.Command, rawShellCommand(rec.spec.StartCommand)),
 			slices.Equal(c.Command, legacyShellCommand(rec.spec.StartCommand)):
 			return launchShell
 		}

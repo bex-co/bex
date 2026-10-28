@@ -162,8 +162,10 @@ func TestDockerfileBuildInputsScriptAssemblesBuildArgs(t *testing.T) {
 		Replace(dockerBuildInputsScript(o, BuildLiterals(o.BuildEnv))) + `printf '%s\0' "$@" > "` + out + `"`
 	cmd := exec.Command("sh", "-eu", "-c", script, "bex-buildkit", "--frontend", "dockerfile.v0")
 	cmd.Env = os.Environ()
-	for _, e := range dockerBuildInputsEnv(o, BuildLiterals(o.BuildEnv)) {
-		cmd.Env = append(cmd.Env, e.Name+"="+e.Value)
+	buildEnv := dockerBuildInputsEnv(o, BuildLiterals(o.BuildEnv))
+	resolved := expandedBuildValues(buildEnv)
+	for _, e := range buildEnv {
+		cmd.Env = append(cmd.Env, e.Name+"="+resolved[e.Name])
 	}
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("input script: %v: %s", err, b)

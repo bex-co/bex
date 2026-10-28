@@ -67,7 +67,9 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		if item.Name == "" || item.ValueFrom != nil {
 			continue
 		}
-		env = append(env, map[string]any{"name": item.Name, "value": item.Value})
+		// kpack v0.18 copies these values into its prepare Pod's PLATFORM_ENV_
+		// variables before writing buildpack env files: escape that kubelet pass.
+		env = append(env, map[string]any{"name": item.Name, "value": execution.KubernetesLiteral(item.Value)})
 	}
 
 	build := map[string]any{
