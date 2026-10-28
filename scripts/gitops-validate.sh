@@ -1138,6 +1138,12 @@ for render in base prod; do
   # Captured first: grep -q closing the pipe early would fail yq under pipefail.
   traefik_args="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[] | select(.name == "traefik") | .args[]' "$tmp/traefik-$render.yaml")"
   for ep in web websecure; do
+    # Check the rendered chart, including prod deep-merges: an ignored/moved
+    # values key must not restore Traefik's 60-second whole-body read deadline.
+    if ! grep -qxF -- "--entryPoints.$ep.transport.respondingTimeouts.readTimeout=6000s" <<<"$traefik_args"; then
+      echo "FAIL: $render Traefik entrypoint $ep must allow 6000s to read request headers/body (w8/207)" >&2
+      fail=1
+    fi
     if ! grep -qxF -- "--entryPoints.$ep.http.middlewares=traefik-bex-client-ip-headers@kubernetescrd" <<<"$traefik_args"; then
       echo "FAIL: $render Traefik entrypoint $ep does not run traefik-bex-client-ip-headers@kubernetescrd first" >&2
       fail=1
