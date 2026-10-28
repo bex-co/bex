@@ -1,19 +1,19 @@
 # w10 · m18 — Agent tool output: full output on demand, smaller inline transcript
 
-**Worker:** worker10 **Goal:** The durable transcript keeps a short head and tail of each large tool output inline. The full output is stored separately and loaded only when the user clicks "Show full output". Long-session replays shrink further while the information stays available. **Status:** todo
+**Worker:** worker10 **Goal:** The durable transcript keeps a short head and tail of each large tool output inline. The full output is stored separately and loaded only when the user clicks "Show full output". Long-session replays shrink further while the information stays available. **Status:** done (2026-10-28 — shipped `d368e383f`, `dfbb006c1`; verified in production, see done/t004.md)
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est  | depends_on |
 | ---- | ---------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Store full tool outputs out of line (Postgres table, per-output cap) + lower inline cap   | 1.5h | —          |
-| t002 | Fetch endpoint for one tool's full output (REST + GraphQL + MCP, session-scoped authz)    | 1h   | t001       |
-| t003 | Dashboard "Show full output" on clipped tool steps                                        | 1h   | t002       |
-| t004 | Verify on production: replay bytes of a fresh long turn and of `ags-dbf8nggkbcjs73a5r3u0` | 30m  | t003       |
-| t005 | Render parity (REST/GraphQL/MCP full-output read; dashboard)                              | 20m  | t004       |
-| t006 | Simplify                                                                                  | 20m  | t005       |
-| t007 | Test coverage                                                                             | 30m  | t005       |
-| t008 | Closeout                                                                                  | 10m  | t006, t007 |
+| t001 | Store full tool outputs out of line (Postgres table, per-output cap) + lower inline cap — **DONE**   | 1.5h | —          |
+| t002 | Fetch endpoint for one tool's full output (REST + GraphQL + MCP, session-scoped authz) — **DONE**    | 1h   | t001       |
+| t003 | Dashboard "Show full output" on clipped tool steps — **DONE**                                        | 1h   | t002       |
+| t004 | Verify on production: replay bytes of a fresh long turn and of `ags-dbf8nggkbcjs73a5r3u0` — **DONE** | 30m  | t003       |
+| t005 | Render parity (REST/GraphQL/MCP full-output read; dashboard) — **DONE**                              | 20m  | t004       |
+| t006 | Simplify — **DONE**                                                                                  | 20m  | t005       |
+| t007 | Test coverage — **DONE**                                                                             | 30m  | t005       |
+| t008 | Closeout — **DONE**                                                                                  | 10m  | t006, t007 |
 
 ## Definition of done
 
