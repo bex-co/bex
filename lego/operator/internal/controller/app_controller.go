@@ -3005,8 +3005,14 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 	// The Services keep the serving network's ports until the candidate is
 	// promoted, so the route names the serving primary: a port-changing or
 	// failed deploy never points the host at a port no Service has (w4/m243 t007).
+	// A port change routed early keeps naming the replaced primary while the
+	// Services alias it, until its rollout completes: the route's port never
+	// changes in the same instant as the Services' (w4/430).
 	if network := app.ActiveImageNetwork(); network != nil {
 		port = int(network.PrimaryPort)
+		if old, ok := aliasedPriorPrimary(app); ok {
+			port = int(old)
+		}
 	}
 	return app.Name, int32(port), nil
 }
@@ -3110,17 +3116,11 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
 	// A port change routes to its first ready pod while the old ones are
-	// held (w4/428), then completes as any rollout does.
-	early, err := r.promotePortChangeEarly(ctx, app, dep, image, port)
-	if err != nil {
+	// held (w4/428), then completes as any rollout does. The public route
+	// stays on the replaced primary's alias until then (w4/430).
+	if _, err := r.promotePortChangeEarly(ctx, app, dep, image, port); err != nil {
 		res, err := r.fail(ctx, app, "ServiceFailed", err)
 		return res, true, err
-	}
-	if early && directRoute && len(hosts) > 0 {
-		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, app.Name, app.ActiveImageNetwork().PrimaryPort); err != nil {
-			res, err := r.fail(ctx, app, reason, err)
-			return res, true, err
-		}
 	}
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Image = image
@@ -3134,10 +3134,12 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 		return res, true, err
 	}
 	// The rollout is complete: no old pod remains to pin around (w4/428).
+	_, rerouted := aliasedPriorPrimary(app)
 	app.Status.PriorServingNetwork = nil
-	// The route this pass applied named the old primary; the promoted
-	// Services no longer carry it.
-	if moved && directRoute && len(hosts) > 0 {
+	// The route this pass applied named the old primary. The promoted
+	// Services no longer carry it, or carry it only as the early port
+	// change's alias, which the next Service write drops (w4/430).
+	if (moved || rerouted) && directRoute && len(hosts) > 0 {
 		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, app.Name, app.ActiveImageNetwork().PrimaryPort); err != nil {
 			res, err := r.fail(ctx, app, reason, err)
 			return res, true, err
