@@ -66,10 +66,17 @@ securityContext:
 # release (extraObjects below), so it exists before any router references it.
 ports:
   web:
+    # Bounded long uploads (w8/207): the upstream 60s default truncates slow bodies.
+    transport:
+      respondingTimeouts:
+        readTimeout: 6000s
     port: 80 # host :80 (HTTP + ACME HTTP-01 challenge)
     http:
       middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
   websecure:
+    transport:
+      respondingTimeouts:
+        readTimeout: 6000s
     port: 443 # host :443 (HTTPS)
     http:
       middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
