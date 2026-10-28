@@ -27,6 +27,7 @@ import zhInvites from "@/features/invites/locales/zh";
 import zhAgentSessions from "@/features/agent-sessions/locales/zh";
 import zhCapabilities from "@/features/capabilities/locales/zh";
 import zhOnboarding from "@/features/onboarding/locales/zh";
+import zhAgentEnvironment from "@/features/agent-environment/locales/zh";
 import { extractMessages } from "./index";
 
 /**
@@ -68,6 +69,7 @@ const zh: Record<string, string> = {
   ...extractMessages(zhAgentSessions),
   ...extractMessages(zhCapabilities),
   ...extractMessages(zhOnboarding),
+  ...extractMessages(zhAgentEnvironment),
 };
 
 export default zh;

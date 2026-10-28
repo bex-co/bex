@@ -43,6 +43,15 @@ vi.mock("@/features/team/components/team-panel", () => ({
   TeamPanel: () => <div>Team panel</div>,
 }));
 
+vi.mock(
+  "@/features/agent-environment/components/agent-environment-card",
+  () => ({
+    AgentEnvironmentCard: ({ ownerId }: { ownerId: string }) => (
+      <div>Agent environment card {ownerId}</div>
+    ),
+  }),
+);
+
 // The danger zone gained a permanent resident in w5/m102: Leave workspace is
 // available to every member, so the section now exists regardless of how many
 // workspaces the caller has — only the DELETE card stays gated on having
@@ -104,6 +113,18 @@ describe("WorkspaceSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
       "href",
       "#danger-zone",
+    );
+  });
+
+  it("renders the Agents section for the current workspace", async () => {
+    await renderPage();
+
+    expect(
+      screen.getByText("Agent environment card tea-primary"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agents" })).toHaveAttribute(
+      "href",
+      "#agents",
     );
   });
 

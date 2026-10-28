@@ -14,6 +14,7 @@ describe("WorkspaceSettingsNavigation", () => {
     const expected: [string, string][] = [
       ["General", "#general"],
       ["Team", "#team"],
+      ["Agents", "#agents"],
       ["Danger Zone", "#danger-zone"],
     ];
     for (const [name, href] of expected) {

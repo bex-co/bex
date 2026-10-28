@@ -44,6 +44,33 @@ export type ActionDecision = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+export type AgentEnvironment = {
+  __typename: 'AgentEnvironment';
+  customHosts: Array<Scalars['String']['output']>;
+  defaultModel: Maybe<Scalars['String']['output']>;
+  modelPinned: Scalars['Boolean']['output'];
+  networkTier: AgentNetworkTier;
+  ownerId: Scalars['String']['output'];
+  pinnedModel: Maybe<Scalars['String']['output']>;
+  registryHosts: Array<Scalars['String']['output']>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentEnvironmentInput = {
+  /** Replaces the whole list; [] clears it. Opened only by the CUSTOM tier. */
+  customHosts?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** "" returns to the provider default. */
+  defaultModel?: InputMaybe<Scalars['String']['input']>;
+  networkTier?: InputMaybe<AgentNetworkTier>;
+};
+
+/** Sandbox network access for a workspace's agent sessions. FULL is stored but currently enforced as REGISTRIES. */
+export enum AgentNetworkTier {
+  Custom = 'CUSTOM',
+  Full = 'FULL',
+  Registries = 'REGISTRIES'
+}
+
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
@@ -1262,6 +1289,7 @@ export type Mutation = {
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationWebPushSubscription: Maybe<Scalars['Boolean']['output']>;
+  updateAgentEnvironment: AgentEnvironment;
   updateBlueprint: Maybe<Blueprint>;
   updateCronJob: Maybe<Service>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
@@ -2401,6 +2429,12 @@ export type MutationUnregisterNotificationWebPushSubscriptionArgs = {
 };
 
 
+export type MutationUpdateAgentEnvironmentArgs = {
+  input: AgentEnvironmentInput;
+  ownerId: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateBlueprintArgs = {
   autoSync?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
@@ -2704,6 +2738,7 @@ export enum PushNotificationWeekday {
 export type Query = {
   __typename: 'Query';
   accountDeletionPreview: Maybe<AccountDeletionPreview>;
+  agentEnvironment: AgentEnvironment;
   agentSession: Maybe<AgentSession>;
   agentSessionCapabilities: AgentSessionCapabilities;
   agentSessionTranscript: AgentSessionTranscriptPage;
@@ -2821,6 +2856,11 @@ export type Query = {
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
   workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
   workspaces: Maybe<Array<Maybe<Workspace>>>;
+};
+
+
+export type QueryAgentEnvironmentArgs = {
+  ownerId: Scalars['String']['input'];
 };
 
 
