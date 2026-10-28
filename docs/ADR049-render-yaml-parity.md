@@ -401,3 +401,7 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 Any other refusal fails the test as a new class to triage. On 2026-10-20 all 170 files passed this rule.
 
 Through dev-5's REST `POST /v1/blueprints/validate`, the unmodified `retool` and `redash` templates validate. `langfuse4-template`, `hasura-graphql` and `zulip` now fail only on the reserved `PORT`, and `saleor` only on a `RENDER_*` `fromService` reference.
+
+### Preview opt-outs (w8/203, 2026-10-28)
+
+The capability registry permits explicit disabled preview values with no stored effect: root/service `previews.generation: off`, root `previewsEnabled: false`, and service `pullRequestPreviewsEnabled: false`. Root `expireAfterDays` inside an off object is inert. This value-aware compiler rule is shared by validate, plan, apply and sync on every surface; requests to enable previews and preview-only plan/value fields remain refused. REST create/PATCH likewise accept off and the deprecated string `"no"`. Building previews remains a non-goal.

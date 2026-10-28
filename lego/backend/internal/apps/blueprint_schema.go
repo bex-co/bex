@@ -84,10 +84,12 @@ var blueprintCapabilityHandlers = map[BlueprintCapabilityHandler]struct{}{
 // field-by-field ledger; implementation tasks replace conservative
 // unsupported entries with the handler and fixture that prove equivalence.
 type BlueprintCapability struct {
-	State   BlueprintCapabilityState   `json:"state"`
-	Handler BlueprintCapabilityHandler `json:"handler,omitempty"`
-	Fixture string                     `json:"fixture,omitempty"`
-	Reason  string                     `json:"reason"`
+	// AcceptPreviewOptOut permits only an explicit disabled preview value.
+	AcceptPreviewOptOut bool                       `json:"acceptPreviewOptOut,omitempty"`
+	State               BlueprintCapabilityState   `json:"state"`
+	Handler             BlueprintCapabilityHandler `json:"handler,omitempty"`
+	Fixture             string                     `json:"fixture,omitempty"`
+	Reason              string                     `json:"reason"`
 }
 
 type blueprintCapabilitySchema struct {
@@ -247,7 +249,7 @@ func validateBlueprintCapability(pointer string, capability BlueprintCapability)
 	if capability.Reason == "" {
 		return fmt.Errorf("Render Blueprint capability registry has no reason for %s", pointer)
 	}
-	if capability.State != BlueprintCapabilityUnsupported && (capability.Handler == "" || capability.Fixture == "") {
+	if (capability.State != BlueprintCapabilityUnsupported || capability.AcceptPreviewOptOut) && (capability.Handler == "" || capability.Fixture == "") {
 		return fmt.Errorf("Render Blueprint capability registry has no handler/fixture evidence for %s", pointer)
 	}
 	if capability.Handler != "" {

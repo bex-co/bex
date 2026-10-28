@@ -69,13 +69,13 @@ func TestRenderBlueprintCapabilityRegistryFixturesExist(t *testing.T) {
 		fixtures[alias.Fixture] = struct{}{}
 	}
 	for _, capability := range registry.Fields {
-		if capability.State != BlueprintCapabilityUnsupported {
+		if capability.State != BlueprintCapabilityUnsupported || capability.AcceptPreviewOptOut {
 			fixtures[capability.Fixture] = struct{}{}
 		}
 	}
 	for _, values := range registry.EnumValues {
 		for _, capability := range values {
-			if capability.State != BlueprintCapabilityUnsupported {
+			if capability.State != BlueprintCapabilityUnsupported || capability.AcceptPreviewOptOut {
 				fixtures[capability.Fixture] = struct{}{}
 			}
 		}

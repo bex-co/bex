@@ -427,7 +427,7 @@ func TestBlueprintServiceCapabilityContextUsesDeclarationKind(t *testing.T) {
 	}
 }
 
-func TestBlueprintCompilerRejectsPreviewFieldsEvenWhenFalseOrEmpty(t *testing.T) {
+func TestBlueprintCompilerRejectsPreviewPlansAndEnabling(t *testing.T) {
 	t.Parallel()
 	for name, manifest := range map[string]string{
 		"service preview plan": `services:
@@ -442,12 +442,12 @@ func TestBlueprintCompilerRejectsPreviewFieldsEvenWhenFalseOrEmpty(t *testing.T)
     type: keyvalue
     previewPlan: free
 `,
-		"preview toggle false": `services:
+		"preview toggle true": `services:
   - name: api
     type: web
     runtime: image
     image: {url: nginx}
-    pullRequestPreviewsEnabled: false
+    pullRequestPreviewsEnabled: true
 `,
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -218,6 +218,9 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 			continue // local extension vocabulary is validated by its own schema.
 		}
 		capabilityPointer := blueprintFieldCapabilityPointer(context, field)
+		if capability := registry.Fields[capabilityPointer]; capability.AcceptPreviewOptOut && (child == false || previewsDisabled(child)) {
+			continue // explicitly disabled: no preview state to materialize
+		}
 		if blueprintCapabilityUnsupported(registry, capabilityPointer) {
 			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(registry, field, capabilityPointer))
 			continue
