@@ -34,6 +34,7 @@ export interface OverlayContext {
   existingPrUrl?: string;
   existingPrNumber?: number | null;
   deliveryBaseline?: { baseBranch: string };
+  networkTier?: string;
 }
 
 function sessionSection(): string {
@@ -44,6 +45,13 @@ You are working autonomously in an ephemeral cloud sandbox. The person who start
 
 function oauthLine(): string {
   return "- If an MCP server reports that it needs OAuth, give the user its `authUrl` in your reply so they can authorize it, rather than silently going without that server.";
+}
+
+// networkLine tells a full-tier agent how its internet access works; the other
+// tiers' allowlists need no explanation beyond what fails.
+function networkLine(context: OverlayContext): string {
+  if (context.networkTier !== "full") return "";
+  return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
 }
 
 function existingPrLine(context: OverlayContext): string {
@@ -72,7 +80,7 @@ function repoOverlay(context: OverlayContext): string {
 - ${repository} is checked out at \`${context.cwd}\` on branch \`${branch}\`. Your work is compared against ${baseRef}.
 - \`origin\` is a bex Git proxy that holds no credentials. It accepts pushes to \`${branch}\` only. Pushes to other branches, tags and branch deletions are rejected by design, so treat that kind of rejection as final rather than looking for a way around it.
 - There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the \`${toolName}\` tool of the \`bex\` MCP server.
-${existingPrLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}
 
 ## Delivering your work
@@ -102,7 +110,7 @@ function scratchOverlay(context: OverlayContext): string {
 ## Environment
 
 - No repository is attached to this session. \`${context.cwd}\` is scratch space that is discarded when the session ends.
-- Model credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${networkLine(context)}- Model credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}
 
 ## Delivering your work

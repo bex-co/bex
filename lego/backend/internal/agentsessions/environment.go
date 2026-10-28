@@ -43,11 +43,11 @@ const (
 	NetworkTierRegistries = "registries"
 	// NetworkTierCustom adds the workspace's custom hostnames.
 	NetworkTierCustom = "custom"
-	// NetworkTierFull is the opt-in any-host tier. It is stored and reported,
-	// but enforced as NetworkTierRegistries: the cluster admission policy
-	// admits only exact FQDN rules, and "any host" cannot be expressed there
-	// without also opening the model providers (see effectiveHosts).
-	NetworkTierFull = "full"
+	// NetworkTierFull is the opt-in any-host tier (w10/m19): the session
+	// policy has no direct public egress at all, and HTTP(S) to any public
+	// host goes through the gateway egress proxy, which refuses the model
+	// providers and private ranges (see sessionEgress).
+	NetworkTierFull = sessionegress.NetworkTierFull
 )
 
 // EnvironmentStore persists the per-workspace environment row.
@@ -245,14 +245,19 @@ func (s *Service) registryHosts() []string {
 }
 
 // effectiveHosts is the widening the workspace tier contributes to a session
-// policy. The registry catalog itself is rendered by sessionegress for every
-// tier. `full` is enforced as `registries` until the admission policy can
-// express any-host egress without opening the model providers.
+// policy. The registry catalog itself is rendered by sessionegress for the
+// registries and custom tiers; `full` renders no FQDN rule at all.
 func effectiveHosts(env store.AgentEnvironment) []string {
 	if env.NetworkTier == NetworkTierCustom {
 		return env.CustomHosts
 	}
 	return nil
+}
+
+// sessionEgress is the destination set one dispatch renders: the full-internet
+// proxy posture for the `full` tier, else the validated allowlist.
+func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress.Egress {
+	return sessionegress.Egress{FullInternet: env.NetworkTier == NetworkTierFull, Hosts: allowlist}
 }
 
 // sessionModel resolves the model a session runs: the request's explicit

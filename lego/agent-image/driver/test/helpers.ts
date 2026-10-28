@@ -93,6 +93,7 @@ export async function tempConfig(
     agentEnv: {},
     modelBaseUrl: "",
     modelBaseUrlEnvName: "",
+    networkTier: "",
     root,
     ...overrides,
   };

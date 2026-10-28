@@ -107,7 +107,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_environment", Description: "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = opt-in any host, currently enforced as registries), the custom hostnames, the default model, and whether the model is pinned by the platform model route."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_environment", Description: "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, and whether the model is pinned by the platform model route."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, Environment, error) {
 			out, err := s.Environment(ctx, in.OwnerID)
 			return nil, out, err

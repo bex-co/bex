@@ -92,6 +92,11 @@ spec:
             # the reusable workspace key stays on the gateway→vendor hop.
             - name: BEX_AGENT_MODEL_PROXY_URL
               value: http://bex-ssh-gateway.bex-system.svc.cluster.local:8084
+            # w10/m19: the gateway egress proxy full-tier sandboxes get as
+            # HTTPS_PROXY/HTTP_PROXY; its port is the one the full-tier session
+            # policy admits. Fully-qualified for the session DNS filter.
+            - name: BEX_AGENT_EGRESS_PROXY_URL
+              value: http://bex-ssh-gateway.bex-system.svc.cluster.local:8085
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.

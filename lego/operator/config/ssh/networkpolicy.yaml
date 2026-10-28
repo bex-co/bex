@@ -32,8 +32,9 @@ spec:
     # Sandbox-exec SSE (:8081) is intentionally absent here. The base's Cilium
     # identity policy admits only the exact bex-api ServiceAccount/workload and
     # denies the broader same-namespace/Traefik/monitoring allows on that port.
-    # Agent Git/model credentials (:8082/:8084) flow in the opposite direction:
-    # sandbox-regime Pods call the gateway, which verifies source Pod + session.
+    # Agent Git/model credentials (:8082/:8084) and the full-tier egress proxy
+    # (:8085, w10/m19) flow in the opposite direction: sandbox-regime Pods call
+    # the gateway, which verifies source Pod + session.
     - from:
         - namespaceSelector:
             matchLabels:
@@ -42,4 +43,6 @@ spec:
         - port: 8082
           protocol: TCP
         - port: 8084
+          protocol: TCP
+        - port: 8085
           protocol: TCP
