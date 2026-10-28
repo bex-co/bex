@@ -118,10 +118,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Composer toolbar — opens the repository/session mention picker",
   },
-  "agentSessions.configButton": {
-    message: "高级",
-    description: "Composer toolbar — the Advanced popover trigger",
-  },
   "agentSessions.repoChip": {
     message: "仓库 {repo}",
     description: "Composer toolbar — accessible name of the selected-repo chip",
@@ -199,19 +195,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "默认分支：{branch}",
     description: "Mention picker readiness footer — the repo's default branch",
   },
-  "agentSessions.branchLabel": {
-    message: "分支",
-    description: "Composer — working branch input label",
-  },
-  "agentSessions.branchInvalid": {
-    message: "分支必须位于 bex-agent/ 之下。",
-    description:
-      "Composer — validation error when the branch leaves the bex-agent/* namespace",
-  },
-  "agentSessions.branchHint": {
-    message: "智能体会提交到 bex-agent/* 分支，并从该分支提交草稿 PR。",
-    description: "Composer — branch field helper text (bex-agent/* guidance)",
-  },
   "agentSessions.agentLabel": {
     message: "智能体",
     description: "Composer — agent select label",
@@ -227,35 +210,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
-  },
-  "agentSessions.modelLabel": {
-    message: "模型",
-    description: "Composer (advanced) — model override input label",
-  },
-  "agentSessions.modelPlaceholder": {
-    message: "提供方默认",
-    description: "Composer (advanced) — model input placeholder",
-  },
-  "agentSessions.modelHint": {
-    message: "所选智能体的可选模型覆盖。",
-    description: "Composer (advanced) — model field helper text",
-  },
-  "agentSessions.egressLabel": {
-    message: "出站允许列表",
-    description: "Composer (advanced) — extra egress hostnames textarea label",
-  },
-  "agentSessions.egressPlaceholder": {
-    message: "每行一个主机名",
-    description: "Composer (advanced) — egress allowlist textarea placeholder",
-  },
-  "agentSessions.egressHint": {
-    message:
-      "除模型端点和内置软件包镜像源之外，沙箱可访问的额外公共主机名（最多 32 个）。",
-    description: "Composer (advanced) — egress allowlist field helper text",
-  },
-  "agentSessions.egressTooMany": {
-    message: "主机名过多——允许列表最多支持 32 个条目。",
-    description: "Composer — validation error when more than 32 egress entries",
   },
   "agentSessions.submit": {
     message: "开始会话",
@@ -429,7 +383,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Steering composer — textarea placeholder for a live session",
   },
   "agentSessions.steerHintIdle": {
-    message: "该会话处于空闲状态——发送消息将在同一分支上的全新沙箱中继续这段对话。",
+    message:
+      "该会话处于空闲状态——发送消息将在同一分支上的全新沙箱中继续这段对话。",
     description: "Steering composer — helper text for the redispatch route",
   },
   "agentSessions.steerHintLive": {
