@@ -196,9 +196,17 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 		if changesImagePorts(app) || replacedImagePorts(app) {
 			selector[labelRevision] = network.Revision
 		}
-		ports = make([]corev1.ServicePort, 0, len(network.Ports))
+		ports = make([]corev1.ServicePort, 0, len(network.Ports)+1)
 		for _, number := range network.Ports {
 			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", number), Port: number, TargetPort: intstr.FromInt32(number)})
+		}
+		// The public route keeps naming the replaced primary until the rollout
+		// completes (ingressBackend). A Service without that port makes Traefik
+		// drop the route, and the host falls through to the activator's "service
+		// not ready" (w4/430), so the old number stays as an alias of the new
+		// listener while the old pods drain.
+		if old, ok := aliasedPriorPrimary(app); ok {
+			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", old), Port: old, TargetPort: intstr.FromInt32(network.PrimaryPort)})
 		}
 	}
 	applyServicePortServerDefaults(ports)
@@ -221,6 +229,19 @@ func replacedImagePorts(app *appv1alpha1.App) bool {
 	prior, serving := app.Status.PriorServingNetwork, app.Status.ServingNetwork
 	return prior != nil && serving != nil &&
 		(prior.PrimaryPort != serving.PrimaryPort || !slices.Equal(prior.Ports, serving.Ports))
+}
+
+// aliasedPriorPrimary is the replaced primary port of a port change routed
+// early, while the new network no longer declares it: the Services alias it to
+// the new listener and the public route keeps naming it until the rollout
+// completes (w4/430). A replaced primary the new image still declares is a
+// real listener of another role, so the route moves at once instead.
+func aliasedPriorPrimary(app *appv1alpha1.App) (int32, bool) {
+	if !replacedImagePorts(app) {
+		return 0, false
+	}
+	old := app.Status.PriorServingNetwork.PrimaryPort
+	return old, !slices.Contains(app.Status.ServingNetwork.Ports, old)
 }
 
 // portChangeHoldSeconds keeps a port-changing rollout's old pods serving after
@@ -271,11 +292,15 @@ func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1al
 	if !app.Spec.HasImagePorts() || !changesImagePorts(app) || !r.currentRevisionFullyReady(ctx, dep, 1) {
 		return false, nil
 	}
-	prior := app.Status.ServingNetwork.DeepCopy()
+	// Record the replaced network before projecting: the very first Service
+	// write must already pin the new revision and alias the old primary, or
+	// it selects old pods on a port they lack (w4/430).
+	held := app.Status.PriorServingNetwork
+	app.Status.PriorServingNetwork = app.Status.ServingNetwork.DeepCopy()
 	if moved, err = r.promoteImageNetwork(ctx, app, image, port); err != nil {
+		app.Status.PriorServingNetwork = held
 		return false, err
 	}
-	app.Status.PriorServingNetwork = prior
 	return moved, nil
 }
 
