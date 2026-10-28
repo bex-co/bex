@@ -882,6 +882,9 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran Ra
 	if ran.SHA != "" {
 		d.ImageSHA = ran.SHA
 	}
+	if status == DeployLive && ran.DetectedHTTPPort > 0 {
+		d.DetectedHTTPPort = ran.DetectedHTTPPort
+	}
 	if failureReason != "" {
 		d.FailureReason = failureReason
 	}

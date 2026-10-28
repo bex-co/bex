@@ -274,8 +274,8 @@ func TestImagePortSelectorPinsARevisionOnlyForAPortChange(t *testing.T) {
 // the new listener from their first write, until the rollout completes
 // (w4/430). Every other rollout holds nothing.
 func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
-	serving := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
-	candidate := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 9090, Ports: []int32{9090}}
+	serving := &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:a", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
+	candidate := &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 9090, Ports: []int32{9090}}
 	app := webImageApp(2)
 	app.Namespace, app.UID = "tea-a", "fixture"
 	app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
@@ -285,7 +285,7 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 		t.Fatalf("port change minReadySeconds = %d, want %d", held.Spec.MinReadySeconds, portChangeHoldSeconds)
 	}
 	same := app.DeepCopy()
-	same.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:b", Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
+	same.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:b", Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
 	if got := project(same, deploymentParams{image: "echo@sha256:b", port: 8080}).Spec.MinReadySeconds; got != 0 {
 		t.Fatalf("same-port rollout minReadySeconds = %d, want 0", got)
 	}
