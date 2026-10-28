@@ -1284,3 +1284,92 @@ func TestClosedDeployPreDeploySettledMigration(t *testing.T) {
 		t.Fatalf("down migration left the CHECK in place: %v", err)
 	}
 }
+
+// TestFreeStorageTierBackfillMigration pins migration 0171 (w4/431):
+// October's untiered storage rows take the same hour's instance tier;
+// September rows, rows with no instance row or two (a mid-hour plan change),
+// and rows whose tiered twin already exists stay untiered.
+func TestFreeStorageTierBackfillMigration(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	sql, err := migrationsFS.ReadFile("migrations/0171_free_storage_tier_backfill.up.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0171_free_storage_tier;
+		SET LOCAL search_path TO migration_0171_free_storage_tier;
+		CREATE TABLE usage_hourly (
+			workspace_id text NOT NULL,
+			resource_kind text NOT NULL,
+			service_id text NOT NULL,
+			kind text NOT NULL,
+			tier text NOT NULL DEFAULT '',
+			window_start timestamptz NOT NULL,
+			quantity bigint NOT NULL DEFAULT 0,
+			PRIMARY KEY (resource_kind, service_id, kind, tier, window_start)
+		);
+		INSERT INTO usage_hourly (workspace_id, resource_kind, service_id, kind, tier, window_start, quantity) VALUES
+			('tea-1', 'postgres', 'dpg-free', 'instance_seconds', 'free', '2026-10-27T10:00:00Z', 3600),
+			('tea-1', 'postgres', 'dpg-free', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100),
+			('tea-1', 'keyvalue', 'red-free', 'instance_seconds', 'free', '2026-10-27T10:00:00Z', 3600),
+			('tea-1', 'keyvalue', 'red-free', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100),
+			('tea-1', 'postgres', 'dpg-paid', 'instance_seconds', 'basic-256mb', '2026-10-27T10:00:00Z', 3600),
+			('tea-1', 'postgres', 'dpg-paid', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100),
+			('tea-1', 'postgres', 'dpg-free', 'instance_seconds', 'free', '2026-09-27T10:00:00Z', 3600),
+			('tea-1', 'postgres', 'dpg-free', 'storage_gb_seconds', '', '2026-09-27T10:00:00Z', 100),
+			('tea-1', 'postgres', 'dpg-gap', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100),
+			('tea-1', 'postgres', 'dpg-both', 'instance_seconds', 'free', '2026-10-27T10:00:00Z', 3600),
+			('tea-1', 'postgres', 'dpg-both', 'storage_gb_seconds', 'free', '2026-10-27T10:00:00Z', 50),
+			('tea-1', 'postgres', 'dpg-both', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100),
+			('tea-1', 'postgres', 'dpg-moved', 'instance_seconds', 'free', '2026-10-27T10:00:00Z', 1800),
+			('tea-1', 'postgres', 'dpg-moved', 'instance_seconds', 'basic-256mb', '2026-10-27T10:00:00Z', 1800),
+			('tea-1', 'postgres', 'dpg-moved', 'storage_gb_seconds', '', '2026-10-27T10:00:00Z', 100);
+	`); err != nil {
+		t.Fatalf("prepare usage rows: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(sql)); err != nil {
+		t.Fatalf("migration 0171: %v", err)
+	}
+
+	for _, c := range []struct {
+		resourceKind, serviceID, window, want string
+	}{
+		{"postgres", "dpg-free", "2026-10-27T10:00:00Z", "free"},
+		{"keyvalue", "red-free", "2026-10-27T10:00:00Z", "free"},
+		{"postgres", "dpg-paid", "2026-10-27T10:00:00Z", "basic-256mb"},
+		{"postgres", "dpg-free", "2026-09-27T10:00:00Z", ""},
+		{"postgres", "dpg-gap", "2026-10-27T10:00:00Z", ""},
+		{"postgres", "dpg-moved", "2026-10-27T10:00:00Z", ""},
+	} {
+		var tier string
+		if err := tx.QueryRow(ctx, `SELECT tier FROM usage_hourly WHERE resource_kind = $1 AND service_id = $2 AND kind = 'storage_gb_seconds' AND window_start = $3`,
+			c.resourceKind, c.serviceID, c.window).Scan(&tier); err != nil {
+			t.Fatalf("%s %s %s: %v", c.resourceKind, c.serviceID, c.window, err)
+		}
+		if tier != c.want {
+			t.Errorf("%s %s %s storage tier = %q, want %q", c.resourceKind, c.serviceID, c.window, tier, c.want)
+		}
+	}
+	var untiered int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM usage_hourly WHERE service_id = 'dpg-both' AND kind = 'storage_gb_seconds' AND tier = ''`).Scan(&untiered); err != nil {
+		t.Fatal(err)
+	}
+	if untiered != 1 {
+		t.Errorf("dpg-both untiered storage rows = %d, want 1 (the tiered twin blocks the re-key)", untiered)
+	}
+}
