@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unblock"
+  short_description: "用中文讲清卡点、引导决策并写回 board，再将实现交给 loopx"
+  default_prompt: "使用 $unblock w4，用中文帮我理解并解决 blocked 项，将决定写回 board 后交给 loopx。"

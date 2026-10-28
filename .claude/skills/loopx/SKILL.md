@@ -44,6 +44,8 @@ For each item, announce which one you picked and a one-line plan before doing wo
 
 Read the item in full — for a milestone, `.pm/<wN>/mN/README.md` plus every task file `tNNN.md` not already in `done/`; for an inbox note, the note itself. Then check its premise against the current codebase (the note may be weeks old and the bug already fixed). Pick exactly one verdict:
 
+Items restored by [`/unblock`](../unblock/SKILL.md) carry dated decisions and next actions in the board. Read and apply those decisions during triage; verify their factual prerequisites without asking the user to decide the same thing again. A genuinely new blocker still gets its own precise gate.
+
 | Verdict | When | Action |
 | --- | --- | --- |
 | **Work** | The premise holds and nothing external gates it. | step 2 → 3 → **done** |
@@ -101,6 +103,7 @@ Every item ends in exactly one of these on-disk states, applied **automatically 
 - `mv` the milestone directory → `wN/blocked/mN/` (or the note → `wN/blocked/NNN.md`).
 - Leave the workstream README line unchecked (`- [ ]`) and rewrite it as `**BLOCKED (<exactly what you need from whom>)**` with the path updated to `blocked/…`, plus which tasks are already done. See `.pm/w11/README.md` for the shape.
 - Surface every blocker again in the final report — a gate the user never reads is a gate that never clears.
+- Point to `/unblock <wN>` for a Chinese explanation and decision workflow; keep draining the open queue while those items remain parked.
 
 **delete** — the item is invalid.
 
