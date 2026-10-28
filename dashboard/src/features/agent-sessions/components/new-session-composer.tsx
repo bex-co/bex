@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AtSign, Loader2, Settings2 } from "lucide-react";
+import { AtSign, Loader2 } from "lucide-react";
 import { GithubIcon } from "@/common/components/github-icon";
 import {
   Alert,
@@ -10,11 +10,6 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/common/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -41,26 +36,17 @@ import {
   agentSessionErrorMessage,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
-import { ConfigurationFields } from "@/features/agent-sessions/components/configuration-fields";
 import {
   InlineMentionEditor,
   type InlineMentionEditorHandle,
 } from "@/features/agent-sessions/components/lazy-mention-editor";
 import {
   AGENT_OPTIONS,
-  MAX_EGRESS,
   deriveBranch,
-  isBranchInNamespace,
-  parseEgress,
   type AgentOption,
   type ComposerValues,
 } from "@/features/agent-sessions/lib/composer";
 import type { ComposerDocument } from "@/features/agent-sessions/lib/composer-document";
-
-/** Configuration fields a coded create failure anchors its message to. */
-const ERROR_FIELDS: Record<string, "egress" | undefined> = {
-  AGENT_SESSION_EGRESS_ALLOWLIST_INVALID: "egress",
-};
 
 const EXAMPLE_KEYS = [
   "agentSessions.exampleFixTests",
@@ -69,7 +55,9 @@ const EXAMPLE_KEYS = [
 
 /**
  * The prompt-box composer: the visual center of `/agents`. Agent and repo live
- * on the toolbar; Advanced keeps branch / model / egress. A repo is
+ * on the toolbar, and that is the whole form (w10/m17): the branch is always
+ * derived from the task, and the model and sandbox network come from the
+ * workspace's agent environment, so the composer sends neither. A repo is
  * optional — a repo-less prompt starts a chat-only session. The Connect GitHub
  * callout appears only when the composer targets a repo but the workspace has
  * no GitHub App repos connected.
@@ -92,7 +80,6 @@ export function NewSessionComposer() {
     repo: null,
     sessionIds: [],
   });
-  const [configOpen, setConfigOpen] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<unknown>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
@@ -123,23 +110,13 @@ export function NewSessionComposer() {
   );
 
   const form = useForm<ComposerValues>({
-    defaultValues: {
-      branch: "",
-      agent: "claude",
-      model: "",
-      egress: "",
-    },
+    defaultValues: { agent: "claude" },
   });
   const {
     formState: { isSubmitting },
   } = form;
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
-
-  function failInConfig(field: "branch" | "egress", message: string) {
-    form.setError(field, { message });
-    setConfigOpen(true);
-  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     setAvailabilityError(null);
@@ -158,21 +135,8 @@ export function NewSessionComposer() {
 
     // Repo-less (chat-only) sessions are allowed: with no repo the agent just
     // runs the prompt in an empty sandbox and delivers no PR. A branch is only
-    // meaningful — and only validated — when a repo is chosen.
-    let branch = "";
-    if (repo) {
-      branch = values.branch.trim() || deriveBranch(task);
-      if (!isBranchInNamespace(branch)) {
-        failInConfig("branch", t("agentSessions.branchInvalid"));
-        return;
-      }
-    }
-
-    const egressAllowlist = parseEgress(values.egress);
-    if (egressAllowlist.length > MAX_EGRESS) {
-      failInConfig("egress", t("agentSessions.egressTooMany"));
-      return;
-    }
+    // meaningful when a repo is chosen, and then it is always derived.
+    const branch = repo ? deriveBranch(task) : "";
 
     const prompt = [
       task.trim(),
@@ -185,9 +149,7 @@ export function NewSessionComposer() {
         repo: repo ?? "",
         branch,
         agent: values.agent,
-        model: values.model.trim() || undefined,
         task: prompt,
-        egressAllowlist,
       });
       await navigate({
         to: "/agents/$agentSessionId",
@@ -210,13 +172,9 @@ export function NewSessionComposer() {
       setAvailabilityError(err);
       return;
     }
-    const message = t(err.messageKey, {
-      ...err.params,
-      defaultValue: err.message,
-    });
-    const field = ERROR_FIELDS[err.code];
-    if (field) failInConfig(field, message);
-    else setSubmitError(message);
+    setSubmitError(
+      t(err.messageKey, { ...err.params, defaultValue: err.message }),
+    );
   }
 
   function openMention() {
@@ -322,26 +280,6 @@ export function NewSessionComposer() {
                   {repo ?? t("agentSessions.mentionButton")}
                 </span>
               </Button>
-
-              <Popover open={configOpen} onOpenChange={setConfigOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground h-8 gap-1.5 px-2 text-xs font-normal"
-                  >
-                    <Settings2 className="size-4" />
-                    {t("agentSessions.configButton")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  className="max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] space-y-4 overflow-y-auto"
-                >
-                  <ConfigurationFields branchPlaceholder={deriveBranch(task)} />
-                </PopoverContent>
-              </Popover>
 
               <Button
                 type="submit"

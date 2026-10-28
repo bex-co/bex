@@ -118,10 +118,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Composer toolbar — opens the repository/session mention picker",
   },
-  "agentSessions.configButton": {
-    message: "Advanced",
-    description: "Composer toolbar — the Advanced popover trigger",
-  },
   "agentSessions.repoChip": {
     message: "Repository {repo}",
     description: "Composer toolbar — accessible name of the selected-repo chip",
@@ -199,20 +195,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Default branch: {branch}",
     description: "Mention picker readiness footer — the repo's default branch",
   },
-  "agentSessions.branchLabel": {
-    message: "Branch",
-    description: "Composer — working branch input label",
-  },
-  "agentSessions.branchInvalid": {
-    message: "The branch must be under bex-agent/.",
-    description:
-      "Composer — validation error when the branch leaves the bex-agent/* namespace",
-  },
-  "agentSessions.branchHint": {
-    message:
-      "The agent commits to a bex-agent/* branch and opens a draft PR from it.",
-    description: "Composer — branch field helper text (bex-agent/* guidance)",
-  },
   "agentSessions.agentLabel": {
     message: "Agent",
     description: "Composer — agent select label",
@@ -228,35 +210,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
-  },
-  "agentSessions.modelLabel": {
-    message: "Model",
-    description: "Composer (advanced) — model override input label",
-  },
-  "agentSessions.modelPlaceholder": {
-    message: "Provider default",
-    description: "Composer (advanced) — model input placeholder",
-  },
-  "agentSessions.modelHint": {
-    message: "Optional model override for the selected agent.",
-    description: "Composer (advanced) — model field helper text",
-  },
-  "agentSessions.egressLabel": {
-    message: "Egress allowlist",
-    description: "Composer (advanced) — extra egress hostnames textarea label",
-  },
-  "agentSessions.egressPlaceholder": {
-    message: "one hostname per line",
-    description: "Composer (advanced) — egress allowlist textarea placeholder",
-  },
-  "agentSessions.egressHint": {
-    message:
-      "Extra public hostnames the sandbox may reach (up to 32), beyond the model endpoint and the built-in package registries.",
-    description: "Composer (advanced) — egress allowlist field helper text",
-  },
-  "agentSessions.egressTooMany": {
-    message: "Too many hostnames — the allowlist allows at most 32 entries.",
-    description: "Composer — validation error when more than 32 egress entries",
   },
   "agentSessions.submit": {
     message: "Start session",
@@ -333,7 +286,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Detail page — heading over a completed session's note that the agent left work uncommitted, unpushed or without a pull request",
   },
   "agentSessions.deliveryNoteHint": {
-    message: "Send a follow-up message asking the agent to finish committing, pushing and updating the pull request.",
+    message:
+      "Send a follow-up message asking the agent to finish committing, pushing and updating the pull request.",
     description:
       "Detail page — the next step shown under an undelivered-work note",
   },
