@@ -409,7 +409,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **203** — [A Blueprint or service that turns previews **off** is refused as if it asked for them: `previews.generation: off` fails 25 of 87 official Render templates, and `--previews off` returns 400](203.md) (~45m, major) ← `/qa-find-bugs-cli` loop sweep fcaa 2026-10-26: Render documents `off` as the default (= omitted); building previews stays a non-goal
 
-- [ ] **202** — [Runtime port detection never runs: every App carries `spec.port: 10000`, and `detectBoundPort` treats any `spec.port` as explicit (root cause of w4/393)](202.md) (~50m, major) ← `/qa-find-bugs-cli` loop sweep d580 2026-10-26: Render's own `hapi-quick-start` (port 3000) serves on Render but fails at 15 min on bex with no detection text
+- [ ] **202** — [Runtime port detection never runs: every App carries `spec.port: 10000`, and `detectBoundPort` treats any `spec.port` as explicit (root cause of w4/393)](blocked/202.md) (~50m, major) ← `/qa-find-bugs-cli` loop sweep d580 2026-10-26: Render's own `hapi-quick-start` (port 3000) serves on Render but fails at 15 min on bex with no detection text — **BLOCKED (2026-10-28: source fixed; release pipeline deploys the corrected operator, then QA runs the hapi no-PORT fixture plus explicit PORT=10000 control and cleans up by ID with 404 proofs; types/targeted tests and lint pass; full operator/backend gates run before push)**
 
 - [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
 
