@@ -88,10 +88,10 @@ const (
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
 	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:c65f0bdd8827df171963e3558a1461b04efc086d0d52ee7c6900fcddb4467e08"},
-		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749"},
-		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f"},
-		{line: "1.20", version: "1.20.4", otp: "29", image: "elixir:1.20@sha256:0cb767622975ce9c77527bb3fe3f659c8ddde9b2dfc980dbbff7416c8d910987"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842"},
+		{line: "1.20", version: "1.20.4", otp: "29", image: "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb"},
 	}},
 	// Render offers no Go version selection for native services; neither does
 	// bex. Render builds with Go's latest stable release, so this line tracks
@@ -99,39 +99,39 @@ var nativeToolchains = map[string]nativeToolchain{
 	// newer `go` than the line refuses to build. The freshness check flags the
 	// next release.
 	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
-		{line: "1.27", image: "golang:1.27-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110"},
+		{line: "1.27", image: "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9"},
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
 		{line: "14", version: "14.21.3", image: "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"},
 		{line: "16", version: "16.20.2", image: "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6"},
 		{line: "18", version: "18.20.8", image: "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783"},
 		{line: "20", version: "20.20.2", image: "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5"},
-		{line: "22", version: "22.23.4", image: "node:22-bookworm@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384"},
-		{line: "24", version: "24.22.1", image: "node:24-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a"},
-		{line: "26", version: "26.12.1", image: "node:26-bookworm@sha256:5c4012d11d9857c42713ba511fbc19645cac1706bb710d51d42b0d301dff7f88"},
+		{line: "22", version: "22.23.4", image: "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd"},
+		{line: "24", version: "24.22.1", image: "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea"},
+		{line: "26", version: "26.12.1", image: "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310"},
 	}},
 	nativePythonRuntime: {label: "Python", defaultLine: "3.13", lines: []nativeLine{
 		{line: "3.7", version: "3.7.17", image: "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a"},
 		{line: "3.8", version: "3.8.20", image: "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c"},
 		{line: "3.9", version: "3.9.25", image: "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285"},
 		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},
-		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:5887f265d8d44d8b4734d3658b21d668edf5aaf92e4945bc0c984afbfab105d3"},
-		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b"},
-		{line: "3.13", version: "3.13.16", image: "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4"},
-		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:7ee7e4d4fb42c3ad45b8fdc473b64ec69c3cf6e80ae5d52f6fa55f77fac29027"},
+		{line: "3.11", version: "3.11.18", image: "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f"},
+		{line: "3.12", version: "3.12.16", image: "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b"},
+		{line: "3.13", version: "3.13.18", image: "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e"},
+		{line: "3.14", version: "3.14.10", image: "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd"},
 	}},
 	nativeRubyRuntime: {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
 		{line: "3.0", version: "3.0.7", image: "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72"},
 		{line: "3.1", version: "3.1.7", image: "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5"},
 		{line: "3.2", version: "3.2.11", image: "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56"},
-		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4"},
-		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172"},
-		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad"},
+		{line: "3.3", version: "3.3.13", image: "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50"},
+		{line: "3.4", version: "3.4.12", image: "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564"},
+		{line: "4.0", version: "4.0.9", image: "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777"},
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
 	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", image: "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29"},
+		{line: "1", image: "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b"},
 	}},
 }
 

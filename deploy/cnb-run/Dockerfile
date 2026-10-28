@@ -15,7 +15,7 @@
 #
 # Labels (io.buildpacks.stack.id = io.buildpacks.stacks.jammy, the stack
 # metadata kpack checks against the build image) are inherited from the base.
-FROM paketobuildpacks/run-jammy-base@sha256:49b919098f0119809eaf93cb11ca1d73fe9850070301cea856a35dfd5160bf6b
+FROM paketobuildpacks/run-jammy-base@sha256:8a671e0f8a5b5404f8a12579f00a3389ce824de8f18c6bc8f0f33403398fa5ab
 
 USER root
 # The final ldconfig check is the regression gate: the build fails if the
