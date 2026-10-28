@@ -696,6 +696,41 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "{formatted} characters clipped",
     description: "Badge on a tool output the server stored head+tail-capped",
   },
+  "agentSessions.showFullOutput": {
+    message: "Show full output",
+    description:
+      "Button on a clipped tool output that loads the complete text the server kept",
+  },
+  "agentSessions.hideFullOutput": {
+    message: "Hide full output",
+    description: "Button that collapses a loaded full tool output",
+  },
+  "agentSessions.fullOutputNotRetained": {
+    message: "Full output not retained",
+    description:
+      "Note on a clipped tool output whose complete text the server did not keep (clipped before full copies were stored)",
+  },
+  "agentSessions.fullOutputLoading": {
+    message: "Loading full output…",
+    description: "Status while a tool call's full output loads",
+  },
+  "agentSessions.fullOutputError": {
+    message: "Couldn't load the full output.",
+    description: "Inline error when loading a tool call's full output failed",
+  },
+  "agentSessions.fullOutputCopy": {
+    message: "Copy full output",
+    description:
+      "Accessible label of the copy button on a loaded full tool output",
+  },
+  "agentSessions.fullOutputCopied": {
+    message: "Full output copied",
+    description: "Toast after copying a full tool output",
+  },
+  "agentSessions.fullOutputCopyError": {
+    message: "Couldn't copy the full output",
+    description: "Toast when copying a full tool output failed",
+  },
   "agentSessions.conversationPartial": {
     message: "Conversation only partially loaded.",
     description:

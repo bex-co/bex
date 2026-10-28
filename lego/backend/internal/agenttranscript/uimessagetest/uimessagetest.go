@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -253,4 +254,64 @@ func LoadFixture() ([]json.RawMessage, error) {
 		}
 	}
 	return out, scanner.Err()
+}
+
+var clipMarker = regexp.MustCompile(`\[bex: \d+ chars clipped\]`)
+
+// FullKey keys a stored full output for RestoreFullOutput.
+func FullKey(toolCallID, field string) string { return toolCallID + "\x00" + field }
+
+// RestoreFullOutput replaces a replayed tool part's clipped output/errorText
+// with its stored full copy (full, keyed by FullKey) and drops the replay's
+// `bex-transcript` flag, reporting whether the part was flagged. A flagged
+// part without a stored copy is an error.
+func RestoreFullOutput(part Part, full map[string]string) (bool, error) {
+	meta, _ := part["resultProviderMetadata"].(map[string]any)
+	flag, _ := meta["bex-transcript"].(map[string]any)
+	if flag["fullOutput"] != true {
+		return false, nil
+	}
+	delete(meta, "bex-transcript")
+	id := str(part["toolCallId"])
+	restored := false
+	if text, ok := full[FullKey(id, "errorText")]; ok {
+		part["errorText"] = text
+		restored = true
+	}
+	if text, ok := full[FullKey(id, "output")]; ok {
+		part["output"] = restoreClipped(part["output"], text)
+		restored = true
+	}
+	if !restored {
+		return true, fmt.Errorf("tool %s is flagged fullOutput but has no stored copy", id)
+	}
+	return true, nil
+}
+
+// restoreClipped puts a full copy back: the whole value when it was a string
+// or the copy is the original JSON value, else the one clipped string inside.
+func restoreClipped(v any, text string) any {
+	if _, ok := v.(string); ok {
+		return text
+	}
+	var whole any
+	if json.Unmarshal([]byte(text), &whole) == nil {
+		if _, isString := whole.(string); !isString {
+			return whole
+		}
+	}
+	switch x := v.(type) {
+	case []any:
+		for i, e := range x {
+			x[i] = restoreClipped(e, text)
+		}
+	case map[string]any:
+		for k, e := range x {
+			if s, ok := e.(string); ok && !clipMarker.MatchString(s) {
+				continue
+			}
+			x[k] = restoreClipped(e, text)
+		}
+	}
+	return v
 }

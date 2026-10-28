@@ -95,6 +95,9 @@ type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	// Ordered transcript read (UI part order) for continuity re-priming.
 	AgentSessionTranscriptReplay(ctx context.Context, sessionID string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
+	// One tool call's full outputs by field (w10/m18), behind the clipped
+	// inline item.
+	AgentSessionToolOutputs(ctx context.Context, sessionID string, turn int, toolCallID string) (map[string]string, error)
 }
 
 // TupleWriter establishes the resource-parent edge in OpenFGA. The production
@@ -909,6 +912,47 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 		page.NextAfterSeq = p.Seq
 	}
 	return page, nil
+}
+
+// maxToolCallIDLength bounds the toolCallId a full-output read accepts (the
+// column's own CHECK).
+const maxToolCallIDLength = 512
+
+// ToolOutput returns one tool call's complete outputs, stored out of line
+// when the transcript item clipped them (ADR051 amendment 2026-10-27,
+// w10/m18): the item says so with `fullOutput: true`. Same authorization as
+// Transcript (a session viewer; another workspace's session is not found).
+// No stored copy — an output under the cap, one clipped before full copies
+// were kept, or one over the session's full-output cap — answers the typed
+// AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND.
+func (s *Service) ToolOutput(ctx context.Context, sessionID string, turn int, toolCallID string) (ToolOutput, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return ToolOutput{}, err
+	}
+	if !s.enabled() {
+		return ToolOutput{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return ToolOutput{}, err
+	}
+	if turn < 0 {
+		return ToolOutput{}, core.NewBadRequestError("AGENT_SESSION_TURN_INVALID", "turn must be a non-negative integer", map[string]any{"turn": turn})
+	}
+	if toolCallID == "" || len(toolCallID) > maxToolCallIDLength {
+		return ToolOutput{}, core.NewBadRequestError("AGENT_SESSION_TOOL_CALL_ID_INVALID", "toolCallId is required (at most 512 bytes)", nil)
+	}
+	outputs, err := s.Store.AgentSessionToolOutputs(ctx, sessionID, turn, toolCallID)
+	if err != nil {
+		return ToolOutput{}, err
+	}
+	if len(outputs) == 0 {
+		if _, err := s.Store.GetAgentSession(ctx, sessionID); err != nil {
+			return ToolOutput{}, mapStoreError(sessionID, err)
+		}
+		return ToolOutput{}, core.NewNotFoundError("AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND", "no full output is stored for this tool call",
+			map[string]any{"id": sessionID, "turn": turn, "toolCallId": toolCallID})
+	}
+	return ToolOutput{SessionID: sessionID, Turn: turn, ToolCallID: toolCallID, Outputs: outputs}, nil
 }
 
 func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {

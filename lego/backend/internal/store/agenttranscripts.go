@@ -109,6 +109,9 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 			existing = map[int64]transcriptRowInfo{}
 		}
 		for _, it := range items {
+			if err := insertToolFullOutputs(ctx, tx, sessionID, m.Turn, it.FullOutputs); err != nil {
+				return err
+			}
 			size := int64(len(it.Part))
 			upgrade := false
 			if row, ok := existing[it.PartIndex]; ok {
@@ -154,6 +157,56 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 		return nil
 	})
 	return res, classify("agent session transcript", err)
+}
+
+// MaxAgentSessionToolOutputBytes caps the full tool outputs one session
+// stores out of line (agent_session_tool_outputs, w10/m18). It is separate from
+// the inline transcript quota (MaxAgentSessionTranscriptBytes): the inline
+// transcript is what every replay pays for, the full copies only a click. A
+// copy that would exceed it is not stored; its item keeps the inline head and
+// tail, and the read answers not-found.
+const MaxAgentSessionToolOutputBytes = 64 << 20
+
+// insertToolFullOutputs idempotently stores clipped outputs' complete texts.
+// The gateway role may only INSERT (and SELECT), so a repeat write is ON
+// CONFLICT DO NOTHING; the per-session cap is checked in the same statement,
+// under the caller's session append lock.
+func insertToolFullOutputs(ctx context.Context, tx pgx.Tx, sessionID string, turn int, outputs []agenttranscript.FullOutput) error {
+	for _, f := range outputs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO agent_session_tool_outputs (session_id, turn, tool_call_id, field, output)
+			SELECT $1, $2, $3, $4, $5
+			WHERE (SELECT COALESCE(sum(octet_length(output)), 0) FROM agent_session_tool_outputs WHERE session_id = $1)
+			      + octet_length($5) <= $6
+			ON CONFLICT (session_id, turn, tool_call_id, field) DO NOTHING`,
+			sessionID, turn, f.ToolCallID, f.Field, f.Text, int64(MaxAgentSessionToolOutputBytes)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AgentSessionToolOutputs returns the stored full outputs of one tool call in
+// one turn, by field ("output", "errorText", "terminal:<id>"). An empty map
+// means no full copy was kept (an output under the inline cap, one clipped
+// before w10/m18, or one over the session cap).
+func (s *PGStore) AgentSessionToolOutputs(ctx context.Context, sessionID string, turn int, toolCallID string) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT field, output FROM agent_session_tool_outputs
+		WHERE session_id = $1 AND turn = $2 AND tool_call_id = $3`, sessionID, turn, toolCallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var field, output string
+		if err := rows.Scan(&field, &output); err != nil {
+			return nil, err
+		}
+		out[field] = output
+	}
+	return out, rows.Err()
 }
 
 func turnRowInfo(ctx context.Context, tx pgx.Tx, sessionID string, turn int) (map[int64]transcriptRowInfo, error) {
@@ -387,6 +440,9 @@ func compactTurnTranscript(ctx context.Context, tx pgx.Tx, sessionID string, tur
 		return stats, err
 	}
 	for _, it := range items {
+		if err := insertToolFullOutputs(ctx, tx, sessionID, turn, it.FullOutputs); err != nil {
+			return stats, err
+		}
 		src, ok := sourceOf[it.Index]
 		if !ok {
 			return stats, fmt.Errorf("turn %d item %d has no source row", turn, it.Index)

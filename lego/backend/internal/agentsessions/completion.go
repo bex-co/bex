@@ -670,7 +670,8 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		}
 		merge.Items = make([]store.AgentSessionTranscriptPart, len(items))
 		for i, it := range items {
-			merge.Items[i] = store.AgentSessionTranscriptPart{Turn: record.Turns, PartIndex: it.Index, Part: it.Part, Item: true, Partial: it.Partial}
+			merge.Items[i] = store.AgentSessionTranscriptPart{Turn: record.Turns, PartIndex: it.Index, Part: it.Part, Item: true, Partial: it.Partial,
+				FullOutputs: it.FullOutputs}
 		}
 		res, err = c.Store.MergeAgentSessionTranscriptItems(ctx, record.ID, merge)
 		if err != nil {

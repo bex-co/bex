@@ -168,3 +168,28 @@ mutation UnarchiveAgentSession($id: String!) {
 mutation DeleteAgentSession($id: String!) {
   deleteAgentSession(id: $id)
 }
+
+# One tool call's complete output (w10/m18, ADR051 amendment 2026-10-27). A
+# replayed tool part flagged `resultProviderMetadata["bex-transcript"].fullOutput`
+# (a terminal snapshot: `data.fullOutput`) stores only a head and tail inline;
+# "Show full output" loads the rest on demand. Not found
+# (AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND) when no full copy was kept.
+query AgentSessionToolOutput(
+  $sessionId: String!
+  $turn: Int!
+  $toolCallId: String!
+) {
+  agentSessionToolOutput(
+    sessionId: $sessionId
+    turn: $turn
+    toolCallId: $toolCallId
+  ) {
+    sessionId
+    turn
+    toolCallId
+    outputs {
+      field
+      text
+    }
+  }
+}

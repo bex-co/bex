@@ -30,6 +30,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
@@ -212,8 +213,11 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	}
 	exercised["AgentSessionTurns"] = true
 	// A nonexistent parent session may make the append fail its FK check; it must
-	// get past PostgreSQL privilege admission first.
-	if err := st.AppendAgentSessionTranscript(ctx, "ags-nope000000000000000", []store.AgentSessionTranscriptPart{{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"text"}`)}}); permDenied(err) {
+	// get past PostgreSQL privilege admission first. The part carries a full
+	// tool output, so the agent_session_tool_outputs INSERT (and the cap's
+	// SELECT), which runs first, is admitted too.
+	if err := st.AppendAgentSessionTranscript(ctx, "ags-nope000000000000000", []store.AgentSessionTranscriptPart{{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"text"}`),
+		FullOutputs: []agenttranscript.FullOutput{{ToolCallID: "call-1", Field: agenttranscript.FieldOutput, Text: "full"}}}}); permDenied(err) {
 		t.Errorf("transcript append INSERT denied under scoped role: %v", err)
 	}
 	exercised["AppendAgentSessionTranscript"] = true

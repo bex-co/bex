@@ -337,6 +337,22 @@ func (f *fakeStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id str
 	return max, ok, nil
 }
 
+// AgentSessionToolOutputs mirrors the PG side table: the full outputs the
+// stored items of that turn carried, first write wins.
+func (f *fakeStore) AgentSessionToolOutputs(_ context.Context, id string, turn int, toolCallID string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, p := range f.transcript[id] {
+		for _, full := range p.FullOutputs {
+			if p.Turn == turn && full.ToolCallID == toolCallID {
+				if _, ok := out[full.Field]; !ok {
+					out[full.Field] = full.Text
+				}
+			}
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeStore) nextTranscriptSeq(id string) int64 {
 	next := int64(0)
 	for seq := range f.transcript[id] {

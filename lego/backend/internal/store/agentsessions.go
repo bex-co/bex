@@ -25,6 +25,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -57,6 +58,11 @@ type AgentSessionTranscriptPart struct {
 	Item      bool
 	Partial   bool
 	CreatedAt time.Time
+	// FullOutputs are the complete texts of the outputs this item clipped
+	// (agenttranscript.Item.FullOutputs); every writer stores them in
+	// agent_session_tool_outputs in the same transaction (write-only: reads
+	// never fill it).
+	FullOutputs []agenttranscript.FullOutput
 }
 
 // Transcript row shapes (agent_session_transcripts.item_state).
@@ -817,6 +823,11 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 			return err
 		}
 		for _, p := range parts {
+			// The full copies go first: an item flagged fullOutput never
+			// commits without them (the cap aside).
+			if err := insertToolFullOutputs(ctx, tx, sessionID, p.Turn, p.FullOutputs); err != nil {
+				return err
+			}
 			partIndex := p.PartIndex
 			// Compatibility for internal callers/tests written before part_index:
 			// their per-turn Seq was the driver ordinal. New writers set PartIndex.

@@ -118,6 +118,10 @@ func expand(part json.RawMessage) []json.RawMessage {
 		ProviderExecuted *bool           `json:"providerExecuted,omitempty"`
 		ProviderMetadata json.RawMessage `json:"providerMetadata,omitempty"`
 	}
+	resultPM := nonNull(t.ResultPM)
+	if t.FullOutput {
+		resultPM = withFullOutputFlag(resultPM)
+	}
 	switch t.State {
 	case "output-available":
 		output := t.Output
@@ -125,14 +129,14 @@ func expand(part json.RawMessage) []json.RawMessage {
 			output = json.RawMessage("null")
 		}
 		out = append(out, mustMarshal(outcome{Type: "tool-output-available", ToolCallID: t.ToolCallID, Output: output,
-			Dynamic: dyn, Preliminary: t.Preliminary, ProviderExecuted: t.ProviderExecuted, ProviderMetadata: nonNull(t.ResultPM)}))
+			Dynamic: dyn, Preliminary: t.Preliminary, ProviderExecuted: t.ProviderExecuted, ProviderMetadata: resultPM}))
 	case "output-error":
 		errorText := ""
 		if t.ErrorText != nil {
 			errorText = *t.ErrorText
 		}
 		out = append(out, mustMarshal(outcome{Type: "tool-output-error", ToolCallID: t.ToolCallID, ErrorText: &errorText,
-			Dynamic: dyn, ProviderExecuted: t.ProviderExecuted, ProviderMetadata: nonNull(t.ResultPM)}))
+			Dynamic: dyn, ProviderExecuted: t.ProviderExecuted, ProviderMetadata: resultPM}))
 	case "output-denied":
 		out = append(out, mustMarshal(outcome{Type: "tool-output-denied", ToolCallID: t.ToolCallID}))
 	}
@@ -147,4 +151,34 @@ func mustMarshal(v any) json.RawMessage {
 		return nil
 	}
 	return out
+}
+
+// fullOutputMeta is the provider-metadata entry a replayed tool outcome chunk
+// carries when its item's clipped output is stored out of line; the AI SDK
+// surfaces it as the part's resultProviderMetadata["bex-transcript"]. It is
+// appended (and stripped) byte-for-byte so re-coalescing a replay is the
+// identity.
+const fullOutputMeta = `"bex-transcript":{"fullOutput":true}`
+
+func withFullOutputFlag(pm json.RawMessage) json.RawMessage {
+	if len(pm) < 2 || pm[0] != '{' || pm[len(pm)-1] != '}' {
+		return json.RawMessage("{" + fullOutputMeta + "}")
+	}
+	if strings.TrimSpace(string(pm[1:len(pm)-1])) == "" {
+		return json.RawMessage("{" + fullOutputMeta + "}")
+	}
+	return json.RawMessage(string(pm[:len(pm)-1]) + "," + fullOutputMeta + "}")
+}
+
+// stripFullOutputFlag removes what withFullOutputFlag added, reporting
+// whether it was there.
+func stripFullOutputFlag(pm json.RawMessage) (json.RawMessage, bool) {
+	s := string(pm)
+	if s == "{"+fullOutputMeta+"}" {
+		return nil, true
+	}
+	if rest, ok := strings.CutSuffix(s, ","+fullOutputMeta+"}"); ok {
+		return json.RawMessage(rest + "}"), true
+	}
+	return pm, false
 }

@@ -85,6 +85,91 @@ func replayedParts(t *testing.T, rows []AgentSessionTranscriptPart) []uimessaget
 	return parts
 }
 
+// storedFullOutputs reads every full output of one session turn, keyed by
+// uimessagetest.FullKey.
+func storedFullOutputs(t *testing.T, s *PGStore, sessionID string, turn int) map[string]string {
+	t.Helper()
+	rows, err := s.Pool.Query(context.Background(), `
+		SELECT tool_call_id, field, output FROM agent_session_tool_outputs WHERE session_id = $1 AND turn = $2`, sessionID, turn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, field, text string
+		if err := rows.Scan(&id, &field, &text); err != nil {
+			t.Fatal(err)
+		}
+		out[uimessagetest.FullKey(id, field)] = text
+	}
+	return out
+}
+
+// w10/m18: both writers store a clipped output's full copy idempotently (the
+// first write wins, as the gateway role cannot UPDATE), the read is per tool
+// call and turn, and the per-session cap refuses a copy that would exceed it.
+func TestPGToolFullOutputs(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "tool-full-output-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	tool := func(index int64, id, text string) AgentSessionTranscriptPart {
+		return AgentSessionTranscriptPart{Turn: 1, PartIndex: index, Item: true,
+			Part:        json.RawMessage(`{"type":"dynamic-tool","toolCallId":"` + id + `","state":"output-available","fullOutput":true}`),
+			FullOutputs: []agenttranscript.FullOutput{{ToolCallID: id, Field: agenttranscript.FieldOutput, Text: text}}}
+	}
+	session := seedSession(t, s, tenant.ID, []AgentSessionTranscriptPart{tool(0, "a", "tee copy")}, false, "")
+
+	// A repeat (a second gateway replica, a reattach) keeps the first copy.
+	if err := s.AppendAgentSessionTranscript(ctx, session, []AgentSessionTranscriptPart{tool(0, "a", "other copy")}); err != nil {
+		t.Fatal(err)
+	}
+	// The harvest merge stores the copies of the items it folds.
+	if _, err := s.MergeAgentSessionTranscriptItems(ctx, session, TranscriptItemMerge{Turn: 1, Quota: MaxAgentSessionTranscriptBytes,
+		Items: []AgentSessionTranscriptPart{tool(0, "a", "harvest copy"), tool(5, "b", "harvested b")}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.AgentSessionToolOutputs(ctx, session, 1, "a"); err != nil || len(got) != 1 || got["output"] != "tee copy" {
+		t.Fatalf("tool a = %v err=%v, want the first copy", got, err)
+	}
+	if got, _ := s.AgentSessionToolOutputs(ctx, session, 1, "b"); got["output"] != "harvested b" {
+		t.Fatalf("tool b = %v", got)
+	}
+	if got, _ := s.AgentSessionToolOutputs(ctx, session, 2, "a"); len(got) != 0 {
+		t.Fatalf("another turn's read = %v, want none", got)
+	}
+
+	// The session cap counts every stored copy.
+	var used int64
+	if err := s.Pool.QueryRow(ctx, `SELECT sum(octet_length(output)) FROM agent_session_tool_outputs WHERE session_id = $1`, session).Scan(&used); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Pool.Exec(ctx, `INSERT INTO agent_session_tool_outputs (session_id, turn, tool_call_id, field, output)
+		VALUES ($1, 9, 'filler', 'output', repeat('x', $2))`, session, MaxAgentSessionToolOutputBytes-used-10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendAgentSessionTranscript(ctx, session, []AgentSessionTranscriptPart{tool(7, "big", "eleven byte")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendAgentSessionTranscript(ctx, session, []AgentSessionTranscriptPart{tool(8, "fits", "ten bytes!")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.AgentSessionToolOutputs(ctx, session, 1, "big"); len(got) != 0 {
+		t.Fatalf("a copy over the session cap was stored: %v", got)
+	}
+	if got, _ := s.AgentSessionToolOutputs(ctx, session, 1, "fits"); got["output"] != "ten bytes!" {
+		t.Fatalf("a copy exactly at the cap = %v", got)
+	}
+	// The items themselves are stored either way (their inline head + tail).
+	if rows := storedTranscript(t, s, session); len(rows) != 4 {
+		t.Fatalf("transcript rows = %d, want 4", len(rows))
+	}
+}
+
 // The w10/m16 backfill: a legacy raw-chunk turn (the recorded 5,602-chunk
 // production turn) compacts to items that render the same content, keeps its
 // replay order, clears a part-cap truncation flag only when the rows prove the
@@ -146,9 +231,21 @@ func TestPGCompactAgentSessionTranscripts(t *testing.T) {
 	if len(got) != len(want) {
 		t.Fatalf("compacted replay rebuilt %d parts, want %d", len(got), len(want))
 	}
+	full := storedFullOutputs(t, s, recorded, 1)
+	var fullBytes int
+	for _, text := range full {
+		fullBytes += len(text)
+	}
+	t.Logf("recorded turn: %d full outputs / %d bytes out of line", len(full), fullBytes)
+	if len(full) == 0 {
+		t.Fatal("compaction stored no full outputs for the clipped tool outputs")
+	}
 	for i := range want {
 		if want[i]["state"] == "streaming" {
 			got[i]["state"] = "streaming" // the recorded turn ends inside a reasoning block
+		}
+		if _, err := uimessagetest.RestoreFullOutput(got[i], full); err != nil {
+			t.Fatalf("part %d: %v", i, err)
 		}
 		if fmt.Sprint(want[i]) != fmt.Sprint(got[i]) {
 			t.Fatalf("part %d differs after compaction", i)

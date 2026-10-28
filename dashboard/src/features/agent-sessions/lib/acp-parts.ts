@@ -144,6 +144,18 @@ export function classifyAcpPart(
   }
 }
 
+/**
+ * Whether a replayed part's clipped output has a full copy on the server
+ * (w10/m18): a tool part carries `resultProviderMetadata["bex-transcript"]
+ * .fullOutput`, a terminal snapshot `data.fullOutput`.
+ */
+export function hasFullOutput(part: Record<string, unknown>): boolean {
+  const flag = asRecord(
+    asRecord(part.resultProviderMetadata)?.["bex-transcript"],
+  );
+  return flag?.fullOutput === true || asRecord(part.data)?.fullOutput === true;
+}
+
 /** True for the AI SDK tool parts (static `tool-<name>` or `dynamic-tool`). */
 export function isToolPart(part: { type: string }): boolean {
   return part.type === "dynamic-tool" || part.type.startsWith("tool-");
