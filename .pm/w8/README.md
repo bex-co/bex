@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210
+- [ ] **m142** — [Clear image-network choices when PORT intent changes](blocked/m142/README.md) (8 tasks) ← from w8/210 — **BLOCKED (2026-10-28: t001–t005/t008 done; source d66f96c06 and all local gates pass. Release pipeline deploys operator/CRD, then QA verifies removed/saved PORT rollback and fresh-deploy controls with ID/404 cleanup; zero-error hosted continuity also depends on the unresolved w4/430 promotion burst)**
 
 - [ ] **m141** — [HTTP-aware Docker web listener selection](blocked/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done; release pipeline deploys operator/API/CRD + migration0172, then QA runs RabbitMQ15672/narration, nginx80 and noEXPOSE runtime-discovery acceptance with explicit/private controls and cleanup by ID/404 proofs)**
 
