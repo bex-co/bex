@@ -185,6 +185,11 @@ spec:
 # to the exact per-session DNS/FQDN/SNI/gateway policy grammar. In particular,
 # no CIDR/entity rule, wildcard FQDN, arbitrary endpoint, plaintext public port,
 # or broad endpoint selector is admissible even if bex-api is compromised.
+# The package registries stay in the exact FQDN rule for both phases (ADR047 D5
+# amendment 2026-10-27). A workspace's `full` network tier is deliberately NOT
+# expressible here: "any public host" needs a world/CIDR rule plus a wildcard
+# DNS filter, and Cilium deny rules cannot carve the model-provider FQDNs back
+# out of it. bex-api stores that tier but renders it as `registries`.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
