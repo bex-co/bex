@@ -1,6 +1,6 @@
 # w8 · m141 — HTTP-aware Docker web listener selection
 
-**Worker:** worker1 **Goal:** Render's multi-port RabbitMQ example serves its HTTP management interface without PORT. **Status:** todo (t001–t005 done; final suites/ship gate and hosted acceptance pending)
+**Worker:** worker1 **Goal:** Render's multi-port RabbitMQ example serves its HTTP management interface without PORT. **Status:** blocked (t001–t006 done; t007 hosted acceptance and t008 closeout pending deployment)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Persist detected-port tenant narration — **DONE** | 30m | t002 |
 | t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
-| t006 | Test coverage | 30m | t005 |
+| t006 | Test coverage — **DONE** | 30m | t005 |
 | t007 | Hosted acceptance | 30m | t006 |
 | t008 | Closeout | 10m | t007 |
 
@@ -36,3 +36,7 @@
 ## Verification checkpoint — 2026-10-28
 
 Full operator and types suites, protocol race/socket tests and targeted operator/store/log/API regressions pass. Simplify completed all three reviews, shared the selection/reason constants, reused probe helpers, derived the pending rollout hold and retired completed scan throttle entries. A final operator rerun covers refreshed prior-release availability evidence. Workspace lint/dead-code and fresh-dependency backend ship gates must pass before push. Hosted acceptance remains pending the new operator/API/CRD deployment.
+
+## Parked gate — 2026-10-28
+
+The final full operator suite, types suite, workspace lint/dead-code and fresh-dependency backend ship gate all passed, including migration0172 and exact-release historical port persistence. **BLOCKED:** release pipeline deploys the operator/API/CRD and migration, then QA runs t007: fresh RabbitMQ noPORT reaches management15672 with its historical Detected HTTP narration, nginx remains80, and a noEXPOSE image selects its runtime HTTP port. Confirm explicitPORT/private controls remain unchanged and delete all fixtures by ID with404 proofs. No production fixture was created before the new build was available.
