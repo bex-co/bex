@@ -591,6 +591,12 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// defaults this to 600s, which would cut Render's 15-minute window to 10
 	// for reasons nobody chose.
 	dep.Spec.ProgressDeadlineSeconds = new(rolloutBudgetSeconds)
+	// A port change holds its old pods after a new one is Ready, so routing
+	// moves before the drain (w4/428).
+	dep.Spec.MinReadySeconds = 0
+	if app.Spec.HasImagePorts() && changesImagePorts(app) {
+		dep.Spec.MinReadySeconds = portChangeHoldSeconds
+	}
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,
 	// recorded in the contract). Never removed once set — removal would itself

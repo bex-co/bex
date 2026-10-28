@@ -227,8 +227,12 @@ func TestImageNetworkLeavesLegacyServicesUnchanged(t *testing.T) {
 }
 
 func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
-	for _, recorded := range []bool{false, true} {
-		t.Run(fmt.Sprintf("recorded-template=%t", recorded), func(t *testing.T) {
+	for _, tc := range []struct{ recorded, early bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
+		recorded := tc.recorded
+		// early: the port change had already routed to its first ready pod
+		// (w4/428), so ServingNetwork is the candidate and the served network
+		// is recorded as prior.
+		t.Run(fmt.Sprintf("recorded-template=%t/early=%t", recorded, tc.early), func(t *testing.T) {
 			ctx := t.Context()
 			serving := &appv1alpha1.ImageNetworkStatus{
 				Image: "registry.test/clickhouse@sha256:served", Revision: "rev-1",
@@ -256,6 +260,9 @@ func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
 					Image: candidate.Image, ArtifactImage: candidate.Image,
 					ImageNetwork: candidate.DeepCopy(), ServingNetwork: serving.DeepCopy(),
 				},
+			}
+			if tc.early {
+				app.Status.ServingNetwork, app.Status.PriorServingNetwork = candidate.DeepCopy(), serving.DeepCopy()
 			}
 			savedSpec := app.Spec.DeepCopy()
 			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app).
