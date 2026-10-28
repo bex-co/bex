@@ -46,7 +46,7 @@ func detectFixture(t *testing.T, started time.Duration, scanner *cannedScanner, 
 	t.Helper()
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"},
-		Spec:       appv1alpha1.AppSpec{Image: "ghcr.io/example/app:1"},
+		Spec:       appv1alpha1.AppSpec{Image: "ghcr.io/example/app:1", Port: appv1alpha1.DefaultPort},
 	}
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"},
@@ -105,6 +105,8 @@ func TestDetectBoundPortLeavesAmbiguousOrConfiguredServicesAlone(t *testing.T) {
 		"the configured port answers (a path problem)": {open: []int{10000, 8000}, started: time.Minute},
 		"nothing answers":                              {open: nil, started: time.Minute},
 		"an explicit port":                             {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 3000 }},
+		"an explicit non-default port":                 {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 8080 }},
+		"a default PORT variable":                      {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = appv1alpha1.DefaultPort }},
 		"a PORT variable":                              {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = 3000 }},
 		"a worker":                                     {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Type = appv1alpha1.TypeBackgroundWorker }},
 		"a booting pod":                                {open: []int{8000}, started: time.Second},
@@ -140,5 +142,14 @@ func TestDetectBoundPortSurfacesScanFailure(t *testing.T) {
 	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{err: portscan.ErrUnreachable}, nil)
 	if got := r.detectBoundPort(t.Context(), app, dep, 10000); !strings.Contains(got, "could not reach the instance") {
 		t.Fatalf("stall text = %q, want the scan failure named", got)
+	}
+}
+
+func TestDetectBoundPortWithoutAPersistedDefault(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{3000}}, func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 0 })
+	r.detectBoundPort(t.Context(), app, dep, 10000)
+	r.detectBoundPort(t.Context(), app, dep, 10000)
+	if app.Status.DetectedPort != 3000 || app.ServingPort() != 3000 {
+		t.Fatalf("detected=%d serving=%d", app.Status.DetectedPort, app.ServingPort())
 	}
 }
