@@ -10,6 +10,8 @@
 #   build_seconds    → build.usdPerSecond
 #   storage_gb_seconds → storage.usdPerGBSecond
 #   sandbox_compute_seconds → sandbox.usdPerWeightedSecond
+#   agent_model_{input,output,cache_read,cache_write}_tokens
+#                           → agentModel.models[model].usdPerMillion{Input,Output,CacheRead,CacheWrite}Tokens
 #
 # Derivation for per-second rates:
 #   bex_monthly = render_monthly × discount
@@ -103,3 +105,38 @@ sandbox:
 # Policy: docs/ADR082-persistent-disks.md D8.
 disk:
   usdPerGBSecond: 0.000000066590563165905631659056   # $0.175 / 2,628,000 GB-seconds
+
+# Platform model route tokens (w10/m14 t004/t005; ADR090 § Platform
+# OpenRouter route). Every platform-key exchange is metered per session into
+# agent_model_{input,output,cache_read,cache_write}_tokens with the OpenRouter
+# model id as the row's tier, priced in USD per 1M tokens per model.
+#
+# SHIPPED DISABLED (user decision pending): no model is priced and no plan
+# has a quota, so the tokens are metered and shown on the usage reads but
+# nothing is charged (the rows export as local zero-rate) and nothing is
+# capped. Adding a priced model adds its Stripe lookup keys
+# (agent_model_<kind>_tokens.<model with [^a-z0-9._-] → _>) to
+# BillableMeterNames: run scripts/stripe-billing-setup.py against test AND
+# live Stripe before that deploy (TestBillableMeterNamesArePinned).
+#
+# Reference: OpenRouter list price for deepseek/deepseek-v4.1-flash-1017,
+# fetched from https://openrouter.ai/api/v1/models on 2026-10-27:
+#   prompt $0.15/M, completion $0.60/M, input_cache_read $0.003/M, no cache
+#   write price listed; weekday UTC 01:00–04:00 and 06:00–10:00 are a 2×
+#   peak ($0.30 / $1.20 / $0.006 per M). The template below is that list
+#   price (peak rates, so cost is never under-recovered) with no markup —
+#   bex's actual price is the user's call.
+#
+# Template (uncomment and edit to enable):
+#   models:
+#     - model: deepseek/deepseek-v4.1-flash-1017
+#       usdPerMillionInputTokens: 0.30
+#       usdPerMillionOutputTokens: 1.20
+#       usdPerMillionCacheReadTokens: 0.006
+#       usdPerMillionCacheWriteTokens: 0.30
+#   monthlyTokenQuota:          # plan absent ⇒ unlimited
+#     - plan: hobby
+#       tokens: 20000000
+agentModel:
+  models: []
+  monthlyTokenQuota: []

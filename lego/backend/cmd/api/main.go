@@ -1015,8 +1015,18 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		if modelKeys != nil {
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
-				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st},
+				// Quota: the platform route's per-plan monthly token quota
+				// (pricing.yaml agentModel.monthlyTokenQuota; none set ⇒ unlimited).
+				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st, Quota: st},
 				Nonce:  st,
+			})
+			// w10/m14 t003: the gateway reports each platform-route exchange's
+			// token usage here; it lands in usage_hourly (ADR023) once per
+			// request id. Same gateway-only HMAC + internal-only listener.
+			internalRoot.Handle(agentsession.InternalModelUsagePath, &agentsession.ModelUsageHandler{
+				Secret:   []byte(cfg.SandboxExecSecret),
+				Recorder: &agentsession.ModelUsageRecorder{Store: st},
+				Nonce:    st,
 			})
 			// w5/m80 t003: the gateway reports a vendor auth rejection (401/403 on the
 			// gateway→vendor hop) here so bex-api terminalizes the session fast instead

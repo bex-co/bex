@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 )
@@ -83,6 +84,10 @@ type Broker struct {
 	// of one workspace (all `<ws>-sandbox` pods share the delegated credential).
 	// <= 0 disables the dimension.
 	MaxRequestsPerWorkspace int
+	// Usage is a test seam for the platform-route usage reporter; nil reports
+	// through API. usageRetryDelay overrides the first retry backoff.
+	Usage           usageAPI
+	usageRetryDelay time.Duration
 
 	clientOnce sync.Once
 	client     *http.Client
@@ -90,6 +95,8 @@ type Broker struct {
 	limits     *sshgateway.SessionLimiter
 	budgetOnce sync.Once
 	budget     *requestBudget
+	usageOnce  sync.Once
+	usage      *usageReporter
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -174,6 +181,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 			b.Metrics.Authentication("missing_model_key")
 			b.reportAuthFailure(verified)
 			http.Error(w, "forbidden", http.StatusForbidden)
+		case errors.Is(err, agentsession.ErrModelQuotaExceeded):
+			// The workspace spent its plan's monthly platform-route tokens
+			// (w10/m14 t005). Terminalize the session with the readable reason,
+			// and answer in the Anthropic error shape so the agent CLI shows the
+			// code rather than a bare status.
+			b.Metrics.Authentication("model_quota_exceeded")
+			b.reportQuotaExceeded(verified)
+			writeQuotaRefusal(w)
 		case errors.Is(err, agentsession.ErrForbidden):
 			// A stale, cross, or post-terminal sandbox asking for a session that is
 			// not its own: it learns nothing and must not be able to end a live
@@ -195,6 +210,13 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	if credential.PinnedModel != "" && !pinnedModelRequest(body, credential.PinnedModel) {
 		http.Error(w, "model not allowed: this workspace's platform model route only serves model "+credential.PinnedModel, http.StatusForbidden)
 		return
+	}
+	// A platform-route Messages exchange is metered (w10/m14 t003) and carries
+	// the platform data policy (t006). count_tokens is neither: it generates
+	// nothing and is not billed by the provider.
+	metered := credential.PinnedModel != "" && upstreamPath == "/v1/messages"
+	if metered {
+		body = withPlatformDataPolicy(body)
 	}
 	// A mint-supplied path prefix (a model route's OpenRouter `/api`) is
 	// trusted like the host, but still shape-checked so it can only ever add
@@ -220,6 +242,11 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	// the injected key is the sole authenticator on the upstream hop.
 	injectAuth(request.Header, credential.Scheme, credential.Credential)
 	request.Header.Set("User-Agent", "bex-agent-model-proxy/1")
+	if metered {
+		// The usage tee must read plain bytes; identity is always acceptable
+		// to the agent, so the relayed response stays coherent.
+		request.Header.Set("Accept-Encoding", "identity")
+	}
 
 	response, err := b.httpClient().Do(request)
 	if err != nil {
@@ -240,8 +267,82 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	}
 	copyResponseHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
-	flushingCopy(w, io.LimitReader(response.Body, maxModelResponseBodyBytes))
+	src := io.LimitReader(response.Body, maxModelResponseBodyBytes)
+	var meter *usageMeter
+	if metered && response.StatusCode == http.StatusOK {
+		meter = newUsageMeter(response.Header.Get("Content-Type"))
+		if enc := response.Header.Get("Content-Encoding"); enc != "" && enc != "identity" {
+			meter = nil // cannot read the tee; counted as unparsed below
+			b.Metrics.ModelUsageReport("unparsed")
+			log.Printf("agent model proxy: usage unreadable, upstream sent Content-Encoding %q (session=%s)", enc, verified.SessionID)
+		} else {
+			src = io.TeeReader(src, meter)
+		}
+	}
+	flushingCopy(w, src)
 	b.Metrics.Authentication("accepted")
+	if meter != nil {
+		b.reportUsage(verified, credential.PinnedModel, meter)
+	}
+}
+
+// reportUsage queues the exchange's usage for bex-api. The response is
+// already relayed, so nothing here can delay or fail it.
+func (b *Broker) reportUsage(req agentsession.ModelMintRequest, model string, meter *usageMeter) {
+	tokens, ok, unparsed := meter.result()
+	if !ok {
+		if unparsed {
+			b.Metrics.ModelUsageReport("unparsed")
+			log.Printf("agent model proxy: no usage found in a platform-route response (session=%s)", req.SessionID)
+		}
+		return
+	}
+	b.usageReporter().enqueue(agentsession.ModelUsageReport{
+		RequestID: id.New(id.AgentModelRequest), SessionID: req.SessionID, Workspace: req.Workspace, Model: model,
+		InputTokens: tokens[0], OutputTokens: tokens[1], CacheReadTokens: tokens[2], CacheWriteTokens: tokens[3],
+	})
+}
+
+func (b *Broker) usageReporter() *usageReporter {
+	b.usageOnce.Do(func() {
+		var api usageAPI = b.API
+		if b.Usage != nil {
+			api = b.Usage
+		}
+		delay := b.usageRetryDelay
+		if delay <= 0 {
+			delay = usageRetryBaseDelay
+		}
+		b.usage = newUsageReporter(api, b.Metrics.ModelUsageReport, delay)
+	})
+	return b.usage
+}
+
+// writeQuotaRefusal answers a quota-refused exchange with HTTP 429 in the
+// Anthropic Messages error shape, carrying the stable code.
+func writeQuotaRefusal(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"type": "error",
+		"error": map[string]string{
+			"type":    "rate_limit_error",
+			"code":    agentsession.ModelQuotaExceededCode,
+			"message": agentsession.ModelQuotaExceededCode + ": " + agentsession.ModelQuotaExceededReason,
+		},
+	})
+}
+
+// reportQuotaExceeded is reportAuthFailure's quota sibling: detached and
+// best-effort, it fails the session with ModelQuotaExceededReason.
+func (b *Broker) reportQuotaExceeded(req agentsession.ModelMintRequest) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), authFailureReportTimeout)
+		defer cancel()
+		if err := b.API.ReportQuotaExceeded(ctx, req); err != nil {
+			log.Printf("agent model proxy: report quota refusal failed (session=%s): %v", req.SessionID, err)
+		}
+	}()
 }
 
 // authFailureReportTimeout bounds the detached gateway→bex-api auth-failure
@@ -478,7 +579,8 @@ func mergeBeta(existing, flag string) string {
 // "model" member appears exactly once and equals pinned. Duplicate "model"
 // keys are refused (parsers disagree on which one wins), as are OpenRouter's
 // body-level routing/billing extensions that could reach a different model or
-// a paid add-on with the platform key ("models" fallback lists, "plugins").
+// a paid add-on with the platform key ("models" fallback lists, "plugins"),
+// or override the platform data policy ("provider").
 func pinnedModelRequest(body []byte, pinned string) bool {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
@@ -501,7 +603,10 @@ func pinnedModelRequest(body []byte, pinned string) bool {
 				return false
 			}
 			matched++
-		case "models", "plugins":
+		case "models", "plugins", "provider":
+			// "provider" is OpenRouter's routing object: the gateway sets the
+			// platform data policy itself, so a client one is refused rather
+			// than merged (it could only weaken or re-price the route).
 			return false
 		default:
 			var skip json.RawMessage

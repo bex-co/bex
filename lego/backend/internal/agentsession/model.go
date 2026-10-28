@@ -191,6 +191,9 @@ type ModelMintRequest struct {
 	PodName   string `json:"podName"`
 	PodUID    string `json:"podUid"`
 	Nonce     string `json:"nonce,omitempty"`
+	// Cause is set only on the auth-failure report: empty is a vendor/missing
+	// key rejection, ModelFailureCauseQuotaExceeded a platform quota refusal.
+	Cause string `json:"cause,omitempty"`
 }
 
 // ModelMintResponse is the minimal model-credential response. It is always
@@ -209,6 +212,9 @@ type ModelMintResponse struct {
 	// gateway must refuse any request whose JSON body's top-level "model" is not
 	// exactly this id, so a tenant sandbox cannot spend the platform key on a
 	// different (more expensive) model. Empty for every workspace BYO key.
+	// It also marks the exchange as platform-metered: the gateway reports its
+	// token usage (InternalModelUsagePath) and applies the platform data
+	// policy (OpenRouter provider routing).
 	PinnedModel string `json:"pinnedModel,omitempty"`
 }
 
@@ -265,6 +271,11 @@ type ModelMinter struct {
 	Sessions SessionStore
 	Audit    core.AuditSink
 	Now      func() time.Time
+	// Quota, when wired, enforces the platform route's per-plan monthly token
+	// quota at mint time (w10/m14 t005). QuotaFor overrides the quota source
+	// (pricing.Default's agentModel.monthlyTokenQuota) in tests.
+	Quota    ModelQuotaStore
+	QuotaFor func(plan string) (tokens int64, limited bool)
 }
 
 func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response ModelMintResponse, err error) {
@@ -317,6 +328,9 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// The route is resolved for the workspace now, the same decision
 	// modelEndpointHostOf just made, so the host is OpenRouter here.
 	if route := routeFor(req.Workspace, agent); route != nil && route.platformKey != "" && host == OpenRouterHost {
+		if err := m.checkModelQuota(ctx, req.Workspace); err != nil {
+			return ModelMintResponse{}, err
+		}
 		return ModelMintResponse{
 			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
 			PathPrefix: pathPrefix, PinnedModel: route.model,
@@ -394,6 +408,10 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
 		return ModelAuthFailureResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
 	}
+	reason, code, err := modelFailureReason(req.Cause)
+	if err != nil {
+		return ModelAuthFailureResponse{}, err
+	}
 	session, sessErr := f.Sessions.GetAgentSession(ctx, req.SessionID)
 	if sessErr != nil {
 		if errors.Is(sessErr, store.ErrNotFound) {
@@ -412,12 +430,20 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 	// where two reports both read `running`: the loser's CAS matches no live row and
 	// returns ErrNotFound, which we acknowledge rather than surface — the desired end
 	// state (failed) already holds.
-	if _, fact, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", ModelAuthFailureReason); finErr != nil {
+	if _, fact, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", reason); finErr != nil {
 		if !errors.Is(finErr, store.ErrNotFound) {
 			return ModelAuthFailureResponse{}, finErr
 		}
-	} else if f.ObserveTerminal != nil {
-		f.ObserveTerminal(fact)
+	} else {
+		if stamper, ok := f.Sessions.(failureCodeStamper); ok && code != "" {
+			// Best-effort: the readable reason already landed with the CAS.
+			if stampErr := stamper.StampAgentSessionFailureCode(ctx, req.SessionID, reason, code); stampErr != nil {
+				log.Printf("agent-session model failure code not stamped (session=%s): %v", req.SessionID, stampErr)
+			}
+		}
+		if f.ObserveTerminal != nil {
+			f.ObserveTerminal(fact)
+		}
 	}
 	return ModelAuthFailureResponse{Acknowledged: true}, nil
 }

@@ -48,6 +48,23 @@ class StripeBillingSetupTest(TestCase):
         self.assertIn("sandbox_compute_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
+    def test_agent_model_tokens_are_unpriced_until_set(self):
+        sheet = SETUP.PRICING.read_text()
+        self.assertFalse(any(name.startswith("agent_model_") for name, _, _ in SETUP.parse_pricing()))
+        priced = sheet.replace(
+            "agentModel:\n  models: []\n",
+            "agentModel:\n  models:\n    - model: deepseek/deepseek-v4.1-flash-1017\n"
+            "      usdPerMillionInputTokens: 0.30\n      usdPerMillionOutputTokens: 1.20\n"
+            "      usdPerMillionCacheWriteTokens: 0\n",
+        )
+        self.assertNotEqual(sheet, priced)
+        dims = {name: cents for name, _, cents in SETUP.parse_pricing(priced)
+                if name.startswith("agent_model_")}
+        self.assertEqual({
+            "agent_model_input_tokens.deepseek_deepseek-v4.1-flash-1017": Decimal("0.000030000000"),
+            "agent_model_output_tokens.deepseek_deepseek-v4.1-flash-1017": Decimal("0.000120000000"),
+        }, dims)
+
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
         self.assertEqual(15, len(names))

@@ -128,9 +128,11 @@ func TestProxyPlatformRoutePinsTheModel(t *testing.T) {
 	if got.Header.Get("Authorization") != "Bearer "+platformKey || len(got.Header.Values("X-Api-Key")) != 0 {
 		t.Fatal("upstream auth is not the platform Bearer key")
 	}
+	// The client's bytes are forwarded verbatim, with only the platform data
+	// policy (w10/m14 t006) appended as the last member.
 	forwarded, _ := io.ReadAll(got.Body)
-	if string(forwarded) != pinned {
-		t.Fatalf("forwarded body = %q, want the original bytes", forwarded)
+	if want := strings.TrimSuffix(pinned, "}") + `,"provider":{"data_collection":"deny"}}`; string(forwarded) != want {
+		t.Fatalf("forwarded body = %q, want %q", forwarded, want)
 	}
 
 	for name, body := range map[string]string{

@@ -532,6 +532,11 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 		), purged_streams AS (
 			DELETE FROM usage_source_streams
 			WHERE expected_through IS NOT NULL AND expected_through <= $1
+		), purged_model_events AS (
+			-- The platform-route token ledger only guards gateway retries
+			-- (minutes); it leaves with the hourly rows it fed.
+			DELETE FROM agent_model_usage_events
+			WHERE window_start < $1
 		), purged AS (
 			DELETE FROM usage_hourly
 			WHERE window_start < $1

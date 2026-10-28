@@ -28,6 +28,10 @@
 #                      different rate, not used bytes (docs/ADR082 D8/D9)
 #   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
+#   agent_model_<kind>_tokens → per (kind × model)       event=agent_model_<kind>_tokens.<model>
+#                      (model folded: [^a-z0-9._-] → _), value = tokens,
+#                      price = usdPerMillion<Kind>Tokens/1e6×100 (priced models only;
+#                      w10/m14 — pricing.yaml ships with no model priced)
 #
 # The billing client (internal/billing/stripe.go) composes the identical
 # event_names + re-bases the same way — the two must agree.
@@ -85,12 +89,29 @@ def plain(d):
     return s
 
 
-def parse_pricing():
+AGENT_MODEL_KEYS = {
+    "usdPerMillionInputTokens": "agent_model_input_tokens",
+    "usdPerMillionOutputTokens": "agent_model_output_tokens",
+    "usdPerMillionCacheReadTokens": "agent_model_cache_read_tokens",
+    "usdPerMillionCacheWriteTokens": "agent_model_cache_write_tokens",
+}
+TOKENS_PER_MILLION = Decimal(1000000)
+
+
+def agent_model_meter_name(kind, model):
+    """Mirror of pricing.AgentModelMeterName (internal/pricing/pricing.go)."""
+    folded = "".join(c if (c.isascii() and (c.isdigit() or c.islower()) or c in "._-") else "_"
+                     for c in model.lower())
+    return f"{kind}.{folded}"
+
+
+def parse_pricing(text=None):
     """Minimal parser for pricing.yaml → list of (event_name, display, cents_per_unit)."""
     section = None
     tier = None
+    model = None
     dims = []
-    for raw in PRICING.read_text().splitlines():
+    for raw in (PRICING.read_text() if text is None else text).splitlines():
         line = raw.split("#", 1)[0].rstrip()
         if not line.strip():
             continue
@@ -101,6 +122,16 @@ def parse_pricing():
         stripped = line.strip()
         if stripped.startswith("- tier:"):
             tier = stripped.split(":", 1)[1].strip()
+        elif section == "agentModel" and stripped.startswith("- model:"):
+            model = stripped.split(":", 1)[1].strip().strip('"').strip("'")
+        elif section == "agentModel" and model and stripped.split(":", 1)[0] in AGENT_MODEL_KEYS:
+            key, val = (x.strip() for x in stripped.split(":", 1))
+            rate = dec(val)
+            if rate > 0:
+                kind = AGENT_MODEL_KEYS[key]
+                dims.append((agent_model_meter_name(kind, model),
+                             f"bex {kind} {model}",
+                             q12(rate / TOKENS_PER_MILLION * 100)))
         elif ":" in stripped:
             key, val = (x.strip() for x in stripped.split(":", 1))
             if key == "tier":

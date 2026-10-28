@@ -954,3 +954,14 @@ func (s *PGStore) DeleteAgentSession(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// StampAgentSessionFailureCode sets the stable failureReasonCode on a session
+// that FinalizeAgentSession has just failed with exactly reason, so a client
+// can act on the cause (w10/m14 t005: AGENT_MODEL_QUOTA_EXCEEDED). The reason
+// match keeps a later, different failure write from inheriting the code.
+func (s *PGStore) StampAgentSessionFailureCode(ctx context.Context, id, reason, code string) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE agent_sessions SET failure_reason_code=$3
+		WHERE id=$1 AND phase='failed' AND failure_reason=$2`, id, reason, code)
+	return err
+}
