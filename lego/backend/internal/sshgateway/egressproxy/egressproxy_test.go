@@ -318,6 +318,10 @@ func TestPrivateClusterAndMetadataTargetsAreRefused(t *testing.T) {
 	for _, target := range []string{
 		"10.0.0.5:443", "127.0.0.1:443", "169.254.169.254:80", "100.64.0.1:443", "[::1]:443",
 		"[fd00::1]:443", "[::ffff:10.0.0.1]:443", "192.168.1.1:80",
+		// Every netip address class the deny list must cover on its own.
+		"0.0.0.0:443", "[::]:443", "224.0.0.1:443", "[ff02::1]:443", "[fe80::1]:443", "172.16.0.1:443",
+		// Tunnelling prefixes that embed an IPv4 address (NAT64, 6to4, Teredo).
+		"[64:ff9b::a00:1]:443", "[2002:a00:1::1]:443", "[2001::1]:443",
 		"internal.example.com:443", // public name, private answer
 		"rebind.example.com:443",   // mixed answer with the metadata address
 		"localhost:443", "bex-api.bex-system.svc:443", "bex-api.bex-system.svc.cluster.local:443", "bex-api:443",
@@ -510,5 +514,156 @@ func TestOriginFormRequestsAreNotProxied(t *testing.T) {
 	response, err = http.Get(h.proxy.URL + "/anything")
 	if err != nil || response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("origin-form request = %v %v, want 400", response, err)
+	}
+}
+
+// switchablePods resolves the source to a Pod whose UID a test can change, as
+// a later sandbox generation of the same session would.
+type switchablePods struct {
+	mu  sync.Mutex
+	uid string
+}
+
+func (p *switchablePods) set(uid string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.uid = uid
+}
+
+func (p *switchablePods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	pod := sandboxPod(sessionID)
+	pod.UID = p.uid
+	return pod, nil
+}
+
+// testClock is a settable Broker.Now.
+type testClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *testClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *testClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+func (g *fakeGranter) callCount() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.calls
+}
+
+// Allowed grants are cached per Pod for 30s and refusals for 5s, so a
+// workspace switched off `full` loses the proxy within 30s and one switched
+// on gains it within 5s; a new sandbox generation (new Pod UID) asks again.
+func TestGrantDecisionsAreCachedPerPodForTheirTTL(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err error
+		ttl time.Duration
+	}{
+		"allowed": {nil, 30 * time.Second},
+		"refused": {agentsession.ErrForbidden, 5 * time.Second},
+	} {
+		t.Run(name, func(t *testing.T) {
+			clock := &testClock{now: time.Unix(1_800_000_000, 0)}
+			pods := &switchablePods{uid: "uid-1"}
+			h := newHarness(t, "127.0.0.1:1", func(b *egressproxy.Broker) {
+				b.Pods = pods
+				b.Now = clock.Now
+			})
+			h.granter.err = tc.err
+			ask := func(want int) {
+				t.Helper()
+				_, _, _ = h.connect(t, "example.com:443", proxyAuth())
+				if got := h.granter.callCount(); got != want {
+					t.Fatalf("grant asked %d times, want %d", got, want)
+				}
+			}
+			ask(1)
+			clock.advance(tc.ttl - time.Second)
+			ask(1)
+			clock.advance(time.Second)
+			ask(2)
+			pods.set("uid-2")
+			ask(3)
+		})
+	}
+}
+
+func TestTunnelsCloseAtTheirTotalLifetime(t *testing.T) {
+	upstream := tlsUpstream(t)
+	h := newHarness(t, upstream.Listener.Addr().String(), func(b *egressproxy.Broker) { b.MaxDuration = 300 * time.Millisecond })
+	status, conn, _ := h.connect(t, "example.com:443", proxyAuth())
+	if status != http.StatusOK {
+		t.Fatalf("CONNECT = %d", status)
+	}
+	client := tls.Client(conn, &tls.Config{ServerName: "example.com", InsecureSkipVerify: true}) //nolint:gosec // test upstream uses a self-signed certificate
+	if err := client.Handshake(); err != nil {
+		t.Fatalf("handshake: %v", err)
+	}
+	// The idle timeout is the 5m default, so only the total lifetime can end
+	// this silent tunnel within the read deadline.
+	_ = client.SetReadDeadline(time.Now().Add(5 * time.Second))
+	start := time.Now()
+	if _, err := client.Read(make([]byte, 1)); err == nil || time.Since(start) > 4*time.Second {
+		t.Fatalf("tunnel outlived its total lifetime (err=%v after %s)", err, time.Since(start))
+	}
+}
+
+// A CONNECT to a public IP literal has no name to match, so any non-provider
+// SNI may follow, but a provider SNI still closes the tunnel.
+func TestRawIPConnectStillRefusesAProviderSNI(t *testing.T) {
+	upstream := tlsUpstream(t)
+	h := newHarness(t, upstream.Listener.Addr().String(), nil)
+	for serverName, wantHandshake := range map[string]bool{"api.anthropic.com": false, "eu.api.openai.com": false, "example.org": true} {
+		status, conn, _ := h.connect(t, "93.184.215.14:443", proxyAuth())
+		if status != http.StatusOK {
+			t.Fatalf("CONNECT to a public literal = %d", status)
+		}
+		client := tls.Client(conn, &tls.Config{ServerName: serverName, InsecureSkipVerify: true}) //nolint:gosec // the test asserts the proxy's SNI decision, not the certificate
+		_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+		if err := client.Handshake(); (err == nil) != wantHandshake {
+			t.Errorf("SNI %q through a raw-IP CONNECT: handshake err = %v, want success %v", serverName, err, wantHandshake)
+		}
+	}
+}
+
+// Plain HTTP goes to the URL's own authority: a Host header naming another
+// host (a provider) neither changes the dialed address nor reaches upstream.
+func TestPlainHTTPHostHeaderCannotRetargetTheRequest(t *testing.T) {
+	var seenHost string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenHost = r.Host
+	}))
+	t.Cleanup(upstream.Close)
+	h := newHarness(t, upstream.Listener.Addr().String(), nil)
+	// Raw, because Go's client would put the Host override in the request line.
+	conn, err := net.Dial("tcp", h.proxy.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if _, err := io.WriteString(conn, "GET http://plain.example.com/ HTTP/1.1\r\nHost: api.anthropic.com\r\nProxy-Authorization: "+proxyAuth()+"\r\n\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusOK || seenHost != "plain.example.com" {
+		t.Fatalf("status %d: upstream saw Host %q, want the URL authority plain.example.com", response.StatusCode, seenHost)
+	}
+	if got := h.dials(); len(got) != 1 || got[0] != "93.184.215.15:80" {
+		t.Fatalf("dialed %v, want plain.example.com's checked address", got)
 	}
 }

@@ -54,9 +54,9 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.tierFullDescription": {
     message:
-      "Any public website over HTTP(S) through the bex egress proxy. Model providers stay blocked, and SSH and other non-HTTP protocols aren't available.",
+      "Any public website over HTTP(S) through the bex egress proxy. Direct calls to model-provider APIs stay blocked (the agent's own model still works), and SSH and other non-HTTP protocols aren't available.",
     description:
-      "Description of the full-internet tier: HTTP(S) via the egress proxy, model providers blocked, no SSH/non-HTTP",
+      "Description of the full-internet tier: HTTP(S) via the egress proxy, direct model-provider API calls blocked, no SSH/non-HTTP",
   },
   "agentEnvironment.registryHostsSummary_one": {
     message: "Included package registries ({count} host)",

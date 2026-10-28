@@ -455,6 +455,37 @@ func TestLoadConfigImageCompatibilityWorkspaces(t *testing.T) {
 	}
 }
 
+// BEX_AGENT_EGRESS_PROXY_URL's port is the hop the full-posture session policy
+// opens, so a malformed origin must refuse startup rather than render a
+// policy and a sandbox HTTPS_PROXY that disagree.
+func TestEgressProxyPort(t *testing.T) {
+	cases := []struct {
+		raw     string
+		want    uint16
+		wantErr bool
+	}{
+		{"", 8085, false},
+		{"http://gateway", 80, false},
+		{"http://gateway:9085", 9085, false},
+		{"http://gateway:9085/", 9085, false},
+		{"https://gateway:9085", 0, true},
+		{"http://user:pass@gateway:9085", 0, true},
+		{"http://gateway:9085/proxy", 0, true},
+		{"http://gateway:0", 0, true},
+		{"http://:9085", 0, true},
+	}
+	for _, tc := range cases {
+		got, err := egressProxyPort(tc.raw)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("egressProxyPort(%q) err = %v, wantErr %v", tc.raw, err, tc.wantErr)
+			continue
+		}
+		if err == nil && got != tc.want {
+			t.Errorf("egressProxyPort(%q) = %d, want %d", tc.raw, got, tc.want)
+		}
+	}
+}
+
 func TestModelProxyPort(t *testing.T) {
 	cases := []struct {
 		raw     string

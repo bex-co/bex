@@ -139,9 +139,10 @@ type grantEntry struct {
 	expires time.Time
 }
 
-// sessionUsage is one session's cumulative counters (pod is guarded by
-// Broker.usageMu: a later sandbox generation of the session replaces it). connections and bytes
-// enforce the budgets; the pending* pair is what the next audit flush reports.
+// sessionUsage is one session's cumulative counters. pod is guarded by
+// Broker.usageMu (a later sandbox generation of the session replaces it);
+// connections and bytes enforce the budgets; the pending* pair is what the
+// next audit flush reports.
 type sessionUsage struct {
 	workspace, sessionID, pod string
 	connections               atomic.Int64
@@ -399,10 +400,11 @@ func (b *Broker) checkClientHello(client net.Conn, reader *bufio.Reader, connect
 	if !sawHello {
 		return nil, refuse(0, "not_tls", "")
 	}
-	if sni != "" && (blockedName(sni) || (connectHost != "" && sni != connectHost)) {
-		if blockedName(sni) {
-			return nil, refuse(0, "provider", "")
-		}
+	switch {
+	case sni == "":
+	case blockedName(sni):
+		return nil, refuse(0, "provider", "")
+	case connectHost != "" && sni != connectHost:
 		return nil, refuse(0, "sni", "")
 	}
 	return recorder.buf.Bytes(), nil
@@ -578,10 +580,12 @@ var deniedPrefixes = func() []netip.Prefix {
 	return out
 }()
 
+// blockedAddr reports an address in deniedPrefixes (which already covers every
+// netip loopback/private/link-local/multicast/unspecified class) or in the
+// deployment's DenyPrefixes.
 func (b *Broker) blockedAddr(addr netip.Addr) bool {
 	addr = addr.Unmap()
-	if !addr.IsValid() || addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() ||
-		addr.IsLinkLocalMulticast() || addr.IsMulticast() || addr.IsUnspecified() || addr.IsInterfaceLocalMulticast() {
+	if !addr.IsValid() {
 		return true
 	}
 	for _, prefix := range deniedPrefixes {
