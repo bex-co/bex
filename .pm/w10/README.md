@@ -33,10 +33,13 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 - [ ] **m14** — **BLOCKED (user: per-model token prices + margin, then run `scripts/stripe-billing-setup.py` on test/live Stripe; per-plan monthly token quotas; customer terms copy for the OpenRouter data policy; a credit limit on the OpenRouter key; optionally require ZDR providers. Then t007 widens to every workspace, due 2026-11-06)** Platform model key: OpenRouter for allowlisted `tea-d98210cbbpdc73dcrkvg`, metered rollout to every workspace (11 tasks) → [`blocked/m14/`](blocked/m14/README.md) — t001–t003, t006 done; t004/t005 mechanisms shipped with empty values (`952b9e8fa`)
 - [x] **m15** — Retire agent-session hibernation: close idle sandboxes after 2h, keep the conversation (8 tasks) → [`done/m15/`](done/m15/README.md) — done 2026-10-25 (`bd6423e5e`, `773aee4b0`; verified in production) ← from user decision 2026-10-25
 - [x] **m16** — Agent-session transcripts: store completed items, show signal, never crash on replay (10 tasks) → [`done/m16/`](done/m16/README.md) — done 2026-10-27 (`8843613e2`, `c6ab62005`, `b9311eb56`, `847394fe4`; verified in production; DoD bytes target amended with evidence)
-- [ ] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`m17/`](m17/README.md) ← from user report 2026-10-27 (composer too complex vs Devin)
-- [ ] **m18** — Agent tool output: full output on demand, smaller inline transcript (8 tasks) → [`m18/`](m18/README.md) ← promoted from w10/004 (2026-10-27)
+- [x] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`done/m17/`](done/m17/README.md) — done 2026-10-28 (verified in production)
+- [x] **m18** — Agent tool output: full output on demand, smaller inline transcript (8 tasks) → [`done/m18/`](done/m18/README.md) — done 2026-10-28 (verified in production)
 
 ## Inbox
+
+- [ ] **006** — Agent network tier "Full internet": enforceable posture (egress proxy) → [`006.md`](006.md)
+- [ ] **007** — Mobile agent composer sends the repo default branch, rejected by the backend → [`007.md`](007.md)
 
 - [x] **005** — Agent transcript item-model edge cases (partial spinner, output-denied, in-place upgrade seq, item-stream dashboard test) → [`done/005.md`](done/005.md) — done 2026-10-27
 
