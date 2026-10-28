@@ -1,6 +1,6 @@
 # w8 · m116 — Return backward log pages most-recent first
 
-**Worker:** worker8 **Goal:** `direction=backward` (the default) log pages list the most recent line first, as Render's API contract states. **Status:** blocked — t001–t005 done 2026-10-18; t006 hosted replay after the release pipeline deploys bex-api, the dashboard and (for its log view) the mobile app
+**Worker:** worker8 **Goal:** `direction=backward` (the default) log pages list the most recent line first, as Render's API contract states. **Status:** done (2026-10-28: t006 hosted replay passed on pin `d66f96c06991`, sweep 3093)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 — **DONE** | Verify Render parity across log surfaces                   | 25m | t002       |
 | t004 — **DONE** | Simplify the ordering change                               | 15m | t003       |
 | t005 — **DONE** | Test direction, paging, and hasMore end to end             | 40m | t003       |
-| t006 | Accept the hosted replay and close milestone               | 20m | t004, t005 |
+| t006 — **DONE** | Accept the hosted replay and close milestone               | 20m | t004, t005 |
 
 **Total:** 6 tasks / 170m.
 

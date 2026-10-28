@@ -31,7 +31,7 @@ The pinned base/prod chart renders an explicit reviewed finite body-read budget 
 
 [Complete HTTP/2 follow-up evidence](evidence/cli-sweep442/README.md) confirms the same60s incoming-body deadline on two fresh native-created Free Node24 services. Both fast one-MiB PUTs200/full hash; both paced PUTs502 after60.606/60.570s,819200 submitted and consumed bytes. Native app aborts, independently verified prefix hashes and HTTP/2.0 edge502 records agree, while original boots stay healthy. The original HTTP/1 response was499. Direct local TLS/HTTP2 succeeds at77.620s. Pinned local Traefik3.7.5 reproduces502 at60.024s; changing only readTimeout to diagnostic100s allows the full paced200/hash. Exact local/hosted cleanup is verified. Preserve these protocol-specific statuses in regression evidence; do not require every failed protocol to return499. The milestone remains todo and its live post-fix acceptance is outstanding.
 
-**More live evidence (w8 `/qa-find-bugs-cli` sweep 7980, 2026-10-26 21:10–21:56 UTC, pin `b4726243e74f`; the same 60 s deadline is also tracked as [w8/207](../207.md), whose fix is in progress):**
+**More live evidence (w8 `/qa-find-bugs-cli` sweep 7980, 2026-10-26 21:10–21:56 UTC, pin `b4726243e74f`; the same 60 s deadline is also tracked as [w8/207](../../done/207.md), whose fix is live (2026-10-28)):**
 
 - A native Python body-reading fixture received a fast 1.33 MB POST in full (`got=1333337 of 1333337 in 10.5s`). The same body at 10 KB/s got `502 Bad Gateway` after 61.67 s, and the app logged `got=620377 of 1333337 in 60.0s`, cut at exactly 60 s.
 - Responses are not limited: `traefik/whoami ?wait=` returned 200 at 65, 125, 180, 330 and 420 s, so only the request-read phase is bounded (Traefik `readTimeout`; `writeTimeout` 0).
