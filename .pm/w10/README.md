@@ -34,10 +34,10 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 - [x] **m15** — Retire agent-session hibernation: close idle sandboxes after 2h, keep the conversation (8 tasks) → [`done/m15/`](done/m15/README.md) — done 2026-10-25 (`bd6423e5e`, `773aee4b0`; verified in production) ← from user decision 2026-10-25
 - [x] **m16** — Agent-session transcripts: store completed items, show signal, never crash on replay (10 tasks) → [`done/m16/`](done/m16/README.md) — done 2026-10-27 (`8843613e2`, `c6ab62005`, `b9311eb56`, `847394fe4`; verified in production; DoD bytes target amended with evidence)
 - [ ] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`m17/`](m17/README.md) ← from user report 2026-10-27 (composer too complex vs Devin)
+- [ ] **m18** — Agent tool output: full output on demand, smaller inline transcript (8 tasks) → [`m18/`](m18/README.md) ← promoted from w10/004 (2026-10-27)
 
 ## Inbox
 
-- [ ] **004** — Agent tool output: downloadable full logs + lower inline cap → [`004.md`](004.md)
 - [x] **005** — Agent transcript item-model edge cases (partial spinner, output-denied, in-place upgrade seq, item-stream dashboard test) → [`done/005.md`](done/005.md) — done 2026-10-27
 
 - [ ] **002** — **BLOCKED (needs a real render.com `RENDER_API_KEY` minted by a human with a Render account, added to `.env`)** Confirmatory live Render audit-log capture → [`blocked/002.md`](blocked/002.md)
