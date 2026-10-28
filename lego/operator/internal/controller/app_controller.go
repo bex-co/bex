@@ -117,9 +117,9 @@ const (
 	reasonRegistryCredsPending = appv1alpha1.ReasonRegistryCredsPending
 
 	// A deploy waiting out a throttled or failing image metadata read
-	// (w4/m243 t008).
-	reasonImageRegistryRateLimited = "ImageRegistryRateLimited"
-	reasonImageRegistryUnavailable = "ImageRegistryUnavailable"
+	// (w4/m243 t008); bex-api reports it as the stall reason (t013).
+	reasonImageRegistryRateLimited = appv1alpha1.ReasonImageRegistryRateLimited
+	reasonImageRegistryUnavailable = appv1alpha1.ReasonImageRegistryUnavailable
 
 	// Ready-condition reasons for a parked or settling workload and for the
 	// failed-build-over-serving-release terminal (w6/m124) — the same shared

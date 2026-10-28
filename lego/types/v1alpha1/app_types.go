@@ -318,6 +318,12 @@ const (
 	// deploy's stall reason (w6/080).
 	ReasonUnschedulable     = "Unschedulable"
 	ReasonContainerCreating = "ContainerCreating"
+	// ReasonImageRegistryRateLimited and ReasonImageRegistryUnavailable name a
+	// deploy waiting out a throttled (429) or failing (5xx, network) image
+	// metadata read; the operator retries it. bex-api shows the message as the
+	// deploy's stall reason, so the wait is never silent (w4/m243 t013).
+	ReasonImageRegistryRateLimited = "ImageRegistryRateLimited"
+	ReasonImageRegistryUnavailable = "ImageRegistryUnavailable"
 
 	// ReasonNodeLost is Ready=False because an instance was lost with its
 	// node — the node went NotReady or away, or Kubernetes evicted the pod for

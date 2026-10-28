@@ -2989,6 +2989,9 @@ func TestDeployStallReasonOnlyForActionableDiagnoses(t *testing.T) {
 		{"unschedulable (w6/080)", appAt(appv1alpha1.ReasonUnschedulable, "no node currently has room", metav1.ConditionFalse, 5), "no node currently has room"},
 		{"container creating (w6/080)", appAt(appv1alpha1.ReasonContainerCreating, "container has still not started", metav1.ConditionFalse, 5), "container has still not started"},
 		{"served release cannot start", appAt(appv1alpha1.ReasonServedReleaseCannotStart, "cannot create its pods", metav1.ConditionFalse, 5), "cannot create its pods"},
+		// A registry wait is retried, but never silent (w4/m243 t013).
+		{"registry rate limited", appAt(appv1alpha1.ReasonImageRegistryRateLimited, "Waiting for the image registry: it rate-limited", metav1.ConditionFalse, 5), "Waiting for the image registry: it rate-limited"},
+		{"registry unavailable", appAt(appv1alpha1.ReasonImageRegistryUnavailable, "Waiting for the image registry to answer", metav1.ConditionFalse, 5), "Waiting for the image registry to answer"},
 		// Ordinary progress must stay silent, or every healthy deploy reads
 		// as stalled for its whole rollout.
 		{"progressing", appAt("RolloutProgressing", "waiting for pods", metav1.ConditionFalse, 5), ""},
