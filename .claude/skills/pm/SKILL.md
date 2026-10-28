@@ -4,7 +4,7 @@ description: >-
   Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, and tasks. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work.
 
 
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(npx prettier*:*)
+allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv:*), Bash(git rm:*), Bash(npx prettier*:*)
 ---
 
 # Task: Arrange the `.pm` board
@@ -82,6 +82,20 @@ Create the next `tNNN.md` from the task template and add its row to the mileston
 4. If no open tasks remain in the milestone, **move the whole milestone** to `wN/done/mN/` and check its box (`- [x]`) in the workstream `README.md`.
 
 Show the intended moves before mutating if the user passed `DRY_RUN=1`.
+
+### `unblock <wN/mN|wN/NNN> <decision or verified finding>`
+
+Record an unblock outcome on an existing item; `/unblock` supplies the conversation and evidence. Accept the item's logical ID or its current `blocked/` path. This subcommand also records partial decisions that do **not** yet clear every gate.
+
+If current-code evidence proves the item obsolete, duplicate or superseded, apply a terminal disposition instead of reopening it. Cite the checked revision, concrete evidence and surviving item when applicable. Items containing findings, decision history or completed task records are archived to `done/` with an explicit superseded/invalid verdict; synchronize the normal done indexes without claiming the original implementation or live acceptance passed. Only items with no unique history may be deleted with their README entry removed. This cleanup needs no repeated user decision; uncertainty alone never establishes obsolescence.
+
+1. Re-read the item and affected READMEs immediately before writing; other sessions may have updated or moved them. Locate the existing item rather than recreating it. If both blocked and active copies exist, inspect and reconcile their history before moving anything; never overwrite one with the other.
+2. Append a dated decision record to the milestone README or inbox note: affected IDs, source (explicit user decision, existing rule, or verified evidence), chosen behavior and scope, rationale, remaining gates with owner and release condition, and the worker's next steps and observable acceptance checks. Preserve prior decisions and evidence; do not attribute a recommendation or silence to the user. Apply a shared decision to each affected item explicitly. Do not store secrets.
+3. Update affected task objectives, steps, dependencies and acceptance criteria to reflect the outcome. Preserve completed tasks and their `done/` files. A scope change needs an explicit basis; never remove an unmet DoD merely to clear a blocker. Verify gates before moving: a plan to grant access is not working access. If any necessary gate remains, keep the item in `blocked/` and update the workstream's BLOCKED summary with the precise remaining action.
+4. Once the remaining work's gates are verified clear, move the whole milestone `wN/blocked/mN/` → `wN/mN/`, or note `wN/blocked/NNN.md` → `wN/NNN.md`, preserving IDs, numbering and history. Leave no stub at the old path. Keep the workstream checkbox unchecked, replace the current BLOCKED summary with the next action, and update its link. For milestones, set the README status to `todo` (noting completed tasks) and reset only the now-unblocked tasks' blocked statuses to `todo`; keep DONE markers and completed frontmatter unchanged. Repair affected links in the moved documents and board indexes.
+5. A deployed version is not proof that its live DoD passed: ready-for-QA work returns as pending verification. If the original end state is already verified, use the normal done conventions instead of reopening or marking unimplemented work done. An already-active item gets only genuinely new decision information; a repeated invocation must not duplicate the record or create a second item.
+
+Run the repository Markdown formatter and verify that file locations, README links/statuses, task frontmatter and dependencies agree. With `DRY_RUN=1`, show the intended record, status changes and moves without writing. Implementation and verification belong to `/loopx <wN>` after the board is ready; this subcommand does not start a worker or grant commit/push permission.
 
 ## Templates
 
