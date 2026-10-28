@@ -339,15 +339,25 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	if _, ports, err := privateServiceProjection(done, 9090); err != nil || len(ports) != 1 || ports[0].Port != 9090 {
 		t.Fatalf("Service ports after completion = %v (%v), want 9090 alone", ports, err)
 	}
-	// A new image that still declares 8080 serves it as another role: the
-	// route moves to the new primary at once, and nothing is aliased.
+	// A new image that still declares 8080 need not listen there: told
+	// PORT=9090, an image that EXPOSEs 8080 listens on 9090 alone. The route
+	// stays on 8080 and the declared port is pointed at 9090 until the
+	// rollout completes (w4/430, live 502s on qa-20261028-lx01-port).
 	kept := app.DeepCopy()
 	kept.Status.ServingNetwork.Ports = []int32{8080, 9090}
-	if _, port, err := r.ingressBackend(t.Context(), kept, 9090, false, true); err != nil || port != 9090 {
-		t.Fatalf("ingress with 8080 still declared = %d (%v), want 9090", port, err)
+	if _, port, err := r.ingressBackend(t.Context(), kept, 9090, false, true); err != nil || port != 8080 {
+		t.Fatalf("ingress with 8080 still declared = %d (%v), want 8080 until completion", port, err)
 	}
-	if _, ports, err := privateServiceProjection(kept, 9090); err != nil || len(ports) != 2 || ports[0].TargetPort.IntVal != 8080 {
-		t.Fatalf("Service ports with 8080 still declared = %v (%v), want 8080→8080 and 9090→9090", ports, err)
+	_, keptPorts, err := privateServiceProjection(kept, 9090)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keptTargets := map[int32]int32{}
+	for _, p := range keptPorts {
+		keptTargets[p.Port] = p.TargetPort.IntVal
+	}
+	if !reflect.DeepEqual(keptTargets, map[int32]int32{8080: 9090, 9090: 9090}) {
+		t.Fatalf("Service ports with 8080 still declared = %v, want 8080→9090 and 9090→9090", keptTargets)
 	}
 	// The hold is lifted once routing has moved.
 	if got := project(app, deploymentParams{image: candidate.Image, port: 9090}).Spec.MinReadySeconds; got != 0 {
