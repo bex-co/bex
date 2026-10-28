@@ -187,8 +187,14 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 		if network == nil || len(network.Ports) == 0 || network.Revision == "" {
 			return nil, nil, fmt.Errorf("image ports have not been resolved")
 		}
-		// A port change must not route to old replicas that lack the new listener.
-		selector[labelRevision] = network.Revision
+		// A port change must not route to old replicas that lack the new
+		// listener, so the Services pin the serving revision until promotion.
+		// Every other rollout (a deploy, an env save, a restart) keeps the same
+		// ports, and a pin there strands the Services on pods the Deployment is
+		// draining: no ready endpoint until promotion (w4/m243 t012).
+		if changesImagePorts(app) {
+			selector[labelRevision] = network.Revision
+		}
 		ports = make([]corev1.ServicePort, 0, len(network.Ports))
 		for _, number := range network.Ports {
 			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", number), Port: number, TargetPort: intstr.FromInt32(number)})
@@ -196,6 +202,15 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 	}
 	applyServicePortServerDefaults(ports)
 	return selector, ports, nil
+}
+
+// changesImagePorts reports a candidate image network whose ports differ from
+// the serving one's: the only rollout whose new pods may lack a listener the
+// old pods serve, or the reverse.
+func changesImagePorts(app *appv1alpha1.App) bool {
+	serving, candidate := app.Status.ServingNetwork, app.Status.ImageNetwork
+	return serving != nil && candidate != nil &&
+		(serving.PrimaryPort != candidate.PrimaryPort || !slices.Equal(serving.Ports, candidate.Ports))
 }
 
 // promoteImageNetwork runs only after readiness of the candidate revision.
@@ -240,9 +255,9 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 		return ctrl.Result{}, false
 	}
 	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
-	reason, msg := reasonImageRegistryUnavailable, "Waiting for the image registry to answer"
+	reason, msg := reasonImageRegistryUnavailable, "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
 	if transient.Status == http.StatusTooManyRequests {
-		reason, msg = reasonImageRegistryRateLimited, "Waiting for the image registry (rate limited)"
+		reason, msg = reasonImageRegistryRateLimited, "Waiting for the image registry: it rate-limited the image metadata read (HTTP 429); bex retries it automatically"
 	}
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
 	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, imageRegistryRetry), imageRegistryRetryMax)}, true

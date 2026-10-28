@@ -171,7 +171,7 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 	imageDiffers := false
 	if app.Spec.Repo == "" {
 		for _, container := range rec.template.Spec.Containers {
-			if container.Name == appContainerName && container.Image != app.Spec.Image {
+			if container.Name == appContainerName && !servesSavedImage(app, container.Image) {
 				imageDiffers = true
 				different = true
 			}
@@ -187,6 +187,20 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 		different = settingsDiffer
 	}
 	return different, different && imageDiffers && !savedDiffers && !settingsDiffer, nil
+}
+
+// servesSavedImage reports whether a served container image is the saved one.
+// An image-port service runs the digest its saved tag resolved to (w4/m243),
+// which counts as the saved image when the serving network records that
+// digest as resolved from exactly spec.image (w4/m243 t014). An override
+// resolves from another reference and still differs. A tag the registry
+// re-points is not a saved change: Render re-pulls a tag on each deploy.
+func servesSavedImage(app *appv1alpha1.App, served string) bool {
+	if served == app.Spec.Image {
+		return true
+	}
+	network := app.Status.ServingNetwork
+	return app.Spec.HasImagePorts() && network != nil && network.Image == served && network.Source == app.Spec.Image
 }
 
 // undeployedChangesReason names why the serving release differs from the
