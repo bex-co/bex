@@ -188,4 +188,27 @@ describe("signal-first summary line (w10/m16 t005)", () => {
     expect(screen.getByText("41,234 characters clipped")).toBeInTheDocument();
     expect(screen.getByText(/head…/)).toBeInTheDocument();
   });
+
+  it("badges a structured output the server clipped string by string", async () => {
+    // The backend clips every string inside an object output (ACP rawOutput).
+    render(
+      <ActivityGroup
+        steps={[
+          {
+            kind: "tool",
+            name: "Terminal",
+            state: done,
+            input: { command: "make test" },
+            output: {
+              stdout: "head\n\n[bex: 1200 chars clipped]\n\ntail",
+              stderr: "a\n\n[bex: 34 chars clipped]\n\nb",
+              exitCode: 0,
+            },
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("1,234 characters clipped")).toBeInTheDocument();
+  });
 });

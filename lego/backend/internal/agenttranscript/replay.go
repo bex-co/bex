@@ -21,6 +21,18 @@ import (
 	"strings"
 )
 
+// ChunkType returns a payload's `type` field ("" when it has none or is not a
+// JSON object).
+func ChunkType(part json.RawMessage) string {
+	var head struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(part, &head) != nil {
+		return ""
+	}
+	return head.Type
+}
+
 // storedPart is the union of the item fields replay reads.
 type storedPart struct {
 	Type             string          `json:"type"`

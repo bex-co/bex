@@ -666,10 +666,8 @@ func replayUIChunk(part []byte, partTurn, currentTurn int, adaptedReplay bool) (
 }
 
 func structuralUIChunk(part []byte) bool {
-	var chunk struct {
-		Type string `json:"type"`
-	}
-	return json.Unmarshal(part, &chunk) == nil && (chunk.Type == "start" || chunk.Type == "finish")
+	t := agenttranscript.ChunkType(part)
+	return t == "start" || t == "finish"
 }
 
 func finishConversation(sse *agentSSE, turns []store.AgentSessionTurn) {

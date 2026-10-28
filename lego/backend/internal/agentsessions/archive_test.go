@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,7 +294,7 @@ func TestTranscriptPagesVerbatimParts(t *testing.T) {
 	svc, st, _, id := steerableFixture(t)
 	parts := []store.AgentSessionTranscriptPart{
 		{Seq: 0, PartIndex: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
-		{Seq: 1, PartIndex: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
+		{Seq: 1, PartIndex: 1, Turn: 1, Item: true, Partial: true, Part: []byte(`{"type":"text","id":"t","text":"hi","state":"streaming"}`)},
 		{Seq: 2, PartIndex: 0, Turn: 2, Part: []byte(`{"type":"finish"}`)},
 	}
 	if err := st.AppendAgentSessionTranscript(context.Background(), id, parts); err != nil {
@@ -304,8 +305,14 @@ func TestTranscriptPagesVerbatimParts(t *testing.T) {
 	if err != nil || len(page.Parts) != 2 || page.NextAfterSeq != 1 {
 		t.Fatalf("page 1 = %+v err=%v", page, err)
 	}
-	if string(page.Parts[1].Part) != `{"type":"text-delta","delta":"hi"}` {
+	if string(page.Parts[1].Part) != `{"type":"text","id":"t","text":"hi","state":"streaming"}` {
 		t.Fatalf("part not verbatim: %s", page.Parts[1].Part)
+	}
+	// A partial item (ADR051 item model) says so; a complete one omits the flag.
+	whole, _ := json.Marshal(page.Parts[0])
+	partial, _ := json.Marshal(page.Parts[1])
+	if page.Parts[0].Partial || strings.Contains(string(whole), `"partial"`) || !strings.Contains(string(partial), `"partial":true`) {
+		t.Fatalf("partial flag = %s / %s", whole, partial)
 	}
 	if len(page.Turns) != 1 || page.Turns[0].Prompt != "fix the tests" || page.Parts[1].PartIndex != 1 {
 		t.Fatalf("role/index transcript facts = turns=%+v parts=%+v", page.Turns, page.Parts)
@@ -440,7 +447,7 @@ func TestArchiveRESTAdapters(t *testing.T) {
 // The GraphQL surface exposes the same verbs + filters: archive via mutation,
 // the archived list filter, and delete returning true.
 func TestArchiveGraphQLSurface(t *testing.T) {
-	svc, _, _, id := steerableFixture(t)
+	svc, st, _, id := steerableFixture(t)
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -468,6 +475,21 @@ func TestArchiveGraphQLSurface(t *testing.T) {
 	}
 	if r := do(`mutation { unarchiveAgentSession(id:"` + id + `") { archivedAt } }`); len(r.Errors) != 0 {
 		t.Fatalf("unarchive mutation errors = %#v", r.Errors)
+	}
+	// The transcript read carries the item model's partial flag.
+	if err := st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
+		{PartIndex: 0, Turn: 1, Item: true, Part: []byte(`{"type":"start"}`)},
+		{PartIndex: 1, Turn: 1, Item: true, Partial: true, Part: []byte(`{"type":"text","id":"t","text":"hi","state":"streaming"}`)},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	r = do(`{ agentSessionTranscript(id:"` + id + `") { parts { partIndex partial } } }`)
+	if len(r.Errors) != 0 {
+		t.Fatalf("transcript query errors = %#v", r.Errors)
+	}
+	parts := r.Data.(map[string]any)["agentSessionTranscript"].(map[string]any)["parts"].([]any)
+	if len(parts) != 2 || parts[0].(map[string]any)["partial"] != false || parts[1].(map[string]any)["partial"] != true {
+		t.Fatalf("transcript parts = %#v", parts)
 	}
 	r = do(`mutation { deleteAgentSession(id:"` + id + `") }`)
 	if len(r.Errors) != 0 || r.Data.(map[string]any)["deleteAgentSession"] != true {

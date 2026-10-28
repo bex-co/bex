@@ -65,9 +65,9 @@ type Item struct {
 	Partial bool
 }
 
-// UsageUpdateType is the one transient chunk type the transcript keeps (its
+// usageUpdateType is the one transient chunk type the transcript keeps (its
 // final value per turn).
-const UsageUpdateType = "data-acp-usage-update"
+const usageUpdateType = "data-acp-usage-update"
 
 type itemKind int
 
@@ -284,10 +284,7 @@ func (c *Coalescer) textMap(chunkType string) (map[string]*pending, string) {
 
 func (c *Coalescer) textStart(index int64, ch chunkFields) int64 {
 	active, partType := c.textMap(ch.Type)
-	id := ""
-	if ch.ID != nil {
-		id = *ch.ID
-	}
+	id := deref(ch.ID)
 	if prev := active[id]; prev != nil {
 		// A repeated start opens a new part in the AI SDK; the old one is over.
 		prev.done = true
@@ -304,8 +301,8 @@ func (c *Coalescer) textDelta(ch chunkFields) int64 {
 		return -1 // the AI SDK rejects a delta without its start; so does replay
 	}
 	p.text.WriteString(ch.Delta)
-	if len(ch.ProviderMetadata) > 0 && string(ch.ProviderMetadata) != "null" {
-		p.pm = ch.ProviderMetadata
+	if pm := nonNull(ch.ProviderMetadata); pm != nil {
+		p.pm = pm
 	}
 	c.resize(p)
 	return p.index
@@ -318,8 +315,8 @@ func (c *Coalescer) textEnd(ch chunkFields) int64 {
 	if p == nil {
 		return -1
 	}
-	if len(ch.ProviderMetadata) > 0 && string(ch.ProviderMetadata) != "null" {
-		p.pm = ch.ProviderMetadata
+	if pm := nonNull(ch.ProviderMetadata); pm != nil {
+		p.pm = pm
 	}
 	p.done = true
 	delete(active, id)
@@ -341,7 +338,7 @@ func (c *Coalescer) toolChunk(index int64, ch chunkFields) int64 {
 		c.tools[ch.ToolCallID] = p
 	}
 	t := &p.tool
-	hasPM := len(ch.ProviderMetadata) > 0 && string(ch.ProviderMetadata) != "null"
+	hasPM := nonNull(ch.ProviderMetadata) != nil
 	switch ch.Type {
 	case "tool-input-start":
 		t.ToolName = ch.ToolName
@@ -381,7 +378,7 @@ func (c *Coalescer) toolChunk(index int64, ch chunkFields) int64 {
 		}
 		c.completeTool(p)
 	case "tool-output-available":
-		output, clipped := ClipJSON(ch.Output)
+		output, clipped := clipJSON(ch.Output)
 		t.Output = output
 		t.Truncated = t.Truncated || clipped
 		t.ErrorText = nil
@@ -463,7 +460,7 @@ func (c *Coalescer) finishTurn() {
 
 func (c *Coalescer) dataChunk(index int64, part json.RawMessage, ch chunkFields) int64 {
 	if ch.Transient {
-		if ch.Type != UsageUpdateType {
+		if ch.Type != usageUpdateType {
 			return -1
 		}
 		if c.usage == nil {
@@ -515,7 +512,7 @@ func clipTerminal(part json.RawMessage) json.RawMessage {
 	if json.Unmarshal(part, &chunk) != nil {
 		return part
 	}
-	data, clipped := ClipJSON(chunk["data"])
+	data, clipped := clipJSON(chunk["data"])
 	if !clipped {
 		return part
 	}

@@ -119,9 +119,12 @@ var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"seq":       &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Seq })},
 		"partIndex": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.PartIndex })},
 		"turn":      &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Turn })},
-		// The verbatim stored payload as JSON text — the exact bytes the stream
-		// replay would deliver; clients parse it themselves.
-		"part":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return string(v.Part) })},
+		// The stored payload as JSON text — a completed item (ADR051 item
+		// model) or a legacy chunk; clients parse it themselves.
+		"part": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return string(v.Part) })},
+		// The live stream ended inside this item; a later harvest may complete
+		// it in place under the same seq.
+		"partial":   &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Partial })},
 		"createdAt": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return gqlTime(v.CreatedAt) })},
 	},
 })

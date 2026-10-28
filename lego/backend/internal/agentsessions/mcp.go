@@ -92,7 +92,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript (verbatim stream parts, seq-ordered). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it. Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in transcriptArgs) (*mcp.CallToolResult, TranscriptPage, error) {
 			afterSeq := int64(-1)
 			if in.AfterSeq != nil {

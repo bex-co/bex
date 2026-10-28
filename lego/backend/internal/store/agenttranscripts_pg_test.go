@@ -28,6 +28,16 @@ import (
 
 func legacySession(t *testing.T, s *PGStore, workspace string, chunks []json.RawMessage, settle bool, reason string) string {
 	t.Helper()
+	parts := make([]AgentSessionTranscriptPart, len(chunks))
+	for i, c := range chunks {
+		parts[i] = AgentSessionTranscriptPart{Turn: 1, PartIndex: int64(i), Part: c}
+	}
+	return seedSession(t, s, workspace, parts, settle, reason)
+}
+
+// seedSession creates a session whose turn 1 holds parts as stored rows.
+func seedSession(t *testing.T, s *PGStore, workspace string, parts []AgentSessionTranscriptPart, settle bool, reason string) string {
+	t.Helper()
 	ctx := context.Background()
 	session, err := s.CreateAgentSession(ctx, AgentSession{
 		WorkspaceID: workspace, Repo: "bex-co/bex", Branch: "bex-agent/s1",
@@ -35,10 +45,6 @@ func legacySession(t *testing.T, s *PGStore, workspace string, chunks []json.Raw
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	parts := make([]AgentSessionTranscriptPart, len(chunks))
-	for i, c := range chunks {
-		parts[i] = AgentSessionTranscriptPart{Turn: 1, PartIndex: int64(i), Part: c}
 	}
 	for offset := 0; offset < len(parts); offset += 1000 {
 		if err := s.AppendAgentSessionTranscript(ctx, session.ID, parts[offset:min(offset+1000, len(parts))]); err != nil {
@@ -169,5 +175,56 @@ func TestPGCompactAgentSessionTranscripts(t *testing.T) {
 	}
 	if after := storedTranscript(t, s, recorded); fmt.Sprint(after) != fmt.Sprint(rows) {
 		t.Fatal("re-run changed the compacted rows")
+	}
+}
+
+// The part-cap flag is cleared only when the stored rows themselves prove the
+// turn complete. A gap in the chunk ordinals, or a turn that already holds an
+// item row (a tee that spanned the deploy), still compacts but keeps its flag.
+func TestPGCompactionKeepsTheFlagWithoutProofOfCompleteness(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "transcript-compaction-flag-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	row := func(index int64, part string, item bool) AgentSessionTranscriptPart {
+		return AgentSessionTranscriptPart{Turn: 1, PartIndex: index, Part: json.RawMessage(part), Item: item}
+	}
+	gap := seedSession(t, s, tenant.ID, []AgentSessionTranscriptPart{
+		row(0, `{"type":"start"}`, false),
+		row(1, `{"type":"text-start","id":"t"}`, false),
+		row(2, `{"type":"text-delta","id":"t","delta":"hi"}`, false),
+		row(3, `{"type":"text-end","id":"t"}`, false),
+		row(5, `{"type":"finish"}`, false),
+	}, true, LegacyPartLimitReason)
+	mixed := seedSession(t, s, tenant.ID, []AgentSessionTranscriptPart{
+		row(0, `{"type":"start"}`, false),
+		row(1, `{"type":"text","id":"t","text":"hi","state":"done"}`, true),
+		row(2, `{"type":"finish"}`, false),
+	}, true, LegacyPartLimitReason)
+
+	stats, err := s.CompactAgentSessionTranscripts(ctx, TranscriptCompactionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.FlagsCleared != 0 {
+		t.Fatalf("cleared %d flags without proof of completeness: %+v", stats.FlagsCleared, stats)
+	}
+	for name, id := range map[string]string{"gap": gap, "mixed": mixed} {
+		rows := storedTranscript(t, s, id)
+		if len(rows) != 3 || string(rows[1].Part) != `{"type":"text","id":"t","text":"hi","state":"done"}` {
+			t.Fatalf("%s: compacted rows = %+v", name, rows)
+		}
+		for _, r := range rows {
+			if !r.Item || r.Partial {
+				t.Fatalf("%s: row %+v not a complete item", name, r)
+			}
+		}
+		turns, _ := s.AgentSessionTurns(ctx, id)
+		if !turns[0].TranscriptTruncated || turns[0].TruncationReason != LegacyPartLimitReason {
+			t.Fatalf("%s: flag changed: %+v", name, turns[0])
+		}
 	}
 }

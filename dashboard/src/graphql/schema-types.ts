@@ -124,6 +124,7 @@ export type AgentSessionTranscriptPart = {
   createdAt: Scalars['String']['output'];
   part: Scalars['String']['output'];
   partIndex: Scalars['Int']['output'];
+  partial: Scalars['Boolean']['output'];
   seq: Scalars['Int']['output'];
   turn: Scalars['Int']['output'];
 };

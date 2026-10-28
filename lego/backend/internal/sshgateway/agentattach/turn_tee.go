@@ -56,10 +56,11 @@ func (r *replayedTurn) add(part store.AgentSessionTranscriptPart) {
 // that coalescing stores as-is), so a turn that holds only such rows is not
 // treated as legacy.
 func standaloneChunk(part json.RawMessage) bool {
-	var head struct {
-		Type string `json:"type"`
+	switch agenttranscript.ChunkType(part) {
+	case "start", "finish", "error":
+		return true
 	}
-	return json.Unmarshal(part, &head) == nil && (head.Type == "start" || head.Type == "finish" || head.Type == "error")
+	return false
 }
 
 // suppress reports whether the chunk at ordinal, belonging to the item at
