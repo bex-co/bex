@@ -10,6 +10,8 @@ import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-wor
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
+import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
+import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
 import {
   SECTION_NAVIGATION_STICKY_CLASS,
@@ -88,6 +90,9 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="team">
                   <CardSkeleton rows={5} />
                 </section>
+                <section data-skeleton-region="agents">
+                  <AgentEnvironmentCardSkeleton />
+                </section>
                 <section data-skeleton-region="danger-zone">
                   <CardSkeleton rows={2} />
                   {hasMultipleWorkspaces ? <CardSkeleton rows={2} /> : null}
@@ -114,6 +119,15 @@ function WorkspaceSettingsPage() {
                     it lived on account /settings from w4/m12 until now. */}
                 <section id="team" className={SECTION_NAVIGATION_TARGET_CLASS}>
                   <TeamPanel />
+                </section>
+                {/* Settings → Agents (w10/m17/t005): the workspace agent
+                    environment — network tier and default model — configured
+                    once here instead of per session. */}
+                <section
+                  id="agents"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
+                  <AgentEnvironmentCard ownerId={currentWorkspace.id} />
                 </section>
                 {/* The danger zone is now always present: Leave workspace
                     (w5/m102) lives here for every member, while Delete stays

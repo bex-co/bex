@@ -27,6 +27,7 @@ import enInvites from "@/features/invites/locales/en";
 import enAgentSessions from "@/features/agent-sessions/locales/en";
 import enCapabilities from "@/features/capabilities/locales/en";
 import enOnboarding from "@/features/onboarding/locales/en";
+import enAgentEnvironment from "@/features/agent-environment/locales/en";
 import {
   DEFAULT_LANGUAGE,
   type SupportedLanguage,
@@ -86,6 +87,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enAgentSessions),
   ...extractMessages(enCapabilities),
   ...extractMessages(enOnboarding),
+  ...extractMessages(enAgentEnvironment),
 };
 
 // Only the default language is bundled eagerly (into the entry chunk). Other
