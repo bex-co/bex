@@ -88,6 +88,19 @@ A public web service or static site is reachable at its URL from creation, and t
 
 **The one exception: `/robots.txt` of a spun-down service (w8/185).** Render answers `GET`/`HEAD /robots.txt` while a free service is spun down with a standard disallow-all file, and the request neither reaches the service nor spins it up ([render.com/docs/free](https://render.com/docs/free)). The activator does the same for an App in phase `Hibernated`: after the maintenance, suspended and first-deploy decisions and before the wake, it answers `200 text/plain` `User-agent: *` / `Disallow: /` (`Cache-Control: no-store`), with no replica patch and no last-active write. A waking or awake service gets `/robots.txt` from the app like any path.
 
+### Platform routing tag (w8/213)
+
+When Render's edge answers in place of a service, it tags the response with `X-Render-Routing`. The header is undocumented, but developers and their agents use it to tell an edge 404/503 from the app's own. The activator sets the same header on every answer it gives instead of the App. A request it proxies to a woken App is the App's own response and never carries the header.
+
+| Activator answer | `X-Render-Routing` | Source |
+| --- | --- | --- |
+| Unknown host (`404`) | `no-server` | Render, captured 2026-10-28 |
+| Suspended (`503`, `Retry-After: 3600`) | `suspend` | Render, captured 2026-10-28 |
+| Wake page / wake JSON of a hibernated App, and a held request's `504` wake timeout | `hibernate-pending-wake` | Render, captured 2026-07-16 ([wake-interstitial.md](render-artifacts/wake-interstitial.md)) |
+| An awake App failing its health check (the readiness hold), a proxy `502`, a failed or canceled first release, a first deploy in progress, maintenance mode | `no-server` | No Render capture; "nothing to route to" is the documented fallback |
+
+The `/robots.txt` disallow-all of a spun-down service is untagged. It is content, not a "not served" signal, and Render's tag on it was not captured. The tag is decided from the App's phase before the wake path runs. Once the wake has started, the cached phase cannot tell a cold start from a readiness hold. A saved static-site header rule cannot forge the tag on these responses: the static server applies those rules, and the activator never does.
+
 ### Who writes the fields
 
 Two ways, same field write:

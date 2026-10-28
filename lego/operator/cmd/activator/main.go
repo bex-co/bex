@@ -162,6 +162,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// never reaches the wake path below.
 		if !ok || !app.Spec.PubliclyRoutable() {
 			log.Info("no routed app found for host", "host", host)
+			setRouting(w, routingNoServer)
 			writeUnknownHostResponse(w, r)
 			return
 		}
@@ -169,6 +170,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// Maintenance routing is a public interstitial only. Do not touch the App,
 		// Deployment, or wake annotations: its workload remains exactly as it was.
 		if app.Spec.MaintenanceMode != nil && app.Spec.MaintenanceMode.Enabled {
+			setRouting(w, routingNoServer)
 			serveMaintenance(w, r, app, cache.claims)
 			return
 		}
@@ -183,6 +185,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// suspension. Checked after maintenance so an owner who set a
 		// maintenance page still gets that page.
 		if app.Spec.Suspended {
+			setRouting(w, routingSuspend)
 			writeSuspendedResponse(w, r)
 			return
 		}
@@ -194,6 +197,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// retrying cannot help.
 		if app.Status.ActiveRevision == "" &&
 			(app.Status.Phase == appv1alpha1.PhaseFailed || app.Status.Phase == appv1alpha1.PhaseCanceled) {
+			setRouting(w, routingNoServer)
 			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 			return
 		}
@@ -204,6 +208,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// serves (w4/m235). A hibernated App always served once, so it wakes
 		// even if its status lost the revision.
 		if app.Status.ActiveRevision == "" && app.Status.Phase != appv1alpha1.PhaseHibernated {
+			setRouting(w, routingNoServer)
 			writeFirstDeployResponse(w, r)
 			return
 		}
@@ -213,6 +218,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// first-deploy response until the static-server takes over (w4/m235
 		// t008).
 		if app.Spec.Type == appv1alpha1.TypeStaticSite {
+			setRouting(w, routingNoServer)
 			writeFirstDeployResponse(w, r)
 			return
 		}
@@ -230,6 +236,14 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name
+		// The tag is decided before the wake, while the phase still says
+		// whether this is a sleeping App or an awake one failing its health
+		// check (the readiness hold), and set only on the answer below: a
+		// held request is the App's own response once it wakes.
+		routing := routingNoServer
+		if app.Status.Phase == appv1alpha1.PhaseHibernated {
+			routing = routingWake
+		}
 		// A client that is not a browser has no loading page to poll, so its
 		// request is held through the cold start and then served (w8/178).
 		// Decided before the wake: afterwards the cached phase is stale.
@@ -244,9 +258,23 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		if holdable && hold.serve(w, r, app, key) {
 			return
 		}
+		setRouting(w, routing)
 		writeWakeResponse(w, r)
 	})
 }
+
+// Render tags a response its edge gives in place of the service with
+// X-Render-Routing (w8/213), which tells "the platform has no server for this"
+// from the app's own 404 or 503. Only platform answers carry it; a request the
+// activator proxies to the App never does.
+const (
+	routingHeader   = "X-Render-Routing"
+	routingNoServer = "no-server"
+	routingSuspend  = "suspend"
+	routingWake     = "hibernate-pending-wake"
+)
+
+func setRouting(w http.ResponseWriter, value string) { w.Header().Set(routingHeader, value) }
 
 // robotsDisallowAll is Render's standard answer for a spun-down service.
 const robotsDisallowAll = "User-agent: *\nDisallow: /\n"

@@ -92,6 +92,9 @@ func TestHeldRequestIsServedByTheWokenApp(t *testing.T) {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
 	}
+	if got := rr.Header().Get(routingHeader); got != "" {
+		t.Errorf("the app's own response carries %s: %q (w8/213)", routingHeader, got)
+	}
 	if hits.Load() != 1 {
 		t.Errorf("upstream saw %d requests, want exactly 1", hits.Load())
 	}
@@ -146,8 +149,8 @@ func TestHoldIsBoundedAndAnswersAGatewayTimeout(t *testing.T) {
 	rr := httptest.NewRecorder()
 	start := time.Now()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusGatewayTimeout {
-		t.Fatalf("response = %d %q, want 504", rr.Code, rr.Body.String())
+	if tag := rr.Header().Get(routingHeader); rr.Code != http.StatusGatewayTimeout || tag != routingWake {
+		t.Fatalf("response = %d %q tagged %q, want 504 tagged %s", rr.Code, rr.Body.String(), tag, routingWake)
 	}
 	if elapsed := time.Since(start); elapsed < 150*time.Millisecond || elapsed > 3*time.Second {
 		t.Fatalf("held for %v, want about the 200ms bound", elapsed)
@@ -175,6 +178,10 @@ func TestAwakeUnreadyServiceIsNotHeld(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if rr.Code != http.StatusServiceUnavailable || time.Since(start) > time.Second {
 		t.Fatalf("awake-but-unready response = %d after %v, want an immediate 503", rr.Code, time.Since(start))
+	}
+	// An awake App failing its health check is not a pending wake.
+	if got := rr.Header().Get(routingHeader); got != routingNoServer {
+		t.Errorf("%s = %q, want %q", routingHeader, got, routingNoServer)
 	}
 }
 

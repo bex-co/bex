@@ -169,6 +169,7 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 				writeWakeTimeout(w, &http.Request{Method: http.MethodGet})
 				return
 			}
+			setRouting(w, routingNoServer)
 			writeBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway,
 				"application/json", `{"error":"bad gateway"}`)
 		},
@@ -301,6 +302,7 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 // writeWakeTimeout answers a held request whose App did not wake within the
 // hold bound.
 func writeWakeTimeout(w http.ResponseWriter, r *http.Request) {
+	setRouting(w, routingWake)
 	writeBody(w, r, http.StatusGatewayTimeout, "application/json",
 		`{"error":"service did not wake in time","retryAfter":5}`)
 }
