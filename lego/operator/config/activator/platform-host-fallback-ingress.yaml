@@ -1,0 +1,39 @@
+# The platform-host fallback route (w4/m235 t008): every platform host no App
+# route claims yet goes to the activator, at the lowest router priority. A
+# just-created service answers its first-deploy response while the operator's
+# first reconcile writes its own route, and a host no public App owns answers
+# a bex 404 instead of Traefik's raw "404 page not found". Every App route
+# keeps Traefik's default priority, its rule length, which is always above 1.
+#
+# A platform manifest, not an operator write: the bex-operator-object-namespaces
+# admission policy (deploy/gitops/base/operator-workload-admission.yaml) lets
+# the operator write Ingresses only in tenant and bootstrap namespaces, and it
+# refused the operator-written version of this route in production.
+#
+# The host is "*." + BEX_BASE_DOMAIN; keep it in sync with the activator,
+# api, manager and static-server deployments' BEX_BASE_DOMAIN. The TLS entry
+# names no Secret, so Traefik serves its default wildcard certificate
+# (deploy/gitops/charts/onbex-default-tls).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-host-fallback
+  namespace: bex-system
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "1"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "*.onbex.co"
+  rules:
+    - host: "*.onbex.co"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: activator
+                port:
+                  number: 8888
