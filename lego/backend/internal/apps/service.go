@@ -1755,7 +1755,9 @@ func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v A
 	instanceCounts := make(map[string]int, len(pods))
 	for i := range pods {
 		pod := &pods[i]
-		if !readyCurrentAppPod(pod, v.Image, v.Revision) {
+		// The pod runs the raw status image; v.Image is the public form, which
+		// strips the in-cluster registry host from every bex-built image.
+		if !readyCurrentAppPod(pod, a.Status.Image, v.Revision) {
 			continue
 		}
 		target := SSHInstanceTarget{

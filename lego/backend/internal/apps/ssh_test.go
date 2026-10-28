@@ -308,6 +308,30 @@ func TestSSHInstanceIDNeverLeaksRawPodNames(t *testing.T) {
 	}
 }
 
+// TestSSHResolvesBexBuiltImages pins the w4/m236 regression: the view shows a
+// bex-built image without its in-cluster registry host, but the pod runs the
+// full reference. Comparing the two left every git-built service with "no
+// Ready instance", so native SSH and the Web Shell refused it.
+func TestSSHResolvesBexBuiltImages(t *testing.T) {
+	const built = "zot.bex-registry.svc:5000/tea-workspace/web:gen-2@sha256:9a74b270ac7a1765e700f4c27e082223639738f4e8b6ee9dc3b180dfce12f8a9"
+	app := sshApp()
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/example/web"
+	app.Status.Image = built
+	pod := sshPod("web-rs-pod01", built, true)
+	service := &Service{Base: &core.Base{Client: fakeClient(app, pod), Namespace: "default"}}
+	if got := service.view(app).Image; got == built {
+		t.Fatalf("precondition: the view should hide the registry host, got %q", got)
+	}
+	target, err := service.ResolveSSHSession(context.Background(), sshServiceID)
+	if err != nil {
+		t.Fatalf("bex-built service did not resolve: %v", err)
+	}
+	if target.PodName != pod.Name {
+		t.Fatalf("resolved %q, want %q", target.PodName, pod.Name)
+	}
+}
+
 func TestSSHInstanceIDCollisionFailsClosed(t *testing.T) {
 	app := sshApp()
 	first := sshPod("web-rs1-a1b2c", "example/web:v2", true)
