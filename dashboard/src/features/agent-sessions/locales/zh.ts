@@ -634,6 +634,41 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已截断 {formatted} 个字符",
     description: "Badge on a tool output the server stored head+tail-capped",
   },
+  "agentSessions.showFullOutput": {
+    message: "显示完整输出",
+    description:
+      "Button on a clipped tool output that loads the complete text the server kept",
+  },
+  "agentSessions.hideFullOutput": {
+    message: "隐藏完整输出",
+    description: "Button that collapses a loaded full tool output",
+  },
+  "agentSessions.fullOutputNotRetained": {
+    message: "未保留完整输出",
+    description:
+      "Note on a clipped tool output whose complete text the server did not keep (clipped before full copies were stored)",
+  },
+  "agentSessions.fullOutputLoading": {
+    message: "正在加载完整输出…",
+    description: "Status while a tool call's full output loads",
+  },
+  "agentSessions.fullOutputError": {
+    message: "无法加载完整输出。",
+    description: "Inline error when loading a tool call's full output failed",
+  },
+  "agentSessions.fullOutputCopy": {
+    message: "复制完整输出",
+    description:
+      "Accessible label of the copy button on a loaded full tool output",
+  },
+  "agentSessions.fullOutputCopied": {
+    message: "已复制完整输出",
+    description: "Toast after copying a full tool output",
+  },
+  "agentSessions.fullOutputCopyError": {
+    message: "无法复制完整输出",
+    description: "Toast when copying a full tool output failed",
+  },
   "agentSessions.conversationPartial": {
     message: "对话仅部分加载。",
     description:

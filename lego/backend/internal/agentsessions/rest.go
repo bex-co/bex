@@ -2,6 +2,7 @@ package agentsessions
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -137,6 +138,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, page)
+	})
+	mux.HandleFunc("GET /v1/agent-sessions/{id}/tool-outputs/{toolCallId}", func(w http.ResponseWriter, r *http.Request) {
+		turn, err := strconv.Atoi(r.URL.Query().Get("turn"))
+		if err != nil {
+			core.WriteErr(w, core.NewBadRequestError("AGENT_SESSION_TURN_INVALID", "turn query parameter must be a non-negative integer", nil))
+			return
+		}
+		out, err := s.ToolOutput(r.Context(), r.PathValue("id"), turn, r.PathValue("toolCallId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
 	})
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/attach-ticket", func(w http.ResponseWriter, r *http.Request) {
 		// Determine action from query parameter or default to "read"

@@ -1,6 +1,8 @@
 package agentsessions
 
 import (
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -192,6 +194,37 @@ var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// toolOutputFieldGQL is one field of a tool call's full output.
+type toolOutputFieldGQL struct{ Field, Text string }
+
+var toolOutputFieldGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionToolOutputField",
+	Fields: graphql.Fields{
+		"field": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "output, errorText, or terminal:<terminalId>.",
+			Resolve: gqlutil.Field(func(v toolOutputFieldGQL) any { return v.Field })},
+		"text": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "The complete text, at most 1 MiB (a longer one ends in a [bex: full output capped at 1 MiB, N chars omitted] marker).",
+			Resolve: gqlutil.Field(func(v toolOutputFieldGQL) any { return v.Text })},
+	},
+})
+
+var toolOutputGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionToolOutput",
+	Fields: graphql.Fields{
+		"sessionId":  &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v ToolOutput) any { return v.SessionID })},
+		"turn":       &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v ToolOutput) any { return v.Turn })},
+		"toolCallId": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v ToolOutput) any { return v.ToolCallID })},
+		"outputs": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(toolOutputFieldGQLType))),
+			Description: "One entry per stored field, sorted by field.",
+			Resolve: gqlutil.Field(func(v ToolOutput) any {
+				out := make([]toolOutputFieldGQL, 0, len(v.Outputs))
+				for _, field := range slices.Sorted(maps.Keys(v.Outputs)) {
+					out = append(out, toolOutputFieldGQL{field, v.Outputs[field]})
+				}
+				return out
+			})},
+	},
+})
+
 var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionTranscriptTurn",
 	Fields: graphql.Fields{
@@ -281,6 +314,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				return s.Transcript(p.Context, gqlutil.Str(p.Args, "id"), afterSeq, limit)
+			},
+		},
+		"agentSessionToolOutput": &graphql.Field{
+			Type:        graphql.NewNonNull(toolOutputGQLType),
+			Description: "The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept.",
+			Args: graphql.FieldConfigArgument{
+				"sessionId":  gqlutil.ReqArg(graphql.String),
+				"turn":       gqlutil.ReqArg(graphql.Int),
+				"toolCallId": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				turn, _ := p.Args["turn"].(int)
+				return s.ToolOutput(p.Context, gqlutil.Str(p.Args, "sessionId"), turn, gqlutil.Str(p.Args, "toolCallId"))
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),

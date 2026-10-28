@@ -64,7 +64,7 @@ func newTranscriptBatcher(ctx context.Context, st Store, sessionID string) *tran
 // detached one so a disconnect still persists its in-flight items. A row
 // larger than the whole byte budget is left to the Completer harvest.
 func (b *transcriptBatcher) enqueue(ctx context.Context, part store.AgentSessionTranscriptPart) {
-	size := int64(len(part.Part))
+	size := rowBytes(part)
 	if size > transcriptPendingBytes {
 		log.Printf("agent attach: transcript item of %d bytes exceeds the tee budget; deferring it to harvest", size)
 		return
@@ -77,6 +77,16 @@ func (b *transcriptBatcher) enqueue(ctx context.Context, part store.AgentSession
 	case <-ctx.Done():
 		b.budget.Release(size)
 	}
+}
+
+// rowBytes is a queued row's memory: its item plus the full outputs it
+// carries (agent_session_tool_outputs, w10/m18).
+func rowBytes(part store.AgentSessionTranscriptPart) int64 {
+	size := int64(len(part.Part))
+	for _, f := range part.FullOutputs {
+		size += int64(len(f.Text))
+	}
+	return size
 }
 
 func (b *transcriptBatcher) close() {
@@ -120,7 +130,7 @@ func (b *transcriptBatcher) run(st Store, sessionID string) {
 				flush()
 				return
 			}
-			size := int64(len(part.Part))
+			size := rowBytes(part)
 			if failed {
 				b.budget.Release(size)
 				continue

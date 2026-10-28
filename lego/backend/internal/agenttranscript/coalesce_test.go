@@ -88,11 +88,21 @@ func TestRecordedTurnCompactsAndReplaysTheSameParts(t *testing.T) {
 		rawBytes += len(p)
 	}
 	items := agenttranscript.Coalesce(cs)
-	var itemBytes int
+	var itemBytes, fullBytes, fullCount int
+	full := map[string]string{}
 	for _, it := range items {
 		itemBytes += len(it.Part)
+		for _, f := range it.FullOutputs {
+			fullBytes += len(f.Text)
+			fullCount++
+			full[uimessagetest.FullKey(f.ToolCallID, f.Field)] = f.Text
+		}
 	}
-	t.Logf("raw %d rows / %d bytes → %d items / %d bytes", len(fixture), rawBytes, len(items), itemBytes)
+	t.Logf("raw %d rows / %d bytes → %d items / %d bytes inline + %d full outputs / %d bytes out of line",
+		len(fixture), rawBytes, len(items), itemBytes, fullCount, fullBytes)
+	if fullCount == 0 {
+		t.Fatal("the recorded turn has outputs over the inline cap; none were stored out of line")
+	}
 	if len(items) > 600 {
 		t.Fatalf("items = %d, want ≤ 600", len(items))
 	}
@@ -112,6 +122,12 @@ func TestRecordedTurnCompactsAndReplaysTheSameParts(t *testing.T) {
 	var texts, reasonings, tools int
 	for i := range want {
 		w, g := want[i], got[i]
+		// A clipped output is flagged, and its full copy restores the raw part.
+		clipped := clipMarker.MatchString(asJSON(g["output"]) + asJSON(g["errorText"]))
+		flagged, err := uimessagetest.RestoreFullOutput(g, full)
+		if err != nil || flagged != clipped {
+			t.Fatalf("part %d: clipped=%v flagged=%v err=%v", i, clipped, flagged, err)
+		}
 		// The recorded turn ends inside a reasoning block: replay closes the
 		// partial item, the live stream had left it streaming.
 		if w["state"] == "streaming" {
@@ -296,28 +312,39 @@ func TestToolOutputIsClippedHeadAndTail(t *testing.T) {
 			}
 			part := string(items[0].Part)
 			m := clipMarker.FindStringSubmatch(part)
-			if m == nil || m[1] != fmt.Sprint(len(big)-30_000) {
+			if m == nil || m[1] != fmt.Sprint(len(big)-8_000) {
 				t.Fatalf("marker = %v", m)
 			}
-			if strings.Contains(part, "MIDDLE") || !strings.Contains(part, `"truncated":true`) {
-				t.Fatal("middle kept or truncated flag missing")
+			if strings.Contains(part, "MIDDLE") || !strings.Contains(part, `"truncated":true`) ||
+				!strings.Contains(part, `"fullOutput":true`) {
+				t.Fatal("middle kept or truncated/fullOutput flag missing")
 			}
-			if len(part) > 31_000+200 {
+			fulls := items[0].FullOutputs
+			if len(fulls) != 1 || fulls[0].ToolCallID != "b" || fulls[0].Field != agenttranscript.FieldOutput || fulls[0].Text != big {
+				t.Fatalf("full outputs = %d, want the complete original string", len(fulls))
+			}
+			if len(part) > 9_000+200 {
 				t.Fatalf("clipped item is %d bytes", len(part))
 			}
 			got := mustMerge(t, replay(items))
 			text := asJSON(got[0]["output"])
-			if !strings.Contains(text, strings.Repeat("a", 15_000)) || !strings.Contains(text, strings.Repeat("z", 15_000)) {
+			if !strings.Contains(text, strings.Repeat("a", 4_000)) || !strings.Contains(text, strings.Repeat("z", 4_000)) {
 				t.Fatal("head or tail lost")
+			}
+			if !strings.Contains(asJSON(got[0]["resultProviderMetadata"]), `"bex-transcript":{"fullOutput":true}`) {
+				t.Fatalf("replay does not flag the full copy: %v", got[0]["resultProviderMetadata"])
 			}
 		})
 	}
-	if s, clipped := agenttranscript.ClipText(strings.Repeat("é", 30_000)); clipped || s != strings.Repeat("é", 30_000) {
+	if s, clipped := agenttranscript.ClipText(strings.Repeat("é", 8_000)); clipped || s != strings.Repeat("é", 8_000) {
 		t.Fatal("text at the cap must not be clipped")
 	}
-	s, clipped := agenttranscript.ClipText(strings.Repeat("é", 30_001))
-	if !clipped || !strings.Contains(s, "\n\n[bex: 1 chars clipped]\n\n") || !strings.HasPrefix(s, strings.Repeat("é", 15_000)+"\n") {
+	s, clipped := agenttranscript.ClipText(strings.Repeat("é", 8_001))
+	if !clipped || !strings.Contains(s, "\n\n[bex: 1 chars clipped]\n\n") || !strings.HasPrefix(s, strings.Repeat("é", 4_000)+"\n") {
 		t.Fatalf("rune-aware clip wrong: %q…", s[:40])
+	}
+	if again, clipped := agenttranscript.ClipText(s); clipped || again != s {
+		t.Fatal("already-clipped text was clipped again")
 	}
 }
 
@@ -368,11 +395,16 @@ func TestToolErrorAfterPreliminaryOutputAndFinish(t *testing.T) {
 	}
 	failed := string(items[0].Part)
 	if !strings.Contains(failed, `"state":"output-error"`) || !strings.Contains(failed, `"truncated":true`) ||
-		!strings.Contains(failed, "[bex: 10000 chars clipped]") || strings.Contains(failed, `"output"`) {
+		!strings.Contains(failed, "[bex: 32000 chars clipped]") || strings.Contains(failed, `"output"`) ||
+		!strings.Contains(failed, `"fullOutput":true`) {
 		t.Fatalf("failed call item = %.300s", failed)
+	}
+	if f := items[0].FullOutputs; len(f) != 1 || f[0].Field != agenttranscript.FieldErrorText || len(f[0].Text) != 40_000 {
+		t.Fatalf("errorText full outputs = %+v", len(f))
 	}
 	got := mustMerge(t, replay(items))
 	if got[0]["state"] != "output-error" || got[1]["state"] != "input-available" {
 		t.Fatalf("replayed states = %v / %v", got[0]["state"], got[1]["state"])
 	}
 }
+

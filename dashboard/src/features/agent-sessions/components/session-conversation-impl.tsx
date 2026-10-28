@@ -31,6 +31,7 @@ import { TypingIndicator } from "@/features/agent-sessions/components/typing-ind
 import {
   acpDataSchema,
   classifyAcpPart,
+  hasFullOutput,
   isToolPart,
   sourceTimestampsMs,
   toolPartInfo,
@@ -456,6 +457,7 @@ export function SessionConversationImpl({
             return (
               <MessageRow
                 key={message.id}
+                sessionId={sessionId}
                 role={message.role}
                 blocks={blocks}
                 showCursor={isLoading && isLast}
@@ -648,6 +650,9 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   // Plans are snapshots. Coalesce replayed snapshots within each turn; a
   // durable replay can combine multiple turns into one assistant message.
   let planBlock: Extract<DisplayBlock, { type: "plan" }> | null = null;
+  // The durable turn the following parts belong to (each replayed turn opens
+  // with its data-user-prompt): the key a step's full output is stored under.
+  let turn: number | undefined;
 
   const pushStep = (step: ActivityStep, index: number, part: PartLike) => {
     const times = sourceTimestampsMs(part);
@@ -680,6 +685,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           (data.settled === true && data.complete !== true),
         reason: str(data.reason),
       });
+      turn = Number.isSafeInteger(data.turn) ? (data.turn as number) : turn;
       // A new durable turn starts a new plan lifecycle. Without this reset, the
       // latest plan snapshot from turn N+1 would overwrite turn N's plan block
       // because replay intentionally adapts all raw chunks into one AI-SDK
@@ -773,7 +779,10 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         {
           kind: "terminal",
           toolCallId: toolCallId || undefined,
+          terminalId: group.terminalId,
           output: group.output,
+          turn,
+          fullOutput: hasFullOutput(part),
         },
         index,
         part,
@@ -787,6 +796,8 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           kind: "tool",
           toolCallId: str(part.toolCallId) || undefined,
           ...toolPartInfo(part),
+          turn,
+          fullOutput: hasFullOutput(part),
         },
         index,
         part,
@@ -817,12 +828,14 @@ function UserAvatar() {
 // relies on buildBlocks being memoized by message identity above, so an
 // unchanged row's `blocks` reference is stable across renders (scan finding #9).
 const MessageRow = memo(function MessageRow({
+  sessionId,
   role,
   blocks,
   showCursor,
   settled,
   interrupted,
 }: {
+  sessionId: string;
   role: string;
   blocks: DisplayBlock[];
   showCursor: boolean;
@@ -900,6 +913,7 @@ const MessageRow = memo(function MessageRow({
           return (
             <ActivityGroup
               key={block.key}
+              sessionId={sessionId}
               steps={block.steps}
               sourceTimesMs={block.sourceTimesMs}
               interrupted={interrupted}

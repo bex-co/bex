@@ -29,6 +29,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -495,4 +496,87 @@ func TestArchiveGraphQLSurface(t *testing.T) {
 	if len(r.Errors) != 0 || r.Data.(map[string]any)["deleteAgentSession"] != true {
 		t.Fatalf("delete mutation = %#v errors=%#v", r.Data, r.Errors)
 	}
+}
+
+// --- w10/m18: one tool call's full output, out of line -----------------------
+
+// The full copy a clipped item carried is readable over the service, REST and
+// GraphQL under the transcript's authorization; no copy is the typed 404.
+func TestToolOutputReadsTheStoredFullCopy(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	if err := st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{{
+		PartIndex: 3, Turn: 1, Item: true,
+		Part: []byte(`{"type":"dynamic-tool","toolCallId":"call-1","state":"output-available","truncated":true,"fullOutput":true}`),
+		FullOutputs: []agenttranscript.FullOutput{
+			{ToolCallID: "call-1", Field: agenttranscript.FieldOutput, Text: "the whole output"},
+			{ToolCallID: "call-1", Field: agenttranscript.TerminalField("term-1"), Text: "the whole terminal"},
+		},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := svc.ToolOutput(caller("alice"), id, 1, "call-1")
+	if err != nil || out.Outputs["output"] != "the whole output" || out.Outputs["terminal:term-1"] != "the whole terminal" ||
+		out.SessionID != id || out.Turn != 1 || out.ToolCallID != "call-1" {
+		t.Fatalf("tool output = %+v err=%v", out, err)
+	}
+	if _, err := svc.ToolOutput(caller("alice"), id, 2, "call-1"); !isCode(err, "AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND") || !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("other turn = %v, want AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND", err)
+	}
+	if _, err := svc.ToolOutput(caller("alice"), id, 1, "call-old"); !isCode(err, "AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND") {
+		t.Fatalf("no full copy = %v, want AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND", err)
+	}
+	if _, err := svc.ToolOutput(caller("alice"), id, 1, ""); !isCode(err, "AGENT_SESSION_TOOL_CALL_ID_INVALID") {
+		t.Fatalf("empty toolCallId = %v", err)
+	}
+	if _, err := svc.ToolOutput(caller("alice"), id, -1, "call-1"); !isCode(err, "AGENT_SESSION_TURN_INVALID") {
+		t.Fatalf("negative turn = %v", err)
+	}
+	if _, err := svc.ToolOutput(caller("bob"), id, 1, "call-1"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("cross-workspace tool output = %v, want the transcript read's denial", err)
+	}
+	if _, err := svc.ToolOutput(caller("alice"), "ags-doesnotexist00000000", 1, "call-1"); !errors.Is(err, core.ErrForbidden) && !isCode(err, "AGENT_SESSION_NOT_FOUND") {
+		t.Fatalf("unknown session = %v", err)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil).WithContext(caller("alice")))
+		return rec
+	}
+	rec := get("/v1/agent-sessions/" + id + "/tool-outputs/call-1?turn=1")
+	var body ToolOutput
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &body) != nil || body.Outputs["output"] != "the whole output" {
+		t.Fatalf("REST tool output = %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := get("/v1/agent-sessions/" + id + "/tool-outputs/call-1"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("REST without turn = %d, want 400", rec.Code)
+	}
+	if rec := get("/v1/agent-sessions/" + id + "/tool-outputs/call-old?turn=1"); rec.Code != http.StatusNotFound ||
+		!strings.Contains(rec.Body.String(), "AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND") {
+		t.Fatalf("REST no copy = %d %s, want 404", rec.Code, rec.Body.String())
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSessionToolOutput(sessionId:"` + id +
+		`", turn:1, toolCallId:"call-1") { sessionId turn toolCallId outputs { field text } } }`})
+	if len(r.Errors) != 0 {
+		t.Fatalf("GraphQL errors = %#v", r.Errors)
+	}
+	got := asJSONString(r.Data)
+	if !strings.Contains(got, `"outputs":[{"field":"output","text":"the whole output"},{"field":"terminal:term-1","text":"the whole terminal"}]`) {
+		t.Fatalf("GraphQL tool output = %s", got)
+	}
+}
+
+func asJSONString(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }

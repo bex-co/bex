@@ -209,6 +209,7 @@ var scalarRoutes = map[string]bool{
 	"GET /v1/notification-settings":                         true,
 	"GET /v1/notification-settings/overrides/services/{id}": true,
 	"GET /v1/agent-sessions/{id}":                           true,
+	"GET /v1/agent-sessions/{id}/tool-outputs/{toolCallId}": true,
 	"GET /v1/git/callback":                                  true,
 	"GET /v1/git/connection":                                true,
 	"GET /v1/users":                                         true,

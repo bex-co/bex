@@ -235,13 +235,36 @@ func TestCompleterPGHarvestsTheRecordedTurnAsItems(t *testing.T) {
 	if len(got) != len(want) {
 		t.Fatalf("replay rebuilt %d parts, raw %d", len(got), len(want))
 	}
+	var restored int
 	for i := range want {
 		if want[i]["state"] == "streaming" {
 			got[i]["state"] = "streaming" // the recorded turn ends inside a reasoning block
 		}
+		// A clipped output replays flagged; the harvest stored its full copy
+		// (w10/m18), which restores the raw part.
+		if id, _ := got[i]["toolCallId"].(string); id != "" {
+			full, err := pg.AgentSessionToolOutputs(ctx, session.ID, session.Turns, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			keyed := map[string]string{}
+			for field, text := range full {
+				keyed[uimessagetest.FullKey(id, field)] = text
+			}
+			flagged, err := uimessagetest.RestoreFullOutput(got[i], keyed)
+			if err != nil {
+				t.Fatalf("part %d: %v", i, err)
+			}
+			if flagged {
+				restored++
+			}
+		}
 		if fmt.Sprint(want[i]) != fmt.Sprint(got[i]) {
 			t.Fatalf("part %d differs", i)
 		}
+	}
+	if restored == 0 {
+		t.Fatal("no clipped tool output had a harvested full copy")
 	}
 	turns, err := pg.AgentSessionTurns(ctx, session.ID)
 	if err != nil || len(turns) != 1 || turns[0].TruncationReason == reasonItemLimit {

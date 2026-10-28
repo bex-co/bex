@@ -216,7 +216,8 @@ type ListRequest struct {
 // both writers (the gateway tee and the Completer harvest). Under the ADR051
 // item model it is a completed item: a UIMessage `text` / `reasoning` /
 // `dynamic-tool` part (a clipped tool output carries `truncated: true` and the
-// `[bex: N chars clipped]` marker), a data snapshot, or a standalone chunk
+// `[bex: N chars clipped]` marker, plus `fullOutput: true` when its complete
+// text is readable through ToolOutput), a data snapshot, or a standalone chunk
 // (`start`, `finish`, …). The stream replay expands each item back into the
 // standard chunks; rows from before the item model are still single chunks.
 // Partial marks an item the live stream ended inside of: the harvest may
@@ -230,6 +231,17 @@ type TranscriptPart struct {
 	Part      json.RawMessage `json:"part"`
 	Partial   bool            `json:"partial,omitempty"`
 	CreatedAt time.Time       `json:"createdAt"`
+}
+
+// ToolOutput is one tool call's complete outputs (w10/m18), keyed by field:
+// "output", "errorText", or "terminal:<terminalId>" ("terminal" without an
+// id). Each is at most 1 MiB; a longer one ends in
+// "[bex: full output capped at 1 MiB, N chars omitted]".
+type ToolOutput struct {
+	SessionID  string            `json:"sessionId"`
+	Turn       int               `json:"turn"`
+	ToolCallID string            `json:"toolCallId"`
+	Outputs    map[string]string `json:"outputs"`
 }
 
 // TranscriptTurn is the role-correct user side of a durable conversation turn,

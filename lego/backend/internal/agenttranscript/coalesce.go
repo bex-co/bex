@@ -41,7 +41,10 @@ limitations under the License.
 //   - anything else (start, finish, error, data-bex-*, …) → stored as-is.
 //
 // Tool output text above MaxToolOutputChars is clipped head+tail with the
-// `[bex: N chars clipped]` marker the dashboard recognizes.
+// `[bex: N chars clipped]` marker the dashboard recognizes. A completed item
+// that was clipped carries the complete text in Item.FullOutputs (capped at
+// MaxFullOutputBytes) for the writers' full-output side table, and is flagged
+// `fullOutput: true` (a terminal snapshot: `data.fullOutput: true`).
 package agenttranscript
 
 import (
@@ -63,6 +66,33 @@ type Item struct {
 	Index   int64
 	Part    json.RawMessage
 	Partial bool
+	// FullOutputs are the complete texts of the outputs this (complete) item
+	// clipped. A partial item has none: its complete copy brings them.
+	FullOutputs []FullOutput
+}
+
+// FullOutput is the complete text of one clipped tool output field, stored
+// out of line keyed by (session, turn, ToolCallID, Field).
+type FullOutput struct {
+	ToolCallID string
+	Field      string
+	Text       string
+}
+
+// Full-output fields: a tool's output, its errorText, and one terminal's
+// output (TerminalField).
+const (
+	FieldOutput    = "output"
+	FieldErrorText = "errorText"
+)
+
+// TerminalField is the full-output field of a data-acp-terminal snapshot:
+// "terminal:<terminalId>", or "terminal" when the driver sent no id.
+func TerminalField(terminalID string) string {
+	if terminalID == "" {
+		return "terminal"
+	}
+	return "terminal:" + terminalID
 }
 
 // usageUpdateType is the one transient chunk type the transcript keeps (its
@@ -98,6 +128,9 @@ type pending struct {
 	// snapshot attached to a tool (diff/terminal): completes with that tool
 	toolCallID string
 	key        string
+	// terminal snapshot: its id and the complete text its latest chunk clipped
+	terminalID   string
+	fullTerminal string
 }
 
 type toolItem struct {
@@ -114,9 +147,16 @@ type toolItem struct {
 	CallPM           json.RawMessage `json:"callProviderMetadata,omitempty"`
 	ResultPM         json.RawMessage `json:"resultProviderMetadata,omitempty"`
 	Truncated        bool            `json:"truncated,omitempty"`
+	// FullOutput: the complete text of a clipped output/errorText is stored
+	// out of line (set when the item is rendered complete).
+	FullOutput bool `json:"fullOutput,omitempty"`
 
 	dynamic   bool
 	inputText strings.Builder
+	// complete texts the current output/errorText clipped ("" when none);
+	// inheritedFull: a replayed chunk said an earlier write stored them.
+	fullOutput, fullError string
+	inheritedFull         bool
 }
 
 // chunkFields is the union of the chunk fields the coalescer reads.
@@ -234,12 +274,13 @@ func (c *Coalescer) resize(p *pending) {
 	case kindText:
 		size = int64(p.text.Len() + len(p.pm))
 	case kindTool:
-		size = int64(len(p.tool.Input) + len(p.tool.Output) + p.tool.inputText.Len())
+		size = int64(len(p.tool.Input) + len(p.tool.Output) + p.tool.inputText.Len() +
+			len(p.tool.fullOutput) + len(p.tool.fullError))
 		if p.tool.ErrorText != nil {
 			size += int64(len(*p.tool.ErrorText))
 		}
 	default:
-		size = int64(len(p.chunk))
+		size = int64(len(p.chunk) + len(p.fullTerminal))
 	}
 	c.bytes += size - p.size
 	p.size = size
@@ -338,6 +379,10 @@ func (c *Coalescer) toolChunk(index int64, ch chunkFields) int64 {
 		c.tools[ch.ToolCallID] = p
 	}
 	t := &p.tool
+	inherited := false
+	if ch.Type == "tool-output-available" || ch.Type == "tool-output-error" {
+		ch.ProviderMetadata, inherited = stripFullOutputFlag(ch.ProviderMetadata)
+	}
 	hasPM := nonNull(ch.ProviderMetadata) != nil
 	switch ch.Type {
 	case "tool-input-start":
@@ -371,16 +416,17 @@ func (c *Coalescer) toolChunk(index int64, ch chunkFields) int64 {
 			t.dynamic = *ch.Dynamic
 		}
 		t.Input = ch.Input
-		t.setError(ch.ErrorText)
+		t.setError(ch.ErrorText, false)
 		t.applyCommon(ch)
 		if hasPM {
 			t.ResultPM = ch.ProviderMetadata
 		}
 		c.completeTool(p)
 	case "tool-output-available":
-		output, clipped := clipJSON(ch.Output)
+		output, res := clipJSON(ch.Output)
 		t.Output = output
-		t.Truncated = t.Truncated || clipped
+		t.Truncated = t.Truncated || res.truncated
+		t.fullOutput, t.fullError, t.inheritedFull = res.full, "", inherited
 		t.ErrorText = nil
 		t.State = "output-available"
 		t.Preliminary = ch.Preliminary
@@ -394,7 +440,7 @@ func (c *Coalescer) toolChunk(index int64, ch chunkFields) int64 {
 			c.completeTool(p)
 		}
 	case "tool-output-error":
-		t.setError(ch.ErrorText)
+		t.setError(ch.ErrorText, inherited)
 		t.Output = nil
 		t.Preliminary = nil
 		if ch.ProviderExecuted != nil {
@@ -424,15 +470,19 @@ func (t *toolItem) applyCommon(ch chunkFields) {
 	}
 }
 
-func (t *toolItem) setError(text *string) {
+func (t *toolItem) setError(text *string, inherited bool) {
 	t.State = "output-error"
 	value := ""
 	if text != nil {
 		value = *text
 	}
-	clipped, ok := ClipText(value)
+	clipped, ok, already := clipText(value)
 	t.ErrorText = &clipped
-	t.Truncated = t.Truncated || ok
+	t.Truncated = t.Truncated || ok || already
+	t.fullOutput, t.fullError, t.inheritedFull = "", "", inherited
+	if ok {
+		t.fullError = value
+	}
 }
 
 // completeTool finishes a tool and every diff/terminal snapshot attached to it.
@@ -477,13 +527,13 @@ func (c *Coalescer) dataChunk(index int64, part json.RawMessage, ch chunkFields)
 		TerminalID string `json:"terminalId"`
 	}
 	_ = json.Unmarshal(ch.Data, &data)
-	var key, toolCallID string
+	var key, toolCallID, full string
 	switch {
 	case (ch.Type == "data-acp-diff" || ch.Type == "data-acp-terminal") && data.ToolCallID != "":
 		toolCallID = data.ToolCallID
 		key = ch.Type + "\x00" + data.ToolCallID + "\x00" + data.Path + data.TerminalID
 		if ch.Type == "data-acp-terminal" {
-			part = clipTerminal(part)
+			part, full = clipTerminal(part)
 		}
 	case ch.ID != nil:
 		key = ch.Type + "\x00id\x00" + *ch.ID
@@ -491,11 +541,12 @@ func (c *Coalescer) dataChunk(index int64, part json.RawMessage, ch chunkFields)
 		return c.standalone(index, part)
 	}
 	if snap := c.snapshots[key]; snap != nil {
-		snap.chunk = part
+		snap.chunk, snap.fullTerminal = part, full
 		c.resize(snap)
 		return snap.index
 	}
-	snap := c.open(&pending{index: index, kind: kindSnapshot, chunk: part, toolCallID: toolCallID, key: key})
+	snap := c.open(&pending{index: index, kind: kindSnapshot, chunk: part, toolCallID: toolCallID, key: key,
+		terminalID: data.TerminalID, fullTerminal: full})
 	if toolCallID != "" {
 		if tool := c.tools[toolCallID]; tool == nil || tool.done {
 			snap.done = true // no open call to wait for
@@ -506,17 +557,39 @@ func (c *Coalescer) dataChunk(index int64, part json.RawMessage, ch chunkFields)
 	return index
 }
 
-// clipTerminal clips the terminal output strings of a data-acp-terminal chunk.
-func clipTerminal(part json.RawMessage) json.RawMessage {
+// clipTerminal clips the terminal output strings of a data-acp-terminal chunk,
+// returning the complete text it clipped ("" when nothing).
+func clipTerminal(part json.RawMessage) (json.RawMessage, string) {
 	var chunk map[string]json.RawMessage
 	if json.Unmarshal(part, &chunk) != nil {
-		return part
+		return part, ""
 	}
-	data, clipped := clipJSON(chunk["data"])
-	if !clipped {
-		return part
+	data, res := clipJSON(chunk["data"])
+	if res.full == "" {
+		return part, ""
 	}
 	chunk["data"] = data
+	out, err := marshalNoEscape(chunk)
+	if err != nil {
+		return part, ""
+	}
+	return out, res.full
+}
+
+// flagTerminalFullOutput sets `data.fullOutput: true` on a (clipped, so
+// already re-encoded) terminal chunk.
+func flagTerminalFullOutput(part json.RawMessage) json.RawMessage {
+	var chunk map[string]json.RawMessage
+	var data map[string]json.RawMessage
+	if json.Unmarshal(part, &chunk) != nil || json.Unmarshal(chunk["data"], &data) != nil || data == nil {
+		return part
+	}
+	data["fullOutput"] = json.RawMessage("true")
+	encoded, err := marshalNoEscape(data)
+	if err != nil {
+		return part
+	}
+	chunk["data"] = encoded
 	out, err := marshalNoEscape(chunk)
 	if err != nil {
 		return part
@@ -525,10 +598,35 @@ func clipTerminal(part json.RawMessage) json.RawMessage {
 }
 
 func (p *pending) item(partial bool) Item {
-	return Item{Index: p.index, Part: p.render(), Partial: partial}
+	it := Item{Index: p.index, Partial: partial}
+	if !partial {
+		it.FullOutputs = p.fullOutputs()
+	}
+	it.Part = p.render(len(it.FullOutputs) > 0)
+	return it
 }
 
-func (p *pending) render() json.RawMessage {
+// fullOutputs lists the complete texts this item clipped.
+func (p *pending) fullOutputs() []FullOutput {
+	var out []FullOutput
+	add := func(toolCallID, field, text string) {
+		if text != "" {
+			out = append(out, FullOutput{ToolCallID: toolCallID, Field: field, Text: capFullOutput(text)})
+		}
+	}
+	switch p.kind {
+	case kindTool:
+		add(p.tool.ToolCallID, FieldOutput, p.tool.fullOutput)
+		add(p.tool.ToolCallID, FieldErrorText, p.tool.fullError)
+	case kindSnapshot:
+		add(p.toolCallID, TerminalField(p.terminalID), p.fullTerminal)
+	}
+	return out
+}
+
+// render encodes the item; hasFull marks a complete item whose clipped
+// output is stored out of line.
+func (p *pending) render(hasFull bool) json.RawMessage {
 	switch p.kind {
 	case kindText:
 		state := "streaming"
@@ -555,12 +653,16 @@ func (p *pending) render() json.RawMessage {
 		if t.State == "" {
 			t.State = "input-streaming"
 		}
+		t.FullOutput = hasFull || (t.inheritedFull && p.done)
 		out, _ := marshalNoEscape(struct {
 			Type string `json:"type"`
 			toolItem
 		}{partType, t})
 		return out
 	default:
+		if hasFull {
+			return flagTerminalFullOutput(p.chunk)
+		}
 		return p.chunk
 	}
 }

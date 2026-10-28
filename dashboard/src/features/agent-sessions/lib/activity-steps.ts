@@ -9,10 +9,27 @@ import {
 // pure helpers shared by the ActivityGroup component and the conversation's
 // live status line.
 
+/**
+ * Where a clipped step's complete output is stored out of line (w10/m18): the
+ * durable turn it belongs to and the field under that turn's tool call
+ * (`output`/`errorText`, or `terminal:<terminalId>`). `fullOutput` is set only
+ * when the replayed part says the server kept a full copy; an output clipped
+ * before full copies were kept has none.
+ */
+export interface FullOutputRef {
+  turn?: number;
+  fullOutput?: boolean;
+}
+
 /** One renderable step inside an activity group. */
 export type ActivityStep =
-  | ({ kind: "tool"; toolCallId?: string } & ToolPartInfo)
-  | { kind: "terminal"; toolCallId?: string; output?: string }
+  | ({ kind: "tool"; toolCallId?: string } & ToolPartInfo & FullOutputRef)
+  | ({
+      kind: "terminal";
+      toolCallId?: string;
+      terminalId?: string;
+      output?: string;
+    } & FullOutputRef)
   | {
       kind: "diff";
       toolCallId?: string;
