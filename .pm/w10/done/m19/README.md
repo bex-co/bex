@@ -1,20 +1,20 @@
 # w10 · m19 — Enforce the "Full internet" agent network tier through a gateway egress proxy
 
-**Worker:** worker10 **Goal:** A workspace that chooses Settings → Agents → **Full internet** gets sandboxes that can reach any public host over HTTP(S), while model-provider hosts stay unreachable except through the credential proxy. Enforcement uses an authenticated HTTP CONNECT proxy in the gateway, not Cilium FQDN rules. **Status:** todo
+**Worker:** worker10 **Goal:** A workspace that chooses Settings → Agents → **Full internet** gets sandboxes that can reach any public host over HTTP(S), while model-provider hosts stay unreachable except through the credential proxy. Enforcement uses an authenticated HTTP CONNECT proxy in the gateway, not Cilium FQDN rules. **Status:** done (2026-10-28 — shipped `50aec48a1`, `a9b75e553`; verified in production, see done/t005.md)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est  | depends_on |
 | ---- | --------------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Gateway egress proxy: Pod-bound HTTP CONNECT (+ plain HTTP) with provider-host/IP denylist     | 2h   | —          |
-| t002 | Full-tier session policy: only DNS + gateway hops; VAP + gitops-validate admit the proxy port   | 1h   | t001       |
-| t003 | Driver/agent env: HTTPS_PROXY/HTTP_PROXY/NO_PROXY for full-tier sessions; overlay wording       | 45m  | t002       |
-| t004 | Enable "Full internet" in Settings → Agents; ADR047 D5 amendment                              | 30m  | t003       |
-| t005 | Verify in production: full tier reaches example.com; api.anthropic.com/openrouter.ai refused   | 30m  | t004       |
-| t006 | Render parity (environment tier semantics across REST/GraphQL/MCP/dashboard)                  | 20m  | t005       |
-| t007 | Simplify                                                                                      | 20m  | t006       |
-| t008 | Test coverage                                                                                 | 30m  | t006       |
-| t009 | Closeout                                                                                      | 10m  | t007, t008 |
+| t001 | Gateway egress proxy: Pod-bound HTTP CONNECT (+ plain HTTP) with provider-host/IP denylist — **DONE**     | 2h   | —          |
+| t002 | Full-tier session policy: only DNS + gateway hops; VAP + gitops-validate admit the proxy port — **DONE**   | 1h   | t001       |
+| t003 | Driver/agent env: HTTPS_PROXY/HTTP_PROXY/NO_PROXY for full-tier sessions; overlay wording — **DONE**       | 45m  | t002       |
+| t004 | Enable "Full internet" in Settings → Agents; ADR047 D5 amendment — **DONE**                              | 30m  | t003       |
+| t005 | Verify in production: full tier reaches example.com; api.anthropic.com/openrouter.ai refused — **DONE**   | 30m  | t004       |
+| t006 | Render parity (environment tier semantics across REST/GraphQL/MCP/dashboard) — **DONE**                  | 20m  | t005       |
+| t007 | Simplify — **DONE**                                                                                      | 20m  | t006       |
+| t008 | Test coverage — **DONE**                                                                                 | 30m  | t006       |
+| t009 | Closeout — **DONE**                                                                                      | 10m  | t007, t008 |
 
 ## Definition of done
 

@@ -35,7 +35,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 - [x] **m16** — Agent-session transcripts: store completed items, show signal, never crash on replay (10 tasks) → [`done/m16/`](done/m16/README.md) — done 2026-10-27 (`8843613e2`, `c6ab62005`, `b9311eb56`, `847394fe4`; verified in production; DoD bytes target amended with evidence)
 - [x] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`done/m17/`](done/m17/README.md) — done 2026-10-28 (verified in production)
 - [x] **m18** — Agent tool output: full output on demand, smaller inline transcript (8 tasks) → [`done/m18/`](done/m18/README.md) — done 2026-10-28 (verified in production)
-- [ ] **m19** — Enforce the "Full internet" agent network tier through a gateway egress proxy (9 tasks) → [`m19/`](m19/README.md) ← promoted from w10/006 (2026-10-28)
+- [x] **m19** — Enforce the "Full internet" agent network tier through a gateway egress proxy (9 tasks) → [`done/m19/`](done/m19/README.md) — done 2026-10-28 (verified in production)
 
 ## Inbox
 
