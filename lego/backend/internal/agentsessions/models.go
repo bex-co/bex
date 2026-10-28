@@ -220,7 +220,9 @@ type ListRequest struct {
 // (`start`, `finish`, …). The stream replay expands each item back into the
 // standard chunks; rows from before the item model are still single chunks.
 // Partial marks an item the live stream ended inside of: the harvest may
-// later complete it in place, under the same seq.
+// later complete it, re-inserting the complete copy under a NEW seq with the
+// same (Turn, PartIndex) — a poller merges by that identity, and renders parts
+// in (Turn, PartIndex) order.
 type TranscriptPart struct {
 	Seq       int64           `json:"seq"`
 	PartIndex int64           `json:"partIndex"`

@@ -60,7 +60,8 @@ type transcriptRowInfo struct {
 
 // MergeAgentSessionTranscriptItems idempotently merges a harvested turn under
 // the session's append lock: it inserts every missing item index, replaces a
-// partial item the live tee stored at disconnect with its complete copy, and —
+// partial item the live tee stored at disconnect with its complete copy (a
+// delete + insert under a fresh seq, so seq-keyset pollers see the upgrade), and —
 // for a turn still stored as legacy raw chunks (an attach that spanned the
 // w10/m16 deploy) — swaps the raw rows for the items when the fold covers them.
 // Every write is charged against Quota cumulatively; the first item that would
@@ -109,6 +110,7 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 		}
 		for _, it := range items {
 			size := int64(len(it.Part))
+			upgrade := false
 			if row, ok := existing[it.PartIndex]; ok {
 				if row.state != transcriptRowPartialItem || it.Partial {
 					continue
@@ -117,15 +119,18 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 					res.QuotaReached = true
 					return nil
 				}
+				// The complete copy takes a NEW seq (the partial row is deleted),
+				// so a poll client already past the partial's seq still receives
+				// it; it keeps (turn, part_index), so ordered replay is unchanged
+				// and pollers merge it over the partial by that identity.
 				if _, err := tx.Exec(ctx, `
-					UPDATE agent_session_transcripts SET part=$4, item_state=$5
+					DELETE FROM agent_session_transcripts
 					WHERE session_id=$1 AND turn=$2 AND part_index=$3`,
-					sessionID, m.Turn, it.PartIndex, string(it.Part), int16(transcriptRowItem)); err != nil {
+					sessionID, m.Turn, it.PartIndex); err != nil {
 					return err
 				}
-				total += size - row.bytes
-				res.Upgraded++
-				continue
+				total -= row.bytes
+				upgrade = true
 			}
 			if total+size > m.Quota {
 				res.QuotaReached = true
@@ -140,7 +145,11 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 			}
 			seq++
 			total += size
-			res.Inserted++
+			if upgrade {
+				res.Upgraded++
+			} else {
+				res.Inserted++
+			}
 		}
 		return nil
 	})

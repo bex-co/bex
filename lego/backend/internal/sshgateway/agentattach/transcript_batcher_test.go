@@ -229,8 +229,8 @@ type transcriptReplayStore struct {
 	afterReplay func()
 }
 
-func (s *transcriptReplayStore) AgentSessionTranscript(ctx context.Context, id string, afterSeq, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error) {
-	parts, err := s.fakeAttachStore.AgentSessionTranscript(ctx, id, afterSeq, maxBytes, limit)
+func (s *transcriptReplayStore) AgentSessionTranscriptReplay(ctx context.Context, id string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error) {
+	parts, err := s.fakeAttachStore.AgentSessionTranscriptReplay(ctx, id, after, maxBytes, limit)
 	if len(parts) == 0 && s.afterReplay != nil {
 		s.afterReplay()
 		s.afterReplay = nil
