@@ -585,6 +585,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "完成",
     description: "Badge label for a completed tool call",
   },
+  "agentSessions.toolStateDenied": {
+    message: "已拒绝",
+    description: "Badge label for a tool call whose execution was denied",
+  },
+  "agentSessions.toolStateInterrupted": {
+    message: "已中断",
+    description:
+      "Badge label for a tool call the session ended before it finished",
+  },
   "agentSessions.toolStateError": {
     message: "失败",
     description: "Badge label for a failed tool call",

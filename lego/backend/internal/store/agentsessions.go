@@ -844,25 +844,61 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 	return classify("agent session transcript", err)
 }
 
-// AgentSessionTranscript returns a session's stored parts in emission order,
-// strictly after afterSeq (pass -1 for the whole transcript), capped at
+// AgentSessionTranscript returns one seq-keyset page of a session's stored
+// parts, strictly after afterSeq (pass -1 for the whole transcript), capped at
 // maxBytes of cumulative payload: rows are scanned in seq order and the read
-// stops before the part that would exceed the budget, so a replay never
+// stops before the part that would exceed the budget, so a read never
 // materializes more than maxBytes even if the stored transcript ever outgrew
 // it. limit additionally bounds the ROW count in SQL (ADR065 D2's poll-shaped
-// page; <=0 ⇒ unbounded, the gateway replay's paging is byte-budgeted). It is
-// the replay source for reattach and for terminal-session history (ADR047 D9):
-// it reads the durable store, never the sandbox, so it works after the sandbox
-// is gone.
+// page; <=0 ⇒ unbounded).
+//
+// seq is the WRITE (revision) order, the poll API's cursor: a harvest that
+// completes a partial item re-inserts it under a fresh seq with the same
+// (turn, part_index), so a poller past the partial still receives the upgrade
+// and merges it by that identity. Readers that render the conversation use
+// AgentSessionTranscriptReplay, which is in UI part order.
 func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
-	sql := `
+	return s.readAgentSessionTranscript(ctx, `
 		SELECT seq, part_index, turn, part, item_state, created_at
 		FROM agent_session_transcripts
 		WHERE session_id=$1 AND seq > $2
-		ORDER BY seq ASC`
-	args := []any{sessionID, afterSeq}
+		ORDER BY seq ASC`, []any{sessionID, afterSeq}, maxBytes, limit)
+}
+
+// TranscriptPosition is a part's place in the conversation, (turn,
+// part_index): the UI part order and the replay keyset cursor.
+type TranscriptPosition struct {
+	Turn      int
+	PartIndex int64
+}
+
+// TranscriptStart precedes every stored part.
+var TranscriptStart = TranscriptPosition{Turn: -1, PartIndex: -1}
+
+// Position is the part's replay cursor.
+func (p AgentSessionTranscriptPart) Position() TranscriptPosition {
+	return TranscriptPosition{Turn: p.Turn, PartIndex: p.PartIndex}
+}
+
+// AgentSessionTranscriptReplay returns a session's stored parts in UI part
+// order — by (turn, part_index), strictly after `after` (TranscriptStart for
+// the whole transcript) — under the same byte budget and row limit as
+// AgentSessionTranscript. It is the replay source for reattach and for
+// terminal-session history (ADR047 D9) and for continuity re-priming: it reads
+// the durable store, never the sandbox, so it works after the sandbox is gone.
+// Ordering by position rather than seq keeps an upgraded partial item (fresh
+// seq) and a harvest-recovered hole in their place.
+func (s *PGStore) AgentSessionTranscriptReplay(ctx context.Context, sessionID string, after TranscriptPosition, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
+	return s.readAgentSessionTranscript(ctx, `
+		SELECT seq, part_index, turn, part, item_state, created_at
+		FROM agent_session_transcripts
+		WHERE session_id=$1 AND (turn, part_index) > ($2, $3)
+		ORDER BY turn ASC, part_index ASC`, []any{sessionID, after.Turn, after.PartIndex}, maxBytes, limit)
+}
+
+func (s *PGStore) readAgentSessionTranscript(ctx context.Context, sql string, args []any, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
 	if limit > 0 {
-		sql += ` LIMIT $3`
+		sql += fmt.Sprintf(` LIMIT $%d`, len(args)+1)
 		args = append(args, limit)
 	}
 	rows, err := s.Pool.Query(ctx, sql, args...)

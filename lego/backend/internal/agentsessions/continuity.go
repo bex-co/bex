@@ -134,9 +134,7 @@ func (s *Service) continuityEnv(ctx context.Context, env map[string]string, reco
 // durable part exists for the session — the rung-2 vs rung-3 discriminator —
 // independent of whether those parts contained plain text.
 func (s *Service) assistantReplies(ctx context.Context, sessionID string) (replies map[int]string, sawParts bool) {
-	// afterSeq -1: the read is exclusive (`seq > afterSeq`) and the first seq a
-	// store allocates may be 0, so "everything" is -1, not 0.
-	parts, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1, continuityTranscriptReadBytes, continuityTranscriptReadRows)
+	parts, err := s.Store.AgentSessionTranscriptReplay(ctx, sessionID, store.TranscriptStart, continuityTranscriptReadBytes, continuityTranscriptReadRows)
 	if err != nil {
 		log.Printf("agent-session continuity: transcript read failed (session=%s): %v", sessionID, err)
 		return nil, false
