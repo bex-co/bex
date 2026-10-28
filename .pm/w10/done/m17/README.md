@@ -1,22 +1,22 @@
 # w10 · m17 — Simplify agent-session creation: task + repo + agent; a workspace-level agent environment
 
-**Worker:** worker10 **Goal:** Starting an agent session asks for exactly what Devin, Codex cloud, Claude Code on the web and Copilot ask for: the task, an optional repository and the agent. The per-session Advanced panel is gone. The branch is always derived. The model and the sandbox's network access are configured once per workspace under Settings → Agents, with network tiers. Package registries are reachable for the whole session, so agents can build and test. **Status:** todo
+**Worker:** worker10 **Goal:** Starting an agent session asks for exactly what Devin, Codex cloud, Claude Code on the web and Copilot ask for: the task, an optional repository and the agent. The per-session Advanced panel is gone. The branch is always derived. The model and the sandbox's network access are configured once per workspace under Settings → Agents, with network tiers. Package registries are reachable for the whole session, so agents can build and test. **Status:** done (2026-10-28 — shipped `83ecf0502`, `953642326`, `fa23545e5`, `358cef5ed`, `dfbb006c1`; verified in production, see done/t007.md)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est  | depends_on |
 | ---- | --------------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Composer: remove the Advanced panel; branch always derived; show branch + PR after creation   | 45m  | —          |
-| t002 | Model override cannot break the platform route (pinned model wins; no 403 footgun)            | 30m  | —          |
-| t003 | Workspace agent environment: network tier (registries / full / custom) + default model, API  | 2h   | —          |
-| t004 | Sandbox egress follows the workspace tier; package registries stay open in the agent phase    | 1.5h | t003       |
-| t005 | Settings → Agents UI for the environment (tier picker, custom allowlist, default model)      | 1.5h | t003       |
-| t006 | Docs: ADR047 D5 amendment (registries through the agent phase), ADR090, AGENTS env tables     | 30m  | t004       |
-| t007 | Verify in production: create from the simplified composer; an agent runs `go build`/`yarn test` | 30m  | t001, t004, t005 |
-| t008 | Render parity (REST/GraphQL/MCP environment + session fields, dashboard + mobile consistency) | 20m  | t007       |
-| t009 | Simplify                                                                                      | 20m  | t008       |
-| t010 | Test coverage                                                                                 | 30m  | t008       |
-| t011 | Closeout                                                                                      | 10m  | t009, t010 |
+| t001 | Composer: remove the Advanced panel; branch always derived; show branch + PR after creation — **DONE**   | 45m  | —          |
+| t002 | Model override cannot break the platform route (pinned model wins; no 403 footgun) — **DONE**            | 30m  | —          |
+| t003 | Workspace agent environment: network tier (registries / full / custom) + default model, API — **DONE**  | 2h   | —          |
+| t004 | Sandbox egress follows the workspace tier; package registries stay open in the agent phase — **DONE**    | 1.5h | t003       |
+| t005 | Settings → Agents UI for the environment (tier picker, custom allowlist, default model) — **DONE**      | 1.5h | t003       |
+| t006 | Docs: ADR047 D5 amendment (registries through the agent phase), ADR090, AGENTS env tables — **DONE**     | 30m  | t004       |
+| t007 | Verify in production: create from the simplified composer; an agent runs `go build`/`yarn test` — **DONE** | 30m  | t001, t004, t005 |
+| t008 | Render parity (REST/GraphQL/MCP environment + session fields, dashboard + mobile consistency) — **DONE** | 20m  | t007       |
+| t009 | Simplify — **DONE**                                                                                      | 20m  | t008       |
+| t010 | Test coverage — **DONE**                                                                                 | 30m  | t008       |
+| t011 | Closeout — **DONE**                                                                                      | 10m  | t009, t010 |
 
 ## Definition of done
 
