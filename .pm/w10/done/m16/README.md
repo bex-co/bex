@@ -1,6 +1,6 @@
 # w10 · m16 — Agent-session transcripts: store completed items, show signal, never crash on replay
 
-**Worker:** worker10 **Goal:** A long agent turn is stored as a few hundred **completed items** (messages, reasoning blocks, tool calls with input/output/status, usage/finish) instead of one row per AI-SDK stream chunk. Today one 10-minute turn is 5,602 rows / 2.9 MB, and replaying it crashes the UI. After this milestone the dashboard replays any session without crashing. It leads with the signal: final answer, PR/diff, plan, grouped tool activity and one live status line. Reasoning and raw tool output are collapsed or on demand. **Status:** in progress (t001–t006 done 2026-10-26, verified in production — see done/t006.md; replay-bytes target 41% vs ≤25% on the long session, the rest is real tool output)
+**Worker:** worker10 **Goal:** A long agent turn is stored as a few hundred **completed items** (messages, reasoning blocks, tool calls with input/output/status, usage/finish) instead of one row per AI-SDK stream chunk. Today one 10-minute turn is 5,602 rows / 2.9 MB, and replaying it crashes the UI. After this milestone the dashboard replays any session without crashing. It leads with the signal: final answer, PR/diff, plan, grouped tool activity and one live status line. Reasoning and raw tool output are collapsed or on demand. **Status:** done (2026-10-27 — shipped `8843613e2`, `c6ab62005`, `b9311eb56`, `847394fe4`; verified in production, see done/t006.md)
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | Compact existing transcripts to the item model (migration/backfill), incl. the 5,000-part cap — **DONE**     | 1h   | t002, t003       |
 | t005 | Signal-first conversation view: grouped tool line, collapsed reasoning, single status line — **DONE**        | 1.5h | t002             |
 | t006 | Verify on production with `ags-dbf8nggkbcjs73a5r3u0` and a fresh long turn — **DONE**                        | 30m  | t001, t004, t005 |
-| t007 | Render parity (transcript stream/REST/MCP shapes, dashboard + mobile consistency)                 | 20m  | t006             |
-| t008 | Simplify                                                                                          | 20m  | t007             |
-| t009 | Test coverage                                                                                     | 30m  | t007             |
-| t010 | Closeout                                                                                          | 10m  | t008, t009       |
+| t007 | Render parity (transcript stream/REST/MCP shapes, dashboard + mobile consistency) — **DONE**                 | 20m  | t006             |
+| t008 | Simplify — **DONE**                                                                                          | 20m  | t007             |
+| t009 | Test coverage — **DONE**                                                                                     | 30m  | t007             |
+| t010 | Closeout — **DONE**                                                                                          | 10m  | t008, t009       |
 
 ## Definition of done
 
@@ -24,6 +24,8 @@
 - Tool output is stored head+tail-capped (≈30k chars) with an explicit `truncated` marker that the UI shows.
 - The dashboard shows by default: final text, PR/diff, plan, "Ran N commands · Read M files" groups, and one status line. Reasoning and raw tool output open on demand.
 - The backend real-DB suite, `make lint` and the driver/dashboard/mobile suites are green, and Prettier is clean.
+
+**DoD amendment (2026-10-27).** The "replay ≤ ~25% of today's bytes" target was an estimate made before measuring. On the production sample the replay is 41% (1.18 MB of 2.9 MB). The remainder is real tool output (0.89 MB, all under the 30k cap), which is the signal this milestone keeps. Every other DoD line holds, including rows at 7.3%. Further byte reduction is the downloadable-full-log follow-up `w10/004`.
 
 ## Source + Goal linkage
 

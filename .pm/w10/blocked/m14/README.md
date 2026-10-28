@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t002 done 2026-10-25: `b4b5ce0bb` + `a612f9a68`; production session `ags-dbe5568c4ppc73ep3q9g` answered on `deepseek/deepseek-v4.1-flash-1017`)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** blocked (t001–t003, t006 done; t004/t005 mechanisms shipped `952b9e8fa` with empty prices/quotas; gate: user decisions below; then t007 widen due 2026-11-06)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | ---- | -------------------------------------------------------------------------------------- | ---- | ---------- |
 | t001 | Workspace-allowlisted platform OpenRouter route (platform key, model pin, never in sandbox) — **DONE** | 2h   | —          |
 | t002 | Production rollout: Secret, deploy, verify the allowlisted session runs — **DONE**                | 45m  | t001       |
-| t003 | Meter model tokens per workspace in the gateway model proxy → `usage_hourly`           | 2h   | t002       |
+| t003 | Meter model tokens per workspace in the gateway model proxy → `usage_hourly` — **DONE**           | 2h   | t002       |
 | t004 | Price and bill platform-key tokens (pricing.yaml + billing outbox)                     | 1.5h | t003       |
 | t005 | Plan quotas for platform-key tokens + OpenRouter-side spend cap                        | 1h   | t003       |
-| t006 | Data policy for platform-key traffic (OpenRouter provider routing, terms copy)         | 45m  | t002       |
+| t006 | Data policy for platform-key traffic (OpenRouter provider routing, terms copy) — **DONE**         | 45m  | t002       |
 | t007 | Widen the platform route to every workspace — **due 2026-11-06**                       | 30m  | t004, t005, t006 |
 | t008 | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard)    | 20m  | t007       |
 | t009 | Simplify                                                                               | 20m  | t008       |
