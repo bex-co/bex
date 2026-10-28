@@ -33,6 +33,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 - [ ] **m14** — Platform model key: OpenRouter for allowlisted `tea-d98210cbbpdc73dcrkvg` now, metered/priced/capped rollout to every workspace by 2026-11-06 (11 tasks) → [`m14/`](m14/README.md) — t001–t002 done 2026-10-25 (route live for `tea-d98210cbbpdc73dcrkvg`, verified in production) ← from user request 2026-10-23 (unblock `ags-dbdh96fsf6rc738q771g`)
 - [x] **m15** — Retire agent-session hibernation: close idle sandboxes after 2h, keep the conversation (8 tasks) → [`done/m15/`](done/m15/README.md) — done 2026-10-25 (`bd6423e5e`, `773aee4b0`; verified in production) ← from user decision 2026-10-25
 - [ ] **m16** — Agent-session transcripts: store completed items, show signal, never crash on replay (10 tasks) → [`m16/`](m16/README.md) — t001–t006 done 2026-10-26 (shipped + verified in production) ← from user report 2026-10-25 on `ags-dbf8nggkbcjs73a5r3u0` + transcript best-practice research
+- [ ] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`m17/`](m17/README.md) ← from user report 2026-10-27 (composer too complex vs Devin)
 
 ## Inbox
 
