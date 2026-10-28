@@ -3175,6 +3175,13 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 		return errIPAllowListNotApplicable(svcType)
 	case strings.TrimSpace(req.StartCommand) != "" && !startCommandApplies(svcType):
 		return errStartCommandNotApplicable(svcType)
+	// A cron job's command and schedule mean nothing to any other type, and
+	// were dropped without a word: a web service sent `command` as its Docker
+	// Command then crash-looped on the image's default (w4/424).
+	case strings.TrimSpace(req.Command) != "" && svcType != appv1alpha1.TypeCronJob:
+		return errCronFieldNotApplicable("command", svcType)
+	case strings.TrimSpace(req.Schedule) != "" && svcType != appv1alpha1.TypeCronJob:
+		return errCronFieldNotApplicable("schedule", svcType)
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		sched := strings.TrimSpace(req.Schedule)
