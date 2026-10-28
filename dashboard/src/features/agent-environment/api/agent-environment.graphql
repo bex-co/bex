@@ -1,0 +1,30 @@
+# The workspace agent environment (w10/m17, ADR047 D5): the sandbox network
+# tier, the custom hostnames the CUSTOM tier opens, and the default model.
+# Any member reads it; only admins (can_manage) write it.
+fragment AgentEnvironmentFields on AgentEnvironment {
+  ownerId
+  networkTier
+  customHosts
+  defaultModel
+  modelPinned
+  pinnedModel
+  registryHosts
+  updatedAt
+}
+
+query AgentEnvironment($ownerId: String!) {
+  agentEnvironment(ownerId: $ownerId) {
+    ...AgentEnvironmentFields
+  }
+}
+
+# Partial update: omitted fields keep their value; customHosts [] clears the
+# list and defaultModel "" returns to the provider default.
+mutation UpdateAgentEnvironment(
+  $ownerId: String!
+  $input: AgentEnvironmentInput!
+) {
+  updateAgentEnvironment(ownerId: $ownerId, input: $input) {
+    ...AgentEnvironmentFields
+  }
+}
