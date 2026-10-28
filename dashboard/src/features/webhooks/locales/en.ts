@@ -152,6 +152,23 @@ const enWebhooks: Record<string, TranslationEntry> = {
       "The event selection changed. Reload the catalog and choose again.",
     description: "Server-coded stale/invalid event filter",
   },
+  "webhooks.errors.planLimit": {
+    message:
+      "Webhooks are available on the Pro plan and higher. This workspace is on Hobby, so it can't add an endpoint.",
+    description:
+      "Server-coded plan refusal of a webhook create on a Hobby workspace (WEBHOOK_PLAN_LIMIT, w4/425)",
+  },
+  "webhooks.planGate": {
+    message:
+      "Webhooks are available on the Pro plan and higher. Upgrade this workspace to add an endpoint.",
+    description:
+      "Notice in place of the create form and the empty list on a Hobby workspace (w4/425)",
+  },
+  "webhooks.planGateBilling": {
+    message: "Open Billing",
+    description:
+      "Link from the webhook plan notice to the Billing page (w4/425)",
+  },
   "webhooks.errors.endpointLimit": {
     message: "This workspace has reached its webhook endpoint limit.",
     description: "Server-coded endpoint quota refusal",

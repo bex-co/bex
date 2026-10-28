@@ -31,6 +31,13 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => ({ canManage, loaded: true }),
 }));
 
+let workspacePlan = "pro";
+vi.mock("@/features/workspaces/context", () => ({
+  useWorkspace: () => ({
+    currentWorkspace: { id: "tea-1", plan: workspacePlan },
+  }),
+}));
+
 function endpoint(
   id: string,
   name: string,
@@ -88,6 +95,7 @@ function renderPanel() {
 
 beforeEach(() => {
   canManage = true;
+  workspacePlan = "pro";
   endpoints = [
     endpoint("whk-success", "payments", {
       latestStatus: "delivered",
@@ -112,6 +120,20 @@ beforeEach(() => {
 });
 
 describe("WebhooksPanel", () => {
+  // w4/425: a Hobby workspace's empty list says webhooks start at Pro, and
+  // offers no Create.
+  it("shows a Hobby workspace the plan notice and no Create", async () => {
+    workspacePlan = "hobby";
+    endpoints = [];
+    renderPanel();
+    expect(
+      await screen.findByText(/Upgrade this workspace to add an endpoint/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Create webhook|New webhook|Add/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders latest immutable outcomes and bounds event chips", async () => {
     const user = userEvent.setup();
     renderPanel();

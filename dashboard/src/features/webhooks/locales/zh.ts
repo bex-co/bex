@@ -148,6 +148,22 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "事件选项已变更。请重新加载并选择。",
     description: "Server-coded stale/invalid event filter",
   },
+  "webhooks.errors.planLimit": {
+    message:
+      "Webhook 仅在 Pro 及更高套餐中提供。此工作区为 Hobby 套餐，无法添加端点。",
+    description:
+      "Server-coded plan refusal of a webhook create on a Hobby workspace (WEBHOOK_PLAN_LIMIT, w4/425)",
+  },
+  "webhooks.planGate": {
+    message: "Webhook 仅在 Pro 及更高套餐中提供。升级此工作区即可添加端点。",
+    description:
+      "Notice in place of the create form and the empty list on a Hobby workspace (w4/425)",
+  },
+  "webhooks.planGateBilling": {
+    message: "打开账单",
+    description:
+      "Link from the webhook plan notice to the Billing page (w4/425)",
+  },
   "webhooks.errors.endpointLimit": {
     message: "此工作区已达到 Webhook 端点上限。",
     description: "Server-coded endpoint quota refusal",

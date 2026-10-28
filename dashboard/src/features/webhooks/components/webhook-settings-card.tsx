@@ -20,6 +20,7 @@ import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-
 import { useUpdateWebhook } from "@/features/webhooks/hooks/use-update-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
 import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-form-feedback";
+import { hasFieldErrors } from "@/features/webhooks/lib/validation";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
@@ -61,12 +62,19 @@ export function WebhookSettingsCard({
   const [allEvents, setAllEvents] = useState(
     () => endpoint.eventTypes.length === 0,
   );
-  const { errors, nameRef, urlRef, eventsRef, validate, clearField } =
-    useWebhookFormFeedback({
-      mutationError,
-      fallbackMessage: t("webhooks.updateError"),
-      clearMutationError: clearError,
-    });
+  const {
+    errors,
+    nameRef,
+    urlRef,
+    eventsRef,
+    formErrorRef,
+    validate,
+    clearField,
+  } = useWebhookFormFeedback({
+    mutationError,
+    fallbackMessage: t("webhooks.updateError"),
+    clearMutationError: clearError,
+  });
   const pickerValue = useMemo(
     () => (allEvents ? new Set(eventTypes) : checked),
     [allEvents, checked, eventTypes],
@@ -120,7 +128,7 @@ export function WebhookSettingsCard({
           {t("webhooks.manageRequired")}
         </p>
       ) : null}
-      {Object.keys(errors).length > 0 ? (
+      {hasFieldErrors(errors) ? (
         <p className="text-destructive text-sm" role="alert">
           {t("webhooks.formErrorsSummary")}
         </p>
@@ -271,7 +279,12 @@ export function WebhookSettingsCard({
             </div>
           ) : null}
           {errors.form ? (
-            <p className="text-destructive text-sm" role="alert">
+            <p
+              ref={formErrorRef}
+              tabIndex={-1}
+              className="text-destructive text-sm"
+              role="alert"
+            >
               {errors.form}
             </p>
           ) : null}
