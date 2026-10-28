@@ -36,6 +36,7 @@ type Metrics struct {
 	activeChannels  prometheus.Gauge
 	reauths         *prometheus.CounterVec
 	gitUpstream     *prometheus.CounterVec
+	modelUsage      *prometheus.CounterVec
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -91,8 +92,12 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "git_proxy_upstream_failures_total",
 			Help: "Agent-session Git smart-HTTP exchanges that were admitted and authorized but failed on the gateway->forge hop, by bounded cause.",
 		}, []string{"cause"}),
+		modelUsage: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "model_proxy_usage_reports_total",
+			Help: "Platform model route token-usage reports (w10/m14) by bounded result: reported, retried, unparsed, dropped_queue_full, dropped_failed.",
+		}, []string{"result"}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage)
 	return m
 }
 
@@ -166,5 +171,14 @@ func (m *Metrics) Reauthorization(result string) {
 func (m *Metrics) GitProxyUpstreamFailure(cause string) {
 	if m != nil {
 		m.gitUpstream.WithLabelValues(cause).Inc()
+	}
+}
+
+// ModelUsageReport records one platform model route usage-report outcome
+// (w10/m14 t003). Any dropped_* or unparsed count is unmetered platform spend
+// and should alert.
+func (m *Metrics) ModelUsageReport(result string) {
+	if m != nil {
+		m.modelUsage.WithLabelValues(result).Inc()
 	}
 }

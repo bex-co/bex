@@ -451,6 +451,17 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		return store.UsageKindSandboxComputeSeconds, e.Properties["value"], false
+	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
+		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
+		// Platform-route tokens (w10/m14 t004) carry the model id as tier and
+		// bill per (kind × model). An unpriced model — every model while
+		// pricing.yaml's agentModel.models is empty — has no meter and is
+		// accounted locally at zero, the same policy as the estimate.
+		name := pricing.AgentModelMeterName(e.EventType, e.Properties["tier"])
+		if _, ok := billableMeterNames[name]; !ok {
+			return "", "", true
+		}
+		return name, e.Properties["value"], false
 	default:
 		return e.EventType, e.Properties["value"], false
 	}

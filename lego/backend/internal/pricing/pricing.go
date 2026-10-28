@@ -32,6 +32,7 @@ import (
 	_ "embed"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,6 +63,50 @@ type Sheet struct {
 	disk      float64            // $/GB-second of PROVISIONED capacity for disk_gb_seconds
 	sandbox   float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	workspace map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
+	// agentModel is model id → meter kind → $/token for the platform model
+	// route's agent_model_* meters (w10/m14 t004). Empty ⇒ nothing is billed.
+	agentModel map[string]map[string]float64
+	// agentModelQuota is plan → monthly platform-route token quota (all four
+	// token meters summed). A plan absent here is unlimited (w10/m14 t005).
+	agentModelQuota map[string]int64
+}
+
+// tokensPerMillion is the price sheet's token-rate basis: model prices are
+// quoted, like OpenRouter's list prices, in USD per 1M tokens.
+const tokensPerMillion = 1_000_000
+
+// AgentModelMeterName is the Stripe meter / price lookup key of one
+// platform-route token meter for one model: "<kind>.<model>", with every
+// character outside [a-z0-9._-] of the model id (OpenRouter ids carry "/",
+// ":" and "~") folded to "_" so the key stays a plain identifier.
+// scripts/stripe-billing-setup.py composes the identical name.
+func AgentModelMeterName(kind, model string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(model) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	return kind + "." + b.String()
+}
+
+// AgentModelMonthlyTokenQuota is plan's monthly platform-route token quota.
+// limited is false when the sheet sets none for the plan (the default for
+// every plan): the platform route is then uncapped by plan.
+func (s *Sheet) AgentModelMonthlyTokenQuota(plan string) (tokens int64, limited bool) {
+	if s == nil {
+		return 0, false
+	}
+	tokens, limited = s.agentModelQuota[plan]
+	return tokens, limited
+}
+
+// AgentModelQuotaConfigured reports whether any plan has a platform-route
+// token quota, so the mint can skip the plan lookup entirely while none does.
+func (s *Sheet) AgentModelQuotaConfigured() bool {
+	return s != nil && len(s.agentModelQuota) > 0
 }
 
 // BillableMeterNames returns the Stripe lookup/event names represented by this
@@ -94,6 +139,13 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	if s.disk > 0 {
 		names = append(names, "disk_gb_hours")
+	}
+	for model, rates := range s.agentModel {
+		for kind, rate := range rates {
+			if rate > 0 {
+				names = append(names, AgentModelMeterName(kind, model))
+			}
+		}
 	}
 	sort.Strings(names)
 	return names
@@ -307,6 +359,9 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB-mo", 2628000}
 	case store.UsageKindSandboxComputeSeconds:
 		return meterUnit{"vCPU-hr", 3600000}
+	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
+		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
+		return meterUnit{"1M tokens", tokensPerMillion}
 	}
 	return meterUnit{"", 1}
 }
@@ -380,6 +435,12 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindService {
 			return s.disk
 		}
+	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
+		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
+		// The tier of a token row is the model id; an unpriced model is $0.
+		if resourceKind == store.ResourceKindAgentSession {
+			return s.agentModel[tier][kind]
+		}
 	}
 	return 0
 }
@@ -424,6 +485,19 @@ type sheetFile struct {
 		Plan        string  `json:"plan"`
 		USDPerMonth float64 `json:"usdPerMonth"`
 	} `json:"workspace"`
+	AgentModel struct {
+		Models []struct {
+			Model                         string  `json:"model"`
+			USDPerMillionInputTokens      float64 `json:"usdPerMillionInputTokens"`
+			USDPerMillionOutputTokens     float64 `json:"usdPerMillionOutputTokens"`
+			USDPerMillionCacheReadTokens  float64 `json:"usdPerMillionCacheReadTokens"`
+			USDPerMillionCacheWriteTokens float64 `json:"usdPerMillionCacheWriteTokens"`
+		} `json:"models"`
+		MonthlyTokenQuota []struct {
+			Plan   string `json:"plan"`
+			Tokens int64  `json:"tokens"`
+		} `json:"monthlyTokenQuota"`
+	} `json:"agentModel"`
 }
 
 func mustLoad(raw []byte) *Sheet {
@@ -452,6 +526,43 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		sandbox:   f.Sandbox.USDPerWeightedSecond,
 		disk:      f.Disk.USDPerGBSecond,
 		workspace: make(map[string]float64, len(f.Workspace)),
+
+		agentModel:      make(map[string]map[string]float64, len(f.AgentModel.Models)),
+		agentModelQuota: make(map[string]int64, len(f.AgentModel.MonthlyTokenQuota)),
+	}
+	for _, e := range f.AgentModel.Models {
+		if strings.TrimSpace(e.Model) == "" {
+			return nil, fmt.Errorf("agentModel.models entry has empty model")
+		}
+		if _, dup := s.agentModel[e.Model]; dup {
+			return nil, fmt.Errorf("agentModel.models lists model %s twice", e.Model)
+		}
+		perMillion := map[string]float64{
+			store.UsageKindAgentModelInputTokens:      e.USDPerMillionInputTokens,
+			store.UsageKindAgentModelOutputTokens:     e.USDPerMillionOutputTokens,
+			store.UsageKindAgentModelCacheReadTokens:  e.USDPerMillionCacheReadTokens,
+			store.UsageKindAgentModelCacheWriteTokens: e.USDPerMillionCacheWriteTokens,
+		}
+		rates := make(map[string]float64, len(perMillion))
+		for kind, usd := range perMillion {
+			if usd < 0 {
+				return nil, fmt.Errorf("agentModel model %s has a negative %s price", e.Model, kind)
+			}
+			rates[kind] = usd / tokensPerMillion
+		}
+		s.agentModel[e.Model] = rates
+	}
+	for _, e := range f.AgentModel.MonthlyTokenQuota {
+		if !slices.Contains(store.WorkspacePlans, e.Plan) {
+			return nil, fmt.Errorf("agentModel.monthlyTokenQuota plan %q is not a workspace plan", e.Plan)
+		}
+		if _, dup := s.agentModelQuota[e.Plan]; dup {
+			return nil, fmt.Errorf("agentModel.monthlyTokenQuota lists plan %s twice", e.Plan)
+		}
+		if e.Tokens <= 0 {
+			return nil, fmt.Errorf("agentModel.monthlyTokenQuota plan %s needs positive tokens (omit the plan for unlimited)", e.Plan)
+		}
+		s.agentModelQuota[e.Plan] = e.Tokens
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {

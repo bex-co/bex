@@ -11,6 +11,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
 | `sandbox_compute_seconds` | milli-vCPU-equivalent seconds | OpenSandbox lifecycle phase × shape; CPU millicores plus memory GiB folded at the AgentCore `$0.00945/GB-hour ÷ $0.0895/vCPU-hour` reference ratio; only `running` intervals accrue |
+| `agent_model_{input,output,cache_read,cache_write}_tokens` | tokens (tier = model id) | platform model route only (w10/m14, ADR090): the gateway model proxy reads Anthropic usage from each platform-key exchange and reports it once per request id; `resource_kind` `agent_session`, `service_id` the session |
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
