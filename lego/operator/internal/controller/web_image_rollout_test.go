@@ -207,3 +207,61 @@ func TestTenantContainersAlwaysPullEvenADigest(t *testing.T) {
 		t.Fatalf("pre-deploy container pull policy = %q, want Always", got)
 	}
 }
+
+// A prebuilt-image web service runs the digest its saved tag resolved to; that
+// is the saved image, not an undeployed change (w4/m243 t014).
+func TestServedDigestOfTheSavedTagIsTheSavedImage(t *testing.T) {
+	const digest = "docker.io/mendhak/http-https-echo@sha256:82b7"
+	app := webImageApp(2)
+	app.Spec.Image = "docker.io/mendhak/http-https-echo:latest"
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: digest, Source: app.Spec.Image, Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*appv1alpha1.App)
+		served string
+		want   bool
+	}{
+		{"the digest resolved from the saved tag", func(*appv1alpha1.App) {}, digest, true},
+		{"the saved tag itself", func(*appv1alpha1.App) {}, "docker.io/mendhak/http-https-echo:latest", true},
+		{"a saved image change", func(a *appv1alpha1.App) { a.Spec.Image = "docker.io/mendhak/http-https-echo:v2" }, digest, false},
+		{"an override resolved from another reference", func(a *appv1alpha1.App) {
+			a.Status.ServingNetwork.Source = "docker.io/mendhak/http-https-echo:canary"
+		}, digest, false},
+		{"a network recorded before Source", func(a *appv1alpha1.App) { a.Status.ServingNetwork.Source = "" }, digest, false},
+		{"a configured-port image service runs its tag", func(a *appv1alpha1.App) { a.Spec.PortMode = "" }, digest, false},
+	} {
+		a := app.DeepCopy()
+		tc.mutate(a)
+		if got := servesSavedImage(a, tc.served); got != tc.want {
+			t.Errorf("%s: servesSavedImage = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// Through a same-port rollout the stable Services select every App pod, so
+// the new pod is an endpoint before the Deployment drains the old one; only a
+// port change pins the serving revision, so no request reaches a pod without
+// its listener (w4/m243 t012).
+func TestImagePortSelectorPinsARevisionOnlyForAPortChange(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
+	for _, tc := range []struct {
+		name      string
+		candidate *appv1alpha1.ImageNetworkStatus
+		pinned    bool
+	}{
+		{"a redeploy on the same ports", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, false},
+		{"a new image on the same ports", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, false},
+		{"a new primary", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-2", PrimaryPort: 9999, Ports: []int32{80, 9999}}, true},
+		{"a new port set", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80, 443}}, true},
+	} {
+		app := webImageApp(2)
+		app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), tc.candidate
+		selector, _, err := privateServiceProjection(app, 80)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, pinned := selector[labelRevision]; pinned != tc.pinned || (pinned && got != "rev-1") {
+			t.Errorf("%s: selector %v, pinned=%v want %v (serving rev-1)", tc.name, selector, pinned, tc.pinned)
+		}
+	}
+}

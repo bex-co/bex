@@ -160,7 +160,9 @@ func TestImageNetworkPromotesBothHostnames(t *testing.T) {
 				t.Fatal("unnamed multiport service")
 			}
 		}
-		if !reflect.DeepEqual(ports, []int32{8123, 9000, 9009}) || service.Spec.Selector[labelRevision] != releaseRevision(app) {
+		// Promoted, nothing port-changing is pending, so the Services pin no
+		// revision: the next same-port rollout keeps an endpoint (w4/m243 t012).
+		if _, pinned := service.Spec.Selector[labelRevision]; !reflect.DeepEqual(ports, []int32{8123, 9000, 9009}) || pinned {
 			t.Fatalf("wrong promoted service: %+v", service.Spec)
 		}
 	}
@@ -308,7 +310,9 @@ func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
 				if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &svc); err != nil {
 					t.Fatal(err)
 				}
-				if svc.Spec.Selector[labelRevision] != serving.Revision || len(svc.Spec.Ports) != 3 || svc.Spec.Ports[0].Port != 8123 {
+				// The restored network is the serving one, so no port change is
+				// pending and the Services pin no revision (w4/m243 t012).
+				if _, pinned := svc.Spec.Selector[labelRevision]; pinned || len(svc.Spec.Ports) != 3 || svc.Spec.Ports[0].Port != 8123 {
 					t.Fatalf("cancel changed %s routing: %+v", name, svc.Spec)
 				}
 			}

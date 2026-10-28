@@ -1867,7 +1867,8 @@ func stallDiagnosis(reason string) bool {
 	switch reason {
 	case "HealthCheckFailing", "CrashLoopBackOff", "ImagePullBackOff",
 		"CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonUnschedulable,
-		appv1alpha1.ReasonContainerCreating, appv1alpha1.ReasonServedReleaseCannotStart:
+		appv1alpha1.ReasonContainerCreating, appv1alpha1.ReasonServedReleaseCannotStart,
+		appv1alpha1.ReasonImageRegistryRateLimited, appv1alpha1.ReasonImageRegistryUnavailable:
 		return true
 	}
 	return false
