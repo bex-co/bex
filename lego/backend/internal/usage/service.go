@@ -727,8 +727,11 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 		s.recordSourceHealth(ctx, ds.TenantID, ds.Kind, ds.ID, kind, window, health)
 		return false
 	}
+	// Storage rows carry the plan too, so pricing and Stripe can exempt a
+	// Free datastore's included storage (w4/427). Each meter has its own
+	// forward cursor, so no window already written is re-keyed.
 	tier := ""
-	if kind == store.UsageKindInstanceSeconds {
+	if kind == store.UsageKindInstanceSeconds || kind == store.UsageKindStorageGBSeconds {
 		tier = ds.Plan
 	}
 	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{

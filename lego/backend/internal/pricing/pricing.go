@@ -422,6 +422,11 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 	case store.UsageKindBuildSeconds:
 		return s.build
 	case store.UsageKindStorageGBSeconds:
+		// A Free Postgres or Key Value includes its fixed storage at $0, as
+		// Render's Free Postgres does (w4/427, ADR030).
+		if tier == "free" {
+			return 0
+		}
 		if resourceKind == store.ResourceKindPostgres || resourceKind == store.ResourceKindKeyValue {
 			return s.storage
 		}

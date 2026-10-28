@@ -673,3 +673,16 @@ func TestMonthlyEstimateUsesTheDiskRateForServicesAndStorageForDatastores(t *tes
 			service.Lines[0].StorageUSD, datastore.Lines[0].StorageUSD)
 	}
 }
+
+// A Free Postgres or Key Value includes its storage at $0, as Render's Free
+// Postgres does; a paid one keeps the storage rate (w4/427).
+func TestFreeDatastoreStorageIsIncluded(t *testing.T) {
+	const gbMonth = 730 * 3600
+	for _, rk := range []string{store.ResourceKindPostgres, store.ResourceKindKeyValue} {
+		free := Default.Estimate([]store.UsageSummaryRow{{Kind: store.UsageKindStorageGBSeconds, ResourceKind: rk, Tier: "free", Total: gbMonth}})
+		paid := Default.Estimate([]store.UsageSummaryRow{{Kind: store.UsageKindStorageGBSeconds, ResourceKind: rk, Tier: "basic-256mb", Total: gbMonth}})
+		if free.TotalUSD != "0.00" || paid.TotalUSD != "0.21" {
+			t.Errorf("%s storage: free=%s paid=%s, want 0.00 and 0.21", rk, free.TotalUSD, paid.TotalUSD)
+		}
+	}
+}

@@ -1339,7 +1339,8 @@ func TestProcessDatastoreWindowUpsertsStorage(t *testing.T) {
 		ID: "mydb", Name: "mydb", TenantID: "tea-ds", Plan: "basic-256mb", Kind: store.ResourceKindPostgres,
 	}, window)
 
-	k := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, "", window}
+	// Storage rows carry the datastore's plan (w4/427).
+	k := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, "basic-256mb", window}
 	st.mu.Lock()
 	row, ok := st.rows[k]
 	st.mu.Unlock()
@@ -1473,7 +1474,7 @@ func TestDatastoreStorageCatchUpRetriesWithoutGaps(t *testing.T) {
 	svc.catchUpDatastoreThrough(context.Background(), ds, previous.Add(2*time.Hour))
 
 	for _, window := range []time.Time{previous.Add(time.Hour), previous.Add(2 * time.Hour)} {
-		key := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, "", window}
+		key := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, ds.Plan, window}
 		st.mu.Lock()
 		row, ok := st.rows[key]
 		st.mu.Unlock()

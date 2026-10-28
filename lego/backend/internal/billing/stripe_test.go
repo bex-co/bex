@@ -266,6 +266,10 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"egress rounded to Stripe precision", Event{EventType: "egress_bytes", Properties: map[string]string{"value": "1528842059"}}, "egress_gib", "1.423845122568", false},
 		{"single byte retained", Event{EventType: "egress_bytes", Properties: map[string]string{"value": "1"}}, "egress_gib", "0.000000000931", false},
 		{"storage re-based to GB-hours", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "7200"}}, "storage_gb_hours", "2", false},
+		// w4/427: a Free datastore's included storage has no meter; paid storage keeps it.
+		{"free postgres storage skipped", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"tier": "free", "resource_kind": "postgres", "value": "7200"}}, "", "", true},
+		{"free key value storage skipped", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"tier": "free", "resource_kind": "keyvalue", "value": "7200"}}, "", "", true},
+		{"paid postgres storage sent", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"tier": "basic-256mb", "resource_kind": "postgres", "value": "7200"}}, "storage_gb_hours", "2", false},
 		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
 		{"sandbox weighted seconds unchanged", Event{EventType: "sandbox_compute_seconds", Properties: map[string]string{"value": "1990800"}}, "sandbox_compute_seconds", "1990800", false},

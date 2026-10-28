@@ -439,6 +439,10 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 	case store.UsageKindEgressBytes:
 		return "egress_gib", scaleDown(e.Properties["value"], bytesPerGiB), false
 	case store.UsageKindStorageGBSeconds:
+		// A Free datastore's included storage is owed nothing (w4/427).
+		if e.Properties["tier"] == "free" {
+			return "", "", true
+		}
 		return "storage_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindDiskGBSeconds:
 		// Same GB-hour rebase as storage, a separate meter: the basis
