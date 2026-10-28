@@ -8,11 +8,17 @@
   "fields": {
     "#/allOf/1/properties/previews": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/allOf/1/properties/previewsEnabled": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/allOf/1/properties/previewsExpireAfterDays": {
       "state": "unsupported",
@@ -706,11 +712,17 @@
     },
     "#/definitions/serverService/properties/previews": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/properties/pullRequestPreviewsEnabled": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/properties/region": {
       "state": "unsupported",
@@ -884,11 +896,17 @@
     },
     "#/definitions/staticService/properties/previews": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/staticService/properties/pullRequestPreviewsEnabled": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/staticService/properties/renderSubdomainPolicy": {
       "state": "translated",
@@ -1038,11 +1056,17 @@
     },
     "#/definitions/serverService/allOf/1/then/properties/previews": {
       "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/allOf/1/then/properties/pullRequestPreviewsEnabled": {
       "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "reason": "Explicit off/false opt-outs are accepted with no stored effect; enabling PR preview environments remains a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12)",
+      "acceptPreviewOptOut": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/allOf/1/then/properties/registryCredential": {
       "state": "unsupported",
@@ -1810,8 +1834,10 @@
         "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
       },
       "\"off\"": {
-        "state": "unsupported",
-        "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+        "state": "equivalent",
+        "reason": "The disabled generation value requests no preview resource and has no stored effect",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
       }
     },
     "#/definitions/redisServer/properties/maxmemoryPolicy/enum": {
