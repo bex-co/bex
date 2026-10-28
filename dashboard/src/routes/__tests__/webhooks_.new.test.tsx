@@ -45,6 +45,13 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => ({ canManage, loaded: true }),
 }));
 
+let workspacePlan = "pro";
+vi.mock("@/features/workspaces/context", () => ({
+  useWorkspace: () => ({
+    currentWorkspace: { id: "tea-1", plan: workspacePlan },
+  }),
+}));
+
 const copy = vi.fn();
 vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
   useCopyToClipboard: () => ({ copied: false, copy }),
@@ -72,6 +79,7 @@ function renderPage() {
 
 beforeEach(() => {
   canManage = true;
+  workspacePlan = "pro";
   mutationError = null;
   existingNames = [];
   clearError.mockReset();
@@ -215,6 +223,51 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
       await screen.findByText(/only workspace managers/i),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create webhook" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // w4/425: the server's plan refusal names the plan in its own focused alert,
+  // never "Fix the highlighted fields" with nothing highlighted.
+  it("names the plan for WEBHOOK_PLAN_LIMIT, without the field summary", async () => {
+    mutationError = new WebhookMutationError(
+      "WEBHOOK_PLAN_LIMIT",
+      "webhooks require the Pro plan or higher; this workspace is on Hobby",
+      "form",
+    );
+    renderPage();
+    const alert = await screen.findByText(
+      /available on the Pro plan and higher/,
+    );
+    expect(alert).toHaveFocus();
+    expect(
+      screen.queryByText("Fix the highlighted fields and try again."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the field summary for a field refusal", async () => {
+    mutationError = new WebhookMutationError(
+      "WEBHOOK_NAME_CONFLICT",
+      "server prose",
+      "name",
+    );
+    renderPage();
+    expect(
+      await screen.findByText("Fix the highlighted fields and try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a Hobby workspace the plan notice instead of the form", async () => {
+    workspacePlan = "hobby";
+    renderPage();
+    expect(
+      await screen.findByText(/Upgrade this workspace to add an endpoint/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
     expect(
       screen.queryByRole("button", { name: "Create webhook" }),
     ).not.toBeInTheDocument();

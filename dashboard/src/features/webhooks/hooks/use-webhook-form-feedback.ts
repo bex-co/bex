@@ -27,11 +27,15 @@ export function useWebhookFormFeedback({
   const nameRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const eventsRef = useRef<HTMLDivElement>(null);
+  // A form-level refusal (plan, quota, stale state) focuses its own alert,
+  // never a field it says nothing about (w4/425).
+  const formErrorRef = useRef<HTMLParagraphElement>(null);
 
   const focusField = useCallback((field: WebhookFormField) => {
     if (field === "name") nameRef.current?.focus();
     else if (field === "url") urlRef.current?.focus();
-    else eventsRef.current?.focus();
+    else if (field === "events") eventsRef.current?.focus();
+    else formErrorRef.current?.focus();
   }, []);
 
   const mutationFeedback = useMemo(() => {
@@ -92,6 +96,7 @@ export function useWebhookFormFeedback({
     nameRef,
     urlRef,
     eventsRef,
+    formErrorRef,
     validate,
     clearField,
   };

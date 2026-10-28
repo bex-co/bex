@@ -76,3 +76,12 @@ export function clearWebhookFormError(
   delete next[field];
   return next;
 }
+
+/**
+ * Whether any field (name, URL, events) is invalid. A form-level refusal
+ * (a plan or quota limit) highlights no field, so it must not trigger the
+ * "Fix the highlighted fields" summary (w4/425).
+ */
+export function hasFieldErrors(errors: WebhookFormErrors): boolean {
+  return Boolean(errors.name || errors.url || errors.events);
+}

@@ -21,8 +21,11 @@ import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
 import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-form-feedback";
+import { hasFieldErrors } from "@/features/webhooks/lib/validation";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useWorkspace } from "@/features/workspaces/context";
+import { proFeaturesPlan } from "@/features/workspaces/types";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
 import { translatedTitleHead } from "@/common/lib/document-head";
 
@@ -50,6 +53,10 @@ export function NewWebhookPage() {
   } = useWebhookEventTypes();
   const { endpoints } = useWebhooks({ poll: false });
   const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
+  // Webhooks start at Pro, as on Render (w8/m138); a Hobby workspace gets the
+  // plan notice instead of a form that can only be refused (w4/425).
+  const { currentWorkspace } = useWorkspace();
+  const proPlan = proFeaturesPlan(currentWorkspace?.plan);
   // Fail-closed: only render the create form when affirmatively allowed.
   // Confirmed denial keeps the existing manageRequired copy.
 
@@ -58,12 +65,19 @@ export function NewWebhookPage() {
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [enabled, setEnabled] = useState(true);
   const [created, setCreated] = useState<CreatedWebhookEndpoint | null>(null);
-  const { errors, nameRef, urlRef, eventsRef, validate, clearField } =
-    useWebhookFormFeedback({
-      mutationError,
-      fallbackMessage: t("webhooks.createError"),
-      clearMutationError: clearError,
-    });
+  const {
+    errors,
+    nameRef,
+    urlRef,
+    eventsRef,
+    formErrorRef,
+    validate,
+    clearField,
+  } = useWebhookFormFeedback({
+    mutationError,
+    fallbackMessage: t("webhooks.createError"),
+    clearMutationError: clearError,
+  });
 
   const catalogReady = !typesLoading && !typesError && eventTypes.length > 0;
   const mutationAllowed = canManage && !busy;
@@ -121,7 +135,14 @@ export function NewWebhookPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!canManage ? (
+                {!proPlan ? (
+                  <p className="text-muted-foreground text-sm" role="status">
+                    {t("webhooks.planGate")}{" "}
+                    <Link to="/billing" className="underline">
+                      {t("webhooks.planGateBilling")}
+                    </Link>
+                  </p>
+                ) : !canManage ? (
                   capabilitiesLoaded ? (
                     <p className="text-muted-foreground text-sm" role="status">
                       {t("webhooks.manageRequired")}
@@ -136,7 +157,7 @@ export function NewWebhookPage() {
                       void handleSubmit();
                     }}
                   >
-                    {Object.keys(errors).length > 0 ? (
+                    {hasFieldErrors(errors) ? (
                       <p className="text-destructive text-sm" role="alert">
                         {t("webhooks.formErrorsSummary")}
                       </p>
@@ -281,7 +302,12 @@ export function NewWebhookPage() {
                       </p>
                     ) : null}
                     {errors.form ? (
-                      <p className="text-destructive text-sm" role="alert">
+                      <p
+                        ref={formErrorRef}
+                        tabIndex={-1}
+                        className="text-destructive text-sm"
+                        role="alert"
+                      >
                         {errors.form}
                       </p>
                     ) : null}

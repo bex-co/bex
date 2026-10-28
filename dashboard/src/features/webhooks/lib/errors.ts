@@ -39,6 +39,11 @@ const metadataByCode: Record<
     field: "events",
     messageKey: "webhooks.validation.eventsInvalid",
   },
+  // w4/425: a Hobby workspace's create is a plan refusal, not a form error.
+  WEBHOOK_PLAN_LIMIT: {
+    field: "form",
+    messageKey: "webhooks.errors.planLimit",
+  },
   WEBHOOK_ENDPOINT_LIMIT: {
     field: "form",
     messageKey: "webhooks.errors.endpointLimit",
