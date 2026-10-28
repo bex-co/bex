@@ -1220,7 +1220,11 @@ check_request_path_ha() {
   # on the 3-node platform pool; hydra/kratos/bex-api moved to preferred,
   # openfga/traefik keep required.
   required="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution | length" "$manifest" | tr -d '\n')"
-  preferred="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | [.spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]? | select(.weight >= 1 and .podAffinityTerm.topologyKey == \"kubernetes.io/hostname\")] | length" "$manifest" | tr -d '\n')"
+  # Count the matching terms line by line: the array-length form printed a
+  # value per document, and the joined digits were then read as one octal
+  # number that overflowed, so the verdict depended on how many documents
+  # followed the Deployment (w4/m235).
+  preferred="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]? | select(.weight >= 1 and .podAffinityTerm.topologyKey == \"kubernetes.io/hostname\") | .weight" "$manifest" | { grep -c . || true; })"
   min_available="$(yq -N "select(.kind == \"PodDisruptionBudget\" and .metadata.name == \"$pdb\") | .spec.minAvailable" "$pdb_manifest" | tr -d '\n')"
   if ! [[ "$replicas" =~ ^[0-9]+$ ]] || (( replicas < 2 )); then
     echo "FAIL: $label renders replicas '$replicas', want >=2" >&2

@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -485,17 +484,6 @@ func setupAppReconciler(
 	}
 	if err := appReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "service")
-		os.Exit(1)
-	}
-	// The platform-host fallback route is written once per leader start;
-	// a failure is logged and the next start retries it (w4/m235 t008).
-	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		if err := appReconciler.EnsurePlatformHostFallback(ctx, uncachedClient); err != nil {
-			setupLog.Error(err, "unable to write the platform host fallback route")
-		}
-		return nil
-	})); err != nil {
-		setupLog.Error(err, "unable to register the platform host fallback route")
 		os.Exit(1)
 	}
 

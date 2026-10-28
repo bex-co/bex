@@ -1,6 +1,6 @@
 # w4 · m235 — A new service's URL says its first deploy is in progress, not `404 page not found`
 
-**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** todo — t009 opened 2026-10-27 by live QA run 0dbc on pin `f4f12981e455` (pre-200 answers now pass: bex's 503 text, no raw 404, first 200 at 15 s; but after `live` requests are held 2–16 s in ~20 s bursts for 35 s–2 min); t001–t006 done 2026-10-19, t008 done 2026-10-26 (loopx w4: lowest-priority platform-host fallback route to the activator); t007 waits for the release pipeline to deploy the operator and activator, then QA replays the DoD live (3 s and 0.5 s polls)
+**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** blocked — t001–t006 and t008 done (t008's fallback route corrected to a platform manifest 2026-10-28, loopx w4); t009 root cause narrowed to the edge (connection/TLS before Traefik reads the request) and needs a live repro with QA credentials; t007 closeout replay follows
 
 ## Tasks (in order)
 
