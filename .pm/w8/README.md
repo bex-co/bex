@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210
+
 - [ ] **m141** — [HTTP-aware Docker web listener selection](blocked/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done; release pipeline deploys operator/API/CRD + migration0172, then QA runs RabbitMQ15672/narration, nginx80 and noEXPOSE runtime-discovery acceptance with explicit/private controls and cleanup by ID/404 proofs)**
 
 - [ ] **m140** — [Password-free internal Key Value connections](blocked/m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **BLOCKED (2026-10-28: t001–t007 done; release pipeline deploys operator/API + CRD and the proxy image pulls in tenant namespaces, then QA runs t008 webdis/old-URL/external-AUTH/isolation/CONFIG matrix with cleanup and 404 proofs; no Valkey restart)**
@@ -399,7 +401,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](blocked/210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay — **BLOCKED (2026-10-28: fix done — an unconfigured resolution never reuses a `configured` image network, so removing PORT returns rollback/redeploy to the image's port; release pipeline deploys the operator, then QA replays the whoami 9999-fail and echo 9090-served sequences with PORT deleted, expecting live on 80, fixtures deleted with 404 proofs)**
+- [x] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](done/210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay — **PROMOTED 2026-10-28 to m142; evidence retained**
 
 - [ ] **209** — [A service deployed from a public non-GitHub repository (GitLab, …) gets deploys with no commit: commit resolution is GitHub-only](blocked/209.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6a81 2026-10-27: `gitlab.com/pages/plain-html` deployed and served with no `commit` on its deploy — **BLOCKED (2026-10-28: source fixed; anonymous GitLab production-helper smoke, pinning/protocol/race tests and lint pass; release pipeline deploys API, then QA verifies hosted commit/runtime SHA, explicit-SHA and miss controls and cleans fixtures by ID/404 proofs)**
 

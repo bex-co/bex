@@ -44,8 +44,9 @@ func webImageHTTPSelectionPending(app *appv1alpha1.App) bool {
 		app.Status.ImageNetwork != nil && app.Status.ImageNetwork.HTTPSelection == ""
 }
 
-// Legacy serving networks keep their choice on an operator upgrade; a genuinely
-// new digest is discovered once. Removing an explicit PORT starts discovery.
+// Keep an unconfigured listener decision across releases of the same image.
+// Unknown legacy provenance may only retain a choice matching fresh metadata;
+// otherwise a removed PORT could be injected into the next candidate again.
 func retainWebHTTPSelection(app *appv1alpha1.App, network *appv1alpha1.ImageNetworkStatus, configured bool) {
 	if !app.Spec.UsesWebImagePorts() {
 		return
@@ -60,14 +61,13 @@ func retainWebHTTPSelection(app *appv1alpha1.App, network *appv1alpha1.ImageNetw
 	if network.HTTPSelection != "" {
 		return
 	}
-	if previous := app.Status.ImageNetwork; previous != nil && previous != network && previous.Image == network.Image &&
-		previous.HTTPSelection != "" && previous.HTTPSelection != appv1alpha1.HTTPSelectionConfigured {
+	if previous := app.Status.ImageNetwork; previous != network && retainableWebHTTPSelection(previous, network) && previous.HTTPSelection != "" {
 		network.PrimaryPort, network.HTTPSelection = previous.PrimaryPort, previous.HTTPSelection
 		network.Ports = slices.Clone(previous.Ports)
 		return
 	}
 
-	if serving := app.Status.ServingNetwork; serving != nil && serving.Image == network.Image && serving.HTTPSelection != appv1alpha1.HTTPSelectionConfigured {
+	if serving := app.Status.ServingNetwork; retainableWebHTTPSelection(serving, network) {
 		network.PrimaryPort = serving.PrimaryPort
 		network.Ports = slices.Clone(serving.Ports)
 		network.HTTPSelection = serving.HTTPSelection
@@ -75,6 +75,19 @@ func retainWebHTTPSelection(app *appv1alpha1.App, network *appv1alpha1.ImageNetw
 			network.HTTPSelection = appv1alpha1.HTTPSelectionRetained
 		}
 	}
+}
+
+// Legacy HTTP markers can also carry a stale configured primary, so only a
+// known-unconfigured network may replace fresh ports. Exact metadata equality
+// preserves ordinary legacy upgrades without importing an ambiguous listener.
+func retainableWebHTTPSelection(previous, network *appv1alpha1.ImageNetworkStatus) bool {
+	if previous == nil || previous.Image != network.Image || previous.HTTPSelection == appv1alpha1.HTTPSelectionConfigured {
+		return false
+	}
+	if previous.ConfiguredPort != nil {
+		return *previous.ConfiguredPort == 0
+	}
+	return previous.PrimaryPort == network.PrimaryPort && slices.Equal(previous.Ports, network.Ports)
 }
 
 // selectWebImageHTTP runs before route projection or promotion, including when

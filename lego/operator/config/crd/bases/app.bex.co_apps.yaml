@@ -1233,6 +1233,15 @@ spec:
                 description: ImageNetwork is the verified private port set for the
                   candidate image.
                 properties:
+                  configuredPort:
+                    description: |-
+                      ConfiguredPort records the configuration used to resolve this network:
+                      zero means no configured port, a positive value is the explicit PORT or
+                      service port, and nil is legacy data whose provenance must be refreshed.
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
+                    type: integer
                   httpSelection:
                     description: |-
                       HTTPSelection is the completed web listener decision. Empty means the
@@ -1374,6 +1383,15 @@ spec:
                   It keeps the old pods' ports until they are gone, and is what a failed
                   rollout restores (w4/428).
                 properties:
+                  configuredPort:
+                    description: |-
+                      ConfiguredPort records the configuration used to resolve this network:
+                      zero means no configured port, a positive value is the explicit PORT or
+                      service port, and nil is legacy data whose provenance must be refreshed.
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
+                    type: integer
                   httpSelection:
                     description: |-
                       HTTPSelection is the completed web listener decision. Empty means the
@@ -1516,6 +1534,15 @@ spec:
                 description: ServingNetwork retains the active release's ports while
                   a candidate starts.
                 properties:
+                  configuredPort:
+                    description: |-
+                      ConfiguredPort records the configuration used to resolve this network:
+                      zero means no configured port, a positive value is the explicit PORT or
+                      service port, and nil is legacy data whose provenance must be refreshed.
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
+                    type: integer
                   httpSelection:
                     description: |-
                       HTTPSelection is the completed web listener decision. Empty means the

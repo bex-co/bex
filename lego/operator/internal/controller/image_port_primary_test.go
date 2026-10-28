@@ -29,7 +29,7 @@ import (
 )
 
 // imageConfigRegistry serves one image whose config declares exposed.
-func imageConfigRegistry(t *testing.T, exposed string) *http.Client {
+func imageConfigRegistry(t interface{ Helper() }, exposed string) *http.Client {
 	t.Helper()
 	config := fmt.Sprintf(`{"architecture":"amd64","os":"linux","config":{"ExposedPorts":{%s}}}`, exposed)
 	configDigest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(config)))

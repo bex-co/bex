@@ -110,11 +110,11 @@ func TestWebHTTPFallbackWaitsForStartupAndDoesNotChangePrivateOrExplicit(t *test
 }
 
 func TestWebHTTPRetainsServingDigestButNotNewImageOrRemovedPORT(t *testing.T) {
-	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ServingNetwork: &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 15672, Ports: []int32{4369, 15672}}}}
+	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ServingNetwork: &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), PrimaryPort: 15672, Ports: []int32{4369, 15672}}}}
 	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}}
 	retainWebHTTPSelection(app, candidate, false)
 	if candidate.PrimaryPort != 15672 || candidate.HTTPSelection != "retained" {
-		t.Fatalf("legacy serving choice changed: %+v", candidate)
+		t.Fatalf("known-unconfigured serving choice changed: %+v", candidate)
 	}
 	candidate = &appv1alpha1.ImageNetworkStatus{Image: "image-b", PrimaryPort: 4369}
 	retainWebHTTPSelection(app, candidate, false)
@@ -144,7 +144,7 @@ func (s *httpDiscoveryScanner) ScanPorts(context.Context, string, []int) ([]int,
 }
 
 func TestWebHTTPDecisionSurvivesSameDigestMetadataRefresh(t *testing.T) {
-	previous := &appv1alpha1.ImageNetworkStatus{Image: "image-a", HTTPSelection: "http", PrimaryPort: 15672, Ports: []int32{4369, 15672}}
+	previous := &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), HTTPSelection: "http", PrimaryPort: 15672, Ports: []int32{4369, 15672}}
 	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ImageNetwork: previous}}
 	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}, Revision: "next"}
 	retainWebHTTPSelection(app, candidate, false)
