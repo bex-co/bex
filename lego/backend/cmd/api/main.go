@@ -768,6 +768,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
 	deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
 	deps.AgentSessionStore = st  // ADR047 D3: durable agent-session lifecycle
+	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
+	deps.AgentEnvironmentStore = st
 	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
 		deps.AgentSessionTuples = writer
 	}
@@ -1174,6 +1176,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			log.Fatalf("bex-api: %v", err)
 		}
 		deps.SandboxSessionEgress = egress
+		deps.AgentRegistryHosts = egress.RegistryDomains()
 		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
 		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH
 		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC

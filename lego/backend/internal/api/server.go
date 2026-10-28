@@ -361,7 +361,13 @@ type Deps struct {
 	// mechanism to SandboxClient. All five dependencies are mandatory: the DB
 	// row, first-class OpenFGA tuple writer, sandbox lifecycle, HMAC signer, and
 	// browser-reachable gateway origin form one fail-closed feature.
-	AgentSessionStore        agentsessions.Store
+	AgentSessionStore agentsessions.Store
+	// AgentEnvironmentStore persists each workspace's agent environment
+	// (w10/m17); nil ⇒ defaults only.
+	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentRegistryHosts is the session-egress package-registry catalog,
+	// reported by the agent environment for display.
+	AgentRegistryHosts       []string
 	AgentSessionTuples       agentsessions.TupleWriter
 	AgentSessionTicketSecret []byte
 	AgentSessionGatewayURL   string
@@ -984,6 +990,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 			TurnTimeout:      d.AgentTurnTimeout,
+			Environments:     d.AgentEnvironmentStore,
+			RegistryHosts:    d.AgentRegistryHosts,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},

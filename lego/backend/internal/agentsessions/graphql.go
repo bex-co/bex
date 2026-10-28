@@ -62,6 +62,69 @@ var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentNetworkTierGQLEnum = graphql.NewEnum(graphql.EnumConfig{
+	Name:        "AgentNetworkTier",
+	Description: "Sandbox network access for a workspace's agent sessions. FULL is stored but currently enforced as REGISTRIES.",
+	Values: graphql.EnumValueConfigMap{
+		"REGISTRIES": &graphql.EnumValueConfig{Value: NetworkTierRegistries},
+		"FULL":       &graphql.EnumValueConfig{Value: NetworkTierFull},
+		"CUSTOM":     &graphql.EnumValueConfig{Value: NetworkTierCustom},
+	},
+})
+
+var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentEnvironment",
+	Fields: graphql.Fields{
+		"ownerId":       gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
+		"networkTier":   gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
+		"customHosts":   gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
+		"defaultModel":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
+		"modelPinned":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelPinned }),
+		"pinnedModel":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
+		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
+		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
+			if v.UpdatedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.UpdatedAt)
+		})},
+	},
+})
+
+var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "AgentEnvironmentInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"networkTier":  &graphql.InputObjectFieldConfig{Type: agentNetworkTierGQLEnum},
+		"customHosts":  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the whole list; [] clears it. Opened only by the CUSTOM tier."},
+		"defaultModel": &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "\"\" returns to the provider default."},
+	},
+})
+
+func optionalString(v *string) any {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+
+// environmentInputArg maps the GraphQL input onto the partial update: an
+// omitted or null field keeps its value.
+func environmentInputArg(args map[string]any) EnvironmentInput {
+	raw, _ := args["input"].(map[string]any)
+	var input EnvironmentInput
+	if tier, ok := raw["networkTier"].(string); ok {
+		input.NetworkTier = &tier
+	}
+	if hosts, ok := raw["customHosts"].([]any); ok {
+		list := gqlutil.StringList(hosts)
+		input.CustomHosts = &list
+	}
+	if model, ok := raw["defaultModel"].(string); ok {
+		input.DefaultModel = &model
+	}
+	return input
+}
+
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
@@ -221,6 +284,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
+		"agentEnvironment": &graphql.Field{
+			Type: graphql.NewNonNull(agentEnvironmentGQLType),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Environment(p.Context, gqlutil.Str(p.Args, "ownerId"))
+			},
+		},
 		"agentSessionCapabilities": &graphql.Field{
 			Type: graphql.NewNonNull(agentCapabilitiesGQLType),
 			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
@@ -255,6 +325,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Steer(p.Context, SteerRequest{SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
+			},
+		},
+		"updateAgentEnvironment": &graphql.Field{
+			Type: graphql.NewNonNull(agentEnvironmentGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.ReqArg(graphql.String),
+				"input":   gqlutil.ReqArg(agentEnvironmentGQLInput),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.UpdateEnvironment(p.Context, gqlutil.Str(p.Args, "ownerId"), environmentInputArg(p.Args))
 			},
 		},
 		"resumeAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Resume),

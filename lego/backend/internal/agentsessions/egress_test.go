@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -27,7 +28,7 @@ import (
 func TestCreateEgressDerivesProviderAndCanonicalizesTenantInput(t *testing.T) {
 	t.Parallel()
 
-	endpoint, allowlist, err := createEgress("tea-a", AgentConfig{Agent: "codex"}, []string{"Z.example.com", "a.example.com"})
+	endpoint, allowlist, err := createEgress("tea-a", AgentConfig{Agent: "codex"}, nil, []string{"Z.example.com", "a.example.com"})
 	if err != nil {
 		t.Fatalf("createEgress: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestCreateEgressReturnsNamedBadRequests(t *testing.T) {
 		{name: "invalid widening", config: AgentConfig{Agent: "codex"}, extra: []string{"https://example.com"}, code: "AGENT_SESSION_EGRESS_ALLOWLIST_INVALID"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := createEgress("tea-a", tc.config, tc.extra)
+			_, _, err := createEgress("tea-a", tc.config, nil, tc.extra)
 			if !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("error = %v, want bad request", err)
 			}
@@ -62,5 +63,34 @@ func TestCreateEgressReturnsNamedBadRequests(t *testing.T) {
 				t.Fatalf("error = %#v, want code %s", err, tc.code)
 			}
 		})
+	}
+}
+
+// The workspace tier's hosts merge with the request's explicit allowlist:
+// duplicates across the two collapse, and the merged widening keeps the
+// 32-destination cap with the session allowlist's typed error.
+func TestCreateEgressMergesWorkspaceHostsWithTheRequestAllowlist(t *testing.T) {
+	t.Parallel()
+
+	_, allowlist, err := createEgress("tea-a", AgentConfig{Agent: "codex"}, []string{"b.example.com", "docs.example.com"}, []string{"Docs.Example.com", "a.example.com"})
+	if err != nil {
+		t.Fatalf("createEgress: %v", err)
+	}
+	if want := []string{"a.example.com", "b.example.com", "docs.example.com"}; !reflect.DeepEqual(allowlist, want) {
+		t.Fatalf("allowlist = %v, want %v", allowlist, want)
+	}
+
+	workspace := make([]string, 20)
+	requested := make([]string, 13)
+	for i := range workspace {
+		workspace[i] = fmt.Sprintf("w%d.example.com", i)
+	}
+	for i := range requested {
+		requested[i] = fmt.Sprintf("r%d.example.com", i)
+	}
+	_, _, err = createEgress("tea-a", AgentConfig{Agent: "codex"}, workspace, requested)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "AGENT_SESSION_EGRESS_ALLOWLIST_INVALID" || coded.Params["reason"] != "too_many_entries" {
+		t.Fatalf("33 merged destinations error = %#v, want the typed cap", err)
 	}
 }
