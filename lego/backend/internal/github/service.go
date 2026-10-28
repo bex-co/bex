@@ -133,13 +133,15 @@ type Service struct {
 	runtimeDetectionOnce         sync.Once
 	runtimeDetectionCache        *core.TTLCache[RuntimeDetection]
 	runtimeDetectionFlight       singleflight.Group
-	// Public-repo commit resolve (w4/m108 t004): unauthenticated GitHub
-	// GET /commits/{ref} when no App installation exists for the owner.
-	// Memoized per burst, misses longer: GitHub's anonymous limit is 60
-	// req/h/IP (publicCommitCacheTTL).
+	// Public-repo commit resolution uses the anonymous GitHub API when no
+	// installation exists, and smart HTTP for other public HTTPS Git hosts.
+	// Both paths memoize burst successes and longer misses; GitHub's anonymous
+	// quota is 60 req/h/IP (publicCommitCacheTTL).
 	publicCommitOnce   sync.Once
 	publicCommitCache  *core.TTLCache[cachedPublicCommit]
 	publicCommitFlight singleflight.Group
+	// Test-only transport seam; production always uses the anonymous SSRF-guarded client.
+	publicGitHTTPClient *http.Client
 }
 
 // cachedPublicCommit is one (repo, ref) resolve outcome. ok=false is a
@@ -1318,32 +1320,26 @@ func (s *Service) DeployCommitSource() commitSource { return commitSource{s} }
 // (w9/001, extended w4/m108 t004). NOT authz-gated: the caller (a deploy
 // trigger) has already authorized its own verb.
 //
-// Decision (w4/m108 t004, also docs/ADR004): when the workspace has no GitHub
-// App installation for the repo owner, fall back to an unauthenticated
-// GET /repos/{owner}/{repo}/commits/{ref} for github.com public repos —
-// reuses this seam so create / Trigger / blueprint all get hash+message+
-// authorAt at deploy-open, cheaper than an operator→backend write-back.
-// Limits: GitHub-only public repos; 60 req/h/IP so results are cached per
-// (repo, ref); every failure stays ok=false and never blocks a deploy.
-// Non-GitHub URLs, private-without-connection, and unknown refs remain
-// commit-less (404/403 collapse so this path is not an existence oracle).
+// GitHub keeps its installation/anonymous API paths, including message and
+// author time. Other public HTTPS hosts use anonymous smart-HTTP discovery
+// (w8/209), including when the GitHub App is disabled. Both public paths cache
+// successes briefly and collapse every failure to a miss; metadata lookup
+// never blocks a deploy or distinguishes a private repo from a missing one.
 //
-//   - ok=false, nil err: GitHub off, unparseable URL, out-of-grant /
-//     private / unknown ref, non-github.com without a connection, or any
-//     public-fallback failure — the deploy proceeds with no commit metadata
-//     (omitted, not faked).
-//   - non-nil err: an installation-path GitHub failure. Callers may treat
-//     this the same as ok=false — commit metadata is provenance, never worth
-//     failing a deploy over. The public fallback never returns a non-nil err.
+// A non-nil error is an installation-path GitHub failure. Callers may treat it
+// like ok=false: provenance is never worth failing a deploy over.
 func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {
-	if !s.configured() || ref == "" {
+	if ref == "" {
+		return store.CommitInfo{}, false, nil
+	}
+	if !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
+		return s.resolvePublicGitCommit(ctx, repoURL, ref)
+	}
+	if !s.configured() {
 		return store.CommitInfo{}, false, nil
 	}
 	owner, repo, ok := ownerRepo(repoURL)
-	// Only a github.com repository has a commit an installation can name:
-	// another host's owner/repo that matches a connected account must not
-	// resolve to a GitHub SHA, which a pinned build then fails to fetch.
-	if !ok || !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
+	if !ok {
 		return store.CommitInfo{}, false, nil
 	}
 	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)

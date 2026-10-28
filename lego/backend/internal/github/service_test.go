@@ -993,7 +993,7 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 // TestResolveCommit covers w9/001 + w4/m108 t004: the deploy path's commit
 // resolution — connected repo => the ref's resolved SHA+message; public
 // github.com with no installation => unauthenticated lookup; every "nothing
-// to resolve" shape (github off, private/unknown/non-github, unparseable URL)
+// to resolve" shape (GitHub off, private/unknown, unparseable URL)
 // => (false, nil), never an error a caller might mistake for a deploy-
 // blocking failure on the public path.
 func TestResolveCommit(t *testing.T) {
@@ -1035,10 +1035,14 @@ func TestResolveCommit(t *testing.T) {
 	if _, ok, err := svc.resolveCommit(ctx, "default", "not-a-url", "main"); ok || err != nil {
 		t.Errorf("unparseable repo = ok=%v err=%v, want (false, nil)", ok, err)
 	}
-	// Another host's repository whose owner matches the connected account
-	// (w5/138): a GitHub SHA would be pinned as its build input.
+	// Another host resolves anonymously, never through the matching GitHub account.
+	svc.publicGitHTTPClient = missingPublicGitClient()
+	githubCalls := cl.getCommitCalls
 	if _, ok, err := svc.resolveCommit(ctx, "default", "https://gitlab.com/octo/app", "main"); ok || err != nil {
 		t.Errorf("gitlab repo = ok=%v err=%v, want (false, nil)", ok, err)
+	}
+	if cl.getCommitCalls != githubCalls {
+		t.Error("non-GitHub repository used GitHub GetCommit")
 	}
 	if _, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/octo/app", ""); ok || err != nil {
 		t.Errorf("empty ref = ok=%v err=%v, want (false, nil)", ok, err)
@@ -1047,7 +1051,7 @@ func TestResolveCommit(t *testing.T) {
 
 // TestResolveCommitPublicFallback covers w4/m108 t004: no App installation for
 // the owner falls back to unauthenticated github.com commit resolve. Public
-// success stamps hash+message; private/unknown/non-github/provider-failure
+// success stamps hash+message; private/unknown/provider-failure
 // each stay ok=false with no fabricated commit; results are cached per
 // (repo, ref).
 func TestResolveCommitPublicFallback(t *testing.T) {
@@ -1139,7 +1143,7 @@ func TestResolveCommitPublicFallback(t *testing.T) {
 
 	t.Run("non-github url", func(t *testing.T) {
 		cl := &fakeClient{commit: pub}
-		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore(), publicGitHTTPClient: missingPublicGitClient()}
 		c, ok, err := svc.resolveCommit(ctx, "default", "https://gitlab.com/acme/app", "main")
 		if ok || err != nil || c.Hash != "" {
 			t.Fatalf("non-github = %+v,%v,%v, want (zero,false,nil)", c, ok, err)
