@@ -210,17 +210,22 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 		if changesImagePorts(app) || replacedImagePorts(app) {
 			selector[labelRevision] = network.Revision
 		}
+		alias, aliased := aliasedPriorPrimary(app)
 		ports = make([]corev1.ServicePort, 0, len(network.Ports)+1)
 		for _, number := range network.Ports {
-			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", number), Port: number, TargetPort: intstr.FromInt32(number)})
+			target := number
+			if aliased && number == alias {
+				target = network.PrimaryPort
+			}
+			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", number), Port: number, TargetPort: intstr.FromInt32(target)})
 		}
 		// The public route keeps naming the replaced primary until the rollout
 		// completes (ingressBackend). A Service without that port makes Traefik
 		// drop the route, and the host falls through to the activator's "service
 		// not ready" (w4/430), so the old number stays as an alias of the new
 		// listener while the old pods drain.
-		if old, ok := aliasedPriorPrimary(app); ok {
-			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", old), Port: old, TargetPort: intstr.FromInt32(network.PrimaryPort)})
+		if aliased && !slices.Contains(network.Ports, alias) {
+			ports = append(ports, corev1.ServicePort{Name: fmt.Sprintf("tcp-%d", alias), Port: alias, TargetPort: intstr.FromInt32(network.PrimaryPort)})
 		}
 	}
 	applyServicePortServerDefaults(ports)
@@ -246,16 +251,17 @@ func replacedImagePorts(app *appv1alpha1.App) bool {
 }
 
 // aliasedPriorPrimary is the replaced primary port of a port change routed
-// early, while the new network no longer declares it: the Services alias it to
-// the new listener and the public route keeps naming it until the rollout
-// completes (w4/430). A replaced primary the new image still declares is a
-// real listener of another role, so the route moves at once instead.
+// early: until the rollout completes, the Services point it at the new
+// listener and the public route keeps naming it (w4/430). It is aliased even
+// when the new image still declares it, because a declared port is not a
+// listener: an image that EXPOSEs 8080 and is told PORT=9090 listens on 9090
+// alone, and a route left on 8080 reached the new pod's closed port (502).
 func aliasedPriorPrimary(app *appv1alpha1.App) (int32, bool) {
 	if !replacedImagePorts(app) {
 		return 0, false
 	}
 	old := app.Status.PriorServingNetwork.PrimaryPort
-	return old, !slices.Contains(app.Status.ServingNetwork.Ports, old)
+	return old, old != app.Status.ServingNetwork.PrimaryPort
 }
 
 // portChangeHoldSeconds keeps a port-changing rollout's old pods serving after
