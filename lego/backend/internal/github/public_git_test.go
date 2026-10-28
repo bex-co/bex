@@ -404,3 +404,19 @@ func TestPublicGitHTTPFailuresAreCachedMisses(t *testing.T) {
 		})
 	}
 }
+
+// An advertisement past the bound still resolves its default branch from the
+// first record's HEAD symref; any other ref there stays a miss.
+func TestPublicGitOversizedAdvertisementResolvesDefaultBranch(t *testing.T) {
+	filler := strings.Repeat(gitPacket(testCommitA+" refs/environments/e/deployments/1\n"), maxPublicGitAdvertisement/40)
+	body := gitAdvertisement(testCommitA+" HEAD\x00symref=HEAD:refs/heads/master agent=git\n") + filler
+	for ref, want := range map[string]string{"master": testCommitA, "refs/heads/master": testCommitA, "HEAD": testCommitA, "main": "", "v1": ""} {
+		svc := &Service{publicGitHTTPClient: &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
+			return gitResponse(http.StatusOK, body), nil
+		})}}
+		info, ok, err := svc.resolveCommit(context.Background(), "default", "https://gitlab.example/big/repo", ref)
+		if err != nil || info.Hash != want || ok != (want != "") {
+			t.Errorf("%s = %+v,%v,%v, want %q", ref, info, ok, err, want)
+		}
+	}
+}
