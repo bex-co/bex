@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript/uimessagetest"
@@ -408,3 +409,40 @@ func TestToolErrorAfterPreliminaryOutputAndFinish(t *testing.T) {
 	}
 }
 
+// w10/m18: one stored full output is capped at MaxFullOutputBytes, cut on a
+// character boundary with the omitted count marked; the inline item is the
+// usual head + tail either way.
+func TestFullOutputIsCappedAtOneMiB(t *testing.T) {
+	// "é" is two bytes, so an odd-sized ASCII prefix puts the 1 MiB byte
+	// offset inside a character: the cut must step back to its first byte.
+	prefix := strings.Repeat("a", 3)
+	big := prefix + strings.Repeat("é", agenttranscript.MaxFullOutputBytes)
+	output, _ := json.Marshal(big)
+	items := agenttranscript.Coalesce(chunks(
+		`{"type":"tool-input-available","toolCallId":"c","toolName":"Bash","input":{},"dynamic":true}`,
+		`{"type":"tool-output-available","toolCallId":"c","output":`+string(output)+`,"dynamic":true}`,
+	))
+	if len(items) != 1 || len(items[0].FullOutputs) != 1 {
+		t.Fatalf("items = %d", len(items))
+	}
+	full := items[0].FullOutputs[0].Text
+	kept, marker, ok := strings.Cut(full, "\n\n[bex: full output capped at 1 MiB, ")
+	if !ok || !utf8.ValidString(full) || len(kept) > agenttranscript.MaxFullOutputBytes || len(kept) < agenttranscript.MaxFullOutputBytes-1 {
+		t.Fatalf("capped full output: kept %d bytes, valid=%v, marker=%v", len(kept), utf8.ValidString(full), ok)
+	}
+	omitted := utf8.RuneCountInString(big) - utf8.RuneCountInString(kept)
+	if marker != fmt.Sprintf("%d chars omitted]", omitted) || !strings.HasPrefix(big, kept) {
+		t.Fatalf("marker = %q, want %d chars omitted", marker, omitted)
+	}
+
+	// At the cap exactly, the full copy is stored unmarked.
+	exact := strings.Repeat("b", agenttranscript.MaxFullOutputBytes)
+	output, _ = json.Marshal(exact)
+	items = agenttranscript.Coalesce(chunks(
+		`{"type":"tool-input-available","toolCallId":"d","toolName":"Bash","input":{},"dynamic":true}`,
+		`{"type":"tool-output-available","toolCallId":"d","output":`+string(output)+`,"dynamic":true}`,
+	))
+	if f := items[0].FullOutputs; len(f) != 1 || f[0].Text != exact {
+		t.Fatal("a full output at exactly 1 MiB was altered")
+	}
+}

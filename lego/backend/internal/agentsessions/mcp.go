@@ -112,7 +112,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Environment(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_environment", Description: "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. Applies from each session's next turn."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_environment", Description: "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, Environment, error) {
 			out, err := s.UpdateEnvironment(ctx, in.OwnerID, in.EnvironmentInput)
 			return nil, out, err
