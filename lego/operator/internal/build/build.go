@@ -974,9 +974,9 @@ func boundedSourceDir(dir string) string {
 // Dockerfile and build secrets otherwise.
 func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
 	if o.Builder != BuilderNative {
-		args := []string{"--local", "dockerfile=" + dockerfileDir}
+		args := []string{"--local", "dockerfile=" + execution.KubernetesLiteral(dockerfileDir)}
 		if o.DockerfilePath != "" {
-			args = append(args, "--opt", "filename="+o.DockerfilePath)
+			args = append(args, "--opt", "filename="+execution.KubernetesLiteral(o.DockerfilePath))
 		}
 		return append(args, dockerBuildSecretArgs(o)...)
 	}
@@ -1015,7 +1015,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	args := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
-		"--local", "context=" + contextDir,
+		"--local", "context=" + execution.KubernetesLiteral(contextDir),
 		"--output", "type=oci,dest=" + outputMount + "/image.tar",
 	}
 	args = append(args, buildctlRecipeArgs(o, dockerfileDir)...)
@@ -1463,7 +1463,7 @@ func cachePhase(o Options, name, image, script string, args []string, mounts ...
 func sourcePathChecks(o Options) []corev1.EnvVar {
 	var env []corev1.EnvVar
 	add := func(key, display, mounted string) {
-		env = append(env, corev1.EnvVar{Name: key, Value: display}, corev1.EnvVar{Name: key + "_PATH", Value: mounted})
+		env = append(env, corev1.EnvVar{Name: key, Value: execution.KubernetesLiteral(display)}, corev1.EnvVar{Name: key + "_PATH", Value: execution.KubernetesLiteral(mounted)})
 	}
 	if rel := repoRelative(o.RootDir); rel != "" {
 		add("BEX_ROOT_DIR", rel, boundedSourceDir(o.RootDir))
@@ -1501,12 +1501,12 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		ref = "HEAD"
 	}
 	env := []corev1.EnvVar{
-		{Name: "REPO", Value: o.Repo},
-		{Name: "REF", Value: ref},
+		{Name: "REPO", Value: execution.KubernetesLiteral(o.Repo)},
+		{Name: "REF", Value: execution.KubernetesLiteral(ref)},
 		{Name: "GIT_TERMINAL_PROMPT", Value: "0"},
 	}
 	if o.ExpectedCommit != "" {
-		env = append(env, corev1.EnvVar{Name: "EXPECTED_COMMIT", Value: o.ExpectedCommit})
+		env = append(env, corev1.EnvVar{Name: "EXPECTED_COMMIT", Value: execution.KubernetesLiteral(o.ExpectedCommit)})
 	}
 	env = append(env, sourcePathChecks(o)...)
 	if o.CloneSecret != "" {

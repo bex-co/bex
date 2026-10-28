@@ -5216,7 +5216,7 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 		if e.Name == portEnvName {
 			continue // restated last as the serving port (envPort, w5/m149)
 		}
-		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
+		ev := corev1.EnvVar{Name: e.Name, Value: execution.KubernetesLiteral(e.Value)}
 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
 			ev.Value = ""
 			ev.ValueFrom = &corev1.EnvVarSource{
@@ -6486,7 +6486,7 @@ func preDeployArgv(app *appv1alpha1.App, image, command string) []string {
 	if shellRunsStartCommand(app, image, launchUnknown) {
 		return shellCommand(command)
 	}
-	return legacyShellCommand(command)
+	return legacyShellCommand(execution.KubernetesLiteral(command))
 }
 
 // preDeployStepCommand is the command a release's pre-deploy step runs: the

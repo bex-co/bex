@@ -30,6 +30,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // The resolve-native-runtime phase (w8/m51) runs bex's own image after the
@@ -338,7 +340,7 @@ func rewriteNativeBase(dockerfile, defaultImage, image string) (string, error) {
 func nativeVersionResolver(o Options) corev1.Container {
 	env := []corev1.EnvVar{
 		{Name: "BEX_NATIVE_RUNTIME", Value: nativeRuntime(o)},
-		{Name: "BEX_NATIVE_SOURCE_DIR", Value: boundedSourceDir(o.RootDir)},
+		{Name: "BEX_NATIVE_SOURCE_DIR", Value: execution.KubernetesLiteral(boundedSourceDir(o.RootDir))},
 	}
 	if !o.ServiceCreatedAt.IsZero() {
 		env = append(env, corev1.EnvVar{Name: NativeServiceCreatedEnv, Value: o.ServiceCreatedAt.UTC().Format(time.RFC3339)})

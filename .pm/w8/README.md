@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **207** — [A request whose upload takes longer than 60 s is cut off with 502: the tenant edge runs Traefik v3's default 60 s `readTimeout`](207.md) (~45m + slow-client sign-off, major) ← `/qa-find-bugs-cli` loop sweep 7980 2026-10-26: a 10 KB/s upload stopped at exactly 60.0 s; long responses (420 s) are fine
 
-- [ ] **206** — [`$$` in a build or start command reaches bash as `$`: Kubernetes rewrites `$$`/`$(NAME)` in the generated Dockerfile env value and container commands, which bex never escapes](206.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6646 2026-10-26: `a$$b` ran as `a$b`; env var values are unaffected
+- [ ] **206** — [`$$` in a build or start command reaches bash as `$`: Kubernetes rewrites `$$`/`$(NAME)` in the generated Dockerfile env value and container commands, which bex never escapes](blocked/206.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6646 2026-10-26: `a$$b` ran as `a$b`; env var values are unaffected — **BLOCKED (2026-10-28: source fixed and verified on real local Kubernetes with cleanup; release pipeline deploys the operator, then QA replays native/Docker command and build-dollar cases in production with requested native rebuild and cleanup/404 proofs)**
 
 - [x] **205** — [A multi-port Docker web service publishes its lowest declared port, not its HTTP port: Render's RabbitMQ template goes `live` on epmd (4369) and its URL answers 502](done/205.md) (>1h, major) ← `/qa-find-bugs-cli` loop sweep 5dba 2026-10-26: Render exposes the HTTP management port (15672); `PORT=15672` proves the target — **PROMOTED2026-10-28 to m141; evidence retained**
 

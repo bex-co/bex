@@ -322,8 +322,9 @@ func prepareNativeEnv(t *testing.T, o Options, secrets []corev1.EnvVar) string {
 	script := strings.NewReplacer("/native", dir, "/runtime-env", secret).Replace(prep.Args[0])
 	cmd := exec.Command("sh", "-eu", "-c", script)
 	cmd.Env = os.Environ()
+	resolved := expandedBuildValues(prep.Env)
 	for _, env := range prep.Env {
-		cmd.Env = append(cmd.Env, env.Name+"="+env.Value)
+		cmd.Env = append(cmd.Env, env.Name+"="+resolved[env.Name])
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("prepare: %v: %s", err, out)

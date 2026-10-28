@@ -19,6 +19,8 @@ package controller
 import (
 	"regexp"
 	"strings"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // shellPrefixed matches Render's documented multi-command form, a Docker
@@ -171,6 +173,16 @@ func isAssignment(word string) bool {
 // anything that needs a shell keeps running through /bin/sh -c, as it always
 // has here.
 func shellCommand(command string) []string {
+	args := rawShellCommand(command)
+	for i := range args {
+		args[i] = execution.KubernetesLiteral(args[i])
+	}
+	return args
+}
+
+// rawShellCommand also recognizes templates written before Kubernetes literals
+// were protected, so held releases keep their recorded launch strategy.
+func rawShellCommand(command string) []string {
 	if m := shellPrefixed.FindStringSubmatch(command); m != nil {
 		script := m[2]
 		// A script that is one quoted word (`sh -c 'a && b'`) is that word.
