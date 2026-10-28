@@ -18,6 +18,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
 	"github.com/bex-co/bex/lego/cli/internal/pgtrust"
+	"github.com/bex-co/bex/lego/cli/internal/skills"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 	"github.com/bex-co/bex/lego/cli/internal/update"
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
@@ -48,6 +49,9 @@ func main() {
 	// upstream commands remain untouched.
 	cmd.RootCmd.AddCommand(code.Commands()...)
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
+	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
+	// takes its place with the same subcommands and flags.
+	replaceCommand(cmd.RootCmd, skills.Command())
 	// Branding mutates exported cobra metadata (Use/help/docs) after native
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
@@ -102,6 +106,16 @@ func main() {
 		printUpdateNotice(os.Stderr, notice)
 	}
 	os.Exit(exitCode)
+}
+
+// replaceCommand swaps the root's child named like replacement.
+func replaceCommand(root, replacement *cobra.Command) {
+	for _, child := range root.Commands() {
+		if child.Name() == replacement.Name() {
+			root.RemoveCommand(child)
+		}
+	}
+	root.AddCommand(replacement)
 }
 
 // loginCommand returns the upstream `login` command when args invoke it.
