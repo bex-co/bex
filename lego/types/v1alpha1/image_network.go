@@ -35,6 +35,15 @@ const (
 	PortModeWebImageConfiguredV1 = "web-image-configured-v1"
 )
 
+// HTTP listener decisions are shared by runtime projection and deploy history.
+const (
+	HTTPSelectionDetected   = "http"
+	HTTPSelectionFallback   = "fallback"
+	HTTPSelectionRetained   = "retained"
+	HTTPSelectionConfigured = "configured"
+	ReasonHTTPPortDiscovery = "HTTPPortDiscovery"
+)
+
 // MaxImagePorts bounds a private service's TCP port set; it mirrors the
 // MaxItems marker on ImageNetworkStatus.Ports, which must stay a literal.
 const MaxImagePorts = 75
@@ -53,6 +62,15 @@ func IsReservedImagePort(port int32) bool {
 // ImageNetworkStatus binds a private port set to an immutable image and release.
 type ImageNetworkStatus struct {
 	Image string `json:"image"`
+	// HTTPSelection is the completed web listener decision. Empty means the
+	// first candidate still needs runtime discovery; private networks ignore it.
+	// +optional
+	// +kubebuilder:validation:Enum=http;fallback;retained;configured
+	HTTPSelection string `json:"httpSelection,omitempty"`
+	// NoDeclaredPorts distinguishes a runtime/default fallback from OCI EXPOSE.
+	// +optional
+	NoDeclaredPorts bool `json:"noDeclaredPorts,omitempty"`
+
 	// Source is the reference Image was resolved from, such as a prebuilt
 	// image's tag, so one release reads the registry once (w4/m243 t008).
 	// +optional

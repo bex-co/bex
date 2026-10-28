@@ -53,11 +53,12 @@ const progressContainer = "platform"
 // composition root adapts store.Deploy, the way PodLogSource keeps the
 // clientset out).
 type DeployProgress struct {
-	ID            string
-	Status        string
-	Image         string // image-backed deploys; "" for repo builds
-	Commit        string // resolved commit sha; "" when unresolved
-	FailureReason string // human-actionable cause on a failed deploy (w5/064); "" when none
+	ID               string
+	Status           string
+	Image            string // image-backed deploys; "" for repo builds
+	Commit           string // resolved commit sha; "" when unresolved
+	DetectedHTTPPort int32  // verified listener saved on this deploy, never borrowed from the current App
+	FailureReason    string // human-actionable cause on a failed deploy (w5/064); "" when none
 	// Built reports that a build actually ran for this deploy — the same
 	// evidence the Events tab shows as Build started/ended (a `build_started`
 	// service event fact). Deploys that run no build (rollbacks, and any
@@ -298,6 +299,9 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		}
 	}
 	if !d.FinishedAt.IsZero() {
+		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
+			add(d.FinishedAt, fmt.Sprintf("==> Detected HTTP on port %d; serving it", d.DetectedHTTPPort))
+		}
 		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason) {
 			add(d.FinishedAt, msg)
 		}

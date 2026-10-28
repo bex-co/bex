@@ -2984,6 +2984,8 @@ func TestDeployStallReasonOnlyForActionableDiagnoses(t *testing.T) {
 		want string
 	}{
 		{"probe stall", appAt("HealthCheckFailing", probeMsg, metav1.ConditionFalse, 5), probeMsg},
+		{"HTTP listener discovery", appAt("HTTPPortDiscovery", "No port answers HTTP yet; continuing to scan", metav1.ConditionFalse, 5), "No port answers HTTP yet; continuing to scan"},
+		{"stale HTTP discovery", appAt("HTTPPortDiscovery", "old scan", metav1.ConditionFalse, 4), ""},
 		{"crash loop", appAt("CrashLoopBackOff", "container exited", metav1.ConditionFalse, 5), "container exited"},
 		{"quota block", appAt("RolloutBlockedByQuota", "exceeded quota", metav1.ConditionFalse, 5), "exceeded quota"},
 		{"unschedulable (w6/080)", appAt(appv1alpha1.ReasonUnschedulable, "no node currently has room", metav1.ConditionFalse, 5), "no node currently has room"},
