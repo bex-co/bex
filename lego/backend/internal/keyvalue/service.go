@@ -146,11 +146,11 @@ type KeyValueView struct {
 
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
 // internal string, an optional external (TLS) string, and a ready-to-run CLI
-// command. The password is embedded inside the connection strings (Valkey's
-// redis://default:<password>@host form), never a standalone field — matching
-// Render. The explicit "default" user, not the empty-username redis://:<password>@
-// shorthand: verified live that valkey-cli 8.1.8's URI parser fails AUTH
-// against the empty-username form on a --requirepass server.
+// command. The internal string has no credentials once the operator has
+// cut over its authenticated front; an older store keeps its credentialed
+// string until then. The external string always embeds the default-user
+// password, never a standalone field. Explicit default-user authentication
+// also keeps valkey-cli compatible with the authenticated Valkey backend.
 type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString"`
@@ -1234,6 +1234,10 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 			"%w: Key Value %q has public access enabled but no external host; configure BEX_KV_DOMAIN and wait for reconciliation",
 			core.ErrUnavailable, kv.Name)
 	}
+	port := kv.Status.Port
+	if port == 0 {
+		port = 6379
+	}
 	internal := string(sec.Data["uri"])         // legacy connection Secret
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
 	if kv.Status.CredentialSecretName != "" {
@@ -1241,10 +1245,6 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		if kv.Status.Phase != appv1alpha1.KVPhaseReady || kv.Status.CredentialRevision == "" ||
 			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision(password) {
 			return KeyValueConnectionInfo{}, fmt.Errorf("%w: key value credentials are still converging", core.ErrConflict)
-		}
-		port := kv.Status.Port
-		if port == 0 {
-			port = 6379
 		}
 		if errs := validation.IsDNS1123Subdomain(kv.Status.Host); len(errs) != 0 {
 			return KeyValueConnectionInfo{}, errors.New("key value internal host is missing or invalid")
@@ -1254,6 +1254,13 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		if kv.Spec.Public && kv.Status.ExternalHost != "" {
 			external = keyValueURI("rediss", string(password), kv.Status.ExternalHost, port)
 		}
+	}
+
+	if kv.Status.InternalAuthOptional {
+		// Status is set only after the stable Service routes through a ready
+		// auth-injecting front. Publishing this sooner would hand clients an
+		// unauthenticated URL to a backend that still requires AUTH.
+		internal = (&url.URL{Scheme: "redis", Host: net.JoinHostPort(kv.Name, strconv.Itoa(int(port)))}).String()
 	}
 
 	// Render's cliCommand connects over the reachable endpoint — the external
