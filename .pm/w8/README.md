@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28
+- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done — the launcher replaces `skills` with an embedded 20-skill bex pack derived from render-oss/skills, with state in the bex config dir; Render's skills and state are never touched. Local sandbox acceptance passed. Needs the next `bex-cli/v*` release (user-run `/release cli`), then a QA spot-check of an agent deploying through the installed bex-cli skill, with the fixture deleted with a 404 proof)**
 
 - [ ] **m142** — [Clear image-network choices when PORT intent changes](blocked/m142/README.md) (8 tasks) ← from w8/210 — **BLOCKED (2026-10-28: t001–t005/t008 done; source d66f96c06 and all local gates pass. Release pipeline deploys operator/CRD, then QA verifies removed/saved PORT rollback and fresh-deploy controls with ID/404 cleanup; zero-error hosted continuity also depends on the unresolved w4/430 promotion burst)**
 
@@ -402,6 +402,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **214** — [`bex skills install` has no interactive picker (Render's TUI picks scope/tools/skills)](214.md) (~2h, minor) ← w8/m143 t002 design choice, 2026-10-28
 
 - [ ] **213** — [Platform-generated responses carry no `x-render-routing` header (`no-server`/`suspend`/`hibernate-pending-wake`), so an edge 404/503 looks like the app's own](213.md) (~30m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: Render tags its unknown-host 404, suspended 503 and wake page; bex's activator sets only `rndr-id`
 
