@@ -178,8 +178,11 @@ func (s *Service) readPublicGitCommit(ctx context.Context, endpoint, ref string)
 		return ""
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxPublicGitAdvertisement+1))
-	if err != nil || len(data) > maxPublicGitAdvertisement {
+	if err != nil {
 		return ""
+	}
+	if len(data) > maxPublicGitAdvertisement {
+		return oversizedPublicGitHead(data, ref)
 	}
 	refs, head, ok := parsePublicGitAdvertisement(data)
 	if !ok {
@@ -276,6 +279,39 @@ func parsePublicGitAdvertisement(data []byte) (map[string]string, string, bool) 
 		refs[name] = hash
 	}
 	return nil, "", false
+}
+
+// oversizedPublicGitHead resolves only the default branch of an advertisement
+// past the bound: its first record is HEAD, whose symref names the branch.
+// gitlab-org/gitlab advertises 82 MB with refs/heads/master 13 MB in, behind
+// refs/environments, so a full parse would miss even its default branch.
+func oversizedPublicGitHead(data []byte, ref string) string {
+	header, data, flush, ok := publicGitPacket(data)
+	if !ok || flush || string(bytes.TrimSuffix(header, []byte{'\n'})) != "# service=git-upload-pack" {
+		return ""
+	}
+	if _, data, flush, ok = publicGitPacket(data); !ok || !flush {
+		return ""
+	}
+	payload, data, flush, ok := publicGitPacket(data)
+	if ok && !flush && string(payload) == "version 1\n" {
+		payload, _, flush, ok = publicGitPacket(data)
+	}
+	if !ok || flush {
+		return ""
+	}
+	record, capabilities, _ := strings.Cut(strings.TrimSuffix(string(payload), "\n"), "\x00")
+	hash, name, _ := strings.Cut(record, " ")
+	if name != "HEAD" || !core.ValidCommitSHA(hash) || strings.Trim(hash, "0") == "" {
+		return ""
+	}
+	for capability := range strings.FieldsSeq(capabilities) {
+		target, found := strings.CutPrefix(capability, "symref=HEAD:")
+		if found && (ref == "HEAD" || ref == target || "refs/heads/"+ref == target) {
+			return strings.ToLower(hash)
+		}
+	}
+	return ""
 }
 
 func validPublicGitRef(ref string) bool {
