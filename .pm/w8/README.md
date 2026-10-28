@@ -399,7 +399,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay
+- [ ] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](blocked/210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay — **BLOCKED (2026-10-28: fix done — an unconfigured resolution never reuses a `configured` image network, so removing PORT returns rollback/redeploy to the image's port; release pipeline deploys the operator, then QA replays the whoami 9999-fail and echo 9090-served sequences with PORT deleted, expecting live on 80, fixtures deleted with 404 proofs)**
 
 - [ ] **209** — [A service deployed from a public non-GitHub repository (GitLab, …) gets deploys with no commit: commit resolution is GitHub-only](blocked/209.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6a81 2026-10-27: `gitlab.com/pages/plain-html` deployed and served with no `commit` on its deploy — **BLOCKED (2026-10-28: source fixed; anonymous GitLab production-helper smoke, pinning/protocol/race tests and lint pass; release pipeline deploys API, then QA verifies hosted commit/runtime SHA, explicit-SHA and miss controls and cleans fixtures by ID/404 proofs)**
 
