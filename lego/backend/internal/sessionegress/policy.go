@@ -78,8 +78,9 @@ const (
 // Config owns the platform-curated package registries every session may reach
 // (setup and agent phase alike). An empty list selects the built-in catalog;
 // production can replace it through BEX_AGENT_SETUP_REGISTRIES (the name
-// predates the 2026-10-27 amendment that kept registries open after setup). The per-session model endpoint is deliberately
-// not process config: it comes from that session's selected agent/provider.
+// predates the 2026-10-27 amendment that kept registries open after setup).
+// The per-session model endpoint is deliberately not process config: it comes
+// from that session's selected agent/provider.
 type Config struct {
 	SetupRegistryDomains []string
 	// ModelProxyPort, when non-zero (BEX_AGENT_MODEL_PROXY_URL wired), turns on the

@@ -108,8 +108,9 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 			total -= turnBytes
 			existing = map[int64]transcriptRowInfo{}
 		}
+		fullOutputs := toolOutputWriter{tx: tx, sessionID: sessionID}
 		for _, it := range items {
-			if err := insertToolFullOutputs(ctx, tx, sessionID, m.Turn, it.FullOutputs); err != nil {
+			if err := fullOutputs.insert(ctx, m.Turn, it.FullOutputs); err != nil {
 				return err
 			}
 			size := int64(len(it.Part))
@@ -167,21 +168,43 @@ func (s *PGStore) MergeAgentSessionTranscriptItems(ctx context.Context, sessionI
 // tail, and the read answers not-found.
 const MaxAgentSessionToolOutputBytes = 64 << 20
 
-// insertToolFullOutputs idempotently stores clipped outputs' complete texts.
-// The gateway role may only INSERT (and SELECT), so a repeat write is ON
-// CONFLICT DO NOTHING; the per-session cap is checked in the same statement,
-// under the caller's session append lock.
-func insertToolFullOutputs(ctx context.Context, tx pgx.Tx, sessionID string, turn int, outputs []agenttranscript.FullOutput) error {
+// toolOutputWriter idempotently stores clipped outputs' complete texts for one
+// session, inside a transaction that holds the session's append lock (every
+// caller takes pg_advisory_xact_lock first). The gateway role may only INSERT
+// (and SELECT), so a repeat write is ON CONFLICT DO NOTHING. The per-session
+// cap reads the session's stored bytes once, on the first output, and then
+// counts the writer's own inserts: the lock rules out any other writer, so
+// this equals re-summing before every insert.
+type toolOutputWriter struct {
+	tx        pgx.Tx
+	sessionID string
+	used      int64
+	loaded    bool
+}
+
+func (w *toolOutputWriter) insert(ctx context.Context, turn int, outputs []agenttranscript.FullOutput) error {
 	for _, f := range outputs {
-		if _, err := tx.Exec(ctx, `
+		if !w.loaded {
+			if err := w.tx.QueryRow(ctx, `
+				SELECT COALESCE(sum(octet_length(output)), 0) FROM agent_session_tool_outputs WHERE session_id = $1`,
+				w.sessionID).Scan(&w.used); err != nil {
+				return err
+			}
+			w.loaded = true
+		}
+		size := int64(len(f.Text))
+		if w.used+size > MaxAgentSessionToolOutputBytes {
+			continue // over the session cap: the item keeps only its inline head + tail
+		}
+		tag, err := w.tx.Exec(ctx, `
 			INSERT INTO agent_session_tool_outputs (session_id, turn, tool_call_id, field, output)
-			SELECT $1, $2, $3, $4, $5
-			WHERE (SELECT COALESCE(sum(octet_length(output)), 0) FROM agent_session_tool_outputs WHERE session_id = $1)
-			      + octet_length($5) <= $6
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (session_id, turn, tool_call_id, field) DO NOTHING`,
-			sessionID, turn, f.ToolCallID, f.Field, f.Text, int64(MaxAgentSessionToolOutputBytes)); err != nil {
+			w.sessionID, turn, f.ToolCallID, f.Field, f.Text)
+		if err != nil {
 			return err
 		}
+		w.used += size * tag.RowsAffected()
 	}
 	return nil
 }
@@ -439,8 +462,9 @@ func compactTurnTranscript(ctx context.Context, tx pgx.Tx, sessionID string, tur
 	if _, err := tx.Exec(ctx, `DELETE FROM agent_session_transcripts WHERE session_id=$1 AND turn=$2`, sessionID, turn); err != nil {
 		return stats, err
 	}
+	fullOutputs := toolOutputWriter{tx: tx, sessionID: sessionID}
 	for _, it := range items {
-		if err := insertToolFullOutputs(ctx, tx, sessionID, turn, it.FullOutputs); err != nil {
+		if err := fullOutputs.insert(ctx, turn, it.FullOutputs); err != nil {
 			return stats, err
 		}
 		src, ok := sourceOf[it.Index]

@@ -320,19 +320,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:        graphql.NewNonNull(toolOutputGQLType),
 			Description: "The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept.",
 			Args: graphql.FieldConfigArgument{
-				"sessionId":  gqlutil.ReqArg(graphql.String),
+				"id":         gqlutil.ReqArg(graphql.String),
 				"turn":       gqlutil.ReqArg(graphql.Int),
 				"toolCallId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				turn, _ := p.Args["turn"].(int)
-				return s.ToolOutput(p.Context, gqlutil.Str(p.Args, "sessionId"), turn, gqlutil.Str(p.Args, "toolCallId"))
+				return s.ToolOutput(p.Context, gqlutil.Str(p.Args, "id"), turn, gqlutil.Str(p.Args, "toolCallId"))
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
 		"agentEnvironment": &graphql.Field{
 			Type: graphql.NewNonNull(agentEnvironmentGQLType),
-			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.ReqArg(graphql.String)},
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Environment(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
@@ -376,7 +376,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateAgentEnvironment": &graphql.Field{
 			Type: graphql.NewNonNull(agentEnvironmentGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 				"input":   gqlutil.ReqArg(agentEnvironmentGQLInput),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
