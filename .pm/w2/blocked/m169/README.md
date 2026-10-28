@@ -1,6 +1,6 @@
 # w2 · m169 — The forums run on bex as an ordinary tenant: uploads persist, nothing is hand-patched
 
-**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** blocked — t001–t003 done; t005 needs the user: (1) tenant-owned forum hostnames added as bex custom domains need DNS records in the user's Cloudflare, and (2) the main-site `/forum` proxies (outside bex, behind a Caddy hop) must be repointed from the hand-made `tianpan-forum.onbex.co` / `blockeden-forum.onbex.co` names; t004 deliberately rides t006's deploy window (the App rebuilds the whole Discourse image from `bex-co/discourse_docker` `main` on every push)
+**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** blocked — t001–t003, t007, t008 done; the disk is attached and every recoverable upload is restored and durable (2026-10-28). Remaining needs the user: (1) log in to the BlockEden dashboard (or deploy the edge service) so `tianpan.co/forum` switches to `forum.tianpan.co` (`block-eden-mono` `bcd7c7834a`, pushed); (2) `cf auth login` with the account that owns `blockeden.xyz`, so `forum.blockeden.xyz` can be created and `forum.bex.co` fronted by the edge (bex reserves the `bex.co` zone, so tenants cannot claim it). Then t005 removes the hand-made Ingresses/Middleware and t006 finishes the Blueprint.
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Move the forum's `/` → `/forum` redirect into the application | 40m | t003 |
 | t005 | Serve every forum domain through bex custom domains, then delete the hand-built Ingresses and Middleware | 1h | t003, t004 |
 | t006 | Make the Blueprint the single source of truth — runtime, `fromDatabase` hosts, `disk`, domains — and sync it as a tenant (**STOP: the user picks the downtime window**) | 45m | t005 |
-| t007 | Restore the recovered originals the way a tenant can (`render ssh`), verifying every referenced URL | 45m | t006 |
-| t008 | Prove durability: a fresh upload survives a restart and a redeploy | 30m | t007 |
+| t007 | Restore the recovered originals the way a tenant can (`render ssh`), verifying every referenced URL — **DONE** | 45m | t006 |
+| t008 | Prove durability: a fresh upload survives a restart and a redeploy — **DONE** | 30m | t007 |
 | t009 | Record the unrecoverable uploads, the bex gaps found, and retire the deferred entry | 20m | t008 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |
@@ -74,3 +74,13 @@
 - A Render tenant gets exactly **one** platform hostname per service, so the extra `*-forum.onbex.co` names cannot exist the regular way; each non-default site needs a tenant-owned hostname as a custom domain. Discourse multisite picks the site by `Host` (`multisite.yml` `host_names`: tianpan → `tianpan.co`, `tianpan-forum.onbex.co`; blockeden → `forum.bex.co`, `blockeden-forum.onbex.co`, `blockeden.xyz`), so the new hostnames are added to `host_names` too.
 - The bex domain store lists `beancount.io` / `www.beancount.io` as **pending** on `block-eden-mono-1` — the main-site migration, unrelated to the forums.
 - The main-site proxies are not in any local repo found (the `block-eden-mono/projects/reverse-proxy-mac/Caddyfile` routes are a legacy local setup).
+
+## Progress 2026-10-27/28
+
+- **`forum.tianpan.co`** — DNS-only CNAME → `beancount-forum.onbex.co` (Cloudflare, `cf` CLI), added as a bex custom domain through the tenant REST API, verified, certificate issued, serving the tianpan site; `discourse_docker` `79a8556` adds `forum.tianpan.co` and `forum.blockeden.xyz` to multisite `host_names` (canonical hosts stay first).
+- **Edge proxy** — `block-eden-mono` `bcd7c7834a` points `tianpan.co/forum` at `forum.tianpan.co` (edge tests pass); deploying it needs the BlockEden dashboard (not logged in for automation).
+- **Disk (part of t006)** — attached through bex's Render-compatible disk API (`dsk-dbgrglhv7bds73bfnrfg`, `forum-uploads`, 10 GB, `/var/www/discourse/public/uploads`) at 08:54Z; `Recreate` downtime 08:55–08:57Z. No uploads had been made since the previous restart, so nothing was lost. The Blueprint half of t006 stays open: the connected Blueprint syncs a root `render.yaml` that does not exist (every sync since 2026-08-21 failed), the multisite YAML's names (`forums`, `forums-redis`) and some env/health settings differ from the live service, so it needs a validated dry-run before any sync.
+- **Restore (t007)** — via plain OpenSSH as the tenant (`tar` streamed to `srv-…@ssh.bex.co`): 15 files onto the disk; **all 29 recoverable references serve with matching SHA-1**. The Render CLI's `ssh` is interactive-only, as upstream.
+- **Durability (t008)** — after a `bex restart` replaced the pod (11:29Z), all 29 still serve with matching SHA-1 and all four public forum URLs return 200. (No forum admin API key was used; the restored files stand in for a fresh upload.)
+- **bex bugs found and fixed on the way** — native SSH and the Web Shell refused every git-built service since `ebfefea26` (public vs raw image compare); fixed in `f1e28beb3`, live from the `d66f96c06` pin. Filed separately: deploys superseding each other under concurrent pushes (`w2/050`).
+- **Found, not yet handled** — `blockeden-forum-redis` (`red-da4086iii7bs73drbqh0`, standard plan) is not used by the forum (which uses `beancount-forum-redis`) and is not declared anywhere; delete it with t006 after confirming no other consumer.
