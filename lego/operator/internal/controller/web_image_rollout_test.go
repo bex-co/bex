@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
@@ -269,10 +270,12 @@ func TestImagePortSelectorPinsARevisionOnlyForAPortChange(t *testing.T) {
 // A port change holds its old pods after a new one is Ready
 // (minReadySeconds), routes to the new pod as soon as it is Ready, and keeps
 // the Services pinned to the new revision until the old pods are gone
-// (w4/428). Every other rollout holds nothing.
+// (w4/428). The public route keeps the old port, which the Services alias to
+// the new listener from their first write, until the rollout completes
+// (w4/430). Every other rollout holds nothing.
 func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	serving := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
-	candidate := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 9090, Ports: []int32{8080, 9090}}
+	candidate := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 9090, Ports: []int32{9090}}
 	app := webImageApp(2)
 	app.Namespace, app.UID = "tea-a", "fixture"
 	app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
@@ -307,13 +310,44 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	if err != nil || !moved || !reflect.DeepEqual(app.Status.ServingNetwork, candidate) || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
 		t.Fatalf("ready pod: moved=%v err=%v serving=%+v prior=%+v", moved, err, app.Status.ServingNetwork, app.Status.PriorServingNetwork)
 	}
-	if svc, port, err := r.ingressBackend(t.Context(), app, 9090, false, true); err != nil || svc != app.Name || port != 9090 {
-		t.Fatalf("ingress after early promotion = %s:%d (%v), want :9090", svc, port, err)
+	if svc, port, err := r.ingressBackend(t.Context(), app, 9090, false, true); err != nil || svc != app.Name || port != 8080 {
+		t.Fatalf("ingress after early promotion = %s:%d (%v), want :8080 until the rollout completes", svc, port, err)
 	}
-	// Old pods (rev-1, no 9090 listener) may still run: the Services pin rev-2.
-	selector, _, err := privateServiceProjection(app, 9090)
-	if err != nil || selector[labelRevision] != "rev-2" {
-		t.Fatalf("selector after early promotion = %v (%v), want pinned to rev-2", selector, err)
+	// Old pods (rev-1, no 9090 listener) may still run: the Service written at
+	// promotion already pins rev-2, and keeps 8080 as an alias of 9090 for the
+	// route that still names it.
+	var svc corev1.Service
+	if err := cl.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &svc); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Spec.Selector[labelRevision] != "rev-2" {
+		t.Fatalf("selector written at early promotion = %v, want pinned to rev-2", svc.Spec.Selector)
+	}
+	targets := map[int32]int32{}
+	for _, p := range svc.Spec.Ports {
+		targets[p.Port] = p.TargetPort.IntVal
+	}
+	if !reflect.DeepEqual(targets, map[int32]int32{8080: 9090, 9090: 9090}) {
+		t.Fatalf("Service ports written at early promotion = %v, want 8080→9090 and 9090→9090", targets)
+	}
+	// Completion clears the prior network: the route names 9090 and the alias goes.
+	done := app.DeepCopy()
+	done.Status.PriorServingNetwork = nil
+	if _, port, err := r.ingressBackend(t.Context(), done, 9090, false, true); err != nil || port != 9090 {
+		t.Fatalf("ingress after completion = %d (%v), want 9090", port, err)
+	}
+	if _, ports, err := privateServiceProjection(done, 9090); err != nil || len(ports) != 1 || ports[0].Port != 9090 {
+		t.Fatalf("Service ports after completion = %v (%v), want 9090 alone", ports, err)
+	}
+	// A new image that still declares 8080 serves it as another role: the
+	// route moves to the new primary at once, and nothing is aliased.
+	kept := app.DeepCopy()
+	kept.Status.ServingNetwork.Ports = []int32{8080, 9090}
+	if _, port, err := r.ingressBackend(t.Context(), kept, 9090, false, true); err != nil || port != 9090 {
+		t.Fatalf("ingress with 8080 still declared = %d (%v), want 9090", port, err)
+	}
+	if _, ports, err := privateServiceProjection(kept, 9090); err != nil || len(ports) != 2 || ports[0].TargetPort.IntVal != 8080 {
+		t.Fatalf("Service ports with 8080 still declared = %v (%v), want 8080→8080 and 9090→9090", ports, err)
 	}
 	// The hold is lifted once routing has moved.
 	if got := project(app, deploymentParams{image: candidate.Image, port: 9090}).Spec.MinReadySeconds; got != 0 {
