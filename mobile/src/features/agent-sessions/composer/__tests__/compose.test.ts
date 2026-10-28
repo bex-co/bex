@@ -1,8 +1,7 @@
-import { buildCreateVariables, canSubmit, defaultBranchFor } from "../compose";
+import { buildCreateVariables, canSubmit, deriveBranch } from "../compose";
 
 const full = {
   repo: "org/app",
-  branch: "main",
   prompt: "fix it",
   agent: "claude",
 };
@@ -24,7 +23,7 @@ describe("agent-session composer", () => {
   });
 
   it("requires every field, ignoring whitespace-only input", () => {
-    for (const missing of ["repo", "branch", "prompt", "agent"] as const) {
+    for (const missing of ["repo", "prompt", "agent"] as const) {
       const fields = { ...full, [missing]: "   " };
       expect(canSubmit({ fields, ready: true, submitting: false })).toBe(false);
     }
@@ -33,14 +32,13 @@ describe("agent-session composer", () => {
   it("builds a secret-free create payload: only agent id + prompt", () => {
     const vars = buildCreateVariables("tea-1", {
       repo: " org/app ",
-      branch: " main ",
       prompt: " fix it ",
       agent: "claude",
     });
     expect(vars).toEqual({
       ownerId: "tea-1",
       repo: "org/app",
-      branch: "main",
+      branch: "bex-agent/fix-it",
       agentConfig: { agent: "claude", task: "fix it" },
     });
     // The payload must not carry any endpoint/template/egress surface.
@@ -48,9 +46,17 @@ describe("agent-session composer", () => {
     expect(keys.sort()).toEqual(["agent", "task"]);
   });
 
-  it("defaults a missing branch to main", () => {
-    expect(defaultBranchFor(null)).toBe("main");
-    expect(defaultBranchFor("  ")).toBe("main");
-    expect(defaultBranchFor("develop")).toBe("develop");
+  it("derives the bex-agent/* branch from the task, never the repo default", () => {
+    expect(deriveBranch("Fix the Login bug!")).toBe(
+      "bex-agent/fix-the-login-bug",
+    );
+    expect(deriveBranch("x".repeat(60))).toBe("bex-agent/" + "x".repeat(40));
+    // A task with no ASCII slug (e.g. Chinese) still yields a valid branch.
+    expect(deriveBranch("修复登录问题", 1700000000000)).toBe(
+      "bex-agent/session-" + (1700000000000).toString(36),
+    );
+    expect(deriveBranch("修复登录问题").startsWith("bex-agent/session-")).toBe(
+      true,
+    );
   });
 });

@@ -6,7 +6,6 @@
 
 export interface ComposerFields {
   repo: string;
-  branch: string;
   prompt: string;
   agent: string;
 }
@@ -28,7 +27,6 @@ export function canSubmit({
   if (!ready || submitting) return false;
   return (
     fields.repo.trim() !== "" &&
-    fields.branch.trim() !== "" &&
     fields.prompt.trim() !== "" &&
     fields.agent.trim() !== ""
   );
@@ -44,23 +42,35 @@ export interface CreateAgentSessionVariables {
 // Build the create variables. agentConfig carries ONLY the selected profile id
 // and the prompt — the server sources the model key from OpenBao and defaults
 // the endpoint/template/egress, so no secret is ever assembled on the phone.
+// The working branch is always derived (the agent pushes only to bex-agent/*).
 export function buildCreateVariables(
   ownerId: string,
   fields: ComposerFields,
+  now: number = Date.now(),
 ): CreateAgentSessionVariables {
+  const task = fields.prompt.trim();
   return {
     ownerId,
     repo: fields.repo.trim(),
-    branch: fields.branch.trim(),
-    agentConfig: { agent: fields.agent, task: fields.prompt.trim() },
+    branch: deriveBranch(task, now),
+    agentConfig: { agent: fields.agent, task },
   };
 }
 
-// The default branch for a freshly picked repo, falling back to "main" when the
-// repo has no reported default (a non-GitHub or unresolved repo).
-export function defaultBranchFor(
-  defaultBranch: string | null | undefined,
-): string {
-  const trimmed = (defaultBranch ?? "").trim();
-  return trimmed === "" ? "main" : trimmed;
+// The agent may only push to the bex-agent/* namespace (ADR047/ADR090), so
+// the branch is derived from the task exactly as the dashboard composer does
+// (dashboard/src/features/agent-sessions/lib/composer.ts deriveBranch): a
+// lowercase ASCII slug capped at 40 chars, or session-<base36 time> when the
+// task has no ASCII letters or digits (e.g. a Chinese task).
+const BRANCH_PREFIX = "bex-agent/";
+const BRANCH_SLUG_MAX = 40;
+
+export function deriveBranch(task: string, now: number = Date.now()): string {
+  const slug = task
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, BRANCH_SLUG_MAX)
+    .replace(/-+$/, "");
+  return BRANCH_PREFIX + (slug || `session-${now.toString(36)}`);
 }

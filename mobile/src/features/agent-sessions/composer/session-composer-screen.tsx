@@ -21,7 +21,6 @@ import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
 import { Picker } from "@/components/picker";
 import { SearchableListModal } from "@/components/searchable-list";
-import { TextInputModal } from "@/components/text-input-modal";
 import {
   SafeActionConfirmationDialog,
   SafeActionFeedbackView,
@@ -47,7 +46,6 @@ import {
 import {
   buildCreateVariables,
   canSubmit,
-  defaultBranchFor,
   type ComposerFields,
 } from "./compose";
 import {
@@ -76,7 +74,7 @@ function shortRepo(full: string): string {
   return parts[parts.length - 1] || full;
 }
 
-type OpenPicker = "repo" | "branch" | "agent" | null;
+type OpenPicker = "repo" | "agent" | null;
 
 export function SessionComposer({ onClose }: { onClose: () => void }) {
   const { t } = useTranslations();
@@ -105,7 +103,6 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
 
   const [fields, setFields] = useState<ComposerFields>({
     repo: "",
-    branch: "",
     prompt: "",
     agent: "",
   });
@@ -121,11 +118,10 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     [repos.data],
   );
 
-  // Select a repo by name and adopt its default branch (shared by the quick
-  // pills and the full picker).
+  // Select a repo by name (shared by the quick pills and the full picker).
+  // The working branch is derived from the task at submit (bex-agent/*).
   const selectRepo = (fullName: string) => {
-    const repo = repoList.find((r) => r!.fullName === fullName);
-    set({ repo: fullName, branch: defaultBranchFor(repo?.defaultBranch) });
+    set({ repo: fullName });
   };
 
   // Load this workspace's recorded repo usage for the quick-select pills.
@@ -152,7 +148,7 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     [repoFreq, repoList],
   );
 
-  // Prefill the repo (with its default branch) and agent so the composer is a
+  // Prefill the repo and agent so the composer is a
   // single "ask + send" flow; both remain one tap away from a different pick.
   useEffect(() => {
     if (!ready) return;
@@ -160,11 +156,7 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
       let next = prev;
       if (!prev.repo && repoList.length) {
         const first = repoList[0]!;
-        next = {
-          ...next,
-          repo: first.fullName!,
-          branch: defaultBranchFor(first.defaultBranch),
-        };
+        next = { ...next, repo: first.fullName! };
       }
       if (!prev.agent && agents.length) {
         next = { ...next, agent: agents[0].id };
@@ -344,19 +336,6 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
                 />
                 <Pill
                   theme={theme}
-                  icon={
-                    <Ionicons
-                      name="git-branch"
-                      size={15}
-                      color={theme.foreground}
-                    />
-                  }
-                  label={fields.branch || "main"}
-                  accessibilityLabel={t("agentSessions.composer.branch")}
-                  onPress={() => setOpenPicker("branch")}
-                />
-                <Pill
-                  theme={theme}
                   label={agentLabel}
                   accessibilityLabel={t("agentSessions.composer.agent")}
                   onPress={() => setOpenPicker("agent")}
@@ -439,17 +418,6 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
         onSelect={(item) => {
           set({ agent: item.value });
           setAgentTouched(true);
-          setOpenPicker(null);
-        }}
-        onCancel={() => setOpenPicker(null)}
-      />
-      <TextInputModal
-        visible={openPicker === "branch"}
-        title={t("agentSessions.composer.branch")}
-        placeholder={fields.branch || "main"}
-        onConfirm={(text) => {
-          const branch = text.trim();
-          if (branch) set({ branch });
           setOpenPicker(null);
         }}
         onCancel={() => setOpenPicker(null)}

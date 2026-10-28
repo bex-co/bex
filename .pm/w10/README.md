@@ -39,7 +39,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 ## Inbox
 
 - [ ] **006** — Agent network tier "Full internet": enforceable posture (egress proxy) → [`006.md`](006.md)
-- [ ] **007** — Mobile agent composer sends the repo default branch, rejected by the backend → [`007.md`](007.md)
+- [x] **007** — Mobile agent composer sends the repo default branch, rejected by the backend → [`done/007.md`](done/007.md) — done 2026-10-28
 
 - [x] **005** — Agent transcript item-model edge cases (partial spinner, output-denied, in-place upgrade seq, item-stream dashboard test) → [`done/005.md`](done/005.md) — done 2026-10-27
 

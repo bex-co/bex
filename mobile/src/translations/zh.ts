@@ -341,7 +341,6 @@ export const zh = {
       title: "新建智能体会话",
       close: "关闭",
       repo: "代码仓库",
-      branch: "分支",
       agent: "智能体",
       agentAuto: "自动",
       searchRepo: "搜索代码仓库",

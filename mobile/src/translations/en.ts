@@ -359,7 +359,6 @@ export const en = {
       title: "New agent session",
       close: "Close",
       repo: "Repository",
-      branch: "Branch",
       agent: "Agent",
       agentAuto: "Auto",
       searchRepo: "Search repositories",
