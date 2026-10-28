@@ -287,7 +287,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	container := corev1.Container{
 		Name:            appContainerName,
 		Image:           p.image,
-		ImagePullPolicy: pullPolicyFor(p.image),
+		ImagePullPolicy: tenantImagePullPolicy,
 		Env:             appContainerEnv(app, p),
 		EnvFrom:         envFromSources(app),
 		Ports:           ports,

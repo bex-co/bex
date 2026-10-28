@@ -1538,18 +1538,16 @@ func (r *AppReconciler) resolveBuiltDigest(ctx context.Context, app *appv1alpha1
 	return registry.ResolveDigest(ctx, nil, r.Registry, repo, tag, username, password)
 }
 
-// pullPolicyFor sets the kubelet pull behavior to the image reference's
-// immutability: a digest-pinned reference (image@sha256:…) is immutable so
-// IfNotPresent suffices, but a mutable tag — the pinBuiltImage fallback when the
-// registry is unreachable from the operator — MUST Always-pull, or a node can
-// reuse a previous App lifetime's cached gen-N tag and run stale code
-// (codex-security #29).
-func pullPolicyFor(image string) corev1.PullPolicy {
-	if strings.Contains(image, "@") {
-		return corev1.PullIfNotPresent
-	}
-	return corev1.PullAlways
-}
+// tenantImagePullPolicy is Always for every tenant container, digest-pinned or
+// not. A mutable tag must Always-pull, or a node can reuse a previous App
+// lifetime's cached gen-N tag and run stale code (codex-security #29). A digest
+// must too: with IfNotPresent a kubelet that already holds the image starts it
+// without presenting the pod's pull credentials to the registry, so any
+// workspace naming another workspace's private image@sha256 on a shared node
+// would run it (w4/426; Kubernetes re-verifies cached images only behind the
+// alpha KubeletEnsureSecretPulledImages gate, off in v1.34). Always costs a
+// manifest check per container start; layers stay cached.
+const tenantImagePullPolicy = corev1.PullAlways
 
 // directStaticPublish reports whether the App takes the no-build static publish
 // path (w9/010): a repo-backed static_site whose spec declares no build input
@@ -5035,7 +5033,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	container := corev1.Container{
 		Name:            appContainerName,
 		Image:           image,
-		ImagePullPolicy: pullPolicyFor(image),
+		ImagePullPolicy: tenantImagePullPolicy,
 		Env:             withPlatformEnv(appEnv(app, port), platform),
 		EnvFrom:         envFromSources(app),
 		Resources:       resourcesForTier(app.Spec.Tier),

@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -185,5 +186,24 @@ func TestImagePortActivityReadsThePublishedPortSeries(t *testing.T) {
 	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:x", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
 	if q := activityQuery(app, 15*time.Minute); !strings.Contains(q, `tea-a-whoami-80@kubernetes`) || strings.Contains(q, "-10000@") {
 		t.Fatalf("activity query = %q, want the published port 80", q)
+	}
+}
+
+// Every tenant container Always-pulls, a digest-pinned one included: a node
+// that already holds a private image must still have the registry check the
+// pod's own credentials before it runs (w4/426).
+func TestTenantContainersAlwaysPullEvenADigest(t *testing.T) {
+	const digest = "ghcr.io/acme/private@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	web := project(projectionApp(), deploymentParams{image: digest, port: 10000})
+	if got := web.Spec.Template.Spec.Containers[0].ImagePullPolicy; got != corev1.PullAlways {
+		t.Fatalf("web container pull policy = %q, want Always", got)
+	}
+	cron := (&AppReconciler{}).cronPodSpec(projectionApp(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeCronJob }), digest, 0, nil, launchMode(""), "")
+	if got := cron.Spec.Containers[0].ImagePullPolicy; got != corev1.PullAlways {
+		t.Fatalf("cron container pull policy = %q, want Always", got)
+	}
+	job := predeploy.Job(predeploy.Options{Name: "web", Namespace: "tea-a", Image: digest, Command: []string{"migrate"}})
+	if got := job.Spec.Template.Spec.Containers[0].ImagePullPolicy; got != corev1.PullAlways {
+		t.Fatalf("pre-deploy container pull policy = %q, want Always", got)
 	}
 }

@@ -288,6 +288,12 @@ Each App that builds and pushes an image to Zot receives its own Zot user and a 
 - **Live (m59 execution boundary)** — `scripts/verify-build-isolation.sh` proves the private-source/private-base build and its adversarial process checks, per-repository auth, explicit network allows/denies, placement/token defaults, and signed/unsigned/tampered admission controls without printing credentials.
 - **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
 
+## Node image cache (w4/426, 2026-10-27)
+
+Tenant pods share nodes, and so share each node's container image cache. With `imagePullPolicy: IfNotPresent`, a kubelet that already holds an image starts it without presenting the pod's `imagePullSecrets` to the registry. Re-verifying credentials for cached images (KEP-2535, `KubeletEnsureSecretPulledImages`) is alpha and off in Kubernetes v1.34. A workspace that names another workspace's private `image@sha256:…` could therefore run it on a node that had pulled it.
+
+**Decision:** every tenant container (the runtime Deployment and cron pods, `tenantImagePullPolicy`, and the pre-deploy Job) uses `imagePullPolicy: Always`, digest-pinned or not. Tags already did, for codex-security #29. Each container start then has the registry check the pod's own credentials against the manifest. Layers stay cached, so the cost is a manifest round trip per start, and Docker Hub does not count manifest `HEAD` requests against its pull limit. The trade-off is the one tags already had: while a tenant's registry is unreachable, a restarting instance cannot start. Platform-owned images (exports, edge cache, health probe) keep `IfNotPresent`, since no tenant chooses them. Revisit when `KubeletEnsureSecretPulledImages` is on by default in the node fleet's Kubernetes version.
+
 ## Rejected options
 
 - **vcluster**: rejected (DO_NOT_DO.md) — adds control-plane overhead without a meaningful network boundary.
