@@ -589,3 +589,28 @@ func TestSteerReResolvesTheWorkspaceEnvironment(t *testing.T) {
 		t.Fatalf("steer egress = %v, want %v", lifecycle.egressAllowlist, want)
 	}
 }
+
+// Steering into and back out of `full` re-renders both the posture and the
+// sandbox proxy env from the workspace's current tier.
+func TestSteerFollowsAFullTierSwitch(t *testing.T) {
+	svc, st, lifecycle := sessionWithEnvironment(t, nil)
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	envs := svc.Environments.(*fakeEnvironments)
+	for _, tier := range []string{NetworkTierFull, NetworkTierRegistries} {
+		row := st.rows[created.ID]
+		row.Phase = PhaseCompleted
+		st.rows[created.ID] = row
+		envs.rows["tea-a"] = store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: tier}
+		if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "again"}); err != nil {
+			t.Fatal(err)
+		}
+		full := tier == NetworkTierFull
+		_, hasProxy := lifecycle.driverEnv["HTTPS_PROXY"]
+		if lifecycle.fullInternet != full || hasProxy != full || lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"] != tier {
+			t.Fatalf("steer under %s: full=%v HTTPS_PROXY=%v tier env=%q", tier, lifecycle.fullInternet, hasProxy, lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"])
+		}
+	}
+}

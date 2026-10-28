@@ -143,7 +143,7 @@ spec:
             # Cilium policy admits :8085. The gateway binds the source Pod,
             # asks bex-api for the workspace tier over the same HMAC, and relays
             # HTTP CONNECT / plain HTTP to public hosts on 443/80 only, refusing
-            # the model providers (name, IP, SNI) and private/metadata ranges.
+            # the model providers (by name and TLS SNI) and private/metadata ranges.
             # The gateway's own egress is unrestricted by policy (no egress
             # policy selects it), which is what lets it reach world:443/80.
             - name: BEX_AGENT_EGRESS_PROXY_ADDR

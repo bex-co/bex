@@ -30,7 +30,8 @@ import (
 // egressAllowlist. The request list is validated on its own first, so its
 // errors keep naming the caller's entry; the merged list is capped at the same
 // 32 destinations. The package-registry catalog is not part of the widening:
-// sessionegress renders it for every tier, in both phases.
+// sessionegress renders it for the registries and custom tiers, in both
+// phases (the full tier renders no FQDN rule at all).
 func createEgress(workspaceID string, config AgentConfig, workspaceHosts, requested []string) (string, []string, error) {
 	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint)
 	if err != nil {
