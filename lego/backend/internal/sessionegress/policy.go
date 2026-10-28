@@ -61,9 +61,13 @@ var (
 	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"}
 )
 
-// Phase is the network posture of an agent session. A phase transition is
-// intentionally one-way: setup can become agent, but agent can never reopen
-// package-registry access.
+// Phase marks where one sandbox generation of an agent session is in its
+// lifecycle: setup (clone + dependency install, before the agent runs) or agent.
+// Both phases admit the same destinations — the package-registry catalog stays
+// reachable for the whole session (ADR047 D5 amendment 2026-10-27), so agents
+// can install dependencies and build and test what they change. What the phase
+// still guards is the identity of the generation: the setup→agent transition
+// must carry exactly the destinations setup was prepared with.
 type Phase string
 
 const (
@@ -71,9 +75,10 @@ const (
 	PhaseAgent Phase = "agent"
 )
 
-// Config owns the platform-curated setup-only package registries. An empty list
-// selects the built-in catalog; production can replace it through
-// BEX_AGENT_SETUP_REGISTRIES. The per-session model endpoint is deliberately
+// Config owns the platform-curated package registries every session may reach
+// (setup and agent phase alike). An empty list selects the built-in catalog;
+// production can replace it through BEX_AGENT_SETUP_REGISTRIES (the name
+// predates the 2026-10-27 amendment that kept registries open after setup). The per-session model endpoint is deliberately
 // not process config: it comes from that session's selected agent/provider.
 type Config struct {
 	SetupRegistryDomains []string
@@ -182,10 +187,28 @@ func (c Config) normalized() (Config, error) {
 	return c, nil
 }
 
-// setupRegistryDomains returns the platform setup-only registry catalog. A
+// DefaultRegistryDomains is the built-in package-registry catalog (npm, PyPI,
+// Go proxy, Maven, crates, RubyGems, Docker Hub) a session reaches when
+// BEX_AGENT_SETUP_REGISTRIES is unset.
+func DefaultRegistryDomains() []string { return slices.Clone(registryDomains) }
+
+// RegistryDomains is the validated registry catalog this Manager renders into
+// every session policy.
+func (m *Manager) RegistryDomains() []string { return slices.Clone(m.setupRegistryDomains()) }
+
+// BaselineDestination reports whether host is already part of every session's
+// baseline (GitHub) or is a model-provider API that is reachable only through
+// the gateway model proxy. Neither can be a tenant widening, so a workspace
+// allowlist naming one is refused when it is saved, not at its next dispatch.
+func BaselineDestination(host string) bool {
+	host = strings.ToLower(host)
+	return slices.Contains(githubDomains, host) || slices.Contains(modelProviderDomains, host)
+}
+
+// setupRegistryDomains returns the platform registry catalog. A
 // Manager built through NewManager already holds the validated, normalized list;
 // a zero-value Manager (used in rendering tests) falls back to the curated
-// default so the setup phase is never emptied by an unset config. Reading the
+// default so the catalog is never emptied by an unset config. Reading the
 // stored value avoids re-validating the static catalog on every render (m40/t005).
 func (m *Manager) setupRegistryDomains() []string {
 	if len(m.Config.SetupRegistryDomains) == 0 {
@@ -232,16 +255,22 @@ func privateOrClusterHost(host string) bool {
 		strings.HasSuffix(host, ".cluster.local")
 }
 
-// PrepareSetup installs the setup posture before the sandbox is created. It is
-// idempotent for the same input, but refuses to broaden a policy that already
-// reached the agent phase.
+// PrepareSetup installs the setup posture for a new sandbox generation before
+// that sandbox is created. It is idempotent for the same input. A later
+// generation of the same session (a steer, or the next message after the idle
+// close) re-prepares the existing policy: it may carry a different tenant
+// widening, because the workspace environment and the turn's explicit
+// allowlist are resolved again for every dispatch. The setup posture admits
+// nothing the agent posture does not, so re-entering setup never reopens a
+// destination the agent phase had closed.
 func (m *Manager) PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error {
 	return m.apply(ctx, namespace, sessionID, PhaseSetup, modelEndpoint, extra)
 }
 
-// TransitionToAgent removes package registries from the session policy. It
-// verifies that the immutable tenant widening is byte-for-byte equivalent to
-// setup, so a transition cannot smuggle in a new destination.
+// TransitionToAgent moves the session policy into the agent phase. It keeps the
+// package registries (ADR047 D5 amendment 2026-10-27) and verifies that the
+// tenant widening is byte-for-byte the one setup was prepared with, so a
+// transition cannot smuggle in a new destination.
 func (m *Manager) TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error {
 	return m.apply(ctx, namespace, sessionID, PhaseAgent, modelEndpoint, extra)
 }
@@ -274,11 +303,9 @@ func (m *Manager) apply(ctx context.Context, namespace, sessionID string, phase 
 	if err != nil {
 		return fmt.Errorf("get session egress policy: %w", err)
 	}
-	currentPhase := Phase(current.GetAnnotations()[phaseAnnotation])
-	if currentPhase == PhaseAgent && phase == PhaseSetup {
-		return core.NewConflictError("AGENT_SESSION_EGRESS_PHASE_INVALID", "agent sessions cannot return to the setup egress phase", map[string]any{"sessionId": sessionID})
-	}
-	if current.GetAnnotations()[hashAnnotation] != desired.GetAnnotations()[hashAnnotation] {
+	// Only the transition is pinned to the prepared identity: setup starts a new
+	// sandbox generation and may re-resolve the widening.
+	if phase == PhaseAgent && current.GetAnnotations()[hashAnnotation] != desired.GetAnnotations()[hashAnnotation] {
 		return core.NewConflictError("AGENT_SESSION_EGRESS_ALLOWLIST_IMMUTABLE", "the session egress allowlist cannot change after setup starts", map[string]any{"sessionId": sessionID})
 	}
 	desired.SetResourceVersion(current.GetResourceVersion())
@@ -337,9 +364,10 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	if m.Config.ModelProxyPort == 0 {
 		domains = append(domains, modelHost)
 	}
-	if phase == PhaseSetup {
-		domains = append(domains, m.setupRegistryDomains()...)
-	}
+	// Package registries stay open in both phases (ADR047 D5 amendment
+	// 2026-10-27): an agent that cannot install dependencies cannot build or
+	// test the change it delivers.
+	domains = append(domains, m.setupRegistryDomains()...)
 	domains = append(domains, extra...)
 	domains = uniqueSorted(domains)
 	dnsNames := append(slices.Clone(domains), credentialGatewayHost)

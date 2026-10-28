@@ -158,6 +158,12 @@ var callerScopedRoutes = map[string]bool{
 	// ownerId like the list route, addresses no session by path; its own
 	// Authorize denies non-member callers (TestCapabilitiesProjection).
 	"GET /v1/agent-sessions/capabilities": true,
+	// The workspace agent environment (w10/m17): one per workspace, addressed
+	// by the ownerId query param, not a path; reads gate on can_view and
+	// writes on can_manage of that exact workspace, so a non-member ownerId is
+	// denied (agentsessions.TestEnvironmentAuthorization).
+	"GET /v1/agent-environment":   true,
+	"PATCH /v1/agent-environment": true,
 	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
 	// query param, addresses no resource by path; its own can_view gate denies
 	// an ownerId naming a workspace the caller isn't in.

@@ -68,6 +68,30 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, caps)
 	})
+	// The workspace agent environment (w10/m17): one per workspace, so it is
+	// addressed by ownerId rather than an id path segment.
+	mux.HandleFunc("GET /v1/agent-environment", func(w http.ResponseWriter, r *http.Request) {
+		env, err := s.Environment(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, env)
+	})
+	mux.HandleFunc("PATCH /v1/agent-environment", func(w http.ResponseWriter, r *http.Request) {
+		var input EnvironmentInput
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &input); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		env, err := s.UpdateEnvironment(r.Context(), r.URL.Query().Get("ownerId"), input)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, env)
+	})
 	mux.HandleFunc("GET /v1/agent-sessions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		view, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {

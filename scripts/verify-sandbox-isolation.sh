@@ -586,7 +586,7 @@ expect_denied "approved destination by literal IP/wrong SNI" exec_a /tmp/m35-net
 expect_allowed "learned approved public IP with approved SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 api.github.com
 expect_denied "private Kubernetes API target with approved SNI" exec_a /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
 
-echo "==> verify agent-session setup/agent egress phase split"
+echo "==> verify agent-session setup/agent egress phases (registries open in both)"
 render_session_policy() {
   local phase="$1" include_registry="$2" registry_dns="" registry_fqdn="" registry_sni=""
   if [ "$include_registry" = true ]; then
@@ -685,13 +685,15 @@ expect_eventually allowed "setup-phase package registry" exec_a /tmp/m35-netprob
 expect_eventually allowed "tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
 expect_eventually denied "setup-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
 
-render_session_policy agent false | kubectl apply -f - >/dev/null
-expect_eventually denied "agent-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
+# ADR047 D5 amendment (2026-10-27): package registries stay open through the
+# agent phase so agents can install dependencies and run builds and tests.
+render_session_policy agent true | kubectl apply -f - >/dev/null
+expect_eventually allowed "agent-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
 expect_eventually allowed "agent-phase GitHub baseline" exec_a /tmp/m35-netprobe tls api.github.com 443 api.github.com
 expect_eventually allowed "agent-phase tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
 expect_eventually denied "agent-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
 expect_denied "agent-phase same-workspace cross-sandbox isolation" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 44772
-pass "setup registries narrow to the exact agent baseline plus immutable tenant widening"
+pass "agent phase keeps the exact baseline, the package registries and the prepared tenant widening"
 
 kubectl -n bex-system run "$platform_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=bex-api" \

@@ -27,6 +27,15 @@ type capabilitiesArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 }
 
+type environmentArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+}
+
+type updateEnvironmentArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	EnvironmentInput
+}
+
 type idArgs struct {
 	ID string `json:"id"`
 }
@@ -90,6 +99,16 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_capabilities", Description: "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in capabilitiesArgs) (*mcp.CallToolResult, Capabilities, error) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_environment", Description: "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = opt-in any host, currently enforced as registries), the custom hostnames, the default model, and whether the model is pinned by the platform model route."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, Environment, error) {
+			out, err := s.Environment(ctx, in.OwnerID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_environment", Description: "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. Applies from each session's next turn."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, Environment, error) {
+			out, err := s.UpdateEnvironment(ctx, in.OwnerID, in.EnvironmentInput)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it. Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},

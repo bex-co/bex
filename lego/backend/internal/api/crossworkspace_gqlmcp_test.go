@@ -248,6 +248,12 @@ var callerScopedMCPTools = map[string]bool{
 	// is unwired, so the matrix sees a success — still caller-scoped, never a
 	// cross-workspace read (TestCapabilitiesProjection proves the tea-b denial).
 	"get_agent_session_capabilities": true,
+	// The workspace agent environment (w10/m17), scoped by ownerId and
+	// authorized against that exact workspace (can_view to read): the matrix's
+	// "target" ownerId is not a real workspace, so the read returns that name's
+	// defaults; a non-member ownerId is denied
+	// (agentsessions.TestEnvironmentAuthorization).
+	"get_agent_environment": true,
 	// The caller's OWN effective permissions in their active workspace (w9/m84):
 	// arg-less, so it resolves to the caller's workspace (NamedWorkspace) and
 	// reports what each relation evaluates to there. With no owner injected it

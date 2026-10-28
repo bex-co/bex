@@ -17,14 +17,21 @@ limitations under the License.
 package agentsessions
 
 import (
+	"slices"
+
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
 // createEgress resolves the session's model endpoint for workspaceID (whose
-// model route, if any, decides it now) and validates the requested extra
-// egress destinations.
-func createEgress(workspaceID string, config AgentConfig, requested []string) (string, []string, error) {
+// model route, if any, decides it now) and the session's tenant widening: the
+// hosts the workspace network tier contributes (workspaceHosts, already
+// validated when the environment was saved) merged with the request's explicit
+// egressAllowlist. The request list is validated on its own first, so its
+// errors keep naming the caller's entry; the merged list is capped at the same
+// 32 destinations. The package-registry catalog is not part of the widening:
+// sessionegress renders it for every tier, in both phases.
+func createEgress(workspaceID string, config AgentConfig, workspaceHosts, requested []string) (string, []string, error) {
 	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint)
 	if err != nil {
 		return "", nil, err
@@ -33,6 +40,12 @@ func createEgress(workspaceID string, config AgentConfig, requested []string) (s
 		return "", nil, err
 	}
 	allowlist, err := sessionegress.ExtraDestinations(requested)
+	if err != nil {
+		return "", nil, err
+	}
+	merged := append(slices.Clone(workspaceHosts), allowlist...)
+	slices.Sort(merged)
+	allowlist, err = sessionegress.ExtraDestinations(slices.Compact(merged))
 	if err != nil {
 		return "", nil, err
 	}

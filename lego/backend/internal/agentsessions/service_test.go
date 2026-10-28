@@ -105,10 +105,10 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 }
 
 func TestAgentProfileRejectsProviderEndpointOverride(t *testing.T) {
-	if endpoint, _, err := createEgress("tea-a", AgentConfig{Agent: "claude"}, nil); err != nil || endpoint != "https://api.anthropic.com/v1" {
+	if endpoint, _, err := createEgress("tea-a", AgentConfig{Agent: "claude"}, nil, nil); err != nil || endpoint != "https://api.anthropic.com/v1" {
 		t.Fatalf("registered claude endpoint = %q, err=%v", endpoint, err)
 	}
-	if _, _, err := createEgress("tea-a", AgentConfig{Agent: "claude", ModelEndpoint: "https://models.attacker.example/v1"}, nil); !errors.Is(err, core.ErrBadRequest) {
+	if _, _, err := createEgress("tea-a", AgentConfig{Agent: "claude", ModelEndpoint: "https://models.attacker.example/v1"}, nil, nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("custom provider endpoint error = %v, want bad request", err)
 	}
 }

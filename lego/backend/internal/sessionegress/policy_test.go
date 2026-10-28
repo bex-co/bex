@@ -64,7 +64,11 @@ func TestExtraDestinationsCanonicalizesAndRejectsEveryInvalidEntry(t *testing.T)
 	}
 }
 
-func TestPolicyPhaseSplitAndExactBaseline(t *testing.T) {
+// ADR047 D5 amendment (2026-10-27): the package registries stay reachable
+// through the agent phase, so an agent can install dependencies and run the
+// build and tests of the change it delivers. Setup and agent render the same
+// destinations; only the phase annotation differs.
+func TestPolicyKeepsRegistriesInBothPhasesAndExactBaseline(t *testing.T) {
 	m := &Manager{}
 	setup, err := m.policy("tea-test-sandbox", "ags-test", PhaseSetup, "https://models.example.com/v1", []string{"docs.example.com"})
 	if err != nil {
@@ -83,12 +87,15 @@ func TestPolicyPhaseSplitAndExactBaseline(t *testing.T) {
 		}
 	}
 	for _, registry := range registryDomains {
-		if !slices.Contains(setupNames, registry) {
-			t.Errorf("setup registry %q missing", registry)
+		if !slices.Contains(setupNames, registry) || !slices.Contains(agentNames, registry) {
+			t.Errorf("registry %q missing: setup=%v agent=%v", registry, slices.Contains(setupNames, registry), slices.Contains(agentNames, registry))
 		}
-		if slices.Contains(agentNames, registry) {
-			t.Errorf("agent policy retained setup-only registry %q", registry)
-		}
+	}
+	if !slices.Equal(setupNames, agentNames) || !slices.Equal(dnsNames(t, setup), dnsNames(t, agent)) {
+		t.Fatalf("setup and agent destinations differ: setup=%v agent=%v", setupNames, agentNames)
+	}
+	if setup.GetAnnotations()[phaseAnnotation] != string(PhaseSetup) || agent.GetAnnotations()[phaseAnnotation] != string(PhaseAgent) {
+		t.Fatalf("phase annotations = %q/%q", setup.GetAnnotations()[phaseAnnotation], agent.GetAnnotations()[phaseAnnotation])
 	}
 	if slices.Contains(agentNames, "api.openai.com") || slices.Contains(agentNames, "api.anthropic.com") {
 		t.Fatalf("agent baseline included unconfigured model vendor: %v", agentNames)
@@ -174,6 +181,7 @@ func TestAgentPolicyWithNoWideningIsExactlyTheBaseline(t *testing.T) {
 		t.Fatalf("agent policy: %v", err)
 	}
 	want := append(slices.Clone(githubDomains), "models.example.com")
+	want = append(want, registryDomains...)
 	slices.Sort(want)
 	if got := fqdnNames(t, agent); !slices.Equal(got, want) {
 		t.Fatalf("no-extra agent destinations = %v, want exact baseline %v", got, want)
@@ -203,7 +211,7 @@ func TestConfigurableRegistryCatalogAndPerSessionModelEndpoint(t *testing.T) {
 	}
 }
 
-func TestManagerTransitionIsOneWayAndAllowlistImmutable(t *testing.T) {
+func TestManagerTransitionPinsThePreparedAllowlist(t *testing.T) {
 	cl := fakePolicyClient(t)
 	m := &Manager{Client: cl}
 	ctx := context.Background()
@@ -226,16 +234,33 @@ func TestManagerTransitionIsOneWayAndAllowlistImmutable(t *testing.T) {
 	if err := m.TransitionToAgent(ctx, namespace, sessionID, "https://models.example.com/v1", []string{"docs.example.com"}); err != nil {
 		t.Fatalf("TransitionToAgent: %v", err)
 	}
-	if err := m.PrepareSetup(ctx, namespace, sessionID, "https://models.example.com/v1", []string{"docs.example.com"}); err == nil {
-		t.Fatal("PrepareSetup reopened an agent-phase policy")
-	}
-
 	obj := getPolicy(t, cl, namespace, sessionID)
 	if got := obj.GetAnnotations()[phaseAnnotation]; got != string(PhaseAgent) {
 		t.Fatalf("phase annotation = %q, want agent", got)
 	}
-	if slices.Contains(fqdnNames(t, obj), "registry.npmjs.org") {
-		t.Fatal("persisted agent policy retained setup registry")
+	if !slices.Contains(fqdnNames(t, obj), "registry.npmjs.org") {
+		t.Fatal("persisted agent policy closed the package registries")
+	}
+
+	// The next sandbox generation (a steer, or the message after the idle
+	// close) re-prepares the same session policy with the widening resolved
+	// for that dispatch — e.g. after an admin changed the workspace hosts —
+	// and its transition is then pinned to the new identity.
+	if err := m.PrepareSetup(ctx, namespace, sessionID, "https://models.example.com/v1", []string{"other.example.com"}); err != nil {
+		t.Fatalf("PrepareSetup for the next generation: %v", err)
+	}
+	obj = getPolicy(t, cl, namespace, sessionID)
+	if got := obj.GetAnnotations()[phaseAnnotation]; got != string(PhaseSetup) {
+		t.Fatalf("re-prepared phase annotation = %q, want setup", got)
+	}
+	if names := fqdnNames(t, obj); !slices.Contains(names, "other.example.com") || slices.Contains(names, "docs.example.com") {
+		t.Fatalf("re-prepared destinations = %v, want the new generation's widening only", names)
+	}
+	if err := m.TransitionToAgent(ctx, namespace, sessionID, "https://models.example.com/v1", []string{"docs.example.com"}); err == nil {
+		t.Fatal("TransitionToAgent restored the previous generation's allowlist")
+	}
+	if err := m.TransitionToAgent(ctx, namespace, sessionID, "https://models.example.com/v1", []string{"other.example.com"}); err != nil {
+		t.Fatalf("TransitionToAgent for the next generation: %v", err)
 	}
 	if err := m.Delete(ctx, namespace, sessionID); err != nil {
 		t.Fatalf("Delete: %v", err)
@@ -401,4 +426,40 @@ func dnsNames(t *testing.T, obj *unstructured.Unstructured) []string {
 		out = append(out, item.(map[string]any)["matchName"].(string))
 	}
 	return out
+}
+
+// Model-provider APIs are never directly reachable, in either phase and
+// whatever the tenant widening: the registry catalog and a widening can
+// only add public non-provider names.
+func TestModelProvidersAreNeverDirectlyReachableInAnyPhase(t *testing.T) {
+	proxied := &Manager{Config: Config{ModelProxyPort: 8084}}
+	for _, phase := range []Phase{PhaseSetup, PhaseAgent} {
+		for _, extra := range [][]string{nil, {"docs.example.com", "registry.npmjs.org"}} {
+			obj, err := proxied.policy("tea-test-sandbox", "ags-test", phase, "https://api.anthropic.com/v1", extra)
+			if err != nil {
+				t.Fatalf("%s policy: %v", phase, err)
+			}
+			for _, provider := range modelProviderDomains {
+				if slices.Contains(fqdnNames(t, obj), provider) || slices.Contains(dnsNames(t, obj), provider) {
+					t.Errorf("%s policy (extra=%v) admits model provider %q directly", phase, extra, provider)
+				}
+			}
+		}
+	}
+	for _, provider := range modelProviderDomains {
+		if _, err := ExtraDestinations([]string{provider}); err == nil {
+			t.Errorf("ExtraDestinations accepted model provider %q", provider)
+		}
+		if !BaselineDestination(provider) {
+			t.Errorf("BaselineDestination(%q) = false", provider)
+		}
+	}
+	for _, host := range githubDomains {
+		if !BaselineDestination(host) {
+			t.Errorf("BaselineDestination(%q) = false", host)
+		}
+	}
+	if BaselineDestination("docs.example.com") || BaselineDestination("registry.npmjs.org") {
+		t.Fatal("BaselineDestination flagged an ordinary widening")
+	}
 }
