@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // A Dockerfile build receives the service's environment the way Render's does
@@ -92,7 +94,7 @@ func dockerBuildInputsEnv(o Options, literals []corev1.EnvVar) []corev1.EnvVar {
 	env, keys := indexedLiteralEnv(literals, dockerBuildArgEnv)
 	return append(env,
 		corev1.EnvVar{Name: dockerBuildArgKeysEnv, Value: keys},
-		corev1.EnvVar{Name: dockerBuildFilesEnv, Value: strings.Join(o.NativeFiles, "\n")},
+		corev1.EnvVar{Name: dockerBuildFilesEnv, Value: execution.KubernetesLiteral(strings.Join(o.NativeFiles, "\n"))},
 	)
 }
 

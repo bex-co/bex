@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/execution/executiontest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -32,6 +33,8 @@ func TestShellCommand(t *testing.T) {
 	}{
 		{"plain program with flags execs directly", "/whoami --port 8080 --name qa1281", []string{"/whoami", "--port", "8080", "--name", "qa1281"}},
 		{"quoted argument stays one word", `bin/server --msg "hello world" --x='a b'`, []string{"bin/server", "--msg", "hello world", "--x=a b"}},
+		{"literal dollars survive direct exec", "bin/server 'a$$b $(PORT)'", []string{"bin/server", "a$$b $(PORT)"}},
+		{"command substitution reaches the shell", `sh -c 'echo "$(PORT)" "$$"'`, []string{"sh", "-c", `echo "$(PORT)" "$$"`}},
 		{"escaped space", `bin/server a\ b`, []string{"bin/server", "a b"}},
 		{"shell operator keeps the shell", "npm run build && npm start", []string{"/bin/sh", "-c", "npm run build && npm start"}},
 		{"variable expansion keeps the shell", "./server --port $PORT", []string{"/bin/sh", "-c", "./server --port $PORT"}},
@@ -59,7 +62,11 @@ func TestShellCommand(t *testing.T) {
 		{"escaped quote inside a double-quoted script", `sh -c "echo \"hi\"; sleep 1"`, []string{"sh", "-c", `echo "hi"; sleep 1`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := shellCommand(tc.command); !slices.Equal(got, tc.want) {
+			got := shellCommand(tc.command)
+			for i := range got {
+				got[i] = executiontest.Expand(got[i], map[string]string{"PORT": "10000", "HOME": "/home/platform"})
+			}
+			if !slices.Equal(got, tc.want) {
 				t.Errorf("shellCommand(%q) = %q, want %q", tc.command, got, tc.want)
 			}
 		})

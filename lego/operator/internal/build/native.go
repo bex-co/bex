@@ -27,6 +27,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // NativeEnvNoneRevision is the stable BuildKit cache key when a native build
@@ -245,9 +247,9 @@ func indexedLiteralEnv(literals []corev1.EnvVar, prefix string) ([]corev1.EnvVar
 	env := make([]corev1.EnvVar, 0, len(literals))
 	for i, item := range literals {
 		keys = append(keys, item.Name)
-		env = append(env, corev1.EnvVar{Name: prefix + strconv.Itoa(i), Value: item.Value})
+		env = append(env, corev1.EnvVar{Name: prefix + strconv.Itoa(i), Value: execution.KubernetesLiteral(item.Value)})
 	}
-	return env, strings.Join(keys, "\n")
+	return env, execution.KubernetesLiteral(strings.Join(keys, "\n"))
 }
 
 // nativeEnvRevision returns the opaque BuildKit cache key embedded in the
@@ -435,9 +437,9 @@ func shellJSON(command string) string {
 func nativeBuildPreparer(o Options) corev1.Container {
 	env, keys := indexedLiteralEnv(BuildLiterals(o.BuildEnv), nativeLiteralEnvPrefix)
 	env = append(env,
-		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: nativeDockerfile(o)},
+		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: execution.KubernetesLiteral(nativeDockerfile(o))},
 		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: keys},
-		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: strings.Join(o.NativeFiles, "\n")},
+		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: execution.KubernetesLiteral(strings.Join(o.NativeFiles, "\n"))},
 	)
 
 	mounts := []corev1.VolumeMount{{Name: "native-build", MountPath: "/native"}}

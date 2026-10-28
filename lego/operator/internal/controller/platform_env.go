@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	"github.com/bex-co/bex/lego/types/renderenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -72,7 +73,14 @@ func withPlatformEnv(env, platform []corev1.EnvVar) []corev1.EnvVar {
 			out = append(out, e)
 		}
 	}
-	out = append(out, platform...)
+	for _, e := range platform {
+		if e.ValueFrom == nil {
+			// Git branch/repository values are user input too. Keep the build
+			// inputs raw, and protect only this runtime EnvVar.Value carrier.
+			e.Value = execution.KubernetesLiteral(e.Value)
+		}
+		out = append(out, e)
+	}
 	return append(out, env[len(env)-1])
 }
 
