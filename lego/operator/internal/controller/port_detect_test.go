@@ -42,7 +42,7 @@ func (c *cannedScanner) Scan(context.Context, string) ([]int, error) {
 	return c.open, c.err
 }
 
-func detectFixture(t *testing.T, started time.Duration, scanner *cannedScanner, mutate func(*appv1alpha1.App, *corev1.Pod)) (*AppReconciler, *appv1alpha1.App, *appsv1.Deployment) {
+func detectFixture(t *testing.T, started time.Duration, scanner portscan.Scanner, mutate func(*appv1alpha1.App, *corev1.Pod)) (*AppReconciler, *appv1alpha1.App, *appsv1.Deployment) {
 	t.Helper()
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"},

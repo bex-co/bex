@@ -329,7 +329,13 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	// mode does not have, at the price of a mode distinction Render users
 	// never have to learn.
 	if !p.worker {
-		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port, probeHost)
+		path := app.Spec.HealthCheckPath
+		if path == "" && webImageHTTPSelectionPending(app) {
+			// A binary listener can pass TCP readiness and let the Deployment
+			// drain the serving release before HTTP discovery finishes.
+			path = "/"
+		}
+		handler := healthCheckHandler(path, p.port, probeHost)
 		if p.usesHealthProbeBinary(app) {
 			handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
 			container.VolumeMounts = append(container.VolumeMounts,
@@ -596,6 +602,9 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	dep.Spec.MinReadySeconds = 0
 	if app.Spec.HasImagePorts() && changesImagePorts(app) {
 		dep.Spec.MinReadySeconds = portChangeHoldSeconds
+	}
+	if app.Status.ServingNetwork != nil && webImageHTTPSelectionPending(app) {
+		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
 	}
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,

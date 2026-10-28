@@ -306,13 +306,16 @@ type Deploy struct {
 	// App's status.imageDigest for this deploy's own release — "" until then,
 	// and forever for a deploy that never serves or whose digest the operator
 	// did not observe.
-	ImageSHA       string     `json:"-"`
-	RollbackOf     string     `json:"rollbackOf,omitempty"`
-	Generation     int64      `json:"-"`
-	Commit         string     `json:"commit,omitempty"`
-	CommitMessage  string     `json:"commitMessage,omitempty"`
-	CommitAuthorAt *time.Time `json:"commitAuthorAt,omitempty"`
-	Status         string     `json:"status"`
+	ImageSHA string `json:"-"`
+	// DetectedHTTPPort preserves this live deploy's verified HTTP listener for
+	// historical platform logs after another release replaces the App.
+	DetectedHTTPPort int32      `json:"-"`
+	RollbackOf       string     `json:"rollbackOf,omitempty"`
+	Generation       int64      `json:"-"`
+	Commit           string     `json:"commit,omitempty"`
+	CommitMessage    string     `json:"commitMessage,omitempty"`
+	CommitAuthorAt   *time.Time `json:"commitAuthorAt,omitempty"`
+	Status           string     `json:"status"`
 	// OverlapPending distinguishes the one latest-pending overlap slot from an
 	// active release that may itself report Render status queued while waiting
 	// for build capacity. It is store-internal and never exposed on a surface.
@@ -2435,11 +2438,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, detected_http_port`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.DetectedHTTPPort)
 	return d, err
 }
 
@@ -2532,11 +2535,13 @@ func (s *PGStore) DeployIDByGeneration(ctx context.Context, appID string, genera
 
 // RanImage is what a deploy put into the cluster, known once it goes live:
 // Ref is its resolved_image (Rollback's restore target) and SHA the digest
-// that reference resolved to (image_sha, w8/m122). "" parts are unknown and
-// leave the stored value alone.
+// that reference resolved to (image_sha, w8/m122). DetectedHTTPPort is the
+// verified public HTTP listener. Zero values are unknown and leave stored
+// values alone.
 type RanImage struct {
-	Ref string
-	SHA string
+	Ref              string
+	SHA              string
+	DetectedHTTPPort int32
 }
 
 func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
@@ -2581,6 +2586,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     overlap_pending = CASE WHEN $2 = $7 THEN overlap_pending ELSE false END,
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
 			     image_sha = COALESCE(NULLIF($16, ''), image_sha),
+			     detected_http_port = CASE WHEN $2 = $11 AND $17 > 0 THEN $17 ELSE detected_http_port END,
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
 			     -- A terminal row's story is failure_reason/cancel_reason; the
@@ -2600,7 +2606,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
 			id, status, ran.Ref, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
-			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA); err != nil {
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort); err != nil {
 			return err
 		}
 		if status == DeployLive {

@@ -766,7 +766,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			}
 			out := make([]logs.DeployProgress, 0, len(rows))
 			for _, r := range rows {
-				p := logs.DeployProgress{ID: r.ID, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, CreatedAt: r.CreatedAt, Built: built[r.ID]}
+				p := logs.DeployProgress{ID: r.ID, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, DetectedHTTPPort: r.DetectedHTTPPort, CreatedAt: r.CreatedAt, Built: built[r.ID]}
 				if r.StartedAt != nil {
 					p.StartedAt = *r.StartedAt
 				}

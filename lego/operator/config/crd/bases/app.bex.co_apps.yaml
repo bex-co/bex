@@ -1233,8 +1233,22 @@ spec:
                 description: ImageNetwork is the verified private port set for the
                   candidate image.
                 properties:
+                  httpSelection:
+                    description: |-
+                      HTTPSelection is the completed web listener decision. Empty means the
+                      first candidate still needs runtime discovery; private networks ignore it.
+                    enum:
+                    - http
+                    - fallback
+                    - retained
+                    - configured
+                    type: string
                   image:
                     type: string
+                  noDeclaredPorts:
+                    description: NoDeclaredPorts distinguishes a runtime/default fallback
+                      from OCI EXPOSE.
+                    type: boolean
                   ports:
                     items:
                       format: int32
@@ -1360,8 +1374,22 @@ spec:
                   It keeps the old pods' ports until they are gone, and is what a failed
                   rollout restores (w4/428).
                 properties:
+                  httpSelection:
+                    description: |-
+                      HTTPSelection is the completed web listener decision. Empty means the
+                      first candidate still needs runtime discovery; private networks ignore it.
+                    enum:
+                    - http
+                    - fallback
+                    - retained
+                    - configured
+                    type: string
                   image:
                     type: string
+                  noDeclaredPorts:
+                    description: NoDeclaredPorts distinguishes a runtime/default fallback
+                      from OCI EXPOSE.
+                    type: boolean
                   ports:
                     items:
                       format: int32
@@ -1488,8 +1516,22 @@ spec:
                 description: ServingNetwork retains the active release's ports while
                   a candidate starts.
                 properties:
+                  httpSelection:
+                    description: |-
+                      HTTPSelection is the completed web listener decision. Empty means the
+                      first candidate still needs runtime discovery; private networks ignore it.
+                    enum:
+                    - http
+                    - fallback
+                    - retained
+                    - configured
+                    type: string
                   image:
                     type: string
+                  noDeclaredPorts:
+                    description: NoDeclaredPorts distinguishes a runtime/default fallback
+                      from OCI EXPOSE.
+                    type: boolean
                   ports:
                     items:
                       format: int32

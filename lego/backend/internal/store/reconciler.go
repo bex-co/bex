@@ -924,6 +924,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			ran.Ref = r.servedReleaseImage(ctx, cur, open.Generation)
 		}
 		ran.SHA = releaseImageDigest(cur, open.Generation)
+		ran.DetectedHTTPPort = releaseDetectedHTTPPort(cur, open.Generation, ran.Ref)
 	}
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
@@ -1563,6 +1564,23 @@ func (r *Reconciler) servedReleaseImage(ctx context.Context, app *appv1alpha1.Ap
 	return ""
 }
 
+// releaseDetectedHTTPPort accepts only a selected HTTP listener for this exact
+// release and image. A candidate's port must never narrate an older deploy.
+func releaseDetectedHTTPPort(app *appv1alpha1.App, generation int64, image string) int32 {
+	if !app.Spec.UsesWebImagePorts() || generation <= 0 || image == "" {
+		return 0
+	}
+	for _, network := range []*appv1alpha1.ImageNetworkStatus{app.Status.ServingNetwork, app.Status.ImageNetwork} {
+		if network == nil || network.HTTPSelection != appv1alpha1.HTTPSelectionDetected || network.Image != image || network.PrimaryPort < 1 || network.PrimaryPort > 65535 {
+			continue
+		}
+		if observed, ok := appv1alpha1.RevisionGeneration(network.Revision); ok && observed == generation {
+			return network.PrimaryPort
+		}
+	}
+	return 0
+}
+
 // releaseImageDigest is the digest the operator recorded for generation's
 // release (status.imageDigest, w8/m122), or "" when the record is another
 // release's — never a previous release's digest on a newer row.
@@ -1865,7 +1883,7 @@ func parkReason(reason string) bool {
 // ReplicaSet inspection and names something the user can act on.
 func stallDiagnosis(reason string) bool {
 	switch reason {
-	case "HealthCheckFailing", "CrashLoopBackOff", "ImagePullBackOff",
+	case "HealthCheckFailing", appv1alpha1.ReasonHTTPPortDiscovery, "CrashLoopBackOff", "ImagePullBackOff",
 		"CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonUnschedulable,
 		appv1alpha1.ReasonContainerCreating, appv1alpha1.ReasonServedReleaseCannotStart,
 		appv1alpha1.ReasonImageRegistryRateLimited, appv1alpha1.ReasonImageRegistryUnavailable:

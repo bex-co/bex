@@ -108,6 +108,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		(cached.Image == image || cached.Source == image && cached.Revision == releaseRevision(app)) &&
 		(!configured || cached.PrimaryPort == configuredPrimary) {
 		cached.Revision = releaseRevision(app)
+		retainWebHTTPSelection(app, cached, configured)
 		return cached.Image, int(cached.PrimaryPort), nil
 	}
 	source := image
@@ -168,7 +169,13 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		}
 	}
 	image = prefix + "@" + metadata.Digest
-	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports}
+	network := &appv1alpha1.ImageNetworkStatus{
+		Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports,
+		NoDeclaredPorts: len(metadata.TCPPorts) == 0,
+	}
+	retainWebHTTPSelection(app, network, configured)
+	app.Status.ImageNetwork = network
+	primary = network.PrimaryPort
 	// Future reconciles reuse exactly the manifest whose metadata was verified.
 	app.Status.ArtifactImage = image
 	return image, int(primary), nil

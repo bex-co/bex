@@ -2580,16 +2580,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}, restore); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	// Stamp Deploying only while the Deployment is still progressing. After
-	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
-	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here
-	// every requeue would flap the service header against the deploy row (w4/m103).
-	// A parking pass never stamps it: the service is going to sleep, and the
-	// Deploying write would flash Deploying before parkKubernetes's Hibernated
-	// (w6/m147).
-	if plan.deploying() && rolloutPending(app, image) && rolloutDeadline(app, dep) == nil {
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
+	if res, halt, err := r.reportDeploymentStarting(ctx, app, dep, image, port, plan.deploying()); halt {
+		return res, err
 	}
+
 	// Reclaim snapshots outside the retained window only after the Deployment is in
 	// place, so a reference the live template still needs is never deleted first. A
 	// failure here is logged, not returned: losing an old copy must not fail a
@@ -5434,6 +5428,9 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 	reason, msg := r.stuckPodMessage(ctx, dep, port)
 	if reason == reasonHealthCheckFailing {
 		msg += imagePortStallHint(app, port)
+		if network := app.Status.ImageNetwork; network != nil && network.HTTPSelection == appv1alpha1.HTTPSelectionFallback {
+			msg += " No port answered HTTP during startup discovery; set PORT to the HTTP listener."
+		}
 		msg += r.detectBoundPort(ctx, app, dep, port)
 	}
 	return reason, msg
@@ -5464,6 +5461,9 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 		if source == "" || int(p) != port {
 			declared = append(declared, strconv.Itoa(int(p)))
 		}
+	}
+	if source == "" && network.NoDeclaredPorts {
+		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the default because the image declares no TCP ports. Set PORT to the HTTP listener, or bind the server to 0.0.0.0 on port %d.", port, port)
 	}
 	if source == "" {
 		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
