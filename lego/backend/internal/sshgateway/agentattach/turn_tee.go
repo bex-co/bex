@@ -131,6 +131,7 @@ func (t *turnTee) persist(ctx context.Context, items []agenttranscript.Item) boo
 		t.total += size
 		t.batcher.enqueue(ctx, store.AgentSessionTranscriptPart{
 			PartIndex: it.Index, Turn: t.turn, Part: it.Part, Item: true, Partial: it.Partial,
+			FullOutputs: it.FullOutputs,
 		})
 	}
 	return true

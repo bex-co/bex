@@ -139,6 +139,23 @@ export type AgentSessionProfile = {
   label: Scalars['String']['output'];
 };
 
+export type AgentSessionToolOutput = {
+  __typename: 'AgentSessionToolOutput';
+  /** One entry per stored field, sorted by field. */
+  outputs: Array<AgentSessionToolOutputField>;
+  sessionId: Scalars['String']['output'];
+  toolCallId: Scalars['String']['output'];
+  turn: Scalars['Int']['output'];
+};
+
+export type AgentSessionToolOutputField = {
+  __typename: 'AgentSessionToolOutputField';
+  /** output, errorText, or terminal:<terminalId>. */
+  field: Scalars['String']['output'];
+  /** The complete text, at most 1 MiB (a longer one ends in a [bex: full output capped at 1 MiB, N chars omitted] marker). */
+  text: Scalars['String']['output'];
+};
+
 export type AgentSessionTranscriptPage = {
   __typename: 'AgentSessionTranscriptPage';
   nextAfterSeq: Scalars['Int']['output'];
@@ -2741,6 +2758,8 @@ export type Query = {
   agentEnvironment: AgentEnvironment;
   agentSession: Maybe<AgentSession>;
   agentSessionCapabilities: AgentSessionCapabilities;
+  /** The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept. */
+  agentSessionToolOutput: AgentSessionToolOutput;
   agentSessionTranscript: AgentSessionTranscriptPage;
   agentSessions: Array<AgentSession>;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
@@ -2871,6 +2890,13 @@ export type QueryAgentSessionArgs = {
 
 export type QueryAgentSessionCapabilitiesArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentSessionToolOutputArgs = {
+  sessionId: Scalars['String']['input'];
+  toolCallId: Scalars['String']['input'];
+  turn: Scalars['Int']['input'];
 };
 
 

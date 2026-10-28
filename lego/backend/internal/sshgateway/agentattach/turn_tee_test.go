@@ -78,8 +78,12 @@ func TestLiveTeeOfTheRecordedTurnStoresItems(t *testing.T) {
 	}
 	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30, 0)
 	var bytes int
+	full := map[string]string{}
 	for _, p := range stored {
 		bytes += len(p.Part)
+		for _, f := range p.FullOutputs {
+			full[uimessagetest.FullKey(f.ToolCallID, f.Field)] = f.Text
+		}
 		if !p.Item || strings.Contains(string(p.Part), `-delta"`) || strings.Contains(string(p.Part), `"data-acp-info"`) {
 			t.Fatalf("raw chunk stored: %.100s", p.Part)
 		}
@@ -104,6 +108,10 @@ func TestLiveTeeOfTheRecordedTurnStoresItems(t *testing.T) {
 	for i := range want {
 		if want[i]["state"] == "streaming" {
 			got[i]["state"] = "streaming"
+		}
+		// A clipped output replays flagged; its tee-stored full copy restores it.
+		if _, err := uimessagetest.RestoreFullOutput(got[i], full); err != nil {
+			t.Fatalf("part %d: %v", i, err)
 		}
 		if fmt.Sprint(want[i]) != fmt.Sprint(got[i]) {
 			t.Fatalf("part %d differs after reattach", i)

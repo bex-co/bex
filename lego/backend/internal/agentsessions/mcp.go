@@ -46,6 +46,12 @@ type transcriptArgs struct {
 	Limit    int    `json:"limit,omitempty"`
 }
 
+type toolOutputArgs struct {
+	ID         string `json:"id"`
+	Turn       int    `json:"turn"`
+	ToolCallID string `json:"toolCallId"`
+}
+
 type deleteResult struct {
 	Deleted bool `json:"deleted"`
 }
@@ -118,6 +124,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				afterSeq = *in.AfterSeq
 			}
 			out, err := s.Transcript(ctx, in.ID, afterSeq, in.Limit)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_tool_output", Description: "Read the complete output of one tool call in a cloud coding-agent session. A transcript tool part flagged fullOutput: true stores only the head and tail of a long output inline (around a [bex: N chars clipped] marker); this returns the full text by field (output, errorText, terminal:<terminalId>), each capped at 1 MiB. Pass the session id, the part's turn and its toolCallId. Not found when no full copy was kept."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in toolOutputArgs) (*mcp.CallToolResult, ToolOutput, error) {
+			out, err := s.ToolOutput(ctx, in.ID, in.Turn, in.ToolCallID)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},

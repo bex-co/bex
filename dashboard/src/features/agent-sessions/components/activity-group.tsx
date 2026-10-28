@@ -26,6 +26,7 @@ import {
   stepLabel,
   type ActivityStep,
 } from "@/features/agent-sessions/lib/activity-steps";
+import { FullToolOutput } from "@/features/agent-sessions/components/full-tool-output";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into ONE
@@ -54,10 +55,13 @@ const KIND_LABEL_KEYS: Record<ToolKind, string> = {
 };
 
 export function ActivityGroup({
+  sessionId,
   steps,
   sourceTimesMs = [],
   interrupted = false,
 }: {
+  /** The session, for loading a clipped step's full output (w10/m18). */
+  sessionId?: string;
   steps: ActivityStep[];
   sourceTimesMs?: readonly number[];
   /**
@@ -148,7 +152,11 @@ export function ActivityGroup({
                   aria-hidden
                   className="bg-border ring-background absolute top-2 -left-[1.3rem] size-2 rounded-full ring-2"
                 />
-                <ActivityStepView step={step} interrupted={interrupted} />
+                <ActivityStepView
+                  step={step}
+                  interrupted={interrupted}
+                  sessionId={sessionId}
+                />
               </li>
             ))}
           </ol>
@@ -172,9 +180,11 @@ function firstLine(text: string): string {
 function ActivityStepView({
   step,
   interrupted,
+  sessionId,
 }: {
   step: ActivityStep;
   interrupted: boolean;
+  sessionId?: string;
 }) {
   const { t } = useTranslations();
 
@@ -187,7 +197,11 @@ function ActivityStepView({
         <pre className="max-h-40 overflow-auto rounded-md bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#e5e5e5]">
           {step.output ?? t("agentSessions.terminalNoOutput")}
         </pre>
-        <ClippedBadge chars={clippedChars(step.output)} />
+        <ClippedBadge
+          chars={clippedChars(step.output)}
+          step={step}
+          sessionId={sessionId}
+        />
       </div>
     );
   }
@@ -258,6 +272,8 @@ function ActivityStepView({
         )}
         <ClippedBadge
           chars={clippedChars(outputText) + clippedChars(step.errorText)}
+          step={step}
+          sessionId={sessionId}
         />
       </div>
     );
@@ -265,17 +281,29 @@ function ActivityStepView({
 }
 
 // The server stores a long tool output head+tail-capped with a
-// `[bex: N chars clipped]` marker (w10/m16 t003); say so beside the output.
-function ClippedBadge({ chars }: { chars: number }) {
+// `[bex: N chars clipped]` marker (w10/m16 t003); say so beside the output,
+// with "Show full output" when it kept the complete text (w10/m18).
+function ClippedBadge({
+  chars,
+  step,
+  sessionId,
+}: {
+  chars: number;
+  step: Extract<ActivityStep, { kind: "tool" | "terminal" }>;
+  sessionId?: string;
+}) {
   const { t, i18n } = useTranslations();
   if (chars <= 0) return null;
   return (
-    <span className="border-border/60 text-muted-foreground inline-flex rounded border px-1.5 py-px text-[11px]">
-      {t("agentSessions.outputClipped", {
-        count: chars,
-        formatted: chars.toLocaleString(i18n.language),
-      })}
-    </span>
+    <div>
+      <span className="border-border/60 text-muted-foreground inline-flex rounded border px-1.5 py-px text-[11px]">
+        {t("agentSessions.outputClipped", {
+          count: chars,
+          formatted: chars.toLocaleString(i18n.language),
+        })}
+      </span>
+      <FullToolOutput step={step} sessionId={sessionId} />
+    </div>
   );
 }
 
