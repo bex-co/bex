@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/blang/semver/v4 v4.0.0
+	github.com/charmbracelet/huh v1.0.0
 	github.com/render-oss/cli v1.1.3-0.20260909214233-a764810a7682
 	github.com/sigstore/protobuf-specs v0.5.1
 	github.com/sigstore/sigstore-go v1.3.0
@@ -31,7 +32,6 @@ require (
 	github.com/charmbracelet/bubbles v1.0.0 // indirect
 	github.com/charmbracelet/bubbletea v1.3.10 // indirect
 	github.com/charmbracelet/colorprofile v0.4.1 // indirect
-	github.com/charmbracelet/huh v1.0.0 // indirect
 	github.com/charmbracelet/huh/spinner v0.0.0-20260223110133-9dc45e34a40b // indirect
 	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect

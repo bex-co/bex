@@ -403,7 +403,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **214** — [`bex skills install` has no interactive picker (Render's TUI picks scope/tools/skills)](214.md) (~2h, minor) ← w8/m143 t002 design choice, 2026-10-28
+- [x] **214** — [`bex skills install` has no interactive picker (Render's TUI picks scope/tools/skills)](done/214.md) (~2h, minor) ← w8/m143 t002 design choice, 2026-10-28 — **DONE 2026-10-28** (TTY pickers for install/remove; flags skip steps)
 
 - [ ] **213** — [Platform-generated responses carry no `x-render-routing` header (`no-server`/`suspend`/`hibernate-pending-wake`), so an edge 404/503 looks like the app's own](blocked/213.md) (~30m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: Render tags its unknown-host 404, suspended 503 and wake page; bex's activator sets only `rndr-id` — **BLOCKED (2026-10-28: fix done — the activator tags every platform answer with X-Render-Routing (no-server / suspend / hibernate-pending-wake; proxied app responses never); release pipeline deploys the operator, then QA curls an unknown host, a suspended and a hibernated Free fixture, and an app 200/404 (untagged), fixtures deleted with 404 proofs)**
 

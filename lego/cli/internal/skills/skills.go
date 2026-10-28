@@ -32,6 +32,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/render-oss/cli/pkg/command"
 	upstream "github.com/render-oss/cli/pkg/skills"
 	"github.com/spf13/cobra"
@@ -75,7 +76,7 @@ Skills can be installed at two scopes:
   - user:    Install to ~/.{tool}/skills/ (default, current user only)
   - project: Install to ./.{tool}/skills/ (committed to Git, all collaborators)
 
-By default every bex skill is installed to every detected tool at user scope. Use --scope, --tool, and --skill to narrow it.`,
+In a terminal, a prompt lets you pick scope, tools, and skills. Use --scope, --tool, and --skill flags to skip the prompts (useful for CI); without a terminal, every bex skill is installed to every detected tool at user scope.`,
 		Example: `  # Install every bex skill for every detected tool
   bex skills install
 
@@ -92,6 +93,11 @@ By default every bex skill is installed to every detected tool at user scope. Us
 	dryRun := cmd.Flags().Bool("dry-run", false, "Show what would be installed without making changes")
 	scopeFlag := cmd.Flags().String("scope", "", "Set installation scope to user or project (defaults to user)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		if interactive(cmd) && *scopeFlag == "" {
+			if err := pickScope(scopeFlag); err != nil {
+				return err
+			}
+		}
 		target, err := resolveTarget(*scopeFlag)
 		if err != nil {
 			return err
@@ -99,6 +105,16 @@ By default every bex skill is installed to every detected tool at user scope. Us
 		tools, err := detectTools(*tool)
 		if err != nil {
 			return err
+		}
+		if interactive(cmd) && *tool == "" {
+			if tools, err = pickTools(tools); err != nil {
+				return err
+			}
+		}
+		if interactive(cmd) && len(*names) == 0 {
+			if *names, err = pickPackSkills(); err != nil {
+				return err
+			}
 		}
 		result, err := install(target, tools, *names, *dryRun)
 		if err != nil {
@@ -222,12 +238,17 @@ Use --skill to remove specific skills, or --all to remove every bex skill at the
 	all := cmd.Flags().Bool("all", false, "Remove all installed bex skills")
 	scopeFlag := cmd.Flags().String("scope", "", "Remove skills from the specified scope (user or project)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		if !*all && len(*names) == 0 {
-			return errors.New("specify --skill or --all")
-		}
 		target, err := resolveTarget(*scopeFlag)
 		if err != nil {
 			return err
+		}
+		if !*all && len(*names) == 0 {
+			if !interactive(cmd) {
+				return errors.New("specify --skill or --all")
+			}
+			if *names, err = pickInstalledSkills(target); err != nil {
+				return err
+			}
 		}
 		tools, err := detectTools(*tool)
 		if err != nil {
@@ -242,6 +263,86 @@ Use --skill to remove specific skills, or --all to remove every bex skill at the
 		})
 	}
 	return cmd
+}
+
+// interactive is a terminal with no --output: Render's skills commands
+// prompt for any choice their flags leave open there.
+func interactive(cmd *cobra.Command) bool {
+	format := command.GetFormatFromContext(cmd.Context())
+	return format != nil && *format == command.Interactive
+}
+
+// errNothingPicked ends a picker the user left empty.
+var errNothingPicked = errors.New("nothing selected")
+
+func pickScope(scope *string) error {
+	options := []huh.Option[string]{huh.NewOption("User (~/.{tool}/skills, only you)", string(upstream.ScopeUser))}
+	if _, err := upstream.GetRepoRoot(); err == nil {
+		options = append(options, huh.NewOption("Project (./.{tool}/skills, committed for collaborators)", string(upstream.ScopeProject)))
+	}
+	*scope = string(upstream.ScopeUser)
+	if len(options) == 1 {
+		return nil
+	}
+	return huh.NewSelect[string]().Title("Install scope").Options(options...).Value(scope).Run()
+}
+
+func pickTools(tools []upstream.Tool) ([]upstream.Tool, error) {
+	if len(tools) < 2 {
+		return tools, nil
+	}
+	names := upstream.ToolNames(tools)
+	chosen := slices.Clone(names)
+	options := huh.NewOptions(names...)
+	if err := huh.NewMultiSelect[string]().Title("Install to which tools?").Options(options...).Value(&chosen).Run(); err != nil {
+		return nil, err
+	}
+	if len(chosen) == 0 {
+		return nil, errNothingPicked
+	}
+	return upstream.FilterToolsByNames(tools, chosen), nil
+}
+
+func pickPackSkills() ([]string, error) {
+	src, cleanup, err := extractPack()
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+	var options []huh.Option[string]
+	var chosen []string
+	for _, s := range upstream.ReadSkillsFromRepo(src) {
+		options = append(options, huh.NewOption(s.DirName, s.DirName))
+		chosen = append(chosen, s.DirName)
+	}
+	return pickMany("Install which skills?", options, chosen)
+}
+
+func pickInstalledSkills(t target) ([]string, error) {
+	state, err := loadState()
+	if err != nil {
+		return nil, err
+	}
+	var options []huh.Option[string]
+	for _, s := range state.Skills {
+		if s.EffectiveScope() == t.scope {
+			options = append(options, huh.NewOption(s.EffectiveDirName(), s.EffectiveDirName()))
+		}
+	}
+	if len(options) == 0 {
+		return nil, fmt.Errorf("no bex skills installed at %s scope", t.scope)
+	}
+	return pickMany("Remove which skills?", options, nil)
+}
+
+func pickMany(title string, options []huh.Option[string], chosen []string) ([]string, error) {
+	if err := huh.NewMultiSelect[string]().Title(title).Options(options...).Value(&chosen).Run(); err != nil {
+		return nil, err
+	}
+	if len(chosen) == 0 {
+		return nil, errNothingPicked
+	}
+	return chosen, nil
 }
 
 // emit writes data in the selected output format. Interactive (a terminal
