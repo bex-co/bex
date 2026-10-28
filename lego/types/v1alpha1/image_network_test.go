@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -114,5 +115,23 @@ func TestWebImagePortsPublishTheServingNetwork(t *testing.T) {
 	app.Status.ServingNetwork = &ImageNetworkStatus{Image: "old", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80, 443}}
 	if app.ServicePort() != 80 || len(app.OpenPorts()) != 1 || app.OpenPorts()[0] != 80 {
 		t.Fatalf("service=%d open=%v, want the serving 80", app.ServicePort(), app.OpenPorts())
+	}
+}
+
+// Persisted Apps carry the CRD default, so it must not hide runtime detection.
+func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
+	for _, port := range []int32{0, DefaultPort, 8080} {
+		app := App{ObjectMeta: metav1.ObjectMeta{Name: "web"}, Spec: AppSpec{Type: TypeWebService, Port: port}, Status: AppStatus{DetectedPort: 3000}}
+		want := int32(3000)
+		if port == 8080 {
+			want = port
+		}
+		if app.ServingPort() != want || app.ServicePort() != want || app.OpenPorts()[0] != want || app.InternalAddress() != fmt.Sprintf("web:%d", want) {
+			t.Fatalf("port=%d: serving=%d service=%d open=%v address=%s", port, app.ServingPort(), app.ServicePort(), app.OpenPorts(), app.InternalAddress())
+		}
+		app.Status.EnvPort = DefaultPort
+		if app.ServingPort() != DefaultPort {
+			t.Fatal("PORT must override detection, including PORT=10000")
+		}
 	}
 }
