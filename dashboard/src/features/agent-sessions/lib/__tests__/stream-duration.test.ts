@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 import {
   keepLastReplay,
   partSignature,
@@ -9,6 +10,7 @@ import {
   formatElapsedDuration,
   formatStreamDuration,
   MAX_ELAPSED_MS,
+  useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
 import { sourceTimestampsMs } from "@/features/agent-sessions/lib/acp-parts";
 
@@ -33,11 +35,13 @@ describe("elapsedMsFromSource", () => {
   });
 
   it("ignores invalid values and clamps pathological spans", () => {
-    expect(elapsedMsFromSource([Number.NaN, Number.POSITIVE_INFINITY], true, T0)).toBeUndefined();
-    expect(elapsedMsFromSource([], true, T0)).toBeUndefined();
     expect(
-      elapsedMsFromSource([T0, T0 + MAX_ELAPSED_MS * 4], true, T0),
-    ).toBe(MAX_ELAPSED_MS);
+      elapsedMsFromSource([Number.NaN, Number.POSITIVE_INFINITY], true, T0),
+    ).toBeUndefined();
+    expect(elapsedMsFromSource([], true, T0)).toBeUndefined();
+    expect(elapsedMsFromSource([T0, T0 + MAX_ELAPSED_MS * 4], true, T0)).toBe(
+      MAX_ELAPSED_MS,
+    );
   });
 });
 
@@ -46,8 +50,12 @@ describe("formatStreamDuration", () => {
     expect(formatElapsedDuration(40_000)).toBe("40s");
     expect(formatElapsedDuration(184_000)).toBe("3m 4s");
     expect(formatApproxDuration(12_000)).toBe("~12s");
-    expect(formatStreamDuration({ ms: 40_000, approximate: false })).toBe("40s");
-    expect(formatStreamDuration({ ms: 12_000, approximate: true })).toBe("~12s");
+    expect(formatStreamDuration({ ms: 40_000, approximate: false })).toBe(
+      "40s",
+    );
+    expect(formatStreamDuration({ ms: 12_000, approximate: true })).toBe(
+      "~12s",
+    );
   });
 });
 
@@ -66,5 +74,31 @@ describe("reconnect dedupe", () => {
     expect(deduped).toHaveLength(1);
     const times = deduped.flatMap((p) => sourceTimestampsMs(p));
     expect(elapsedMsFromSource(times, true, T40)).toBe(40_000);
+  });
+});
+
+describe("useStreamDuration burst replay (w10/m16 t001)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("re-renders only when the shown whole-second label changes", () => {
+    // A replay burst grows a group chunk by chunk within one second and
+    // rebuilds its source-time array each time. A state update per chunk was
+    // the React #185 (maximum update depth) shape.
+    vi.spyOn(Date, "now").mockReturnValue(T0 + 400);
+    let renders = 0;
+    const { rerender, result } = renderHook(
+      ({ count }: { count: number }) => {
+        renders++;
+        return useStreamDuration(count, false, []);
+      },
+      { initialProps: { count: 1 } },
+    );
+    for (let count = 2; count <= 50; count++) rerender({ count });
+    expect(renders).toBe(50);
+    expect(result.current).toEqual({ ms: 0, approximate: true });
+
+    vi.spyOn(Date, "now").mockReturnValue(T0 + 2_400);
+    rerender({ count: 51 });
+    expect(result.current).toEqual({ ms: 2_000, approximate: true });
   });
 });

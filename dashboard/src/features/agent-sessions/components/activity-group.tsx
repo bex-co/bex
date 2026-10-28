@@ -205,6 +205,13 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
             ["ok", "success", "status"].includes(key) &&
             (value === true || value === "ok" || value === "success"),
         ));
+    // A structured output is clipped string by string, so its JSON text
+    // carries the markers too.
+    const outputText = ack
+      ? undefined
+      : typeof output === "string"
+        ? output
+        : safeJson(output);
     return (
       <div className="space-y-1">
         <StepShell
@@ -227,21 +234,14 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
         {command === undefined && step.input !== undefined && (
           <StepCode code={safeJson(step.input)} />
         )}
-        {!ack && (
-          <StepCode
-            code={typeof output === "string" ? output : safeJson(output)}
-          />
-        )}
+        {outputText !== undefined && <StepCode code={outputText} />}
         {step.errorText && (
           <p className="text-destructive text-xs whitespace-pre-wrap">
             {step.errorText}
           </p>
         )}
         <ClippedBadge
-          chars={
-            clippedChars(typeof output === "string" ? output : undefined) +
-            clippedChars(step.errorText)
-          }
+          chars={clippedChars(outputText) + clippedChars(step.errorText)}
         />
       </div>
     );

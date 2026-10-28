@@ -339,3 +339,40 @@ func TestOrphansAndUnparseableChunks(t *testing.T) {
 		t.Fatalf("chunk expanded as an item: %s", got)
 	}
 }
+
+// A preliminary output keeps its call open; a later error replaces the output,
+// is clipped like output (with the truncated flag), and replays as
+// output-error. The turn's finish closes a still-running call as final.
+func TestToolErrorAfterPreliminaryOutputAndFinish(t *testing.T) {
+	errText, _ := json.Marshal(strings.Repeat("e", 40_000))
+	cs := chunks(
+		`{"type":"tool-input-available","toolCallId":"a","toolName":"Bash","input":{"command":"make"},"dynamic":true}`,
+		`{"type":"tool-output-available","toolCallId":"a","output":"building…","dynamic":true,"preliminary":true}`,
+		`{"type":"tool-input-available","toolCallId":"b","toolName":"Read","input":{"path":"x"},"dynamic":true}`,
+		`{"type":"tool-output-error","toolCallId":"a","errorText":`+string(errText)+`,"dynamic":true}`,
+		`{"type":"finish"}`,
+	)
+	c := agenttranscript.NewCoalescer()
+	c.Push(cs[0].Index, cs[0].Part)
+	if _, released := c.Push(cs[1].Index, cs[1].Part); len(released) != 0 {
+		t.Fatalf("a preliminary output completed the call: %v", indexes(released))
+	}
+	items := agenttranscript.Coalesce(cs)
+	if fmt.Sprint(indexes(items)) != "[0 2 4]" {
+		t.Fatalf("indexes = %v", indexes(items))
+	}
+	for _, it := range items {
+		if it.Partial {
+			t.Fatalf("finish left item %d partial", it.Index)
+		}
+	}
+	failed := string(items[0].Part)
+	if !strings.Contains(failed, `"state":"output-error"`) || !strings.Contains(failed, `"truncated":true`) ||
+		!strings.Contains(failed, "[bex: 10000 chars clipped]") || strings.Contains(failed, `"output"`) {
+		t.Fatalf("failed call item = %.300s", failed)
+	}
+	got := mustMerge(t, replay(items))
+	if got[0]["state"] != "output-error" || got[1]["state"] != "input-available" {
+		t.Fatalf("replayed states = %v / %v", got[0]["state"], got[1]["state"])
+	}
+}

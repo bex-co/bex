@@ -823,7 +823,7 @@ const (
 // Transcript returns one seq-keyset page of a session's durable conversation
 // (ADR065 D2) — the poll-shaped REST/GraphQL/MCP twin of the gateway stream
 // replay, readable for live, terminal, and archived sessions alike (viewable is
-// the point of the archive). Parts are verbatim stored payloads.
+// the point of the archive). Parts are the stored items, verbatim.
 func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int64, limit int) (TranscriptPage, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
 		return TranscriptPage{}, err
@@ -879,7 +879,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			quoted, _ := json.Marshal(string(p.Part))
 			part = quoted
 		}
-		page.Parts = append(page.Parts, TranscriptPart{Seq: p.Seq, PartIndex: p.PartIndex, Turn: p.Turn, Part: part, CreatedAt: p.CreatedAt})
+		page.Parts = append(page.Parts, TranscriptPart{Seq: p.Seq, PartIndex: p.PartIndex, Turn: p.Turn, Part: part, Partial: p.Partial, CreatedAt: p.CreatedAt})
 		page.NextAfterSeq = p.Seq
 	}
 	return page, nil

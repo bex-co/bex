@@ -59,10 +59,10 @@ func byteOffsetOfRune(s string, n int) int {
 	return len(s)
 }
 
-// ClipJSON clips a tool output: a JSON string is clipped as text, and every
+// clipJSON clips a tool output: a JSON string is clipped as text, and every
 // string inside a structured (object/array) output is clipped the same way.
 // The input is returned byte-for-byte when nothing needs clipping.
-func ClipJSON(raw json.RawMessage) (json.RawMessage, bool) {
+func clipJSON(raw json.RawMessage) (json.RawMessage, bool) {
 	// A string longer than the cap needs at least that many bytes plus quotes.
 	if len(raw) <= MaxToolOutputChars+2 {
 		return raw, false
