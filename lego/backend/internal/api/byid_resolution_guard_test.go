@@ -252,6 +252,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.Sandbox.Prefix():                  {"sandboxes", ""},
 	ids.StaticRoute.Prefix():              {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.StaticHeader.Prefix():             {"", "a derived rule listed under its static site; no per-rule verb yet"},
+	ids.AgentModelRequest.Prefix():        {"", "gateway-internal usage-report idempotency key, no API"},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk
