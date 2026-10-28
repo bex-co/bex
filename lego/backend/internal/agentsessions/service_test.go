@@ -246,7 +246,7 @@ func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, p
 		if duplicate {
 			continue
 		}
-		seq := int64(len(f.transcript[id]))
+		seq := f.nextTranscriptSeq(id)
 		p.Seq, p.PartIndex = seq, index
 		f.transcript[id][seq] = p
 	}
@@ -264,6 +264,38 @@ func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSe
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	var total int64
+	for i, p := range out {
+		if total+int64(len(p.Part)) > maxBytes {
+			return out[:i], nil
+		}
+		total += int64(len(p.Part))
+	}
+	return out, nil
+}
+
+// AgentSessionTranscriptReplay mirrors the PG ordered read: (turn,
+// part_index) order (seq breaks ties for hand-seeded rows), byte-budgeted.
+func (f *fakeStore) AgentSessionTranscriptReplay(_ context.Context, id string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error) {
+	out := make([]store.AgentSessionTranscriptPart, 0)
+	for _, p := range f.transcript[id] {
+		if p.Turn > after.Turn || (p.Turn == after.Turn && p.PartIndex > after.PartIndex) {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.Turn != b.Turn {
+			return a.Turn < b.Turn
+		}
+		if a.PartIndex != b.PartIndex {
+			return a.PartIndex < b.PartIndex
+		}
+		return a.Seq < b.Seq
+	})
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
@@ -305,6 +337,14 @@ func (f *fakeStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id str
 	return max, ok, nil
 }
 
+func (f *fakeStore) nextTranscriptSeq(id string) int64 {
+	next := int64(0)
+	for seq := range f.transcript[id] {
+		next = max(next, seq+1)
+	}
+	return next
+}
+
 // MergeAgentSessionTranscriptItems mirrors the PG merge: insert missing item
 // indexes, upgrade partial rows, charge the cumulative quota.
 func (f *fakeStore) MergeAgentSessionTranscriptItems(ctx context.Context, id string, m store.TranscriptItemMerge) (store.TranscriptMergeResult, error) {
@@ -335,9 +375,11 @@ func (f *fakeStore) MergeAgentSessionTranscriptItems(ctx context.Context, id str
 				res.QuotaReached = true
 				return res, nil
 			}
+			// The complete copy replaces the partial under a fresh seq.
+			delete(f.transcript[id], existing.Seq)
 			total += size - int64(len(existing.Part))
-			existing.Part, existing.Partial = it.Part, false
-			f.transcript[id][existing.Seq] = *existing
+			it.Seq, it.Turn, it.Item, it.Partial = f.nextTranscriptSeq(id), m.Turn, true, false
+			f.transcript[id][it.Seq] = it
 			res.Upgraded++
 			continue
 		}
@@ -345,7 +387,7 @@ func (f *fakeStore) MergeAgentSessionTranscriptItems(ctx context.Context, id str
 			res.QuotaReached = true
 			return res, nil
 		}
-		it.Seq, it.Turn, it.Item = int64(len(f.transcript[id])), m.Turn, true
+		it.Seq, it.Turn, it.Item = f.nextTranscriptSeq(id), m.Turn, true
 		f.transcript[id][it.Seq] = it
 		total += size
 		res.Inserted++

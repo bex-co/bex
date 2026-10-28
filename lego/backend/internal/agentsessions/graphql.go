@@ -186,7 +186,7 @@ var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// model) or a legacy chunk; clients parse it themselves.
 		"part": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return string(v.Part) })},
 		// The live stream ended inside this item; a later harvest may complete
-		// it in place under the same seq.
+		// it under a NEW seq with the same (turn, partIndex), superseding it.
 		"partial":   &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Partial })},
 		"createdAt": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return gqlTime(v.CreatedAt) })},
 	},

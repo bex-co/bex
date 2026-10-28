@@ -127,6 +127,8 @@ func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id str
 	return nil
 }
 
+// AgentSessionTranscript is the seq-ordered read tests use to inspect what was
+// persisted (write order).
 func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64, _ int) ([]store.AgentSessionTranscriptPart, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -137,6 +139,24 @@ func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, a
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	return out, nil
+}
+
+func (f *fakeAttachStore) AgentSessionTranscriptReplay(_ context.Context, id string, after store.TranscriptPosition, maxBytes int64, _ int) ([]store.AgentSessionTranscriptPart, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]store.AgentSessionTranscriptPart, 0)
+	for _, p := range f.parts[id] {
+		if p.Turn > after.Turn || (p.Turn == after.Turn && p.PartIndex > after.PartIndex) {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Turn != out[j].Turn {
+			return out[i].Turn < out[j].Turn
+		}
+		return out[i].PartIndex < out[j].PartIndex
+	})
 	// Honor the store's bounded-read contract: never return past the budget.
 	var total int64
 	for i, p := range out {

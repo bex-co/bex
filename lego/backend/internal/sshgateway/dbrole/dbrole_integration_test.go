@@ -197,10 +197,10 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	if _, err := st.AgentSessionTranscriptBytes(ctx, "ags-nope000000000000000"); permDenied(err) {
 		t.Errorf("transcript bytes SELECT denied under scoped role: %v", err)
 	}
-	if _, err := st.AgentSessionTranscript(ctx, "ags-nope000000000000000", -1, 1<<20, 0); permDenied(err) {
+	if _, err := st.AgentSessionTranscriptReplay(ctx, "ags-nope000000000000000", store.TranscriptStart, 1<<20, 0); permDenied(err) {
 		t.Errorf("transcript replay SELECT denied under scoped role: %v", err)
 	}
-	exercised["AgentSessionTranscript"] = true
+	exercised["AgentSessionTranscriptReplay"] = true
 	exercised["AgentSessionTranscriptMaxSeq"] = true
 	exercised["AgentSessionTranscriptBytes"] = true
 	if _, _, err := st.AgentSessionTranscriptTurnMaxIndex(ctx, "ags-nope000000000000000", 1); permDenied(err) {

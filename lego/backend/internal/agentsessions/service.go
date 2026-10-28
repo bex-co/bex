@@ -93,6 +93,8 @@ type Store interface {
 	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
 	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
+	// Ordered transcript read (UI part order) for continuity re-priming.
+	AgentSessionTranscriptReplay(ctx context.Context, sessionID string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 }
 
 // TupleWriter establishes the resource-parent edge in OpenFGA. The production
@@ -845,7 +847,9 @@ const (
 // Transcript returns one seq-keyset page of a session's durable conversation
 // (ADR065 D2) — the poll-shaped REST/GraphQL/MCP twin of the gateway stream
 // replay, readable for live, terminal, and archived sessions alike (viewable is
-// the point of the archive). Parts are the stored items, verbatim.
+// the point of the archive). Parts are the stored items, verbatim, in seq
+// (write) order: a harvest that completes a partial item re-inserts it under a
+// fresh seq with the same (turn, partIndex), which supersedes the partial.
 func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int64, limit int) (TranscriptPage, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
 		return TranscriptPage{}, err

@@ -21,21 +21,28 @@ export type ActivityStep =
       newText?: string;
     };
 
-/** A tool step is pending until it reaches a terminal (output/error) state. */
+// The AI SDK v6 tool states a call never leaves: an output, an error, or a
+// denied execution (`tool-output-denied`).
+const SETTLED_TOOL_STATES = new Set([
+  "output-available",
+  "output-error",
+  "output-denied",
+]);
+
+/** A tool step is pending until it reaches a terminal (output/error/denied) state. */
 export function isToolStepPending(step: ActivityStep): boolean {
-  return (
-    step.kind === "tool" &&
-    step.state !== "output-available" &&
-    step.state !== "output-error"
-  );
+  return step.kind === "tool" && !SETTLED_TOOL_STATES.has(step.state);
 }
 
+/** A failed step: errored or denied (both count as failures in the group line). */
 export function isToolStepFailed(
   step: ActivityStep,
 ): step is Extract<ActivityStep, { kind: "tool" }> {
   return (
     step.kind === "tool" &&
-    (step.state === "output-error" || Boolean(step.errorText))
+    (step.state === "output-error" ||
+      step.state === "output-denied" ||
+      Boolean(step.errorText))
   );
 }
 

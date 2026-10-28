@@ -88,8 +88,9 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 		{name: "prefix", stored: []store.AgentSessionTranscriptPart{item(0)}, wantOrder: []int64{0, 1, 5}},
 		{name: "complete", stored: []store.AgentSessionTranscriptPart{item(0), item(1), item(5)}, wantOrder: []int64{0, 1, 5}},
 		// The live tee flushed the in-flight text as partial at a disconnect: the
-		// harvest replaces it in place with the complete item.
-		{name: "partial_upgrade", stored: []store.AgentSessionTranscriptPart{item(0), partialText}, wantOrder: []int64{0, 1, 5}},
+		// harvest replaces it with the complete item under a fresh seq (a poller
+		// past the partial still sees it) at the same position.
+		{name: "partial_upgrade", stored: []store.AgentSessionTranscriptPart{item(0), partialText, item(5)}, wantOrder: []int64{0, 5, 1}},
 		// Earlier concurrent batch writers could commit a later batch after an
 		// earlier one failed. Recover the hole without renumbering issued cursors.
 		{name: "historical_gap", stored: []store.AgentSessionTranscriptPart{item(0), item(5)}, wantOrder: []int64{0, 5, 1}},
@@ -124,6 +125,20 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 				if (i > 0 && p.Seq <= got[i-1].Seq) || p.PartIndex != tc.wantOrder[i] || p.Turn != 1 || !p.Item || p.Partial || string(p.Part) != items[tc.wantOrder[i]] {
 					t.Fatalf("item %d: %+v", i, p)
 				}
+			}
+			// Ordered replay is UI part order whatever the write order was.
+			replay, err := pg.AgentSessionTranscriptReplay(ctx, session.ID, store.TranscriptStart, c.MaxTranscriptBytes, 0)
+			if err != nil || len(replay) != 3 {
+				t.Fatalf("ordered replay=%+v err=%v", replay, err)
+			}
+			for i, want := range []int64{0, 1, 5} {
+				if replay[i].PartIndex != want || string(replay[i].Part) != items[want] {
+					t.Fatalf("replay item %d: %+v, want part_index %d", i, replay[i], want)
+				}
+			}
+			// Paging by position resumes exactly after the cursor.
+			if rest, err := pg.AgentSessionTranscriptReplay(ctx, session.ID, replay[0].Position(), c.MaxTranscriptBytes, 1); err != nil || len(rest) != 1 || rest[0].PartIndex != 1 {
+				t.Fatalf("replay page after %+v = %+v err=%v", replay[0].Position(), rest, err)
 			}
 			total, err := pg.AgentSessionTranscriptBytes(ctx, session.ID)
 			if err != nil || total != quota {

@@ -56,14 +56,21 @@ const KIND_LABEL_KEYS: Record<ToolKind, string> = {
 export function ActivityGroup({
   steps,
   sourceTimesMs = [],
+  interrupted = false,
 }: {
   steps: ActivityStep[];
   sourceTimesMs?: readonly number[];
+  /**
+   * The conversation has settled for good (a terminal session's finished
+   * replay): a call still pending — a partial item the harvest never completed
+   * — will never finish, so it renders Interrupted instead of spinning.
+   */
+  interrupted?: boolean;
 }) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
 
-  const hasPending = steps.some(isToolStepPending);
+  const hasPending = !interrupted && steps.some(isToolStepPending);
   const duration = useStreamDuration(steps.length, !hasPending, sourceTimesMs);
   const failed = steps.filter(isToolStepFailed);
   const counts = activityCounts(steps);
@@ -141,7 +148,7 @@ export function ActivityGroup({
                   aria-hidden
                   className="bg-border ring-background absolute top-2 -left-[1.3rem] size-2 rounded-full ring-2"
                 />
-                <ActivityStepView step={step} />
+                <ActivityStepView step={step} interrupted={interrupted} />
               </li>
             ))}
           </ol>
@@ -162,7 +169,13 @@ function firstLine(text: string): string {
   );
 }
 
-function ActivityStepView({ step }: { step: ActivityStep }) {
+function ActivityStepView({
+  step,
+  interrupted,
+}: {
+  step: ActivityStep;
+  interrupted: boolean;
+}) {
   const { t } = useTranslations();
 
   if (step.kind === "terminal") {
@@ -192,7 +205,8 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
 
   if (step.kind === "tool") {
     const command = toolCommand(step.input);
-    const running = isToolStepPending(step);
+    const pending = isToolStepPending(step);
+    const running = pending && !interrupted;
     // Bare success acknowledgements add no detail to the visible Done state.
     const output = step.output;
     const ack =
@@ -228,7 +242,9 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
           )}
           {command && <code className="min-w-0 truncate">{command}</code>}
           <span className="text-muted-foreground/60 ml-auto shrink-0">
-            {toolStateLabel(step.state, t)}
+            {pending && interrupted
+              ? t("agentSessions.toolStateInterrupted")
+              : toolStateLabel(step.state, t)}
           </span>
         </StepShell>
         {command === undefined && step.input !== undefined && (
@@ -320,6 +336,8 @@ function toolStateLabel(
       return t("agentSessions.toolStateDone");
     case "output-error":
       return t("agentSessions.toolStateError");
+    case "output-denied":
+      return t("agentSessions.toolStateDenied");
     default:
       return state;
   }

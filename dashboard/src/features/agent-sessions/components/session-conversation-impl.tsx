@@ -459,6 +459,9 @@ export function SessionConversationImpl({
                 role={message.role}
                 blocks={blocks}
                 showCursor={isLoading && isLast}
+                // A terminal session that finished replaying never completes a
+                // still-pending tool call (a partial item); live ones keep spinning.
+                interrupted={isTerminal && !(isLoading && isLast)}
                 // A plan is "live" only in the currently-streaming last row; every
                 // other (finished) row is settled, so a trailing in_progress entry
                 // never spins — including historical plans once a new turn streams.
@@ -818,11 +821,13 @@ const MessageRow = memo(function MessageRow({
   blocks,
   showCursor,
   settled,
+  interrupted,
 }: {
   role: string;
   blocks: DisplayBlock[];
   showCursor: boolean;
   settled: boolean;
+  interrupted: boolean;
 }) {
   const isUser = role === "user";
 
@@ -897,6 +902,7 @@ const MessageRow = memo(function MessageRow({
               key={block.key}
               steps={block.steps}
               sourceTimesMs={block.sourceTimesMs}
+              interrupted={interrupted}
             />
           );
         })}

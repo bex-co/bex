@@ -605,6 +605,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Done",
     description: "Badge label for a completed tool call",
   },
+  "agentSessions.toolStateDenied": {
+    message: "Denied",
+    description: "Badge label for a tool call whose execution was denied",
+  },
+  "agentSessions.toolStateInterrupted": {
+    message: "Interrupted",
+    description:
+      "Badge label for a tool call the session ended before it finished",
+  },
   "agentSessions.toolStateError": {
     message: "Failed",
     description: "Badge label for a failed tool call",

@@ -133,7 +133,7 @@ var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial
 // authority. The ticket nonce claim reaches shell_ticket_nonces through the
 // injected sshgateway.NonceGuard.
 type Store interface {
-	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
+	AgentSessionTranscriptReplay(ctx context.Context, sessionID string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -563,14 +563,14 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 	pageBudget := s.replayPageQuota()
 	var replayedBytes int64
 	replayed := newReplayedTurn()
-	after := int64(-1)
+	after := store.TranscriptStart
 replay:
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 		// Row-unbounded (limit 0): the replay pages purely by byte budget.
-		page, err := s.Store.AgentSessionTranscript(ctx, sessionID, after, pageBudget, 0)
+		page, err := s.Store.AgentSessionTranscriptReplay(ctx, sessionID, after, pageBudget, 0)
 		if err != nil {
 			log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
 			sse.errorAndDone("transcript unavailable")
@@ -615,7 +615,7 @@ replay:
 				}
 			}
 		}
-		after = page[len(page)-1].Seq
+		after = page[len(page)-1].Position()
 	}
 	// A prompt is durable before async dispatch, so it may legitimately have no
 	// assistant part yet (provisioning/failure). Emit it before the live splice or

@@ -38,7 +38,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 ## Inbox
 
 - [ ] **004** — Agent tool output: downloadable full logs + lower inline cap → [`004.md`](004.md)
-- [ ] **005** — Agent transcript item-model edge cases (partial spinner, output-denied, in-place upgrade seq, item-stream dashboard test) → [`005.md`](005.md)
+- [x] **005** — Agent transcript item-model edge cases (partial spinner, output-denied, in-place upgrade seq, item-stream dashboard test) → [`done/005.md`](done/005.md) — done 2026-10-27
 
 - [ ] **002** — **BLOCKED (needs a real render.com `RENDER_API_KEY` minted by a human with a Render account, added to `.env`)** Confirmatory live Render audit-log capture → [`blocked/002.md`](blocked/002.md)
 - [ ] **003** — **BLOCKED (user must `chmod 600 .env` so `dev-env.sh 10 up` passes its ADR079 guard, or set `QA_EMAIL`/`QA_PASSWORD` for the signed-in production check)** Live verification of w10/m8 auth error states + logout → [`blocked/003.md`](blocked/003.md); production Hydra "bex CLI" rename already verified via the deploy pipeline, shared cluster refreshed
