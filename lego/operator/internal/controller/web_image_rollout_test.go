@@ -265,3 +265,58 @@ func TestImagePortSelectorPinsARevisionOnlyForAPortChange(t *testing.T) {
 		}
 	}
 }
+
+// A port change holds its old pods after a new one is Ready
+// (minReadySeconds), routes to the new pod as soon as it is Ready, and keeps
+// the Services pinned to the new revision until the old pods are gone
+// (w4/428). Every other rollout holds nothing.
+func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
+	candidate := &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 9090, Ports: []int32{8080, 9090}}
+	app := webImageApp(2)
+	app.Namespace, app.UID = "tea-a", "fixture"
+	app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+
+	held := project(app, deploymentParams{image: candidate.Image, port: 9090})
+	if held.Spec.MinReadySeconds != portChangeHoldSeconds {
+		t.Fatalf("port change minReadySeconds = %d, want %d", held.Spec.MinReadySeconds, portChangeHoldSeconds)
+	}
+	same := app.DeepCopy()
+	same.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "echo@sha256:b", Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
+	if got := project(same, deploymentParams{image: "echo@sha256:b", port: 8080}).Spec.MinReadySeconds; got != 0 {
+		t.Fatalf("same-port rollout minReadySeconds = %d, want 0", got)
+	}
+
+	// No candidate pod Ready yet: nothing moves.
+	dep := project(app, deploymentParams{image: candidate.Image, port: 9090})
+	dep.Namespace = app.Namespace
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy()).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
+		t.Fatalf("no ready pod: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
+	}
+
+	// A Ready candidate pod: routing moves now, the served network is kept.
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "whoami-new", Namespace: app.Namespace, Labels: dep.Spec.Template.Labels},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
+	}
+	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy(), pod).Build()
+	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	moved, err := r.promotePortChangeEarly(t.Context(), app, dep, candidate.Image, 9090)
+	if err != nil || !moved || !reflect.DeepEqual(app.Status.ServingNetwork, candidate) || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
+		t.Fatalf("ready pod: moved=%v err=%v serving=%+v prior=%+v", moved, err, app.Status.ServingNetwork, app.Status.PriorServingNetwork)
+	}
+	if svc, port, err := r.ingressBackend(t.Context(), app, 9090, false, true); err != nil || svc != app.Name || port != 9090 {
+		t.Fatalf("ingress after early promotion = %s:%d (%v), want :9090", svc, port, err)
+	}
+	// Old pods (rev-1, no 9090 listener) may still run: the Services pin rev-2.
+	selector, _, err := privateServiceProjection(app, 9090)
+	if err != nil || selector[labelRevision] != "rev-2" {
+		t.Fatalf("selector after early promotion = %v (%v), want pinned to rev-2", selector, err)
+	}
+	// The hold is lifted once routing has moved.
+	if got := project(app, deploymentParams{image: candidate.Image, port: 9090}).Spec.MinReadySeconds; got != 0 {
+		t.Fatalf("minReadySeconds after early promotion = %d, want 0", got)
+	}
+}

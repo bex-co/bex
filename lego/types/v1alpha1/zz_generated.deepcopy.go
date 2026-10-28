@@ -211,6 +211,11 @@ func (in *AppStatus) DeepCopyInto(out *AppStatus) {
 		*out = new(ImageNetworkStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PriorServingNetwork != nil {
+		in, out := &in.PriorServingNetwork, &out.PriorServingNetwork
+		*out = new(ImageNetworkStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PreDeploy != nil {
 		in, out := &in.PreDeploy, &out.PreDeploy
 		*out = new(PreDeployStatus)

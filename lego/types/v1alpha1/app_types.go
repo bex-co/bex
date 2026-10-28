@@ -1578,6 +1578,12 @@ type AppStatus struct {
 	// ServingNetwork retains the active release's ports while a candidate starts.
 	// +optional
 	ServingNetwork *ImageNetworkStatus `json:"servingNetwork,omitempty"`
+	// PriorServingNetwork is the network a port-changing rollout replaced when
+	// it moved routing to its first ready pod, before the rollout completed.
+	// It keeps the old pods' ports until they are gone, and is what a failed
+	// rollout restores (w4/428).
+	// +optional
+	PriorServingNetwork *ImageNetworkStatus `json:"priorServingNetwork,omitempty"`
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase AppPhase `json:"phase,omitempty"`

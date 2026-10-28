@@ -1353,6 +1353,40 @@ spec:
                 - job
                 - status
                 type: object
+              priorServingNetwork:
+                description: |-
+                  PriorServingNetwork is the network a port-changing rollout replaced when
+                  it moved routing to its first ready pod, before the rollout completed.
+                  It keeps the old pods' ports until they are gone, and is what a failed
+                  rollout restores (w4/428).
+                properties:
+                  image:
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    maxItems: 75
+                    minItems: 1
+                    type: array
+                  primaryPort:
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                  revision:
+                    type: string
+                  source:
+                    description: |-
+                      Source is the reference Image was resolved from, such as a prebuilt
+                      image's tag, so one release reads the registry once (w4/m243 t008).
+                    type: string
+                required:
+                - image
+                - ports
+                - primaryPort
+                - revision
+                type: object
               protectedImageTag:
                 description: |-
                   ProtectedImageTag is the live-<generation> tag the operator last pushed

@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -192,7 +193,7 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 		// Every other rollout (a deploy, an env save, a restart) keeps the same
 		// ports, and a pin there strands the Services on pods the Deployment is
 		// draining: no ready endpoint until promotion (w4/m243 t012).
-		if changesImagePorts(app) {
+		if changesImagePorts(app) || replacedImagePorts(app) {
 			selector[labelRevision] = network.Revision
 		}
 		ports = make([]corev1.ServicePort, 0, len(network.Ports))
@@ -212,6 +213,21 @@ func changesImagePorts(app *appv1alpha1.App) bool {
 	return serving != nil && candidate != nil &&
 		(serving.PrimaryPort != candidate.PrimaryPort || !slices.Equal(serving.Ports, candidate.Ports))
 }
+
+// replacedImagePorts reports a port change routed early (w4/428) whose old
+// pods may still run: until the rollout completes they lack the new
+// listener, so the Services keep pinning the now-serving revision.
+func replacedImagePorts(app *appv1alpha1.App) bool {
+	prior, serving := app.Status.PriorServingNetwork, app.Status.ServingNetwork
+	return prior != nil && serving != nil &&
+		(prior.PrimaryPort != serving.PrimaryPort || !slices.Equal(prior.Ports, serving.Ports))
+}
+
+// portChangeHoldSeconds keeps a port-changing rollout's old pods serving after
+// a new pod is Ready (the Deployment's minReadySeconds), long enough for the
+// operator to move the Services and Ingress to the new pod before the
+// Deployment drains the old one (w4/428). Every other rollout keeps 0.
+const portChangeHoldSeconds int32 = 15
 
 // promoteImageNetwork runs only after readiness of the candidate revision.
 // Both stable hostnames must converge before status publishes the new address.
@@ -243,6 +259,23 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 	}
 	moved = app.Status.ServingNetwork == nil || app.Status.ServingNetwork.PrimaryPort != candidate.PrimaryPort
 	app.Status.ServingNetwork = candidate.DeepCopy()
+	return moved, nil
+}
+
+// promotePortChangeEarly moves a port-changing rollout's routing to its first
+// ready candidate pod, while portChangeHoldSeconds keeps the old pods
+// serving, so the stable Services always have a ready endpoint on the port
+// they publish (w4/428). It records the replaced network for the old pods'
+// pin and for a failed rollout's restore. moved is promoteImageNetwork's.
+func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, port int) (moved bool, err error) {
+	if !app.Spec.HasImagePorts() || !changesImagePorts(app) || !r.currentRevisionFullyReady(ctx, dep, 1) {
+		return false, nil
+	}
+	prior := app.Status.ServingNetwork.DeepCopy()
+	if moved, err = r.promoteImageNetwork(ctx, app, image, port); err != nil {
+		return false, err
+	}
+	app.Status.PriorServingNetwork = prior
 	return moved, nil
 }
 
