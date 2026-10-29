@@ -1,6 +1,6 @@
 # w4 · m226 — Refresh Key Value configuration before classifying persistence changes
 
-**Worker:** worker4 **Goal:** an open Key Value page receives current configuration through its detail refresh, so an Off-to-durable change requires the existing data-deletion confirmation. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned two-client replay at 1440/390 on a deployed build, then cleanup) open
+**Worker:** worker4 **Goal:** an open Key Value page receives current configuration through its detail refresh, so an Off-to-durable change requires the existing data-deletion confirmation. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a stale client picks up another client's Off/policy change on its next poll and its edit starts from that baseline, and any change to or from Off requires the typed `sudo clear key value` confirmation, with Cancel sending nothing (loopx w4).
 
 ## Tasks (in order)
 
