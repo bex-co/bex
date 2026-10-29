@@ -407,7 +407,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
-- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](218.md) — found by the m131 live check 2026-10-29; needs repro, trace and a server-side default
+- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](blocked/218.md) — **BLOCKED (2026-10-29: traced to the pinned CLI copying the source region `fsn1` and rejecting it client-side. Needs the user to decide whether the Render-shaped readback reports a Render region value such as `frankfurt` (clone parity) or stays `fsn1` per D1, with `--from` requiring `--region` recorded as a divergence)**
 
 - [ ] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — **needs the user's decision** (exact 3.14.8 like Ruby vs keep 3.14.10 for the security fixes)
 
