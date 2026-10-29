@@ -518,9 +518,7 @@ var servicePatchTable = []servicePatchOp{
 			if err := checkPort(probe, *p.Port); err != nil {
 				return err
 			}
-			if probe.Spec.UsesImagePorts() {
-				probe.Spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
-			}
+			probe.Spec.PortMode = configuredPortMode(probe.Spec)
 			probe.Spec.Port = *p.Port
 			return nil
 		},

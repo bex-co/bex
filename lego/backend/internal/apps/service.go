@@ -4720,10 +4720,7 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	if err := checkPort(a, port); err != nil {
 		return AppView{}, err
 	}
-	mode := a.Spec.PortMode
-	if a.Spec.UsesImagePorts() {
-		mode = appv1alpha1.PortModeImageConfiguredV1
-	}
+	mode := configuredPortMode(a.Spec)
 	result, err := s.writeThroughStoreFetched(ctx, a, func(ctx context.Context, id string) error {
 		return s.Store.SetAppPort(ctx, id, port, mode)
 	}, func(a *appv1alpha1.App) {
