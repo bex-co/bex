@@ -1,6 +1,6 @@
 # w4 · m116 — CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path
 
-**Worker:** worker4 **Goal:** every CLI journey the 2026-09-17 hunt proved broken works end to end from a stock `bex` install **Status:** BLOCKED 2026-10-04 on one thing only: DoD bullet 1 needs a bex CLI release carrying t001's `pgtrust` (`w9/066`). t001–t009 are done. The t010 live closeout ran 2026-10-04 on production pinned to `7bdb2b351` (`157431c63`, deploy run `37173569630`). Bullets 2–6 hold live, including the jobs `410 ONE_OFF_JOBS_UNSUPPORTED` refusal. The released `v0.2.1` predates `pgtrust` (`6208c7500` is not an ancestor of `bex-cli/v0.2.1`), so a stock install still fails bullet 1.
+**Worker:** worker4 **Goal:** every CLI journey the 2026-09-17 hunt proved broken works end to end from a stock `bex` install **Status:** done 2026-10-29 — bullet 1 held live on the released `bex-cli/v0.3.3` (stock `bex psql` with no local CA trusts the server); bullets 2–6 held 2026-10-04.
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity across the touched surfaces | 45m | t001–t006 | — **DONE** |
 | t008 | Simplify the code this milestone changed | 30m | t007 | — **DONE** |
 | t009 | Test coverage for the shipped behavior | 45m | t007 | — **DONE** |
-| t010 | Closeout | 30m | t009 | — **BLOCKED** (live run 2026-10-04: bullets 2–6 hold; bullet 1 waits on the `w9/066` CLI release) |
+| t010 | Closeout — **DONE** | 30m | t009 | live: bullets 2–6 held 2026-10-04; bullet 1 held 2026-10-29 on released `bex-cli/v0.3.3` |
 
 ## Definition of done
 
