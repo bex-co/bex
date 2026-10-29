@@ -1,6 +1,6 @@
 # w2 · m96 — Charges and webhook deliveries name their resource, even after deletion
 
-**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** blocked (narrowed 2026-10-04). The rename re-probe **PASSES** on production with `861813c08` deployed (pin `157431c63` → `7bdb2b351`). Every other DoD bullet has passed live. The **only** open bullet is the workspace-purge check: workspace creation needs a real Stripe payment setup on every plan, and no product surface can read `resource_display_names` for a deleted tenant. Closing needs either an operator-run throwaway-workspace teardown plus a read-only DB query, or an explicit acceptance of the `TestResourceDisplayNamesPG` `ON DELETE CASCADE` proof. t001–t007 done; t008 open.
+**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** todo — t001–t007 done; every DoD bullet passed live except workspace purge, whose acceptance method the user decided on 2026-10-29 (production FK/orphan evidence recorded + a `dev-2` teardown). t008 runs the `dev-2` teardown, then closes.
 
 ## Scope transfer — 2026-09-28
 
@@ -66,13 +66,13 @@ Run each bullet on production (workspace `bex` / `tea-d98210cbbpdc73dcrkvg`) aft
 - **Live resources show their current name.** Rename a fixture service; the Charges row shows the new name on the next read. Delete it and re-create one with the same display name; the two stay separate lines keyed by id.
 - **A delivery row names its service.** Create a webhook subscribed to Deploy events, deploy a fixture, open `/webhook/<whk-id>` → Activity → Recent deliveries. The Service column shows the service's name linked to the service, with the `srv-…` id visible as secondary text or tooltip.
 - **A delivery for a deleted service keeps its name.** Delete the fixture service; the same delivery row still shows the recorded name (with a deleted marker), not a bare id. REST and GraphQL delivery reads both carry `serviceName`.
-- **Workspace deletion purges retained names.** Deleting a throwaway workspace (the `w1/m61` teardown path) leaves no rows in the retained-name record for that tenant.
+- **Workspace deletion purges retained names.** Deleting a throwaway workspace (the `w1/m61` teardown path) leaves no rows in the retained-name record for that tenant. _Per user decision 2026-10-29, proven by read-only production evidence (live `ON DELETE CASCADE` FK, 0 orphans, recorded below) plus a live teardown on `dev-2`, not a production throwaway workspace._
 - **Backfill decision recorded** in this README under `## Backfill decision` by t002.
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w1` 2026-09-15 (proposal 3), absorbing [w1/088](../../../w1/done/088.md) (Billing → Charges names deleted services and every sandbox only by bare id) and [w1/090](../../../w1/done/090.md) (a webhook's Recent deliveries table names each row's service only by bare `srv-` id). Both found by the live `/qa-find-bugs` hunt of 2026-09-14 (passes 6 and 13).
-- **Goal linkage:** pillar 2 of [ADR008](../../../../docs/ADR008-vision.md) — billing lines and delivery history are machine-readable state, and an opaque id fails that bar. Sandbox charges are real money on the reopened pillar 5.
+- **Source:** `/pm-brainstorm for w1` 2026-09-15 (proposal 3), absorbing [w1/088](../../w1/done/088.md) (Billing → Charges names deleted services and every sandbox only by bare id) and [w1/090](../../w1/done/090.md) (a webhook's Recent deliveries table names each row's service only by bare `srv-` id). Both found by the live `/qa-find-bugs` hunt of 2026-09-14 (passes 6 and 13).
+- **Goal linkage:** pillar 2 of [ADR008](../../../docs/ADR008-vision.md) — billing lines and delivery history are machine-readable state, and an opaque id fails that bar. Sandbox charges are real money on the reopened pillar 5.
 - **Expected outcome:** "what did this cost me" and "which service's event failed" are answerable from the page itself, including for resources deleted since.
 - **Why now:** `w1/088` explicitly asks to be promoted if name retention needs a migration, and it does. Both notes share one root cause — names resolved only from live rows (`usage/service.go:286-313`, `worker.go:346-349` payload not projected to the delivery view) — so one retained-name record closes both.
 - **Render parity included:** REST `GET /v1/usage`, GraphQL `usage` and MCP share `monthToDateAt`, so the name resolution moves together on all three; the webhook delivery view is read on REST and GraphQL and must agree on `serviceName`. Render's own billing view for deleted services and its Recent deliveries column were not captured at filing and t005 records them.
@@ -96,7 +96,7 @@ Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Th
 
 ## Dependency refresh — 2026-10-02
 
-The completed record at [w1/done/112](../../../w1/done/112.md) satisfies the transferred sandbox-label implementation dependency: `de9ac4d1c` shipped and its session-less sandbox was created, terminated and read back with an identifiable label through REST/GraphQL on 2026-09-29. That record explicitly leaves the browser walk and live repo-less-session check unprobed. This milestone retains its own remaining production rename, purge, fresh usage-rollup and live acceptance obligations in t008; it is not closed by the transferred note.
+The completed record at [w1/done/112](../../w1/done/112.md) satisfies the transferred sandbox-label implementation dependency: `de9ac4d1c` shipped and its session-less sandbox was created, terminated and read back with an identifiable label through REST/GraphQL on 2026-09-29. That record explicitly leaves the browser walk and live repo-less-session check unprobed. This milestone retains its own remaining production rename, purge, fresh usage-rollup and live acceptance obligations in t008; it is not closed by the transferred note.
 
 ## Live acceptance — 2026-10-03
 
@@ -121,3 +121,11 @@ Production, workspace `bex`. bex-api ran `bex-operator@sha256:10a7c2ee…`, roll
 - **Same display name, separate lines.** Not re-run: a second fixture needs another hourly rollup. That half passed on 2026-10-03 (two ids, two lines). The fix only changed which name field the resolver reads, not the id keying.
 - **Workspace deletion purges retained names — still OPEN (operator/Stripe).** Unchanged from 2026-10-03. No throwaway workspace was created.
 
+
+## Unblock 2026-10-29 — purge bullet: acceptance method decided; resumed
+
+- **Affected:** `w2/m96/t008` (the workspace-purge DoD bullet only). **Source:** explicit user decision in `/unblock w2`, 2026-10-29: accept read-only production evidence **plus** a live teardown on `dev-2`. The production evidence was verified by `/unblock` the same day.
+- **Production evidence (read-only, `bex-db` on `hetzner-prod`, `BEGIN READ ONLY`):** `resource_display_names_tenant_id_fkey` = `FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE` is live. `resource_display_names` holds 5082 rows, and **0** of them reference a tenant that no longer exists. Workspace deletion hard-deletes the tenant row (`lego/backend/internal/store/workspaces.go:196`, `DELETE FROM tenants WHERE id = $1`), so the cascade fires on the real path.
+- **Decision:** the DoD bullet "Workspace deletion purges retained names" is satisfied by (a) that production evidence and (b) a live end-to-end teardown on `dev-2`. A Stripe-backed throwaway workspace on production is **not** required. It was not adopted because it needs a real payment card, and no product surface can read a deleted tenant's rows anyway.
+- **Remaining gates:** none. `dev-2` is pre-approved (AGENTS.md, 2026-09-09).
+- **Worker next steps (t008):** on `dev-2`, (1) create a throwaway workspace (dev Stripe is test mode, or creation is not payment-gated there). (2) Create and rename a service in it, then let one usage rollup (or a direct retained-name write through the rename path) populate `resource_display_names` for that tenant, and record the row count > 0. (3) Delete the workspace through the product's teardown path (the `w1/m61` path). (4) Run `select count(*) from resource_display_names where tenant_id = '<tea-…>'`, which must return 0. Record the commands and output here, then run Closeout.
