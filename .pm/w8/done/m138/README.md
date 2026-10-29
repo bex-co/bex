@@ -1,6 +1,6 @@
 # w8 · m138 — Hobby workspaces get Render's Hobby limits; Pro features start at Pro
 
-**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** in progress（2026-10-29：t006, t011, t012, t013 done on the worktree branch; t010, the live DoD replay after deploy, is the one open task (it also files follow-ups for autoscaling and preview environments if either is reachable on Hobby). Earlier: t001–t005, t007–t009 done 2026-10-23）
+**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@
 | t011 — **DONE** | Dashboard Logs: Request logs on Hobby show a plan notice, not "Couldn't load logs" | 30m | w8/m138/t005, w8/m138/t007 |
 | t012 — **DONE** | Hobby "All logs" still serves HTTP request logs: the Loki type matcher ignores noRequest | 30m | w8/m138/t005 |
 | t013 — **DONE** | Hobby plan refusals (environments, network isolation, request logs) carry a machine-readable code, as webhooks do | 30m | w8/m138/t007 |
-| t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011, w8/m138/t012, w8/m138/t013                           |
+| t010 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011, w8/m138/t012, w8/m138/t013                           |
 
 ## Definition of done
 
@@ -33,7 +33,7 @@ Live on production after the release pipeline deploys bex-api, the log reader an
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweeps b1c3 and j3k5, 2026-10-23/24 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, platform pin `29d63e1f7bea`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`, GraphQL `plan: "hobby"`), human device login. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)) and pricing ([ADR030](../../../docs/ADR030-pricing.md): Hobby $0 / Pro $25 / Scale $499). [render.com/docs/platform-features-by-plan](https://render.com/docs/platform-features-by-plan): Hobby is "limited to a single team member", "limited to 25 total services", "limited to two environments per project". Pro and higher gain, among others, "Network-isolated environments", "HTTP request logs", "Webhooks — send notifications to one destination" (Scale: "up to 100 destinations"), "Audit logs", "Autoscaling", "Preview environments", "Response latency metrics". The member and service caps are enforced today (`members/service.go:897`, ADR018:246); the rest are not. w6/m3 t006 recorded the two-environment Hobby limit in 2026-07 but never gated it.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)) and pricing ([ADR030](../../../../docs/ADR030-pricing.md): Hobby $0 / Pro $25 / Scale $499). [render.com/docs/platform-features-by-plan](https://render.com/docs/platform-features-by-plan): Hobby is "limited to a single team member", "limited to 25 total services", "limited to two environments per project". Pro and higher gain, among others, "Network-isolated environments", "HTTP request logs", "Webhooks — send notifications to one destination" (Scale: "up to 100 destinations"), "Audit logs", "Autoscaling", "Preview environments", "Response latency metrics". The member and service caps are enforced today (`members/service.go:897`, ADR018:246); the rest are not. w6/m3 t006 recorded the two-environment Hobby limit in 2026-07 but never gated it.
 - **Expected outcome:** the Hobby/Pro/Scale ladder means what Render's means. w8/m137 handles the Scale-only inbound IP rules.
 - **Why now:** major for pricing parity: a $25/month plan's features are free on Hobby. Render parity task included: every surface (REST/GraphQL/MCP/dashboard, CLI-visible errors) changes.
 
@@ -109,3 +109,14 @@ Searched `.pm` open and done and `docs/` for each feature with Hobby/Pro/plan ga
 5. `POST /v1/blueprints/validate` (or `bex blueprints validate`) of a three-environment project with `networking.isolation: enabled` answers `valid: false` with `PLAN_FEATURE_REQUIRED` at `projects[0].environments[i].networking.isolation` and `PLAN_LIMIT` at `projects[0].environments[2]`.
 6. Dashboard on Hobby: the Logs ▸ Request logs view shows the Pro-plan notice and an Open Billing link, and no "Couldn't load logs". Settings ▸ Audit Log shows the audit plan notice. The Metrics ▸ Response Times section shows the latency plan message. Check en and zh.
 7. `GET /v1/owners/{hobby-id}/audit-logs` and `GET /v1/metrics/http-latency?resource=<srv>` → 400 `PLAN_FEATURE_REQUIRED`; both 200 on a Pro workspace.
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Post-fix re-check (t010) on production pin `69f0b17d1fad`, Hobby bex-canary.
+
+- **Codes:** a third environment → `PLAN_LIMIT` `{plan: hobby, limit: 2}`; network isolation and request logs → `PLAN_FEATURE_REQUIRED`; webhooks → `WEBHOOK_PLAN_LIMIT` (REST, GraphQL, MCP). Blueprint validate flags both the third environment and isolation.
+- **Request lines never leak on Hobby:** with 3 `type=request` lines for a marker in Loki, untyped and `type=all` reads (REST, CLI) return only the 3 app lines; label values list `type: ["app"]` and empty `statusCode`/`method`.
+- **Audit logs and response-latency metrics** answer 400 on Hobby and 200 on Scale `bex` (read-only).
+- **Dashboard (en and zh):** Request logs shows the Pro notice with Open Billing (no "Couldn't load"); All logs carries no access-log lines; Audit Log and Response Times show their plan notices.
+- **Inventory** (recorded in ADR018/ADR030): 64 Hobby, 2 Scale, 1 Enterprise workspaces; no Hobby workspace used any newly gated feature.
+- Not re-run: Pro-side mutating controls in `bex`. Cleanup: project and both environments → 404.
