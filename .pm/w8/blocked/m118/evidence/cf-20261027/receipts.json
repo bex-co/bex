@@ -1,0 +1,2446 @@
+{
+  "summary": {
+    "started_at": "2026-10-27T06:11:49.142340+00:00",
+    "name": "qa-20261027-m118-19862e",
+    "zone": "10x.pub",
+    "workspace_id": "tea-d98210cbbpdc73dcrkvg",
+    "workspace_name": "bex",
+    "workspace_plan": "scale",
+    "hostname": "qa-20261027-m118-19862e.10x.pub",
+    "service_id": "srv-dbg41fkd3d3c73caqitg",
+    "platform_url": "https://qa-20261027-m118-19862e.onbex.co",
+    "platform_host": "qa-20261027-m118-19862e.onbex.co",
+    "dns_record_id": "78d6b1387d0b565acefc1b4b8fe7665c",
+    "domain_attached": true,
+    "restriction_applied": true,
+    "isolated_custom_only": true,
+    "custom_https_ready_at": "2026-10-27T06:17:20.808316+00:00",
+    "redirect_checks_passed_at": "2026-10-27T06:17:33.486927+00:00",
+    "ip_control_passed_at": "2026-10-27T06:17:38.240006+00:00",
+    "dns_deleted_at": "2026-10-27T06:18:20.659464+00:00",
+    "service_deleted_at": "2026-10-27T06:18:23.111307+00:00",
+    "logout_result": "ok logged-out",
+    "session_revoked_at": "2026-10-27T06:18:28.587546+00:00",
+    "scope": "One owned Free web service in existing Scale workspace bex; no workspace plan change.",
+    "qualification": "Custom-only control passed. Default platform+custom TLS configuration failed; milestone is not complete.",
+    "cluster_cleanup": {
+      "at": "2026-10-27T06:20:34.329265+00:00",
+      "remaining_owned_resources": [],
+      "query_succeeded": true,
+      "resource_types": "apps.app.bex.co,deployments,replicasets,pods,services,ingresses,certificates,certificaterequests,orders.acme.cert-manager.io,challenges.acme.cert-manager.io,middlewares.traefik.io,pvc,secrets,configmaps,jobs"
+    }
+  },
+  "events": [
+    {
+      "at": "2026-10-27T06:11:50.683774+00:00",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/services",
+      "status": 400,
+      "request": {
+        "type": "web_service",
+        "name": "qa-20261027-m118-19862e",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "image": {
+          "imagePath": "docker.io/library/python:3.13-alpine"
+        },
+        "port": 10000,
+        "serviceDetails": {
+          "plan": "free",
+          "runtime": "docker",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          }
+        }
+      },
+      "response": {
+        "error": "invalid request body at /image/ownerId",
+        "id": "bad_request",
+        "message": "invalid request body at /image/ownerId"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:03.082283+00:00",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/services",
+      "status": 400,
+      "request": {
+        "type": "web_service",
+        "name": "qa-20261027-m118-19862e",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "image": {
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "port": 10000,
+        "serviceDetails": {
+          "plan": "free",
+          "runtime": "docker",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          }
+        }
+      },
+      "response": {
+        "error": "bad request: runtime docker requires repo and no image",
+        "id": "bad_request",
+        "message": "bad request: runtime docker requires repo and no image"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:15.132986+00:00",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/services",
+      "status": 201,
+      "request": {
+        "type": "web_service",
+        "name": "qa-20261027-m118-19862e",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "image": {
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "port": 10000,
+        "serviceDetails": {
+          "plan": "free",
+          "runtime": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          }
+        }
+      },
+      "response": {
+        "service": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e",
+          "immutableName": "qa-20261027-m118-19862e",
+          "slug": "qa-20261027-m118-19862e",
+          "displayName": "",
+          "type": "web_service",
+          "suspended": "not_suspended",
+          "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+          "createdAt": "2026-10-27T06:12:14Z",
+          "updatedAt": "2026-10-27T06:12:14.976120406Z",
+          "owner": {
+            "id": "tea-d98210cbbpdc73dcrkvg",
+            "name": "bex",
+            "email": "[redacted]",
+            "type": "team"
+          },
+          "serviceDetails": {
+            "cache": {
+              "profile": "no-cache"
+            },
+            "env": "image",
+            "envSpecificDetails": {
+              "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+            },
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "openPorts": [],
+            "plan": "free",
+            "region": "fsn1",
+            "renderSubdomainPolicy": "enabled",
+            "runtime": "image",
+            "url": "https://qa-20261027-m118-19862e.onbex.co"
+          },
+          "imagePath": "docker.io/library/python:3.13-alpine",
+          "suspenders": [],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "replicas": 1,
+          "idleTTLSeconds": 0,
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "notifyOnFail": "default",
+          "notificationsToSend": "default"
+        },
+        "deployId": "dep-dbg41fkd3d3c73caqiu0"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:22.173360+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:14.976120406Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Deploying",
+        "replicas": 1,
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:24.519686+00:00",
+      "kind": "cloudflare",
+      "args": [
+        "dns",
+        "records",
+        "list",
+        "--zone",
+        "10x.pub",
+        "--name",
+        "qa-20261027-m118-19862e.10x.pub"
+      ],
+      "response": []
+    },
+    {
+      "at": "2026-10-27T06:12:25.798435+00:00",
+      "kind": "cloudflare",
+      "args": [
+        "dns",
+        "records",
+        "create",
+        "--zone",
+        "10x.pub",
+        "--body",
+        "{\"type\": \"CNAME\", \"name\": \"qa-20261027-m118-19862e.10x.pub\", \"content\": \"qa-20261027-m118-19862e.onbex.co\", \"proxied\": false, \"ttl\": 60, \"comment\": \"Temporary bex w8/m118 QA; delete after test qa-20261027-m118-19862e\"}"
+      ],
+      "response": {
+        "id": "78d6b1387d0b565acefc1b4b8fe7665c",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "type": "CNAME",
+        "content": "qa-20261027-m118-19862e.onbex.co",
+        "proxiable": true,
+        "proxied": false,
+        "ttl": 60,
+        "settings": {
+          "flatten_cname": false
+        },
+        "meta": {},
+        "comment": "Temporary bex w8/m118 QA; delete after test qa-20261027-m118-19862e",
+        "tags": [],
+        "created_on": "2026-10-27T06:12:25.728657Z",
+        "modified_on": "2026-10-27T06:12:25.728657Z",
+        "comment_modified_on": "2026-10-27T06:12:25.728657Z"
+      }
+    },
+    {
+      "at": "2026-10-27T06:12:30.786753+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:14.976120406Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:33.011692+00:00",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains",
+      "status": 201,
+      "request": {
+        "name": "qa-20261027-m118-19862e.10x.pub"
+      },
+      "response": [
+        {
+          "id": "qa-20261027-m118-19862e.10x.pub",
+          "name": "qa-20261027-m118-19862e.10x.pub",
+          "domainType": "subdomain",
+          "publicSuffix": "pub",
+          "verificationStatus": "unverified",
+          "createdAt": "2026-10-27T06:12:32.545314Z",
+          "certificateStatus": "pending",
+          "serverStatus": "pending",
+          "redirectForName": "",
+          "dnsRecord": {
+            "type": "CNAME",
+            "name": "qa-20261027-m118-19862e",
+            "value": "qa-20261027-m118-19862e.onbex.co"
+          },
+          "server": {
+            "id": "srv-dbg41fkd3d3c73caqitg",
+            "name": "qa-20261027-m118-19862e"
+          }
+        }
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:33.543193+00:00",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub/verify",
+      "status": 202,
+      "request": null,
+      "response": "",
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:34.459016+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:35.246821+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "pending",
+        "serverStatus": "pending",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:36.065163+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:12:54.902808+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:55.428048+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "pending",
+        "serverStatus": "pending",
+        "redirectForName": "",
+        "certificateReason": "Waiting for HTTP-01 challenge propagation: did not get expected response when querying endpoint, expected \"mSs4Os5e2qGfpGy4LBmitZOBni9r6KnXuFUEafwQisY.C_MQqaKpqCqKZ0oEcBvR_K9N_nAejtXvZTzjjRFWirc\" but got: {\"marker\": \"qa-20261027-... (truncated)",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:12:56.006376+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:13:10.439586+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:11.167093+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:11.723868+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:13:22.690420+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:23.215245+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:23.772241+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:13:55.739703+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:56.260522+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:13:56.798540+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:14:34.769638+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:14:35.328636+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:14:36.092733+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:15:05.984860+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:15:06.700630+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:15:07.312550+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:15:48.439176+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:12:33.344208665Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:15:49.513640+00:00",
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": {
+        "serviceDetails": {
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ]
+        }
+      },
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:15:49.348401702Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:16:33.043731+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:15:49.348401702Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:16:34.145705+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 403,
+      "effective_url": "https://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/2 403 \nrndr-id: d0747740-1f07-4ab7-a8cc-3482d034edb8\ncontent-length: 9\ndate: Tue, 27 Oct 2026 06:16:33 GMT\n\n",
+      "body": "Forbidden",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:16:34.917291+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 301,
+      "effective_url": "http://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.onbex.co/x?y=1\nRndr-Id: 821ec366-fb0a-42f0-b573-b00121b49b35\nDate: Tue, 27 Oct 2026 06:16:34 GMT\nContent-Length: 17\n\n",
+      "body": "Moved Permanently",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:16:36.878219+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "method": "GET",
+      "follow": true,
+      "exit": 0,
+      "status": 403,
+      "effective_url": "https://qa-20261027-m118-19862e.onbex.co/x?y=1",
+      "redirects": 1,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.onbex.co/x?y=1\nRndr-Id: 41844570-b48d-46f7-b572-fbaa9b85a70c\nDate: Tue, 27 Oct 2026 06:16:35 GMT\nContent-Length: 17\n\nHTTP/2 403 \nrndr-id: c3da343c-eb6c-43ed-8336-a500924df8a7\ncontent-length: 9\ndate: Tue, 27 Oct 2026 06:16:35 GMT\n\n",
+      "body": "Forbidden",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:16:37.931681+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 60,
+      "status": 0,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "",
+      "body": "",
+      "stderr": "curl: (60) SSL: no alternative certificate subject name matches target host name 'qa-20261027-m118-19862e.10x.pub'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n"
+    },
+    {
+      "at": "2026-10-27T06:17:07.079365+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:15:49.348401702Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:07.607405+00:00",
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": {
+        "serviceDetails": {
+          "ipAllowList": [],
+          "renderSubdomainPolicy": "disabled"
+        }
+      },
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:07.44348659Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:18.806387+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:07.44348659Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.onbex.co"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Deploying",
+        "undeployedChanges": true,
+        "undeployedChangesApplying": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.onbex.co",
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:19.220740+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "qa-20261027-m118-19862e.10x.pub",
+        "name": "qa-20261027-m118-19862e.10x.pub",
+        "domainType": "subdomain",
+        "publicSuffix": "pub",
+        "verificationStatus": "verified",
+        "createdAt": "2026-10-27T06:12:32.545314Z",
+        "certificateStatus": "verified",
+        "serverStatus": "active",
+        "redirectForName": "",
+        "dnsRecord": {
+          "type": "CNAME",
+          "name": "qa-20261027-m118-19862e",
+          "value": "qa-20261027-m118-19862e.onbex.co"
+        },
+        "server": {
+          "id": "srv-dbg41fkd3d3c73caqitg",
+          "name": "qa-20261027-m118-19862e"
+        }
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:20.807169+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 200,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Tue, 27 Oct 2026 06:17:20 GMT\nrndr-id: 109d8a23-43c6-4578-bbab-8918d0348ccf\nserver: BaseHTTP/0.6 Python/3.13.18\n\n",
+      "body": "{\"marker\": \"qa-20261027-m118-19862e\", \"path\": \"/x?y=1\", \"headers\": {\"Host\": \"qa-20261027-m118-19862e.10x.pub\", \"User-Agent\": \"Mozilla/5.0 bex-m118-owned-QA\", \"Accept\": \"*/*\", \"Rndr-Id\": \"109d8a23-43c6-4578-bbab-8918d0348ccf\", \"True-Client-Ip\": \"[redacted]\", \"X-Forwarded-For\": \"[redacted]\", \"X-Forwarded-Host\": \"qa-20261027-m118-19862e.10x.pub\", \"X-Forwarded-Port\": \"443\", \"X-Forwarded-Proto\": \"https\", \"X-Forwarded-Server\": \"traefik-8b7f9b7ff-q9rg9\", \"X-Real-Ip\": \"[redacted]\", \"X-Request-Start\": \"1793081840281068\", \"Accept-Encoding\": \"gzip\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:28.153658+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:07.44348659Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.10x.pub"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:29.109033+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 301,
+      "effective_url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: 0054b735-65ac-49c2-b819-2637ac14ca22\nDate: Tue, 27 Oct 2026 06:17:28 GMT\nContent-Length: 17\n\n",
+      "body": "Moved Permanently",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:29.642686+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "HEAD",
+      "follow": false,
+      "exit": 0,
+      "status": 308,
+      "effective_url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/1.1 308 Permanent Redirect\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: 70c5aff7-9cfa-4e40-a61b-06a09be491f6\nDate: Tue, 27 Oct 2026 06:17:29 GMT\nContent-Length: 18\n\n",
+      "body": "HTTP/1.1 308 Permanent Redirect\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: 70c5aff7-9cfa-4e40-a61b-06a09be491f6\nDate: Tue, 27 Oct 2026 06:17:29 GMT\nContent-Length: 18\n\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:30.320989+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "POST",
+      "follow": false,
+      "exit": 0,
+      "status": 308,
+      "effective_url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/1.1 308 Permanent Redirect\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: 1bcd6cd1-aafd-4b1d-a6ce-9b550f87fe59\nDate: Tue, 27 Oct 2026 06:17:30 GMT\nContent-Length: 18\n\n",
+      "body": "Permanent Redirect",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:32.801669+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": true,
+      "exit": 0,
+      "status": 200,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 1,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: 526a8c7d-3e3c-45ae-9577-2497179b71da\nDate: Tue, 27 Oct 2026 06:17:30 GMT\nContent-Length: 17\n\nHTTP/2 200 \ncontent-type: application/json\ndate: Tue, 27 Oct 2026 06:17:32 GMT\nrndr-id: 5e71ffb4-bfb5-4ba7-abb0-3bebffc1d7c4\nserver: BaseHTTP/0.6 Python/3.13.18\n\n",
+      "body": "{\"marker\": \"qa-20261027-m118-19862e\", \"path\": \"/x?y=1\", \"headers\": {\"Host\": \"qa-20261027-m118-19862e.10x.pub\", \"User-Agent\": \"Mozilla/5.0 bex-m118-owned-QA\", \"Accept\": \"*/*\", \"Rndr-Id\": \"5e71ffb4-bfb5-4ba7-abb0-3bebffc1d7c4\", \"True-Client-Ip\": \"[redacted]\", \"X-Forwarded-For\": \"[redacted]\", \"X-Forwarded-Host\": \"qa-20261027-m118-19862e.10x.pub\", \"X-Forwarded-Port\": \"443\", \"X-Forwarded-Proto\": \"https\", \"X-Forwarded-Server\": \"traefik-8b7f9b7ff-q9rg9\", \"X-Real-Ip\": \"[redacted]\", \"X-Request-Start\": \"1793081852685695\", \"Accept-Encoding\": \"gzip\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:33.486322+00:00",
+      "kind": "certificate",
+      "hostname": "qa-20261027-m118-19862e.10x.pub",
+      "certificate": {
+        "subject": [
+          [
+            [
+              "commonName",
+              "qa-20261027-m118-19862e.10x.pub"
+            ]
+          ]
+        ],
+        "issuer": [
+          [
+            [
+              "countryName",
+              "US"
+            ]
+          ],
+          [
+            [
+              "organizationName",
+              "Let's Encrypt"
+            ]
+          ],
+          [
+            [
+              "commonName",
+              "YR2"
+            ]
+          ]
+        ],
+        "version": 3,
+        "serialNumber": "0577C456B72D1050C01285B2E567D64D5AEC",
+        "notBefore": "Oct 27 05:18:39 2026 GMT",
+        "notAfter": "Jan 25 05:18:38 2027 GMT",
+        "subjectAltName": [
+          [
+            "DNS",
+            "qa-20261027-m118-19862e.10x.pub"
+          ]
+        ],
+        "caIssuers": [
+          "http://yr2.i.lencr.org/"
+        ],
+        "crlDistributionPoints": [
+          "http://yr2.c.lencr.org/109.crl"
+        ]
+      }
+    },
+    {
+      "at": "2026-10-27T06:17:34.374616+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:07.44348659Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.10x.pub"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:34.949786+00:00",
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": {
+        "serviceDetails": {
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ]
+        }
+      },
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:34.779873119Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.10x.pub"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:35.728860+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:34.779873119Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.10x.pub"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:36.442822+00:00",
+      "kind": "public",
+      "url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 403,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/2 403 \nrndr-id: 059ceb19-21d0-4e44-b2ae-229eeba21ff5\ncontent-length: 9\ndate: Tue, 27 Oct 2026 06:17:36 GMT\n\n",
+      "body": "Forbidden",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:36.959862+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": false,
+      "exit": 0,
+      "status": 301,
+      "effective_url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 0,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: e53d3f3a-2874-4a0e-9b9d-4589cf6ee14b\nDate: Tue, 27 Oct 2026 06:17:36 GMT\nContent-Length: 17\n\n",
+      "body": "Moved Permanently",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:17:38.239189+00:00",
+      "kind": "public",
+      "url": "http://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "method": "GET",
+      "follow": true,
+      "exit": 0,
+      "status": 403,
+      "effective_url": "https://qa-20261027-m118-19862e.10x.pub/x?y=1",
+      "redirects": 1,
+      "headers": "HTTP/1.1 301 Moved Permanently\nLocation: https://qa-20261027-m118-19862e.10x.pub/x?y=1\nRndr-Id: b6fc4e9a-14a8-4951-82fb-c8a3b4d5ede2\nDate: Tue, 27 Oct 2026 06:17:37 GMT\nContent-Length: 17\n\nHTTP/2 403 \nrndr-id: 1ab618dd-a637-4be7-a24f-10a628d94cc5\ncontent-length: 9\ndate: Tue, 27 Oct 2026 06:17:38 GMT\n\n",
+      "body": "Forbidden",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:18:18.600467+00:00",
+      "kind": "cloudflare",
+      "args": [
+        "dns",
+        "records",
+        "list",
+        "--zone",
+        "10x.pub",
+        "--name",
+        "qa-20261027-m118-19862e.10x.pub"
+      ],
+      "response": [
+        {
+          "id": "78d6b1387d0b565acefc1b4b8fe7665c",
+          "name": "qa-20261027-m118-19862e.10x.pub",
+          "type": "CNAME",
+          "content": "qa-20261027-m118-19862e.onbex.co",
+          "proxiable": true,
+          "proxied": false,
+          "ttl": 60,
+          "settings": {
+            "flatten_cname": false
+          },
+          "meta": {},
+          "comment": "Temporary bex w8/m118 QA; delete after test qa-20261027-m118-19862e",
+          "tags": [],
+          "created_on": "2026-10-27T06:12:25.728657Z",
+          "modified_on": "2026-10-27T06:12:25.728657Z",
+          "comment_modified_on": "2026-10-27T06:12:25.728657Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T06:18:19.809541+00:00",
+      "kind": "cloudflare",
+      "args": [
+        "dns",
+        "records",
+        "delete",
+        "78d6b1387d0b565acefc1b4b8fe7665c",
+        "--zone",
+        "10x.pub",
+        "--force"
+      ],
+      "response": {
+        "id": "78d6b1387d0b565acefc1b4b8fe7665c"
+      }
+    },
+    {
+      "at": "2026-10-27T06:18:20.658727+00:00",
+      "kind": "cloudflare",
+      "args": [
+        "dns",
+        "records",
+        "list",
+        "--zone",
+        "10x.pub",
+        "--name",
+        "qa-20261027-m118-19862e.10x.pub"
+      ],
+      "response": []
+    },
+    {
+      "at": "2026-10-27T06:18:21.622475+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": "srv-dbg41fkd3d3c73caqitg",
+        "name": "qa-20261027-m118-19862e",
+        "immutableName": "qa-20261027-m118-19862e",
+        "slug": "qa-20261027-m118-19862e",
+        "displayName": "",
+        "type": "web_service",
+        "suspended": "not_suspended",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-dbg41fkd3d3c73caqitg",
+        "createdAt": "2026-10-27T06:12:14Z",
+        "updatedAt": "2026-10-27T06:17:34.779873119Z",
+        "owner": {
+          "id": "tea-d98210cbbpdc73dcrkvg",
+          "name": "bex",
+          "email": "[redacted]",
+          "type": "team"
+        },
+        "serviceDetails": {
+          "cache": {
+            "profile": "no-cache"
+          },
+          "env": "image",
+          "envSpecificDetails": {
+            "dockerCommand": "python -u -c 'from http.server import BaseHTTPRequestHandler,HTTPServer; import json; H=type(\"H\",(BaseHTTPRequestHandler,),{\"do_GET\":lambda s:(s.send_response(200),s.send_header(\"Content-Type\",\"application/json\"),s.end_headers(),s.wfile.write(json.dumps({\"marker\":'\"'\"'qa-20261027-m118-19862e'\"'\"',\"path\":s.path,\"headers\":dict(s.headers)}).encode()))}); HTTPServer((\"0.0.0.0\",10000),H).serve_forever()'"
+          },
+          "internalAddress": "qa-20261027-m118-19862e:10000",
+          "ipAllowList": [
+            {
+              "cidrBlock": "203.0.113.0/24",
+              "description": "m118 owned deny control"
+            }
+          ],
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "openPorts": [
+            {
+              "port": 10000,
+              "protocol": "TCP"
+            }
+          ],
+          "plan": "free",
+          "port": 10000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "disabled",
+          "runtime": "image",
+          "url": "https://qa-20261027-m118-19862e.10x.pub"
+        },
+        "imagePath": "docker.io/library/python:3.13-alpine",
+        "suspenders": [],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "phase": "Running",
+        "undeployedChanges": true,
+        "undeployedChangesReason": "saved",
+        "replicas": 1,
+        "revision": "rev-1",
+        "urls": [
+          "https://qa-20261027-m118-19862e.10x.pub"
+        ],
+        "idleTTLSeconds": 0,
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "pushDeliveryMethod": "none",
+        "notifyOnFail": "default",
+        "notificationsToSend": "default"
+      },
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:18:22.166437+00:00",
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg/custom-domains/qa-20261027-m118-19862e.10x.pub",
+      "status": 204,
+      "request": null,
+      "response": "",
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:18:22.621718+00:00",
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 204,
+      "request": null,
+      "response": "",
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-27T06:18:23.110253+00:00",
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/services/srv-dbg41fkd3d3c73caqitg",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "NOT_FOUND",
+        "error": "not found",
+        "id": "not_found",
+        "message": "not found",
+        "params": null
+      },
+      "exit": 0,
+      "stderr": ""
+    }
+  ]
+}

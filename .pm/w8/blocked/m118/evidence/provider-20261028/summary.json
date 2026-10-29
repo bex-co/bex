@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-28",
+  "operator_test_exit": 0,
+  "all_module_lint_and_deadcode_exit": 0,
+  "pinned_provider_test_exit": 0,
+  "shellcheck_exit": 0,
+  "bash_syntax_exit": 0,
+  "traefik_image": "docker.io/traefik:v3.7.5",
+  "chart_version": "41.0.0",
+  "provider_cases": [
+    "platform-pending",
+    "custom-pending",
+    "two-customs"
+  ],
+  "negative_control": "Original TLS reference order reproduces certificate hostname mismatch before fixed projection passes.",
+  "temporary_cluster_deleted": "bex-tls-75141",
+  "remaining_clusters": [
+    "bex",
+    "bex-mgmt"
+  ],
+  "production_deployed": false,
+  "commit_or_push_performed": false
+}
