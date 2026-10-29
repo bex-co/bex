@@ -533,6 +533,9 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	// `api` declared AFTER it, so this also exercises the forward-reference
 	// second pass (api's slug exists only after its create).
 	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+	// api is a prebuilt pserv; pin its configured port so API_PORT resolves at
+	// apply (image-port discovery is covered by the propagator tests).
+	svc.PrivateImagePortsDisabled = true
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: stackManifest})
 	if err != nil {

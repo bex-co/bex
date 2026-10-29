@@ -274,7 +274,7 @@ Divergences from Render:
 - For a private service with several ports, the value is the primary bex selected (an explicit port, else 3000 if the image declares it, else the lowest declared TCP port). Render does not document which port it would use.
 - A web target with no port set resolves to `10000`, as Render (w8/168; it was 3000, [ADR018](ADR018-render-parity.md) `PORT` row).
 - Before discovery the variable is absent, not set. An app that needs it at boot can fail its first release; the `config_change` deploy that follows carries the value.
-- Port discovery itself reads only the target image's declared `EXPOSE` ports and covers only Git-built Docker private services ([ADR018](ADR018-render-parity.md) Open ports row).
+- Port discovery itself reads only the target image's declared `EXPOSE` ports and covers only Docker private services, Git-built or prebuilt (w6/095) ([ADR018](ADR018-render-parity.md) Open ports row).
 
 Verified live on production on 2026-10-20 ([evidence](../.pm/w6/done/m148/evidence/README.md), DoD 3). An image-port target's consumer had no `API_HOSTPORT`/`API_PORT` on first apply. After the propagator's `config_change` deploy it had `multi-port:8123` and `8123`. A configured web target changed from 3000 to 8080 with `setPort` was resolved as `:8080` by its consumer within 11 seconds. Guards: `TestBlueprintPortReferencesFollowAnEditedTargetPort` (the capability-registry fixture for `port`/`hostport`), `TestBlueprintPortReferencesToAnImagePortTargetNeverGuess`, and the `TestServiceRefPropagator*` tests.
 
