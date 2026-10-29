@@ -671,6 +671,13 @@ func sourceUpdatePending(app *appv1alpha1.App) bool {
 // operational mutation (for example scale 1 -> 2) advances metadata.generation
 // after the deploy request but before this first reconcile. A stale annotation
 // never masks a later direct CR release edit.
+// pendingReleaseOwed reports a newer generation coalesced into the pending
+// slot while the current release ran (ADR060 §D1a): once that release settles,
+// the next reconcile must pick it up.
+func pendingReleaseOwed(app *appv1alpha1.App) bool {
+	return app.Status.PendingReleaseGeneration > app.Status.ReleaseGeneration
+}
+
 func requestedReleaseGeneration(app *appv1alpha1.App) int64 {
 	if generation, ok := stampedReleaseGeneration(app); ok && generation > app.Status.ReleaseGeneration {
 		return generation

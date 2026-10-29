@@ -614,3 +614,22 @@ func TestSuccessfulReleaseGenerationLegacyBoundary(t *testing.T) {
 		})
 	}
 }
+
+// w4/m163: a manual deploy coalesced into the pending slot while a static
+// site's release built stayed queued forever, because the published site
+// never reconciled again. The settled release must report the slot as owed.
+func TestPendingReleaseOwedAfterTheCurrentReleaseSettles(t *testing.T) {
+	for _, tc := range []struct {
+		release, pending int64
+		want             bool
+	}{
+		{5, 6, true},
+		{5, 0, false},
+		{6, 6, false},
+	} {
+		app := &appv1alpha1.App{Status: appv1alpha1.AppStatus{ReleaseGeneration: tc.release, PendingReleaseGeneration: tc.pending}}
+		if got := pendingReleaseOwed(app); got != tc.want {
+			t.Errorf("release %d pending %d: owed = %v, want %v", tc.release, tc.pending, got, tc.want)
+		}
+	}
+}

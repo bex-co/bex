@@ -4301,17 +4301,24 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Published",
 		Message: "static site published and served from the object-store origin", ObservedGeneration: app.Generation,
 	})
+	// A deploy that arrived while this release built sits in the pending slot.
+	// A published site has no pods whose events would bring the reconcile back,
+	// so requeue to start it (w4/m163).
+	var next ctrl.Result
+	if pendingReleaseOwed(app) {
+		next.RequeueAfter = time.Second
+	}
 	// Skip the write when nothing changed, the same guard markRunning and
 	// hibernated already use — a re-published static site otherwise re-stamps a
 	// byte-identical status (and logs) on every event.
 	if statusUnchanged(ctx, r.Client, app) {
-		return ctrl.Result{}, nil
+		return next, nil
 	}
 	if err := r.writeAppStatus(ctx, app); err != nil {
 		return ctrl.Result{}, err
 	}
 	logf.FromContext(ctx).Info("static site running", "name", app.Name, "revision", rev, "image", image)
-	return ctrl.Result{}, nil
+	return next, nil
 }
 
 // staticServerPort is the static-server Service port, defaulting to 8080.
