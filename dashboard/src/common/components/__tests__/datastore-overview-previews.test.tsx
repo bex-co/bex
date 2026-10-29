@@ -59,6 +59,8 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   useKeyValueNetworking: () => ({
     allowList: [],
     ...networkingState,
+    // A store that has never had external access (w4/m233).
+    externalAccessRestarts: true,
     savingAllowList: false,
     saveAllowList: vi.fn(),
   }),
