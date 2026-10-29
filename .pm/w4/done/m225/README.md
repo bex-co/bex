@@ -1,6 +1,6 @@
 # w4 · m225 — Publish a saved service name after older detail reads
 
-**Worker:** worker4 **Goal:** a completed service rename keeps the authoritative saved label visible after an older detail response arrives. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned overlap replay on a deployed build at 1440/390, then cleanup) open
+**Worker:** worker4 **Goal:** a completed service rename keeps the authoritative saved label visible after an older detail response arrives. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a rename that overlaps a held pre-write `Server` read publishes the new label everywhere at 1440 and 390, and the rename controls and identity are preserved (loopx w4).
 
 ## Tasks (in order)
 
