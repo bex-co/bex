@@ -1,6 +1,6 @@
 # w4 · m204 — Keep service Logs filters aligned with navigation
 
-**Worker:** worker4 **Goal:** a mounted service Logs view adopts the filter and Live state encoded by navigation, so its visible rows and copied URL describe the same reader. **Status:** blocked (release pipeline deploys the dashboard; then QA replays the DoD for t006). t001–t005 done.
+**Worker:** worker4 **Goal:** a mounted service Logs view adopts the filter and Live state encoded by navigation, so its visible rows and copied URL describe the same reader. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: the clean sidebar Logs link resets to All logs, empty search and Live on, as a fresh load does, at 1440 and 390; Back/Forward restore each URL's state (loopx w4).
 
 ## Tasks (in order)
 
