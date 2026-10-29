@@ -1,6 +1,6 @@
 # w8 · m131 — The pre-deploy command is a paid-plan feature, as on Render
 
-**Worker:** worker8 **Goal:** Setting a pre-deploy command on a free web service is refused on every surface with Render's rule ("The pre-deploy command is available for paid web services, private services, and background workers"), and a free downgrade is refused while one is set, the way maintenance mode already is. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t006, t007, t008 done 2026-10-23; release pipeline deploys bex-api and the dashboard; QA runs t009: on a free web fixture `bex services update --pre-deploy-command` and `services create --plan free --pre-deploy-command` exit 1 (service unchanged / nothing created), `blueprints validate` fails at services[0].preDeployCommand, starter variants validate; inventory live free services that carry a legacy command (count into ADR018 row); delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** Setting a pre-deploy command on a free web service is refused on every surface with Render's rule ("The pre-deploy command is available for paid web services, private services, and background workers"), and a free downgrade is refused while one is set, the way maintenance mode already is. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree              | 20m | w8/m131/t002, w8/m131/t003, w8/m131/t004, w8/m131/t005 |
 | t007 — **DONE** | Simplify the changed code                                               | 15m | w8/m131/t006               |
 | t008 — **DONE** | Test coverage: free vs paid, every writer, downgrade, Blueprint         | 30m | w8/m131/t006               |
-| t009 | Close out the milestone                                                 | 30m | w8/m131/t007, w8/m131/t008 |
+| t009 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m131/t007, w8/m131/t008 |
 
 ## Definition of done
 
@@ -29,7 +29,7 @@ Live on production after the release pipeline deploys bex-api and the dashboard,
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 8004, 2026-10-22/23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login, non-TTY JSON. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/deploys](https://render.com/docs/deploys): "The pre-deploy command is available for paid web services, private services, and background workers." [ADR018](../../../docs/ADR018-render-parity.md)'s Pre-Deploy Command row (line 88) records no free-plan divergence. w8/172 noted "Render documents pre-deploy as paid-only" but filed nothing. bex already refuses Free maintenance mode and edge caching the same way.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/deploys](https://render.com/docs/deploys): "The pre-deploy command is available for paid web services, private services, and background workers." [ADR018](../../../../docs/ADR018-render-parity.md)'s Pre-Deploy Command row (line 88) records no free-plan divergence. w8/172 noted "Render documents pre-deploy as paid-only" but filed nothing. bex already refuses Free maintenance mode and edge caching the same way.
 - **Expected outcome:** the free tier offers what Render's does, and every writer gives one message.
 - **Why now:** major. Customer-visible parity divergence on the free tier (a migration Job per deploy on free compute). Many recent board items exercise pre-deploy on Free fixtures, so the gap keeps spreading into tests and docs. Render parity task included: REST/GraphQL/MCP/dashboard surfaces change.
 
@@ -90,3 +90,15 @@ Searched `.pm` open and done, ADR018 and DO_NOT_DO for pre-deploy + free/paid: o
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `479bd3fe243b`), 10:10–10:13 UTC, released Bex v0.3.3 and pinned Render v2.27.0, bex-canary. Fixtures: free web `srv-dbhhn0e19k3s73ep2h70` (`qa-20261029-lx9g-free`, echo-server) and short-lived Starter web `srv-dbhhn0iv8vqc73fvn7o0` (`qa-20261029-lx9g-paid`, D4, deleted within 3 minutes).
+
+- **Free service, set a pre-deploy command:** `bex`/Render `services update --pre-deploy-command "echo x"` (exit 1), REST `PATCH` (400), GraphQL `setPreDeployCommand` and MCP `update_service` (`isError`) all answer `pre-deploy command is available only for paid web services, private services, and background workers; choose a paid plan first`; `preDeployCommand` stays null.
+- **Free create:** both CLIs' `services create --plan free --pre-deploy-command …`, a `--from` clone, GraphQL `createService` and MCP `create_web_service` are refused the same way and create nothing. With `plan: starter`, GraphQL/MCP `dryRun` previews accept the command.
+- **Blueprint:** both native `blueprints validate` runs flag a free `type: web` entry with `preDeployCommand` at `services[0].preDeployCommand` (exit 1, same sentence); `plan: starter` validates; GraphQL `validateBlueprint` and MCP `validate_bex_yml` agree.
+- **Downgrade while set:** on the Starter fixture with `echo lx9g` saved, `--plan free` from both CLIs, REST, GraphQL `updateServicePlan` and MCP `update_service` all return 400 `clear the pre-deploy command before changing to the free plan`; it stays Starter. An MCP dry run clearing the command and setting free in one call is accepted.
+- **Dashboard:** the free service's Settings shows the Pre-Deploy Command field disabled with "Pre-deploy commands are available on paid plans."
+- **Inventory (read-only):** none of the 36 production Apps carries `spec.preDeployCommand` on a free plan.
+- Cleanup: both deleted by ID, `GET` → 404.
