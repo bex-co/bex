@@ -58,13 +58,14 @@ func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 		"a configuration change":                             {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, "2", "", "bbb"},
 		"a blueprint sync":                                   {repoApp(), store.TriggerCreate, "", "blueprint", false, "2", "", "bbb"},
 		"a deploy behind a rollback":                         {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, "2", "", "bbb"},
-		"an image-backed service":                            {imageApp(), store.TriggerCreate, "", store.TriggerAPI, false, "2", "1", ""},
+		"an image-backed service":                            {imageApp(), store.TriggerCreate, "web:v1", store.TriggerAPI, false, "2", "1", ""},
 		"an image service's deploy behind an --image deploy": {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, "2", "", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ds := newFakeStore()
 			older, _ := ds.CreateDeploy(ctx, "srv-1", tc.olderTrigger, tc.olderImg, 1, store.CommitInfo{Hash: "aaa"}, "")
-			pending, _ := ds.CreateDeploy(ctx, "srv-1", tc.pendingTrigger, "", 2, store.CommitInfo{Hash: "bbb"}, "")
+			// Trigger records a saved-image service's image on every row (w8/m117).
+			pending, _ := ds.CreateDeploy(ctx, "srv-1", tc.pendingTrigger, tc.app.Spec.Image, 2, store.CommitInfo{Hash: "bbb"}, "")
 			if !pending.OverlapPending {
 				t.Fatalf("precondition: the newer deploy waits in the pending slot, got %+v", pending)
 			}
