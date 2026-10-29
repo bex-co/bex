@@ -68,7 +68,7 @@ func TestGraphQLDefaultPolicyRoundTrips(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `mutation { createSandbox { networkPolicy { default } } }`,
+		RequestString: `mutation { createSandbox { networkPolicy { type default } } }`,
 		Context:       callerCtx(),
 	})
 	if len(res.Errors) != 0 {
@@ -79,7 +79,7 @@ func TestGraphQLDefaultPolicyRoundTrips(t *testing.T) {
 		t.Fatalf("GraphQL create result = %#v", res.Data)
 	}
 	policy, ok := create["networkPolicy"].(map[string]any)
-	if !ok || policy["default"] != "deny-all" {
+	if !ok || policy["default"] != "deny-all" || policy["type"] != "deny-all" {
 		t.Fatalf("GraphQL networkPolicy = %#v", create["networkPolicy"])
 	}
 }

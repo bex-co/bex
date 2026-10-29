@@ -25,11 +25,14 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
+// networkPolicyTypeField resolves both `type` and its `default` alias.
+var networkPolicyTypeField = gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) })
+
 var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SandboxNetworkPolicy",
 	Fields: graphql.Fields{
-		"type":    gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) }),
-		"default": gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) }),
+		"type":    networkPolicyTypeField,
+		"default": networkPolicyTypeField, // Render's deprecated alias of type
 	},
 })
 
