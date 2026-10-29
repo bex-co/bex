@@ -1706,6 +1706,20 @@ func AppBuildSelector(name, appUID string) client.MatchingLabels {
 	return sel
 }
 
+// AppBuildPodLabels are the labels that select exactly one App lifetime's build
+// pods in its workspace (w8/m129): the App's name and globally-unique UID, the
+// build component, and the owning workspace. All four are operator-authored on
+// the pod template (buildLabels); a tenant can set none of them, so a network
+// policy keyed on this set cannot be widened by tenant input.
+func AppBuildPodLabels(name, appUID, workspace string) map[string]string {
+	return map[string]string{
+		appv1alpha1.LabelBuild:   name,
+		execution.LabelAppUID:    appUID,
+		execution.LabelComponent: buildComponent,
+		execution.LabelWorkspace: workspace,
+	}
+}
+
 // workspaceSelector selects the platform's build artifacts, narrowed to one
 // workspace when workspace is non-empty and to the whole namespace when it is.
 func workspaceSelector(workspace string) client.MatchingLabels {
