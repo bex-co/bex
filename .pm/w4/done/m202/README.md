@@ -1,6 +1,6 @@
 # w4 · m202 — Honor image commands after switching from native Git
 
-**Worker:** worker4 **Goal:** a prebuilt image executes its saved Docker Command after a native Git source switch **Status:** blocked (release pipeline deploys the operator; then QA replays the DoD for t006). t001–t005 done.
+**Worker:** worker4 **Goal:** a prebuilt image executes its saved Docker Command after a native Git source switch **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: a native Node service switched to Existing Image BusyBox runs its saved Docker Command and serves the marker, via the Settings save at 1440 and a manual Deploy latest image at 390; the image-created control matches (loopx w4).
 
 ## Tasks (in order)
 
