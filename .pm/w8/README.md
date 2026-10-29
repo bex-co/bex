@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done — the launcher replaces `skills` with an embedded 20-skill bex pack derived from render-oss/skills, with state in the bex config dir; Render's skills and state are never touched. Local sandbox acceptance passed. Needs the next `bex-cli/v*` release (user-run `/release cli`), then a QA spot-check of an agent deploying through the installed bex-cli skill, with the fixture deleted with a 404 proof)**
 
-- [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）**
 
 - [ ] **m141** — [HTTP-aware Docker web listener selection](m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：修复上次线上验收未达标项后复验）**
 

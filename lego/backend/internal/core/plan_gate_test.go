@@ -18,7 +18,12 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -92,6 +97,8 @@ func TestPlanFeatureTable(t *testing.T) {
 		{FeatureNetworkIsolation, "hobby", false}, {FeatureNetworkIsolation, "pro", true},
 		{FeatureWebhooks, "hobby", false}, {FeatureWebhooks, "pro", true}, {FeatureWebhooks, "scale", true},
 		{FeatureRequestLogs, "hobby", false}, {FeatureRequestLogs, "pro", true},
+		{FeatureAuditLogs, "hobby", false}, {FeatureAuditLogs, "pro", true}, {FeatureAuditLogs, "enterprise", true},
+		{FeatureLatencyMetrics, "hobby", false}, {FeatureLatencyMetrics, "pro", true}, {FeatureLatencyMetrics, "scale", true},
 		{FeatureInboundIPRules, "hobby", false}, {FeatureInboundIPRules, "pro", false},
 		{FeatureInboundIPRules, "scale", true}, {FeatureInboundIPRules, "enterprise", true},
 		{FeatureWebhooks, "future-plan", true},
@@ -134,5 +141,52 @@ func TestRequireNetworkIsolationAndEnvironmentCapacity(t *testing.T) {
 	}
 	if err := (&Base{Plans: planIs("pro")}).RequireEnvironmentCapacity(ctx, "tea-a", 50); err != nil {
 		t.Errorf("pro is unlimited: %v", err)
+	}
+}
+
+// w8/m138 t013: the environment cap and the feature gates are coded on every
+// surface — REST's code/params beside the unchanged message (also through a
+// caller's "invalid request body at …" wrap), GraphQL extensions and the MCP
+// code prefix — like the webhook gate's WEBHOOK_PLAN_LIMIT.
+func TestPlanRefusalsCarryCodes(t *testing.T) {
+	ctx := context.Background()
+	hobby := &Base{Plans: planIs("hobby")}
+	isolation := hobby.RequireNetworkIsolation(ctx, "tea-a", true, false)
+	capacity := hobby.RequireEnvironmentCapacity(ctx, "tea-a", 2)
+	feature := hobby.RequirePlanFeature(ctx, "tea-a", FeatureWebhooks)
+	for _, tc := range []struct {
+		err     error
+		code    string
+		message string
+		params  map[string]any
+	}{
+		{isolation, PlanFeatureRequiredCode, "bad request: networkIsolationEnabled: network-isolated environments require the Pro plan or higher; this workspace is on Hobby",
+			map[string]any{"plan": "hobby", "feature": "networkIsolation", "requiredPlan": "pro", "field": "networkIsolationEnabled"}},
+		{fmt.Errorf("invalid request body at /environments: %w", capacity), PlanLimitCode,
+			"invalid request body at /environments: bad request: environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more",
+			map[string]any{"plan": "hobby", "limit": float64(2), "field": "environments"}},
+		{feature, PlanFeatureRequiredCode, "bad request: webhooks require the Pro plan or higher; this workspace is on Hobby",
+			map[string]any{"plan": "hobby", "feature": "webhooks", "requiredPlan": "pro"}},
+	} {
+		rec := httptest.NewRecorder()
+		WriteErr(rec, tc.err)
+		var body struct {
+			Code    string         `json:"code"`
+			Message string         `json:"message"`
+			Params  map[string]any `json:"params"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != http.StatusBadRequest || body.Code != tc.code || body.Message != tc.message || !reflect.DeepEqual(body.Params, tc.params) {
+			t.Errorf("REST %d %+v, want 400 %s %q %v", rec.Code, body, tc.code, tc.message, tc.params)
+		}
+		var coded *CodedError
+		if !errors.As(tc.err, &coded) || coded.Extensions()["code"] != tc.code || coded.Extensions()["plan"] != "hobby" {
+			t.Errorf("GraphQL extensions of %v lack %s", tc.err, tc.code)
+		}
+		if got := MCPError(tc.err).Error(); got != tc.code+": "+tc.message {
+			t.Errorf("MCP = %q", got)
+		}
 	}
 }

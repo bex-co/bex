@@ -34,6 +34,8 @@ import {
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 import { useMonthToDateBandwidth } from "@/features/metrics/hooks/use-month-to-date-bandwidth";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context";
+import { proFeaturesPlan } from "@/features/workspaces/types";
 import { formatMegabytes } from "@/features/metrics/lib/format";
 import type { ChartEventMarker } from "@/features/metrics/lib/chart-events";
 
@@ -134,8 +136,12 @@ export function NetworkMetricsCard({
     ...queryOpts,
     groupBy,
   });
+  // Hobby has no latency metrics (Render: Pro and higher): one read shows the
+  // plan notice, and polling it again would only repeat the refusal.
+  const { currentWorkspace } = useWorkspace();
   const latency = useMetrics(resource, "http_latency", {
     ...queryOpts,
+    ...(proFeaturesPlan(currentWorkspace?.plan) ? {} : { pollIntervalMs: 0 }),
     ...(isAllPercentiles
       ? { quantiles: ALL_QUANTILES }
       : { quantile: Number(percentile) }),
@@ -348,6 +354,10 @@ export function NetworkMetricsCard({
         <MetricSection
           title={t("metrics.responseTimes")}
           result={latency}
+          planFeature={{
+            feature: "latencyMetrics",
+            message: t("metrics.latencyPlanRequired"),
+          }}
           headerExtra={
             <Select value={percentile} onValueChange={setPercentile}>
               <SelectTrigger

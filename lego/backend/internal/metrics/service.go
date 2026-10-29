@@ -479,6 +479,12 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
+	// Render: response latency metrics are a Pro-and-higher feature (w8/m138).
+	if q.Metric == MetricHTTPLatency {
+		if err := s.RequirePlanFeature(ctx, app.Labels[core.LabelTenant], core.FeatureLatencyMetrics); err != nil {
+			return nil, err
+		}
+	}
 	statusCode, ok := normalizeStatusCodeFilter(q.StatusCode)
 	if !ok {
 		return nil, fmt.Errorf("%w: statusCode must be a three-digit HTTP status or a class such as 5xx", core.ErrBadRequest)

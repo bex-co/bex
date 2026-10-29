@@ -14,7 +14,8 @@ export function PanelCenteredState({
 }: {
   icon: React.ReactNode;
   title: string;
-  body: string;
+  /** Text, or text with an inline link (a plan notice's Billing link). */
+  body: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
