@@ -178,12 +178,10 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 
 type appKey struct{}
 
-// holding reports whether requests for key should be held: the App is hibernated
-// or a wake this process started is still in flight.
-func (h *holder) holding(app *appv1alpha1.App, key string) bool {
-	if app.Status.Phase == appv1alpha1.PhaseHibernated {
-		return true
-	}
+// wakingHere reports whether a wake this process started is still in flight. It
+// backs the shared annotWakeStarted stamp for the moment before this replica's
+// App cache has seen it, or when the stamp's patch failed.
+func (h *holder) wakingHere(key string) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	until, ok := h.waking[key]

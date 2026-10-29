@@ -96,10 +96,10 @@ When Render's edge answers in place of a service, it tags the response with `X-R
 | --- | --- | --- |
 | Unknown host (`404`) | `no-server` | Render, captured 2026-10-28 |
 | Suspended (`503`, `Retry-After: 3600`) | `suspend` | Render, captured 2026-10-28 |
-| Wake page / wake JSON of a hibernated App, and a held request's `504` wake timeout | `hibernate-pending-wake` | Render, captured 2026-07-16 ([wake-interstitial.md](render-artifacts/wake-interstitial.md)) |
+| Wake page / wake JSON of a hibernated or waking App, and a held request's `504` wake timeout | `hibernate-pending-wake` | Render, captured 2026-07-16 ([wake-interstitial.md](render-artifacts/wake-interstitial.md)) |
 | An awake App failing its health check (the readiness hold), a proxy `502`, a failed or canceled first release, a first deploy in progress, maintenance mode | `no-server` | No Render capture; "nothing to route to" is the documented fallback |
 
-The `/robots.txt` disallow-all of a spun-down service is untagged. It is content, not a "not served" signal, and Render's tag on it was not captured. The tag is decided from the App's phase before the wake path runs. Once the wake has started, the cached phase cannot tell a cold start from a readiness hold. A saved static-site header rule cannot forge the tag on these responses: the static server applies those rules, and the activator never does.
+The `/robots.txt` disallow-all of a spun-down service is untagged. It is content, not a "not served" signal, and Render's tag on it was not captured. The tag is decided before the wake path runs. Once the wake has started, the cached phase cannot tell a cold start from a readiness hold, so the request that wakes a `Hibernated` App also stamps the App annotation `app.bex.co/wake-started` (w8/216). For 120 s after that stamp (the 90 s hold bound plus 30 s), a request to any activator replica joins the wake: it is held if it is not a browser request, and tagged `hibernate-pending-wake` if answered. Before w8/216, such a request got an immediate `503` tagged `no-server`. A per-process record covers the moment before a replica's App cache sees the stamp. A saved static-site header rule cannot forge the tag on these responses: the static server applies those rules, and the activator never does.
 
 ### Who writes the fields
 

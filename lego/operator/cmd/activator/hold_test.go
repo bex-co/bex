@@ -248,3 +248,123 @@ func unreachableFixture(t *testing.T, target *url.URL) http.Handler {
 	h.ready = func(context.Context, *appv1alpha1.App) bool { return true }
 	return newHoldingHandler(cl, cache, logr.Discard(), h)
 }
+
+// w8/216: a request that arrives while a wake is already in flight joins it,
+// whichever activator replica it lands on. The first request's wake moves the
+// phase on, so the follow-up reads the shared wake stamp rather than the phase
+// or the first replica's memory: a non-browser request is held and served by
+// the app, a browser gets the wake page tagged hibernate-pending-wake, and
+// neither is ever tagged no-server.
+func TestRequestDuringAWakeOnAnotherReplicaJoinsIt(t *testing.T) {
+	for _, first := range []string{"text/html", "application/json"} {
+		t.Run("first accepts "+first, func(t *testing.T) {
+			app, dep := sleepingApp()
+			app.Status.Phase = appv1alpha1.PhaseHibernated
+			cacheA, base := primedHostCache(t, app, dep)
+
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusAccepted)
+				_, _ = io.WriteString(w, "app")
+			}))
+			t.Cleanup(upstream.Close)
+			target, _ := url.Parse(upstream.URL)
+			woke := time.Now().Add(400 * time.Millisecond)
+			replica := func(cache *hostCache) http.Handler {
+				h := newHolder(base)
+				h.bound, h.pollInterval = 5*time.Second, 10*time.Millisecond
+				h.target = func(*appv1alpha1.App) *url.URL { return target }
+				h.ready = func(context.Context, *appv1alpha1.App) bool { return time.Now().After(woke) }
+				return newHoldingHandler(base, cache, logr.Discard(), h)
+			}
+
+			// Replica A takes the request that finds the App hibernated.
+			firstDone := make(chan *httptest.ResponseRecorder, 1)
+			go func() {
+				req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+				req.Header.Set("Accept", first)
+				rr := httptest.NewRecorder()
+				replica(cacheA).ServeHTTP(rr, req)
+				firstDone <- rr
+			}()
+			// The operator sees the wake and moves the phase on.
+			woken := &appv1alpha1.App{}
+			deadline := time.Now().Add(2 * time.Second)
+			for {
+				if err := base.Get(context.Background(), clientKey("sleeping"), woken); err != nil {
+					t.Fatal(err)
+				}
+				if woken.Annotations[annotWakeStarted] != "" {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("the wake never stamped the shared wake-started annotation")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			woken.Status.Phase = appv1alpha1.PhaseDeploying
+			if err := base.Update(context.Background(), woken); err != nil {
+				t.Fatal(err)
+			}
+
+			// Replica B has no memory of that wake; it reads the App afresh.
+			cacheB := newHostCache(base, logr.Discard(), "")
+			cacheB.refreshOnce(context.Background())
+			b := replica(cacheB)
+
+			html := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+			html.Header.Set("Accept", "text/html")
+			page := httptest.NewRecorder()
+			b.ServeHTTP(page, html)
+			if tag := page.Header().Get(routingHeader); page.Code != http.StatusServiceUnavailable ||
+				!strings.Contains(page.Body.String(), "Application loading") || tag != routingWake {
+				t.Fatalf("browser during the wake = %d tagged %q, want the wake page tagged %s", page.Code, tag, routingWake)
+			}
+
+			api := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+			api.Header.Set("Accept", "application/json")
+			held := httptest.NewRecorder()
+			b.ServeHTTP(held, api)
+			if tag := held.Header().Get(routingHeader); held.Code != http.StatusAccepted ||
+				held.Body.String() != "app" || tag != "" {
+				t.Fatalf("API client during the wake = %d %q tagged %q, want held and served by the app",
+					held.Code, held.Body.String(), tag)
+			}
+
+			if rr := <-firstDone; rr.Header().Get(routingHeader) == routingNoServer {
+				t.Fatalf("the request that started the wake is tagged %s", routingNoServer)
+			}
+		})
+	}
+}
+
+// A wake stamp older than the wake window is not a wake in flight: an awake
+// App failing its health check long after it woke keeps the immediate
+// no-server answer, and the request does not restamp the wake.
+func TestStaleWakeStampIsNotAWakeInFlight(t *testing.T) {
+	app, dep := sleepingApp()
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	stale := time.Now().Add(-wakeWindow - time.Minute).UTC().Format(time.RFC3339)
+	app.Annotations = map[string]string{annotWakeStarted: stale}
+	cache, base := primedHostCache(t, app, dep)
+	h := newHolder(base)
+	h.bound = 5 * time.Second
+	handler := newHoldingHandler(base, cache, logr.Discard(), h)
+
+	req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	start := time.Now()
+	handler.ServeHTTP(rr, req)
+	if tag := rr.Header().Get(routingHeader); rr.Code != http.StatusServiceUnavailable ||
+		time.Since(start) > time.Second || tag != routingNoServer {
+		t.Fatalf("response = %d tagged %q after %v, want an immediate 503 tagged %s",
+			rr.Code, tag, time.Since(start), routingNoServer)
+	}
+	stored := &appv1alpha1.App{}
+	if err := base.Get(context.Background(), clientKey("sleeping"), stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Annotations[annotWakeStarted] != stale {
+		t.Error("a request to an awake App restamped the wake")
+	}
+}
