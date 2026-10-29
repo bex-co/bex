@@ -1,6 +1,6 @@
 # w4 · m228 — Preserve the log reader across display changes
 
-**Worker:** worker4 **Goal:** wrapping and timestamp changes keep the current logical log line visible when its position remains reachable, while bottom-follow and virtualization retain their existing behavior. **Status:** blocked — t001, t002, t004–t006 done 2026-10-17; t003 (desktop timestamps / mobile wrapping replay on a deployed build) and t007 closeout open
+**Worker:** worker4 **Goal:** wrapping and timestamp changes keep the current logical log line visible when its position remains reachable, while bottom-follow and virtualization retain their existing behavior. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: desktop Show timestamps and mobile Wrap lines both keep the chosen older row visible; reader controls preserved (loopx w4).
 
 **Severity:** minor. **Estimate:** 140m / 2h20m across 7 tasks. Implemented 2026-10-17; awaiting the deployed-build replay (t003).
 
@@ -10,11 +10,11 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Reconcile display geometry around a saved logical reader — **DONE** | 40m | — |
 | [t002](done/t002.md) | Audit the three readers and preserve their existing controls — **DONE** | 20m | t001 |
-| [t003](t003.md) | Replay desktop timestamps and mobile wrapping | 20m | t001, t002 |
+| [t003](done/t003.md) | Replay desktop timestamps and mobile wrapping — **DONE** | 20m | t001, t002 |
 | [t004](done/t004.md) | Render parity — **DONE** | 10m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
-| [t007](t007.md) | Closeout | 10m | t006 |
+| [t007](done/t007.md) | Closeout | 10m | t006 | — **DONE**
 
 ## Definition of done
 
