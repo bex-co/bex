@@ -21,7 +21,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m141** — [HTTP-aware Docker web listener selection](m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：修复上次线上验收未达标项后复验）**
 
-- [ ] **m140** — [Password-free internal Key Value connections](m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **m140** — [Password-free internal Key Value connections](done/m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **DONE 2026-10-29** (password-free internal Key Value, isolated per workspace, on production)
 
 - [ ] **m139** — [Free web services share 750 instance hours per workspace per month, as on Render](m139/README.md) (8 tasks;275m) ← `/qa-find-bugs-cli` loop sweep p8q1 2026-10-24: no free-hours budget exists, so Free web services run without a monthly cap; Render suspends them after 750 h — **READY（2026-10-29 解除阻塞，现有规则决定；下一步：worker 执行 t008 线上验收）**. freehours.Sweeper (5 min, replica-safe) accounts month-to-date Free service instance-seconds from the meter, claims 80%/exhausted emails in free_hours_notices (migration 0161), suspends Free web services via an annotated spec.suspended (billing suspender), refuses manual resume, lifts on upgrade/month end; freeInstanceHours on REST/GraphQL/MCP and a dashboard card; ADR030 §10, ADR018
 
