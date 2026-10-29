@@ -1,6 +1,6 @@
 # w4 · m183 — Make SSH remedies truthful and usable
 
-**Worker:** worker4 **Goal:** a tenant can understand the remaining shell-access blockers and follow a Connect remedy without leaving the destination behind an open modal menu. **Status:** blocked
+**Worker:** worker4 **Goal:** a tenant can understand the remaining shell-access blockers and follow a Connect remedy without leaving the destination behind an open modal menu. **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: a suspended Free service's Shell and Connect explain both the suspension and the paid SSH requirement, Connect's Resume and Change instance type links navigate cleanly at 1440 and 390, and resume keeps Free without shell (loopx w4).
 
 ## Tasks (in order)
 
