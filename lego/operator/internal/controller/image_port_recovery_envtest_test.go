@@ -213,6 +213,95 @@ var _ = Describe("Image-port recovery after removing PORT (w8/210)", func() {
 	})
 })
 
+// w8/m142 t006 (production 2026-10-29, pin 03043c7df363): removing a saved
+// PORT=8080 from an image that declares no ports starts HTTP discovery, and
+// the reconcile halts while it runs. The CR-named Service, the one the public
+// Ingress routes to, was never re-projected in those passes: it stayed
+// unpinned on 8080→8080 while the ready candidate listened on 10000, so a share
+// of requests reached a closed port (502). The first template of the new
+// release also restated the old PORT=8080, read from the served release's
+// snapshot before this release's own was taken.
+var _ = Describe("Removing PORT while HTTP discovery runs (w8/m142)", func() {
+	It("keeps the routed Service pinned to the serving release until promotion", func() {
+		nn := types.NamespacedName{Name: "image-port-removed-discovery", Namespace: "default"}
+		envName := nn.Name + "-env"
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			HTTPClient: imageConfigRegistry(GinkgoT(), ""),
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: envName, Namespace: nn.Namespace},
+			Data:       map[string][]byte{"PORT": []byte("8080"), "MESSAGE": []byte("hi")},
+		})).To(Succeed())
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/ealen/echo-server:0.9.2", Type: appv1alpha1.TypeWebService,
+				PortMode: appv1alpha1.PortModeWebImageV1, Replicas: 1, EnvFromSecret: envName,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() {
+			deleteOwner(ctx, envtestApp(nn), run)
+			_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: envName, Namespace: nn.Namespace}})
+		})
+
+		By("serving the saved PORT=8080")
+		reconcileToFixedPoint(run)
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+		Expect(app.Status.ServingNetwork.PrimaryPort).To(Equal(int32(8080)))
+		assertImagePortRuntime(nn, 8080)
+		assertImagePortService(nn, 8080)
+		served := app.Status.ServingNetwork.Revision
+
+		By("deleting PORT and deploying")
+		env := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: envName, Namespace: nn.Namespace}, env)).To(Succeed())
+		delete(env.Data, "PORT")
+		Expect(k8sClient.Update(ctx, env)).To(Succeed())
+		app.Spec.Image, app.Spec.RestartedAt = app.Status.ServingNetwork.Image, "2026-10-29T01:00:00Z"
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+
+		candidateTemplates := 0
+		for range 5 {
+			_, err := run()
+			Expect(err).NotTo(HaveOccurred())
+			app = envtestApp(nn)
+			tmpl := envtestDeployment(nn).Spec.Template
+			if tmpl.Labels[labelRevision] == served {
+				continue
+			}
+			candidateTemplates++
+			Expect(tmpl.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: "10000"}),
+				"the new release's first template must not restate the removed PORT")
+			Expect(app.Status.EnvPort).To(BeZero())
+			Expect(app.Status.ImageNetwork.HTTPSelection).To(BeEmpty(), "discovery is still running")
+			Expect(meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady).Reason).To(Equal(appv1alpha1.ReasonHTTPPortDiscovery))
+			svc := &corev1.Service{}
+			Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+			Expect(svc.Spec.Selector).To(HaveKeyWithValue(labelRevision, served),
+				"the routed Service must keep the serving release's pods only while discovery runs")
+			Expect(svc.Spec.Ports).To(ConsistOf(And(HaveField("Port", int32(8080)), HaveField("TargetPort.IntVal", int32(8080)))))
+		}
+		Expect(candidateTemplates).To(BeNumerically(">", 0), "the candidate template must be written")
+
+		By("switching the Service to the new listener at promotion")
+		app = envtestApp(nn)
+		app.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		reconcileToFixedPoint(run)
+		assertImagePortRuntime(nn, 10000)
+		finishImagePortRollout(nn, run)
+		assertImagePortService(nn, 10000)
+		svc := &corev1.Service{}
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Selector).NotTo(HaveKey(labelRevision), "a completed rollout unpins the Service")
+	})
+})
+
 func assertImagePortRuntime(nn types.NamespacedName, port int32) {
 	GinkgoHelper()
 	c := envtestDeployment(nn).Spec.Template.Spec.Containers[0]

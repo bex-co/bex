@@ -71,7 +71,7 @@ func (r *AppReconciler) portRuntimeApp(ctx context.Context, app *appv1alpha1.App
 	}
 	ref := app.ActiveReleaseConfig()
 	if ref == nil || ref.SourceGeneration == 0 || canceledOverServed(app) {
-		return app, nil
+		return savedReleasePortRuntime(ctx, app), nil
 	}
 	runtime, err := r.selectedRuntimeApp(ctx, app)
 	if err == nil {
@@ -98,4 +98,20 @@ func (r *AppReconciler) portRuntimeApp(ctx context.Context, app *appv1alpha1.App
 		runtime.Spec.EnvFromSecret = selectedSourceName(app, ref, record, source)
 	}
 	return runtime, nil
+}
+
+// savedReleasePortRuntime is the ordinary release's PORT view. An image-port
+// service whose new release is not snapshotted yet reads the saved sources
+// that this pass snapshots before writing its template: the served release's
+// copy still holds a removed PORT, and the first template of the new release
+// restated it, then rolled again a second later (w8/m142 t006). Its routing
+// follows the serving network until promotion, never this port. A
+// configured-port service routes on this port directly, so it keeps the
+// served projection until its own snapshot, as before.
+func savedReleasePortRuntime(ctx context.Context, app *appv1alpha1.App) *appv1alpha1.App {
+	gen := app.Status.ReleaseGeneration
+	if !app.Spec.HasImagePorts() || canceledOverServed(app) || gen <= 0 || app.Status.ConfigSnapshotGeneration == gen {
+		return app
+	}
+	return inFlightRelease(ctx, app)
 }
