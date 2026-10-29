@@ -1,6 +1,6 @@
 # w8 · m129 — Render's free-plan "migrate in the build command" recipe works on bex
 
-**Worker:** worker8 **Goal:** the build gets the service's `fromDatabase`/`fromService` variables and can reach its own workspace's datastores, as on Render **Status:** in progress — t001–t008 done 2026-10-29 (code + docs + tests, see Progress below); t009 needs the shipped operator on production (2026-10-29 解除阻塞；原记录：promoted from 158 on 2026-10-21; **BLOCKED — needs the user's sign-off on the threat review in t001: letting tenant build code reach that workspace's own datastores changes the `bex-build` default-deny posture (ADR022:239); ADR018 allows no divergence without it, so the cheaper keep-the-boundary option cannot be chosen unilaterally**)
+**Worker:** worker8 **Goal:** the build gets the service's `fromDatabase`/`fromService` variables and can reach its own workspace's datastores, as on Render **Status:** done (2026-10-29) **BLOCKED — needs the user's sign-off on the threat review in t001: letting tenant build code reach that workspace's own datastores changes the `bex-build` default-deny posture (ADR022:239); ADR018 allows no divergence without it, so the cheaper keep-the-boundary option cannot be chosen unilaterally**)
 
 ## Tasks (in order)
 
@@ -14,8 +14,8 @@
 | [t006](done/t006.md) | Render parity: compare against render-examples/django and Rails free-plan migrate-in-build across REST/GraphQL/MCP/dashboard — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
-| t009 | QA on production (needs the release pipeline): django example migrates in the build and goes live; cross-workspace negative control | 45m | t008 |
-| t010 | Closeout | 10m | t009 |
+| t009 | QA on production (needs the release pipeline): django example migrates in the build and goes live; cross-workspace negative control — **DONE 2026-10-29** | 45m | t008 |
+| t010 | Closeout — **DONE 2026-10-29** | 10m | t009 |
 
 ## Definition of done
 
@@ -42,7 +42,7 @@
 
 **What shipped (operator only; no backend, API or dashboard change):**
 
-- **t001:** threat review and amendment in [ADR022 § Build reach to the owning workspace's datastores](../../../docs/ADR022-tenant-isolation.md#build-reach-to-the-owning-workspaces-datastores-w8m129-2026-10-29). It cites this unblock record and amends the build default-deny sentence. The review found that the scoped design keeps cross-workspace reach closed by construction, so there was no reason to stop.
+- **t001:** threat review and amendment in [ADR022 § Build reach to the owning workspace's datastores](../../../../docs/ADR022-tenant-isolation.md#build-reach-to-the-owning-workspaces-datastores-w8m129-2026-10-29). It cites this unblock record and amends the build default-deny sentence. The review found that the scoped design keeps cross-workspace reach closed by construction, so there was no reason to stop.
 - **t002:** `projectNativeBuildEnv` resolves every `spec.env` `SecretKeyRef` (`fromDatabase`, Key Value `fromService`) from the App namespace. It copies only the referenced key into the App-owned merged env Secret (`<app>-native-env`) that native and Dockerfile builds already mount (`readBuildEnvRefs`, `lego/operator/internal/controller/build_datastore_reach.go`). The Job spec names only the Secret. Protected Secrets are refused. A build waits as `BuildQueued` while the connection Secret is missing or the linked Database is `Pending`/`Provisioning` (`buildDatabasePending`). kpack is unchanged (w1/121).
 - **t003:** `reconcileBuildDatastoreReach` converges two NetworkPolicies at dispatch and deletes them at the build's terminal observation:
   - `bex-build/bld-<app>-datastore-egress`: the pod selector is `app.bex.co/build`, `app-uid`, `component=build` and `workspace`, all operator-set. Egress goes only to `kubernetes.io/metadata.name=<App ns>` on TCP 5432/6379/6380.
@@ -51,7 +51,7 @@
 - **t004/t008:** tests.
   - Unit tests in `build_datastore_reach_test.go` cover four things. DATABASE_URL arrives in the merged Secret for native and Dockerfile builds, and the marshalled Job has no URI or password. The ref read contract (pending / protected / missing key / later duplicate wins / PORT dropped) and the database-phase hold both hold. A NetworkPolicy evaluator over the generated objects proves A→A allowed and A→B, B→A, an isolated environment, a non-datastore port, platform namespaces, forged UIDs and publish pods all denied. Revocation is ownership-gated, the egress policy fails closed on a foreign same-named policy, and ineligible namespaces get no grant.
   - Envtest `build_datastore_reach_envtest_test.go` runs the reconciler end to end: hold without the Secret, dispatch after it, DATABASE_URL only via the mount, the policies select the real Job's pods, both are removed after the build completes.
-- **t005:** [ADR018](../../../docs/ADR018-render-parity.md) Pre-Deploy row, an [ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md) addendum, `deploy/gitops/base/build-boundary.yaml` comments, and the `BEX_BUILD_NAMESPACE` row in `lego/operator/AGENTS.md`. Blueprint plan/validate needs no change: no warning ever told users that builds cannot reach the database, and the same `envVars`/`buildCommand` now simply work.
+- **t005:** [ADR018](../../../../docs/ADR018-render-parity.md) Pre-Deploy row, an [ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md) addendum, `deploy/gitops/base/build-boundary.yaml` comments, and the `BEX_BUILD_NAMESPACE` row in `lego/operator/AGENTS.md`. Blueprint plan/validate needs no change: no warning ever told users that builds cannot reach the database, and the same `envVars`/`buildCommand` now simply work.
 - **t006:** parity. REST, GraphQL, MCP and dashboard shapes are unchanged: the build env and network are platform runtime behavior, and no field was added or removed. Render's django `build.sh` (`pip install`, `collectstatic`, `migrate`) and the Rails free-plan `bundle exec rake db:migrate` in the build command both need exactly DATABASE_URL plus reach, which they now get.
 
 **Open gaps (not signed off as divergences; follow-ups to file):**
@@ -68,3 +68,14 @@
 - Negative control: a second workspace's build with a `buildCommand` such as `pg_isready -h <dpg-of-ws1>-rw.<ws1>.svc -p 5432 || nc -zvw3 …` must fail to connect, both by the internal DNS name and by pod IP. In the same run, the workspace's own database must succeed.
 - Hubble/cilium monitor shows the denied cross-workspace flow as a policy drop.
 - Delete all fixtures by id with 404 proofs.
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Production pin `69f0b17d1fad`. `POST /v1/blueprints/deploy` in bex-canary with `render-examples/django`'s `render.yaml` (database renamed and on `basic-256mb`, the smallest paid plan, because the free Postgres slot is full; web service Free; `PYTHON_VERSION=3.12.11`): `srv-dbhm6md5enhs73d3ff4g` + `dpg-dbhm6md5enhs73d3ff30`.
+
+- **First build waits, then migrates:** the build held while the database was Provisioning and started at 15:18:58 once Ready; its log shows `Running migrations:` with every migration `OK`, and a read-only SQL check finds the 18 `django_migrations` rows applied 15:20:46–47, inside the build. Deploy live at 15:22:33; `/` and `/admin/login/` → 200.
+- **Values only through the mount:** neither build Job spec contains `DATABASE_URL`, the password or a `postgresql://` string; the Job mounts the Secret `…-native-env` (keys `DATABASE_URL`, `SECRET_KEY`).
+- **Per-build policies:** `bex-build/bld-…-datastore-egress` (egress only to the workspace namespace on 5432/6379/6380, selected by the App UID) and `…-build-ingress` in the workspace (admits only that build's pods) existed during each build and were gone after it.
+- **Cross-workspace negative:** a build in workspace `bex` probing TCP 5432 on the database's internal DNS name, pod IP and ClusterIP during bex-canary's build window timed out every time.
+- Not re-run: Dockerfile build path and surface-shape parity (t006 tests); a Cilium drop trace (read-only rule). Side observation: the Blueprint create opened two deploys and built twice (possibly w4/m148).
+- Cleanup: all three fixtures deleted (204 → 404); no App, Database, Job, Secret or NetworkPolicy left.
