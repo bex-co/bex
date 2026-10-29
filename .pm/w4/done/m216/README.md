@@ -1,6 +1,6 @@
 # w4 · m216 — Keep deploy log search on the established literal contract
 
-**Worker:** worker4 **Goal:** searching loaded deploy logs preserves the same Unicode lowercase/literal matches as service history **Status:** blocked — t001, t002, t004, t005 done 2026-10-16; t003 live replay and t006 need the release pipeline
+**Worker:** worker4 **Goal:** searching loaded deploy logs preserves the same Unicode lowercase/literal matches as service history **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: deploy log search matches Greek sigma as Service Logs and the backend do, at 1440 and 390 (loopx w4).
 
 ## Tasks (in order)
 
