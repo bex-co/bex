@@ -94,6 +94,7 @@ function serverData(id: string) {
     buildCommand: "",
     startCommand: "",
     dockerfilePath: "",
+    dockerContext: "",
     registryCredentialId: "",
     buildFilter: null,
     autoDeploy: false,

@@ -235,6 +235,7 @@ var gqlCreateRules = map[string]wireRule{
 	"buildCommand":                     to("BuildCommand"),
 	"startCommand":                     to("StartCommand"),
 	"dockerfilePath":                   to("DockerfilePath"),
+	"dockerContext":                    to("DockerContext"),
 	"builder":                          to("Builder"),
 	"plan":                             to("Plan"),
 	"autoDeploy":                       to("AutoDeploy"),

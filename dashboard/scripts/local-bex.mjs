@@ -156,6 +156,7 @@ const SERVICE_DEFAULTS = {
   buildCommand: null,
   startCommand: null,
   dockerfilePath: null,
+  dockerContext: null,
   registryCredentialId: null,
   autoDeploy: null,
   publishPath: null,
@@ -193,6 +194,7 @@ const SERVICE = {
   builder: "dockerfile",
   startCommand: "node server.js",
   dockerfilePath: "Dockerfile",
+  dockerContext: ".",
   autoDeploy: true,
 };
 
@@ -1527,6 +1529,19 @@ function resolveGraphQL({ operationName, variables = {} }) {
       }
       svc.dockerfilePath = next;
       return { setDockerfilePath: svc };
+    }
+    case "SetDockerContext": {
+      // Relative to rootDir, as on Render (w8/m128); empty reads back ".".
+      const svc = serviceById(variables.id);
+      if (!svc) throw new Error("not found");
+      const next = String(variables.dockerContext ?? "").trim();
+      if (next.startsWith("/") || next.split("/").includes("..")) {
+        throw new Error(
+          "dockerContext must be a relative path with no '..' components",
+        );
+      }
+      svc.dockerContext = next || ".";
+      return { setDockerContext: svc };
     }
     case "DeleteService": {
       // Danger-zone delete (w5/m14), mirroring DeleteDatabase: drop the service

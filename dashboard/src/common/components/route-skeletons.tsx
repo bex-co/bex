@@ -2005,8 +2005,10 @@ function SettingsSectionSkeleton({
     case "build": {
       // A cron job's Build card alone, with Auto-Deploy folded in. Every other
       // build shows Build and Deploy cards; a Dockerfile build shows Dockerfile
-      // Path and a Docker Command where a native one shows Build and Start
-      // Commands.
+      // Path, Docker Build Context Directory and a Docker Command where a
+      // native one shows Build and Start Commands. The context row matches
+      // Dockerfile Path's height at every width (w8/m128, measured in
+      // Chromium at 390/640/1024/1440): +134px below sm, +114px from sm.
       if (isCronType(type)) {
         return (
           <SettingsFormCardSkeleton
@@ -2019,9 +2021,9 @@ function SettingsSectionSkeleton({
       return (
         <>
           <SettingsFormCardSkeleton
-            fields={7}
+            fields={docker ? 8 : 7}
             className={
-              docker ? "h-[796px] sm:h-[664px]" : "h-[816px] sm:h-[664px]"
+              docker ? "h-[930px] sm:h-[778px]" : "h-[816px] sm:h-[664px]"
             }
           />
           {isStaticSiteType(type) ? (

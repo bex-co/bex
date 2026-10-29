@@ -309,6 +309,12 @@ vi.mock("@/features/services/hooks/use-dockerfile-path", () => ({
     busy: false,
   }),
 }));
+vi.mock("@/features/services/hooks/use-docker-context", () => ({
+  useDockerContext: () => ({
+    setDockerContext: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
 vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
   usePreDeployCommand: () => ({
     setPreDeployCommand: vi.fn(async () => true),
@@ -371,6 +377,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     buildCommand: null,
     startCommand: null,
     dockerfilePath: null,
+    dockerContext: null,
     buildFilter: null,
     autoDeploy: null,
     autoDeployTrigger: null,
@@ -1098,6 +1105,9 @@ describe("ServiceSettingsPage", () => {
     );
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Docker Build Context Directory"),
+    ).not.toBeInTheDocument();
   });
 
   it("hides command and Dockerfile controls for a git-sourced static site", async () => {
@@ -1120,6 +1130,9 @@ describe("ServiceSettingsPage", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Docker Build Context Directory"),
+    ).not.toBeInTheDocument();
   });
 
   // w4/246: a static rebuild publishes a new revision prefix
@@ -1311,5 +1324,22 @@ describe("ServiceSettingsPage", () => {
       screen.queryByRole("textbox", { name: "Build Command" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Dockerfile Path")).toBeInTheDocument();
+  });
+
+  it("reads the Docker Build Context Directory back the way the server reports it (w8/m128)", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/render-examples/twingate-example",
+      rootDir: "example-pserv",
+      runtime: "docker",
+      builder: "dockerfile",
+      dockerfilePath: "./Dockerfile",
+      dockerContext: ".",
+    });
+    renderSettings();
+
+    await screen.findByText("Build", { selector: ":not(a)" });
+    expect(
+      screen.getByRole("textbox", { name: "Docker Build Context Directory" }),
+    ).toHaveValue(".");
   });
 });
