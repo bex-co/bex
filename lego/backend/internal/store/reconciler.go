@@ -1387,6 +1387,13 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	if releaseCanceledFor(open, app) {
 		return DeployCanceled
 	}
+	// The release a cancel left running is this row's until the operator rolls
+	// it again: a saved-image survivor was replaced by the canceled request, so
+	// the reported release is briefly the canceled one (w8/m117). Its evidence
+	// is not this row's; wait, within the gate timeout.
+	if awaitingSurvivor(open, app) && !timedOut {
+		return ""
+	}
 	if status, settled := supersededDeployStatus(open, app, timedOut); settled {
 		return status
 	}
@@ -1525,6 +1532,20 @@ func restartRelease(app *appv1alpha1.App) bool {
 func endedWithNewerCancel(open Deploy, app *appv1alpha1.App) bool {
 	canceled, ok := canceledReleaseGeneration(app)
 	return ok && open.Generation != 0 && canceled > open.Generation && app.Status.ReleaseGeneration < open.Generation
+}
+
+// awaitingSurvivor reports that the latest request's cancel named this row's
+// release as the one it leaves running (AnnotationSurvivingReleaseGeneration)
+// and the operator has not made it the reported release yet. A deploy requested
+// since replaces both, and the row closes as superseded as before.
+func awaitingSurvivor(open Deploy, app *appv1alpha1.App) bool {
+	survivor, ok := generationAnnotation(app, appv1alpha1.AnnotationSurvivingReleaseGeneration)
+	if !ok || open.Generation != survivor || app.Status.ReleaseGeneration == survivor {
+		return false
+	}
+	canceled, stamped := canceledReleaseGeneration(app)
+	requested, _ := generationAnnotation(app, appv1alpha1.AnnotationReleaseGeneration)
+	return stamped && canceled > survivor && requested == canceled
 }
 
 // canceledAlongReason names the deploy whose cancel ended this row's release

@@ -984,9 +984,12 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // settings, so a canceled configuration change or blueprint sync must not ride
 // along with it. The deploy ahead must be a source build too — one selecting a
 // recorded image (a rollback or restart) runs a release configuration the
-// pending deploy has since replaced.
+// pending deploy has since replaced. A saved-image service qualifies on the same
+// terms: neither deploy selected an image of its own, so both requested the
+// saved spec, and the operator rolls the survivor again under its own
+// generation (redispatchSurvivor).
 func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID string, d store.Deploy) (*store.Deploy, error) {
-	if a.Spec.Repo == "" || !d.OverlapPending || d.Image != "" || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
+	if (a.Spec.Repo == "" && a.Spec.Image == "") || !d.OverlapPending || d.Image != "" || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
 		return nil, nil
 	}
 	open, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
