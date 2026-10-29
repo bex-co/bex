@@ -299,10 +299,57 @@ func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	if len(executor.Command) != 3 || executor.Command[0] != "/bin/sh" || executor.Command[2] != "printf private-command" {
 		t.Fatalf("exec command = %#v", executor.Command)
 	}
-	time.Sleep(20 * time.Millisecond)
+	// The session ends when the client closes the transport (w6/096).
+	_ = client.Close()
+	waitEnded(t, st)
 	started, ended := st.StartedSessions(), st.EndedSessions()
 	if len(started) != 1 || started[0].Subject != "user-1" || started[0].ServiceID == "" || len(ended) != 1 {
 		t.Fatalf("audit start/end = %+v / %+v", started, ended)
+	}
+}
+
+// w6/096: a finished exec leaves the transport to the client. The server
+// closing it first reset the connection at the edge proxy and dropped the
+// tail of the output still in flight (1 MB arrived as 368 KB).
+func TestGatewayWaitsForTheClientToCloseAfterExec(t *testing.T) {
+	clientSigner := signer(t)
+	st, resolver, executor := &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}
+	addr, stop := startGateway(t, st, resolver, executor, clientSigner)
+	defer stop()
+	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.CombinedOutput("true"); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	// Still open: a second channel is refused by the single-session rule,
+	// not lost to a closed transport.
+	if _, err := client.NewSession(); err == nil || !strings.Contains(err.Error(), "only one session channel") {
+		t.Fatalf("second channel after exec: %v, want the single-session refusal on a live transport", err)
+	}
+	if len(st.EndedSessions()) != 0 {
+		t.Fatal("session audit ended before the client closed the transport")
+	}
+	_ = client.Close()
+	waitEnded(t, st)
+}
+
+// waitEnded waits for the gateway to record one ended session.
+func waitEnded(t *testing.T, st *gatewaytest.FakeStore) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for len(st.EndedSessions()) == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(st.EndedSessions()) != 1 {
+		t.Fatal("session audit did not end once the client closed the transport")
 	}
 }
 

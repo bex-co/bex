@@ -439,8 +439,13 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// The connection is deliberately single-session. Drain the connection's
 		// channel stream while the accepted exec is active so a client cannot
 		// queue a second shell behind a long-running first one and consume server
-		// resources indefinitely. Closing conn below ends this goroutine.
-		go rejectAdditionalChannels(channels)
+		// resources indefinitely. Closing conn below ends this goroutine; so does
+		// the client closing it, which clientClosed reports.
+		clientClosed := make(chan struct{})
+		go func() {
+			rejectAdditionalChannels(channels)
+			close(clientClosed)
+		}()
 		// codex round-9 #6: keep re-running the channel-open reauthorization
 		// while the exec is LIVE, not only at admission — a revocation cancels
 		// the stream's context from below. sessionCtx still bounds the lifetime.
@@ -462,9 +467,24 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// One SSH connection maps to one exec stream. This bounds resource use and
 		// rejects attempts to multiplex extra shells over an authorized channel.
 		result = "completed"
+		// Let the client close the transport, as OpenSSH's sshd does (w6/096).
+		// Output the exec wrote may still be in flight, in this socket's send
+		// buffer or the edge proxy's; closing first while the client's window
+		// adjustments sit unread resets the connection and drops that tail, so
+		// `ssh host 'head -c 1M /dev/urandom'` delivered a fraction of it.
+		select {
+		case <-clientClosed:
+		case <-sessionCtx.Done():
+		case <-time.After(clientCloseGrace):
+		}
 		return nil
 	}
 }
+
+// clientCloseGrace bounds how long a finished single-session connection waits
+// for its client to disconnect, so a client that never closes cannot hold a
+// session slot.
+const clientCloseGrace = 30 * time.Second
 
 // serveMultiChannel serves an agent-session sandbox connection that may open
 // several concurrent session channels (Zed's ControlMaster protocol, its
