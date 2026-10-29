@@ -1,6 +1,6 @@
 # w8 · m140 — Password-free internal Key Value connections
 
-**Worker:** worker1 **Goal:** Render's host/port-only Key Value clients work in every workspace without restarting Valkey. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t007 done; t008 hosted acceptance and t009 closeout pending deployment)
+**Worker:** worker1 **Goal:** Render's host/port-only Key Value clients work in every workspace without restarting Valkey. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -13,8 +13,8 @@
 | t005 | Render parity — **DONE** | 20m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t006 |
-| t008 | Hosted acceptance | 40m | t007 |
-| t009 | Closeout | 10m | t008 |
+| t008 | Hosted acceptance — **DONE 2026-10-29** | 40m | t007 |
+| t009 | Closeout — **DONE 2026-10-29** | 10m | t008 |
 
 ## Definition of done
 
@@ -50,3 +50,12 @@ Full operator, types and fresh-dependency backend suites, proxy race tests, real
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+The 2026-10-28 hosted run (t008) passed every leg except cross-workspace denial, which this run covers. Production pin `03043c7df363`, 12:48–12:55 UTC. Fixtures: short-lived Starter Key Value `red-dbhk164jakpc739ce8hg` (`qa-20261029-lx9t-kv`, bex-canary, private; Starter because the free Key Value slot is full), free probe `srv-dbhk1bcjakpc739ce8jg` in bex-canary and free probe `srv-dbhk1bkjakpc739ce8lg` in workspace `bex` (scheduled on the Valkey pod's node); both probes send raw RESP with no password.
+
+- **Same workspace:** `internalConnectionString` `redis://red-dbhk164jakpc739ce8hg:6379`; the short name, the full service DNS, the ClusterIP and the proxy pod IP all answer `+PONG`/`+OK`/`$4 same`. The `-backend` Service and the Valkey pod IP answer `-NOAUTH` (only the proxy accepts password-free clients); through the proxy `CONFIG SET` is refused `-NOPERM` and `ACL WHOAMI` is `default`.
+- **Other workspace:** the short name does not resolve; the Service DNS/ClusterIP, the `-backend` Service, the proxy pod IP and the Valkey pod IP on 6379/6380/9121 all time out at TCP, while the same probe reaches `1.1.1.1:443` and its own Service.
+- Cross-environment denial through the proxy was shown by m136 today. Not re-run (passed 2026-10-28): webdis host/port, the old credentialed URL, external TLS AUTH.
+- Cleanup: probes and Key Value deleted (204 → 404); no matching cluster objects remain.
