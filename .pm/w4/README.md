@@ -348,6 +348,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **438** — [Logs "Filters" popover opens partly off-screen on short windows, hiding the Level control](438.md) (~25m) ← live `/qa-find-bugs w4` loop run e38f, 2026-10-29 UTC (`muse.env`, pin `b0804030f4d3`; minor). At 999×549 the 366 px panel sits at y −77; at 1280×640 it overflows the bottom by 15 px. The shared `popover.tsx:30` lacks the `--radix-popover-content-available-height` cap that `select.tsx` and `dropdown-menu.tsx` already use.
 - [ ] **437** — [A crash-looping Docker web service says "Waiting for the container to start" for 15 minutes instead of naming the crash](437.md) (~40m) ← live `/qa-find-bugs w4` loop run 813c, 2026-10-29 UTC (`muse.env`, pin `69f0b17d1fad`; minor). The same broken `dockerCommand` with `PORT` set reports the crash-loop diagnosis within 3 minutes; `reportWebHTTPSelection` (`web_image_http.go:189`) halts the pass before `rolloutStallDiagnosis` (`app_controller.go:3565`) runs.
 - [ ] **436** — [Custom domains: every row's "Show DNS setup" and actions-menu buttons share one accessible name](436.md) (~25m) ← live `/qa-find-bugs w4` loop run d25a, 2026-10-29 UTC (`muse.env`, pin `69f0b17d1fad`; minor). With three domain rows, all three triggers read "Open domain actions menu" / "Show DNS setup"; `custom-domains-section.tsx:274,287` use constant labels with `domain.name` in scope.
 
