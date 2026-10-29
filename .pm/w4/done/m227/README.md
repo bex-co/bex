@@ -1,6 +1,6 @@
 # w4 · m227 — Explain unavailable project resource lists
 
-**Worker:** worker4 **Goal:** a failed resource-list read cannot tell a customer that a populated environment is empty. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned replay on a deployed build at desktop and 390, then cleanup) open
+**Worker:** worker4 **Goal:** a failed resource-list read cannot tell a customer that a populated environment is empty. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: failed Services/Databases/KeyValues reads show "Count unavailable" and a read-only Try again, never a false zero; recovery restores the real rows; healthy Move/Delete controls preserved (loopx w4).
 
 ## Tasks (in order)
 
