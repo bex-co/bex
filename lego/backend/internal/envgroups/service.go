@@ -77,6 +77,12 @@ type Service struct {
 	// wires environments.ExitGuards; nil (environments unwired) has no
 	// environment to protect.
 	ExitGuards core.ExitGuardLoader
+	// ServiceEnvironment reads a service's environment from the control-plane
+	// store, which an environment move writes first; the App label follows on
+	// the store reconciler's next pass. Scoping guards read it here so moving a
+	// service and its group in one request does not see the service in its old
+	// environment (w4/m211). nil (store unwired) falls back to the App label.
+	ServiceEnvironment func(ctx context.Context, serviceID string) (string, error)
 
 	// Rollout records the deploy-history row every linked-service patch below
 	// owes the user: linking, unlinking, and changing a group's values all roll
@@ -543,7 +549,11 @@ func (s *Service) prepareCreateServices(
 		if _, ok := seen[key]; ok {
 			continue
 		}
-		if err := validateGroupServiceEnvironment(environmentID, key, a.Labels); err != nil {
+		env, err := s.serviceEnvironment(ctx, a)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := validateGroupServiceEnvironment(environmentID, key, env); err != nil {
 			return nil, nil, err
 		}
 		seen[key] = struct{}{}
@@ -1058,14 +1068,18 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	if slices.Contains(g.ServiceLinks, key) {
 		return nil
 	}
-	if err := validateGroupServiceEnvironment(g.EnvironmentID, key, a.Labels); err != nil {
+	serviceEnv, err := s.serviceEnvironment(ctx, a)
+	if err != nil {
+		return err
+	}
+	if err := validateGroupServiceEnvironment(g.EnvironmentID, key, serviceEnv); err != nil {
 		return err
 	}
 	if _, err := s.rollLinked(ctx, a, s.now(), gid, true); err != nil {
 		return err
 	}
 	_, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
-		if err := validateGroupServiceEnvironment(cur.EnvironmentID, key, a.Labels); err != nil {
+		if err := validateGroupServiceEnvironment(cur.EnvironmentID, key, serviceEnv); err != nil {
 			return err
 		}
 		if slices.Contains(cur.ServiceLinks, key) {
@@ -1287,8 +1301,7 @@ func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp string)
 // environment links to any service in the workspace, in an environment or not;
 // a group scoped to an environment links only to that environment's services
 // (w8/179).
-func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels map[string]string) error {
-	serviceEnvironment := labels[core.LabelEnvironment]
+func validateGroupServiceEnvironment(groupEnvironment, serviceID, serviceEnvironment string) error {
 	if groupEnvironment == "" || serviceEnvironment == groupEnvironment {
 		return nil
 	}
@@ -1300,6 +1313,18 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels 
 			"targetEnvironmentId": id.EnvironmentPublicID(groupEnvironment),
 		},
 	)
+}
+
+// serviceEnvironment is the environment a's service belongs to: the store's
+// row when wired, else the App label.
+func (s *Service) serviceEnvironment(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	if s.ServiceEnvironment != nil {
+		env, err := s.ServiceEnvironment(ctx, a.Labels[core.LabelAppID])
+		if !errors.Is(err, core.ErrNotFound) {
+			return env, err
+		}
+	}
+	return a.Labels[core.LabelEnvironment], nil
 }
 
 // validateLinkedServiceEnvironments refuses a group scope change to
@@ -1319,7 +1344,11 @@ func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links [
 		if err != nil {
 			return err
 		}
-		if env := a.Labels[core.LabelEnvironment]; env != environmentID {
+		env, err := s.serviceEnvironment(ctx, a)
+		if err != nil {
+			return err
+		}
+		if env != environmentID {
 			incompatible = append(incompatible, serviceID)
 		}
 	}

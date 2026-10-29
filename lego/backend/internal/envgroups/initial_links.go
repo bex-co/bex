@@ -147,7 +147,11 @@ func (s *Service) validateInitialGroup(ctx context.Context, g store.EnvGroup, se
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
 		return err
 	}
+	serviceEnv, err := s.serviceEnvironment(ctx, a)
+	if err != nil {
+		return err
+	}
 	return s.withGroupContent(ctx, g.ID, func(_ context.Context, fresh store.EnvGroup) error {
-		return validateGroupServiceEnvironment(fresh.EnvironmentID, service, a.Labels)
+		return validateGroupServiceEnvironment(fresh.EnvironmentID, service, serviceEnv)
 	})
 }
