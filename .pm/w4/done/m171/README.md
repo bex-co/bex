@@ -1,6 +1,6 @@
 # w4 · m171 — A deploy cut off by a user suspend closes canceled, not as a false health-gate failure
 
-**Worker:** worker4 **Goal:** suspending a service while a deploy is in flight closes that deploy `canceled` straight away, with a cancel reason naming the suspend. It is never left "In Progress" for 18 minutes and then failed with a health-gate line that blames the user's code. **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
+**Worker:** worker4 **Goal:** suspending a service while a deploy is in flight closes that deploy `canceled` straight away, with a cancel reason naming the suspend. It is never left "In Progress" for 18 minutes and then failed with a health-gate line that blames the user's code. **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: a deploy interrupted by suspend closes canceled with the suspend reason and no failure reason on REST, GraphQL, MCP and the dashboard, and resume restores the previous release (loopx w4).
 
 ## Tasks (in order)
 
