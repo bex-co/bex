@@ -141,3 +141,19 @@ func TestStallReasonClearsOnProgressAndReadyDiagnosisWins(t *testing.T) {
 		t.Fatalf("reason = %q for another release's row with no stall, want none", got)
 	}
 }
+
+// A later deploy that times out while the previous release keeps serving closes
+// from its last stall diagnosis, which was worded while the rollout was still
+// open; the closed row must read as the failure it is (w8/219, the 2026-10-29
+// hosted replay: "…has not succeeded, so the rollout is waiting…" on an
+// update_failed row).
+func TestAFailedRowsStallReasonReadsAsTheOutcome(t *testing.T) {
+	app := &appv1alpha1.App{Status: appv1alpha1.AppStatus{ReleaseGeneration: 3}}
+	stall := "The readiness check GET /hc on port 10000 " + appv1alpha1.ProbeStallWaiting + "."
+	open := Deploy{Generation: 3, Status: DeployUpdateInProgress, StallReason: stall}
+	got, _ := deployCloseFailureReason(app, open, DeployUpdateFailed, false)
+	want := "The readiness check GET /hc on port 10000 " + appv1alpha1.ProbeStallFailed + "."
+	if got != want {
+		t.Fatalf("reason = %q, want %q", got, want)
+	}
+}

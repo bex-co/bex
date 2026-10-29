@@ -3792,7 +3792,7 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 				if cs.State.Waiting.Reason == reasonInvalidImageName {
 					return reasonInvalidImageName, fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
 				}
-				return imagePullBackOff, fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
+				return imagePullBackOff, fmt.Sprintf("%s: %s: %s", appv1alpha1.ImagePullStallWaiting, cs.Image, cs.State.Waiting.Message)
 			}
 		}
 	}
@@ -5676,7 +5676,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				}
 				return crashLoopBackOff, msg
 			case imagePullBackOff, "ErrImagePull":
-				return imagePullBackOff, "image pull is failing: " + w.Message
+				return imagePullBackOff, appv1alpha1.ImagePullStallWaiting + ": " + w.Message
 			case reasonInvalidImageName:
 				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||
 					p.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
@@ -5773,8 +5773,8 @@ func unschedulableMessage(scheduler string) string {
 // unschedulableWaiting is the in-flight half of an unschedulable diagnosis;
 // terminalStallMessage swaps it for unschedulableFailed.
 const (
-	unschedulableWaiting = "the instance starts as soon as capacity frees up"
-	unschedulableFailed  = "the rollout window ended before capacity freed up; deploy again later"
+	unschedulableWaiting = appv1alpha1.UnschedulableStallWaiting
+	unschedulableFailed  = appv1alpha1.UnschedulableStallFailed
 )
 
 // runtimeStartError is the terminated-state reason the kubelet records when the
@@ -5892,8 +5892,8 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 // probeStallWaiting is the in-flight half of a probe stall message;
 // terminalStallMessage swaps it for probeStallFailed once the deploy has given up.
 const (
-	probeStallWaiting = "has not succeeded, so the rollout is waiting"
-	probeStallFailed  = "never succeeded within the rollout window, so the deploy failed"
+	probeStallWaiting = appv1alpha1.ProbeStallWaiting
+	probeStallFailed  = appv1alpha1.ProbeStallFailed
 )
 
 // terminalStallMessage restates an in-flight stall diagnosis as the outcome
@@ -5904,7 +5904,7 @@ func terminalStallMessage(reason, msg string) string {
 	case reasonHealthCheckFailing:
 		return strings.Replace(msg, probeStallWaiting, probeStallFailed, 1)
 	case imagePullBackOff:
-		return strings.Replace(msg, "image pull is failing", "image pull failed", 1)
+		return strings.Replace(msg, appv1alpha1.ImagePullStallWaiting, appv1alpha1.ImagePullStallFailed, 1)
 	case appv1alpha1.ReasonUnschedulable:
 		return strings.Replace(msg, unschedulableWaiting, unschedulableFailed, 1)
 	}

@@ -1033,9 +1033,10 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 			}
 		}
 		// A park reads Ready=AutoHibernated, which names nothing; the row's last
-		// stall diagnosis still does (w6/m147).
+		// stall diagnosis still does (w6/m147), restated as the outcome it now is
+		// (w8/219): the in-flight wording says the rollout is still waiting.
 		if open.StallReason != "" {
-			return open.StallReason, ""
+			return appv1alpha1.TerminalStallText(open.StallReason), ""
 		}
 		if matchesObservedRelease {
 			return timedOutDeployReason(status), ""
