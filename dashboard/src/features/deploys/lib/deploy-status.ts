@@ -150,6 +150,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerNewCommit";
     case "config_change":
       return "deploys.triggerConfigChange";
+    case "settings_change":
+      return "deploys.triggerSettingsChange";
     case "restart":
       return "deploys.triggerRestart";
     case "deployed_by_render":

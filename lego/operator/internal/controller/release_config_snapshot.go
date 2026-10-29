@@ -122,9 +122,9 @@ func snapshotName(app *appv1alpha1.App, source string, gen int64) string {
 // itself handed release N+1's migration release N's DATABASE_URL (w1/m152 t004).
 // Reading the mutable sources is exactly what these steps did before snapshots.
 //
-// A held release running on its adopted view (withViewedRelease) reads its own
-// adoption snapshots instead: the mutable sources already hold a newer save's
-// values (w8/m121).
+// A release running on its adopted view (withViewedRelease, or the pending
+// view of a save waiting for a deploy) reads its own adoption snapshots
+// instead: the mutable sources already hold a newer save's values (w8/m121).
 func inFlightRelease(ctx context.Context, app *appv1alpha1.App) *appv1alpha1.App {
 	release := app.DeepCopy()
 	release.Status.ConfigSnapshotGeneration = 0
@@ -508,7 +508,14 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 	if err != nil {
 		return err
 	}
-	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(runtime), template: tmpl})
+	record := &runtimeConfigRecord{spec: releaseRecordSpec(runtime), template: tmpl}
+	// The release's spec, for a later save to be held against
+	// (pendingReleaseView): kept once recorded, and taken only while the spec
+	// still is this release's, never from a pass that renders a newer save.
+	if desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
+		record.adoptedIfAbsent = &app.Spec
+	}
+	return r.writeRuntimeConfigRecord(ctx, app, gen, record)
 }
 
 // servedPodTemplateForCancel returns the recorded pod template of the last served

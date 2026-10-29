@@ -66,11 +66,14 @@ const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 // without changing the selected image/environment or opening another deploy.
 const AnnotationReleaseConfigScaled = "app.bex.co/release-config-scaled"
 
-// AnnotationPendingSourceGeneration marks a generation that only changes the
-// configured repo/branch/image. The operator keeps the active release serving
+// AnnotationPendingSourceGeneration marks a generation whose release-relevant
+// change is saved but not deployed: Update Source (repo/branch/image), a
+// rolling write on a suspended service, and every Render-shaped Update
+// Service setting (PATCH /v1/services/{id}, w8/m135). The operator keeps the
+// active release serving, rendered from the settings it was adopted with,
 // until a later deploy verb stamps AnnotationReleaseGeneration at this or a
-// newer generation. This is Render's Update Source contract: configuration is
-// saved now; the next deploy consumes it.
+// newer generation. This is Render's contract: configuration is saved now;
+// the next deploy consumes it.
 const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
 
 // AnnotationPendingGroupLinks holds env-group links and unlinks an

@@ -129,6 +129,14 @@ func TestPlatformRebuildApplyRebuildsTheLiveCommitOnce(t *testing.T) {
 	if got := renderTrigger(store.TriggerDeployedByRender); got != "deployed_by_render" {
 		t.Errorf("renderTrigger = %q, want Render's deployed_by_render", got)
 	}
+	// A settings save and an environment save stay apart in bex's history
+	// (only the environment one reads envUpdated, w8/m135); both are Render's
+	// service_updated.
+	for _, trigger := range []string{store.TriggerConfigChange, store.TriggerSettingsChange} {
+		if got := renderTrigger(trigger); got != "service_updated" {
+			t.Errorf("renderTrigger(%s) = %q, want service_updated", trigger, got)
+		}
+	}
 
 	again, err := svc.PlatformRebuild(context.Background(), PlatformRebuildRequest{Since: rebuildSince, Apply: true, Limit: 10})
 	if err != nil {

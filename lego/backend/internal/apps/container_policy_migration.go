@@ -46,7 +46,7 @@ type ContainerPolicyMigration struct {
 // decisions, w6/m149 t008). Upgrades, Blueprint syncs and redeploys never
 // migrate a service; this operator-run step is the only way, one service id
 // at a time. Without apply it only plans. Applied, it persists the row and
-// rolls the service once as a tracked config_change deploy, under the App's
+// rolls the service once as a tracked settings_change deploy, under the App's
 // optimistic lock; a refusal found under the lock restores the row. No
 // ownership step is needed: a policy change keeps the pod's UID mapping
 // (t002).
@@ -77,7 +77,7 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 	if err := s.Store.SetAppContainerPolicy(ctx, id, appv1alpha1.ContainerPolicyRenderV1); err != nil {
 		return plan, err
 	}
-	err = s.rollouts().PatchLocked(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+	err = s.rollouts().PatchLocked(ctx, s.Client, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
 		if err := containerPolicyMigratable(a); err != nil {
 			return err
 		}

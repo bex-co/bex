@@ -315,7 +315,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // to `other` too; TestRenderConformance seeds every store.AllTriggers entry.
 func renderTrigger(trigger string) string {
 	switch trigger {
-	case store.TriggerConfigChange:
+	case store.TriggerConfigChange, store.TriggerSettingsChange:
 		return "service_updated"
 	case store.TriggerAPI, store.TriggerManual, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender:
 		return trigger

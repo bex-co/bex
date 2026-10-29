@@ -4233,14 +4233,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Deploy event trigger: manual",
   },
   "services.eventsTriggerEnvUpdated": {
-    // Matches deploys.triggerConfigChange word for word (w4/100): the backend
-    // maps EVERY config write — a Settings field, an env var, a secret file, an
-    // env-group link — onto Render's envUpdated flag, so "Environment updated"
-    // told a reader who had just edited a start command that their environment
-    // had changed. The deploys list had already settled the wording.
+    // Matches deploys.triggerConfigChange word for word (w4/100). Since w8/m135
+    // only an environment write (env var, secret file, env-group link) sets
+    // Render's envUpdated flag; a Settings save deploys as settings_change and
+    // sets no flag.
     message: "Config Change",
     description:
-      "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+      "Deploy event trigger: an environment change (env var, secret file, or env-group edit); a Settings save no longer sets envUpdated (w8/m135)",
   },
   "services.eventsTriggerDeployHook": {
     message: "Deploy Hook",
