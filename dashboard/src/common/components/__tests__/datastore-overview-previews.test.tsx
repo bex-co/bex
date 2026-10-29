@@ -51,10 +51,14 @@ vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
   }),
 }));
 // The exercised private store with no rules.
+const networkingState: { isPublic: boolean | undefined; loading: boolean } = {
+  isPublic: false,
+  loading: false,
+};
 vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   useKeyValueNetworking: () => ({
     allowList: [],
-    isPublic: false,
+    ...networkingState,
     savingAllowList: false,
     saveAllowList: vi.fn(),
   }),
@@ -280,6 +284,19 @@ describe("Key Value policy previews (w4/299)", () => {
 });
 
 describe("Key Value Networking preview (w4/303)", () => {
+  afterEach(() => {
+    Object.assign(networkingState, { isPublic: false, loading: false });
+  });
+
+  it("keeps the preview while the panel's own allowlist read is pending", () => {
+    const pending = card(<KeyValueOverviewSkeleton />, "networking");
+    Object.assign(networkingState, { isPublic: undefined, loading: true });
+    const loadingCard = card(<KeyValueNetworkingPanel id={keyValue.id} />);
+    expect(loadingCard.hasAttribute("inert")).toBe(true);
+    expect(shape(loadingCard)).toBe(shape(pending));
+    expect(loadingCard.textContent).not.toMatch(/No IP rules/);
+  });
+
   it("previews the ready allowlist form, not one loading block", () => {
     const pending = card(<KeyValueOverviewSkeleton />, "networking");
     const readyCard = card(<KeyValueNetworkingPanel id={keyValue.id} />);
