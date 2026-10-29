@@ -346,11 +346,18 @@ func TestCreateResponseReportsLiteralPortEnv(t *testing.T) {
 func TestSetPortOnWebImageServiceSelectsConfiguredMode(t *testing.T) {
 	app := portApp("web", appv1alpha1.TypeWebService, 10000)
 	app.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{PrimaryPort: 10000}
 	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-web"}
 	st := &recordingStore{}
 	svc, cl := newService(st, app)
-	if _, err := svc.SetPort(t.Context(), "web", 3001); err != nil {
+	view, err := svc.SetPort(t.Context(), "web", 3001)
+	if err != nil {
 		t.Fatal(err)
+	}
+	// The published port moves at promotion; the Settings row reads the saved
+	// one straight away (w4/433).
+	if view.Port != 10000 || view.ConfiguredPort != 3001 {
+		t.Fatalf("view port=%d configuredPort=%d, want 10000 and 3001", view.Port, view.ConfiguredPort)
 	}
 	got := getApp(t, cl, "web")
 	if got.Spec.PortMode != appv1alpha1.PortModeWebImageConfiguredV1 || got.Spec.Port != 3001 {
@@ -358,6 +365,12 @@ func TestSetPortOnWebImageServiceSelectsConfiguredMode(t *testing.T) {
 	}
 	if len(st.portCalls) != 1 || st.portCalls[0].mode != appv1alpha1.PortModeWebImageConfiguredV1 || st.portCalls[0].port != 3001 {
 		t.Fatalf("durable port update = %+v, want web-image-configured-v1 3001", st.portCalls)
+	}
+	// A web service's own PORT env wins over the saved port (w4/m243), so the
+	// Settings row shows it.
+	got.Status.EnvPort = 8080
+	if view := svc.view(got); view.ConfiguredPort != 8080 {
+		t.Fatalf("configuredPort with PORT env = %d, want 8080", view.ConfiguredPort)
 	}
 	if _, err := svc.SetPort(t.Context(), "web", 18012); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("reserved web image port: got %v, want bad request", err)

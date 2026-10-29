@@ -96,11 +96,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	}
 	// The configured primary: an explicit port, or a web service's own PORT
 	// env (EnvPort), which wins over the image's choice (w4/m243).
-	configured := configuredPortMode(app.Spec.PortMode)
-	configuredPrimary := app.Spec.Port
-	if app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0 {
-		configured, configuredPrimary = true, app.Status.EnvPort
-	}
+	configuredPrimary, configured := app.ConfiguredImagePort()
 	configuredPort := int32(0)
 	if configured {
 		configuredPort = configuredPrimary
