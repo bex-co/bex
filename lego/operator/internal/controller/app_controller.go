@@ -3747,7 +3747,7 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 	}
 	switch c.Reason {
 	case reasonHealthCheckFailing, crashLoopBackOff, imagePullBackOff, reasonInvalidImageName, createContainerConfigError,
-		appv1alpha1.ReasonUnschedulable, appv1alpha1.ReasonContainerCreating:
+		appv1alpha1.ReasonUnschedulable, appv1alpha1.ReasonContainerCreating, reasonRolloutBlockedByQuota:
 		return c.Reason, c.Message
 	}
 	return "", ""
@@ -5933,6 +5933,8 @@ func terminalStallMessage(reason, msg string) string {
 		return strings.Replace(msg, appv1alpha1.ImagePullStallWaiting, appv1alpha1.ImagePullStallFailed, 1)
 	case appv1alpha1.ReasonUnschedulable:
 		return strings.Replace(msg, unschedulableWaiting, unschedulableFailed, 1)
+	case reasonRolloutBlockedByQuota:
+		return strings.Replace(msg, appv1alpha1.QuotaStallWaiting, appv1alpha1.QuotaStallFailed, 1)
 	}
 	return msg
 }
@@ -5998,24 +6000,27 @@ func probeTargetDescription(probe *corev1.Probe) string {
 	return "the configured health check"
 }
 
-// rolloutQuotaBlockMessage is the stuck-pod diagnosis for the rollout that has
-// NO pods to inspect: the current revision's ReplicaSet cannot create its
-// first pod because the workspace ResourceQuota rejects it, so no pod object
-// ever exists for stuckPodMessage to see — the App would sit
-// RolloutProgressing until the backend's 18-minute health gate fails it with
-// the generic timeout line, while the ReplicaSet status already carries the
-// exact quota verdict (a ReplicaFailure/FailedCreate condition whose message
-// the API server phrased as "exceeded quota: …"). This completes
-// deployment_projection.go's two-timer design for the quota class: the
-// mechanism's own specific verdict lands on the App condition long before the
-// observer's generic gate. The datastore siblings of the same diagnosis are
-// DiskGrowthBlockedByQuota (database_autoscale.go) and StorageBlockedByQuota
-// (keyvalue_controller.go).
+// rolloutQuotaBlockMessage is the stall diagnosis for a rollout whose new pod
+// the workspace ResourceQuota refuses: the current template's ReplicaSet cannot
+// create it, so no pod object exists for stuckPodMessage to see, and the App
+// would sit RolloutProgressing until the deploy's health gate failed it with
+// the generic timeout line — while the ReplicaSet status already carries the
+// exact verdict (a ReplicaFailure/FailedCreate condition whose message the API
+// server phrased as "exceeded quota: …"). The datastore siblings of the same
+// diagnosis are DiskGrowthBlockedByQuota (database_autoscale.go) and
+// StorageBlockedByQuota (keyvalue_controller.go).
 //
-// Empty when the rollout is merely progressing, when the current revision
-// already has pods (stuckPodMessage owns that world), or when the RS controller
-// has recorded no quota rejection — a transiently unschedulable-looking moment
-// must not be misreported, because users act on this message.
+// The verdict is read from the newest ReplicaSet of the current release, not
+// from any ReplicaSet carrying its revision label: a release can roll its
+// template more than once (image-port discovery swaps its probe), and the
+// replaced template's ReplicaSet keeps serving with a pod while the new one's
+// surge pod is refused (w8/223). The ReplicaSet controller clears the condition
+// on its first successful sync, so a ReplicaSet that has some pods but cannot
+// create the rest is reported too; stuckPodMessage, run first, still owns any
+// pod that exists and is stuck.
+//
+// Empty when the rollout is merely progressing or the ReplicaSet controller has
+// recorded no quota rejection — users act on this message.
 func (r *AppReconciler) rolloutQuotaBlockMessage(ctx context.Context, dep *appsv1.Deployment) (string, string) {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
 		return "", ""
@@ -6032,25 +6037,89 @@ func (r *AppReconciler) rolloutQuotaBlockMessage(ctx context.Context, dep *appsv
 		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return "", ""
 	}
+	var current *appsv1.ReplicaSet
+	newest := int64(-1)
 	for i := range rss.Items {
 		rs := &rss.Items[i]
 		if rs.Labels[labelRevision] != revision {
 			continue
 		}
-		if rs.Status.Replicas != 0 {
-			return "", "" // the new revision has pods; stuckPodMessage owns the diagnosis
+		// The Deployment controller numbers its ReplicaSets in rollout order; the
+		// current template's is the highest.
+		n, _ := strconv.ParseInt(rs.Annotations[deploymentRevisionAnnotation], 10, 64)
+		if n > newest {
+			current, newest = rs, n
 		}
-		for _, c := range rs.Status.Conditions {
-			if c.Type == appsv1.ReplicaSetReplicaFailure && c.Status == corev1.ConditionTrue &&
-				c.Reason == "FailedCreate" && strings.Contains(c.Message, "exceeded quota") {
-				return "RolloutBlockedByQuota",
-					"the rollout is blocked by the workspace resource quota — the new revision's pod cannot be created: " +
-						c.Message + " — the rollout resumes on its own once quota headroom is available (scale down, free resources, or upgrade the plan)"
-			}
+	}
+	if current == nil {
+		return "", ""
+	}
+	for _, c := range current.Status.Conditions {
+		if c.Type == appsv1.ReplicaSetReplicaFailure && c.Status == corev1.ConditionTrue &&
+			c.Reason == "FailedCreate" && strings.Contains(c.Message, "exceeded quota") {
+			return reasonRolloutBlockedByQuota, quotaStallMessage(c.Message)
 		}
-		return "", "" // the current revision's RS has no quota verdict
 	}
 	return "", ""
+}
+
+// reasonRolloutBlockedByQuota is rolloutQuotaBlockMessage's Ready reason, a
+// wire value bex-api lists among its stall diagnoses.
+const reasonRolloutBlockedByQuota = "RolloutBlockedByQuota"
+
+// quotaVerdictPattern parses the quota admission plugin's refusal:
+// "exceeded quota: <name>, requested: <r=q,…>, used: <r=q,…>, limited: <r=q,…>".
+var quotaVerdictPattern = regexp.MustCompile(`exceeded quota: [^,]+, requested: (\S+), used: (\S+), limited: (\S+)`)
+
+// quotaStallMessage words a quota refusal for the deploy row. It names only the
+// workspace's own quota numbers — what the new instance asks for, what is in
+// use, and the limit — never the pod or quota object, nor what uses it.
+func quotaStallMessage(verdict string) string {
+	detail := ""
+	if m := quotaVerdictPattern.FindStringSubmatch(verdict); m != nil {
+		used, limited := quotaAmounts(m[2]), quotaAmounts(m[3])
+		var parts []string
+		named := map[string]bool{}
+		for kv := range strings.SplitSeq(m[1], ",") {
+			res, requested, _ := strings.Cut(kv, "=")
+			// A plan caps limits and requests alike; one line per resource.
+			name := quotaResourceName(res)
+			if named[name] {
+				continue
+			}
+			named[name] = true
+			parts = append(parts, fmt.Sprintf("%s: %s of %s in use, the new instance needs %s",
+				name, used[res], limited[res], requested))
+		}
+		detail = " (" + strings.Join(parts, "; ") + ")"
+	}
+	return "the workspace's resource quota is full" + detail + ": " + appv1alpha1.QuotaStallWaiting +
+		" — to free it, delete, suspend or downsize another service, or upgrade the plan."
+}
+
+// quotaAmounts splits "r1=q1,r2=q2" into a map.
+func quotaAmounts(list string) map[string]string {
+	amounts := map[string]string{}
+	for kv := range strings.SplitSeq(list, ",") {
+		if res, q, ok := strings.Cut(kv, "="); ok {
+			amounts[res] = q
+		}
+	}
+	return amounts
+}
+
+// quotaResourceName is a ResourceQuota resource in the terms a plan uses.
+func quotaResourceName(res string) string {
+	res = strings.TrimPrefix(strings.TrimPrefix(res, "limits."), "requests.")
+	switch res {
+	case "cpu":
+		return "CPU"
+	case "pods":
+		return "instances"
+	case "ephemeral-storage":
+		return "disk"
+	}
+	return res
 }
 
 // setPublicRoutingCondition records whether this App has a derivable public

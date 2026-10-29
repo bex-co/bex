@@ -23,6 +23,7 @@ func TestTerminalStallTextRestatesEachInFlightPhrase(t *testing.T) {
 		ProbeStallWaiting:         ProbeStallFailed,
 		ImagePullStallWaiting:     ImagePullStallFailed,
 		UnschedulableStallWaiting: UnschedulableStallFailed,
+		QuotaStallWaiting:         QuotaStallFailed,
 	} {
 		if got := TerminalStallText("x " + waiting + " y"); got != "x "+failed+" y" {
 			t.Errorf("TerminalStallText(%q) = %q", waiting, got)

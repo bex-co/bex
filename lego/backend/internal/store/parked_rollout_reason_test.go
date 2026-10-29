@@ -38,6 +38,10 @@ func TestParkedRolloutClosesWithItsLastStallDiagnosis(t *testing.T) {
 		{"crash loop", "CrashLoopBackOff", "the container keeps crashing on start (last exit code 127)"},
 		{"tcp probe", "HealthCheckFailing", "the container is running but its readiness health check has not succeeded, " +
 			"so the rollout is waiting: a TCP connect to port 3000."},
+		// w8/223: the workspace quota refused the new instance.
+		{"quota", "RolloutBlockedByQuota", "the workspace's resource quota is full (memory: 5888Mi of 6Gi in use, " +
+			"the new instance needs 512Mi): " + appv1alpha1.QuotaStallWaiting +
+			" — to free it, delete, suspend or downsize another service, or upgrade the plan."},
 	} {
 		for _, park := range []string{appv1alpha1.ReasonAutoHibernated, appv1alpha1.ReasonSuspended} {
 			t.Run(tc.name+"/"+park, func(t *testing.T) {
@@ -95,6 +99,9 @@ func TestParkedRolloutClosesWithItsLastStallDiagnosis(t *testing.T) {
 				// …restated as the failure it now is (w8/219).
 				if want := appv1alpha1.TerminalStallText(tc.message); got.Status != DeployUpdateFailed || got.FailureReason != want {
 					t.Fatalf("closed %s with %q, want update_failed with %q", got.Status, got.FailureReason, want)
+				}
+				if tc.reason == "RolloutBlockedByQuota" && got.FailureReason == tc.message {
+					t.Fatalf("quota stall closed with its in-flight wording: %q", got.FailureReason)
 				}
 			})
 		}
