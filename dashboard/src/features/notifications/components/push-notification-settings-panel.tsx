@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from "react";
+import { useBlocker } from "@tanstack/react-router";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
@@ -14,6 +15,7 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import { Button } from "@/common/components/ui/button";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -32,6 +34,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useServices } from "@/features/services/hooks/use-services";
 import {
   clonePushSettings,
+  samePushSettings,
   usePushNotificationSettings,
 } from "@/features/notifications/hooks/use-push-notification-settings";
 import { useUpdatePushNotificationSettings } from "@/features/notifications/hooks/use-update-push-notification-settings";
@@ -171,6 +174,18 @@ function PushSettingsForm({
   const { services } = useServices();
   const [draft, setDraft] = useState(() => clonePushSettings(initialSettings));
   const [validationKey, setValidationKey] = useState<string | null>(null);
+  // The form remounts on every saved read (its key), so the initial settings
+  // are the saved baseline. Unlike the autosaving email switches, push edits
+  // need Save, so leaving with them unsaved asks first (w4/435).
+  const dirty = useMemo(
+    () => !samePushSettings(draft, initialSettings),
+    [draft, initialSettings],
+  );
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    enableBeforeUnload: dirty,
+    withResolver: true,
+  });
 
   const serviceNames = useMemo(
     () => new Map(services.map((service) => [service.id, service.name])),
@@ -351,12 +366,27 @@ function PushSettingsForm({
             {t(validationKey)}
           </p>
         )}
-        <div className="flex justify-end">
-          <Button loading={busy} onClick={() => void save()}>
+        <div className="flex items-center justify-end gap-3">
+          {dirty && (
+            <span className="text-sm text-muted-foreground">
+              {t("notifications.pushUnsaved")}
+            </span>
+          )}
+          <Button loading={busy} disabled={!dirty} onClick={() => void save()}>
             {t("notifications.pushSave")}
           </Button>
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={blocker.status === "blocked"}
+        title={t("notifications.pushDiscardTitle")}
+        description={t("notifications.pushDiscardBody")}
+        cancelLabel={t("notifications.pushKeepEditing")}
+        confirmLabel={t("notifications.pushDiscard")}
+        // Cancel resets the blocker; closing alone would strand the navigation.
+        onCancel={() => blocker.reset?.()}
+        onConfirm={() => blocker.proceed?.()}
+      />
     </Card>
   );
 }

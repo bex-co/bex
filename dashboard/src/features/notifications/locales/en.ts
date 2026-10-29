@@ -366,6 +366,28 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Save push settings",
     description: "Save button",
   },
+  "notifications.pushUnsaved": {
+    message: "Unsaved changes",
+    description:
+      "Hint beside Save push settings while the push form differs from the saved settings (w4/435)",
+  },
+  "notifications.pushDiscardTitle": {
+    message: "Discard push setting changes?",
+    description:
+      "Navigation guard title when the push form has unsaved changes (w4/435)",
+  },
+  "notifications.pushDiscardBody": {
+    message: "These changes haven't been saved and will be lost if you leave.",
+    description: "Navigation guard explanation for unsaved push settings",
+  },
+  "notifications.pushKeepEditing": {
+    message: "Keep editing",
+    description: "Cancel the navigation and stay on the push form",
+  },
+  "notifications.pushDiscard": {
+    message: "Discard and leave",
+    description: "Confirm leaving and dropping unsaved push settings",
+  },
   "notifications.pushSaved": {
     message: "Push settings saved",
     description: "Success toast",

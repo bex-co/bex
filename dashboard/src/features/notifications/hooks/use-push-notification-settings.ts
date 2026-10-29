@@ -45,6 +45,40 @@ export function clonePushSettings(
   };
 }
 
+/**
+ * Whether two push settings save the same thing: event and weekday lists are
+ * sets, so toggling a filter off and back on is not a change (w4/435).
+ */
+export function samePushSettings(
+  a: PushNotificationSettingsInput,
+  b: PushNotificationSettingsInput,
+): boolean {
+  return canonicalPushSettings(a) === canonicalPushSettings(b);
+}
+
+function canonicalPushSettings(
+  settings: PushNotificationSettingsInput,
+): string {
+  const sorted = <T>(list: readonly T[]) => [...list].sort();
+  const copy = clonePushSettings(settings);
+  return JSON.stringify({
+    ...copy,
+    events: sorted(copy.events),
+    workingHours: copy.workingHours.map((range) => ({
+      ...range,
+      weekdays: sorted(range.weekdays),
+    })),
+    quietHours: copy.quietHours.map((range) => ({
+      ...range,
+      weekdays: sorted(range.weekdays),
+    })),
+    serviceOverrides: copy.serviceOverrides.map((override) => ({
+      ...override,
+      events: override.events ? sorted(override.events) : undefined,
+    })),
+  });
+}
+
 export function usePushNotificationSettings() {
   const { data, loading, error, refetch } = useQuery(
     PushNotificationSettingsDocument,

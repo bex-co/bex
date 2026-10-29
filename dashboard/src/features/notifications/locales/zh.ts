@@ -334,6 +334,28 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "保存推送设置",
     description: "Save button",
   },
+  "notifications.pushUnsaved": {
+    message: "有未保存的更改",
+    description:
+      "Hint beside Save push settings while the push form differs from the saved settings (w4/435)",
+  },
+  "notifications.pushDiscardTitle": {
+    message: "放弃推送设置的更改？",
+    description:
+      "Navigation guard title when the push form has unsaved changes (w4/435)",
+  },
+  "notifications.pushDiscardBody": {
+    message: "这些更改尚未保存，离开后将会丢失。",
+    description: "Navigation guard explanation for unsaved push settings",
+  },
+  "notifications.pushKeepEditing": {
+    message: "继续编辑",
+    description: "Cancel the navigation and stay on the push form",
+  },
+  "notifications.pushDiscard": {
+    message: "放弃并离开",
+    description: "Confirm leaving and dropping unsaved push settings",
+  },
   "notifications.pushSaved": {
     message: "推送设置已保存",
     description: "Success toast",
