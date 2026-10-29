@@ -1,6 +1,6 @@
 # w4 · m235 — A new service's URL says its first deploy is in progress, not `404 page not found`
 
-**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** blocked — t001–t006 and t008 done (t008's fallback route corrected to a platform manifest 2026-10-28, loopx w4); t009 root cause narrowed to the edge (connection/TLS before Traefik reads the request) and needs a live repro with QA credentials; t007 closeout replay follows
+**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: first-deploy `503` + `Retry-After`, content-negotiated, no raw `404` on Docker and static sites; controls hold; t009's post-live stall no longer reproduces (loopx w4).
 
 ## Tasks (in order)
 
@@ -13,8 +13,8 @@
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m235/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | w4/m235/t004 |
 | [t008](done/t008.md) | Close the first seconds after create, when the host still answers Traefik's raw 404 — **DONE** | 45m | w4/m235/t006 |
-| [t009](t009.md) | After a new web service goes Live, its host keeps holding requests 2–16 s each, released in bursts, for 35 s–2 min (cause unverified) | 1h | w4/m235/t008 |
-| [t007](t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006, w4/m235/t008, w4/m235/t009 |
+| [t009](done/t009.md) | After a new web service goes Live, its host keeps holding requests 2–16 s each, released in bursts, for 35 s–2 min (cause unverified) | 1h | w4/m235/t008 | — **DONE**
+| [t007](done/t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006, w4/m235/t008, w4/m235/t009 | — **DONE**
 
 Eight tasks, 265m (4h25m). One **minor** finding. This milestone schedules the work only.
 
