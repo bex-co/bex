@@ -93,26 +93,34 @@ describe("DiskSection", () => {
     }
   });
 
-  it("defaults to 10GB and offers only sizes at or above Hetzner's volume floor", async () => {
+  it("defaults to 10GB and offers Render's 1/5/10/50/100 GB chips", async () => {
     const user = userEvent.setup();
     render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
     await user.click(screen.getByRole("button", { name: /add disk/i }));
 
-    for (const size of [10, 50, 100]) {
+    // Render's own chips, 1 GB included: bex absorbs Hetzner's 10 GB volume
+    // minimum and reports and bills the chosen size (.pm/w8/215.md).
+    for (const size of [1, 5, 10, 50, 100]) {
       expect(screen.getByRole("button", { name: `${size} GB` })).toBeInTheDocument();
-    }
-    // Render offers 1 and 5 GB; bex cannot. Hetzner's minimum volume is 10 GB,
-    // so those chips billed for less than the disk actually provisioned and
-    // cost bex more than it charged (.pm/w1/078.md).
-    for (const belowFloor of [1, 5]) {
-      expect(
-        screen.queryByRole("button", { name: `${belowFloor} GB` }),
-      ).not.toBeInTheDocument();
     }
     const size = screen.getByLabelText(/^size$/i);
     expect(size).toHaveValue(10);
-    // The free-text box honors the same floor as the chips.
-    expect(size).toHaveAttribute("min", "10");
+    // The free-text box takes Render's 1 GB minimum too.
+    expect(size).toHaveAttribute("min", "1");
+  });
+
+  it("adds a 1 GB disk", async () => {
+    const user = userEvent.setup();
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+    await user.click(screen.getByRole("button", { name: /add disk/i }));
+    await user.type(screen.getByLabelText(/mount path/i), "/var/data");
+    await user.click(screen.getByRole("button", { name: "1 GB" }));
+    expect(screen.getByLabelText(/^size$/i)).toHaveValue(1);
+    await user.click(screen.getAllByRole("button", { name: /add disk/i }).at(-1)!);
+
+    await waitFor(() =>
+      expect(mockAddDisk).toHaveBeenCalledWith({ mountPath: "/var/data", sizeGB: 1 }),
+    );
   });
 
   // These are the mistakes a mount path invites; catching them here means the

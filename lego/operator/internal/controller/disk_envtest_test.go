@@ -274,6 +274,56 @@ var _ = Describe("Persistent disk reconcile", func() {
 			Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
 		}
 
+		// w8/215: Hetzner's smallest volume is 10 GB, so a 1 GB claim binds a
+		// 10 GiB volume. The allocation stays the requested size (the physical
+		// floor never becomes the disk's size), a grow the volume already holds
+		// is ready at once, and only a request past the volume expands it.
+		It("records a small disk at its requested size on a larger provider volume", func() {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "disk-small", Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "nginx:1", Tier: "starter",
+					Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 1},
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			bind(app, "10Gi")
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+
+			pvc, err := getPVC(app)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("1Gi"))
+			Expect(app.Status.Disk.AllocatedSizeGB).To(BeEquivalentTo(1))
+			Expect(app.Status.Disk.CapacityGB).To(BeEquivalentTo(10))
+			condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+			Expect(condition.Status).To(Equal(metav1.ConditionTrue))
+			Expect(condition.Message).To(HavePrefix("1GB disk mounted"))
+
+			// 1 → 5: inside the 10 GB volume, so nothing is pending.
+			app.Spec.Disk.SizeGB = 5
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			pvc, err = getPVC(app)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("5Gi"))
+			Expect(app.Status.Disk.AllocatedSizeGB).To(BeEquivalentTo(5))
+			condition = meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+			Expect(condition.Status).To(Equal(metav1.ConditionTrue))
+
+			// 5 → 20: past the volume, so the claim grows and the filesystem
+			// catches up on the next restart.
+			app.Spec.Disk.SizeGB = 20
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			pvc, err = getPVC(app)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("20Gi"))
+			condition = meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+			Expect(condition.Reason).To(Equal("DiskResizePending"))
+		})
+
 		It("grows the claim and reports the filesystem catching up", func() {
 			app := newApp("disk-grow")
 			defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
