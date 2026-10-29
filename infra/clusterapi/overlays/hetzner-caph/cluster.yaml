@@ -733,6 +733,26 @@ spec:
             pathType: File
             readOnly: true
     files:
+      # Stable control-plane SSH host key (w6/m153 t008, ADR019 § Stable
+      # control-plane host key): every CP node serves the same ed25519 key, so
+      # the BEX_SSH_KNOWN_HOSTS pin survives a roll that replaces every node.
+      # Staged outside /etc/ssh because cloud-init's ssh module deletes and
+      # regenerates /etc/ssh host keys after write_files; preKubeadmCommands
+      # installs it.
+      - path: /etc/bex/cp-ssh-host-key/ssh_host_ed25519_key
+        owner: root:root
+        permissions: "0600"
+        contentFrom:
+          secret:
+            name: bex-control-plane-ssh-host-key
+            key: ssh_host_ed25519_key
+      - path: /etc/bex/cp-ssh-host-key/ssh_host_ed25519_key.pub
+        owner: root:root
+        permissions: "0644"
+        contentFrom:
+          secret:
+            name: bex-control-plane-ssh-host-key
+            key: ssh_host_ed25519_key.pub
       - content: |
           apiVersion: kubescheduler.config.k8s.io/v1
           kind: KubeSchedulerConfiguration
@@ -881,6 +901,12 @@ spec:
           tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
     preKubeadmCommands:
       - set -x
+      # Install the stable host key staged under files: above, drop the
+      # regenerated per-node ed25519 key, and restart sshd so it serves the pin.
+      - install -m 0600 -o root -g root /etc/bex/cp-ssh-host-key/ssh_host_ed25519_key /etc/ssh/ssh_host_ed25519_key
+      - install -m 0644 -o root -g root /etc/bex/cp-ssh-host-key/ssh_host_ed25519_key.pub /etc/ssh/ssh_host_ed25519_key.pub
+      - rm -rf /etc/bex/cp-ssh-host-key
+      - sshd -t && systemctl try-restart ssh.service
       - grep VERSION= /etc/os-release; uname -a
       - export CONTAINERD=2.3.3
       - export RUNC=1.5.1
