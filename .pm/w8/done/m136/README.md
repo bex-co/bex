@@ -1,6 +1,6 @@
 # w8 · m136 — Environment network isolation also closes its Postgres and Key Value to other environments, as on Render
 
-**Worker:** worker8 **Goal:** With `networkIsolationEnabled: true`, a Key Value or Postgres in that environment refuses private-network connections from services in any other environment, as on Render ("blocks private network traffic from crossing its boundary"). Its external URL (allowlist-governed) and same-environment traffic keep working. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t006 done 2026-10-23; release pipeline deploys bex-api, the operator and GitOps (new pod-label admission policy); QA runs t007: probe in staging vs a Free Key Value in production — TCPOK with isolation off, TCPFAIL within 60s after PATCH networkIsolationEnabled:true, same-environment probe still TCPOK, external allowlisted PING→PONG, TCPOK again after off; Postgres matrix when a slot is free; delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** With `networkIsolationEnabled: true`, a Key Value or Postgres in that environment refuses private-network connections from services in any other environment, as on Render ("blocks private network traffic from crossing its boundary"). Its external URL (allowlist-governed) and same-environment traffic keep working. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: ADR032/ADR018 and the dashboard isolation copy                   | 15m | w8/m136/t002, w8/m136/t003 |
 | t005 — **DONE** | Simplify the changed code                                                      | 15m | w8/m136/t004               |
 | t006 — **DONE** | Test coverage: isolated vs not, cross-env vs same-env, KV and Postgres          | 40m | w8/m136/t004               |
-| t007 | Close out the milestone                                                        | 30m | w8/m136/t005, w8/m136/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m136/t005, w8/m136/t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@ Live on production after the release pipeline deploys the operator (and GitOps, 
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep b1c3, 2026-10-23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, platform pin `29d63e1f7bea`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Render [projects/environments](https://render.com/docs/projects): with private network isolation, "services _within_ the environment can still communicate", private traffic is blocked from crossing the boundary, and "Render Postgres and Key Value instances in the environment can still receive traffic at their external URL", implying their private endpoints are inside the boundary. [ADR032](../../../docs/ADR032-environments.md) and [ADR041](../../../docs/ADR041-service-addresses.md):14 ("project-environment network isolation narrows it further").
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Render [projects/environments](https://render.com/docs/projects): with private network isolation, "services _within_ the environment can still communicate", private traffic is blocked from crossing the boundary, and "Render Postgres and Key Value instances in the environment can still receive traffic at their external URL", implying their private endpoints are inside the boundary. [ADR032](../../../../docs/ADR032-environments.md) and [ADR041](../../../../docs/ADR041-service-addresses.md):14 ("project-environment network isolation narrows it further").
 - **Expected outcome:** a team isolating `production` actually keeps `staging` services away from production data stores, the main reason to turn isolation on.
 - **Why now:** major. A security boundary the UI and API report as on (`networkIsolationEnabled: true`) does not cover the most sensitive resources. Render parity task included: dashboard copy and ADRs describe the boundary.
 
@@ -79,3 +79,14 @@ Searched `.pm` open and done, ADR032/ADR018/ADR041 for isolation + Postgres/Key 
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production, 11:07–11:19 UTC. Network isolation is Pro-or-higher since w8/m138, so the run used owned fixtures in the Scale workspace `bex` (bex-canary is Hobby and refuses the toggle by plan): project `prj-dbhii2h56ukc73amejvg` with `production` `evm-dbhii2h56ukc73amek00` and `staging` `evm-dbhii2h56ukc73amek0g`; Starter Key Value `red-dbhiiikjakpc739ce2f0` in production (allowlist only the tester's egress IP); Free probes `srv-dbhiickjakpc739ce2e0` (staging) and `srv-dbhiidh56ukc73amek30` (production) opening fresh TCP connections to `red-…:6379`. No pre-existing resource in `bex` was touched.
+
+- **Isolation off:** both probes `TCPOK`; external `bex kv-cli … -- PING` → `PONG`.
+- **Isolation on (`PATCH …/evm-dbhii2h56ukc73amek00 {"networkIsolationEnabled":true}` → 200):** staging `TCPFAIL` from +23 s through all six samples; production `TCPOK` from +42 s; while isolated, `bex kv-cli PING` and raw `redis-cli --tls --sni red-….kv.bex.co PING` both → `PONG`.
+- **Isolation off again:** both probes back to `TCPOK` by +75 s.
+- **Postgres:** not run live (would need a paid Postgres); covered by `database_test.go` (an isolated environment's database carries the isolation label and leaves allow-same-namespace) and `build_datastore_reach_test.go`, both passing.
+- Follow-up filed as w8/220: each toggle replaces the Key Value's one-replica internal proxy Deployment (its pod template carries the isolation label), so same-environment traffic drops for a few seconds during a toggle; the steady state above holds.
+- Cleanup: probes, Key Value, both environments and the project deleted (204 → 404); nothing left in `bex`.
