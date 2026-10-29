@@ -155,9 +155,9 @@ services:
 
 `envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with `PORT` appended last. **Since w5/m149, `PORT` is the service's to set, as on Render** (replacing w2/m95's reservation). The operator resolves the service's effective `PORT` in Kubernetes' own precedence: a `spec.env` literal, then the `envFrom` Secrets, where the service's own set beats a linked group's. A valid value becomes the serving port: container port, Service port, probes and the injected `PORT` all use it, and the operator records it as `status.envPort`, which `App.ServingPort()` (and so `ServicePort`, `OpenPorts`, `InternalAddress`) prefers over `spec.port`. An unusable value (not a number, out of range, or a reserved platform port) is ignored, and `spec.port` applies. Image-port private services keep their image-discovered ports.
 
-**Image-port private services (w6/m148, 2026-10-20).** The paragraph above is the configured-port contract. It still holds for web services, prebuilt-image and native private services, and every private service created before w6/m148.
+**Image-port private services (w6/m148, 2026-10-20).** The paragraph above is the configured-port contract. It still holds for web services, native private services, and every private service created before w6/m148 (prebuilt-image private services before w6/095, 2026-10-29).
 
-- **The exception.** A new Git-built Docker private service created **without** a port (the dashboard leaves the field blank for that shape) publishes every TCP port its image declares with `EXPOSE`, under its stable hostname.
+- **The exception.** A new Docker private service — Git-built, or prebuilt from an `image:` (w6/095; read anonymously, or with the workspace registry credential bound to it) — created **without** a port (the dashboard leaves the field blank for that shape) publishes every TCP port its image declares with `EXPOSE`, under its stable hostname.
 - **`PORT`** is the resolved **primary**, which is also the TCP health-checked port and the `internalAddress` suffix:
   - an explicit port wins;
   - otherwise 3000, if the image declares it;

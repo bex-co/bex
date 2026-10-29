@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -59,8 +60,8 @@ func configuredPortMode(mode string) bool {
 }
 
 // parseExternalImageReference splits a prebuilt image reference into the
-// registry API host, repository and reference, for an anonymous metadata
-// read (w4/m243). No platform credential is ever attached to it.
+// registry API host, repository and reference for its metadata read
+// (w4/m243). No platform credential is ever attached to it.
 func parseExternalImageReference(image string) (host, repo, repoPath, reference string, ok bool) {
 	name := image
 	reference = "latest"
@@ -76,7 +77,7 @@ func parseExternalImageReference(image string) (host, repo, repoPath, reference 
 	}
 	repo = strings.Join(parts, "/")
 	if host == "docker.io" {
-		host = "registry-1.docker.io"
+		host = dockerHubAPIHost
 		if !strings.Contains(repo, "/") {
 			repo = "library/" + repo
 		}
@@ -87,9 +88,51 @@ func parseExternalImageReference(image string) (host, repo, repoPath, reference 
 	return host, repo, name, reference, true
 }
 
+// externalImageAuthHeader is the Basic header of the workspace registry
+// credential bound to this App (spec.externalRegistryPullSecret, the same
+// Secret kubelet pulls with) for the image's host, or "" for an anonymous read
+// when it holds none for that host, as kubelet would pull. Docker Hub's entry
+// may be keyed by any of its aliases rather than the API host.
+func (r *AppReconciler) externalImageAuthHeader(ctx context.Context, app *appv1alpha1.App, host string) (string, error) {
+	name := app.Spec.ExternalRegistryPullSecret
+	if name == "" {
+		return "", nil
+	}
+	var sec corev1.Secret
+	if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &sec); err != nil {
+		return "", fmt.Errorf("read registry credential Secret %s: %w", name, err)
+	}
+	auths, err := dockerConfigAuths(sec.Data)
+	if err != nil {
+		return "", fmt.Errorf("registry credential Secret %s: %w", name, err)
+	}
+	keys := []string{host}
+	if host == dockerHubAPIHost {
+		keys = dockerHubConfigKeys
+	}
+	for _, key := range keys {
+		if _, ok := auths[key]; ok {
+			header, err := dockerConfigEntryHeader(auths, key)
+			if err != nil {
+				return "", fmt.Errorf("registry credential Secret %s: %w", name, err)
+			}
+			return header, nil
+		}
+	}
+	return "", nil
+}
+
+// dockerHubAPIHost is the registry API host parseExternalImageReference
+// resolves Docker Hub images to; dockerHubConfigKeys are the docker config
+// keys a Docker Hub credential may be stored under.
+const dockerHubAPIHost = "registry-1.docker.io"
+
+var dockerHubConfigKeys = []string{dockerHubAPIHost, "docker.io", "index.docker.io", "https://index.docker.io/v1/"}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials; a
-// web service's prebuilt image is read anonymously instead (w4/m243).
+// prebuilt image (web, w4/m243; private, w6/095) is read anonymously, or with
+// the workspace registry credential bound to this App for that image's host.
 func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha1.App, image string) (string, int, error) {
 	if !app.Spec.HasImagePorts() {
 		return image, int(app.Spec.EffectivePort()), nil
@@ -131,13 +174,16 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		if err2 != nil {
 			return "", 0, err2
 		}
-	} else if app.Spec.UsesWebImagePorts() {
+	} else if app.Spec.Image != "" {
 		host, repo, repoPath, reference, ok := parseExternalImageReference(image)
 		if !ok {
 			return "", 0, fmt.Errorf("image port discovery cannot parse image %q", image)
 		}
-		var err error
-		metadata, err = registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, "")
+		authorization, err := r.externalImageAuthHeader(ctx, app, host)
+		if err != nil {
+			return "", 0, err
+		}
+		metadata, err = registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, authorization)
 		if err != nil {
 			return "", 0, err
 		}

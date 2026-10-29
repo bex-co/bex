@@ -252,9 +252,10 @@ func TestImageCompatibilityIsScopedToListedWorkspaces(t *testing.T) {
 	}
 }
 
-// Only a new Git-built Docker private service takes image ports by default;
-// every other creation keeps its configured port in every workspace (w6/m148).
-func TestPrivateImagePortsDefaultOnlyForGitBuiltDockerPrivateServices(t *testing.T) {
+// A new Docker private service, Git-built (w6/m148) or prebuilt (w6/095),
+// takes image ports by default; native builds and other types keep their
+// configured port in every workspace.
+func TestPrivateImagePortsDefaultForDockerAndPrebuiltPrivateServices(t *testing.T) {
 	repo := "https://github.com/example/app"
 	for _, tc := range []struct {
 		name    string
@@ -266,7 +267,9 @@ func TestPrivateImagePortsDefaultOnlyForGitBuiltDockerPrivateServices(t *testing
 		{"docker web", CreateRequest{Name: "app", Repo: repo, Runtime: "docker"}, appv1alpha1.PortModeWebImageV1},
 		{"docker worker", CreateRequest{Name: "app", Type: appv1alpha1.TypeBackgroundWorker, Repo: repo, Runtime: "docker"}, ""},
 		{"native pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, ""},
-		{"prebuilt pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Image: "nginx:1"}, ""},
+		{"prebuilt pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Image: "clickhouse/clickhouse-server:23.8"}, appv1alpha1.PortModeImageV1},
+		{"prebuilt pserv explicit port", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Image: "clickhouse/clickhouse-server:23.8", Port: 8123}, appv1alpha1.PortModeImageConfiguredV1},
+		{"prebuilt worker", CreateRequest{Name: "app", Type: appv1alpha1.TypeBackgroundWorker, Image: "nginx:1"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			service, client := newService(nil)
