@@ -182,6 +182,28 @@ jobs:
             --from-literal=hcloud="$HCLOUD_TOKEN" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      # Stable control-plane SSH host key (w6/m153 t008): KCP writes it onto
+      # every new CP node, so BEX_SSH_KNOWN_HOSTS survives a full roll. Must
+      # exist before the overlay below: a CP bootstrap referencing a missing
+      # Secret never boots.
+      - name: control-plane SSH host key secret
+        env:
+          BEX_CP_SSH_HOST_KEY: ${{ secrets.BEX_CP_SSH_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BEX_CP_SSH_HOST_KEY" ]; then
+            echo "BEX_CP_SSH_HOST_KEY is empty: push it with scripts/gh-secrets.sh (docs/ADR019-infra-credentials.md)" >&2
+            exit 1
+          fi
+          pub="$(printf '%s\n' "$BEX_CP_SSH_HOST_KEY" | ssh-keygen -y -f /dev/stdin)"
+          case "$pub" in ssh-ed25519\ *) ;; *) echo "BEX_CP_SSH_HOST_KEY is not an ed25519 private key" >&2; exit 1 ;; esac
+          # shellcheck source=scripts/lib/secret-install.sh
+          . scripts/lib/secret-install.sh
+          apply_secret bex-capi bex-control-plane-ssh-host-key Opaque \
+            ssh_host_ed25519_key "$BEX_CP_SSH_HOST_KEY"$'\n' \
+            ssh_host_ed25519_key.pub "$pub"$'\n'
+          ssh-keygen -lf - <<<"$pub"
+
       # --- apply the overlay -> the cluster reconciles its own machines ---
       - name: apply CAPH overlay
         run: kubectl apply -f infra/clusterapi/overlays/hetzner-caph/cluster.yaml

@@ -676,4 +676,20 @@ if [ "$framing_version" != "$pk_k8s" ] || [[ "$pk_kubelet_tag" != "bex-kubelet/v
   fail=1
 fi
 
+# A full control-plane roll replaces every node; without the stable host key
+# the BEX_SSH_KNOWN_HOSTS pin goes stale and every admin.conf fetch fails until
+# a human re-pins (w6/m153 t004/t008, ADR019).
+echo "==> $OVERLAY control planes serve the stable SSH host key"
+APP_CLUSTER_WORKFLOW="${APP_CLUSTER_WORKFLOW_FILE:-.github/workflows/app-cluster.yml}"
+cp_key_secret=bex-control-plane-ssh-host-key
+cp_key_stage=/etc/bex/cp-ssh-host-key/ssh_host_ed25519_key
+kcp_json="$(yq -o=json -N 'select(.kind == "KubeadmControlPlane") | .spec.kubeadmConfigSpec' "$OVERLAY")"
+staged="$(printf '%s' "$kcp_json" | jq -r --arg s "$cp_key_secret" '[.files[]? | select(.contentFrom.secret.name == $s) | .path] | sort | join(",")')"
+if [ "$staged" != "$cp_key_stage,$cp_key_stage.pub" ] \
+  || ! printf '%s' "$kcp_json" | jq -e --arg c "install -m 0600 -o root -g root $cp_key_stage /etc/ssh/ssh_host_ed25519_key" '.preKubeadmCommands | any(. == $c)' >/dev/null \
+  || ! grep -qF "apply_secret bex-capi $cp_key_secret" "$APP_CLUSTER_WORKFLOW"; then
+  echo "FAIL: KubeadmControlPlane must stage $cp_key_secret and install it as /etc/ssh/ssh_host_ed25519_key, and $APP_CLUSTER_WORKFLOW must create that Secret (w6/m153)" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (reviewed snapshot ⟺ no privileged bootstrap downloads)" || { echo "FAIL: see errors above" >&2; exit 1; }
