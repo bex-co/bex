@@ -1,6 +1,6 @@
 # w4 · m158 — Preserve exact SQL numbers in MCP responses
 
-**Worker:** worker4 **Goal:** an agent receives the same exact SQL numbers as REST and the console **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 live byte comparison and t006 closeout remain
+**Worker:** worker4 **Goal:** an agent receives the same exact SQL numbers as REST and the console **Status:** done 2026-10-29 — live DoD replayed on pin `b33dd43c4428`: REST, the console and both MCP result forms carry exact bigint/numeric/array/fraction bytes with unchanged controls, and the timeout, syntax and read-only guards hold; run read-only on the existing QA free database (the free slot is held) (loopx w4).
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Bound the SDK conversion and query-only compatibility path | 25m | — |
 | t002 — **DONE** | Preserve exact query JSON through MCP serialization | 45m | t001 |
-| t003 | Render parity and live result verification | 25m | t002 |
+| t003 — **DONE** | Render parity and live result verification | 25m | t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 35m | t003 |
-| t006 | Closeout | 10m | t004, t005 |
+| t006 — **DONE** | Closeout | 10m | t004, t005 |
 
 ## Definition of done
 
