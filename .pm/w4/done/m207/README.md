@@ -1,6 +1,6 @@
 # w4 · m207 — Make card-radio pickers work with the keyboard
 
-**Worker:** worker4 **Goal:** the four card-radio producers support focus/selection navigation, one group Tab stop, and meaningful group names across their eight consumers. **Status:** blocked — t001–t004 done and shipped (2026-10-14: one card-radio keyboard contract across all four producers, all eight consumers named); t005 live desktop/mobile replay and t006 need the dashboard deployed to production.
+**Worker:** worker4 **Goal:** the four card-radio producers support focus/selection navigation, one group Tab stop, and meaningful group names across their eight consumers. **Status:** done 2026-10-29 — live replay on pin `d66f96c06991`: arrow keys move focus and selection together in the KV, web, service-type, instance-type and workspace plan groups at 1440 and 390, with one Tab stop and no submission (loopx w4).
 
 ## Tasks (in order)
 
