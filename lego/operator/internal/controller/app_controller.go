@@ -822,6 +822,15 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 				serving = prior
 				app.Status.ServingNetwork, app.Status.PriorServingNetwork = prior.DeepCopy(), nil
 			}
+			// A rollout records its release active once every pod of it is
+			// Ready (w4/405), a pass before promoteImageNetwork moves the
+			// serving network to it. A cancel settling in that window (on the
+			// release it left running, w8/m117) settles on that release's own
+			// network, which the dispatch below promotes.
+			if candidate := app.Status.ImageNetwork; candidate != nil && candidate.Revision == app.Status.ActiveRevision &&
+				(serving == nil || serving.Revision != app.Status.ActiveRevision) {
+				serving = candidate
+			}
 			if serving == nil || serving.Revision != app.Status.ActiveRevision || serving.Image == "" {
 				return r.fail(ctx, app, "ImageMetadataUnavailable", fmt.Errorf("served release has no matching image network metadata"))
 			}

@@ -25,8 +25,10 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -285,4 +287,110 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		}).Should(Equal(appv1alpha1.PhaseCanceled))
 		Expect(getApp().Status.ReleaseGeneration).To(BeZero())
 	})
+})
+
+// w8/m117 t006 (hosted re-check 2026-10-29, pin b63b8a1091d7): a saved image
+// with no PORT runs in image-ports mode. Once every pod of the survivor's
+// release is Ready, the rollout records it active (w4/405) a pass before the
+// network is promoted. The cancel then settled on that release while its
+// serving network still named the previous one (or none), and the survivor
+// ended update_failed: "served release has no matching image network metadata".
+var _ = Describe("Canceling the pending deploy of an image-ports service (w8/m117)", func() {
+	DescribeTable("the older deploy serves on its own network", func(established bool) {
+		nn := types.NamespacedName{Name: "cancel-pending-image-ports", Namespace: "default"}
+		if established {
+			nn.Name += "-served"
+		}
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			HTTPClient: imageConfigRegistry(GinkgoT(), `"80/tcp":{}`),
+		}
+		var phases []appv1alpha1.AppPhase
+		run := func() (ctrl.Result, error) {
+			res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			if a := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, a) == nil {
+				phases = append(phases, a.Status.Phase)
+			}
+			return res, err
+		}
+		update := func(mutate func(*appv1alpha1.App)) {
+			GinkgoHelper()
+			a := envtestApp(nn)
+			mutate(a)
+			Expect(k8sClient.Update(ctx, a)).To(Succeed())
+		}
+		trigger := func(at string) {
+			GinkgoHelper()
+			update(func(a *appv1alpha1.App) {
+				a.Spec.RestartedAt = at
+				a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+			})
+		}
+		// detected stands in for the completed initial HTTP probe.
+		detected := func() {
+			GinkgoHelper()
+			a := envtestApp(nn)
+			if a.Status.ImageNetwork != nil && a.Status.ImageNetwork.HTTPSelection == "" {
+				a.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+				Expect(k8sClient.Status().Update(ctx, a)).To(Succeed())
+			}
+		}
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace,
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/ealen/echo-server:0.9.2", Type: appv1alpha1.TypeWebService,
+				PortMode: appv1alpha1.PortModeWebImageV1, Replicas: 1,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() {
+			deleteOwner(ctx, envtestApp(nn), run)
+			_ = k8sClient.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace}},
+				client.PropagationPolicy(metav1.DeletePropagationBackground))
+			_ = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace(nn.Namespace), client.MatchingLabels{labelApp: nn.Name}, client.GracePeriodSeconds(0))
+			_ = k8sClient.DeleteAllOf(ctx, &appsv1.ReplicaSet{}, client.InNamespace(nn.Namespace), client.MatchingLabels{labelApp: nn.Name})
+		})
+		reconcileToFixedPoint(run)
+		detected()
+		reconcileToFixedPoint(run)
+		if established {
+			finishImagePortRollout(nn, run)
+			Expect(envtestApp(nn).Status.ServingNetwork.Revision).To(Equal("rev-1"))
+			trigger("2026-10-29T09:00:00Z")
+			reconcileToFixedPoint(run)
+		}
+		survivor := envtestApp(nn).Status.ReleaseGeneration
+		phases = nil
+
+		By("requesting B, then canceling it naming A as the survivor")
+		trigger("2026-10-29T09:01:00Z")
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).Status.ReleaseGeneration).To(BeNumerically(">", survivor), "precondition: B replaced A")
+		update(func(a *appv1alpha1.App) {
+			a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(a.Generation, 10)
+			a.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration] = strconv.FormatInt(survivor, 10)
+		})
+		reconcileToFixedPoint(run)
+		detected()
+		reconcileToFixedPoint(run)
+		rev := fmt.Sprintf("rev-%d", survivor)
+		Expect(envtestDeployment(nn).Spec.Template.Labels[labelRevision]).To(Equal(rev), "A rolls again under its own generation")
+
+		By("every pod of A's release becomes Ready before the Deployment status converges")
+		simulateTemplatePod(nn, fmt.Sprintf("survivor-%d", survivor), true)
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).Status.ActiveRevision).To(Equal(rev), "A is recorded active once its pods serve (w4/405)")
+
+		By("the rollout converges")
+		finishImagePortRollout(nn, run)
+		app := envtestApp(nn)
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ReleaseGeneration).To(Equal(survivor))
+		Expect(app.Status.ActiveRevision).To(Equal(rev))
+		Expect(app.Status.ServingNetwork).NotTo(BeNil())
+		Expect(app.Status.ServingNetwork.Revision).To(Equal(rev), "A's network is the one served")
+		Expect(phases).NotTo(ContainElement(appv1alpha1.PhaseFailed), "A never fails")
+		assertImagePortService(nn, 80)
+	}, Entry("a new service", false),
+		Entry("an established service", true))
 })
