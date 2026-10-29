@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -342,4 +343,127 @@ func finishImagePortRollout(nn types.NamespacedName, run func() (ctrl.Result, er
 	app := envtestApp(nn)
 	Expect(app.Status.ActiveRevision).To(Equal(releaseRevision(app)))
 	Expect(meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionReady)).To(BeTrue(), "%+v", app.Status.Conditions)
+}
+
+// HTTP port discovery runs the candidate under an HTTP probe on /, and the
+// chosen port rewrites its template to the final TCP probe: a second
+// ReplicaSet within the same release. The Deployment controller drains the
+// discovery pod as soon as that ReplicaSet exists, so a Ready discovery pod
+// must never move routing. Hosted re-check on 69f0b17d1fad: both Services
+// switched to the new release while only its replaced template's pod was
+// Ready, then answered 503 for ~9.6 s until the final pod became Ready, while
+// the serving release's pod ran unrouted (w8/m142 t006).
+var _ = Describe("Promoting after HTTP port discovery (w8/m142)", func() {
+	It("routes to the new release only once a pod of its final template is Ready", func() {
+		nn := types.NamespacedName{Name: "image-port-discovery-promotion", Namespace: "default"}
+		envName := nn.Name + "-env"
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			HTTPClient: imageConfigRegistry(GinkgoT(), ""),
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: envName, Namespace: nn.Namespace},
+			Data:       map[string][]byte{"PORT": []byte("8080")},
+		})).To(Succeed())
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/ealen/echo-server:0.9.2", Type: appv1alpha1.TypeWebService,
+				PortMode: appv1alpha1.PortModeWebImageV1, Replicas: 1, EnvFromSecret: envName,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() {
+			deleteOwner(ctx, envtestApp(nn), run)
+			_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: envName, Namespace: nn.Namespace}})
+			_ = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace(nn.Namespace), client.MatchingLabels{labelApp: nn.Name}, client.GracePeriodSeconds(0))
+			_ = k8sClient.DeleteAllOf(ctx, &appsv1.ReplicaSet{}, client.InNamespace(nn.Namespace), client.MatchingLabels{labelApp: nn.Name})
+		})
+
+		By("serving the saved PORT=8080 from a Ready pod")
+		reconcileToFixedPoint(run)
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		served := envtestApp(nn).Status.ServingNetwork.Revision
+		Expect(served).To(Equal("rev-1"))
+		simulateTemplatePod(nn, "served", true)
+		expectServiceRoutesToReadyPod(nn)
+
+		By("deleting PORT and deploying: discovery runs under the HTTP probe, and its pod becomes Ready")
+		env := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: envName, Namespace: nn.Namespace}, env)).To(Succeed())
+		delete(env.Data, "PORT")
+		Expect(k8sClient.Update(ctx, env)).To(Succeed())
+		app := envtestApp(nn)
+		app.Spec.Image, app.Spec.RestartedAt = app.Status.ServingNetwork.Image, "2026-10-29T02:00:00Z"
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileToFixedPoint(run)
+		tmpl := envtestDeployment(nn).Spec.Template
+		Expect(tmpl.Labels[labelRevision]).NotTo(Equal(served))
+		Expect(tmpl.Spec.Containers[0].ReadinessProbe.HTTPGet).NotTo(BeNil(), "discovery probes HTTP")
+		discovery := simulateTemplatePod(nn, "discovery", true)
+		expectServiceRoutesToReadyPod(nn)
+
+		By("choosing the port: the template moves to the final TCP probe")
+		app = envtestApp(nn)
+		app.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		_, err := run()
+		Expect(err).NotTo(HaveOccurred())
+		assertImagePortRuntime(nn, 10000)
+		svc := &corev1.Service{}
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Selector).To(HaveKeyWithValue(labelRevision, served),
+			"a Ready pod of the replaced discovery template must not promote the release")
+
+		By("the Deployment controller drains the discovery pod and starts the final one")
+		Expect(k8sClient.Delete(ctx, discovery, client.GracePeriodSeconds(0))).To(Succeed())
+		final := simulateTemplatePod(nn, "final", false)
+		reconcileToFixedPoint(run)
+		expectServiceRoutesToReadyPod(nn)
+
+		By("routing moves once the final pod is Ready")
+		final.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+		Expect(k8sClient.Status().Update(ctx, final)).To(Succeed())
+		_, err = run()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Selector).To(HaveKeyWithValue(labelRevision, envtestApp(nn).Status.ImageNetwork.Revision))
+		expectServiceRoutesToReadyPod(nn)
+		assertImagePortService(nn, 10000)
+	})
+})
+
+// simulateTemplatePod writes templateReplicaSetPod for the Deployment's
+// current pod template, as envtest has no Deployment controller or kubelet.
+func simulateTemplatePod(nn types.NamespacedName, hash string, ready bool) *corev1.Pod {
+	GinkgoHelper()
+	dep := envtestDeployment(nn)
+	rs, pod := templateReplicaSetPod(dep, hash, dep.Spec.Template, ready)
+	Expect(k8sClient.Create(ctx, rs)).To(Succeed())
+	pod.OwnerReferences[0].UID = rs.UID
+	status := pod.Status
+	Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+	if ready {
+		pod.Status = status
+		Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+	}
+	return pod
+}
+
+// expectServiceRoutesToReadyPod asserts the routed Service selects at least
+// one Ready pod: a selector with none answers every request with a 503.
+func expectServiceRoutesToReadyPod(nn types.NamespacedName) {
+	GinkgoHelper()
+	svc := &corev1.Service{}
+	Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+	var pods corev1.PodList
+	Expect(k8sClient.List(ctx, &pods, client.InNamespace(nn.Namespace), client.MatchingLabels(svc.Spec.Selector))).To(Succeed())
+	ready := 0
+	for i := range pods.Items {
+		if pods.Items[i].DeletionTimestamp.IsZero() && podReady(&pods.Items[i]) {
+			ready++
+		}
+	}
+	Expect(ready).To(BeNumerically(">", 0), "Service selector %v routes to no Ready pod", svc.Spec.Selector)
 }
