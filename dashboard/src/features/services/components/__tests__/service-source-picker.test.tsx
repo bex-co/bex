@@ -66,7 +66,7 @@ const gitConnections = [
  * A MockLink behind a gate: while held, requests are recorded but not answered,
  * so a refetch stays in flight for as long as the test needs to inspect it.
  */
-function gatedClient() {
+function gatedClient(connections: unknown[] = gitConnections) {
   const requests: string[] = [];
   let gate: Promise<void> | null = null;
   let open = () => {};
@@ -92,7 +92,7 @@ function gatedClient() {
           query: GitConnectionsDocument,
           variables: { ownerId: "tea-1" },
         },
-        result: { data: { gitConnections } },
+        result: { data: { gitConnections: connections } },
         maxUsageCount: Number.POSITIVE_INFINITY,
       },
       {
@@ -208,5 +208,42 @@ describe("ServiceSourcePicker across a git connections poll (w1/m153 t002)", () 
     expect(
       screen.queryByRole("button", { name: /puncsky\/site/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w4/434: while the connections read is first in flight, the GitHub tab
+// previews the connect prompt a workspace without GitHub then sees, rather
+// than a block ~95 px shorter that made the whole form jump.
+describe("ServiceSourcePicker first connections read (w4/434)", () => {
+  it("previews the connect prompt's anatomy until the read settles", async () => {
+    const apollo = gatedClient([]);
+    apollo.holdResponses();
+    render(
+      <ApolloProvider client={apollo.client}>
+        <Picker />
+      </ApolloProvider>,
+    );
+
+    const preview = document.querySelector('[data-preview="git-connect"]');
+    expect(preview).not.toBeNull();
+    expect(preview).toHaveAttribute("inert");
+    expect(preview).toHaveAttribute("aria-busy", "true");
+    const [icon, text, button] = [...preview!.children];
+    expect(preview!.children).toHaveLength(3);
+    expect(icon).toHaveClass("size-8");
+    expect(text.children).toHaveLength(3);
+    expect(text.children[2]).toHaveClass("sm:hidden");
+    expect(button).toHaveClass("h-9");
+
+    await act(async () => {
+      apollo.releaseResponses();
+    });
+    const connect = await screen.findByRole("button", {
+      name: /Connect GitHub/,
+    });
+    const prompt = connect.parentElement!;
+    expect(prompt.className).toBe(preview!.className);
+    expect(prompt.children).toHaveLength(3);
+    expect(document.querySelector('[data-preview="git-connect"]')).toBeNull();
   });
 });
