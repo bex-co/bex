@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -283,6 +285,12 @@ func changesImagePorts(app *appv1alpha1.App) bool {
 		(serving.PrimaryPort != candidate.PrimaryPort || !slices.Equal(serving.Ports, candidate.Ports))
 }
 
+// portChangeInFlight reports an image-port rollout whose candidate's ports
+// differ from the serving ones: the only rollout that routes early.
+func portChangeInFlight(app *appv1alpha1.App) bool {
+	return app.Spec.HasImagePorts() && changesImagePorts(app)
+}
+
 // replacedImagePorts reports a port change routed early (w4/428) whose old
 // pods may still run: until the rollout completes they lack the new
 // listener, so the Services keep pinning the now-serving revision.
@@ -350,8 +358,9 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 // serving, so the stable Services always have a ready endpoint on the port
 // they publish (w4/428). It records the replaced network for the old pods'
 // pin and for a failed rollout's restore. moved is promoteImageNetwork's.
-func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, port int) (moved bool, err error) {
-	if !app.Spec.HasImagePorts() || !changesImagePorts(app) || !r.currentRevisionFullyReady(ctx, dep, 1) {
+// The caller checks portChangeInFlight first.
+func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int) (moved bool, err error) {
+	if !r.templatePodReady(ctx, dep, tmpl) {
 		return false, nil
 	}
 	// Record the replaced network before projecting: the very first Service
@@ -364,6 +373,55 @@ func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1al
 		return false, err
 	}
 	return moved, nil
+}
+
+// templatePodReady reports a Ready, non-terminating pod of tmpl, the pod
+// template this pass wrote, rather than merely of its release. A release can
+// roll its template more than once (choosing the HTTP port swaps discovery's
+// probe on / for the final TCP probe), and the Deployment controller drains
+// the replaced template's pod as soon as the new ReplicaSet exists, leaving
+// the release with no endpoint until the new pod is Ready (w8/m142 t006). The
+// pods are found through the ReplicaSet created for tmpl; until it exists,
+// none is Ready.
+func (r *AppReconciler) templatePodReady(ctx context.Context, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec) bool {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return false
+	}
+	var rss appsv1.ReplicaSetList
+	if err := r.List(ctx, &rss, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return false
+	}
+	hash := ""
+	for i := range rss.Items {
+		rs := &rss.Items[i]
+		h := rs.Spec.Template.Labels[appsv1.DefaultDeploymentUniqueLabelKey]
+		if h == "" || rs.Spec.Template.Labels[labelRevision] != tmpl.Labels[labelRevision] || !metav1.IsControlledBy(rs, dep) {
+			continue
+		}
+		// The Deployment controller's own match: the template it copied, plus
+		// the pod-template-hash label it adds.
+		candidate := rs.Spec.Template.DeepCopy()
+		delete(candidate.Labels, appsv1.DefaultDeploymentUniqueLabelKey)
+		if equality.Semantic.DeepEqual(*candidate, *tmpl) {
+			hash = h
+			break
+		}
+	}
+	if hash == "" {
+		return false
+	}
+	selector := maps.Clone(dep.Spec.Selector.MatchLabels)
+	selector[appsv1.DefaultDeploymentUniqueLabelKey] = hash
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(selector)); err != nil {
+		return false
+	}
+	for i := range pods.Items {
+		if pod := &pods.Items[i]; pod.DeletionTimestamp.IsZero() && podReady(pod) {
+			return true
+		}
+	}
+	return false
 }
 
 // imageRegistryWait keeps a deploy open while the image registry throttles or

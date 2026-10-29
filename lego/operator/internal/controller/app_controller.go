@@ -3187,14 +3187,23 @@ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app
 func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, hosts []string, directRoute bool, replicas int32, port int) (ctrl.Result, bool, error) {
 	// Readiness: requeue until this Deployment revision, rather than retained
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
+	// A port change keeps the template this pass wrote: the cached re-read can
+	// predate it.
+	var written *corev1.PodTemplateSpec
+	if portChangeInFlight(app) {
+		written = dep.Spec.Template.DeepCopy()
+	}
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
-	// A port change routes to its first ready pod while the old ones are
-	// held (w4/428), then completes as any rollout does. The public route
-	// stays on the replaced primary's alias until then (w4/430).
-	if _, err := r.promotePortChangeEarly(ctx, app, dep, image, port); err != nil {
-		res, err := r.fail(ctx, app, "ServiceFailed", err)
-		return res, true, err
+	// A port change routes to its first ready pod of the written template
+	// while the old ones are held (w4/428), then completes as any rollout
+	// does. The public route stays on the replaced primary's alias until then
+	// (w4/430).
+	if written != nil {
+		if _, err := r.promotePortChangeEarly(ctx, app, dep, written, image, port); err != nil {
+			res, err := r.fail(ctx, app, "ServiceFailed", err)
+			return res, true, err
+		}
 	}
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Image = image
