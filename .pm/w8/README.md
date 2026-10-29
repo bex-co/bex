@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
-- [ ] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](219.md) — found by the m133 live check 2026-10-29
+- [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
 - [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](218.md) — found by the m131 live check 2026-10-29; needs repro, trace and a server-side default
 

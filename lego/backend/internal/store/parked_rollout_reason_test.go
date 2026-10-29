@@ -92,8 +92,9 @@ func TestParkedRolloutClosesWithItsLastStallDiagnosis(t *testing.T) {
 				rec.DeployGateTimeout = -1
 				rec.recordDeploy(ctx, DesiredApp{App: row}, reread(), app)
 				got := reread()
-				if got.Status != DeployUpdateFailed || got.FailureReason != tc.message {
-					t.Fatalf("closed %s with %q, want update_failed with the diagnosis", got.Status, got.FailureReason)
+				// …restated as the failure it now is (w8/219).
+				if want := appv1alpha1.TerminalStallText(tc.message); got.Status != DeployUpdateFailed || got.FailureReason != want {
+					t.Fatalf("closed %s with %q, want update_failed with %q", got.Status, got.FailureReason, want)
 				}
 			})
 		}
