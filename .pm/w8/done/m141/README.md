@@ -1,6 +1,6 @@
 # w8 · m141 — HTTP-aware Docker web listener selection
 
-**Worker:** worker1 **Goal:** Render's multi-port RabbitMQ example serves its HTTP management interface without PORT. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t006 done; t007 hosted acceptance and t008 closeout pending deployment)
+**Worker:** worker1 **Goal:** Render's multi-port RabbitMQ example serves its HTTP management interface without PORT. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t005 |
-| t007 | Hosted acceptance | 30m | t006 |
-| t008 | Closeout | 10m | t007 |
+| t007 | Hosted acceptance — **DONE 2026-10-29** | 30m | t006 |
+| t008 | Closeout — **DONE 2026-10-29** | 10m | t007 |
 
 ## Definition of done
 
@@ -55,3 +55,7 @@ w8/m142 records configured-port provenance and prevents HTTP selection from reta
 - **剩余工作：** 上一次线上验收已发现未达标（见上方最近一次 hosted 记录）。这是 worker 能直接修复的实现问题，不需要用户决定。
 - **worker 下一步：** 先定位并修复未达标项，补回归测试并 ship；等新修复部署后按原 DoD 复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Post-fix re-check on production pin `69f0b17d1fad` (carries `1bafd858f`). Two identical `render-examples/rabbitmq` fixtures (`--runtime docker`, Free, cookie/user/password env, no PORT): `srv-dbhm562kl95s73b458hg` and `srv-dbhm56l5enhs73d3fepg` both logged `==> Detected HTTP on port 15672; serving it` and report `port: 15672`; `GET /` 200; `/api/overview` 401 without and 200 with credentials (`management_version` 4.0.4). nginx:alpine control `srv-dbhm56t5enhs73d3ferg`: `Detected HTTP on port 80`, 200. The no-EXPOSE leg passed on 2026-10-28. All fixtures → 404.
