@@ -1,6 +1,6 @@
 # w4 · m160 — Revalidate static files across deployments
 
-**Worker:** worker4 **Goal:** returning visitors receive republished files at unchanged URLs **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 hosted parity and t006 closeout await deploy + QA
+**Worker:** worker4 **Goal:** returning visitors receive republished files at unchanged URLs **Status:** done 2026-10-29 — live DoD replayed on pin `b33dd43c4428`: static responses default to revalidation, so a cached URL and a seeded query URL both serve the republished bytes; an explicit Cache-Control rule round-trips through UI/REST/GraphQL/MCP and the edge; the dashboard delete removes everything (loopx w4).
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | ---- | ------------------------------------------------ | --- | ---------- |
 | t001 — **DONE** | Audit static response caching and rollout limits | 20m | — |
 | t002 — **DONE** | Default static responses to revalidation         | 30m | t001 |
-| t003 | Render parity                                    | 20m | t002       |
+| t003 — **DONE** | Render parity                                    | 20m | t002       |
 | t004 — **DONE** | Simplify                                         | 10m | t003 |
 | t005 — **DONE** | Test coverage                                    | 30m | t003 |
-| t006 | Closeout                                         | 15m | t004, t005 |
+| t006 — **DONE** | Closeout                                         | 15m | t004, t005 |
 
 ## Definition of done
 

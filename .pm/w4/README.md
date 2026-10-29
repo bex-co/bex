@@ -180,7 +180,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [x] **m161** — [Bind environment-group revisions to editing drafts](done/m161/README.md)  — **DONE 2026-10-29** (live two-tab DoD replayed on dashboard pin `55d99e66808d`: a stale draft keeps its base revision across real polls and reloads and is refused with ENV_GROUP_REVISION_CONFLICT without touching B's value; discard and fresh edit save normally; stale REST/GraphQL/MCP are refused; sweep-48 controls hold) 
 
-- [ ] **m160** — [Revalidate static files across deployments](blocked/m160/README.md) — **BLOCKED (release pipeline deploys operator/static-server; QA replays two root-directory republishes on a fresh-cache Free static site, the explicit header override across UI/REST/GraphQL/MCP, then cleans up and revokes the session)**. t001/t002/t004/t005 done 2026-10-03: every success path defaults to `public, max-age=0, must-revalidate`; operator `make test` + lint green.
+- [x] **m160** — [Revalidate static files across deployments](done/m160/README.md)  — **DONE 2026-10-29** (live DoD replayed on pin `b33dd43c4428`: static responses default to revalidation, so a cached URL and a seeded query URL both serve the republished bytes; an explicit Cache-Control rule round-trips through UI/REST/GraphQL/MCP and the edge; the dashboard delete removes everything) 
 
 - [x] **m159** — [Keep confirmations open through permission refresh](done/m159/README.md)  — **DONE 2026-10-29** (live DoD replayed on dashboard pin `55d99e66808d`: Restart and Suspend confirmations stay open and usable through three permission refreshes, confirm dispatches once, a source draft survives refresh, and rollback → Restart → standard deploy is correct) 
 
