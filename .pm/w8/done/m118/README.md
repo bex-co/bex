@@ -1,6 +1,6 @@
 # w8 · m118 — Redirect tenant HTTP to HTTPS
 
-**Worker:** worker8 **Goal:** A plain-HTTP request to any tenant web host (platform subdomain or custom domain) is redirected permanently to the same `https://` URL, as on Render, so credentials and cookies never travel in cleartext and apps only ever see `x-forwarded-proto: https`. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t006, t002, t003, t004 done; t005 needs production operator rollout and the owned Cloudflare replay; the user authorized shipping on 2026-10-28. Implementation and local verification completed 2026-10-28.
+**Worker:** worker8 **Goal:** A plain-HTTP request to any tenant web host (platform subdomain or custom domain) is redirected permanently to the same `https://` URL, as on Render, so credentials and cookies never travel in cleartext and apps only ever see `x-forwarded-proto: https`. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t002 — **DONE** | Render parity: redirect contract across hosts and surfaces | 20m | w8/m118/t006 |
 | t003 — **DONE** | Simplify the changed code | 15m | w8/m118/t002 |
 | t004 — **DONE** | Test coverage: redirect, exclusions, attribution, ACME paths | 40m | w8/m118/t002 |
-| t005 | Close out the milestone | 15m | w8/m118/t004 |
+| t005 | Close out the milestone — **DONE 2026-10-29** | 15m | w8/m118/t004 |
 
 Six tasks, 270m. All implementation and standing verification tasks are complete; t005 remains a production closeout.
 
@@ -67,3 +67,13 @@ The user explicitly requested `ship`, clearing the commit/push gate. The prepare
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Owned replay on production (pin `b33dd43c4428`, which carries the t006 TLS isolation `b2b793e56`), bex-canary, with the user's already-authorized `cf` CLI for one temporary DNS-only CNAME (`qa-20261029-lx8d-tls.10x.pub` → `qa-20261029-lx8d-tls.onbex.co`, TTL 60, record `8e3d939f42c9c197f989760f69a13a51`). Fixture: Free image web service `srv-dbhh0riv8vqc73fvn420` (`qa-20261029-lx8d-tls`, http-https-echo), platform subdomain enabled (the default).
+
+- **HTTP-01 with the redirect in place:** the custom hostname verified at once; its Certificate went Ready within ~45 s while the platform-host Certificate was still not Ready — the mixed-host case t006 fixed.
+- **Trusted HTTPS on the custom host while the platform certificate is pending:** after Traefik picked the Secret up (~30 s after the API reported `certificateStatus: verified`), `https://<custom>/x?y=1` returns 200 with normal verification; the served certificate is `CN=qa-20261029-lx8d-tls.10x.pub`, SAN exactly that name, issuer Let's Encrypt YR1.
+- **Redirect, both hosts:** `GET http://…/x?y=1` → 301 `Location: https://…/x?y=1`; `HEAD /` → 308; `POST /p?q=2` → 308 with path and query kept; `curl -L` follows exactly one redirect to HTTPS 200, and the app sees `x-forwarded-proto: https`, the custom `host`, path `/x` and query `y=1`.
+- Static-site redirect and the IP allow-list 403 (redirect first, then 403) were accepted live on 2026-10-19 and 2026-10-27 and were not repeated. `BEX_HTTPS_REDIRECT=false` is a cluster setting, covered by `TestWebServiceIngressRedirectsHTTPToHTTPS`.
+- Cleanup: custom domain removed (204), DNS record deleted (exact-name list empty), service deleted (`GET` 404), and no Certificate, Ingress or App for the fixture remains in the namespace.
