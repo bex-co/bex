@@ -208,3 +208,48 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
 	}
 }
+
+// w8/217: a Python service created since the cutoff with no version signal
+// builds on Render's default 3.14.8, not the 3.14 line's newest reviewed patch;
+// PYTHON_VERSION=3.14 keeps the reviewed patch, and an older or unknown-age
+// service keeps its 3.13 default.
+func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}}
+	run := func(created time.Time, env map[string]string) NativeChoice {
+		t.Helper()
+		o := nativeOptions()
+		o.Runtime = "python"
+		bundle, dockerfile, src := writeResolveFixture(t, o, env, nil)
+		choices, err := ResolveNativeBuildExact(context.Background(), fake, created, "python", bundle, dockerfile, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return choices[0]
+	}
+
+	got := run(pythonCreationCutoff, nil)
+	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || got.Narration() != "==> Using Python 3.14.8 (default)" {
+		t.Errorf("new service: %+v narration %q", got, got.Narration())
+	}
+	reviewed, _ := nativeToolchains[nativePythonRuntime].find("3.14")
+	if c := run(pythonCreationCutoff.Add(time.Hour), map[string]string{"PYTHON_VERSION": "3.14"}); c.Line != "3.14" || c.Image != reviewed.image {
+		t.Errorf("PYTHON_VERSION=3.14 must keep the reviewed %s: %+v", reviewed.version, c)
+	}
+	for name, c := range map[string]NativeChoice{
+		"older service": run(pythonCreationCutoff.Add(-time.Hour), nil),
+		"unknown age":   run(time.Time{}, nil),
+	} {
+		if c.Line != "3.13" || strings.Contains(c.Image, "python:3.14.8-bookworm@") {
+			t.Errorf("%s must keep the 3.13 default: %+v", name, c)
+		}
+	}
+
+	missing := &fakeExact{digests: map[string]string{}}
+	o := nativeOptions()
+	o.Runtime = "python"
+	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+	choices, err := ResolveNativeBuildExact(context.Background(), missing, pythonCreationCutoff.Add(time.Hour), "python", bundle, dockerfile, src)
+	if err != nil || choices[0].Line != "3.14" || !strings.Contains(choices[0].Narration(), "No official image python:3.14.8-bookworm") {
+		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
+	}
+}
