@@ -218,6 +218,36 @@ it("previews the ready card's copy, action, search help and columns (w4/m220)", 
   expect(container.querySelector("p [data-slot='skeleton']")).toBeNull();
 });
 
+// w4/432: a Hobby workspace always settles to the plan-gate card, so its
+// loading preview is that card — no Create action, search or table to drop.
+it("previews a Hobby workspace's plan-gate card, not the Pro list (w4/432)", async () => {
+  workspacePlan = "hobby";
+  endpoints = [];
+  const ready = renderPanel();
+  await screen.findByText(/Upgrade this workspace to add an endpoint/);
+  const text = (el: Element | null) => el?.textContent?.trim();
+  const readyDescription = text(
+    ready.container.querySelector('[data-slot="card-description"]'),
+  );
+  const readyBody = text(
+    ready.container.querySelector('[data-slot="card-content"]'),
+  );
+  ready.unmount();
+
+  const { WebhooksListPageSkeleton } =
+    await import("@/common/components/route-skeletons");
+  const { container } = render(<WebhooksListPageSkeleton />);
+  expect(container.querySelector('[data-slot="card-action"]')).toBeNull();
+  expect(container.querySelector("th")).toBeNull();
+  expect(container.querySelector("input, [type=search]")).toBeNull();
+  expect(
+    text(container.querySelector('[data-slot="card-description"]')),
+  ).toBe(readyDescription);
+  expect(text(container.querySelector('[data-slot="card-content"]'))).toBe(
+    readyBody,
+  );
+});
+
 // w4/m219 (a837): a query typed into the server HTML before handlers attach
 // is wiped by hydration.
 it("keeps the search uneditable until hydration, then filters (w4/m219)", async () => {

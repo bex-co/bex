@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { useRouterState, useSearch } from "@tanstack/react-router";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Webhook } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,6 +18,9 @@ import {
   CardAction,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PanelCenteredState } from "@/common/components/panel-states";
+import { useWorkspace } from "@/features/workspaces/context";
+import { proFeaturesPlan } from "@/features/workspaces/types";
 import {
   DatastorePlanPreview,
   PlanTierSlots,
@@ -787,10 +790,34 @@ export function WebhooksListPageSkeleton() {
  * The ready WebhooksPanel's own card, inert: real title, translated
  * description and Create action in the CardAction slot, the search field and
  * its help in CardContent, then the five-column table — so the swap moves no
- * header, search or table (w4/m220 a832).
+ * header, search or table (w4/m220 a832). A workspace known to be below Pro
+ * always settles to the panel's plan-gate card, so it previews that instead
+ * (w4/432).
  */
 function WebhooksCardPreview() {
   const { t } = useTranslations();
+  const { currentWorkspace } = useWorkspace();
+  if (currentWorkspace && !proFeaturesPlan(currentWorkspace.plan)) {
+    return (
+      <Card inert aria-busy="true">
+        <CardHeader>
+          <CardTitle className="relative w-fit">
+            <ReservedText>{t("webhooks.title")}</ReservedText>
+          </CardTitle>
+          <CardDescription className="relative">
+            <ReservedText>{t("webhooks.proOnly")}</ReservedText>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PanelCenteredState
+            icon={<Webhook />}
+            title={t("webhooks.emptyTitle")}
+            body={t("webhooks.planGate")}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card inert aria-busy="true">
       <CardHeader>
