@@ -32,9 +32,11 @@ import (
 // stubExact answers every tag with one digest, so no test reaches the registry.
 type stubExact struct{}
 
-func (stubExact) ResolveOfficialTag(context.Context, string, string) (string, bool, error) {
+func (stubExact) ResolveTag(context.Context, string, string) (string, bool, error) {
 	return "sha256:0000000000000000000000000000000000000000000000000000000000000001", true, nil
 }
+
+func (stubExact) ListTags(context.Context, string, string) ([]string, error) { return nil, nil }
 
 func TestMain(m *testing.M) {
 	exactImages = stubExact{}
