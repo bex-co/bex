@@ -1,6 +1,6 @@
 # w8 · m124 — Scope a service's logs and metrics to its own incarnation
 
-**Worker:** worker8 **Goal:** A service created with the name of a deleted one never shows the predecessor's logs, request lines, instances or metric points, on any surface. Render's logs and metrics belong to the service ID. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t006 done 2026-10-20; t007 live check on production after the release pipeline deploys bex-api and GitOps syncs the log shipper
+**Worker:** worker8 **Goal:** A service created with the name of a deleted one never shows the predecessor's logs, request lines, instances or metric points, on any surface. Render's logs and metrics belong to the service ID. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: logs/metrics identity in ADR018/ADR010                      | 15m | w8/m124/t002, w8/m124/t003 |
 | t005 — **DONE** | Simplify the changed code                                                  | 15m | w8/m124/t004               |
 | t006 — **DONE** | Test coverage: two incarnations of one name on every read path            | 40m | w8/m124/t004               |
-| t007 | Close out the milestone                                                    | 30m | w8/m124/t005, w8/m124/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m124/t005, w8/m124/t006 |
 
 ## Definition of done
 
@@ -25,8 +25,8 @@ Live on production after the release pipeline deploys bex-api and GitOps syncs t
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note `w8/144` on 2026-10-20 (`/qa-find-bugs-cli` sweeps 1244 and 1245, [evidence](../evidence/cli-sweep1244/README.md)). The note's text is kept in [`done/144.md`](../done/144.md).
-- **Goal linkage:** [ADR018](../../../docs/ADR018-render-parity.md) logs and metrics rows; [ADR010](../../../docs/ADR010-observability.md). Render scopes both to the service ID.
+- **Source:** promoted from inbox note `w8/144` on 2026-10-20 (`/qa-find-bugs-cli` sweeps 1244 and 1245, [evidence](../../evidence/cli-sweep1244/README.md)). The note's text is kept in [`done/144.md`](../done/144.md).
+- **Goal linkage:** [ADR018](../../../../docs/ADR018-render-parity.md) logs and metrics rows; [ADR010](../../../../docs/ADR010-observability.md). Render scopes both to the service ID.
 - **Expected outcome:** a deleted service's paths, client IPs and process output stop resurfacing under a new service, and a new service's history and charts start empty.
 - **Why now:** severity major (deleted data resurfaces). Name reuse right after deletion is common, and the sweep recreated a name 2 s after deleting it.
 
@@ -46,3 +46,7 @@ Live on production after the release pipeline deploys bex-api and GitOps syncs t
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Post-fix re-check on production pin `69f0b17d1fad` (carries `9b46db599`). Predecessor `srv-dbhlvpl5enhs73d3fd50` (two pods) deleted at 15:04:11Z; same-name successor `srv-dbhm0r2kl95s73b457lg` created at 15:04:12Z. REST `/v1/metrics/memory`, REST `/v1/metrics/instance-count` and MCP `get_metrics`, read 8 times between 15:05:27 and 15:10:45: zero predecessor pod series on every read; instance-count read 2, 2, then 1 (the 2s are the successor's own create rollout). Logs, request lines, instances, CPU and HTTP metrics already passed the same day. Both fixtures → 404.

@@ -19,7 +19,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）**
 
-- [ ] **m141** — [HTTP-aware Docker web listener selection](m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：修复上次线上验收未达标项后复验）**
+- [x] **m141** — [HTTP-aware Docker web listener selection](done/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **DONE 2026-10-29** (RabbitMQ serves 15672 deterministically, on production)
 
 - [x] **m140** — [Password-free internal Key Value connections](done/m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **DONE 2026-10-29** (password-free internal Key Value, isolated per workspace, on production)
 
@@ -53,7 +53,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](done/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik ([evidence](done/m125/evidence/README.md)); ADR010/ADR018. — **DONE 2026-10-29** (edge-minted Rndr-Id end to end on production)
 
-- [ ] **m124** — [Scope a service's logs and metrics to its own incarnation](m124/README.md) (7 tasks;250m) ← promoted from `144` on 2026-10-20 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**. t001–t006 done: an `app_id` stream label from `bex.co/app-id`, every App log/metric read starting at `core.AppNotBefore` and selecting `app_id=~"<id>|"`, pod lists dropping other incarnations (`core.OwnAppPods`, also the instance list and SSH targets), and cAdvisor PromQL `unless on(pod) (kube_pod_created < floor)`; ADR010/ADR018.
+- [x] **m124** — [Scope a service's logs and metrics to its own incarnation](done/m124/README.md) (7 tasks;250m) ← promoted from `144` on 2026-10-20. t001–t006 done: an `app_id` stream label from `bex.co/app-id`, every App log/metric read starting at `core.AppNotBefore` and selecting `app_id=~"<id>|"`, pod lists dropping other incarnations (`core.OwnAppPods`, also the instance list and SSH targets), and cAdvisor PromQL `unless on(pod) (kube_pod_created < floor)`; ADR010/ADR018. — **DONE 2026-10-29** (a recreated namesake shows none of its predecessor's data, on production)
 
 - [x] **m123** — [Sanitize client-identity headers at the tenant edge](done/m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20. t001–t006 done: a Cloudflare-aware `bex-client-ip-headers` local plugin on the `web`/`websecure` entrypoints (forged and underscore spellings stripped, `True-Client-IP` = the real client, `CF-*` kept only from a Cloudflare edge), its Middleware in the Traefik release, gitops-validate guards (mounted ConfigMaps, entrypoint wiring, Cloudflare range drift), plugin tests in CI, and a load check on the pinned Traefik v3.7.5 ([evidence](done/m123/evidence/README.md)); ADR018/ADR022. — **DONE 2026-10-29** (forged client-IP headers stripped on production)
 
