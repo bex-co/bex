@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
+import type { ReactNode } from "react";
 
 const loadMore = vi.fn();
 const auditState: UseAuditLogResult = {
@@ -11,11 +12,20 @@ const auditState: UseAuditLogResult = {
   error: undefined,
   forbidden: false,
   unavailable: false,
+  planRequired: false,
   hasMore: false,
   loadMore,
 };
 vi.mock("@/features/audit/hooks/use-audit-log", () => ({
   useAuditLog: () => auditState,
+}));
+
+// The plan notice links to Billing; render the router Link as its anchor.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ to, children }: { to: string; children: ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
@@ -52,6 +62,7 @@ beforeEach(() => {
   auditState.error = undefined;
   auditState.forbidden = false;
   auditState.unavailable = false;
+  auditState.planRequired = false;
   auditState.hasMore = false;
   loadMore.mockReset();
 });
@@ -100,5 +111,23 @@ describe("SecurityComplianceSection", () => {
     expect(
       within(region).getByText("Audit log not configured"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Pro-plan notice with a Billing link on a Hobby workspace (w8/m138)", () => {
+    auditState.planRequired = true;
+    render(<SecurityComplianceSection />);
+
+    const region = screen.getByRole("region", {
+      name: /security & compliance/i,
+    });
+    expect(
+      within(region).getByText("Audit logs require the Pro plan"),
+    ).toBeInTheDocument();
+    expect(
+      within(region).getByRole("link", { name: "Open Billing" }),
+    ).toHaveAttribute("href", "/billing");
+    expect(
+      within(region).queryByText("Couldn't load the audit log"),
+    ).not.toBeInTheDocument();
   });
 });

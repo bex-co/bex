@@ -520,6 +520,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "显示事件时间线",
     description: "Accessible label for the Metrics event-timeline toggle",
   },
+  "metrics.latencyPlanRequired": {
+    message: "响应延迟指标仅在 Pro 及更高套餐中提供。此工作区为 Hobby 套餐。",
+    description:
+      "Response Times section on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
 };
 
 export default zhMetrics;

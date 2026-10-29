@@ -229,6 +229,10 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if err != nil {
 		return nil, err
 	}
+	// Render: audit logs are a Pro-and-higher feature (w8/m138).
+	if err := s.RequirePlanFeature(ctx, ownerID, core.FeatureAuditLogs); err != nil {
+		return nil, err
+	}
 	oldestFirst, err := core.ParseDirection(filter.Direction)
 	if err != nil {
 		return nil, err

@@ -99,6 +99,17 @@ const enLogs: Record<string, TranslationEntry> = {
       "Request logs and level/status/method/path filters read from the durable log store, which isn't configured here. They're available where the store is wired.",
     description: "Empty-state body for the store-unavailable (503) state",
   },
+  "logs.requestPlanTitle": {
+    message: "HTTP request logs require the Pro plan",
+    description:
+      "Notice title in place of Request logs on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
+  "logs.requestPlanBody": {
+    message:
+      "Request logs are available on the Pro plan and higher. This workspace is on Hobby, so it shows application and build logs only.",
+    description:
+      "Notice body in place of Request logs on a Hobby workspace (w8/m138)",
+  },
   "logs.searchPlaceholder": {
     message: "Search logs",
     description: "Placeholder for the log search box (text filter)",

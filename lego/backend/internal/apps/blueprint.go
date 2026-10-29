@@ -743,6 +743,11 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		if entries := s.validateWorkspaceReferences(ctx, source, ir, st, snap); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
+		// The workspace plan's environment cap and network-isolation rule,
+		// which the apply enforces (w8/m138 t013).
+		if entries := s.blueprintPlanLimitErrors(ctx, source, st.groupings); len(entries) > 0 {
+			return BlueprintValidation{Errors: entries}, nil
+		}
 	}
 	if err == nil && repo != "" && s.Blueprints != nil {
 		// Ownership conflicts surface in the preview/validation result (the

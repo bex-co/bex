@@ -19,6 +19,7 @@ package projects
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -306,17 +307,34 @@ func TestCreateWithEnvironmentsFollowsThePlan(t *testing.T) {
 		return tenant.Plan, err
 	})
 
-	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "three", []EnvironmentInput{{Name: "a"}, {Name: "b"}, {Name: "c"}}); err == nil || !strings.Contains(err.Error(), "limited to 2 environments per project") {
+	_, err = svc.CreateWithEnvironments(ctx, workspace.ID, "three", []EnvironmentInput{{Name: "a"}, {Name: "b"}, {Name: "c"}})
+	if err == nil || err.Error() != "invalid request body at /environments: bad request: environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more" {
 		t.Fatalf("three environments on Hobby: err = %v", err)
 	}
-	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "isolated", []EnvironmentInput{{Name: "a", NetworkIsolationEnabled: true}}); err == nil || !strings.Contains(err.Error(), "network-isolated environments require the Pro plan") {
+	requirePlanCode(t, err, core.PlanLimitCode, "")
+	_, err = svc.CreateWithEnvironments(ctx, workspace.ID, "isolated", []EnvironmentInput{{Name: "a", NetworkIsolationEnabled: true}})
+	if err == nil || !strings.Contains(err.Error(), "network-isolated environments require the Pro plan") {
 		t.Fatalf("isolated environment on Hobby: err = %v", err)
 	}
+	requirePlanCode(t, err, core.PlanFeatureRequiredCode, "networkIsolation")
 	projects, err := st.ListProjects(ctx, workspace.ID)
 	if err != nil || len(projects) != 0 {
 		t.Fatalf("a refused create left %d projects (%v)", len(projects), err)
 	}
 	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "two", []EnvironmentInput{{Name: "production"}, {Name: "staging"}}); err != nil {
 		t.Fatalf("two environments on Hobby: %v", err)
+	}
+}
+
+// requirePlanCode asserts err is the coded workspace-plan refusal (w8/m138
+// t013): code, params.plan and, for a feature gate, params.feature.
+func requirePlanCode(t *testing.T, err error, code, feature string) {
+	t.Helper()
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != code || coded.Params["plan"] != "hobby" {
+		t.Fatalf("want %s with params.plan hobby, got %#v (%v)", code, coded, err)
+	}
+	if feature != "" && (coded.Params["feature"] != feature || coded.Params["requiredPlan"] != "pro") {
+		t.Fatalf("want params.feature %s requiredPlan pro, got %v", feature, coded.Params)
 	}
 }

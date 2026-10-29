@@ -97,6 +97,17 @@ const zhLogs: Record<string, TranslationEntry> = {
       "请求日志以及级别/状态/方法/路径筛选需从持久化日志存储读取，而此环境未配置该存储。在已接入存储的环境中可用。",
     description: "Empty-state body for the store-unavailable (503) state",
   },
+  "logs.requestPlanTitle": {
+    message: "HTTP 请求日志需要 Pro 套餐",
+    description:
+      "Notice title in place of Request logs on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
+  "logs.requestPlanBody": {
+    message:
+      "请求日志仅在 Pro 及更高套餐中提供。此工作区为 Hobby 套餐，因此只显示应用日志和构建日志。",
+    description:
+      "Notice body in place of Request logs on a Hobby workspace (w8/m138)",
+  },
   "logs.searchPlaceholder": {
     message: "搜索日志",
     description: "Placeholder for the log search box (text filter)",

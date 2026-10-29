@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MetricSection } from "../metric-section";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
 import type { ChartSeries } from "@/features/metrics/types";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 function result(over: Partial<UseMetricsResult> = {}): UseMetricsResult {
   return {
@@ -183,5 +184,47 @@ describe("MetricSection title", () => {
       </MetricSection>,
     );
     expect(screen.getByText("Disk")).toHaveClass("[overflow-wrap:normal]");
+  });
+});
+
+// w8/m138: a plan refusal of the section's feature is a plan notice, not an
+// error card; another feature's refusal keeps the generic error.
+describe("MetricSection plan refusal", () => {
+  const refusal = (feature: string) =>
+    new CombinedGraphQLErrors({
+      errors: [
+        {
+          message: "bad request: response latency metrics require the Pro plan",
+          extensions: { code: "PLAN_FEATURE_REQUIRED", plan: "hobby", feature },
+        },
+      ],
+    } as never);
+  const plan = { feature: "latencyMetrics", message: "Needs the Pro plan." };
+
+  it("shows the plan message in place of the chart", () => {
+    render(
+      <MetricSection
+        title="Response Times"
+        result={result({ error: refusal("latencyMetrics") })}
+        planFeature={plan}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByText("Needs the Pro plan.")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart")).toBeNull();
+  });
+
+  it("keeps the error card for another feature's refusal", () => {
+    render(
+      <MetricSection
+        title="Response Times"
+        result={result({ error: refusal("auditLogs") })}
+        planFeature={plan}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.queryByText("Needs the Pro plan.")).toBeNull();
   });
 });

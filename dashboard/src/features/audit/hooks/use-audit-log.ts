@@ -3,7 +3,10 @@ import { useApolloClient, useQuery } from "@apollo/client/react";
 import { AuditLogsDocument, type AuditLogsQuery } from "@/graphql/definitions";
 import type { AuditEvent } from "@/features/audit/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { classifyRefusal } from "@/common/lib/graphql-error";
+import {
+  classifyRefusal,
+  planFeatureRequired,
+} from "@/common/lib/graphql-error";
 
 const PAGE_SIZE = 20;
 
@@ -37,6 +40,8 @@ export interface UseAuditLogResult {
   error: Error | undefined;
   forbidden: boolean;
   unavailable: boolean;
+  /** The workspace plan has no audit logs (Render: Pro and higher, w8/m138). */
+  planRequired: boolean;
   hasMore: boolean;
   loadMore: () => void;
 }
@@ -153,15 +158,20 @@ export function useAuditLog(): UseAuditLogResult {
     }
   }
 
-  const kind = classifyRefusal(error ?? scoped.error, "AUDIT_LOG_UNAVAILABLE");
+  const failure = error ?? scoped.error;
+  const planRequired = planFeatureRequired(failure, "auditLogs");
+  const kind = planRequired
+    ? null
+    : classifyRefusal(failure, "AUDIT_LOG_UNAVAILABLE");
 
   return {
     events,
     loading: !resolved || (loading && events.length === 0),
     loadingMore,
-    error: kind === "generic" ? (error ?? scoped.error) : undefined,
+    error: kind === "generic" ? failure : undefined,
     forbidden: kind === "forbidden",
     unavailable: kind === "unavailable",
+    planRequired,
     hasMore,
     loadMore: () => void loadMore(),
   };

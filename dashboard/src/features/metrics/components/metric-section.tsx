@@ -4,6 +4,7 @@ import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { planFeatureRequired } from "@/common/lib/graphql-error";
 
 interface MetricSectionProps {
   title: string;
@@ -13,6 +14,11 @@ interface MetricSectionProps {
   /** Overrides the generic error-card copy for a section that wants a
    *  metric-specific message (e.g. bandwidth's "Couldn't load bandwidth"). */
   errorMessage?: string;
+  /**
+   * The workspace-plan feature this section's read needs (`latencyMetrics`),
+   * with the notice shown when bex-api refuses it on a lower plan (w8/m138).
+   */
+  planFeature?: { feature: string; message: string };
   children: React.ReactNode;
 }
 
@@ -30,6 +36,7 @@ export function MetricSection({
   result,
   headerExtra,
   errorMessage,
+  planFeature,
   children,
 }: MetricSectionProps) {
   const { t } = useTranslations();
@@ -46,7 +53,11 @@ export function MetricSection({
   const errorEmpty = !!result.error && result.series.length === 0;
   const throttledEmpty = result.throttled && result.series.length === 0;
   const throttledStale = result.throttled && result.series.length > 0;
-  const body = result.storeUnavailable ? (
+  const planRefused =
+    !!planFeature && planFeatureRequired(result.error, planFeature.feature);
+  const body = planRefused ? (
+    <MetricUnavailable message={planFeature.message} />
+  ) : result.storeUnavailable ? (
     <MetricUnavailable message={t("metrics.hostPathStoreUnavailable")} />
   ) : result.unavailable ? (
     <MetricUnavailable />

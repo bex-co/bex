@@ -164,11 +164,6 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description:
       "Notice in place of the create form and the empty list on a Hobby workspace (w4/425)",
   },
-  "webhooks.planGateBilling": {
-    message: "Open Billing",
-    description:
-      "Link from the webhook plan notice to the Billing page (w4/425)",
-  },
   "webhooks.errors.endpointLimit": {
     message: "This workspace has reached its webhook endpoint limit.",
     description: "Server-coded endpoint quota refusal",

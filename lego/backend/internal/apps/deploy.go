@@ -552,6 +552,21 @@ type parsedGrouping struct {
 	// apply can tell "leave unchanged" from "explicitly disable".
 	protectionSpecified bool
 	isolationSpecified  bool
+	// pointer is the environment's authored JSON pointer
+	// (#/projects/<i>/environments/<j>), where validation locates its plan
+	// refusals (w8/m138 t013).
+	pointer string
+}
+
+// desiredIsolation is the network isolation the apply persists for an
+// environment that has current: the manifest's value when its
+// networking.isolation block is present, else current unchanged (round-21
+// finding 1). Validation and apply share it so they cannot drift.
+func (g parsedGrouping) desiredIsolation(current bool) bool {
+	if g.isolationSpecified {
+		return g.networkIsolationEnabled
+	}
+	return current
 }
 
 // parsedEnvGroup is a validated envVarGroups[] entry: literal vars keyed to their
@@ -1804,10 +1819,7 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 		if grouping.protectionSpecified {
 			desiredProtected = grouping.protectedStatus
 		}
-		desiredIsolation := environment.NetworkIsolationEnabled
-		if grouping.isolationSpecified {
-			desiredIsolation = grouping.networkIsolationEnabled
-		}
+		desiredIsolation := grouping.desiredIsolation(environment.NetworkIsolationEnabled)
 		if err := s.RequireNetworkIsolation(ctx, tenantID, desiredIsolation, environment.NetworkIsolationEnabled); err != nil {
 			return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 		}
@@ -2259,13 +2271,13 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 func flattenProjectDecls(projects []bexProject, services []decl[bexService], databases []decl[bexDatabase], envGroups []decl[bexEnvGroup]) ([]decl[bexService], []decl[bexDatabase], []decl[bexEnvGroup], []parsedGrouping, error) {
 	var groupings []parsedGrouping
 	projectNames := map[string]bool{}
-	for _, project := range projects {
+	for projectIndex, project := range projects {
 		projectName, err := validateUniqueName(project.Name, "projects entry", projectNames)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 		environmentNames := map[string]bool{}
-		for _, environment := range project.Environments {
+		for environmentIndex, environment := range project.Environments {
 			environmentName, err := validateUniqueName(environment.Name, fmt.Sprintf("project %q environment", projectName), environmentNames)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -2291,6 +2303,7 @@ func flattenProjectDecls(projects []bexProject, services []decl[bexService], dat
 				protectedStatus:         protectedStatus,
 				protectionSpecified:     environment.Permissions.Protection != "",
 				isolationSpecified:      environment.Networking.Isolation != "",
+				pointer:                 fmt.Sprintf("#/projects/%d/environments/%d", projectIndex, environmentIndex),
 			})
 			for _, service := range environment.Services {
 				services = append(services, decl[bexService]{value: service, grouping: grouping})

@@ -329,7 +329,7 @@ func HideCause(refusal, cause error) error {
 // adapters map it to 400.
 func NewPlanLimitError(msg, plan string, limit int) *CodedError {
 	return &CodedError{
-		Code:     "PLAN_LIMIT",
+		Code:     PlanLimitCode,
 		Params:   map[string]any{"plan": plan, "limit": limit},
 		sentinel: ErrBadRequest,
 		msg:      msg,

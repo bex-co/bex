@@ -185,6 +185,20 @@ export function relayableReason(err: unknown): string {
 }
 
 /**
+ * True when bex-api refused a read or write because the workspace plan does
+ * not include `feature` (`PLAN_FEATURE_REQUIRED` with `params.feature`, e.g.
+ * `requestLogs`, `auditLogs`, `latencyMetrics`; w8/m138). Keyed on the code and
+ * feature, never on the message, so a page can show its plan notice in place
+ * of a load failure.
+ */
+export function planFeatureRequired(err: unknown, feature: string): boolean {
+  return (
+    graphQLErrorExtensions(err, "PLAN_FEATURE_REQUIRED")?.["feature"] ===
+    feature
+  );
+}
+
+/**
  * Extracts PLAN_LIMIT error params from a GraphQL error's extensions field.
  * Returns the structured params when an error carries code "PLAN_LIMIT";
  * returns null for any other error type or code so callers fall through to a

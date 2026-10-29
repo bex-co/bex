@@ -17,6 +17,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { CopyButton } from "@/common/components/copy-button";
+import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
@@ -137,10 +138,7 @@ export function NewWebhookPage() {
               <CardContent>
                 {!proPlan ? (
                   <p className="text-muted-foreground text-sm" role="status">
-                    {t("webhooks.planGate")}{" "}
-                    <Link to="/billing" className="underline">
-                      {t("webhooks.planGateBilling")}
-                    </Link>
+                    {t("webhooks.planGate")} <PlanBillingLink />
                   </p>
                 ) : !canManage ? (
                   capabilitiesLoaded ? (

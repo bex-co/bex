@@ -115,10 +115,16 @@ Render's [features-by-plan page](https://render.com/docs/platform-features-by-pl
 | Environments per project | Hobby: 2 | Pro and higher: unlimited |
 | Network-isolated environments | Pro | turning it on is refused; an isolated environment can turn it off |
 | Webhooks | Pro | one destination on Pro, up to 100 on Scale and Enterprise |
-| HTTP request logs | Pro | explicit `type=request` refused; all-types queries drop request lines |
+| HTTP request logs | Pro | explicit `type=request` refused; all-types queries and label discovery drop request lines and request-only values |
+| Audit logs | Pro | events are still recorded on Hobby; reading them is refused |
+| Response latency metrics | Pro | `http_latency` refused; request counts and bandwidth stay open |
 | Inbound IP rules on services, static sites and environments | Scale | Postgres and Key Value rules stay on every plan |
 
 **Free datastores (w4/m241):** every workspace, on any plan, may hold one free Postgres and one free Key Value (Render's free rule); paid instances never count toward it. Admission enforces it by instance plan (`FREE_INSTANCE_LIMIT`), and Hobby's total datastore quota is the paid ceiling (25/25) so a paid create is never refused for holding a free one. A terminating free instance still holds its free slot until deletion finishes.
+
+**Machine codes (w8/m138 t013):** a count cap answers `PLAN_LIMIT` (`params {plan, limit, field}`: members, environments per project) and a missing feature `PLAN_FEATURE_REQUIRED` (`params {plan, feature, requiredPlan[, field]}`, `feature` one of `networkIsolation`, `requestLogs`, `auditLogs`, `latencyMetrics`), on REST `code`/`params`, GraphQL `extensions` and the MCP message prefix. Webhooks keep their earlier `WEBHOOK_PLAN_LIMIT`. Messages are unchanged. Blueprint validate reports the environment cap and network isolation at the authored entry with the code.
+
+**Inventory (w8/m138 t006, 2026-10-29):** production held 64 Hobby, 2 Scale and 1 Enterprise workspaces, and no Hobby workspace had a project with three or more environments, an isolated environment or a webhook endpoint, so no migration was needed.
 
 Existing state is never silently removed: a Hobby workspace keeps its third environment, isolated environments, webhook endpoints and IP rules working, and only new uses are refused. An unreadable plan fails the write; an unwired plan reader (store-off) leaves every feature open. Render's exact refusal wording and its request-log behavior on Hobby are unverified (no Render account); bex takes the documented 400 with the plan named.
 

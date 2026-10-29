@@ -77,6 +77,15 @@ const zhAudit: Record<string, TranslationEntry> = {
     message: "此 bex 部署尚未配置审计日志存储。",
     description: "Audit Log unavailable-state body",
   },
+  "audit.planTitle": {
+    message: "审计日志需要 Pro 套餐",
+    description:
+      "Audit Log title on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
+  "audit.planBody": {
+    message: "审计日志仅在 Pro 及更高套餐中提供。此工作区为 Hobby 套餐。",
+    description: "Audit Log plan notice body on a Hobby workspace (w8/m138)",
+  },
 };
 
 export default zhAudit;

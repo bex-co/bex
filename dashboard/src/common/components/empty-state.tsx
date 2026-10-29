@@ -24,7 +24,8 @@ const ICONS: Record<string, LucideIcon> = {
 
 interface EmptyStateProps {
   title: string;
-  description: string;
+  /** Text, or text with an inline link (a plan notice's Billing link). */
+  description: React.ReactNode;
   iconName?: string;
 }
 

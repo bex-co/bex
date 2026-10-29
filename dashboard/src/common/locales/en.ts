@@ -478,6 +478,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "in {n}d",
     description: "Compact countdown in whole days, e.g. in 83d (w4/m188)",
   },
+  "common.openBilling": {
+    message: "Open Billing",
+    description:
+      "Link from a plan notice (a Pro-and-higher feature on Hobby) to the Billing page (w8/m138)",
+  },
 };
 
 export default enCommon;

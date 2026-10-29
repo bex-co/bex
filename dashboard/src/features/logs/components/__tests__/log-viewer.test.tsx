@@ -6,7 +6,8 @@ import {
   fireEvent,
   waitFor,
 } from "@testing-library/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS } from "@/features/metrics/lib/range";
@@ -39,6 +40,23 @@ vi.mock("../../hooks/use-live-logs", () => ({
     useLiveLogsSpy(...args);
     return { lines: liveState.lines, status: "idle" };
   },
+}));
+// The plan notice links to Billing; render the router Link as its anchor.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string;
+    children: ReactNode;
+    className?: string;
+  }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelDiscovery: () => ({ values: [], resolved: false }),
@@ -84,6 +102,58 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("upstream exploded")).toBeNull();
+  });
+
+  it("shows the Pro-plan notice, not a load failure, when request logs are plan-refused (w8/m138)", () => {
+    historyState.error = new CombinedGraphQLErrors({
+      errors: [
+        {
+          message:
+            "bad request: type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby",
+          extensions: {
+            code: "PLAN_FEATURE_REQUIRED",
+            plan: "hobby",
+            feature: "requestLogs",
+            requiredPlan: "pro",
+            field: "type",
+          },
+        },
+      ],
+    } as never);
+    render(
+      <LogViewer
+        resource="web"
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
+      />,
+    );
+    expect(
+      screen.getByText("HTTP request logs require the Pro plan"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
+    expect(screen.queryByText("Couldn't load logs")).not.toBeInTheDocument();
+    // No live tail retrying against the refusal.
+    expect(useLiveLogsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+  });
+
+  it("keeps the generic error for another feature's plan refusal", () => {
+    historyState.error = new CombinedGraphQLErrors({
+      errors: [
+        {
+          message: "nope",
+          extensions: { code: "PLAN_FEATURE_REQUIRED", feature: "webhooks" },
+        },
+      ],
+    } as never);
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("Couldn't load logs")).toBeInTheDocument();
+    expect(
+      screen.queryByText("HTTP request logs require the Pro plan"),
+    ).toBeNull();
   });
 
   it("renders log lines when history has content", () => {
