@@ -1,6 +1,6 @@
 # w8 · m133 — A health check that answers 3xx passes, as on Render, instead of following the redirect
 
-**Worker:** worker8 **Goal:** An HTTP health check counts a `2xx` or `3xx` response from the instance as healthy, as on Render ("a `2xx` or `3xx` status code within five seconds"), and never follows the redirect. A service whose health path redirects goes live. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t006 done 2026-10-23; the release pipeline builds the new health-probe binary into the bex image and deploys the operator, and a service's next roll adopts the exec probe; QA runs t007 with owned Free echo-server fixtures: a 302→/elsewhere?echo_code=500 health path and a 301→absolute-URL path go live within 2 minutes with no /elsewhere request in the app logs, 404 and 500 paths never go live, /healthz (200) is the control, a path-less service keeps the TCP probe, the probe sends the platform Host; confirm the init container pulls bex's image on the tenant pool; delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** An HTTP health check counts a `2xx` or `3xx` response from the instance as healthy, as on Render ("a `2xx` or `3xx` status code within five seconds"), and never follows the redirect. A service whose health path redirects goes live. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: ADR004/ADR018 and the deploy messages agree                 | 15m | w8/m133/t003               |
 | t005 — **DONE** | Simplify the changed code                                                  | 15m | w8/m133/t004               |
 | t006 — **DONE** | Test coverage: 2xx/3xx/4xx/5xx, relative/absolute redirects, timeout, Host  | 40m | w8/m133/t004               |
-| t007 | Close out the milestone                                                    | 30m | w8/m133/t005, w8/m133/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m133/t005, w8/m133/t006 |
 
 ## Definition of done
 
@@ -27,7 +27,7 @@ Live on production after the release pipeline deploys the operator, with owned F
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 9c1e, 2026-10-23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/health-checks](https://render.com/docs/health-checks): "Render considers a check successful if the instance responds with a `2xx` or `3xx` status code within five seconds." ADR004:146 already promises "2xx/3xx is ready", and bex's own stall reason says "Check that the path returns a 2xx or 3xx status".
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/health-checks](https://render.com/docs/health-checks): "Render considers a check successful if the instance responds with a `2xx` or `3xx` status code within five seconds." ADR004:146 already promises "2xx/3xx is ready", and bex's own stall reason says "Check that the path returns a 2xx or 3xx status".
 - **Expected outcome:** apps whose health path redirects with a relative `Location` deploy as they do on Render. Common cases are a `/` → `/login` redirect, a trailing-slash redirect to an auth-guarded page, and framework locale redirects. Bex's message stops contradicting its behavior.
 - **Why now:** major. The failure is total (the first deploy never goes live) and silent: the stall reason tells the user the 3xx they return is acceptable. Render parity task included: the deploy stall/failure text is shown on REST/GraphQL/MCP and the dashboard.
 
@@ -95,3 +95,17 @@ Additional (sweep e9a1, same pin): a scratch-based image with no shell (`traefik
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `479bd3fe243b`), bex-canary, released Bex v0.3.3 and REST. Fixtures: Free `python:3.12-alpine` echo servers (`echo_code`/`echo_header`, logging path, Host and User-Agent).
+
+- **302 health path → `/elsewhere?echo_code=500`** (`srv-dbhhn6av8vqc73fvn7sg`): live in 37 s; the app logged 44 probe requests to `/hc` and none to `/elsewhere` (the redirect is never followed); public URL 200.
+- **301 → `https://example.invalid/`** (`srv-dbhhn6iv8vqc73fvn7ug`): live in 37 s; URL 200.
+- **404** (`srv-dbhhn6u19k3s73ep2hc0`) and **500 on a first deploy** (`srv-dbhhrh619k3s73ep2i00`): never live (URL 503), ending `update_failed` after ~15 min with "…never succeeded within the rollout window, so the deploy failed: GET /hc?echo_code=404 on port 10000…".
+- **Later failing deploy keeps the previous release** (`srv-dbhhoo619k3s73ep2hm0`): live on `/healthz` in 47 s; a PATCH to `/hc?echo_code=500` opened `dep-dbhhrciv8vqc73fvn8q0`, which ended `update_failed`; the previous deploy stayed live and the URL answered 200 on all 24 polls.
+- **No health path** (`srv-dbhhooav8vqc73fvn8gg`): live; after listener discovery the probe is `tcpSocket :10000`.
+- **Host header:** probes send the platform hostname (`Go-http-client/1.1`); after a verified custom domain (temporary `cf` CNAME on 10x.pub) and a redeploy, the probe sends that custom Host.
+- **Binary (read-only kubectl):** every probe runs `/bex-health/health-probe check --port … --path … --timeout 5s --host …`, installed by `bex-health-probe-install` from the same operator image digest the manager runs.
+- Not re-run: a 404 path on a later deploy (500 used), a private service. Follow-up filed as w8/219: a later failed deploy's reason uses the stall wording rather than the "deploy failed" wording.
+- Cleanup: custom domain removed (204 → 404), DNS record deleted, all six services deleted by ID (`GET` → 404).
