@@ -194,7 +194,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **097** — [`bex ea objects` returns 404 in every region](097.md) — 2026-10-29 user decision: not offered (signed ADR018 divergence); API and CLI say so plainly — live check after deploy and the next bex-cli release.
+- [x] **097** — [`bex ea objects` returns 404 in every region](done/097.md) — done 2026-10-29: not offered (signed ADR018 divergence, user decision); API says so live (`e8d1df424`), CLI refusal ships with the next bex-cli release.
 - [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
 - [x] **096** — [SSH gateway exec at ~43 KB/s and drops a quiet session](done/096.md) — done 2026-10-29: gateway tail truncation fixed live (`e934c2842`); 10-min quiet exec stays up; throughput ~833 KB/s ≈ the API path. Residual large-output loss below the gateway → 099.
 - [ ] **099** — [Large exec output that ends with the process is truncated in Kubernetes' exec path](099.md) — filed 2026-10-29 from 096 (kubectl reproduces it too).
