@@ -289,6 +289,37 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(repo.querySelector('[data-skeleton-region="deploy"]')).toBeNull();
   });
 
+  it("reserves the Docker Build Context Directory row in a Dockerfile build's Build card (w8/m128)", () => {
+    const buildCard = (runtime: string) => {
+      const { container } = render(
+        <ServiceSettingsSkeleton
+          service={{
+            type: "web_service",
+            repo: "https://github.com/acme/app",
+            runtime,
+            builder: runtime === "docker" ? "dockerfile" : "native",
+          }}
+        />,
+      );
+      const card = container.querySelector(
+        '[data-skeleton-region="build"] > [data-slot="card"]',
+      );
+      return {
+        className: card?.className ?? "",
+        rows:
+          card?.querySelector('[data-slot="card-content"]')?.children.length ??
+          0,
+      };
+    };
+    const docker = buildCard("docker");
+    expect(docker.className).toContain("h-[930px]");
+    expect(docker.className).toContain("sm:h-[778px]");
+    expect(docker.rows).toBe(8);
+    const native = buildCard("node");
+    expect(native.className).toContain("h-[816px]");
+    expect(native.rows).toBe(7);
+  });
+
   it("keeps account settings mobile navigation and desktop rail together", () => {
     const { container } = render(<AccountSettingsPageSkeleton />);
     expect(regions(container)).toEqual(

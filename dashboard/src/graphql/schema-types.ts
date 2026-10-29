@@ -1575,6 +1575,7 @@ export type MutationCreateServiceArgs = {
   buildFilter?: InputMaybe<BuildFilterInput>;
   builder?: InputMaybe<Scalars['String']['input']>;
   command?: InputMaybe<Scalars['String']['input']>;
+  dockerContext?: InputMaybe<Scalars['String']['input']>;
   dockerfilePath?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>>>;
@@ -3749,6 +3750,7 @@ export type Service = {
   dashboardUrl: Maybe<Scalars['String']['output']>;
   disk: Maybe<ServiceDisk>;
   displayName: Maybe<Scalars['String']['output']>;
+  dockerContext: Maybe<Scalars['String']['output']>;
   dockerfilePath: Maybe<Scalars['String']['output']>;
   envVar: Maybe<EnvVar>;
   envVarKeys: Maybe<Array<Maybe<EnvVar>>>;

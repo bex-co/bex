@@ -48,6 +48,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     buildCommand: null,
     startCommand: null,
     dockerfilePath: null,
+    dockerContext: null,
     registryCredentialId: null,
     autoDeploy: null,
     autoDeployTrigger: null,

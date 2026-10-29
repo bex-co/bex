@@ -153,6 +153,7 @@ const apiService: ServiceView = {
   buildCommand: null,
   startCommand: null,
   dockerfilePath: null,
+  dockerContext: null,
   registryCredentialId: null,
   buildFilter: null,
   autoDeploy: null,

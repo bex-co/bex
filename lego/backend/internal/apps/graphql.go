@@ -435,7 +435,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dockerfilePath is Render's Dockerfile Path setting, relative to rootDir;
 		// applies only when runtime is docker.
 		"dockerfilePath": gqlutil.StrField(func(a AppView) any { return a.DockerfilePath }),
-		"builder":        gqlutil.StrField(func(a AppView) any { return a.Builder }),
+		// dockerContext is Render's Docker Build Context Directory, relative to
+		// rootDir: "." on a Dockerfile build that sets none, as REST reports it
+		// (w8/m128); empty where no Dockerfile is built.
+		"dockerContext": gqlutil.StrField(func(a AppView) any { return a.DockerContext }),
+		"builder":       gqlutil.StrField(func(a AppView) any { return a.Builder }),
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":   gqlutil.StrField(func(a AppView) any { return a.Repo }),
 		"branch": gqlutil.StrField(func(a AppView) any { return a.Branch }),
@@ -758,6 +762,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		BuildCommand:            gqlutil.Str(args, "buildCommand"),
 		StartCommand:            gqlutil.Str(args, "startCommand"),
 		DockerfilePath:          gqlutil.Str(args, "dockerfilePath"),
+		DockerContext:           gqlutil.Str(args, "dockerContext"),
 		Builder:                 gqlutil.Str(args, "builder"),
 		Plan:                    gqlutil.Str(args, "plan"),
 		AutoDeploy:              autoDeploy,
@@ -1421,9 +1426,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"startCommand":         gqlutil.Arg(graphql.String),
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
 				"dockerfilePath": gqlutil.Arg(graphql.String),
-				"builder":        gqlutil.Arg(graphql.String), // auto (default) | buildpack | dockerfile
-				"plan":           gqlutil.Arg(graphql.String),
-				"autoDeploy":     gqlutil.Arg(graphql.Boolean),
+				// dockerContext is Render's Docker Build Context Directory,
+				// relative to rootDir; Dockerfile builds only (w8/m128).
+				"dockerContext": gqlutil.Arg(graphql.String),
+				"builder":       gqlutil.Arg(graphql.String), // auto (default) | buildpack | dockerfile
+				"plan":          gqlutil.Arg(graphql.String),
+				"autoDeploy":    gqlutil.Arg(graphql.Boolean),
 				// autoDeployTrigger: off | commit | checksPass (w1/m181); wins
 				// over autoDeploy when both are sent.
 				"autoDeployTrigger": gqlutil.Arg(graphql.String),

@@ -2520,6 +2520,46 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Dockerfile Path. Please try again.",
     description: "Toast after setDockerfilePath fails",
   },
+  "services.dockerContextLabel": {
+    message: "Docker Build Context Directory",
+    description: "Build & Deploy: Docker build context field label (w8/m128)",
+  },
+  "services.dockerContextHint": {
+    message:
+      "Build context, relative to the Root Directory. Leave blank for the Root Directory.",
+    description: "Build & Deploy: Docker build context help text",
+  },
+  "services.dockerContextConfirmEmpty": {
+    message: "the Root Directory",
+    description:
+      "Build & Deploy: empty Docker build context confirmation phrase",
+  },
+  "services.dockerContextPlaceholder": {
+    message: "e.g. .",
+    description: "Build & Deploy: Docker build context input placeholder",
+  },
+  "services.dockerContextEdit": {
+    message: "Edit Docker Build Context Directory",
+    description: "Build & Deploy: accessible Docker build context edit label",
+  },
+  "services.dockerContextConfirmTitle": {
+    message: "Change Docker Build Context Directory to {value}?",
+    description: "Build & Deploy: Docker build context confirmation title",
+  },
+  "services.dockerContextConfirmBody": {
+    message:
+      "The service rebuilds with the new build context and deploys the resulting image.",
+    description: "Build & Deploy: Docker build context confirmation body",
+  },
+  "services.dockerContextSuccess": {
+    message: "Docker Build Context Directory updated.",
+    description: "Toast after setDockerContext succeeds",
+  },
+  "services.dockerContextError": {
+    message:
+      "Couldn't update the Docker Build Context Directory. Please try again.",
+    description: "Toast after setDockerContext fails",
+  },
   "services.buildFilterLabel": {
     message: "Build Filters",
     description: "Build & Deploy: label for the build-filters editor",

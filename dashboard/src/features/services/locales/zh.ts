@@ -2467,6 +2467,43 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新 Dockerfile 路径，请重试。",
     description: "Toast after setDockerfilePath fails",
   },
+  "services.dockerContextLabel": {
+    message: "Docker 构建上下文目录",
+    description: "Build & Deploy: Docker build context field label (w8/m128)",
+  },
+  "services.dockerContextHint": {
+    message: "构建上下文，相对于根目录。留空则使用根目录。",
+    description: "Build & Deploy: Docker build context help text",
+  },
+  "services.dockerContextConfirmEmpty": {
+    message: "根目录",
+    description:
+      "Build & Deploy: empty Docker build context confirmation phrase",
+  },
+  "services.dockerContextPlaceholder": {
+    message: "例如 .",
+    description: "Build & Deploy: Docker build context input placeholder",
+  },
+  "services.dockerContextEdit": {
+    message: "编辑 Docker 构建上下文目录",
+    description: "Build & Deploy: accessible Docker build context edit label",
+  },
+  "services.dockerContextConfirmTitle": {
+    message: "将 Docker 构建上下文目录更改为 {value}？",
+    description: "Build & Deploy: Docker build context confirmation title",
+  },
+  "services.dockerContextConfirmBody": {
+    message: "服务将使用新的构建上下文重新构建并部署生成的镜像。",
+    description: "Build & Deploy: Docker build context confirmation body",
+  },
+  "services.dockerContextSuccess": {
+    message: "Docker 构建上下文目录已更新。",
+    description: "Toast after setDockerContext succeeds",
+  },
+  "services.dockerContextError": {
+    message: "无法更新 Docker 构建上下文目录，请重试。",
+    description: "Toast after setDockerContext fails",
+  },
   "services.buildFilterLabel": {
     message: "构建过滤器",
     description: "Build & Deploy: label for the build-filters editor",

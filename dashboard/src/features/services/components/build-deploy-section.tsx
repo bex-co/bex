@@ -18,6 +18,7 @@ import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
+import { useDockerContext } from "@/features/services/hooks/use-docker-context";
 import {
   useAutoDeploy,
   type AutoDeployTrigger,
@@ -47,6 +48,11 @@ export interface BuildDeploySectionProps {
   startCommand?: string | null;
   /** spec.dockerfilePath, relative to rootDir; empty means Dockerfile. */
   dockerfilePath?: string | null;
+  /**
+   * Render's Docker Build Context Directory, relative to rootDir (w8/m128);
+   * the server reads an unset context back as ".".
+   */
+  dockerContext?: string | null;
   /**
    * spec.buildFilter — Render's Build Filters (glob paths/ignoredPaths gating
    * push auto-deploys); null/undefined means no filter (every matching push
@@ -136,6 +142,7 @@ export function BuildDeploySection({
   builder = null,
   startCommand = null,
   dockerfilePath = null,
+  dockerContext = null,
   buildFilter,
   autoDeploy,
   autoDeployTrigger,
@@ -164,6 +171,7 @@ export function BuildDeploySection({
   const { setRootDir, busy } = useRootDir();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
+  const { setDockerContext, busy: dockerContextBusy } = useDockerContext();
   const { setAutoDeployTrigger, busy: autoDeployBusy } = useAutoDeploy();
   const autoDeployHint = t(autoDeployHintKey(pushDeliveryMethod));
 
@@ -289,6 +297,30 @@ export function BuildDeploySection({
               disabled={createDisabled}
               disabledReason={createReason}
               onSave={(value) => setDockerfilePath(serviceId, value)}
+            />
+          )}
+
+          {/* Render's Docker Build Context Directory sits beside Dockerfile
+              Path, relative to the Root Directory (w8/m128). */}
+          {dockerfileBuild && (
+            <EditableFieldRow
+              label={t("services.dockerContextLabel")}
+              hint={t("services.dockerContextHint")}
+              value={dockerContext ?? ""}
+              placeholder={t("services.dockerContextPlaceholder")}
+              editLabel={t("services.dockerContextEdit")}
+              optional
+              mono
+              busy={dockerContextBusy}
+              confirm={{
+                title: (value) =>
+                  t("services.dockerContextConfirmTitle", { value }),
+                body: t("services.dockerContextConfirmBody"),
+                emptyValue: t("services.dockerContextConfirmEmpty"),
+              }}
+              disabled={createDisabled}
+              disabledReason={createReason}
+              onSave={(value) => setDockerContext(serviceId, value)}
             />
           )}
 

@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -245,5 +247,63 @@ func TestRenderServiceDetailsDefaultsDockerfilePath(t *testing.T) {
 		if got := details["dockerfilePath"]; got != tc.want {
 			t.Errorf("stored %q reads %v, want %q", tc.stored, got, tc.want)
 		}
+	}
+}
+
+// GraphQL reads dockerContext back and createService accepts it the way REST
+// does (production check 2026-10-29: Service had no dockerContext field and
+// createService no dockerContext argument).
+func TestGraphQLDockerContextMatchesREST(t *testing.T) {
+	for _, tc := range []struct{ name, arg, want string }{
+		{"dot", `, dockerContext: "."`, "."},
+		{"unset", "", "."},
+		{"nested", `, dockerContext: "ctx"`, "ctx"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(nil)
+			schema := gqlSchema(t, svc)
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { createService(name: "web", repo: "https://github.com/render-examples/twingate-example", runtime: "docker", rootDir: "example-pserv", dockerfilePath: "./Dockerfile"` + tc.arg + `) { dockerContext } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("createService: %v", res.Errors)
+			}
+			if got := res.Data.(map[string]any)["createService"].(map[string]any)["dockerContext"]; got != tc.want {
+				t.Errorf("createService dockerContext = %v, want %q", got, tc.want)
+			}
+			if got, want := getApp(t, cl, "web").Spec.DockerContext, storedDockerContext("example-pserv", tc.want); got != want {
+				t.Errorf("spec.dockerContext = %q, want %q", got, want)
+			}
+
+			res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{ service(id: "web") { dockerContext } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("service query: %v", res.Errors)
+			}
+			gqlValue := res.Data.(map[string]any)["service"].(map[string]any)["dockerContext"]
+			rec := serveRESTStrict(t, svc, http.MethodGet, "/v1/services/web", "")
+			var rest struct {
+				ServiceDetails struct {
+					EnvSpecificDetails struct {
+						DockerContext string `json:"dockerContext"`
+					} `json:"envSpecificDetails"`
+				} `json:"serviceDetails"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || rec.Code != http.StatusOK {
+				t.Fatalf("GET => %d %v: %s", rec.Code, err, rec.Body)
+			}
+			if restValue := rest.ServiceDetails.EnvSpecificDetails.DockerContext; gqlValue != restValue || restValue != tc.want {
+				t.Errorf("GraphQL dockerContext %v, REST %q, want both %q", gqlValue, restValue, tc.want)
+			}
+		})
+	}
+
+	// A context escaping the repository is refused with REST's message.
+	const refusal = "dockerContext must be a relative path with no '..' components"
+	svc, _ := newService(nil)
+	rec := serveRESTStrict(t, svc, http.MethodPost, "/v1/services", `{"type":"web_service","name":"rest","repo":"https://github.com/x/web","serviceDetails":{"runtime":"docker","envSpecificDetails":{"dockerContext":"../../etc"}}}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), refusal) {
+		t.Fatalf("REST create ../../etc => %d %s", rec.Code, rec.Body)
+	}
+	res := graphql.Do(graphql.Params{Schema: gqlSchema(t, svc), Context: context.Background(), RequestString: `mutation { createService(name: "web", repo: "https://github.com/x/web", runtime: "docker", dockerContext: "../../etc") { id } }`})
+	if len(res.Errors) == 0 || !strings.Contains(res.Errors[0].Message, refusal) {
+		t.Fatalf("GraphQL create ../../etc errors = %v, want REST's refusal", res.Errors)
 	}
 }

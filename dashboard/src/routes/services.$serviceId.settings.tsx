@@ -225,6 +225,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             buildCommand={service.buildCommand}
             startCommand={service.startCommand}
             dockerfilePath={service.dockerfilePath}
+            dockerContext={service.dockerContext}
             buildFilter={service.buildFilter}
             autoDeploy={service.autoDeploy ?? false}
             autoDeployTrigger={service.autoDeployTrigger}

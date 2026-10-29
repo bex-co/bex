@@ -75,6 +75,9 @@ query Server($id: String!) {
     buildCommand
     startCommand
     dockerfilePath
+    # dockerContext is Render's Docker Build Context Directory, relative to
+    # rootDir: "." when unset on a Dockerfile build, empty for other builds.
+    dockerContext
     # Explicit private-registry binding for prebuilt images and repository
     # Docker builds. Empty/null means no stored credential is attached.
     registryCredentialId

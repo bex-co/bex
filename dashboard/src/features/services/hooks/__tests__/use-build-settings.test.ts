@@ -18,6 +18,8 @@ vi.mock("sonner", () => ({
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
+import { useDockerContext } from "@/features/services/hooks/use-docker-context";
+import { SetDockerContextDocument } from "@/graphql/definitions";
 
 const START = {
   success: "services.startCommandSuccess",
@@ -128,6 +130,42 @@ describe("Build & Deploy setting hooks", () => {
     });
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't update the Dockerfile Path. Please try again.",
+    );
+  });
+
+  it("persists a Docker build context through setDockerContext and allows clearing it (w8/m128)", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockReturnValue([mutate]);
+    const { result } = renderHook(() => useDockerContext());
+
+    await act(async () => {
+      expect(await result.current.setDockerContext("srv-1", "ctx")).toBe(true);
+      await result.current.setDockerContext("srv-1", "");
+    });
+
+    expect(mockUseMutation).toHaveBeenCalledWith(SetDockerContextDocument);
+    expect(mutate).toHaveBeenNthCalledWith(1, {
+      variables: { id: "srv-1", dockerContext: "ctx" },
+    });
+    expect(mutate).toHaveBeenNthCalledWith(2, {
+      variables: { id: "srv-1", dockerContext: "" },
+    });
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Docker Build Context Directory updated.",
+    );
+  });
+
+  it("reports a Docker build context mutation failure", async () => {
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(new Error("network down")),
+    ]);
+    const { result } = renderHook(() => useDockerContext());
+
+    await act(async () => {
+      expect(await result.current.setDockerContext("srv-1", "ctx")).toBe(false);
+    });
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't update the Docker Build Context Directory. Please try again.",
     );
   });
 

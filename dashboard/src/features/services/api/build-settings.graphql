@@ -37,3 +37,18 @@ mutation SetDockerfilePath(
     phase
   }
 }
+
+# setDockerContext changes Render's Docker Build Context Directory, relative to
+# rootDir (w8/m128); an empty value restores the default, rootDir itself, which
+# the server reads back as ".".
+mutation SetDockerContext(
+  $id: String!
+  $dockerContext: String!
+  $confirm: String
+) {
+  setDockerContext(id: $id, dockerContext: $dockerContext, confirm: $confirm) {
+    id
+    dockerContext
+    phase
+  }
+}

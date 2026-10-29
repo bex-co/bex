@@ -150,6 +150,12 @@ export interface ServiceView {
   /** Dockerfile path relative to rootDir; empty means Dockerfile. */
   dockerfilePath: string | null;
   /**
+   * Render's Docker Build Context Directory, relative to rootDir (w8/m128):
+   * "." when unset on a Dockerfile build, empty for other builds. Only selected
+   * by the detail `server` query.
+   */
+  dockerContext: string | null;
+  /**
    * Stored private-registry credential bound to a prebuilt image or repository
    * Docker build. Empty/null means no explicit credential. Only selected by the
    * detail `server` query.

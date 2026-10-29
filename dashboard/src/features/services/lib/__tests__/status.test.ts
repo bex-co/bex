@@ -69,6 +69,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     buildCommand: null,
     startCommand: null,
     dockerfilePath: null,
+    dockerContext: null,
     registryCredentialId: null,
     buildFilter: null,
     autoDeploy: null,
@@ -127,6 +128,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     buildCommand: null,
     startCommand: null,
     dockerfilePath: null,
+    dockerContext: null,
     registryCredentialId: null,
     autoDeploy: null,
     autoDeployTrigger: null,
@@ -211,6 +213,7 @@ describe("toServiceView", () => {
       buildCommand: null,
       startCommand: null,
       dockerfilePath: null,
+      dockerContext: null,
       registryCredentialId: null,
       buildFilter: null,
       autoDeploy: null,
@@ -337,6 +340,7 @@ describe("toServiceView", () => {
       builder: "dockerfile",
       startCommand: "bin/server",
       dockerfilePath: "docker/Dockerfile.prod",
+      dockerContext: ".",
       registryCredentialId: "rgc-private",
     });
     const v = toServiceView(serverNode);
@@ -347,6 +351,7 @@ describe("toServiceView", () => {
     expect(v.builder).toBe("dockerfile");
     expect(v.startCommand).toBe("bin/server");
     expect(v.dockerfilePath).toBe("docker/Dockerfile.prod");
+    expect(v.dockerContext).toBe(".");
     expect(v.registryCredentialId).toBe("rgc-private");
   });
 

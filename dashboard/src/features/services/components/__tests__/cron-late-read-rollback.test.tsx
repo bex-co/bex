@@ -169,6 +169,7 @@ const link = new ApolloLink(
               buildCommand: "",
               startCommand: server.startCommand,
               dockerfilePath: "",
+              dockerContext: "",
               registryCredentialId: "",
               buildFilter: null,
               autoDeploy: false,
