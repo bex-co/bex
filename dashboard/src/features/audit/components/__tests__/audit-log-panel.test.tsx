@@ -34,6 +34,7 @@ beforeEach(() => {
   auditState.error = undefined;
   auditState.forbidden = false;
   auditState.unavailable = false;
+  auditState.planRequired = false;
   auditState.hasMore = false;
   loadMore.mockReset();
 });
