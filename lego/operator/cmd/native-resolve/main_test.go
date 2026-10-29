@@ -47,7 +47,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	bundle := filepath.Join(dir, "render-env")
 	// The real python default base, as the preparer writes it.
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4\n" +
+		"FROM python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e\n" +
 		"RUN true\n"
 	write := func(env string) {
 		if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
@@ -91,7 +91,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	dir := t.TempDir()
 	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM node:24-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a\n" +
+		"FROM node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea\n" +
 		"RUN true\n"
 	if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
 		t.Fatal(err)
