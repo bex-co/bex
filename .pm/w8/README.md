@@ -177,14 +177,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m63** — [Keep completed initial hooks out of later deploys](m63/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
 
-- [ ] **m62** — [Reject unlaunchable environment values](m62/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**（原记录：） sweeps295–296 pass72 native and36 GraphQL/MCP validator calls plus34 focused named check events; sweeps297–298 add38 direct-writer passes and hosted binary-file preservation;109 bulk routing and dashboard feedback retain t003/t006 gates. The original MCP save error is unassigned and not reproduced by seven fresh controls. No production config applied.
+- [x] **m62** — [Reject unlaunchable environment values](done/m62/README.md)（原记录：） sweeps295–296 pass72 native and36 GraphQL/MCP validator calls plus34 focused named check events; sweeps297–298 add38 direct-writer passes and hosted binary-file preservation;109 bulk routing and dashboard feedback retain t003/t006 gates. The original MCP save error is unassigned and not reproduced by seven fresh controls. No production config applied. — **DONE 2026-10-29** (dashboard NUL refusal live-accepted on pin b33dd43c4428)
 
 - [x] **m61** — [Honor application PATH during native builds](done/m61/README.md) (8 tasks,230m) — **DONE 2026-10-15:** prior native helper/image fixes plus sweep289 four-case pre-deploy live acceptance and complete cleanup; direct output and surface limits recorded.
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
 - [x] **m58** — [Preserve Unicode matches in log history](done/m58/README.md) — **DONE 2026-10-13** (fixes t001 + t007 `8fb0afa1a`; live App/saturated/KV/PG receipts, REST/GraphQL/MCP agreement; live GraphQL/dashboard and saturated managed-data recorded as boundaries)
-- [ ] **m59** — [Return static sites to direct publication after clearing their build command](m59/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **m59** — [Return static sites to direct publication after clearing their build command](done/m59/README.md) — **DONE 2026-10-29** (dashboard clear live-accepted on pin b33dd43c4428)
 
 - [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
@@ -365,7 +365,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [Static rewrite/SPA conditional requests](evidence/static-conditional-sweep258/README.md) — sweep258: all46 HTTP checks pass on one CLI-created site, including ETag conditions, HEAD metadata, exact prefix/suffix ranges and If-Range controls; API-only header/route setup, fixture cleaned. Extends done w4/272 without a new issue.
 
-- [Static command-clear GraphQL/MCP acceptance](m59/evidence/live-static-adapters-sweep257/README.md) — sweep257: API-only clears on two CLI-created static sites publish exact recorded-commit source bytes and survive later native waited deploys; both fixtures cleaned. m59 remains blocked for dashboard and full t005 acceptance.
+- [Static command-clear GraphQL/MCP acceptance](done/m59/evidence/live-static-adapters-sweep257/README.md) — sweep257: API-only clears on two CLI-created static sites publish exact recorded-commit source bytes and survive later native waited deploys; both fixtures cleaned. m59 remains blocked for dashboard and full t005 acceptance.
 
 - [Failed-version native deploy waits and recovery](evidence/version-failure-wait-sweep255/README.md) — sweep255: both clients return1 for exact failed18 targets while old22 snapshots/instance IDs stay unchanged, then return0 for new Live24 targets; four save-only patches open no deploys, both fixtures cleaned. No new finding.
 
