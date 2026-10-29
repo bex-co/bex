@@ -1,6 +1,6 @@
 # w4 · m218 — Recover plan catalogs in creation and datastore details
 
-**Worker:** worker4 **Goal:** failed plan-catalog reads explain unavailable choices and recover in place without losing create drafts or datastore plan selection. **Status:** blocked — t001–t007, t009, t010 done 2026-10-16; t008 (deployed fault replay) needs the release pipeline
+**Worker:** worker4 **Goal:** failed plan-catalog reads explain unavailable choices and recover in place without losing create drafts or datastore plan selection. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a failed plan catalog shows an honest error with in-place Try again (create disabled) on web, Key Value, Postgres and the detail plan editors, Try again restores the real choices with drafts kept, and static sites are unaffected (loopx w4).
 
 ## Tasks (in order)
 
