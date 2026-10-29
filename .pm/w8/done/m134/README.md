@@ -1,18 +1,18 @@
 # w8 · m134 — New private Key Value stores never become available (regression from w8/181)
 
-**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** todo（2026-10-29 解除阻塞；t003 done 2026-10-29 per D3, t002/t007 live checks remain；原记录：t004, t005, t006 done 2026-10-23; t001 (the blocker hotfix) shipped in db4f548e1 and needs the release pipeline to deploy the operator; then QA runs t002/t007 live: a fresh `bex kv create --plan free` is available within 90 s, inventory and roll any store created since 2026-10-23 02:28 UTC still `creating`, a store created with an allowlist is reachable over TLS. t003 (restart-free first enable without a birth listener) is NOT done and needs your sign-off on the design: Valkey 7.2.14 and 8.1.9 both accept `CONFIG SET tls-cert-file/tls-key-file/tls-ca-cert-file` then `tls-port` at runtime and `tls-port 0` turns it off (verified in Docker 2026-10-23), but using it means an optional Secret mount plus either a sh wrapper that adds `--tls-port` when the cert files exist or an operator re-apply after every pod restart, inside the live-handoff engine that guards customer data
+**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 — **DONE** | Hotfix: a new store starts with the TLS listener only when its Certificate can exist | 30m | — |
-| t002 | Unstick stores created since the regression | 20m | w8/m134/t001 |
+| t002 | Unstick stores created since the regression — **DONE 2026-10-29** | 20m | w8/m134/t001 |
 | t003 — **DONE** | Restart-free first enable without a birth listener (w8/181's goal) | 60m | w8/m134/t001 |
 | t004 — **DONE** | Render parity: ADR021/ADR018 and create/enable timings on every surface | 15m | w8/m134/t003 |
 | t005 — **DONE** | Simplify the changed code | 15m | w8/m134/t004 |
 | t006 — **DONE** | Test coverage: private create becomes Ready; public create; first enable | 40m | w8/m134/t004 |
-| t007 | Close out the milestone | 30m | w8/m134/t005, w8/m134/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m134/t005, w8/m134/t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@ Live on production after the release pipeline deploys the operator, with owned F
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 8b3c, 2026-10-23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login. Regression from **w8/181** ([done/181.md](../done/181.md), commit `db739b089` "fix(operator): start new Key Value stores with the TLS listener"), live since the platform pin `eaaccb6f6fd4` (2026-10-23 02:28 UTC; `fa8ac5bba24a` since 03:39 UTC). The same create in sweep 8004 (pin `b3cd5bc74de8`, before the regression) was `available` within ~10 s.
-- **Goal linkage:** managed Key Value ([ADR021](../../../docs/ADR021-keyvalue-management.md)); Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)): a new Render Key Value is private by default and is available in minutes.
+- **Goal linkage:** managed Key Value ([ADR021](../../../../docs/ADR021-keyvalue-management.md)); Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)): a new Render Key Value is private by default and is available in minutes.
 - **Expected outcome:** creating a Key Value works again on every surface (CLI, REST, GraphQL, MCP, dashboard, Blueprints), and w8/181's restart-free first enable is kept.
 - **Why now:** **blocker.** Every new store created without an allowlist (the CLI, API and dashboard default) stays `creating` indefinitely, with no logs and no reason shown. On Free the stuck store also holds the workspace's one free slot. Render parity task included: create/status behavior is tenant-facing on every surface.
 
@@ -90,3 +90,13 @@ Regression of w8/181 (done 2026-10-22). Its DoD covered the first enable on a st
 ## Progress (2026-10-29, t003)
 
 t003 is done per decision D3 (ADR021 §3 "The TLS listener switches at runtime"). New stores mount the TLS Secret `optional: true`. A `sh` start wrapper adds `--tls-port` only when the certificate files exist. The first enable opens the listener with `CONFIG SET` (files, then `tls-port 6380`) without a pod-template change, and a disable sets `tls-port 0`. `status.tlsRuntimeSwitch` makes bex-api skip `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED` for these stores. A private create still requests no certificate, so `bex kv create --plan free` keeps its fast path. Older stores are not rolled by the upgrade. Verified on the pinned Valkey 7/8 images in Docker and by operator unit tests. **Still open:** t002 (production inventory of stores stuck `creating`) and t007 (the live DoD after the release pipeline deploys this operator). t007 should also confirm on production that the kubelet projects a Secret created after pod start into the optional volume. That is the expected Kubernetes behaviour, but it is not yet observed live.
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Production pin `69f0b17d1fad`. The free Key Value slot was full, so `bex kv create --plan 256mb` (Starter) made `red-dbhmapikl95s73b45a30` (Valkey 8.1.9): created 15:25:26, `available` at 15:26:08 (~42 s). Read-only inventory: 3 KeyValue objects cluster-wide, all Ready; none created after 2026-10-23 02:28 UTC is stuck `creating` (t002).
+
+- **Enable (t007):** allowlisting the tester's /32 returned 200 with no restart-confirmation demand; the operator switched TLS on live once the certificate files arrived, and a TLS `PING` through `red-…kv.bex.co:6379` (SNI) returned `PONG`; `CONFIG GET tls-port` → 6380 and `uptime_in_seconds` matched the original start.
+- **Disable:** `ipAllowList: []` → 200; external PINGs then fail.
+- **No restart at any point:** same pod (`red-…-0`, same UID), restartCount 0, StatefulSet generation 1 and revision unchanged before, after enable and after disable.
+- Not re-run: a key written before the enable (`kv-cli` needs a TTY), the create-with-allowlist control, a free-plan create (slot full).
+- Cleanup: deleted (204 → 404); KeyValue, Certificate and Secrets gone.
