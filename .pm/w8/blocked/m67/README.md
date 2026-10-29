@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](t001.md) — **DONE** | 45m | — |
 | t002 | [Adopt the qualified upstream pin and review its hosting wire delta](done/t002.md) — **DONE 2026-10-29** | 35m | t001 |
-| t003 | [Verify affected hosting callers through candidate Bex and upstream CLI](t003.md) | 30m | t002 |
+| t003 | [Verify affected hosting callers through candidate Bex and upstream CLI](done/t003.md) — **DONE 2026-10-29** | 30m | t002 |
 | t004 | [Render parity](done/t004.md) — **DONE 2026-10-29** | 20m | t003 |
 | t005 | [Simplify](done/t005.md) — **DONE 2026-10-29** | 10m | t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE 2026-10-29** | 20m | t004 |
@@ -62,3 +62,13 @@ After that, t002–t006 can proceed. t007 also needs an explicitly requested CLI
 - **Wire delta review (t002/t004):** v2.29 `ea sandboxes create --network-policy` sends `networkPolicy.type` (Render renamed `default`, now an alias). bex-api accepted only `default` under strict decoding, so every v2.29 create with a policy would have failed `unknown field "type"`. REST/GraphQL/MCP now accept either, answer both, refuse `rules` and a disagreeing pair by name, and refuse `--from <name>` (`snapshotName`) like `--snapshot-id`. Root help's new "Start here (for AI agents)" block named `render skills install` and Render's skills; the branding overlay now prints `bex skills install --output json`. Full grading is the round-5 bullet in [`docs/cli-compatibility-checklist.md`](../../../docs/cli-compatibility-checklist.md).
 - **Tests (t006):** `lego/cli/logs_tail_contract_test.go` drives the real binary against a loopback API: a drop after A resumes with A and B exactly once, visible retry status and the process still following; refusal + close 4000 makes one connection and exits non-zero with the reason on stderr. Both fail at the v2.27.0 pin. `cd lego/cli && go test ./...`, `bash scripts/bex-cli-validate.sh`, `make lint` (all four modules), backend `internal/{api,logs,sandbox}` pass.
 - **Remaining:** t003 — after this deploy, run the candidate binary against production: reconnect continuity on a live tail, a finished-build tail exiting non-zero once, and `--network-policy deny-all`. t007 — needs a `bex-cli/v*` release (user-run `/release cli`) and the same check on the published binary.
+
+## Hosted candidate check (t003) — 2026-10-29 (`/loopx w8`)
+
+Production pin `03043c7df363` (carries the close-4000 change). Candidate `bex` built from `82228a3a4` (Render CLI v2.29.0). Fixture: free busybox service `srv-dbhj78cjakpc739ce5cg` logging `LX9P-TICK <boot> <n>` every 2 s, deleted afterwards (404).
+
+- **Live tail through interruptions:** across a service restart one process received 199 lines over 150 s with no duplicates or gaps; across a real dropped connection (client paused 120 s) it printed `Unable to connect to logs. Retrying in 1s.` then `Log connection restored.` and delivered the paused-window lines exactly once (193 lines, no duplicates or gaps).
+- **Build tail with no running build:** the candidate prints `==> no running build is available to follow` once and `Error: websocket: close 4000: …`, exits 1 after 1.2 s, one connection. Released v0.3.3 prints the same line and exits 0.
+- **`--network-policy deny-all`:** accepted live — the sandboxes came back with `networkPolicy {type: deny-all, default: deny-all}`. (Three short-lived sandboxes were created unintentionally while trying to capture the request — a `BEX_HOST` override lost to the config's `api.host`; each ran about a minute and was stopped, `GET` → 404.) Create-nothing REST probes: a disagreeing `type`/`default` pair → `SANDBOX_NETWORK_POLICY_INVALID`; `rules` refused by name.
+
+t003 is done; t007 needs the next `bex-cli/v*` release (user-run `/release cli`) and the same three checks on the published binary.
