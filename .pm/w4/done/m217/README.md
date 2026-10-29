@@ -1,6 +1,6 @@
 # w4 · m217 — Preserve distinct log records within one millisecond
 
-**Worker:** worker4 **Goal:** the dashboard retains each actual log record while showing a replay of that record once **Status:** blocked — t001–t003, t008, t005 and t006 done 2026-10-17; t004 (post-repair live record-count/parity replay on a deployed build) and t007 closeout remain.
+**Worker:** worker4 **Goal:** the dashboard retains each actual log record while showing a replay of that record once **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: 20 same-message log records with distinct IDs render as 20 rows at 1440 and 390, and live replay/pause stays at 20 (loopx w4).
 
 ## Tasks (in order)
 
