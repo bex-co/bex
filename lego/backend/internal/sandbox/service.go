@@ -154,7 +154,27 @@ func (s *Service) workspaceKey(ctx context.Context) (string, error) {
 }
 
 func normalizeNetworkPolicy(policy *NetworkPolicy) (*NetworkPolicy, error) {
-	if policy == nil || policy.Default == "" {
+	if policy == nil {
+		return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+	}
+	if policy.Type != "" && policy.Default != "" && policy.Type != policy.Default {
+		return nil, core.NewBadRequestError(
+			"SANDBOX_NETWORK_POLICY_INVALID",
+			fmt.Sprintf("sandbox networkPolicy.type %q and its alias networkPolicy.default %q disagree", policy.Type, policy.Default),
+			map[string]any{"field": "networkPolicy.type"},
+		)
+	}
+	if policy.Type != "" {
+		policy = &NetworkPolicy{Default: policy.Type, Rules: policy.Rules}
+	}
+	if policy.Rules != nil {
+		return nil, core.NewBadRequestError(
+			"SANDBOX_NETWORK_POLICY_UNSUPPORTED",
+			fmt.Sprintf("sandbox networkPolicy.rules are unsupported; only %q is enforced", NetworkPolicyDenyAll),
+			map[string]any{"field": "networkPolicy.rules", "supported": []string{string(NetworkPolicyDenyAll)}},
+		)
+	}
+	if policy.Default == "" {
 		return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
 	}
 	if policy.Default != NetworkPolicyDenyAll {
@@ -185,8 +205,8 @@ func refuseUnsupportedCreateOptions(hasEnv, hasSnapshot bool) error {
 	if hasSnapshot {
 		return core.NewBadRequestError(
 			"SANDBOX_SNAPSHOTS_UNSUPPORTED",
-			"sandbox snapshots are not supported (--snapshot-id); create a sandbox from a template instead",
-			map[string]any{"field": "snapshotId", "flags": []string{"--snapshot-id"}},
+			"sandbox snapshots are not supported (--from/--snapshot-id); create a sandbox from a template instead",
+			map[string]any{"field": "snapshotId", "flags": []string{"--from", "--snapshot-id"}},
 		)
 	}
 	return nil

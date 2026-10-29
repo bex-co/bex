@@ -103,7 +103,7 @@ func TestVersionTransportPreservesExistingHeaders(t *testing.T) {
 	}
 	// The compatibility ledger depends on upstream's User-Agent staying exactly
 	// as upstream set it.
-	req.Header.Set("User-Agent", "render-cli/2.27.0 (darwin arm64)")
+	req.Header.Set("User-Agent", "render-cli/2.29.0 (darwin arm64)")
 	transport := &controlPlaneTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}
 	resp, err := transport.RoundTrip(req)
 	if err != nil {
@@ -111,7 +111,7 @@ func TestVersionTransportPreservesExistingHeaders(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if agent != "render-cli/2.27.0 (darwin arm64)" {
+	if agent != "render-cli/2.29.0 (darwin arm64)" {
 		t.Fatalf("User-Agent = %q, want it forwarded untouched", agent)
 	}
 }
@@ -225,7 +225,7 @@ func TestUpstreamReleaseCheckNeverAdvertisesRenderCLI(t *testing.T) {
 	// ships a release newer than the pin.
 	// Release builds inject the pinned upstream version; "dev" skips the check.
 	originalVersion := cfg.Version
-	cfg.Version = "2.27.0"
+	cfg.Version = "2.29.0"
 	original := http.DefaultTransport
 	t.Cleanup(func() { http.DefaultTransport, cfg.Version = original, originalVersion })
 	http.DefaultTransport = &controlPlaneTransport{
