@@ -40,6 +40,15 @@ type NativeChoice struct {
 	// when it differs from the line's reviewed patch (w8/175); the resolve phase
 	// swaps in that version's official image, or says why it could not.
 	Exact string
+	// erlang is the Erlang/OTP release an Elixir service pinned more exactly
+	// than its major (ERLANG_VERSION=28.3, w8/197); the resolve phase builds on
+	// an image carrying it, or fails by name.
+	erlang string
+	// otp is the Erlang/OTP release the chosen image installs, once the
+	// resolve phase has pinned an exact Erlang; the log names it.
+	otp string
+	// elixirImage is the image an exact Erlang's Elixir is copied from.
+	elixirImage string
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string
@@ -54,7 +63,11 @@ func (c NativeChoice) Narration() string {
 	if c.Source != "" {
 		from = "from " + c.Source
 	}
-	line := fmt.Sprintf("==> Using %s %s (%s)", c.Label, c.Line, from)
+	version := c.Line
+	if c.otp != "" {
+		version += " on Erlang/OTP " + c.otp
+	}
+	line := fmt.Sprintf("==> Using %s %s (%s)", c.Label, version, from)
 	if c.note != "" {
 		line += "\n" + c.note
 	}
@@ -75,7 +88,7 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //	python  PYTHON_VERSION → .python-version → default
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
-//	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major)
+//	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major; a minor or patch is installed exactly, w8/197)
 //	go, rust  default (Render offers no Go selection; rustup applies Rust's)
 //
 // A plain version maps onto its line by major.minor (major for Node) — a
@@ -619,9 +632,16 @@ func (r resolver) rubyRequirement(reqs []string) (string, bool) {
 	return r.highestSatisfying(strings.Join(parts, ", "))
 }
 
+// otpRelease is an Erlang/OTP release as ERLANG_VERSION names it: a major
+// (28), a minor (28.3) or a patch (28.3.3, 28.5.0.6).
+var otpRelease = regexp.MustCompile(`^\d{1,3}(\.\d{1,4}){0,3}$`)
+
 // elixir honors ELIXIR_VERSION (line by major.minor) and checks ERLANG_VERSION
 // against the chosen line's OTP major — an Erlang the line's image does not
-// carry is refused by name rather than silently ignored.
+// carry is refused by name rather than silently ignored. A release more exact
+// than the major is carried in Erlang: the line's image has whatever OTP it
+// was built with, so the resolve phase finds an image with the requested one
+// (w8/197).
 func (r resolver) elixir() (NativeChoice, error) {
 	choice, err := r.first(r.fromEnv("ELIXIR_VERSION", r.minorLine))
 	if err != nil {
@@ -631,11 +651,19 @@ func (r resolver) elixir() (NativeChoice, error) {
 	if erlang == "" {
 		return choice, nil
 	}
+	release := strings.TrimPrefix(erlang, "OTP-")
+	if !otpRelease.MatchString(release) {
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"%s is not an Erlang/OTP release; set ERLANG_VERSION to a release such as 28 or 28.3", boundedRequest("ERLANG_VERSION="+erlang))}
+	}
 	line, _ := r.t.find(choice.Line)
-	if major, _, _ := strings.Cut(strings.TrimPrefix(erlang, "OTP-"), "."); major != line.otp {
+	if major, _, _ := strings.Cut(release, "."); major != line.otp {
 		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
 			"ERLANG_VERSION=%q is not available with Elixir %s, which runs on Erlang/OTP %s; set ERLANG_VERSION to an OTP %s release or choose another ELIXIR_VERSION",
 			erlang, line.line, line.otp, line.otp)}
+	}
+	if strings.Contains(release, ".") {
+		choice.erlang = release
 	}
 	choice.Source = strings.TrimPrefix(choice.Source+", ERLANG_VERSION="+erlang, ", ")
 	return choice, nil

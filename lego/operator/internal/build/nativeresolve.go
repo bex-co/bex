@@ -80,7 +80,13 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	if err != nil {
 		return nil, err
 	}
-	choice = pinExactVersion(ctx, exact, choice)
+	if choice.erlang != "" {
+		if choice, err = pinErlangVersion(ctx, exact, choice); err != nil {
+			return nil, err
+		}
+	} else {
+		choice = pinExactVersion(ctx, exact, choice)
+	}
 	bun, withBun, err := ResolveNativeBun(env, readFile)
 	if err != nil {
 		return nil, err
@@ -92,6 +98,11 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	rewritten, err := rewriteNativeBase(string(dockerfile), nativeToolchains[runtime].defaultImage(), choice.Image)
 	if err != nil {
 		return nil, err
+	}
+	if choice.elixirImage != "" {
+		if rewritten, err = afterNativeBase(rewritten, choice.Image, nativeElixirTreeLines(choice.elixirImage, choice.Line)); err != nil {
+			return nil, err
+		}
 	}
 	choices := []NativeChoice{choice}
 	if runtime == nativePythonRuntime {
@@ -387,7 +398,7 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 	if !ok {
 		return choice
 	}
-	digest, found, err := exact.ResolveOfficialTag(ctx, repo, tag)
+	digest, found, err := exact.ResolveTag(ctx, repo, tag)
 	switch {
 	case err != nil:
 		choice.note = fmt.Sprintf("==> Could not look up %s:%s (%v); using the reviewed %s %s image", repo, tag, err, choice.Label, choice.Line)

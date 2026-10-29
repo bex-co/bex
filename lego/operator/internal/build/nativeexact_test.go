@@ -33,10 +33,22 @@ type fakeExact struct {
 	asked   []string
 }
 
-func (f *fakeExact) ResolveOfficialTag(_ context.Context, repo, tag string) (string, bool, error) {
+func (f *fakeExact) ResolveTag(_ context.Context, repo, tag string) (string, bool, error) {
 	f.asked = append(f.asked, repo+":"+tag)
 	d, ok := f.digests[repo+":"+tag]
 	return d, ok, f.err
+}
+
+// ListTags lists the repo's tags among digests, as the registry would.
+func (f *fakeExact) ListTags(_ context.Context, repo, prefix string) ([]string, error) {
+	f.asked = append(f.asked, "list "+repo+":"+prefix)
+	var tags []string
+	for ref := range f.digests {
+		if r, tag, _ := strings.Cut(ref, ":"); r == repo && strings.HasPrefix(tag, prefix) {
+			tags = append(tags, tag)
+		}
+	}
+	return tags, f.err
 }
 
 const exactDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000001"
@@ -102,6 +114,7 @@ func TestExactVersionLeavesLineRequestsAlone(t *testing.T) {
 		"node range":      {"node", map[string]string{"NODE_VERSION": ">=18 <19"}, nil},
 		"no signal":       {"python", nil, nil},
 		"elixir with otp": {"elixir", map[string]string{"ELIXIR_VERSION": "1.17"}, nil},
+		"otp major only":  {"elixir", map[string]string{"ELIXIR_VERSION": "1.19", "ERLANG_VERSION": "28"}, nil},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := &fakeExact{}
@@ -154,15 +167,15 @@ func TestDockerHubResolver(t *testing.T) {
 	defer srv.Close()
 	d := &DockerHubResolver{Client: srv.Client(), AuthURL: srv.URL + "/token", RegistryURL: srv.URL}
 
-	digest, ok, err := d.ResolveOfficialTag(context.Background(), "python", "3.11.9-bookworm")
+	digest, ok, err := d.ResolveTag(context.Background(), "python", "3.11.9-bookworm")
 	if err != nil || !ok || digest != exactDigest || scope != "repository:library/python:pull" {
 		t.Fatalf("got %q %v %v scope %q", digest, ok, err, scope)
 	}
-	if _, ok, err := d.ResolveOfficialTag(context.Background(), "python", "3.11.99-bookworm"); ok || err != nil {
+	if _, ok, err := d.ResolveTag(context.Background(), "python", "3.11.99-bookworm"); ok || err != nil {
 		t.Errorf("missing tag: ok=%v err=%v", ok, err)
 	}
 	for _, bad := range [][2]string{{"evil", "1.0"}, {"python", "../x"}, {"python", "a b"}} {
-		if _, _, err := d.ResolveOfficialTag(context.Background(), bad[0], bad[1]); err == nil {
+		if _, _, err := d.ResolveTag(context.Background(), bad[0], bad[1]); err == nil {
 			t.Errorf("%v accepted", bad)
 		}
 	}
