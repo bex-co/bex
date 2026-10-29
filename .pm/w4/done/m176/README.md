@@ -1,6 +1,6 @@
 # w4 · m176 — Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the "repoint" confirmation
 
-**Worker:** worker4 **Goal:** on a member of a `protectedStatus: protected` environment, every verb that selects which code runs needs the `repoint` confirmation that ADR032 (w4/m126) already requires of `image`/`repo`/`branch` edits. That includes a deploy trigger carrying `imageUrl` or `commitId`, and a rollback. **Status:** blocked
+**Worker:** worker4 **Goal:** on a member of a `protectedStatus: protected` environment, every verb that selects which code runs needs the `repoint` confirmation that ADR032 (w4/m126) already requires of `image`/`repo`/`branch` edits. That includes a deploy trigger carrying `imageUrl` or `commitId`, and a rollback. **Status:** done 2026-10-29 — superseded by w8/187: protected environments now follow Render's role rule (no typed phrase; only delete/suspend/resume/maintenance need Admin), recorded in ADR018/ADR032; live behavior matches the new rule (loopx w4).
 
 ## Tasks (in order)
 
