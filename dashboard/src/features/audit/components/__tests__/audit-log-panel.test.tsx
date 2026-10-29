@@ -18,6 +18,7 @@ const auditState: UseAuditLogResult = {
   error: undefined,
   forbidden: false,
   unavailable: false,
+  planRequired: false,
   hasMore: false,
   loadMore,
 };
