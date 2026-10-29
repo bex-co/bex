@@ -1,6 +1,6 @@
 # w8 · m69 — Preserve native cron startup semantics
 
-**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** todo（2026-10-29 解除阻塞；原记录：t001, t002, t004, t005 done (native cron start commands stay in the native Bash role across REST/GraphQL/MCP/Blueprint/readback/dashboard); t003/t006 need the backend and dashboard deployed, an explicitly approved paid cron fixture, and the hosted two-client create/manual-run/update/clone replay with cleanup
+**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 | Keep native cron start commands in the native launch role — **DONE** | 45m | — |
 | t002 | Keep readback and shared command roles coherent — **DONE** | 45m | t001 |
-| t003 | Render parity — **BLOCKED (deploy + hosted two-client replay)** | 25m | t002 |
+| t003 | Render parity — **DONE 2026-10-29** | 25m | t002 |
 | t004 | Simplify — **DONE** | 10m | t003 |
 | t005 | Test coverage — **DONE** | 30m | t003 |
-| t006 | Closeout — **BLOCKED (t003)** | 15m | t004, t005 |
+| t006 | Closeout — **DONE 2026-10-29** | 15m | t004, t005 |
 
 ## Definition of done
 
@@ -51,3 +51,14 @@ Main bed5e2c32 implements [w8/048](../048.md): new cron jobs require a paid plan
 - **结论：** 允许 worker 在自有 `bex-canary` workspace 中建**短时付费 fixture**（starter 档，只建验收必需的最小数量），验收后立即按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
 - **worker 下一步：** loopx 执行 t003/t006：在 starter fixture 上用两种客户端创建 native cron，手动跑一次有限运行并检查标记输出，验证 update/readback/clone，然后清理。上次两次 live 运行仍在 `/bin/sh` 失败（见上方 Sweep302），如仍复现先修复。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Hosted acceptance on production (pin `b33dd43c4428`), workspace bex-canary, human device-login QA grant. Two Starter cron fixtures under the user's D4 paid-fixture decision, each with the finding's inline Bash command (`[[ 1 = 1 ]] && printf '%s\n' <marker>`), Node runtime, `examples/runtime-version/node`, build `/bin/true`:
+
+| Client | Fixture | Create | Run 1 | Native update → run 2 |
+| --- | --- | --- | --- | --- |
+| Released Bex v0.3.3 (no `--plan`) | `srv-dbhgk1llp6pc7389fmig` | exit 0, `plan: starter`, `startCommand` = the Bash text, `dockerCommand` null; `dep-dbhgk1llp6pc7389fmj0` Live | `crr-vgu8l26acbsh11m1bqrv` successful, log `LX8C-bx-ONE` | `--cron-command "[[ 2 = 2 ]] …TWO"` exit 0; readback `startCommand` updated; `crr-a7a1ibine0c22mjom3ch` successful, log `LX8C-bx-TWO` |
+| Pinned Render v2.27.0 against Bex (`--plan starter`) | `srv-dbhgk3dlp6pc7389fml0` | exit 0, same roles; `dep-dbhgk3dlp6pc7389fmlg` Live | `crr-jsr6tca5puu7sq02kt43` successful, log `LX8C-rx-ONE` | exit 0; readback updated; `crr-s593p4nljtl1fjhf51q8` successful, log `LX8C-rx-TWO` |
+
+No run logged `/bin/sh: 1: [[: not found` (the sweep302 failure). Clone/readback: `POST /v1/blueprints/generate` for the Bex fixture emits the native command as `startCommand` (not `dockerCommand`) with `runtime: node`, `type: cron`, `plan: starter`. Explicit image overrides, opaque aliases, legacy fallback and the GraphQL/MCP/dashboard roles are covered by the t005 regressions, not re-run live. Cleanup: both deleted by ID; `GET /v1/services/<id>` and `/v1/cron-jobs/<id>/runs` → 404.
