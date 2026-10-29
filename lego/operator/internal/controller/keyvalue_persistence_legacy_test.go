@@ -60,7 +60,7 @@ func TestPersistenceLegacyPendingTemplateUsesServingSnapshot(t *testing.T) {
 				t.Fatalf("live handoff called=%v target=%s", prepared, target)
 			}
 			plan, storage := resolveKVPlan(kv.Spec)
-			desired := keyValueIntentFor(kv, plan, storage, "", false)
+			desired := keyValueIntentFor(kv, plan, storage, "", false, false)
 			desired.persistenceSource = intent.persistenceSource
 			desired.persistenceToken = intent.persistenceToken
 			applyKeyValueStatefulSet(sts, kv, desired)
@@ -122,7 +122,7 @@ func TestPersistenceUnchangedLegacyStoreDoesNotRoll(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "test"}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: mode}}
 			plan, storage := resolveKVPlan(kv.Spec)
-			intent := keyValueIntentFor(kv, plan, storage, "", false)
+			intent := keyValueIntentFor(kv, plan, storage, "", false, false)
 			intent.authSecretName = "fixture-auth"
 			intent.skipPersistenceInit = true // Build the real pre-migration shape, including Off without --dir.
 			sts := &appsv1.StatefulSet{}
@@ -195,7 +195,7 @@ func TestPersistenceNewStorageBootstrapDoesNotTrustRetainedPVC(t *testing.T) {
 func TestPersistencePendingLegacyRolloutCannotSkipBootstrap(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "test"}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: "journal-snapshot"}}
 	plan, storage := resolveKVPlan(kv.Spec)
-	intent := keyValueIntentFor(kv, plan, storage, "", false)
+	intent := keyValueIntentFor(kv, plan, storage, "", false, false)
 	sts := &appsv1.StatefulSet{}
 	applyKeyValueStatefulSet(sts, kv, intent)
 	sts.UID = "existing-sts"
@@ -216,7 +216,7 @@ func TestPersistencePendingLegacyRolloutCannotSkipBootstrap(t *testing.T) {
 
 func legacyPersistenceTestIntent(kv *appv1alpha1.KeyValue) keyValueIntent {
 	plan, storage := resolveKVPlan(kv.Spec)
-	return keyValueIntentFor(kv, plan, storage, "", false)
+	return keyValueIntentFor(kv, plan, storage, "", false, false)
 }
 
 func TestPersistenceLegacySuspendedWithoutPodRequiresKnownSource(t *testing.T) {
@@ -230,7 +230,7 @@ func TestPersistenceLegacySuspendedWithoutPodRequiresKnownSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			plan, storage := resolveKVPlan(kv.Spec)
-			intent := keyValueIntentFor(kv, plan, storage, "", false)
+			intent := keyValueIntentFor(kv, plan, storage, "", false, false)
 			intent.skipPersistenceInit = true
 			sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
 			applyKeyValueStatefulSet(sts, kv, intent)
@@ -254,7 +254,7 @@ func TestPersistenceLegacySuspendedWithoutPodRequiresKnownSource(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			intent = keyValueIntentFor(kv, plan, storage, "", false)
+			intent = keyValueIntentFor(kv, plan, storage, "", false, false)
 			before := sts.DeepCopy()
 			r := &KeyValueReconciler{Client: c}
 			_, stop, err := r.prepareKeyValuePersistenceWith(ctx, kv, sts, &corev1.Secret{}, &intent, func(context.Context, *corev1.Pod, *corev1.Secret) (bool, error) {

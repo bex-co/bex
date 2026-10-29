@@ -144,11 +144,12 @@ func TestExternalAccessChangesThatRestartNothingNeedNoPhrase(t *testing.T) {
 		store   func(*appv1alpha1.KeyValue)
 		entries []core.IPAllowListEntry
 	}{
-		"listener already runs":     {func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }, rule},
-		"persisted store":           {func(kv *appv1alpha1.KeyValue) { kv.Spec.PersistenceMode = "journal-snapshot" }, rule},
-		"suspended store":           {func(kv *appv1alpha1.KeyValue) { kv.Spec.Suspended = true }, rule},
-		"already public":            {func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true }, append(rule, core.IPAllowListEntry{CIDRBlock: "198.51.100.0/24"})},
-		"disabling external access": {func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true }, []core.IPAllowListEntry{}},
+		"listener already runs":        {func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }, rule},
+		"listener switched at runtime": {func(kv *appv1alpha1.KeyValue) { kv.Status.TLSRuntimeSwitch = true }, rule},
+		"persisted store":              {func(kv *appv1alpha1.KeyValue) { kv.Spec.PersistenceMode = "journal-snapshot" }, rule},
+		"suspended store":              {func(kv *appv1alpha1.KeyValue) { kv.Spec.Suspended = true }, rule},
+		"already public":               {func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true }, append(rule, core.IPAllowListEntry{CIDRBlock: "198.51.100.0/24"})},
+		"disabling external access":    {func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true }, []core.IPAllowListEntry{}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			svc, _ := newService(memoryOnlyStore(tc.store))
@@ -167,6 +168,9 @@ func TestExternalAccessRestartsOnlyBeforeTheListenerRuns(t *testing.T) {
 		"private, never listened": {memoryOnlyStore(nil), true},
 		"public":                  {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true; kv.Status.TLSListener = true }), false},
 		"private, listener kept":  {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }), false},
+		// w8/m134: a store whose pod switches TLS at runtime never restarts
+		// for external access, though no listener runs while it is private.
+		"private, runtime switch": {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSRuntimeSwitch = true }), false},
 		"suspended":               {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Spec.Suspended = true }), false},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -19,8 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -139,10 +139,7 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	args := sts.Spec.Template.Spec.Containers[0].Args
-	if !slices.Contains(args, "--tls-port") || !slices.Contains(args, strconv.Itoa(kvTLSPort)) {
-		t.Fatalf("public Valkey args lack TLS port: %v", args)
-	}
+	expectStartsTLSFromMountedCertificate(t, &sts)
 
 	// External clear must retain the internal Service and immutable password.
 	var before corev1.Secret
@@ -193,10 +190,11 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	}
 }
 
-// TestKeyValueExternalToggleKeepsThePodTemplate is w4/m233: the listener and
-// its certificate stay once the store has run them, so turning external access
-// off and on again leaves the pod template alone and the store keeps running
-// with its data. Access is withdrawn at the Service and the proxy route.
+// TestKeyValueExternalToggleKeepsThePodTemplate is w4/m233, for an older store
+// whose template runs the static listener: the listener and its certificate
+// stay once the store has run them, so turning external access off and on
+// again leaves the pod template alone and the store keeps running with its
+// data. Access is withdrawn at the Service and the proxy route.
 func TestKeyValueExternalToggleKeepsThePodTemplate(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "toggle-kv", Namespace: "default", UID: "kv-toggle-test"},
@@ -232,8 +230,10 @@ func TestKeyValueExternalToggleKeepsThePodTemplate(t *testing.T) {
 	}
 
 	setPublic(true)
-	if !kv.Status.TLSListener {
-		t.Fatal("status does not report the running TLS listener")
+	useStaticTLSLayout(t, cl, kv, true)
+	setPublic(true)
+	if !kv.Status.TLSListener || kv.Status.TLSRuntimeSwitch {
+		t.Fatalf("status does not report the running static TLS listener: %+v", kv.Status)
 	}
 	listening := sts.Spec.Template.DeepCopy()
 
@@ -283,6 +283,17 @@ func TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady(t *testing.T) {
 			if err := cl.Get(ctx, nn, kv); err != nil {
 				t.Fatal(err)
 			}
+			// Turning access off withdraws the Certificate, which records its
+			// lifetime first; the fake client assigns no UIDs.
+			certificate := &unstructured.Unstructured{}
+			certificate.SetGroupVersionKind(certManagerCertificateGVK)
+			if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
+				t.Fatal(err)
+			}
+			certificate.SetUID("certificate-flip-test")
+			if err := cl.Update(ctx, certificate); err != nil {
+				t.Fatal(err)
+			}
 			if serving {
 				kv.Status.Phase = appv1alpha1.KVPhaseReady
 				meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady,
@@ -313,11 +324,10 @@ func TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady(t *testing.T) {
 	}
 }
 
-// TestKeyValueFirstExternalEnableAddsTheListener: a store created private has
-// no listener, so its first enable must add one (the one toggle that restarts,
-// which bex-api announces), and the status says so before and after. A newborn
-// private store cannot start with the listener: its Certificate is requested
-// only for a public store (w8/m134).
+// TestKeyValueFirstExternalEnableAddsTheListener: an older store created
+// private has no listener in its template, so its first enable must restart it
+// once (bex-api announces that). The roll adopts the runtime switch, so that
+// is the last external-access restart it takes (w8/m134).
 func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := &appv1alpha1.KeyValue{
@@ -341,23 +351,26 @@ func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 		}
 	}
 	reconcileTwice()
+	useStaticTLSLayout(t, cl, kv, false)
+	reconcileTwice()
 	var sts appsv1.StatefulSet
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
-		t.Fatalf("a private store runs a TLS listener: status %v", kv.Status.TLSListener)
+	if kv.Status.TLSListener || kv.Status.TLSRuntimeSwitch || keyValueTLSVolume(sts.Spec.Template.Spec.Volumes) != nil {
+		t.Fatalf("an older private store gained TLS unasked (that restarts it): %+v", kv.Status)
 	}
 
-	// The issuer arrives later; the legacy store still has no listener until
-	// it is enabled.
+	// The issuer arrives later; the older store still keeps its template
+	// until it is enabled.
 	r.ClusterIssuer = "letsencrypt-prod"
+	before := sts.Spec.Template.DeepCopy()
 	reconcileTwice()
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
-		t.Fatalf("an existing private store gained a listener unasked (that restarts it): status %v", kv.Status.TLSListener)
+	if !equality.Semantic.DeepEqual(sts.Spec.Template, *before) || kv.Status.TLSRuntimeSwitch {
+		t.Fatal("an older private store's template changed without an enable")
 	}
 
 	kv.Spec.Public = true
@@ -368,14 +381,23 @@ func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if !kv.Status.TLSListener || !keyValueTemplateListens(&sts) {
-		t.Fatalf("the first enable did not add the listener: status %v", kv.Status.TLSListener)
+	if !kv.Status.TLSRuntimeSwitch || !keyValueVolumesSwitchTLS(sts.Spec.Template.Spec.Volumes) || keyValueTemplateListens(&sts) {
+		t.Fatalf("the first enable did not adopt the runtime TLS switch: %+v", kv.Status)
 	}
+	enabled := sts.Spec.Template.DeepCopy()
 
-	// Private again, the kept listener needs no issuer: a TLS fault on a
-	// private store must not stall its other reconciles.
+	// Private again, with no issuer, nothing rolls and nothing fails.
 	kv.Spec.Public = false
 	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
+		t.Fatalf("the enabled store's Certificate: %v", err)
+	}
+	certificate.SetUID("certificate-private-test")
+	if err := cl.Update(ctx, certificate); err != nil {
 		t.Fatal(err)
 	}
 	r.ClusterIssuer = ""
@@ -383,31 +405,8 @@ func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if !kv.Status.TLSListener || !keyValueTemplateListens(&sts) || kv.Status.Phase == appv1alpha1.KVPhaseFailed {
-		t.Fatalf("a private store with a kept listener: status %+v", kv.Status)
-	}
-
-	// Suspended, no process runs to restart, so the listener goes. (The fake
-	// client assigns no UIDs; withdrawal records the Certificate's first.)
-	certificate := &unstructured.Unstructured{}
-	certificate.SetGroupVersionKind(certManagerCertificateGVK)
-	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
-		t.Fatalf("the kept listener's Certificate: %v", err)
-	}
-	certificate.SetUID("certificate-private-test")
-	if err := cl.Update(ctx, certificate); err != nil {
-		t.Fatal(err)
-	}
-	kv.Spec.Suspended = true
-	if err := cl.Update(ctx, kv); err != nil {
-		t.Fatal(err)
-	}
-	reconcileTwice()
-	if err := cl.Get(ctx, nn, &sts); err != nil {
-		t.Fatal(err)
-	}
-	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
-		t.Fatalf("a suspended private store kept its listener: status %v", kv.Status.TLSListener)
+	if !equality.Semantic.DeepEqual(sts.Spec.Template, *enabled) || kv.Status.Phase == appv1alpha1.KVPhaseFailed || !kv.Status.TLSRuntimeSwitch {
+		t.Fatalf("disabling external access touched the pod template or failed: %+v", kv.Status)
 	}
 }
 
@@ -419,18 +418,22 @@ func TestKeyValueKeepsAListenerItsStatusReports(t *testing.T) {
 	for name, tc := range map[string]struct {
 		spec      appv1alpha1.KeyValueSpec
 		listening bool
+		runtime   bool
 		domain    string
 		want      bool
 	}{
-		"public":                  {appv1alpha1.KeyValueSpec{Public: true}, false, "kv.example.test", true},
-		"private, listening":      {appv1alpha1.KeyValueSpec{}, true, "kv.example.test", true},
-		"private, never listened": {appv1alpha1.KeyValueSpec{}, false, "kv.example.test", false},
-		"suspended":               {appv1alpha1.KeyValueSpec{Suspended: true}, true, "kv.example.test", false},
-		"no external domain":      {appv1alpha1.KeyValueSpec{}, true, "", false},
+		"public":                  {appv1alpha1.KeyValueSpec{Public: true}, false, false, "kv.example.test", true},
+		"private, listening":      {appv1alpha1.KeyValueSpec{}, true, false, "kv.example.test", true},
+		"private, never listened": {appv1alpha1.KeyValueSpec{}, false, false, "kv.example.test", false},
+		"suspended":               {appv1alpha1.KeyValueSpec{Suspended: true}, true, false, "kv.example.test", false},
+		"no external domain":      {appv1alpha1.KeyValueSpec{}, true, false, "", false},
+		// w8/m134: a runtime switch keeps the Certificate only while public.
+		"runtime, public":  {appv1alpha1.KeyValueSpec{Public: true}, false, true, "kv.example.test", true},
+		"runtime, private": {appv1alpha1.KeyValueSpec{}, true, true, "kv.example.test", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "kv"}, Spec: tc.spec}
-			if got := keyValueIntentFor(kv, plan, storage, tc.domain, tc.listening).tlsListener; got != tc.want {
+			if got := keyValueIntentFor(kv, plan, storage, tc.domain, tc.listening, tc.runtime).tlsListener; got != tc.want {
 				t.Fatalf("tlsListener = %v, want %v", got, tc.want)
 			}
 		})
@@ -1257,9 +1260,10 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 })
 
 // w8/m134: a private store's pod must be able to start. A newborn private store
-// runs no TLS listener and mounts no TLS Secret (its Certificate is requested
-// only for a public store), so w8/181's birth listener, which mounted a Secret
-// nothing would create, left every default `bex kv create` in `creating`.
+// runs no TLS listener and mounts its TLS Secret optional (its Certificate is
+// requested only for a public store), so w8/181's birth listener, which
+// required a Secret nothing would create, cannot recur: that left every
+// default `bex kv create` in `creating`.
 func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := &appv1alpha1.KeyValue{
@@ -1280,8 +1284,13 @@ func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T)
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if keyValueTemplateListens(&sts) {
-		t.Fatalf("a private newborn store mounts a TLS Secret that is never created, so its pod can never start: volumes %+v", sts.Spec.Template.Spec.Volumes)
+	if keyValueTemplateListens(&sts) || !keyValueVolumesSwitchTLS(sts.Spec.Template.Spec.Volumes) {
+		t.Fatalf("a private newborn store requires a TLS Secret that is never created, so its pod can never start: volumes %+v", sts.Spec.Template.Spec.Volumes)
+	}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); !apierrors.IsNotFound(err) {
+		t.Fatalf("a private newborn store requested a public certificate (ACME latency and quota on every create): %v", err)
 	}
 	for _, c := range sts.Spec.Template.Spec.Containers {
 		for _, arg := range c.Args {
@@ -1293,8 +1302,8 @@ func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T)
 	if err := cl.Get(ctx, nn, kv); err != nil {
 		t.Fatal(err)
 	}
-	if kv.Status.TLSListener {
-		t.Fatal("status claims a TLS listener on a private newborn store")
+	if kv.Status.TLSListener || !kv.Status.TLSRuntimeSwitch {
+		t.Fatalf("status of a private newborn store: %+v", kv.Status)
 	}
 }
 
@@ -1320,12 +1329,24 @@ func TestKeyValueNewPublicStoreRequestsTheCertificateItMounts(t *testing.T) {
 	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if !keyValueTemplateListens(&sts) {
-		t.Fatal("a public newborn store has no TLS listener")
+	if !keyValueVolumesSwitchTLS(sts.Spec.Template.Spec.Volumes) {
+		t.Fatal("a public newborn store does not mount its certificate")
 	}
 	certificate := &unstructured.Unstructured{}
 	certificate.SetGroupVersionKind(certManagerCertificateGVK)
 	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
 		t.Fatalf("the Secret the pod mounts has no Certificate to create it: %v", err)
+	}
+}
+
+// expectStartsTLSFromMountedCertificate asserts the runtime-switch layout: an
+// optional certificate mount and the start wrapper that opens the listener
+// when the files are present.
+func expectStartsTLSFromMountedCertificate(t *testing.T, sts *appsv1.StatefulSet) {
+	t.Helper()
+	args := sts.Spec.Template.Spec.Containers[0].Args
+	if !keyValueVolumesSwitchTLS(sts.Spec.Template.Spec.Volumes) || len(args) < 3 || args[2] != kvTLSWrapperScript ||
+		!strings.Contains(args[2], "--tls-port "+strconv.Itoa(kvTLSPort)) {
+		t.Fatalf("Valkey does not start its TLS listener from the mounted certificate: %v", args)
 	}
 }

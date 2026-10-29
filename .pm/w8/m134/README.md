@@ -1,6 +1,6 @@
 # w8 · m134 — New private Key Value stores never become available (regression from w8/181)
 
-**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** todo（2026-10-29 解除阻塞；原记录：t004, t005, t006 done 2026-10-23; t001 (the blocker hotfix) shipped in db4f548e1 and needs the release pipeline to deploy the operator; then QA runs t002/t007 live: a fresh `bex kv create --plan free` is available within 90 s, inventory and roll any store created since 2026-10-23 02:28 UTC still `creating`, a store created with an allowlist is reachable over TLS. t003 (restart-free first enable without a birth listener) is NOT done and needs your sign-off on the design: Valkey 7.2.14 and 8.1.9 both accept `CONFIG SET tls-cert-file/tls-key-file/tls-ca-cert-file` then `tls-port` at runtime and `tls-port 0` turns it off (verified in Docker 2026-10-23), but using it means an optional Secret mount plus either a sh wrapper that adds `--tls-port` when the cert files exist or an operator re-apply after every pod restart, inside the live-handoff engine that guards customer data
+**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** todo（2026-10-29 解除阻塞；t003 done 2026-10-29 per D3, t002/t007 live checks remain；原记录：t004, t005, t006 done 2026-10-23; t001 (the blocker hotfix) shipped in db4f548e1 and needs the release pipeline to deploy the operator; then QA runs t002/t007 live: a fresh `bex kv create --plan free` is available within 90 s, inventory and roll any store created since 2026-10-23 02:28 UTC still `creating`, a store created with an allowlist is reachable over TLS. t003 (restart-free first enable without a birth listener) is NOT done and needs your sign-off on the design: Valkey 7.2.14 and 8.1.9 both accept `CONFIG SET tls-cert-file/tls-key-file/tls-ca-cert-file` then `tls-port` at runtime and `tls-port 0` turns it off (verified in Docker 2026-10-23), but using it means an optional Secret mount plus either a sh wrapper that adds `--tls-port` when the cert files exist or an operator re-apply after every pod restart, inside the live-handoff engine that guards customer data
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Hotfix: a new store starts with the TLS listener only when its Certificate can exist | 30m | — |
 | t002 | Unstick stores created since the regression | 20m | w8/m134/t001 |
-| t003 | Restart-free first enable without a birth listener (w8/181's goal) | 60m | w8/m134/t001 |
+| t003 — **DONE** | Restart-free first enable without a birth listener (w8/181's goal) | 60m | w8/m134/t001 |
 | t004 — **DONE** | Render parity: ADR021/ADR018 and create/enable timings on every surface | 15m | w8/m134/t003 |
 | t005 — **DONE** | Simplify the changed code | 15m | w8/m134/t004 |
 | t006 — **DONE** | Test coverage: private create becomes Ready; public create; first enable | 40m | w8/m134/t004 |
@@ -86,3 +86,7 @@ Regression of w8/181 (done 2026-10-22). Its DoD covered the first enable on a st
 - **要求：** 改动在保护用户数据的 live-handoff 引擎内，必须覆盖：无持久化实例开启时数据不丢、pod 重启后 TLS 仍生效、关闭外部访问后端口确实关闭。
 - **用户门槛：** 无。
 - **worker 下一步：** loopx 实施 t003 并补测试，然后在生产完成 t002/t007 验收（fresh `bex kv create --plan free` 90 秒内可用；排查 2026-10-23 02:28 UTC 之后仍处于 `creating` 的 store 并处理；allowlist store 可经 TLS 连接）。fixture 按 ID 删除并留 404 证据。
+
+## Progress (2026-10-29, t003)
+
+t003 is done per decision D3 (ADR021 §3 "The TLS listener switches at runtime"). New stores mount the TLS Secret `optional: true`. A `sh` start wrapper adds `--tls-port` only when the certificate files exist. The first enable opens the listener with `CONFIG SET` (files, then `tls-port 6380`) without a pod-template change, and a disable sets `tls-port 0`. `status.tlsRuntimeSwitch` makes bex-api skip `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED` for these stores. A private create still requests no certificate, so `bex kv create --plan free` keeps its fast path. Older stores are not rolled by the upgrade. Verified on the pinned Valkey 7/8 images in Docker and by operator unit tests. **Still open:** t002 (production inventory of stores stuck `creating`) and t007 (the live DoD after the release pipeline deploys this operator). t007 should also confirm on production that the kubelet projects a Secret created after pod start into the optional volume. That is the expected Kubernetes behaviour, but it is not yet observed live.

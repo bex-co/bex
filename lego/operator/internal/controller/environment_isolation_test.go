@@ -56,7 +56,7 @@ func TestKeyValueNewbornTemplateCarriesTheIsolationLabel(t *testing.T) {
 		kv := isolatedKV(env)
 		sts := &appsv1.StatefulSet{}
 		plan, storage := resolveKVPlan(kv.Spec)
-		applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false))
+		applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
 		if got := sts.Spec.Template.Labels[labelNetworkIsolation]; got != env {
 			t.Errorf("env %q: newborn template label = %q", env, got)
 		}
@@ -70,13 +70,13 @@ func TestKeyValueIsolationToggleNeverRollsTheTemplate(t *testing.T) {
 	kv := isolatedKV("")
 	plan, storage := resolveKVPlan(kv.Spec)
 	sts := &appsv1.StatefulSet{}
-	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false))
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
 	sts.CreationTimestamp = metav1.Now() // now an existing store
 	settled := sts.Spec.Template.DeepCopy()
 
 	// Isolation on, nothing else changed: the template is held.
 	kv.Labels[labelNetworkIsolation] = "env-a"
-	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false))
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
 	if !templateEqualIgnoringIsolation(settled, &sts.Spec.Template) || sts.Spec.Template.Labels[labelNetworkIsolation] != "" {
 		t.Fatalf("an isolation toggle changed the pod template: %v", sts.Spec.Template.Labels)
 	}
@@ -84,14 +84,14 @@ func TestKeyValueIsolationToggleNeverRollsTheTemplate(t *testing.T) {
 	// The template changes for another reason (plan): the new label rides along.
 	kv.Spec.Plan = "starter"
 	plan, storage = resolveKVPlan(kv.Spec)
-	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false))
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
 	if got := sts.Spec.Template.Labels[labelNetworkIsolation]; got != "env-a" {
 		t.Fatalf("a rolling template did not adopt the isolation label: %q", got)
 	}
 
 	// Isolation off again: held while the rest is unchanged.
 	delete(kv.Labels, labelNetworkIsolation)
-	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false))
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
 	if got := sts.Spec.Template.Labels[labelNetworkIsolation]; got != "env-a" {
 		t.Fatalf("isolation off rolled the template: %q", got)
 	}
