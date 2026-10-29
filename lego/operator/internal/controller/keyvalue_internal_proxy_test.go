@@ -122,3 +122,72 @@ func TestKeyValueInternalProxyRejectsMixedRolloutReadiness(t *testing.T) {
 		t.Fatal("stale rollout acknowledged")
 	}
 }
+
+// An isolation toggle alone must not roll the Key Value's one-replica internal
+// proxy: the 2026-10-29 hosted check saw each toggle replace it and drop
+// same-environment connections for seconds (w8/220). Its running pods are
+// relabelled in place instead, and a template change for another reason still
+// adopts the label.
+func TestKeyValueInternalProxyIsolationToggleNeverRollsIt(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-iso", Namespace: "tea-test", UID: "iso", Labels: map[string]string{}}}
+	ctrl := true
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "red-iso-internal-abc", Namespace: "tea-test",
+		Labels:          map[string]string{labelKeyValueInternalProxy: kv.Name},
+		OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: "red-iso-internal-abc", UID: "rs", Controller: &ctrl}},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pod).WithStatusSubresource(&appsv1.Deployment{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+	intent := keyValueIntent{authSecretName: "auth", credentialRevision: "revision", labels: map[string]string{labelKeyValue: kv.Name}}
+	depKey := client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}
+	template := func() corev1.PodTemplateSpec {
+		t.Helper()
+		dep := &appsv1.Deployment{}
+		if err := cl.Get(ctx, depKey, dep); err != nil {
+			t.Fatal(err)
+		}
+		return dep.Spec.Template
+	}
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	dep := &appsv1.Deployment{}
+	if err := cl.Get(ctx, depKey, dep); err != nil {
+		t.Fatal(err)
+	}
+	if dep.CreationTimestamp.IsZero() { // the fake client does not stamp it
+		dep.CreationTimestamp = metav1.Now()
+		if err := cl.Update(ctx, dep); err != nil {
+			t.Fatal(err)
+		}
+	}
+	settled := template()
+
+	kv.Labels[labelNetworkIsolation] = "env-a"
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if got := template(); !reflect.DeepEqual(got, settled) {
+		t.Fatalf("isolation on rolled the proxy template: %v", got.Labels)
+	}
+	if err := r.syncKeyValuePodIsolation(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	running := &corev1.Pod{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(pod), running); err != nil {
+		t.Fatal(err)
+	}
+	if running.Labels[labelNetworkIsolation] != "env-a" {
+		t.Fatalf("running proxy pod labels = %v, want it relabelled in place", running.Labels)
+	}
+
+	intent.credentialRevision = "rotated" // a real template change adopts the label
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if got := template().Labels[labelNetworkIsolation]; got != "env-a" {
+		t.Fatalf("a rolling template did not adopt the isolation label: %q", got)
+	}
+}
