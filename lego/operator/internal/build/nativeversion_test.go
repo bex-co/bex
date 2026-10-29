@@ -149,6 +149,7 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
 		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
 		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "26.2"}, nil, "runs on Erlang/OTP 28"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "28.x"}, nil, "ERLANG_VERSION=28.x is not an Erlang/OTP release"},
 	}
 	for _, tc := range cases {
 		_, err := ResolveNativeVersion(tc.runtime, tc.env, files(tc.files))

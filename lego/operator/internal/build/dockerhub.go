@@ -25,6 +25,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,24 +39,51 @@ import (
 // Docker Hub repositories the lines already use are ever consulted, and only a
 // fully qualified version of the requested line; anything else, or any lookup
 // failure, keeps the line's reviewed image and says so in the build log.
+//
+// An exact Erlang/OTP (w8/197) also reads the official erlang repository and
+// hexpm's Elixir builds, which are named by Elixir and OTP release; see
+// pinErlangVersion.
 
-// ExactImageResolver resolves an official-image tag to its content digest.
+// ExactImageResolver resolves Docker Hub tags of the reviewed repositories.
+// A repo is an official image name ("python", "erlang") or hexpm's
+// "hexpm/elixir".
 type ExactImageResolver interface {
-	// ResolveOfficialTag returns the manifest digest ("sha256:…") of
-	// docker.io/library/<repo>:<tag>; ok is false when the tag does not exist.
-	ResolveOfficialTag(ctx context.Context, repo, tag string) (digest string, ok bool, err error)
+	// ResolveTag returns the manifest digest ("sha256:…") of
+	// docker.io/<repo>:<tag>; ok is false when the tag does not exist.
+	ResolveTag(ctx context.Context, repo, tag string) (digest string, ok bool, err error)
+	// ListTags returns the repo's tags that begin with prefix.
+	ListTags(ctx context.Context, repo, prefix string) ([]string, error)
 }
 
-// exactRepos are the official repositories an exact version may name.
-var exactRepos = map[string]bool{nativePythonRuntime: true, nativeNodeRuntime: true, nativeRubyRuntime: true, nativeElixirRuntime: true}
+const (
+	// erlangRepo is the official Erlang/OTP images, one tag per release.
+	erlangRepo = "erlang"
+	// hexpmElixirRepo publishes Elixir built on each Erlang/OTP release.
+	hexpmElixirRepo = "hexpm/elixir"
+)
+
+// exactRepos are the repositories an exact version may name: the official
+// toolchain repositories, the official erlang images and hexpm's Elixir.
+var exactRepos = map[string]bool{nativePythonRuntime: true, nativeNodeRuntime: true, nativeRubyRuntime: true, nativeElixirRuntime: true,
+	erlangRepo: true, hexpmElixirRepo: true}
+
+// repoPath is a repo's Docker Hub path: official images live under library/.
+func repoPath(repo string) string {
+	if strings.Contains(repo, "/") {
+		return repo
+	}
+	return "library/" + repo
+}
 
 var tagPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
-// DockerHubResolver reads digests from Docker Hub's registry API anonymously.
+// DockerHubResolver reads digests from Docker Hub's registry API and tag
+// listings from its Hub API, anonymously.
 type DockerHubResolver struct {
 	Client      *http.Client
 	AuthURL     string // token endpoint; defaults to Docker Hub's
 	RegistryURL string // registry base; defaults to Docker Hub's
+	HubURL      string // Hub API base, for tag listings; defaults to Docker Hub's
 }
 
 // NewDockerHubResolver is the production resolver.
@@ -63,21 +92,22 @@ func NewDockerHubResolver() *DockerHubResolver {
 		Client:      &http.Client{Timeout: 10 * time.Second},
 		AuthURL:     "https://auth.docker.io/token",
 		RegistryURL: "https://registry-1.docker.io",
+		HubURL:      "https://hub.docker.com",
 	}
 }
 
 const maxTokenBytes = 64 << 10
 
-// ResolveOfficialTag implements ExactImageResolver.
-func (d *DockerHubResolver) ResolveOfficialTag(ctx context.Context, repo, tag string) (string, bool, error) {
+// ResolveTag implements ExactImageResolver.
+func (d *DockerHubResolver) ResolveTag(ctx context.Context, repo, tag string) (string, bool, error) {
 	if !exactRepos[repo] || !tagPattern.MatchString(tag) {
-		return "", false, fmt.Errorf("%s:%s is not an official runtime image tag", repo, tag)
+		return "", false, fmt.Errorf("%s:%s is not a reviewed runtime image tag", repo, tag)
 	}
 	token, err := d.token(ctx, repo)
 	if err != nil {
 		return "", false, err
 	}
-	u := fmt.Sprintf("%s/v2/library/%s/manifests/%s", d.RegistryURL, repo, tag)
+	u := fmt.Sprintf("%s/v2/%s/manifests/%s", d.RegistryURL, repoPath(repo), tag)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, u, nil)
 	if err != nil {
 		return "", false, err
@@ -105,8 +135,75 @@ func (d *DockerHubResolver) ResolveOfficialTag(ctx context.Context, repo, tag st
 
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+const (
+	// tagPageSize is the Hub API's largest page; maxTagPages bounds a listing.
+	// A prefix as narrow as an Elixir and OTP release (1.19.5-erlang-28.3)
+	// names a few hundred hexpm builds across every OS and build date.
+	tagPageSize  = 100
+	maxTagPages  = 30
+	maxPageBytes = 4 << 20
+)
+
+// ListTags implements ExactImageResolver through the Hub API's tag search,
+// which answers in about a second where the registry's own sorted listing
+// takes tens of seconds to seek into a repository as large as hexpm/elixir.
+// The search matches a substring, so only the tags that begin with prefix
+// are kept.
+func (d *DockerHubResolver) ListTags(ctx context.Context, repo, prefix string) ([]string, error) {
+	if !exactRepos[repo] || !tagPattern.MatchString(prefix) {
+		return nil, fmt.Errorf("%s:%s is not a reviewed runtime image tag prefix", repo, prefix)
+	}
+	path := repoPath(repo)
+	var tags []string
+	for page := 1; page <= maxTagPages; page++ {
+		q := url.Values{"name": {prefix}, "page_size": {strconv.Itoa(tagPageSize)}, "page": {strconv.Itoa(page)}}
+		names, more, err := d.tagPage(ctx, fmt.Sprintf("%s/v2/repositories/%s/tags?%s", d.HubURL, path, q.Encode()))
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			if strings.HasPrefix(name, prefix) {
+				tags = append(tags, name)
+			}
+		}
+		if !more {
+			return tags, nil
+		}
+	}
+	return nil, fmt.Errorf("%s has more than %d tags matching %s", repo, maxTagPages*tagPageSize, prefix)
+}
+
+// tagPage reads one page of a Hub tag search; more says another page follows.
+func (d *DockerHubResolver) tagPage(ctx context.Context, u string) (names []string, more bool, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	resp, err := d.Client.Do(req)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, false, fmt.Errorf("tag listing answered %d", resp.StatusCode)
+	}
+	var body struct {
+		Next    *string `json:"next"`
+		Results []struct {
+			Name string `json:"name"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxPageBytes)).Decode(&body); err != nil {
+		return nil, false, fmt.Errorf("tag listing: %w", err)
+	}
+	for _, r := range body.Results {
+		names = append(names, r.Name)
+	}
+	return names, body.Next != nil && *body.Next != "" && len(body.Results) > 0, nil
+}
+
 func (d *DockerHubResolver) token(ctx context.Context, repo string) (string, error) {
-	q := url.Values{"service": {"registry.docker.io"}, "scope": {"repository:library/" + repo + ":pull"}}
+	q := url.Values{"service": {"registry.docker.io"}, "scope": {"repository:" + repoPath(repo) + ":pull"}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.AuthURL+"?"+q.Encode(), nil)
 	if err != nil {
 		return "", err

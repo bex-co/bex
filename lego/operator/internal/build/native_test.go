@@ -1090,6 +1090,11 @@ func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 			`elixir=$(elixir -e 'IO.write System.version()') otp=$(erl -noshell -eval 'io:put_chars(erlang:system_info(otp_release)), halt().')`,
 			"elixir=" + l.version + " otp=" + l.otp, map[string]string{"ELIXIR_VERSION": l.version}, nil})
 	}
+	// An exact Erlang/OTP (w8/197) builds on the official erlang image with
+	// hexpm's Elixir: the same tools must run there, on the requested release.
+	cases = append(cases, tc{"elixir-1.19.5-otp-28.3", "elixir",
+		`elixir=$(elixir -e 'IO.write System.version()') otp=$(cat "$(erl -noshell -eval 'io:put_chars(code:root_dir()), halt().')/releases/28/OTP_VERSION") mix=$(mix --version | tail -1 | cut -d' ' -f2) rebar3=$(rebar3 version | cut -d' ' -f2)`,
+		"elixir=1.19.5 otp=28.3.", map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.3"}, nil})
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := nativeOptions()
