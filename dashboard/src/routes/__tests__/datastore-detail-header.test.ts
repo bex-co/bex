@@ -36,4 +36,14 @@ describe("datastore detail header title rows", () => {
       expect(pending).toBe(ready);
     },
   );
+
+  // w4/m209: the pending name bar stood 24px for a 28px text-xl h1, so the
+  // tabs and the whole tab panel moved 4px down when the resource arrived.
+  it.each(ROUTES)("%s reserves the h1's 28px line box", (route) => {
+    const source = readFileSync(join(import.meta.dirname, "..", route), "utf8");
+    const bar = source.match(
+      /data-skeleton-region="resource-title"[\s\S]*?<Skeleton className="([^"]*)"/,
+    )?.[1];
+    expect(bar?.split(" ")).toContain("h-7");
+  });
 });

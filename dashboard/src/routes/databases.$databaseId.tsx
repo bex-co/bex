@@ -168,7 +168,8 @@ function DatabaseDetailPage() {
               data-skeleton-region="resource-title"
               className="flex min-w-0 max-w-full items-center gap-2"
             >
-              <Skeleton className="h-6 w-48" />
+              {/* The h1's text-xl line box is 28px (w4/m209). */}
+              <Skeleton className="h-7 w-48" />
               <Skeleton className="h-5 w-16 rounded-full" />
             </div>
           )}
