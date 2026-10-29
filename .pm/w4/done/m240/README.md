@@ -1,6 +1,6 @@
 # w4 · m240 — Static-site route placeholders (`:name`) match and expand, as Render documents
 
-**Worker:** worker4 **Goal:** a static-site redirect or rewrite whose source names a path segment (`/blog/posts/:postid`) matches that segment and substitutes it into the destination (`/blog/:postid`), exactly as [Render documents](https://render.com/docs/redirects-rewrites). Today REST and the dashboard accept and store such a rule, and the static server then matches its source as a literal string, so the rule silently never fires. **Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin to include the fix, then QA replays the DoD below on a fresh owned fixture in `bex-canary`
+**Worker:** worker4 **Goal:** a static-site redirect or rewrite whose source names a path segment (`/blog/posts/:postid`) matches that segment and substitutes it into the destination (`/blog/:postid`), exactly as [Render documents](https://render.com/docs/redirects-rewrites). Today REST and the dashboard accept and store such a rule, and the static server then matches its source as a literal string, so the rule silently never fires. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: `:name` redirects and rewrites expand, controls unchanged, an undeclared `:y` is refused on REST and GraphQL (loopx w4).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity                                                              | 20m | w4/m240/t002, w4/m240/t003 | — **DONE**
 | [t005](done/t005.md) | Simplify                                                                   | 15m | w4/m240/t004               | — **DONE**
 | [t006](done/t006.md) | Test coverage                                                              | 20m | w4/m240/t004               | — **DONE**
-| [t007](t007.md) | Closeout (live DoD replay)                                                 | 15m | w4/m240/t005, w4/m240/t006 |
+| [t007](done/t007.md) | Closeout (live DoD replay)                                                 | 15m | w4/m240/t005, w4/m240/t006 | — **DONE**
 
 ## Definition of done
 
