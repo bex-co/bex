@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution/executiontest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -81,5 +83,64 @@ func TestKubernetesLiteralCommandsReachRuntimeAcrossExecutionModes(t *testing.T)
 	env := appEnv(app, 10000)
 	if len(env) != 2 || env[0].Value != "" || env[0].ValueFrom == nil || !strings.EqualFold(env[0].ValueFrom.SecretKeyRef.Name, "secret") {
 		t.Fatalf("secret reference changed: %+v", env)
+	}
+}
+
+// TestPreLiteralNativeArtifactRebuildsOnRedeploy pins the w8/206 rebuild gate.
+// A native image built before Kubernetes literals were protected baked a
+// collapsed `$$` into its RUN output and CMD. Nothing in the saved spec changed
+// when the operator was fixed, so its artifact fingerprint still matches. A
+// redeploy on the same commit with the same commands must still build a fresh
+// artifact under a fresh build revision: every deploy verb stamps
+// spec.restartedAt (an artifact input) and a new release generation. An
+// operational edit (a scale) keeps reusing the served image, as before.
+func TestPreLiteralNativeArtifactRebuildsOnRedeploy(t *testing.T) {
+	const commit = "180e352cc63d9c887ce4b1bffe84c6d5def07cd5"
+	served := appv1alpha1.AppSpec{
+		Repo: "https://github.com/render-examples/express-hello-world", Branch: "main", BuildCommit: commit,
+		Runtime: "node", Builder: build.BuilderNative, Port: 10000, Replicas: 1,
+		BuildCommand: `printf "BUILDDD=[a$$b]\n"; yarn`,
+		StartCommand: `echo "pid=[$$] dd=[a$$b]"; exec node app.js`,
+		RestartedAt:  "2026-10-26T11:26:00Z",
+	}
+	identity := desiredAppReleaseIdentity(served)
+	staleImage := "registry.bex/tea-x/app:" + appv1alpha1.BuildRevision(2)
+	servedApp := func() *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "tea-x", UID: "app-uid", Generation: 2,
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}},
+			Spec: served,
+			Status: appv1alpha1.AppStatus{
+				Phase: appv1alpha1.PhaseRunning, Image: staleImage, ArtifactImage: staleImage,
+				ArtifactFingerprint: identity.artifact, ReleaseFingerprint: identity.release,
+				ReleaseArtifactFingerprint: identity.artifact,
+				ReleaseGeneration:          2, ActiveRevision: "rev-2", ObservedGeneration: 2,
+			},
+		}
+	}
+
+	// deploys.triggerFetched: a new release generation and restart stamp; the
+	// same commit re-resolves to the same BuildCommit.
+	redeploy := servedApp()
+	redeploy.Generation = 3
+	redeploy.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "3"
+	redeploy.Spec.RestartedAt = "2026-10-29T08:00:00Z"
+	decision := prepareAppReleaseDecision(redeploy, nil)
+	if !decision.artifactChanged || !decision.releaseChanged {
+		t.Fatalf("redeploy decision = %+v, want a new artifact and release", decision)
+	}
+	if image, ok := reusableArtifactImage(redeploy, decision); ok || image != "" {
+		t.Fatalf("redeploy reused %q, want a rebuild of the pre-literal artifact", image)
+	}
+	if got := releaseBuildRevision(redeploy); got != appv1alpha1.BuildRevision(3) {
+		t.Fatalf("build revision = %q, want a fresh revision so neither the old Job nor the old tag is reused", got)
+	}
+
+	scaled := servedApp()
+	scaled.Generation = 3
+	scaled.Spec.Replicas = 2
+	decision = prepareAppReleaseDecision(scaled, nil)
+	if image, ok := reusableArtifactImage(scaled, decision); decision.artifactChanged || !ok || image != staleImage {
+		t.Fatalf("scale decision = %+v reused %q (%v), want the served image", decision, image, ok)
 	}
 }
