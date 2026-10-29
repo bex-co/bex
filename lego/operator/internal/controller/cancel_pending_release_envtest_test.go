@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -125,6 +126,10 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 			}
 			r.Registry = saved
 		}
+		// envtest runs no garbage collector: an owned Deployment left Ready by
+		// one spec would read as the next spec's served release.
+		_ = k8sClient.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}},
+			client.PropagationPolicy(metav1.DeletePropagationBackground))
 		for _, rev := range []string{"gen-1", "gen-2", "gen-3", "gen-4"} {
 			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(name, rev), Namespace: "default"}},
 				client.PropagationPolicy(metav1.DeletePropagationBackground))
@@ -233,5 +238,51 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		Expect(app.Status.ReleaseGeneration).To(BeZero())
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseCanceled))
 		Expect(app.Status.ActiveRevision).To(BeEmpty(), "neither release served")
+	})
+	// A saved-image service has no build to pin: the newer request replaces the
+	// first deploy's release as soon as it is made, so the cancel naming the
+	// first deploy must roll it again (the 2026-10-28 hosted replay, 4/4).
+	createImageApp := func() {
+		GinkgoHelper()
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "python:3.12-alpine", Port: 8000, Replicas: 1},
+		})).To(Succeed())
+		pass(3)
+	}
+
+	It("a new image service's first deploy rolls out and serves after its duplicate is canceled", func() {
+		createImageApp()
+		Expect(getApp().Status.ReleaseGeneration).To(Equal(int64(1)))
+		trigger(30)
+		pass(1)
+		Expect(getApp().Status.ReleaseGeneration).To(Equal(int64(2)), "precondition: the duplicate replaced the first release")
+		cancelLatest(1)
+		pass(2)
+
+		app := getApp()
+		Expect(app.Status.Phase).NotTo(Equal(appv1alpha1.PhaseCanceled), "the first deploy is not canceled with its duplicate")
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "the first deploy's release is in flight again")
+		Expect(envtestDeployment(nn).Spec.Template.Spec.Containers[0].Image).To(Equal("python:3.12-alpine"))
+		markEnvtestDeploymentReady(nn)
+		pass(3)
+
+		app = getApp()
+		Expect(app.Status.ActiveRevision).To(Equal("rev-1"), "the first deploy serves under its own generation")
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
+	})
+
+	It("an image service's cancel that names no survivor still settles below both releases", func() {
+		createImageApp()
+		trigger(31)
+		pass(1)
+		cancelLatest(0)
+		Eventually(func() appv1alpha1.AppPhase {
+			pass(1)
+			return getApp().Status.Phase
+		}).Should(Equal(appv1alpha1.PhaseCanceled))
+		Expect(getApp().Status.ReleaseGeneration).To(BeZero())
 	})
 })

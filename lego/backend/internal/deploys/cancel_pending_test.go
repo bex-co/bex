@@ -28,13 +28,19 @@ import (
 // latest-pending slot names the older one ahead of it as the release left
 // running, and the commit its row records as the one to build. Canceling
 // anything else names none, and the cancel settles as it always has: the older
-// deploy itself, a pending deploy that brought settings of its own, one behind
-// a rollback, or one of an image-backed service.
+// deploy itself, a pending deploy that brought settings of its own, or one
+// behind a rollback. A saved-image service names its survivor too, and its
+// saved commit is left alone: it builds nothing.
 func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 	ctx := context.Background()
 	repoApp := func() *appv1alpha1.App {
 		a := sampleApp("web", "srv-1")
 		a.Spec.Image, a.Spec.Repo, a.Spec.BuildCommit = "", "https://example.invalid/acme/web.git", "bbb"
+		a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}
+		return a
+	}
+	imageApp := func() *appv1alpha1.App {
+		a := sampleApp("web", "srv-1")
 		a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}
 		return a
 	}
@@ -46,13 +52,14 @@ func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 		wantCanceled, wantKept string
 		wantCommit             string
 	}{
-		"a duplicate deploy":         {repoApp(), store.TriggerCreate, "", store.TriggerAPI, false, "2", "1", "aaa"},
-		"a pushed commit":            {repoApp(), store.TriggerAPI, "", store.TriggerNewCommit, false, "2", "1", "aaa"},
-		"the older deploy itself":    {repoApp(), store.TriggerCreate, "", store.TriggerAPI, true, "1", "", "bbb"},
-		"a configuration change":     {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, "2", "", "bbb"},
-		"a blueprint sync":           {repoApp(), store.TriggerCreate, "", "blueprint", false, "2", "", "bbb"},
-		"a deploy behind a rollback": {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, "2", "", "bbb"},
-		"an image-backed service":    {sampleApp("web", "srv-1"), store.TriggerCreate, "", store.TriggerAPI, false, "2", "", ""},
+		"a duplicate deploy":                                 {repoApp(), store.TriggerCreate, "", store.TriggerAPI, false, "2", "1", "aaa"},
+		"a pushed commit":                                    {repoApp(), store.TriggerAPI, "", store.TriggerNewCommit, false, "2", "1", "aaa"},
+		"the older deploy itself":                            {repoApp(), store.TriggerCreate, "", store.TriggerAPI, true, "1", "", "bbb"},
+		"a configuration change":                             {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, "2", "", "bbb"},
+		"a blueprint sync":                                   {repoApp(), store.TriggerCreate, "", "blueprint", false, "2", "", "bbb"},
+		"a deploy behind a rollback":                         {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, "2", "", "bbb"},
+		"an image-backed service":                            {imageApp(), store.TriggerCreate, "", store.TriggerAPI, false, "2", "1", ""},
+		"an image service's deploy behind an --image deploy": {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, "2", "", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ds := newFakeStore()
