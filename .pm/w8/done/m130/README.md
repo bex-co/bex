@@ -1,6 +1,6 @@
 # w8 · m130 — Free web services cannot receive private-network traffic, as on Render
 
-**Worker:** worker8 **Goal:** A free web service is reachable only through its public `onbex.co` URL (and custom domains), as on Render. Other services in the workspace can no longer reach it at its internal address. Paid web and private services keep their internal address. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t006 done 2026-10-23; GitOps syncs deny-free-plan-private-ingress and the release pipeline deploys the operator, the backend and the dashboard; QA runs t007: free web A and free probe B — B's wget to A's internal address fails and A still serves its public URL; upgrade A and B's wget succeeds, downgrade blocks it again; paid web/private controls stay reachable; delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** A free web service is reachable only through its public `onbex.co` URL (and custom domains), as on Render. Other services in the workspace can no longer reach it at its internal address. Paid web and private services keep their internal address. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: ADR018/ADR041/ADR022 and every surface agree                  | 20m | w8/m130/t002, w8/m130/t003 |
 | t005 — **DONE** | Simplify the changed code                                                   | 15m | w8/m130/t004               |
 | t006 — **DONE** | Test coverage: free vs paid ingress, plan changes, edge paths untouched     | 30m | w8/m130/t004               |
-| t007 | Close out the milestone                                                     | 30m | w8/m130/t005, w8/m130/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m130/t005, w8/m130/t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@ Live on production after GitOps syncs the platform policy and the release pipeli
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 8004, 2026-10-22/23 UTC: bex v0.3.3 (`bex-cli/v0.3.3` darwin-arm64), pin Render CLI v2.27.0 `a764810a7682`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login, non-TTY JSON. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/free](https://render.com/docs/free) lists, among what Free web services do not support: "Receiving private network traffic". [ADR018](../../../docs/ADR018-render-parity.md)'s Internal address row (line 103) records no free-plan divergence and no user sign-off. w4/252 (`done/252.md`, "bex deliberately exposes and serves its internal address while awake (ADR041)") predates the 2026-10-17 parity rule. Precedent: w8/m127 restricted free egress to match the same Render page.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/free](https://render.com/docs/free) lists, among what Free web services do not support: "Receiving private network traffic". [ADR018](../../../../docs/ADR018-render-parity.md)'s Internal address row (line 103) records no free-plan divergence and no user sign-off. w4/252 (`done/252.md`, "bex deliberately exposes and serves its internal address while awake (ADR041)") predates the 2026-10-17 parity rule. Precedent: w8/m127 restricted free egress to match the same Render page.
 - **Expected outcome:** free behavior matches Render's. A free web service cannot act as an always-on internal backend for paid services, and tenants get one documented rule.
 - **Why now:** major. This is a customer-visible parity divergence and a free-tier pricing hole. The free-plan pod label (`app.bex.co/free-plan`, w8/m127) already exists, so the policy needs no new operator labeling. Render parity task included: REST/GraphQL/MCP and dashboard surfaces show the internal address.
 
@@ -94,3 +94,17 @@ Free web A `srv-dbdk2l1f0c2s738fsdqg` (echo-server) and free busybox probe B `sr
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `03043c7df363`), bex-canary, 11:40–12:27 UTC, released Bex v0.3.3. `CiliumClusterwideNetworkPolicy deny-free-plan-private-ingress` is present (Argo-tracked) and `Valid=True`; it selects `app.bex.co/free-plan: "true"` pods and denies ingress from any workspace endpoint.
+
+Fixtures: free target A `srv-dbhj1kp56ukc73amela0` (`qa-20261029-lx9m-echo`, echo-server, internal `qa-20261029-lx9m-echo:10000`); free probe B `srv-dbhj1m4jakpc739ce3ig` (busybox `wget -T 5` to each target's internal `:10000/privprobe-lx9m-<h>` every 20 s); Starter web C `srv-dbhj2ssjakpc739ce47g` and Starter private service D `srv-dbhj5lkjakpc739ce4o0` (D4 controls).
+
+- **Free target blocked:** every probe to A timed out (`PRIVFAIL echo`) and A's app logs show zero `/privprobe` requests; A's public URL answers 200.
+- **Upgrade/downgrade:** `services update A --plan starter` rolled out by itself; the new pod has no free-plan label and B logged `PRIVOK echo` from 11:45:52 (A logged the `Wget` requests). `--plan free` brought the label back and B logged `PRIVFAIL echo` from 11:47:28 on.
+- **Paid controls:** `PRIVOK paid` (Starter web) and `PRIVOK priv` (Starter private service).
+- **Sleep/wake:** A hibernated after 15 idle minutes (dropped probe traffic never woke it); a public request woke it through the activator in 11.5 s with the free-plan label back, and B kept failing afterwards.
+- **Surfaces:** REST, GraphQL `internalAddress` and MCP `get_service` read `plan: free` with the internal address; `bex blueprints validate` refuses a Starter service's `fromService` `hostport`/`host` pointing at a free web service ("free web services can't receive private network traffic; upgrade to a paid plan to use the internal address") and accepts it once the target is Starter; the dashboard's Connect → Internal on A shows the free-plan note, a Starter web service shows none.
+- Not re-run: custom domains (public edge path, untouched by the policy), zh copy.
+- Cleanup: all four services deleted by ID (`GET` → 404, public hosts 404).
