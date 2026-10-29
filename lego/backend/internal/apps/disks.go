@@ -44,29 +44,20 @@ import (
 // bex-api cannot land a disk this layer would have refused.
 
 // diskDefaultSizeGB is Render's Blueprint default; diskMinSizeGB and
-// diskMaxSizeGB are Hetzner Cloud's volume floor and ceiling, stated rather
-// than left undocumented.
+// diskMaxSizeGB bound the sizes a user may ask for.
 const (
 	// diskFreeTier is the plan a disk may not be attached to: the free tier
 	// sleeps and is not billable, and Render restricts disks to paid services.
 	diskFreeTier      = "free"
 	diskDefaultSizeGB = 10
-	// diskMinSizeGB is Hetzner's minimum Cloud Volume size. It was 1 until
-	// w1/078: a smaller request does not produce a smaller volume, it produces
-	// a 10 GB one, so bex was billing $0.175 for something that cost ~$0.50 —
-	// selling its smallest disk below cost while ADR082 D8 advertised ~71%
-	// margin. Observed on a live 1 GB disk whose kubelet capacity read 10 GiB.
-	//
-	// Deliberately NOT configurable. The constraint is Hetzner's, and a
-	// BEX_DISK_MIN_SIZE_GB knob is speculative until a self-hoster on other
-	// infrastructure actually asks; the CAPD mock's local-path backend has no
-	// such floor but nothing there depends on sub-10 GB disks.
-	//
-	// The CRD's own Minimum stays at 1 on purpose (lego/types app_types.go):
-	// this is policy, the CRD is mechanism, and raising it there would make
-	// every already-provisioned sub-10 GB disk fail validation on its next
-	// write — with the grow-only rule leaving no way back into compliance.
-	diskMinSizeGB = 10
+	// diskMinSizeGB is Render's smallest disk, 1 GB (w8/215). Hetzner's
+	// smallest Cloud Volume is 10 GB, so a 1-9 GB disk sits on a 10 GB volume
+	// (the CSI driver rounds the claim up). bex absorbs the difference: every
+	// surface reports, and the disk meter bills, the size the user asked for,
+	// as Render does (ADR082 D6/D8, ADR018). w1/078 had raised this to 10 and
+	// refused smaller disks, which broke every Render template declaring
+	// `sizeGB: 1`. The CRD's own Minimum is 1 too (lego/types app_types.go).
+	diskMinSizeGB = 1
 	diskMaxSizeGB = 10000
 )
 
@@ -367,13 +358,8 @@ func validateDiskMountPath(path string) error {
 }
 
 func validateDiskSize(sizeGB int32) error {
-	// Say what to do, not just what is wrong: a Render user migrating a
-	// `sizeGB: 1` manifest hits this, and the fix is a one-word edit. Rounding
-	// up silently would be the worse answer — they would be billed for 10 GB
-	// having asked for 1, and ADR049 is fail-closed by design.
 	if sizeGB < diskMinSizeGB {
-		return fmt.Errorf("%w: sizeGB must be at least %d (Hetzner's minimum volume size); set sizeGB to %d",
-			core.ErrBadRequest, diskMinSizeGB, diskMinSizeGB)
+		return fmt.Errorf("%w: sizeGB must be at least %d", core.ErrBadRequest, diskMinSizeGB)
 	}
 	if sizeGB > diskMaxSizeGB {
 		return fmt.Errorf("%w: sizeGB must be at most %d", core.ErrBadRequest, diskMaxSizeGB)

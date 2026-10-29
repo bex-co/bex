@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -415,56 +417,162 @@ func TestCreateServiceDiskDefaultsSizeWhenOmitted(t *testing.T) {
 	}
 }
 
-// Hetzner's minimum Cloud Volume is 10 GB, so a smaller request does not
-// produce a smaller volume — it produces a 10 GB one. bex sold 1 GB disks for
-// $0.175 against a ~$0.50 cost until w1/078, while ADR082 D8 advertised ~71%
-// margin. The floor is what makes displayed size, provisioned size and billed
-// size the same number again.
-func TestDiskSizeFloorMatchesHetznersMinimumVolume(t *testing.T) {
-	svc, _, _ := newDiskService(diskEligibleApp("web"))
-
+// Render's disks start at 1 GB and its own templates declare `sizeGB: 1` and
+// `sizeGB: 5`. Hetzner's smallest volume is 10 GB, so a 1-9 GB disk sits on a
+// 10 GB volume, but bex absorbs that: the disk row (the billing record), the
+// projected spec and every read-back carry the size the user asked for
+// (w8/215, reversing w1/078's 10 GB floor).
+func TestSubTenGBDisksKeepTheRequestedSize(t *testing.T) {
 	for _, size := range []int32{1, 5, 9} {
-		_, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", size)
-		if err == nil {
-			t.Fatalf("sizeGB=%d was accepted; Hetzner would provision 10 GB and bex would bill %d", size, size)
+		svc, cl, st := newDiskService(diskEligibleApp("web"))
+		view, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", size)
+		if err != nil {
+			t.Fatalf("sizeGB=%d refused: %v", size, err)
 		}
-		if !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("sizeGB=%d: want ErrBadRequest, got %v", size, err)
+		if view.SizeGB != size || st.disks[view.ID].SizeGB != size {
+			t.Fatalf("sizeGB=%d: view %d, billed row %d; both must be the requested size", size, view.SizeGB, st.disks[view.ID].SizeGB)
 		}
-		// The message must tell a migrating Render user what to change, not
-		// merely that they are wrong.
-		if !strings.Contains(err.Error(), "at least 10") || !strings.Contains(err.Error(), "set sizeGB to 10") {
-			t.Errorf("sizeGB=%d: message should name the fix, got %q", size, err.Error())
+		if spec := getApp(t, cl, "web").Spec.Disk; spec == nil || spec.SizeGB != size {
+			t.Fatalf("sizeGB=%d: spec.disk = %+v, want the requested size (the operator never rounds it)", size, spec)
+		}
+		got, err := svc.GetDisk(context.Background(), view.ID)
+		if err != nil || got.SizeGB != size {
+			t.Fatalf("sizeGB=%d: GetDisk = %+v, %v", size, got, err)
+		}
+		if service, err := svc.Get(context.Background(), "web"); err != nil || service.Disk == nil || service.Disk.SizeGB != size {
+			t.Fatalf("sizeGB=%d: service view disk = %+v, %v", size, service.Disk, err)
 		}
 	}
 
-	if _, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10); err != nil {
-		t.Fatalf("the floor itself must be accepted: %v", err)
+	// Zero and negative sizes stay refused on update; zero only defaults on create.
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []int32{0, -1} {
+		if _, err := svc.UpdateDisk(context.Background(), disk.ID, nil, nil, ptr.To(bad)); !errors.Is(err, core.ErrBadRequest) ||
+			!strings.Contains(err.Error(), "at least 1") {
+			t.Errorf("UpdateDisk(sizeGB=%d) = %v, want the 1 GB minimum", bad, err)
+		}
 	}
 }
 
-// The floor is API policy, not a CRD rule: raising the CRD's own Minimum would
-// make every already-provisioned sub-10 GB disk fail validation on its next
-// write, and the grow-only rule leaves no way back into compliance. A disk that
-// predates the floor must therefore still accept a metadata edit.
-func TestExistingSubFloorDiskStillAcceptsMetadataEdits(t *testing.T) {
-	svc, _, st := newDiskService(diskEligibleApp("web"))
-	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)
+// Grow-only holds below the provider floor too: 1 → 5 is a grow (the 10 GB
+// volume already holds it, and the meter now bills 5), 5 → 1 is a shrink.
+func TestSmallDiskGrowsButNeverShrinks(t *testing.T) {
+	svc, cl, st := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 1)
 	if err != nil {
-		t.Fatalf("AddDisk: %v", err)
+		t.Fatal(err)
 	}
-	// Backdate the row to a size the floor would now refuse, as a disk created
-	// before w1/078 would be.
-	row := st.disks[disk.ID]
-	row.SizeGB = 1
-	st.disks[disk.ID] = row
-
+	grown, err := svc.UpdateDisk(context.Background(), disk.ID, nil, nil, ptr.To(int32(5)))
+	if err != nil || grown.SizeGB != 5 || st.disks[disk.ID].SizeGB != 5 {
+		t.Fatalf("grow 1→5 = %+v, %v (row %d)", grown, err, st.disks[disk.ID].SizeGB)
+	}
+	if spec := getApp(t, cl, "web").Spec.Disk; spec.SizeGB != 5 {
+		t.Fatalf("spec.disk.sizeGB = %d, want 5", spec.SizeGB)
+	}
+	if _, err := svc.UpdateDisk(context.Background(), disk.ID, nil, nil, ptr.To(int32(1))); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("shrink 5→1 = %v, want bad request", err)
+	}
+	// A metadata edit leaves the small size alone.
 	mountPath := "/var/data2"
-	updated, err := svc.UpdateDisk(context.Background(), disk.ID, nil, &mountPath, nil)
-	if err != nil {
-		t.Fatalf("a pre-floor disk must still accept a metadata edit: %v", err)
+	if updated, err := svc.UpdateDisk(context.Background(), disk.ID, nil, &mountPath, nil); err != nil || updated.SizeGB != 5 {
+		t.Fatalf("metadata edit = %+v, %v; want sizeGB 5 kept", updated, err)
 	}
-	if updated.SizeGB != 1 {
-		t.Errorf("the edit must not resize the disk: got %d, want 1", updated.SizeGB)
+}
+
+// REST: Render's POST /v1/disks and service create both take sizeGB 1, and
+// every read-back reports 1.
+func TestRESTAcceptsAOneGBDisk(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	mux := diskRESTMux(t, svc)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/disks",
+		strings.NewReader(`{"serviceId":"web","name":"data","mountPath":"/var/data","sizeGB":1}`)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST /v1/disks sizeGB 1 => %d: %s", rec.Code, rec.Body)
+	}
+	var created DiskView
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil || created.SizeGB != 1 {
+		t.Fatalf("created = %+v, %v; want sizeGB 1", created, err)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/disks/"+created.ID, nil))
+	var read DiskView
+	if err := json.Unmarshal(rec.Body.Bytes(), &read); rec.Code != http.StatusOK || err != nil || read.SizeGB != 1 {
+		t.Fatalf("GET /v1/disks/%s => %d %s", created.ID, rec.Code, rec.Body)
+	}
+	if got := listDisksREST(t, mux, "serviceId=web"); len(got) != 1 || got[0].SizeGB != 1 {
+		t.Fatalf("list = %+v, want the 1 GB disk", got)
+	}
+
+	creator, _ := newService(nil)
+	rec = httptest.NewRecorder()
+	diskRESTMux(t, creator).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(
+		`{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data","sizeGB":1}}}`)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("service create with a 1 GB disk => %d: %s", rec.Code, rec.Body)
+	}
+	var out struct {
+		Service struct {
+			ServiceDetails struct {
+				Disk *ServiceDiskView `json:"disk"`
+			} `json:"serviceDetails"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Service.ServiceDetails.Disk == nil ||
+		out.Service.ServiceDetails.Disk.SizeGB != 1 {
+		t.Fatalf("created service disk = %+v, %v; want sizeGB 1", out.Service.ServiceDetails.Disk, err)
+	}
+}
+
+// GraphQL: addDisk at 1 GB and a grow to 5 GB read back as asked.
+func TestGraphQLAcceptsAOneGBDisk(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	schema := mustSchema(t, svc)
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { addDisk(serviceId: "web", name: "data", mountPath: "/var/data", sizeGB: 1) { id sizeGB } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("addDisk sizeGB 1: %v", res.Errors)
+	}
+	added := res.Data.(map[string]any)["addDisk"].(map[string]any)
+	if added["sizeGB"] != 1 {
+		t.Fatalf("addDisk.sizeGB = %v, want 1", added["sizeGB"])
+	}
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { updateDisk(id: "` + added["id"].(string) + `", sizeGB: 5) { sizeGB } }`})
+	if len(res.Errors) > 0 || res.Data.(map[string]any)["updateDisk"].(map[string]any)["sizeGB"] != 5 {
+		t.Fatalf("updateDisk sizeGB 5 = %+v", res)
+	}
+}
+
+// MCP: add_disk at 1 GB and update_disk to 5 GB read back as asked.
+func TestMCPAcceptsAOneGBDisk(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	session := displayNameMCPSession(t, svc)
+	call := func(name string, args map[string]any) DiskView {
+		t.Helper()
+		res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: err=%v result=%+v", name, err, res)
+		}
+		raw, _ := json.Marshal(res.StructuredContent)
+		var out DiskView
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	added := call("add_disk", map[string]any{"serviceId": "web", "name": "data", "mountPath": "/var/data", "sizeGB": 1})
+	if added.SizeGB != 1 {
+		t.Fatalf("add_disk sizeGB = %d, want 1", added.SizeGB)
+	}
+	if got := call("get_disk", map[string]any{"diskId": added.ID}); got.SizeGB != 1 {
+		t.Fatalf("get_disk sizeGB = %d, want 1", got.SizeGB)
+	}
+	if grown := call("update_disk", map[string]any{"diskId": added.ID, "sizeGB": 5}); grown.SizeGB != 5 {
+		t.Fatalf("update_disk sizeGB = %d, want 5", grown.SizeGB)
 	}
 }
