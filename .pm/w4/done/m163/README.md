@@ -1,6 +1,6 @@
 # w4 · m163 — Make saved secret files available to native builds
 
-**Worker:** worker4 **Goal:** Native build commands can read accepted service secret files without leaking them into platform-generated artifacts. **Status:** blocked — t001/t002/t003/t005/t006 done 2026-10-03; t004 hosted acceptance and t007 closeout remain
+**Worker:** worker4 **Goal:** Native build commands can read accepted service secret files without leaking them into platform-generated artifacts. **Status:** done 2026-10-29 — hosted DoD replayed: the secret-file build marker, control and restore all serve correctly, and on operator pin `b33dd43c4428` a deploy queued behind a static site's build runs as soon as that build publishes; REST/MCP secret-file reads agree; fixture and its cluster resources gone (loopx w4).
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 — **DONE** | Audit native secret-file inputs and release semantics | 30m | — |
 | t002 — **DONE** | Project isolated file inputs with correct cache identity | 45m | t001 |
 | t003 — **DONE** | Mount file inputs into the native build command | 45m | t002 |
-| t004 | Render parity and hosted acceptance | 25m | t003 |
+| t004 — **DONE** | Render parity and hosted acceptance | 25m | t003 |
 | t005 — **DONE** | Simplify | 15m | t004 |
 | t006 — **DONE** | Test coverage | 45m | t004 |
-| t007 | Closeout | 20m | t005, t006 |
+| t007 — **DONE** | Closeout | 20m | t005, t006 |
 
 ## Definition of done
 
