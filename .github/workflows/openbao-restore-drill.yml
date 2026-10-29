@@ -40,8 +40,8 @@ jobs:
     # ref guard + manual-dispatch above were the ONLY gates before OpenBao's
     # root token, every Shamir unseal key, and admin.conf were released to
     # repository-controlled restore-openbao.sh. Matches the infra.yml/
-    # snapshot.yml/cli-release.yml pattern: configure required reviewers on
-    # this environment in repo settings.
+    # snapshot.yml/cli-release.yml pattern: main-only, environment-scoped
+    # secrets and no manual gate (#ENV-REVIEWERS).
     environment: production-restore
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

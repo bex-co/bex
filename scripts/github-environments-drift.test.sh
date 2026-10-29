@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Self-test for scripts/github-environments-drift.sh (w3/m173 t004): every way
 # the live gate can silently open — a missing environment, no branch policy, a
-# protected-branches policy, an extra branch, a tag rule — must be reported, and
-# the intended shape must pass. Fixtures stand in for the GitHub API.
+# protected-branches policy, an extra branch, a tag rule — and every manual gate
+# (required reviewers, a wait timer) must be reported, and the intended shape
+# must pass. Fixtures stand in for the GitHub API.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="$here/github-environments-drift.sh"
@@ -12,6 +13,8 @@ fails=0
 printf '%s\n' '# fixture' 'TOKEN_A prod-a,prod-b' 'TOKEN_B prod-b' >"$tmp/table.txt"
 good_env='{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'
 main_only='{"branch_policies":[{"name":"main","type":"branch"}]}'
+# with_rules <protection_rules JSON> — good_env plus the given protection rules.
+with_rules() { printf '{"protection_rules":%s,%s' "$1" "${good_env#\{}"; }
 
 # case <label> <want-rc> <needle> ; fixture dir prepared by caller in $dir
 case_run() {
@@ -48,6 +51,12 @@ fresh; printf '%s' '{"branch_policies":[{"name":"main","type":"branch"},{"name":
 case_run "tag rule drifts" 1 "plus tag policies 'v*'"
 fresh; printf '%s' '{"branch_policies":[]}' >"$dir/prod-a.policies.json"
 case_run "empty custom policy drifts" 1 "'<none>'"
+fresh; with_rules '[{"type":"required_reviewers","reviewers":[{"type":"User"}]},{"type":"branch_policy"}]' >"$dir/prod-b.json"
+case_run "required reviewers drift" 1 "prod-b: manual protection rule(s) 'required_reviewers'"
+fresh; with_rules '[{"type":"wait_timer","wait_timer":5}]' >"$dir/prod-a.json"
+case_run "wait timer drifts" 1 "'wait_timer'"
+fresh; with_rules '[{"type":"wait_timer","wait_timer":0},{"type":"branch_policy"}]' >"$dir/prod-a.json"
+case_run "zero wait timer and branch rule pass" 0 "with no manual gate"
 dir="$tmp/none"; mkdir -p "$dir"
 set +e; BEX_PRODUCTION_SECRETS_FILE="$tmp/absent.txt" BEX_ENV_DRIFT_FIXTURE_DIR="$dir" "$SCRIPT" >/dev/null 2>&1; rc=$?; set -e
 if [ "$rc" -eq 2 ]; then echo "ok: unreadable table is unusable (exit 2)"; else echo "FAIL: unreadable table exit $rc, want 2" >&2; fails=$((fails + 1)); fi

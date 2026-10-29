@@ -5,8 +5,9 @@
 # deployments from `main` only. That branch policy is what keeps a workflow on
 # any other branch from reaching an environment-scoped production secret, and it
 # lives in repository settings — invisible to github-actions-validate.sh — so a
-# settings change could silently remove it. Reviewers are deliberately not
-# checked: they are not required.
+# settings change could silently remove it. It also reports any manual gate —
+# a required-reviewers rule or a wait timer — because production automation
+# must never wait on a human.
 #
 # Secret scope (no production secret left at repository scope) needs an admin
 # token to list and is proven by w3/m173 t007's branch probe instead.
@@ -66,6 +67,10 @@ for env in $environments; do
     report "$env" "environment does not exist (a job referencing it would auto-create it with no branch policy)"
     continue
   fi
+  manual="$(printf '%s' "$meta" | jq -r '[.protection_rules[]? | select(.type == "required_reviewers" or (.type == "wait_timer" and (.wait_timer // 0) > 0)) | .type] | join(",")')"
+  if [ -n "$manual" ]; then
+    report "$env" "manual protection rule(s) '$manual' would hold every run for a human; remove them (#ENV-REVIEWERS)"
+  fi
   custom="$(printf '%s' "$meta" | jq -r '.deployment_branch_policy.custom_branch_policies // false')"
   protected="$(printf '%s' "$meta" | jq -r '.deployment_branch_policy.protected_branches // false')"
   if [ "$custom" != true ] || [ "$protected" != false ]; then
@@ -81,6 +86,6 @@ for env in $environments; do
 done
 
 if [ "$drift" -eq 0 ]; then
-  echo "OK: every production environment ($(printf '%s' "$environments" | tr '\n' ' ' | sed 's/ $//')) allows deployments from main only"
+  echo "OK: every production environment ($(printf '%s' "$environments" | tr '\n' ' ' | sed 's/ $//')) allows deployments from main only, with no manual gate"
 fi
 exit "$drift"
