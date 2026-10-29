@@ -17,12 +17,16 @@ limitations under the License.
 package controller
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -172,5 +176,104 @@ func TestWebHTTPDiscoveryKeepsPriorServingEvidenceWithoutPromotingReadyCandidate
 	}
 	if app.Status.ActiveRevision != "rev-old" || app.Status.Phase != appv1alpha1.PhaseDeploying || !meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionServing) || meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionReady) {
 		t.Fatalf("pending selection promoted or lost serving release: %+v", app.Status)
+	}
+}
+
+// pairedHTTPListeners starts two loopback listeners and answers GET / with
+// lowerAnswer on the lower port and a fast 404 on the higher one.
+func pairedHTTPListeners(t *testing.T, lowerAnswer func(net.Conn)) (lower, higher int32) {
+	t.Helper()
+	listeners := make([]net.Listener, 2)
+	for i := range listeners {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		listeners[i] = l
+	}
+	if listeners[0].Addr().(*net.TCPAddr).Port > listeners[1].Addr().(*net.TCPAddr).Port {
+		listeners[0], listeners[1] = listeners[1], listeners[0]
+	}
+	var mu sync.Mutex
+	active := make(map[net.Conn]struct{})
+	var handlers, accepting sync.WaitGroup
+	for i, l := range listeners {
+		accepting.Go(func() {
+			for {
+				conn, err := l.Accept()
+				if err != nil {
+					return
+				}
+				mu.Lock()
+				active[conn] = struct{}{}
+				mu.Unlock()
+				handlers.Go(func() {
+					defer func() { _ = conn.Close(); mu.Lock(); delete(active, conn); mu.Unlock() }()
+					_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+					if _, err := http.ReadRequest(bufio.NewReader(conn)); err != nil {
+						return
+					}
+					if i == 0 {
+						lowerAnswer(conn)
+						return
+					}
+					_, _ = io.WriteString(conn, "HTTP/1.1 404 Not Found\r\n")
+				})
+			}
+		})
+	}
+	t.Cleanup(func() {
+		for _, l := range listeners {
+			_ = l.Close()
+		}
+		accepting.Wait()
+		mu.Lock()
+		for conn := range active {
+			_ = conn.Close()
+		}
+		mu.Unlock()
+		handlers.Wait()
+	})
+	return int32(listeners[0].Addr().(*net.TCPAddr).Port), int32(listeners[1].Addr().(*net.TCPAddr).Port)
+}
+
+// w8/m141 t007: RabbitMQ without PORT chose Prometheus 15692 when the
+// management listener's cold first GET / on 15672 outlasted the per-port
+// budget while 15692 answered a fast 404. Within the discovery window the
+// slow lower port is retried rather than passed over; after the window a
+// still-silent lower port no longer blocks the lowest answering one.
+func TestWebHTTPWaitsForASlowLowerListenerBeforeCommittingAHigherOne(t *testing.T) {
+	var cold atomic.Bool
+	cold.Store(true)
+	lower, higher := pairedHTTPListeners(t, func(conn net.Conn) {
+		if cold.Swap(false) {
+			time.Sleep(4 * time.Second) // beyond the per-port budget
+		}
+		_, _ = io.WriteString(conn, "HTTP/1.1 200 OK\r\n")
+	})
+	web := func(image string, ports ...int32) func(*appv1alpha1.App, *corev1.Pod) {
+		return func(a *appv1alpha1.App, pod *corev1.Pod) {
+			a.Spec.Type = appv1alpha1.TypeWebService
+			a.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: image, PrimaryPort: ports[0], Ports: ports}
+			pod.Status.PodIP = "127.0.0.1"
+		}
+	}
+	// Port 1 is refused, like RabbitMQ's unbound declared ports.
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{}, web("rabbitmq@sha256:1", 1, lower, higher))
+	waiting, message := r.selectWebImageHTTP(t.Context(), app, dep)
+	if !waiting || app.Status.ImageNetwork.HTTPSelection != "" || app.Status.ImageNetwork.PrimaryPort != 1 || !strings.Contains(message, strconv.Itoa(int(lower))) {
+		t.Fatalf("cold scan committed past the slow lower port: network=%+v message=%q", app.Status.ImageNetwork, message)
+	}
+	r.portScanned.Delete("http/" + app.Namespace + "/" + app.Name) // the next scan interval
+	waiting, message = r.selectWebImageHTTP(t.Context(), app, dep)
+	if !waiting || app.Status.ImageNetwork.HTTPSelection != appv1alpha1.HTTPSelectionDetected || app.Status.ImageNetwork.PrimaryPort != lower || !strings.Contains(message, "Detected HTTP on port "+strconv.Itoa(int(lower))) {
+		t.Fatalf("warm scan network=%+v message=%q, want lower port %d", app.Status.ImageNetwork, message, lower)
+	}
+
+	silentLower, answering := pairedHTTPListeners(t, func(conn net.Conn) { _, _ = io.Copy(io.Discard, conn) })
+	r, app, dep = detectFixture(t, 2*time.Minute, &cannedScanner{}, web("image@sha256:2", silentLower, answering))
+	if _, message := r.selectWebImageHTTP(t.Context(), app, dep); app.Status.ImageNetwork.PrimaryPort != answering || app.Status.ImageNetwork.HTTPSelection != appv1alpha1.HTTPSelectionDetected {
+		t.Fatalf("after the window a silent lower port blocked the HTTP choice: network=%+v message=%q", app.Status.ImageNetwork, message)
 	}
 }

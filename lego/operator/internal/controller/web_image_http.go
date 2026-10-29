@@ -106,8 +106,8 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	}
 	r.portScanned.Store(key, time.Now())
 	network := app.Status.ImageNetwork
-	port, err := httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), network.Ports)
-	if port == 0 && r.PortScanner != nil {
+	found, err := httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), network.Ports)
+	if found.Port == 0 && r.PortScanner != nil {
 		scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 		open, scanErr := r.PortScanner.Scan(scanCtx, ip)
 		cancel()
@@ -122,12 +122,17 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 			if len(ports) > appv1alpha1.MaxImagePorts {
 				ports = ports[:appv1alpha1.MaxImagePorts]
 			}
-			port, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), ports)
+			found, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), ports)
 		} else {
 			err = scanErr
 		}
 	}
-	if port > 0 {
+	// A lower listener that accepted the connection but has not answered yet
+	// (a cold first request on a small CPU share) may still be the HTTP port:
+	// keep scanning it within the discovery window rather than commit a
+	// higher one. After the window the lowest answering port wins.
+	inWindow := time.Since(started) < webHTTPDiscoveryWindow
+	if port := found.Port; port > 0 && (found.Unanswered == 0 || !inWindow) {
 		if !slices.Contains(network.Ports, port) {
 			if len(network.Ports) >= appv1alpha1.MaxImagePorts {
 				return true, "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly"
@@ -144,7 +149,10 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 		logf.FromContext(ctx).Info(message, "app", app.Name)
 		return true, message // reproject probes and routing on the chosen port first
 	}
-	if time.Since(started) < webHTTPDiscoveryWindow {
+	if inWindow {
+		if found.Unanswered > 0 {
+			return true, fmt.Sprintf("Port %d accepted a connection but has not answered HTTP yet; continuing to scan while the container starts", found.Unanswered)
+		}
 		if err != nil {
 			return true, "Port detection could not reach the instance; retrying the HTTP scan"
 		}

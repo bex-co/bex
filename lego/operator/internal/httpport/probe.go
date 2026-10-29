@@ -27,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,32 +35,53 @@ import (
 )
 
 const (
-	maxPorts      = 75
-	workers       = 8
-	portTimeout   = time.Second
+	maxPorts = 75
+	workers  = 8
+	// portTimeout bounds one connect/request/status-line exchange. A cold
+	// first request (RabbitMQ's management UI renders index.html) can take
+	// more than a second on a small CPU share.
+	portTimeout   = 3 * time.Second
 	probeTimeout  = 10 * time.Second
 	maxStatusLine = 4096
 )
 
-// Probe returns the lowest candidate port answering a parseable HTTP/1.x
-// status line, regardless of the status code. Zero with no error means none
-// spoke HTTP. Each connect/request/status-line exchange is bounded to a second;
-// the complete scan is bounded to ten seconds and at most 75 candidate ports.
+// Result is one bounded scan. Port is the lowest candidate that answered an
+// HTTP/1.x status line, zero when none did. Unanswered is the lowest candidate
+// below Port (any candidate when Port is zero) whose HTTP answer is still
+// unknown: it accepted the connection but sent no status line within its
+// budget, or the scan's own bound ended before it was tried. A caller that
+// wants the lowest HTTP listener retries before committing a higher Port.
+type Result struct {
+	Port       int32
+	Unanswered int32
+}
+
+type outcome uint8
+
+const (
+	unknown outcome = iota // accepted but silent, or never tried
+	notHTTP                // refused, closed, or answered something else
+	speaksHTTP
+)
+
+// Probe scans candidate ports for a parseable HTTP/1.x status line, regardless
+// of the status code. Ports are tried lowest first; each exchange is bounded
+// by portTimeout and the complete scan by probeTimeout and at most 75 ports.
 // It sends only GET /, Host and Connection: close directly to the numeric pod
 // IP: ambient HTTP proxies, credentials and platform HTTP clients are unused.
-func Probe(ctx context.Context, ip, host string, ports []int32) (int32, error) {
-	if err := ctx.Err(); err != nil {
-		return 0, err
+func Probe(parent context.Context, ip, host string, ports []int32) (Result, error) {
+	if err := parent.Err(); err != nil {
+		return Result{}, err
 	}
 	if len(ports) == 0 {
-		return 0, nil
+		return Result{}, nil
 	}
 	if len(ports) > maxPorts {
-		return 0, errors.New("httpport: too many candidate ports")
+		return Result{}, errors.New("httpport: too many candidate ports")
 	}
 	address, err := netip.ParseAddr(ip)
 	if err != nil {
-		return 0, errors.New("httpport: a numeric pod IP is required")
+		return Result{}, errors.New("httpport: a numeric pod IP is required")
 	}
 	if host == "" {
 		host = address.String()
@@ -68,93 +90,119 @@ func Probe(ctx context.Context, ip, host string, ports []int32) (int32, error) {
 		}
 	}
 	if len(host) > 1024 {
-		return 0, errors.New("httpport: invalid Host header")
+		return Result{}, errors.New("httpport: invalid Host header")
 	}
 	for _, c := range host {
 		if c <= 0x20 || c >= 0x7f {
-			return 0, errors.New("httpport: invalid Host header")
+			return Result{}, errors.New("httpport: invalid Host header")
 		}
 	}
 	for _, port := range ports {
 		if port < 1 || port > 65535 {
-			return 0, errors.New("httpport: candidate port is outside the TCP range")
+			return Result{}, errors.New("httpport: candidate port is outside the TCP range")
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	ports = slices.Clone(ports)
+	slices.Sort(ports)
+	ctx, cancel := context.WithTimeout(parent, probeTimeout)
 	defer cancel()
-	jobs := make(chan int32)
-	found := make(chan int32, len(ports))
+	outcomes := make([]outcome, len(ports))
+	jobs := make(chan int)
 	var tasks sync.WaitGroup
 	for range min(workers, len(ports)) {
 		tasks.Go(func() {
-			for port := range jobs {
-				if speaksHTTP(ctx, address.String(), host, port) {
-					found <- port
-				}
+			for i := range jobs {
+				outcomes[i] = probePort(ctx, address.String(), host, ports[i])
 			}
 		})
 	}
 feed:
-	for _, port := range ports {
+	for i := range ports {
 		select {
-		case jobs <- port:
+		case jobs <- i:
 		case <-ctx.Done():
 			break feed
 		}
 	}
 	close(jobs)
 	tasks.Wait()
-	close(found)
-	if err := ctx.Err(); err != nil {
-		return 0, err
+	if err := parent.Err(); err != nil {
+		return Result{}, err
 	}
-	var lowest int32
-	for port := range found {
-		if lowest == 0 || port < lowest {
-			lowest = port
+	// Ports are sorted, so the first decisive answer is the lowest HTTP port
+	// and any unknown port before it is the lowest still unanswered.
+	var result Result
+	for i, port := range ports {
+		switch outcomes[i] {
+		case speaksHTTP:
+			result.Port = port
+			return result, nil
+		case unknown:
+			if result.Unanswered == 0 {
+				result.Unanswered = port
+			}
 		}
 	}
-	return lowest, nil
+	return result, nil
 }
 
-func speaksHTTP(ctx context.Context, ip, host string, port int32) bool {
-	ctx, cancel := context.WithTimeout(ctx, portTimeout)
+func probePort(scan context.Context, ip, host string, port int32) outcome {
+	ctx, cancel := context.WithTimeout(scan, portTimeout)
 	defer cancel()
 	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(ip, strconv.Itoa(int(port))))
 	if err != nil {
-		return false
+		if scan.Err() != nil {
+			return unknown // the scan's bound ended before this port was reached
+		}
+		return notHTTP // refused or unreachable: no listener to wait for
 	}
 	defer func() { _ = conn.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 	deadline, _ := ctx.Deadline()
 	if err := conn.SetDeadline(deadline); err != nil {
-		return false
+		return silence(ctx, err)
 	}
 	if _, err := fmt.Fprintf(conn, "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", host); err != nil {
-		return false
+		return silence(ctx, err)
 	}
 	// ReadSlice refuses an overlong line rather than allocating for a tenant's
 	// response. No headers or body are needed to identify an HTTP listener.
 	line, err := bufio.NewReaderSize(conn, maxStatusLine).ReadSlice('\n')
-	if err != nil || !strings.HasSuffix(string(line), "\r\n") {
-		return false
+	if err != nil {
+		return silence(ctx, err)
+	}
+	if !strings.HasSuffix(string(line), "\r\n") {
+		return notHTTP
 	}
 	text := strings.TrimSuffix(string(line), "\r\n")
 	protocol, status, ok := strings.Cut(text, " ")
 	if !ok {
-		return false
+		return notHTTP
 	}
 	major, _, ok := http.ParseHTTPVersion(protocol)
 	if !ok || major != 1 {
-		return false
+		return notHTTP
 	}
 	// Match the standard parser's status-code grammar without asking it to
 	// parse an unbounded header block or create a response body reader.
 	code, _, _ := strings.Cut(strings.TrimLeft(status, " "), " ")
 	if len(code) != 3 {
-		return false
+		return notHTTP
 	}
-	value, err := strconv.Atoi(code)
-	return err == nil && value >= 100 && value <= 999
+	if value, err := strconv.Atoi(code); err != nil || value < 100 || value > 999 {
+		return notHTTP
+	}
+	return speaksHTTP
+}
+
+// silence classifies an accepted connection's I/O failure. Running out of time
+// leaves the answer unknown; a reset, close or oversized line is a definite
+// non-HTTP answer.
+func silence(ctx context.Context, err error) outcome {
+	var netErr net.Error
+	if ctx.Err() != nil || (errors.As(err, &netErr) && netErr.Timeout()) {
+		return unknown
+	}
+	return notHTTP
 }

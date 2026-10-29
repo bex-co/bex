@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -71,6 +72,12 @@ func endpoint(t *testing.T, handle func(net.Conn)) int32 {
 	return int32(listener.Addr().(*net.TCPAddr).Port)
 }
 
+// lowestHTTP is Probe's selected port for tests that only assert the choice.
+func lowestHTTP(ctx context.Context, ip, host string, ports []int32) (int32, error) {
+	result, err := Probe(ctx, ip, host, ports)
+	return result.Port, err
+}
+
 func httpEndpoint(t *testing.T, line string) int32 {
 	t.Helper()
 	return endpoint(t, func(conn net.Conn) {
@@ -94,7 +101,7 @@ func TestProbeAcceptsAnyHTTPStatusAndVersionOne(t *testing.T) {
 	} {
 		t.Run(strings.TrimSpace(line), func(t *testing.T) {
 			port := httpEndpoint(t, line)
-			got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{port})
+			got, err := lowestHTTP(t.Context(), "127.0.0.1", "app.onbex.co", []int32{port})
 			if err != nil || got != port {
 				t.Fatalf("port=%d err=%v want=%d", got, err, port)
 			}
@@ -111,11 +118,12 @@ func TestProbeRejectsNonHTTPAndOversizedStatusLines(t *testing.T) {
 		"HTTP/1.1 abc malformed\r\n",
 		"HTTP/1.1 099 malformed\r\n",
 		"HTTP/1.1 200 " + strings.Repeat("x", maxStatusLine) + "\r\n",
+		"", // closes without replying
 	} {
 		port := httpEndpoint(t, response)
 		got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{port})
-		if err != nil || got != 0 {
-			t.Fatalf("non-HTTP response selected port=%d err=%v", got, err)
+		if err != nil || got != (Result{}) {
+			t.Fatalf("non-HTTP response selected or left unanswered: %+v err=%v", got, err)
 		}
 	}
 }
@@ -136,7 +144,7 @@ func TestProbeChoosesLowestHTTPRegardlessOfCompletionOrder(t *testing.T) {
 	lower = min(first, second)
 	binary := httpEndpoint(t, "\x00\x00epmd\r\n")
 	for range 5 {
-		got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{max(first, second), binary, lower})
+		got, err := lowestHTTP(t.Context(), "127.0.0.1", "app.onbex.co", []int32{max(first, second), binary, lower})
 		if err != nil || got != lower {
 			t.Fatalf("selected=%d err=%v want lower HTTP=%d", got, err, lower)
 		}
@@ -153,11 +161,50 @@ func TestProbeBoundsSlowAndSilentPorts(t *testing.T) {
 	httpPort := httpEndpoint(t, "HTTP/1.1 200 OK\r\n")
 	started := time.Now()
 	got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{slow, httpPort})
-	if err != nil || got != httpPort {
-		t.Fatalf("selected=%d err=%v want=%d", got, err, httpPort)
+	want := Result{Port: httpPort}
+	if slow < httpPort {
+		want.Unanswered = slow // a silent lower listener stays a candidate
 	}
-	if elapsed := time.Since(started); elapsed > 2*time.Second {
+	if err != nil || got != want {
+		t.Fatalf("result=%+v err=%v want=%+v", got, err, want)
+	}
+	if elapsed := time.Since(started); elapsed > portTimeout+time.Second {
 		t.Fatalf("slow listener delayed probe %s", elapsed)
+	}
+}
+
+// w8/m141 t007: RabbitMQ's management listener (15672) answered its cold
+// first GET / after the per-port budget while Prometheus (15692) returned a
+// fast 404. The slow lower port is reported unanswered rather than lost, and
+// a retry once it is warm selects it.
+func TestProbeReportsASlowFirstAnswerOnTheLowerPortAsUnanswered(t *testing.T) {
+	var lower int32
+	var cold atomic.Bool
+	cold.Store(true)
+	handler := func(conn net.Conn) {
+		if _, err := http.ReadRequest(bufio.NewReader(conn)); err != nil {
+			return
+		}
+		if int32(conn.LocalAddr().(*net.TCPAddr).Port) != lower {
+			_, _ = io.WriteString(conn, "HTTP/1.1 404 Not Found\r\n")
+			return
+		}
+		if cold.Swap(false) {
+			time.Sleep(portTimeout + 300*time.Millisecond)
+		}
+		_, _ = io.WriteString(conn, "HTTP/1.1 200 OK\r\n")
+	}
+	first := endpoint(t, handler)
+	second := endpoint(t, handler)
+	lower = min(first, second)
+	higher := max(first, second)
+	got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{higher, lower})
+	if err != nil || got != (Result{Port: higher, Unanswered: lower}) {
+		t.Fatalf("cold scan=%+v err=%v want port %d with %d unanswered", got, err, higher, lower)
+	}
+	got, err = Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{higher, lower})
+	if err != nil || got != (Result{Port: lower}) {
+		t.Fatalf("warm scan=%+v err=%v want lower port %d", got, err, lower)
 	}
 }
 
@@ -171,7 +218,7 @@ func TestProbeDoesNotSpeakTLSOrFollowRedirects(t *testing.T) {
 		_ = secure.Handshake()
 	})
 	redirect := httpEndpoint(t, "HTTP/1.1 302 Found\r\nLocation: https://somewhere.invalid/\r\n\r\n")
-	got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", []int32{tlsPort, redirect})
+	got, err := lowestHTTP(t.Context(), "127.0.0.1", "app.onbex.co", []int32{tlsPort, redirect})
 	if err != nil || got != redirect {
 		t.Fatalf("selected=%d err=%v want redirect listener=%d", got, err, redirect)
 	}
@@ -190,7 +237,7 @@ func TestProbeSendsPlatformHostWithoutCredentialsOrProxy(t *testing.T) {
 	t.Setenv("HTTP_PROXY", "http://127.0.0.1:1")
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")
 	t.Setenv("ALL_PROXY", "http://127.0.0.1:1")
-	got, err := Probe(t.Context(), "127.0.0.1", "platform-app.onbex.co", []int32{port})
+	got, err := lowestHTTP(t.Context(), "127.0.0.1", "platform-app.onbex.co", []int32{port})
 	if err != nil || got != port {
 		t.Fatalf("selected=%d err=%v", got, err)
 	}
@@ -223,7 +270,10 @@ func TestProbeCancellationClosesAWaitingRead(t *testing.T) {
 		err  error
 	}
 	done := make(chan result, 1)
-	go func() { port, err := Probe(ctx, "127.0.0.1", "app.onbex.co", []int32{port}); done <- result{port, err} }()
+	go func() {
+		port, err := lowestHTTP(ctx, "127.0.0.1", "app.onbex.co", []int32{port})
+		done <- result{port, err}
+	}()
 	select {
 	case <-connected:
 	case <-time.After(time.Second):
@@ -251,16 +301,16 @@ func TestProbeRejectsInvalidInputsAndEmptyScan(t *testing.T) {
 		{"127.0.0.1", "app.onbex.co", []int32{65536}},
 		{"127.0.0.1", "app.onbex.co", slices.Repeat([]int32{80}, maxPorts+1)},
 	} {
-		if got, err := Probe(t.Context(), tc.ip, tc.host, tc.ports); err == nil || got != 0 {
+		if got, err := lowestHTTP(t.Context(), tc.ip, tc.host, tc.ports); err == nil || got != 0 {
 			t.Fatalf("invalid input selected=%d err=%v", got, err)
 		}
 	}
-	if got, err := Probe(t.Context(), "127.0.0.1", "app.onbex.co", nil); err != nil || got != 0 {
+	if got, err := lowestHTTP(t.Context(), "127.0.0.1", "app.onbex.co", nil); err != nil || got != 0 {
 		t.Fatalf("empty probe=%d err=%v", got, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if got, err := Probe(ctx, "127.0.0.1", "app.onbex.co", nil); err != context.Canceled || got != 0 {
+	if got, err := lowestHTTP(ctx, "127.0.0.1", "app.onbex.co", nil); err != context.Canceled || got != 0 {
 		t.Fatalf("cancelled empty probe=%d err=%v", got, err)
 	}
 }
@@ -275,7 +325,7 @@ func TestProbeDefaultsHostToThePodIP(t *testing.T) {
 		host <- req.Host
 		_, _ = io.WriteString(conn, "HTTP/1.1 200 OK\r\n")
 	})
-	if got, err := Probe(t.Context(), "127.0.0.1", "", []int32{port}); err != nil || got != port {
+	if got, err := lowestHTTP(t.Context(), "127.0.0.1", "", []int32{port}); err != nil || got != port {
 		t.Fatalf("port=%d err=%v", got, err)
 	}
 	if got := <-host; got != "127.0.0.1" {
