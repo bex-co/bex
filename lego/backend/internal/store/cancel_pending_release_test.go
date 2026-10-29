@@ -162,3 +162,39 @@ func TestCancelOfANewerReleaseClosesAnOlderRowOnlyOnceSettledBelowIt(t *testing.
 		t.Fatalf("A after the cancel settled below it = %s %q, want canceled along with %s", got.Status, got.CancelReason, second.ID)
 	}
 }
+
+// A saved-image service has no build to pin, so B's request replaced A's
+// release before B was canceled: the reported release is B's (or the settled
+// one below both) until the operator rolls A again. A's row waits for that,
+// within its gate timeout, instead of closing as superseded or canceled along
+// (w8/m117, the 2026-10-28 hosted replay).
+func TestASavedImageSurvivorsRowWaitsForItsRelease(t *testing.T) {
+	cr := func(reported int64) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Generation: 2, Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:          "2",
+				appv1alpha1.AnnotationCanceledReleaseGeneration:  "2",
+				appv1alpha1.AnnotationSurvivingReleaseGeneration: "1",
+			}},
+			Spec:   appv1alpha1.AppSpec{Image: "python:3.12-alpine"},
+			Status: appv1alpha1.AppStatus{ReleaseGeneration: reported, Phase: appv1alpha1.PhaseDeploying},
+		}
+	}
+	survivor := Deploy{Generation: 1, Status: DeployCreated}
+	for _, reported := range []int64{2, 0} {
+		if got := observedDeployStatus(survivor, cr(reported), false); got != "" {
+			t.Errorf("reported release %d: A = %q, want it left open for the redispatch", reported, got)
+		}
+	}
+	if got := observedDeployStatus(survivor, cr(2), true); got == "" {
+		t.Error("past its gate timeout A must still close")
+	}
+	if got := observedDeployStatus(Deploy{Generation: 1, Status: DeployCreated}, cr(1), false); got == DeployCanceled {
+		t.Error("once A is the reported release its own evidence decides, not the cancel")
+	}
+	newer := cr(3)
+	newer.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "3"
+	if got := observedDeployStatus(survivor, newer, false); got != DeployCanceled {
+		t.Errorf("a deploy requested after the cancel replaces A too: A = %q, want canceled", got)
+	}
+}

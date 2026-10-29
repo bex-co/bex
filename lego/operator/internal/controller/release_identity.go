@@ -457,6 +457,9 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 	}
 	if survivorInFlight(held) {
 		app.Status.PendingReleaseGeneration = 0
+		if savedImageRelease(held) {
+			return redispatchSurvivor(app)
+		}
 		return pinnedReleaseDecision(app)
 	}
 	if latestRequestCanceled(app) {
@@ -582,19 +585,58 @@ func latestRequestCanceled(app *appv1alpha1.App) bool {
 // survivorInFlight reports that the canceled latest release was only the
 // pending slot behind an older release still in flight, the one bex-api named
 // when it stamped the cancel (w8/m117). A cancel ends one deploy, so that
-// release keeps its pinned identity and runs to completion (ADR060 §D1a), or
+// release runs to completion — a source build on its pinned identity (ADR060
+// §D1a), a saved image rolled again (below) — or
 // stays settled as a failed generation; once it serves, the cancel settles on
 // it. bex-api removes the name when that release is ended too (a suspend, or a
 // cancel of its own deploy), and a release the pin could not carry ends with
 // the cancel as before.
+//
+// A saved-image release has no build to pin, so the newer request replaced it
+// when it was made; for one the cancel names, the survivor is still in flight
+// until it serves, and prepareAppReleaseDecision rolls it again
+// (redispatchSurvivor).
 func survivorInFlight(app *appv1alpha1.App) bool {
 	survivor, ok := survivingReleaseGeneration(app)
-	if !ok || survivor != app.Status.ReleaseGeneration || !latestRequestCanceled(app) {
+	if !ok || !latestRequestCanceled(app) {
 		return false
 	}
 	canceled, _ := canceledReleaseGeneration(app)
-	return survivor < canceled && survivor > successfulReleaseGeneration(app) &&
-		app.Status.ReleaseFingerprint != "" && pinnableSourceRelease(app)
+	if survivor >= canceled || survivor <= successfulReleaseGeneration(app) {
+		return false
+	}
+	if savedImageRelease(app) {
+		return true
+	}
+	return survivor == app.Status.ReleaseGeneration && app.Status.ReleaseFingerprint != "" && pinnableSourceRelease(app)
+}
+
+// savedImageRelease reports a release of the saved prebuilt image: no build, and
+// no selected (Rollback, Restart, deploy --image) release configuration.
+func savedImageRelease(app *appv1alpha1.App) bool {
+	return app.ActiveReleaseConfig() == nil && app.Spec.Image != "" && app.Spec.Repo == "" && !app.Spec.Suspended
+}
+
+// redispatchSurvivor makes the cancel's surviving saved-image release the one in
+// flight again (survivorInFlight): the canceled request had replaced it, and the
+// saved spec is what both requested (bex-api names an image survivor only when
+// the canceled deploy selected nothing of its own). The rollout runs as the
+// survivor's generation, so its deploy row is adopted and reaches its own
+// terminal state (w8/m117).
+func redispatchSurvivor(app *appv1alpha1.App) appReleaseDecision {
+	survivor, _ := survivingReleaseGeneration(app)
+	desired := desiredAppReleaseIdentity(app.Spec)
+	releaseChanged := app.Status.ReleaseGeneration != survivor || app.Status.ReleaseFingerprint != desired.release
+	if releaseChanged {
+		app.Status.ReleaseFingerprint = desired.release
+		app.Status.ReleaseArtifactFingerprint = desired.artifact
+		app.Status.ReleaseGeneration = survivor
+	}
+	return appReleaseDecision{
+		desired:         desired,
+		artifactChanged: app.Status.ArtifactFingerprint != desired.artifact,
+		releaseChanged:  releaseChanged,
+	}
 }
 
 // survivingReleaseGeneration is the release a cancel left running

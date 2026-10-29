@@ -111,7 +111,9 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 			metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
 			if requested, _ := generationAnnotation(a, appv1alpha1.AnnotationReleaseGeneration); survivor != nil && requested == generation {
 				metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationSurvivingReleaseGeneration, strconv.FormatInt(survivor.Generation, 10))
-				a.Spec.BuildCommit = survivor.Commit
+				if a.Spec.Repo != "" { // a saved-image release builds nothing
+					a.Spec.BuildCommit = survivor.Commit
+				}
 			}
 		}
 		return c.Patch(ctx, a, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
