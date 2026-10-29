@@ -1,6 +1,6 @@
 # w4 · m175 — Include newest request buckets and clip them to the selected window
 
-**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** blocked (release pipeline deploys backend; then QA replays the DoD for t002 + t005). t001, t003, t004, t006 done.
+**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: windows that exclude the traffic count 0, containing windows count it exactly, every dashboard preset counts the newest bucket (125/125), and the excluded custom view is empty at 1440 and 390 (loopx w4).
 
 ## Tasks (in order)
 
