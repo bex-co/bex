@@ -1,6 +1,6 @@
 # w4 · m182 — Keep configured port changes available
 
-**Worker:** worker4 **Goal:** a supported service-port edit keeps requests reaching an existing ready listener until the requested listener is ready, then exposes the new port without an unresolved backend or wrong-port endpoint. **Status:** blocked
+**Worker:** worker4 **Goal:** a supported service-port edit keeps requests reaching an existing ready listener until the requested listener is ready, then exposes the new port without an unresolved backend or wrong-port endpoint. **Status:** done 2026-10-29 — live DoD replayed on bex-api pin `55d99e66808d`: port edits in both directions (dashboard and GraphQL) cut over with 0 non-200 samples, unready candidates keep both Services on the old ready pod, Restart at an unchanged port sampled clean to Live+120 s, and port refusals hold; follow-up w4/433 (loopx w4).
 
 ## Tasks (in order)
 
@@ -11,8 +11,8 @@
 | t003 | Render parity — **DONE** | 20m | t002 |
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage and production-shaped route replay — **DONE** | 45m | t003, t004 |
-| t007 | Verify and close the remaining transient edge gap on configured port edits | 60m | t001, t002 |
-| t006 | Closeout | 10m | t005, t007 |
+| t007 | Verify and close the remaining transient edge gap on configured port edits — **DONE** | 60m | t001, t002 |
+| t006 | Closeout — **DONE** | 10m | t005, t007 |
 
 ## Definition of done
 
@@ -51,8 +51,8 @@ Not verified until the live replay:
 
 ## Live follow-up (2026-10-11)
 
-QA pass193 reproduced a generic public routing404 immediately after a configured-port save, including a fresh3000→3107 replay against an always-healthy /info endpoint. Old/new listener responses then recovered, and the configuration deploy became Live. Unchanged-port Restart returned200 in all ten samples. [t007](t007.md) preserves the complete requests, responses, cleanup, source trace and unverified deployment provenance. It addresses the remaining edge-binding verification before [t006](t006.md) can close; historical t003–t005 results do not validate a future additional patch. The milestone remains blocked until the original live DoD holds.
+QA pass193 reproduced a generic public routing404 immediately after a configured-port save, including a fresh3000→3107 replay against an always-healthy /info endpoint. Old/new listener responses then recovered, and the configuration deploy became Live. Unchanged-port Restart returned200 in all ten samples. [t007](done/t007.md) preserves the complete requests, responses, cleanup, source trace and unverified deployment provenance. It addresses the remaining edge-binding verification before [t006](done/t006.md) can close; historical t003–t005 results do not validate a future additional patch. The milestone remains blocked until the original live DoD holds.
 
 ## Live follow-up (2026-10-14)
 
-QA pass a476 reproduced three generic public 404 responses in each direction of a native 8882→8883→8882 port edit on an owned Free BusyBox web service. Both configuration deploys eventually reached Live and served the requested-port marker. [t007](t007.md#live-follow-up-2026-10-14) and [complete replay evidence](port-edit-a476.json) record the sampled failure, eventual recovery and verified cleanup. Deployment provenance and the other original DoD clauses remain unverified; this extends the existing task and does not establish a regression in a deployed fix. Status remains blocked.
+QA pass a476 reproduced three generic public 404 responses in each direction of a native 8882→8883→8882 port edit on an owned Free BusyBox web service. Both configuration deploys eventually reached Live and served the requested-port marker. [t007](done/t007.md#live-follow-up-2026-10-14) and [complete replay evidence](port-edit-a476.json) record the sampled failure, eventual recovery and verified cleanup. Deployment provenance and the other original DoD clauses remain unverified; this extends the existing task and does not establish a regression in a deployed fix. Status remains blocked.
