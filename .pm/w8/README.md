@@ -560,9 +560,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **142** — [Blueprint `ipAllowList` refuses a bare IP address, so Render's own example `render.yaml` fails validation](done/142.md) ← `/qa-find-bugs-cli` sweep 1240 2026-10-20 — **DONE (2026-10-28: on pin `d66f96c06991` bare IPv4/IPv6/v4-mapped sources validate on Postgres, Key Value and (behind the Hobby plan gate) web/static; zoned and garbage sources are still refused)**. Source fixed: `manifestAllowEntries` compiles a bare Blueprint `source` to its single-host prefix (`/32`, `/128`, v4-mapped unmapped, zoned refused) before validation; REST/GraphQL `cidrBlock` unchanged; `TestManifestAllowEntriesAcceptsBareAddresses` + a bare-address row in `TestBlueprintDatastoreCreateAccess` (plan noop after apply).
 
-- [ ] **141** — [Deploy-hook 400s name REST body fields the caller never sent (`commitId`, `imageUrl`) instead of the hook's `ref`/`imgURL`](141.md) ← `/qa-find-bugs-cli` sweep 1239 2026-10-20 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**. Source fixed: the hook handler renames `commitId`→`ref` and `imageUrl`→`imgURL` in its bad-request messages (`inHookVocabulary`); REST/GraphQL/MCP messages unchanged; `TestTriggerInputRefusalsAcrossAdapters` (hook adapter, incl. malformed ref) + `TestDeployHookRefRefusalsNameTheHookParameter`; ADR018.
+- [x] **141** — [Deploy-hook 400s name REST body fields the caller never sent (`commitId`, `imageUrl`) instead of the hook's `ref`/`imgURL`](done/141.md) ← `/qa-find-bugs-cli` sweep 1239 2026-10-20. Source fixed: the hook handler renames `commitId`→`ref` and `imageUrl`→`imgURL` in its bad-request messages (`inHookVocabulary`); REST/GraphQL/MCP messages unchanged; `TestTriggerInputRefusalsAcrossAdapters` (hook adapter, incl. malformed ref) + `TestDeployHookRefRefusalsNameTheHookParameter`; ADR018. — **DONE 2026-10-29** (hook errors name ref/imgURL, on production)
 
-- [ ] **140** — [Render's “allow any IP” datastore rule `0.0.0.0/0` locks out every IPv6-capable client](140.md) ← `/qa-find-bugs-cli` sweeps 1230/1232 2026-10-20 — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**. Source fixed: `sniproxy.ParseAllowList` treats a rule that masks to `0.0.0.0/0` as `0.0.0.0/0` + `::/0` in both layers (enforcement-only; readbacks unchanged; narrower IPv4 rules not widened); `TestRenderAnyIPRuleAdmitsIPv6`; ADR009/021/032.
+- [x] **140** — [Render's “allow any IP” datastore rule `0.0.0.0/0` locks out every IPv6-capable client](done/140.md) ← `/qa-find-bugs-cli` sweeps 1230/1232 2026-10-20. Source fixed: `sniproxy.ParseAllowList` treats a rule that masks to `0.0.0.0/0` as `0.0.0.0/0` + `::/0` in both layers (enforcement-only; readbacks unchanged; narrower IPv4 rules not widened); `TestRenderAnyIPRuleAdmitsIPv6`; ADR009/021/032. — **DONE 2026-10-29** (0.0.0.0/0 admits IPv6 on Key Value, on production)
 
 - [x] **126** — [A source update before a release's build starts still rolls the previous image as that release](done/126.md) — **PROMOTED (2026-10-19)** to `m121`.
 
@@ -616,11 +616,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **114** — [Native Ruby defaults Rails to production](done/114.md) (55m, major) — **DONE 2026-10-17:** both original native first deployments Live, real production build/runtime and six HTTP200 responses without authored override; exact cleanup and shared reads in sweep413.
 
-- [ ] **113** — [Native Python omits Gunicorn application access logging](113.md) (55m, minor) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**（原记录：） implemented; hosted defaults3.10–3.14, group override subset451 and actual generated web/static default/custom/empty subset452 pass. Remaining Python-line/source/type/phase gates stay open.
+- [x] **113** — [Native Python omits Gunicorn application access logging](done/113.md) (55m, minor)（原记录：） implemented; hosted defaults3.10–3.14, group override subset451 and actual generated web/static default/custom/empty subset452 pass. Remaining Python-line/source/type/phase gates stay open. — **DONE 2026-10-29** (Gunicorn access logging default on production)
 
 - [x] **112** — [Native Elixir production build/runtime MIX_ENV](done/112.md) (55m, major) — **DONE 2026-10-16:** sweep385 accepts both original unprefixed first production-dependency/compiler deployments and runtime Mix/prod artifacts, exact source,8 native log reads/6 shared reads and full exact-owned cleanup; source artifact/override/exclusion gates inherited.
 
-- [ ] **111** — [Native Node runtime production default](111.md) (55m, major) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **111** — [Native Node runtime production default](done/111.md) (55m, major) — **DONE 2026-10-29** (NODE_ENV=production runtime default on production)
 
 - [x] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](done/109.md) — **DONE 2026-10-15:** hosted sweep324 accepts the bulk short route, atomic value refusal and strict single-key/unknown/method neighbors; shared value readbacks and exact unlinked-group cleanup pass.
 
@@ -654,7 +654,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **090** — [CLI Dashboard opens a relative path from a fresh config](blocked/090.md) — **BLOCKED (source fix is on main; current-build service/deploy Dashboard actions pass in sweeps209/211, including equivalent API bases; published 0.3.2 still opens relative paths; CLI release, real browser arrival and complete shared-link acceptance remain)**
 
-- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](089.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **089** — [CLI dashboard actions open the OAuth host and return 404](done/089.md) — **DONE 2026-10-29** (CLI dashboard links land on the dashboard, on production)
 
 - [x] **088** — [Git source changes retain image runtime metadata and break CLI cloning](done/088.md) — **DONE 2026-10-15** (fix `17a128ed8`; sweep252 both native clients save/clone/deploy successfully, HTTP200, shared projections/exports agree, four-kind source controls pass; all fixtures cleaned)
 
