@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { KeyValueNetworkingPreview } from "@/common/components/datastore-overview-previews";
 import {
   useKeyValueNetworking,
   type RestartRefusal,
@@ -55,6 +56,13 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
     } finally {
       confirming.current = false;
     }
+  }
+
+  // The page's Key Value read can settle before this card's own allowlist
+  // read. Until then the status line and empty copy are unknown, so keep the
+  // route preview rather than drawing a shorter card that regrows (w4/303).
+  if (networking.loading && networking.isPublic === undefined) {
+    return <KeyValueNetworkingPreview />;
   }
 
   return (
