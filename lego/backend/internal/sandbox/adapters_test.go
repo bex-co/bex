@@ -84,6 +84,28 @@ func TestGraphQLDefaultPolicyRoundTrips(t *testing.T) {
 	}
 }
 
+// Render renamed networkPolicy.default to type, keeping default as an alias
+// that responses echo; Render CLI v2.29 sends type (w8/m67).
+func TestNetworkPolicyTypeIsRendersFieldAndDefaultItsAlias(t *testing.T) {
+	for _, body := range []string{`{"type":"deny-all"}`, `{"default":"deny-all"}`, `{"type":"deny-all","default":"deny-all"}`} {
+		var in NetworkPolicy
+		if err := json.Unmarshal([]byte(body), &in); err != nil {
+			t.Fatal(err)
+		}
+		got, err := normalizeNetworkPolicy(&in)
+		if err != nil {
+			t.Fatalf("%s: %v", body, err)
+		}
+		out, _ := json.Marshal(got)
+		if string(out) != `{"type":"deny-all","default":"deny-all"}` {
+			t.Errorf("%s → %s, want type and its default alias", body, out)
+		}
+	}
+	if _, err := normalizeNetworkPolicy(&NetworkPolicy{Type: "allow-all"}); err == nil || !strings.Contains(err.Error(), "only") {
+		t.Errorf("type allow-all = %v, want the named refusal", err)
+	}
+}
+
 func TestRESTNetworkPolicyNamedRefusalAndStrictMetadata(t *testing.T) {
 	svc := policyAdapterService(t)
 	mux := http.NewServeMux()
@@ -216,17 +238,23 @@ func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 
-	res, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "spawn_sandbox",
-		Arguments: map[string]any{
-			"networkPolicy": map[string]any{"default": "allow-all"},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_NETWORK_POLICY_UNSUPPORTED") {
-		t.Fatalf("MCP policy refusal = %#v", res)
+	// Render's renamed `type` and allow-list `rules` must pass the tool's
+	// input schema and reach the named refusal (w8/m67).
+	for _, policy := range []map[string]any{
+		{"default": "allow-all"},
+		{"type": "allow-all"},
+		{"type": "deny-all", "rules": []any{map[string]any{"domain": "example.com"}}},
+	} {
+		res, err := client.CallTool(ctx, &mcp.CallToolParams{
+			Name:      "spawn_sandbox",
+			Arguments: map[string]any{"networkPolicy": policy},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_NETWORK_POLICY_UNSUPPORTED") {
+			t.Fatalf("MCP policy %v refusal = %#v", policy, res.Content)
+		}
 	}
 }
 

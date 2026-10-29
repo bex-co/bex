@@ -25,7 +25,10 @@ limitations under the License.
 // binary is byte-identical to before this feature.
 package sandbox
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Plan is the Render-compatible sandbox compute size (SandboxPlan in the CLI's
 // OpenAPI client). bex maps these onto its own sizing at Create time.
@@ -87,8 +90,24 @@ type Sandbox struct {
 // substrate currently supports only deny-all: Cilium supplies the
 // platform-managed DNS/FQDN allowlist outside the guest. Accepting allow-all
 // would claim a posture the platform intentionally cannot provide.
+//
+// Render renamed the field to `type` and kept `default` as a deprecated alias
+// that requests may send and responses always echo (Render CLI v2.29 sends
+// `type`). Requests may carry either; normalizeNetworkPolicy folds them into
+// Default, and MarshalJSON writes both. `rules` (allow-list destinations) is
+// decoded only to be refused by name, never applied.
 type NetworkPolicy struct {
-	Default NetworkPolicyDefault `json:"default"`
+	Default NetworkPolicyDefault `json:"default,omitempty"`
+	Type    NetworkPolicyDefault `json:"type,omitempty"`
+	Rules   any                  `json:"rules,omitempty"`
+}
+
+// MarshalJSON writes Render's response shape: `type` and its `default` alias.
+func (p NetworkPolicy) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Type    NetworkPolicyDefault `json:"type"`
+		Default NetworkPolicyDefault `json:"default"`
+	}{p.Default, p.Default})
 }
 
 // NetworkPolicyDefault is Render's exact sandboxNetworkPolicy.default enum.

@@ -344,6 +344,10 @@ func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 	}{
 		{"env vars", `{"plan":"starter","env":{"QA":"1"}}`, "SANDBOX_ENV_UNSUPPORTED", "--env-var"},
 		{"snapshot", `{"plan":"starter","snapshotId":"snp-1"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--snapshot-id"},
+		// Render CLI v2.29 `--from gold` sends a snapshot name (w8/m67).
+		{"snapshot name", `{"plan":"starter","snapshotName":"gold"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--from"},
+		{"allow-list rules", `{"plan":"starter","networkPolicy":{"type":"deny-all","rules":[{"domain":"example.com"}]}}`, "SANDBOX_NETWORK_POLICY_UNSUPPORTED", "rules"},
+		{"type disagrees with its alias", `{"plan":"starter","networkPolicy":{"type":"deny-all","default":"allow-all"}}`, "SANDBOX_NETWORK_POLICY_INVALID", "networkPolicy.default"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {

@@ -26,6 +26,7 @@ import (
 	"slices"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
 
@@ -416,8 +417,25 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, que
 		if payload, err := json.Marshal(toRenderLog(refusalLogEntry(followErr))); err == nil {
 			_ = conn.WriteMessage(websocket.TextMessage, payload)
 		}
-		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(CloseTailRefused, closeReason(followErr)), time.Now().Add(time.Second))
 	}
+}
+
+// CloseTailRefused ends a tail the server will not continue (no running build,
+// logs unavailable). Render CLI v2.29+ reconnects after a 1000/1001/1006/
+// 1011/1012/1013 close, so a normal close would make a finished build tail
+// retry forever; an application code is terminal, and the CLI exits non-zero
+// with the reason. Older clients end on any close (w8/m67, user decision D2).
+const CloseTailRefused = 4000
+
+// closeReason fits err's text in a close frame's 123-byte reason.
+func closeReason(err error) string {
+	reason := err.Error()
+	for len(reason) > 123 {
+		_, size := utf8.DecodeLastRuneInString(reason)
+		reason = reason[:len(reason)-size]
+	}
+	return reason
 }
 
 // refusalLogEntry is the platform `==>` line announcing why a tail ended.

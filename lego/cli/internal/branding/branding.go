@@ -22,7 +22,9 @@ package branding
 import (
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/render-oss/cli/cmd"
+	"github.com/render-oss/cli/pkg/command"
 	"github.com/render-oss/cli/pkg/dashboard"
 	"github.com/render-oss/cli/pkg/style"
 	"github.com/spf13/cobra"
@@ -52,6 +54,7 @@ func Apply(root *cobra.Command, bexVersion string) {
 	cobra.AddTemplateFunc("cliVersion", func() string {
 		return style.SubtleText.Faint(true).Render("bex CLI v" + bexVersion)
 	})
+	cobra.AddTemplateFunc("agentSkillsHelp", agentSkillsHelp)
 	root.SetHelpTemplate(strings.Replace(
 		cmd.CustomHelpTemplate,
 		`(eq .CommandPath "render")`,
@@ -76,6 +79,31 @@ func Apply(root *cobra.Command, bexVersion string) {
 		return prevUsage(c)
 	})
 }
+
+// agentSkillsHelp replaces upstream's root-help "Start here (for AI agents)"
+// block (v2.29), which names `render skills install` and Render's skills; the
+// launcher's `skills` installs the bex pack (w8/m143). Same layout: wrapped to
+// the terminal (at most 80 columns), indented two spaces.
+func agentSkillsHelp(c *cobra.Command) string {
+	width := maxHelpTextWidth
+	if c != nil {
+		if w := command.NewStream(c.OutOrStdout()).Width(); w > 0 {
+			width = min(w, maxHelpTextWidth)
+		}
+	}
+	// lipgloss wraps on words but pads every line to the width.
+	lines := strings.Split(lipgloss.NewStyle().Width(max(1, width-2)).Render(
+		"Install bex agent skills for deployment, debugging, and monitoring workflows. Use these skills to guide your work with the CLI."), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " ")
+	}
+	return style.GroupHeader.Render("Start here (for AI agents):") + "\n  " +
+		style.CommandKey.Render("bex skills install --output json") + "\n\n  " +
+		strings.Join(lines, "\n  ")
+}
+
+// maxHelpTextWidth is upstream's help wrap bound (cmd/helptemplate.go).
+const maxHelpTextWidth = 80
 
 // Refresh re-applies the branding walk to commands upstream added after Apply.
 // The launcher registers it once as a cobra initializer so successful shell
