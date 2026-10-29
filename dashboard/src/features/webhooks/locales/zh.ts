@@ -159,11 +159,6 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description:
       "Notice in place of the create form and the empty list on a Hobby workspace (w4/425)",
   },
-  "webhooks.planGateBilling": {
-    message: "打开账单",
-    description:
-      "Link from the webhook plan notice to the Billing page (w4/425)",
-  },
   "webhooks.errors.endpointLimit": {
     message: "此工作区已达到 Webhook 端点上限。",
     description: "Server-coded endpoint quota refusal",

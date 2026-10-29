@@ -78,6 +78,16 @@ const enAudit: Record<string, TranslationEntry> = {
     message: "This bex deployment doesn't have an audit-log store configured.",
     description: "Audit Log unavailable-state body",
   },
+  "audit.planTitle": {
+    message: "Audit logs require the Pro plan",
+    description:
+      "Audit Log title on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
+  "audit.planBody": {
+    message:
+      "Audit logs are available on the Pro plan and higher. This workspace is on Hobby.",
+    description: "Audit Log plan notice body on a Hobby workspace (w8/m138)",
+  },
 };
 
 export default enAudit;

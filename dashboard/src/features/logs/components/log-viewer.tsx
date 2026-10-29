@@ -7,9 +7,13 @@ import {
   type ReactNode,
 } from "react";
 import { AlertCircle, WifiOff } from "lucide-react";
+import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { relayableReason } from "@/common/lib/graphql-error";
+import {
+  planFeatureRequired,
+  relayableReason,
+} from "@/common/lib/graphql-error";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
@@ -189,9 +193,12 @@ export function LogViewer({
     // text, not only by raw bytes split by escapes (w4/m189).
     LOG_TEXT_MODE_DISPLAY,
   );
+  // A plan without HTTP request logs (Hobby, w8/m138) refuses the request
+  // view: a plan notice, not a load failure, and no tail to retry against it.
+  const planRefused = planFeatureRequired(history.error, "requestLogs");
   const stream = useLiveLogs({
     resource,
-    enabled: live && liveSupported,
+    enabled: live && liveSupported && !planRefused,
     type: queryFilters.type,
     text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
@@ -234,7 +241,19 @@ export function LogViewer({
   // list) — resolved to a single node so the render stays flat.
   const historyReason = relayableReason(history.error);
   let body: ReactNode;
-  if (history.storeUnavailable && history.lines.length === 0) {
+  if (planRefused) {
+    body = (
+      <EmptyState
+        iconName="LockKeyhole"
+        title={t("logs.requestPlanTitle")}
+        description={
+          <>
+            {t("logs.requestPlanBody")} <PlanBillingLink />
+          </>
+        }
+      />
+    );
+  } else if (history.storeUnavailable && history.lines.length === 0) {
     // Request logs / structured filters need the durable store, which isn't
     // wired here (local dev). An explanatory state, not a generic error.
     body = (

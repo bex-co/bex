@@ -126,6 +126,32 @@ func TestListPassesFilterThroughAndScopesToOwner(t *testing.T) {
 	}
 }
 
+// w8/m138: Render's audit logs are Pro and higher. A Hobby workspace's admin
+// gets PLAN_FEATURE_REQUIRED and the store is never read; Pro reads as before.
+func TestListFollowsThePlan(t *testing.T) {
+	for plan, refused := range map[string]bool{"hobby": true, "pro": false, "enterprise": false} {
+		fs := &fakeStore{listRows: []store.AuditRow{{ID: "aud-1", WorkspaceID: "tea-owner"}}}
+		base := &core.Base{Authz: fakeAllowChecker{}, Plans: core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return plan, nil })}
+		svc := &Service{Base: base, Store: fs}
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+		events, err := svc.List(ctx, "tea-owner", Filter{})
+		if !refused {
+			if err != nil || len(events) != 1 {
+				t.Fatalf("%s: %v (%d events)", plan, err, len(events))
+			}
+			continue
+		}
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != core.PlanFeatureRequiredCode || coded.Params["feature"] != "auditLogs" ||
+			err.Error() != "bad request: audit logs require the Pro plan or higher; this workspace is on Hobby" {
+			t.Fatalf("hobby: got %v", err)
+		}
+		if fs.gotWorkspace != "" {
+			t.Fatalf("hobby: the store was read")
+		}
+	}
+}
+
 // TestListDirectionMapsToStoreOrdering proves the Render direction enum
 // (w4/013) reaches the store as its ordering flag: forward => oldest-first,
 // backward/empty => newest-first. Before this, direction was accepted and

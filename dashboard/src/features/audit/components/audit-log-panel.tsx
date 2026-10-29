@@ -1,4 +1,11 @@
-import { AlertTriangle, Loader2, ScrollText, ShieldOff } from "lucide-react";
+import {
+  AlertTriangle,
+  Loader2,
+  LockKeyhole,
+  ScrollText,
+  ShieldOff,
+} from "lucide-react";
+import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import {
   Card,
   CardHeader,
@@ -41,6 +48,7 @@ export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
     error,
     forbidden,
     unavailable,
+    planRequired,
     hasMore,
     loadMore,
   } = state;
@@ -54,7 +62,17 @@ export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
         <CardDescription>{t("audit.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        {unavailable ? (
+        {planRequired ? (
+          <PanelCenteredState
+            icon={<LockKeyhole />}
+            title={t("audit.planTitle")}
+            body={
+              <>
+                {t("audit.planBody")} <PlanBillingLink />
+              </>
+            }
+          />
+        ) : unavailable ? (
           <PanelCenteredState
             icon={<ShieldOff />}
             title={t("audit.unavailableTitle")}

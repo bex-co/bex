@@ -1,6 +1,6 @@
 # w8 · m138 — Hobby workspaces get Render's Hobby limits; Pro features start at Pro
 
-**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t007, t008, t009 done 2026-10-23; release pipeline deploys bex-api, the log reader and the dashboard; QA runs t006+t010 in bex-canary (Hobby): POST /v1/projects with three environments → 400 naming the Hobby limit (two → 201), PATCH environment networkIsolationEnabled true → 400 naming Pro (false → 200), POST /v1/webhooks → 400 WEBHOOK_PLAN_LIMIT naming Pro, bex logs --type request → plan error while --type app/build return lines, same calls succeed on a Pro workspace; read-only inventory of production Hobby workspaces with ≥3 environments, isolated environments or webhooks (counts into ADR018/ADR030); file follow-ups for audit logs, autoscaling, preview environments, latency metrics if not already unreachable on Hobby; delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** in progress（2026-10-29：t006, t011, t012, t013 done on the worktree branch; t010, the live DoD replay after deploy, is the one open task (it also files follow-ups for autoscaling and preview environments if either is reachable on Hobby). Earlier: t001–t005, t007–t009 done 2026-10-23）
 
 ## Tasks (in order)
 
@@ -11,13 +11,13 @@
 | t003 — **DONE** | Network-isolated environments require Pro                                      | 20m | w8/m138/t001                                         |
 | t004 — **DONE** | Webhooks require Pro (one destination on Pro, 100 on Scale)                    | 30m | w8/m138/t001                                         |
 | t005 — **DONE** | HTTP request logs require Pro                                                  | 45m | w8/m138/t001                                         |
-| t006 | Inventory and migrate existing Hobby workspaces using Pro features             | 30m | w8/m138/t002, w8/m138/t003, w8/m138/t004, w8/m138/t005 |
+| t006 — **DONE** | Inventory and migrate existing Hobby workspaces using Pro features             | 30m | w8/m138/t002, w8/m138/t003, w8/m138/t004, w8/m138/t005 |
 | t007 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard plan copy and ADR018/ADR030          | 20m | w8/m138/t006                                         |
 | t008 — **DONE** | Simplify the changed code                                                      | 15m | w8/m138/t007                                         |
 | t009 — **DONE** | Test coverage: plan × feature matrix, legacy state, upgrade/downgrade          | 40m | w8/m138/t007                                         |
-| t011 | Dashboard Logs: Request logs on Hobby show a plan notice, not "Couldn't load logs" | 30m | w8/m138/t005, w8/m138/t007 |
-| t012 | Hobby "All logs" still serves HTTP request logs: the Loki type matcher ignores noRequest | 30m | w8/m138/t005 |
-| t013 | Hobby plan refusals (environments, network isolation, request logs) carry a machine-readable code, as webhooks do | 30m | w8/m138/t007 |
+| t011 — **DONE** | Dashboard Logs: Request logs on Hobby show a plan notice, not "Couldn't load logs" | 30m | w8/m138/t005, w8/m138/t007 |
+| t012 — **DONE** | Hobby "All logs" still serves HTTP request logs: the Loki type matcher ignores noRequest | 30m | w8/m138/t005 |
+| t013 — **DONE** | Hobby plan refusals (environments, network isolation, request logs) carry a machine-readable code, as webhooks do | 30m | w8/m138/t007 |
 | t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011, w8/m138/t012, w8/m138/t013                           |
 
 ## Definition of done
@@ -80,7 +80,7 @@ Searched `.pm` open and done and `docs/` for each feature with Hobby/Pro/plan ga
 - `POST /v1/projects` with three environments → 400 `environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more`; two → 201.
 - `PATCH /v1/environments/{id} {"networkIsolationEnabled":true}` → 400 `network-isolated environments require the Pro plan or higher; this workspace is on Hobby`.
 - `POST /v1/webhooks` → 400 `WEBHOOK_PLAN_LIMIT` `webhooks require the Pro plan or higher; this workspace is on Hobby`.
-- `bex logs -r <id> --type request` → 400 `type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby`; `--type build` works. **But** an unfiltered `bex logs -r <id>` still returned 3 request entries: see [t012](t012.md) (also found as w8/199, folded in).
+- `bex logs -r <id> --type request` → 400 `type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby`; `--type build` works. **But** an unfiltered `bex logs -r <id>` still returned 3 request entries: see [t012](done/t012.md) (also found as w8/199, folded in).
 - Not covered: Pro-workspace controls, legacy state, dashboard copy. DoD (t010) still open.
 
 
@@ -92,3 +92,20 @@ Searched `.pm` open and done and `docs/` for each feature with Hobby/Pro/plan ga
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Progress 2026-10-29 (t006, t011, t012, t013)
+
+- **t012:** the Loki selector for an untyped/`type=all` log read is app-only on Hobby, and label discovery drops `type: request` and every `statusCode`/`method` value there. Pro is unchanged.
+- **t013:** environment cap → `PLAN_LIMIT` (`params {plan, limit: 2, field: "environments"}`); network isolation and request logs → `PLAN_FEATURE_REQUIRED` (`params {plan, feature, requiredPlan: "pro", field}`). Codes appear on REST `code`/`params`, GraphQL `extensions` and the MCP prefix, and every message is unchanged. Blueprint validate reports the environment cap and network isolation at the authored entry with the code.
+- **t011:** the dashboard Request logs view on Hobby shows a Pro-plan notice with an Open Billing link (en + zh) instead of "Couldn't load logs".
+- **t006:** the production inventory (64 Hobby / 2 Scale / 1 Enterprise; 0 Hobby projects with 3+ environments, 0 isolated Hobby environments, 0 Hobby webhooks) is recorded in ADR018 and ADR030, and no migration was needed. Render's features-by-plan page lists audit logs and response latency metrics as Pro and higher, so both are now gated (`PLAN_FEATURE_REQUIRED`, `feature: "auditLogs"` / `"latencyMetrics"`), with dashboard plan notices on the Audit Log card and the Response Times section.
+
+**The production re-check after deploy (t010) must verify, in Hobby `bex-canary` with owned fixtures deleted by ID and 404 proofs:**
+
+1. Every Definition of done bullet above, plus the same calls succeeding on a Pro or Scale workspace.
+2. `bex logs -r <free web srv-id>` with no `--type` (and `--text <rndr-id>` after a request) returns no `type=request` lines while app lines still return. REST `/v1/logs` without `type` and with `type=all`, GraphQL `logs` and MCP `list_logs` behave the same. The dashboard All logs shows no access-log JSON.
+3. `GET /v1/logs/values?label=type` lists no `request`, and `label=statusCode` / `label=method` are empty (MCP `list_log_label_values` too). On a Pro workspace they still list request values.
+4. `POST /v1/projects` with three environments → 400 with `code: PLAN_LIMIT`, `params.plan: hobby`, `params.limit: 2`, and the message unchanged. `PATCH /v1/environments/{id} {"networkIsolationEnabled":true}` and `GET /v1/logs?…&type=request` → 400 `PLAN_FEATURE_REQUIRED` with `params.feature` `networkIsolation` / `requestLogs`. GraphQL `createEnvironment` (third) shows `extensions.code`, and MCP errors carry the code prefix.
+5. `POST /v1/blueprints/validate` (or `bex blueprints validate`) of a three-environment project with `networking.isolation: enabled` answers `valid: false` with `PLAN_FEATURE_REQUIRED` at `projects[0].environments[i].networking.isolation` and `PLAN_LIMIT` at `projects[0].environments[2]`.
+6. Dashboard on Hobby: the Logs ▸ Request logs view shows the Pro-plan notice and an Open Billing link, and no "Couldn't load logs". Settings ▸ Audit Log shows the audit plan notice. The Metrics ▸ Response Times section shows the latency plan message. Check en and zh.
+7. `GET /v1/owners/{hobby-id}/audit-logs` and `GET /v1/metrics/http-latency?resource=<srv>` → 400 `PLAN_FEATURE_REQUIRED`; both 200 on a Pro workspace.

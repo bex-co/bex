@@ -507,6 +507,11 @@ func lokiTypeMatcher(q LogQuery) string {
 		// this union — it is a distinct source validate() requires be requested
 		// on its own (`type=build`), so `type=all` does not widen to it (w6/m131:
 		// the prior comment wrongly claimed `type=all` included build).
+		// A plan without HTTP request logs (Hobby, w8/m138 t012) narrows the
+		// union to app streams, so omitting `type` cannot bypass the gate.
+		if !q.wants(LogTypeRequest) {
+			return fmt.Sprintf("container=%q", core.AppContainer)
+		}
 		return fmt.Sprintf("container=~%q", core.AppContainer+"|")
 	}
 	switch {

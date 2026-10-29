@@ -43,35 +43,67 @@ const (
 	FeatureNetworkIsolation PlanFeature = "network-isolated environments"
 	FeatureWebhooks         PlanFeature = "webhooks"
 	FeatureRequestLogs      PlanFeature = "HTTP request logs"
+	FeatureAuditLogs        PlanFeature = "audit logs"
+	FeatureLatencyMetrics   PlanFeature = "response latency metrics"
 )
 
-// planFeatureMinimum is the one table of the lowest plan that includes each
-// feature. A feature absent from it is open on every plan.
-var planFeatureMinimum = map[PlanFeature]string{
-	FeatureInboundIPRules:   planScale,
-	FeatureNetworkIsolation: planPro,
-	FeatureWebhooks:         planPro,
-	FeatureRequestLogs:      planPro,
+// planFeatures is the one table of each gated feature's lowest plan and its
+// stable machine name (a PLAN_FEATURE_REQUIRED refusal's params.feature). A
+// feature absent from it is open on every plan.
+var planFeatures = map[PlanFeature]struct{ minimum, key string }{
+	FeatureInboundIPRules:   {planScale, "inboundIPRules"},
+	FeatureNetworkIsolation: {planPro, "networkIsolation"},
+	FeatureWebhooks:         {planPro, "webhooks"},
+	FeatureRequestLogs:      {planPro, "requestLogs"},
+	FeatureAuditLogs:        {planPro, "auditLogs"},
+	FeatureLatencyMetrics:   {planPro, "latencyMetrics"},
+}
+
+// Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's
+// `code`, GraphQL's extensions.code and MCP's message prefix alike. Webhooks
+// keep their earlier WEBHOOK_PLAN_LIMIT (webhooks.PlanLimitCode), which
+// clients already branch on.
+const (
+	// PlanLimitCode is a per-plan count cap (members, environments per
+	// project): params {plan, limit[, field]}.
+	PlanLimitCode = "PLAN_LIMIT"
+	// PlanFeatureRequiredCode is a feature the workspace plan does not include:
+	// params {plan, feature, requiredPlan[, field]}.
+	PlanFeatureRequiredCode = "PLAN_FEATURE_REQUIRED"
+)
+
+// NewPlanFeatureError is the coded refusal for a feature plan does not
+// include. field, when set, prefixes the message the way the request field's
+// validation errors read ("bad request: type: HTTP request logs require …"),
+// so the text is byte-identical to the uncoded refusal it replaced.
+func NewPlanFeatureError(field, plan string, feature PlanFeature) *CodedError {
+	msg := PlanFeatureMessage(plan, feature)
+	gate := planFeatures[feature]
+	params := map[string]any{"plan": plan, "feature": gate.key, "requiredPlan": gate.minimum}
+	if field != "" {
+		msg = field + ": " + msg
+		params["field"] = field
+	}
+	return NewBadRequestError(PlanFeatureRequiredCode, ErrBadRequest.Error()+": "+msg, params)
 }
 
 // PlanAllows reports whether plan includes feature. An unknown plan is treated
 // as allowed (store.LimitsFor's safe default: validation rejects unknown plans
 // upstream, so this is never a silent downgrade).
 func PlanAllows(plan string, feature PlanFeature) bool {
-	minimum, gated := planFeatureMinimum[feature]
+	gate, gated := planFeatures[feature]
 	if !gated {
 		return true
 	}
 	have := slices.Index(planLadder, plan)
-	return have < 0 || have >= slices.Index(planLadder, minimum)
+	return have < 0 || have >= slices.Index(planLadder, gate.minimum)
 }
 
 // PlanFeatureMessage is the one refusal sentence for a feature the workspace
 // plan does not include.
 func PlanFeatureMessage(plan string, feature PlanFeature) string {
-	minimum := planFeatureMinimum[feature]
 	title := func(p string) string { return strings.ToUpper(p[:1]) + p[1:] }
-	return fmt.Sprintf("%s require the %s plan or higher; this workspace is on %s", feature, title(minimum), title(plan))
+	return fmt.Sprintf("%s require the %s plan or higher; this workspace is on %s", feature, title(planFeatures[feature].minimum), title(plan))
 }
 
 // MaxEnvironmentsPerProject is Render's per-project environment cap for a plan:
@@ -169,7 +201,7 @@ func (b *Base) RequirePlanFeature(ctx context.Context, workspaceID string, featu
 	if err != nil || !ok || PlanAllows(plan, feature) {
 		return err
 	}
-	return fmt.Errorf("%w: %s", ErrBadRequest, PlanFeatureMessage(plan, feature))
+	return NewPlanFeatureError("", plan, feature)
 }
 
 // RequireNetworkIsolation refuses turning environment network isolation on
@@ -181,10 +213,19 @@ func (b *Base) RequireNetworkIsolation(ctx context.Context, workspaceID string, 
 		return nil
 	}
 	plan, ok, err := b.WorkspacePlanOf(ctx, workspaceID)
-	if err != nil || !ok || PlanAllows(plan, FeatureNetworkIsolation) {
+	if err != nil || !ok {
 		return err
 	}
-	return fmt.Errorf("%w: networkIsolationEnabled: %s", ErrBadRequest, PlanFeatureMessage(plan, FeatureNetworkIsolation))
+	return NetworkIsolationRefusal(plan, next, current)
+}
+
+// NetworkIsolationRefusal is RequireNetworkIsolation for a plan already read:
+// nil unless next turns isolation on below Pro.
+func NetworkIsolationRefusal(plan string, next, current bool) error {
+	if !next || current || PlanAllows(plan, FeatureNetworkIsolation) {
+		return nil
+	}
+	return NewPlanFeatureError("networkIsolationEnabled", plan, FeatureNetworkIsolation)
 }
 
 // RequireEnvironmentCapacity refuses a project's next environment once the
@@ -195,9 +236,17 @@ func (b *Base) RequireEnvironmentCapacity(ctx context.Context, workspaceID strin
 	if err != nil || !ok {
 		return err
 	}
+	return EnvironmentCapacityRefusal(plan, existing)
+}
+
+// EnvironmentCapacityRefusal is RequireEnvironmentCapacity for a plan already
+// read: nil while a project with existing environments may add another.
+func EnvironmentCapacityRefusal(plan string, existing int) error {
 	if limit := MaxEnvironmentsPerProject(plan); limit > 0 && existing >= limit {
-		return fmt.Errorf("%w: environments: a %s workspace is limited to %d environments per project; upgrade the plan to add more",
-			ErrBadRequest, strings.ToUpper(plan[:1])+plan[1:], limit)
+		return NewBadRequestError(PlanLimitCode,
+			fmt.Sprintf("%s: environments: a %s workspace is limited to %d environments per project; upgrade the plan to add more",
+				ErrBadRequest, strings.ToUpper(plan[:1])+plan[1:], limit),
+			map[string]any{"plan": plan, "limit": limit, "field": "environments"})
 	}
 	return nil
 }

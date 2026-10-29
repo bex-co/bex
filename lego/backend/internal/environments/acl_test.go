@@ -663,12 +663,15 @@ func TestHobbyEnvironmentLimitsAndIsolation(t *testing.T) {
 				}
 				third = err
 			}
-			if hobby != (third != nil) || (hobby && !strings.Contains(third.Error(), "limited to 2 environments per project")) {
+			if hobby != (third != nil) || (hobby && third.Error() != "bad request: environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more") {
 				t.Fatalf("third environment err = %v, hobby=%v", third, hobby)
+			}
+			if hobby {
+				requirePlanCode(t, third, core.PlanLimitCode, "")
 			}
 
 			_, onErr := svc.SetACL(ctx, first.ID, ProtectedStatusUnprotected, true, core.DefaultEnvironmentAllowList())
-			if hobby != (onErr != nil) || (hobby && !strings.Contains(onErr.Error(), "network-isolated environments require the Pro plan")) {
+			if hobby != (onErr != nil) || (hobby && onErr.Error() != "bad request: networkIsolationEnabled: network-isolated environments require the Pro plan or higher; this workspace is on Hobby") {
 				t.Fatalf("isolation on err = %v, hobby=%v", onErr, hobby)
 			}
 			on := true
@@ -676,8 +679,14 @@ func TestHobbyEnvironmentLimitsAndIsolation(t *testing.T) {
 			if hobby != (patchErr != nil) {
 				t.Fatalf("Update isolation err = %v, hobby=%v", patchErr, hobby)
 			}
-			if _, err := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "iso", NetworkIsolationEnabled: true}); hobby && err == nil {
+			_, createErr := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "iso", NetworkIsolationEnabled: true})
+			if hobby && createErr == nil {
 				t.Fatal("a Hobby create with isolation must be refused")
+			}
+			if hobby {
+				for _, err := range []error{onErr, patchErr, createErr} {
+					requirePlanCode(t, err, core.PlanFeatureRequiredCode, "networkIsolation")
+				}
 			}
 			if !hobby {
 				return
@@ -752,5 +761,18 @@ func TestEnvironmentNamesFollowTheLabelRule(t *testing.T) {
 	}
 	if _, err := validateEnvironmentName(" \t "); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must not be blank") {
 		t.Fatalf("blank name = %v, want the blank refusal", err)
+	}
+}
+
+// requirePlanCode asserts err is the coded workspace-plan refusal (w8/m138
+// t013): code, params.plan and, for a feature gate, params.feature.
+func requirePlanCode(t *testing.T, err error, code, feature string) {
+	t.Helper()
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != code || coded.Params["plan"] != "hobby" {
+		t.Fatalf("want %s with params.plan hobby, got %#v (%v)", code, coded, err)
+	}
+	if feature != "" && (coded.Params["feature"] != feature || coded.Params["requiredPlan"] != "pro") {
+		t.Fatalf("want params.feature %s requiredPlan pro, got %v", feature, coded.Params)
 	}
 }

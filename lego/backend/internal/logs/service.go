@@ -470,7 +470,7 @@ func (s *Service) requireRequestLogsPlan(ctx context.Context, app *appv1alpha1.A
 		return err
 	}
 	if slices.Contains(q.Types, LogTypeRequest) {
-		return fmt.Errorf("%w: type: %s", core.ErrBadRequest, core.PlanFeatureMessage(plan, core.FeatureRequestLogs))
+		return core.NewPlanFeatureError("type", plan, core.FeatureRequestLogs)
 	}
 	q.noRequest = true
 	return nil
@@ -921,6 +921,11 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if s.LabelValues == nil {
 		return nil, core.ErrLogStoreUnavailable
 	}
+	if q.noRequest && (label == LabelStatusCode || label == LabelMethod) {
+		// Request-only labels: a plan without HTTP request logs has none to
+		// discover (w8/m138 t012).
+		return []string{}, nil
+	}
 	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
 	// the discoverable stream labels live there, not in the shared s.Namespace.
 	values, err := s.LabelValues(ctx, app.Namespace, label, q.normalized())
@@ -929,6 +934,9 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	}
 	if label == LabelInstance {
 		return projectLogLabelValues(resource, values), nil
+	}
+	if q.noRequest && label == LabelType {
+		values = slices.DeleteFunc(values, func(v string) bool { return v == LogTypeRequest })
 	}
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }

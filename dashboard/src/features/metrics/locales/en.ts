@@ -547,6 +547,12 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Show event timeline",
     description: "Accessible label for the Metrics event-timeline toggle",
   },
+  "metrics.latencyPlanRequired": {
+    message:
+      "Response latency metrics require the Pro plan or higher. This workspace is on Hobby.",
+    description:
+      "Response Times section on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
 };
 
 export default enMetrics;
