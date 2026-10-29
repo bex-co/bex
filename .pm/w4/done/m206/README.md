@@ -1,6 +1,6 @@
 # w4 · m206 — Make environment-group creation and moves recoverable
 
-**Worker:** worker4 **Goal:** ordinary scoped group creation, cloning and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked for final live closeout — t001–t007 done; t009 done 2026-10-18 as already fixed by `6407a506d` (w8/m114 moved group metadata to Postgres: quota and name admission are single SQL reads, and reservations/`ENV_GROUP_NAME_RESERVED` no longer exist); release + t008 replay remain
+**Worker:** worker4 **Goal:** ordinary scoped group creation, cloning and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a scoped group create, a selection that survives search through a two-group move, and clones all return within a second, appear once and keep exact contents; the a385 residual name is free (loopx w4).
 
 ## Tasks (in order)
 
