@@ -1,6 +1,6 @@
 # w4 · m166 — Loop2: Docker Command for image-source services
 
-**Worker:** worker4 **Goal:** an image-source web/worker service can set its container command from the dashboard, unblocking images whose default CMD does not serve **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
+**Worker:** worker4 **Goal:** an image-source web/worker service can set its container command from the dashboard, unblocking images whose default CMD does not serve **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: the wizard's Existing Image Docker Command creates a running http-echo service with the command stored, the worker wizard offers the same field, and the Settings Docker Command round-trip redeploys (loopx w4).
 
 ## Tasks (in order)
 
