@@ -234,12 +234,14 @@ func TestMCPParityInventory(t *testing.T) {
 	// are unchanged, omitted textMode keeps raw text matching.
 	// w2/046 implemented upstream's update_environment_variables to its exact
 	// contract (1:1 9 → 10, total 189 → 190).
+	// w8/152 added Render's region to the four create tools (Divergent 6 → 2,
+	// Superset 5 → 9).
 	// Update this table and ADR018's MCP inventory together — that pairing is
 	// the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,  // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189); +update_environment_variables (w2/046)
-		mcpParitySuperset:  5,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode)
-		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
+		mcpParitySuperset:  9,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode); +4 create tools (w8/152 region)
+		mcpParityDivergent: 2,   // -get_metrics (w2/m91); -create_web_service -create_cron_job -create_postgres -create_key_value (w8/152 region)
 		mcpParityExtension: 170, // +get_agent_session_tool_output (w10/m18); +get_agent_environment +update_agent_environment (w10/m17); -pin_agent_session -unpin_agent_session (w10/m15); +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
 	const wantTotal = 191
@@ -287,13 +289,12 @@ func TestMCPDivergenceMessage(t *testing.T) {
 	}
 }
 
-// TestMCPParityGitCreateToolsBreakOnlyOnRegion pins the accepted divergence of
-// the two Git-backed create tools to exactly what mcpAcceptedDivergences says:
-// `region`. Upstream bc94f8d (#154) added dockerCommand/dockerContext, which
-// bex implements (w1/118). The accepted-divergence map alone cannot tell "one
-// break" from "two", so if either argument disappears, or upstream adds
-// another, the entry's reason would stop being true silently — this fails.
-func TestMCPParityGitCreateToolsBreakOnlyOnRegion(t *testing.T) {
+// TestMCPParityCreateToolsAcceptRegion pins w8/152: the four create tools
+// take Render's `region` (normalized to BEX_REGION like every other surface),
+// so none of them breaks upstream's contract. Before, `region` was their one
+// accepted divergence; if a tool drops it again, or upstream adds another
+// argument bex lacks, this fails rather than silently re-opening a break.
+func TestMCPParityCreateToolsAcceptRegion(t *testing.T) {
 	pin, err := loadRenderMCPContract()
 	if err != nil {
 		t.Fatalf("load pin: %v", err)
@@ -302,14 +303,16 @@ func TestMCPParityGitCreateToolsBreakOnlyOnRegion(t *testing.T) {
 	for _, bt := range enumerateBexTools(t) {
 		live[bt.Name] = bt
 	}
-	for _, name := range []string{"create_web_service", "create_cron_job"} {
+	for _, name := range []string{"create_web_service", "create_cron_job", "create_postgres", "create_key_value"} {
 		bt, ok := live[name]
 		if !ok {
 			t.Fatalf("bex no longer registers %s", name)
 		}
-		class, d := classifyMCPTool(bt.Name, bt.Args, bt.Required, pin)
-		if class != mcpParityDivergent || !slices.Equal(d.MissingArgs, []string{"region"}) || len(d.AddedRequired) != 0 {
-			t.Errorf("%s: class=%s divergence=%s; want Divergent on region alone", name, class, d)
+		if !slices.Contains(bt.Args, "region") {
+			t.Errorf("%s does not accept region", name)
+		}
+		if class, d := classifyMCPTool(bt.Name, bt.Args, bt.Required, pin); d.breaksCompatibility() {
+			t.Errorf("%s: class=%s divergence=%s; want no break", name, class, d)
 		}
 	}
 }

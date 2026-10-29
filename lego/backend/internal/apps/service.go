@@ -1858,7 +1858,13 @@ type CreateRequest struct {
 	// under ungrouped: (clear membership) from a create that simply omitted the
 	// field (preserve current behavior on idempotent stack re-apply).
 	EnvironmentSpecified bool
-	Name                 string
+	// Region is the caller's Render region (REST serviceDetails.region, the
+	// GraphQL/MCP region argument). bex runs one region, so Create only checks
+	// it against the shared policy (resourcemeta.CheckRequestedRegion: a Render
+	// region or BEX_REGION) and never persists it; readback reports BEX_REGION
+	// (ADR049 D7, w8/152).
+	Region string
+	Name   string
 	// Type is the Render serviceType: web_service (default), private_service,
 	// background_worker, cron_job. Empty defaults to web_service.
 	Type string
@@ -2022,6 +2028,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 		authCtx = core.WithDeferredAllowedWriteAudit(ctx)
 	}
 	if err := s.Authorize(authCtx, core.RelCanCreate); err != nil {
+		return AppView{}, err
+	}
+	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
 		return AppView{}, err
 	}
 	if len(req.SecretFiles) > 0 {

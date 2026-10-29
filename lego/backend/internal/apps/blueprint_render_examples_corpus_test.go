@@ -32,8 +32,7 @@ import (
 // corpus file may fail only for these or for a gap already filed
 // (knownBlueprintGaps); any other refusal is a new class to triage (w5/m143).
 var deliberateBlueprintDivergences = []string{
-	"preview environments are not available", // incl. previewValue
-	"per-resource region placement is not available on bex",
+	"preview environments are not available",        // incl. previewValue
 	"Render Workflows",                              // type: workflow and fromService workflow refs
 	"sizeGB must be at least 10",                    // bex's 10 GB disk minimum (w1/078)
 	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)

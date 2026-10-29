@@ -184,12 +184,12 @@ Prebuilt-image services accept explicit `autoDeploy: false` and `autoDeployTrigg
 Fields whose semantics bex cannot truthfully provide are rejected. In particular:
 
 - `autoDeployTrigger: checksPass` is translated (w1/m181): a push records the commit and a completed GitHub check suite deploys it once all of its check runs pass (`docs/render-artifacts/auto-deploy-checks-pass.md`). It is never collapsed to `commit`, and a prebuilt image service refuses it like any enabled trigger;
-- service/database `region` is unsupported while bex exposes one configured placement rather than per-resource Render regions;
+- service/database `region` was unsupported while bex exposed one configured placement rather than per-resource Render regions. _Amended 2026-10-29 by user decision D1 ([w8/152](../.pm/w8/152.md)): **one region policy on every surface.** Blueprint validate, plan, sync and apply now treat `region` exactly as REST, GraphQL and MCP create do. Any Render region (`oregon`, `ohio`, `virginia`, `frankfurt`, `singapore`) is accepted, and the resource is placed in `BEX_REGION`, which readback reports. This covers services, cron jobs, Postgres and Key Value, at the top level and under `projects[].environments[]`. There is no error and no per-resource refusal. Render's export writes `region` on every resource, and 75 of 100 sampled exports failed on `region` alone. A value outside Render's region enum is still refused by the pinned schema at its exact path. The five `region` registry entries and the `#/definitions/region/enum` values are `translated` (`resourcemeta.CheckRequestedRegion` holds the create side of the same rule)._;
 - service `disk` is unsupported under the stateless-first persistent-disk anti-goal _(anti-goal reversed 2026-08-22 by [ADR082](ADR082-persistent-disks.md); the four `disk` registry entries flip to translated handlers as that work lands)_;
 - root and per-resource preview configuration is unsupported under the explicit PR-preview-environment anti-goal;
 - a newly discovered upstream field is unsupported-by-default until classified.
 
-The registry itself now states these dispositions verbatim (`w8/m19` t002, 2026-08-16): every `unsupported` entry's reason is either an anti-goal citation (previews → the w2/m11 rejection; disks → ADR018's stateless-first row; one-off `job` references), a concrete semantic mismatch (per-resource `region` vs the single-placement `BEX_REGION` model, `dpg` fromService references, Postgres majors below 13), or a promoted handler — the original m63 "audit baseline" placeholder text no longer appears.
+The registry itself now states these dispositions verbatim (`w8/m19` t002, 2026-08-16): every `unsupported` entry's reason is either an anti-goal citation (previews → the w2/m11 rejection; disks → ADR018's stateless-first row; one-off `job` references), a concrete semantic mismatch (`dpg` fromService references, Postgres majors below 13), or a promoted handler — the original m63 "audit baseline" placeholder text no longer appears.
 
 If a supposedly adapter-backed field cannot meet the observable Render semantics during implementation, its registry entry changes to `unsupported`; the milestone must not ship a lossy approximation.
 
@@ -394,7 +394,7 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 
 **Corpus guard.** `TestRenderExamplesCorpus` (opt-in: `BEX_RENDER_EXAMPLES_DIR`, files fetched with `scripts/render-examples-corpus.sh` because they are third-party) runs every render-examples `render.yaml` through `ValidateBlueprint`. A file may fail only for:
 
-- a deliberate divergence: region, previews and `previewValue`, workflows, the 10 GB disk minimum (the reserved `PORT` and `RENDER_*` references were removed by w5/m149 and w5/m148);
+- a deliberate divergence: previews and `previewValue`, workflows, the 10 GB disk minimum (the reserved `PORT` and `RENDER_*` references were removed by w5/m149 and w5/m148; `region` was removed by w8/152, which normalizes it to `BEX_REGION`);
 - a refusal Render makes too: `sync: false` in an env group, the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-4gb`;
 - a gap already filed: free-form resource names and dotted env keys, both w5/169.
 

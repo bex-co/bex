@@ -22,12 +22,16 @@ package resourcemeta
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // UpdatedAtAnnotation records the last successful bex-api resource mutation.
@@ -101,6 +105,29 @@ type Config struct {
 // PlatformRegion returns the configured region after treating whitespace-only
 // configuration as unavailable.
 func (c Config) PlatformRegion() string { return strings.TrimSpace(c.Region) }
+
+// RenderRegions is Render's region enum, as pinned in both its OpenAPI spec
+// and its Blueprint schema.
+var RenderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virginia"}
+
+// CheckRequestedRegion is bex's one region policy for every create surface
+// (REST, GraphQL, MCP; Blueprints apply the same rule through the schema enum
+// and the capability registry). bex runs one region per control plane, so any
+// Render region, or BEX_REGION itself, is accepted and the resource is placed
+// in BEX_REGION; the request value is never persisted. Anything else is a 400,
+// worded like the pinned Render CLI's own check (ADR049 D7, user decision D1
+// 2026-10-29, w8/152).
+func (c Config) CheckRequestedRegion(region string) error {
+	platform := c.PlatformRegion()
+	if region == "" || slices.Contains(RenderRegions, region) || (platform != "" && region == platform) {
+		return nil
+	}
+	placement := ""
+	if platform != "" {
+		placement = fmt.Sprintf("; bex runs every resource in %s", platform)
+	}
+	return fmt.Errorf("%w: region must be one of: %s%s", core.ErrBadRequest, strings.Join(RenderRegions, ", "), placement)
+}
 
 // Render dashboard path segments (docs/render-artifacts/dashboard-routes.md).
 // Render's API returns `<dashboard>/{segment}/{id}` dashboardUrl values and its

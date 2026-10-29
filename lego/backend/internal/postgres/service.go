@@ -283,7 +283,9 @@ type CreatePostgresRequest struct {
 	Version      string `json:"version,omitempty"`
 	// Region is accepted from Render clients as a placement hint. bex currently
 	// exposes one configured region per control plane, so the server-owned
-	// BEX_REGION remains authoritative instead of persisting this request field.
+	// BEX_REGION remains authoritative instead of persisting this request field;
+	// a value that is neither a Render region nor BEX_REGION is refused
+	// (resourcemeta.CheckRequestedRegion, w8/152).
 	Region     string `json:"region,omitempty"`
 	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	// Datadog fields are decoded so the Render CLI receives an explicit
@@ -821,6 +823,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		return PostgresView{}, err
 	}
 	if err := core.CheckDatastoreName(req.Name); err != nil {
+		return PostgresView{}, err
+	}
+	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
 		return PostgresView{}, err
 	}
 	req.Plan = tiers.Postgres.CanonicalID(req.Plan)

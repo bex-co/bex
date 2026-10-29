@@ -166,8 +166,9 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 // extensions (Render's tool is git-only and has no port/replicas). One of
 // repo/image is required. Runtime/buildCommand/startCommand use Render's native
 // contract and dockerfilePath/dockerContext/dockerCommand its docker one
-// (upstream bc94f8d, w1/118); builder and image are bex extensions. Region
-// remains a one-region platform concern and is intentionally absent.
+// (upstream bc94f8d, w1/118); builder and image are bex extensions. region is
+// Render's argument, checked and normalized to BEX_REGION like every other
+// create surface (w8/152).
 type createWebServiceArgs struct {
 	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name                 string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
@@ -198,6 +199,7 @@ type createWebServiceArgs struct {
 	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default: rootDir itself)"`
 	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Region                  string                  `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the service is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
 	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default starter, Render's 0.5c-512mb; a background_worker or private_service is paid-only, so free is rejected)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	SecretFiles             []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
@@ -281,6 +283,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		DockerContext:           dockerContext,
 		Builder:                 a.Builder,
 		Plan:                    a.Plan,
+		Region:                  a.Region,
 		SecretFiles:             toSecretFiles(a.SecretFiles),
 		AutoDeploy:              parseYesNo(a.AutoDeploy),
 		NotifyOnFail:            a.NotifyOnFail,
@@ -317,6 +320,7 @@ type createCronJobArgs struct {
 	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default: rootDir itself)"`
 	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand or command"`
 	Builder        string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Region         string            `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the service is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
 	Plan           string            `json:"plan,omitempty" jsonschema:"paid instance plan, e.g. starter, standard, pro (default starter, Render's 0.5c-512mb); a cron job cannot use free"`
 	EnvVars        []envVarInput     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
 	SecretFiles    []secretFileInput `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
@@ -375,6 +379,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		DockerContext:        dockerContext,
 		Builder:              a.Builder,
 		Plan:                 a.Plan,
+		Region:               a.Region,
 		SecretFiles:          toSecretFiles(a.SecretFiles),
 		AutoDeploy:           parseYesNo(a.AutoDeploy),
 		NotifyOnFail:         a.NotifyOnFail,

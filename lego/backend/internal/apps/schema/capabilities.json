@@ -131,8 +131,10 @@
       "reason": "cron jobs do not run the App pre-deploy phase, so accepting this command would silently ignore it"
     },
     "#/definitions/cronService/properties/region": {
-      "state": "unsupported",
-      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+      "state": "translated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
     },
     "#/definitions/cronService/properties/registryCredential": {
       "state": "translated",
@@ -239,8 +241,10 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/region": {
-      "state": "unsupported",
-      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+      "state": "translated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
     },
     "#/definitions/database/properties/storageAutoscalingEnabled": {
       "state": "translated",
@@ -509,8 +513,10 @@
       "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/redisServer/properties/region": {
-      "state": "unsupported",
-      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+      "state": "translated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
     },
     "#/definitions/redisServer/properties/type": {
       "state": "translated",
@@ -725,8 +731,10 @@
       "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/properties/region": {
-      "state": "unsupported",
-      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+      "state": "translated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
     },
     "#/definitions/serverService/properties/registryCredential": {
       "state": "translated",
@@ -1926,24 +1934,34 @@
     },
     "#/definitions/region/enum": {
       "\"oregon\"": {
-        "state": "unsupported",
-        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+        "state": "translated",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
       },
       "\"ohio\"": {
-        "state": "unsupported",
-        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+        "state": "translated",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
       },
       "\"frankfurt\"": {
-        "state": "unsupported",
-        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+        "state": "translated",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
       },
       "\"singapore\"": {
-        "state": "unsupported",
-        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+        "state": "translated",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
       },
       "\"virginia\"": {
-        "state": "unsupported",
-        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
+        "state": "translated",
+        "handler": "CompileBlueprintSource",
+        "fixture": "internal/apps/blueprint_region_test.go:TestBlueprintRenderRegionNormalizesToBexRegion",
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006): any Render region is accepted and normalized to BEX_REGION, the same policy as the create APIs (ADR049 D7, user decision D1 2026-10-29, w8/152)"
       }
     },
     "#/definitions/route/properties/type/enum": {

@@ -765,6 +765,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		DockerContext:           gqlutil.Str(args, "dockerContext"),
 		Builder:                 gqlutil.Str(args, "builder"),
 		Plan:                    gqlutil.Str(args, "plan"),
+		Region:                  gqlutil.Str(args, "region"),
 		AutoDeploy:              autoDeploy,
 		AutoDeployChecksPass:    checksPass,
 		NotifyOnFail:            gqlutil.Str(args, "notifyOnFail"),
@@ -1431,7 +1432,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"dockerContext": gqlutil.Arg(graphql.String),
 				"builder":       gqlutil.Arg(graphql.String), // auto (default) | buildpack | dockerfile
 				"plan":          gqlutil.Arg(graphql.String),
-				"autoDeploy":    gqlutil.Arg(graphql.Boolean),
+				// region is Render's; checked and normalized to BEX_REGION
+				// like every create surface (w8/152).
+				"region":     gqlutil.Arg(graphql.String),
+				"autoDeploy": gqlutil.Arg(graphql.Boolean),
 				// autoDeployTrigger: off | commit | checksPass (w1/m181); wins
 				// over autoDeploy when both are sent.
 				"autoDeployTrigger": gqlutil.Arg(graphql.String),
