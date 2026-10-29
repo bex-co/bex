@@ -1,6 +1,6 @@
 # w2 · m169 — The forums run on bex as an ordinary tenant: uploads persist, nothing is hand-patched
 
-**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** blocked — t001–t003 and t006–t008 done (2026-10-29: the forums are an ordinary bex tenant — the connected Blueprint is in sync and manages all five resources with zero drift; uploads persist on the disk and all 29 recoverable ones are restored). Remaining needs the user: (1) BlockEden dashboard login or deploy of the edge service (`block-eden-mono` `bcd7c7834a`: `tianpan.co/forum` → `forum.tianpan.co`); (2) `cf auth login` with the account owning `blockeden.xyz`, for `forum.blockeden.xyz` and fronting `forum.bex.co` by the edge (bex reserves `bex.co`). Then t004/t005 retire the last hand-made routes.
+**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** done 2026-10-29 — the forums are an ordinary bex tenant: the connected Blueprint (`render.yaml`) manages all five resources with zero drift; every forum hostname bex serves is a verified custom domain; no hand-made cluster object remains; the uploads disk holds all 29 recoverable uploads, durable across restarts and redeploys.
 
 ## Tasks (in order)
 
@@ -9,21 +9,21 @@
 | t001 | Rebuild the missing-upload inventory from the three forum databases and match it to the recovered files — **DONE** | 45m | — |
 | t002 | Decide the mount path, size and on-disk layout from the running image — **DONE** | 30m | t001 |
 | t003 | Inventory every hand-made object and settle who serves beancount.io — **DONE** | 30m | t002 |
-| t004 | Move the forum's `/` → `/forum` redirect into the application | 40m | t003 |
-| t005 | Serve every forum domain through bex custom domains, then delete the hand-built Ingresses and Middleware | 1h | t003, t004 |
+| t004 | Move the forum's `/` → `/forum` redirect into the application — **DONE** (at the tenant's edge) | 40m | t003 |
+| t005 | Serve every forum domain through bex custom domains, then delete the hand-built Ingresses and Middleware — **DONE** | 1h | t003, t004 |
 | t006 | Make the Blueprint the single source of truth — runtime, `fromDatabase` hosts, `disk`, domains — and sync it as a tenant (**STOP: the user picks the downtime window**) — **DONE** | 45m | t005 |
 | t007 | Restore the recovered originals the way a tenant can (`render ssh`), verifying every referenced URL — **DONE** | 45m | t006 |
 | t008 | Prove durability: a fresh upload survives a restart and a redeploy — **DONE** | 30m | t007 |
-| t009 | Record the unrecoverable uploads, the bex gaps found, and retire the deferred entry | 20m | t008 |
-| t010 | Simplify | 15m | t009 |
-| t011 | Test coverage | 30m | t009 |
-| t012 | Closeout | 10m | t010, t011 |
+| t009 | Record the unrecoverable uploads, the bex gaps found, and retire the deferred entry — **DONE** | 20m | t008 |
+| t010 | Simplify — **DONE** | 15m | t009 |
+| t011 | Test coverage — **DONE** | 30m | t009 |
+| t012 | Closeout — **DONE** | 10m | t010, t011 |
 
 ## Definition of done
 
 - **No hand-made objects.** Every Kubernetes object serving the forums is created and owned by bex from the App/Blueprint: none of the hand-built Ingresses (`…-beancount-forum-ms`, `…-forum-bex-co`, `…-tianpan-forum`, `…-blockeden-forum`) or the `…-forum-bex-co-root` Middleware remains, and no object carries a hand-set ownerReference.
-- **Blueprint is the truth.** `discourse_docker/_infra/bex/bex-forums-multisite.yaml` matches the live service (runtime, `fromDatabase` hosts, `disk`, domains), is synced through bex's Blueprint surface, and a re-sync reports no drift.
-- **Domains through the product.** Every forum hostname bex serves is a verified bex custom domain with a product-issued certificate; beancount.io is attached to whichever App t003 shows owns it; `forum.bex.co/` still redirects to `/forum`, now from the application.
+- **Blueprint is the truth.** `discourse_docker/render.yaml` (replacing `_infra/bex/bex-forums-multisite.yaml`) matches the live service (runtime, `fromDatabase` hosts, `disk`, domains), is synced through bex's Blueprint surface, and a re-sync reports no drift.
+- **Domains through the product.** Every forum hostname bex serves is a verified bex custom domain with a product-issued certificate; beancount.io is attached to whichever App t003 shows owns it; `forum.bex.co/` still redirects to `/forum`, now from the tenant's own edge (bex reserves `bex.co`, so `forum.bex.co` is fronted by the edge, not a custom domain).
 - **Uploads.** Every referenced upload with recovered bytes returns 200 on its own host with a matching SHA-1; the unrecoverable ones are counted with their disposition; a fresh upload survives a pod restart and a redeploy, then is removed.
 - **Gaps are filed, not bypassed.** Anything an ordinary tenant could not do is recorded as a bex gap (inbox note or QA finding) instead of being patched around in the cluster.
 
@@ -89,3 +89,13 @@
 
 - **Blueprint is the single source of truth (t006).** `discourse_docker` `6cbcffc` adds a root `render.yaml` matching the live service exactly (names, plans, Docker command, health check, the `forum-uploads` disk, `forum.tianpan.co`; DB/Redis wiring as `fromDatabase`/`fromService`, SMTP credentials `sync: false`) and deletes the never-synced `bex-forums-multisite.yaml`. A dry-run validation first showed no-ops for the databases and Redis and only an env update for the service. The auto-sync succeeded at 04:00:34Z (first success since 2026-08-21), the env deploy and the commit's build each recreated the pod (~1 min of 503 each), and afterwards: Blueprint `in_sync`, managing `beancount-forum`, `beancount-forum-redis` and the three databases; a re-validation is all `noop`; all 29 recoverable uploads still match SHA-1; all five forum URLs serve the right site.
 - **Garbage removed.** The unused `blockeden-forum-redis` (`red-da4086iii7bs73drbqh0`, standard plan, no keys, no consumer anywhere) deleted through the tenant API; the dead hand-made `…-beancount-forum-ms` Ingress deleted (manifest backed up privately); the `cf` CLI cache dropped out of the bex checkout; the obsolete multisite FQDN workaround comment and the `kubectl patch` operations notes in `discourse_docker` replaced. The `allow-beancount-forum-multisite-dbs` CiliumNetworkPolicy was already gone.
+
+## Closeout 2026-10-29
+
+- **`forum.blockeden.xyz`** — a stale DNS-only A record (→ a dead Contabo VM; TLS failed) replaced by a DNS-only CNAME → `beancount-forum.onbex.co`; added and verified as a bex custom domain, certificate issued, in `render.yaml` `domains` (`discourse_docker` `1db076a`).
+- **Edge** — `block-eden-mono` `40da94bb6c`, deployed from the BlockEden dashboard: `blockeden.xyz/forum` → `forum.blockeden.xyz`; new edge host `forum.bex.co` (`/forum` → `forum.blockeden.xyz`, everything else 302 → `/forum`); `forum.bex.co` now a proxied A record to the edge (~6 min of 525 while Caddy issued its certificate).
+- **Hand-made objects gone** — the `…-blockeden-forum` and `…-forum-bex-co` Ingresses (with their certificates) and the `…-forum-bex-co-root` Middleware deleted after private backups. Every remaining forum Ingress, Middleware, Service and Certificate is written by the operator and owned by the App.
+- **Retired hostnames** — `*-forum.onbex.co` and `blockeden.xyz` dropped from multisite `host_names` (`discourse_docker` `500b15a`); canonical hosts unchanged (`tianpan.co`, `forum.bex.co`), and every public page still names them canonical.
+- **Verification after the last deploy** — `_infra/bex/check-forums.sh` passes: beancount.io, tianpan.co, forum.tianpan.co, blockeden.xyz, forum.blockeden.xyz and forum.bex.co `/forum` serve their sites, `forum.bex.co/` redirects, and all 29 recoverable uploads match SHA-1. Blueprint re-validation: 5/5 `noop`.
+- **Unrecoverable uploads** — the 10 (beancount 8, tianpan 1, blockeden 1) keep their references.
+- **Also removed** — the `tp-ms-fish` cloudflared tunnel and its `tp-ms-fish.blockeden.xyz` record (nothing listened behind it). The local LaunchDaemon still runs against the deleted tunnel; removing it needs `sudo cloudflared service uninstall` on the Mac.
