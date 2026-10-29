@@ -101,33 +101,28 @@ func IsTerminalDeployStatus(status string) bool {
 	return slices.Contains(deployStatusVocabulary, status) && !IsOpenDeployStatus(status)
 }
 
-// CanTransitionDeploy is the evidence-backed transition table. It permits
-// forward phase skips because the backend samples Kubernetes state rather
-// than receiving every operator edge, but rejects phase regressions and every
-// mutation out of a terminal state. live -> deactivated is the sole exception:
-// a newer live deploy atomically makes the prior live revision historical.
+// deployTransitionPredecessors is the evidence-backed transition table, keyed by
+// the status a deploy moves to. Forward phase skips are permitted because the
+// backend samples Kubernetes state rather than receiving every operator edge;
+// nothing consumes a terminal state, so those have no successors.
+var deployTransitionPredecessors = map[string][]string{
+	DeployQueued:              {DeployCreated},
+	DeployBuildInProgress:     {DeployCreated, DeployQueued},
+	DeployBuildFailed:         {DeployCreated, DeployQueued, DeployBuildInProgress},
+	DeployPreDeployInProgress: {DeployCreated, DeployQueued, DeployBuildInProgress},
+	DeployPreDeployFailed:     {DeployCreated, DeployQueued, DeployBuildInProgress, DeployPreDeployInProgress},
+	DeployUpdateInProgress:    openDeployStatuses,
+	DeployUpdateFailed:        openDeployStatuses,
+	DeployLive:                openDeployStatuses,
+	DeployCanceled:            openDeployStatuses,
+	// live -> deactivated is the sole terminal-to-terminal edge: a newer live
+	// deploy atomically makes the prior live revision historical.
+	DeployDeactivated: {DeployLive},
+}
+
+// CanTransitionDeploy reports whether a deploy observed in from may move to to.
+// It rejects phase regressions, unknown statuses, and every mutation out of a
+// terminal state.
 func CanTransitionDeploy(from, to string) bool {
-	if from == to {
-		return false
-	}
-	switch to {
-	case DeployQueued:
-		return from == DeployCreated
-	case DeployBuildInProgress:
-		return from == DeployCreated || from == DeployQueued
-	case DeployBuildFailed:
-		return from == DeployCreated || from == DeployQueued || from == DeployBuildInProgress
-	case DeployPreDeployInProgress:
-		return from == DeployCreated || from == DeployQueued || from == DeployBuildInProgress
-	case DeployPreDeployFailed:
-		return from == DeployCreated || from == DeployQueued || from == DeployBuildInProgress || from == DeployPreDeployInProgress
-	case DeployUpdateInProgress:
-		return IsOpenDeployStatus(from)
-	case DeployUpdateFailed, DeployLive, DeployCanceled:
-		return IsOpenDeployStatus(from)
-	case DeployDeactivated:
-		return from == DeployLive
-	default:
-		return false
-	}
+	return from != to && slices.Contains(deployTransitionPredecessors[to], from)
 }
