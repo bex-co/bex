@@ -1,6 +1,6 @@
 # w8 · m64 — Keep Blueprint environment copies consistent across applies
 
-**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：implementation tasks shipped; sweep231 accepts observed live group/own-store/literal paths with native wire and cleanup receipts. t006 still needs remaining variants, shared live/snapshot surfaces and the complete inherited DoD.
+**Worker:** worker8 **Goal:** sibling copies equal the source configuration across group links, seed state, immutable literal priority and own mutable overrides. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t003 | Render parity — **DONE 2026-10-13** | 15m | t002 |
 | t004 | Simplify — **DONE 2026-10-13** | 10m | t003 |
 | t005 | Meaningful test coverage — **DONE 2026-10-13** | 30m | t003 |
-| t006 | Closeout — **BLOCKED: deployed API + native receipts** | 10m | t004, t005 |
+| t006 | Closeout — **DONE 2026-10-29** | 10m | t004, t005 |
 
 ## Definition of done
 
@@ -61,7 +61,7 @@ The source evidence uses real feature methods with fake storage/Kubernetes; proc
 
 ## Independent source replay — sweep226
 
-[Current-source verification](../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
+[Current-source verification](../../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
 
 ## Live existing-state acceptance — sweep231
 
@@ -90,3 +90,9 @@ Production pin `b33dd43c4428`, bex-canary, released Bex v0.3.3 and pinned Render
 - **New group appended:** without the seed copy, group `-c` (`LX8B_C`) appended last → source runtime `QA_G=LX8B_C`, consumer stored and runtime `QA_GCOPY=LX8B_C`.
 - **Defect found and fixed:** the dashboard Blueprint page's **Validate** panel sent `validateBlueprint(bexYaml)` with neither `ownerId` nor `blueprintId`, so it validated in the caller's default workspace and reported the refused manifest above as valid. `ValidatePanel` now passes the Blueprint's id (server scopes to that Blueprint's own workspace, as `blueprintPreview` already does); regression `use-validate-blueprint.test.ts`. Live re-check of the panel waits for this fix's deploy.
 - Cleanup: both services (API 404), three groups (204 → 404), project `prj-dbhftvtlp6pc7389fj90` and environment (404). No Blueprint record was created by the inline apply.
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+**Dashboard Validate panel, after `20364c0b0` deployed** (pin `03043c7df363`, live bex-api and dashboard digests match): a Blueprint record `blp-dbhj6hsjakpc739ce4v0` (`qa-20261029-lx9p-bp`) was created through the dashboard's `createBlueprint` mutation and synced to a manifest whose consumer copies a seed-only `sync:false` value of an existing source (`qa-20261029-lx9p-copy` ← `qa-20261029-lx9p-src.QA_VALUE`). On `/blueprints/blp-dbhj6hsjakpc739ce4v0`, **Run validate** now reports "Manifest has errors: line 11, column 5 · services[0].envVars[1] … references env "QA_VALUE" on existing service "qa-20261029-lx9p-src", which is a sync:false value seeded once…", and the request carries `blueprintId`. The same `validateBlueprint` call without `blueprintId`/`ownerId` still answers `valid: true` (the pre-fix behavior the panel used). Cleanup: `disconnectBlueprint`, then the Blueprint and all three services it created → 404.
+
+With the 2026-10-29 hosted variants recorded above (seed-only first creation, nested consumer-first order, appended group, existing-seed refusal on every surface), every DoD bullet now has hosted or source evidence.

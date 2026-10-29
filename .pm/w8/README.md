@@ -167,13 +167,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED (2026-10-15: t001–t003, t005, t006 done — backend and dashboard keep nonblank build/start/pre-deploy/cron/hook command text byte for byte (whitespace-only still clears) with failing-first REST/GraphQL/MCP/Blueprint/dashboard regressions; upstream CLI patch + request-construction regressions prepared in `blocked/m68/evidence/t001-upstream/upstream-command-text.patch`. Needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the deployed fix for the hosted two-client `7461696c20` replay with cleanup (t004/t007))** Sweep299:41 focused source passes; live API pre-deploy still executes the shortened argument, both native readers confirm; own fixture cleaned.
 
-- [ ] **m67** — [Keep native live logs running after a transient disconnect](m67/README.md) — **READY（2026-10-29 用户决定；下一步：按 D2 实施不可重试关闭码（t002–t006），最后等 CLI 发布）**
+- [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-29: t001–t006 done — Render CLI v2.29.0 adopted, refused tails close with 4000, hosted candidate checks pass: tail resumes exactly once, finished build tail exits 1 once, `networkPolicy.type` accepted. Needs the next `bex-cli/v*` release (user-run `/release cli`), then t007 re-runs the three checks on the published binary)**
 
 - [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](done/m78/README.md).
 
 - [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
 
-- [ ] **m64** — [Keep Blueprint environment copies consistent across applies](m64/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **m64** — [Keep Blueprint environment copies consistent across applies](done/m64/README.md) — **DONE 2026-10-29** (Blueprint copies consistent; dashboard Validate scoped, on production)
 
 - [x] **m63** — [Keep completed initial hooks out of later deploys](done/m63/README.md) — **DONE 2026-10-29** (hosted hook/regular counts accepted on pin b33dd43c4428)
 
