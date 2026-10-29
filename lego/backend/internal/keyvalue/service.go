@@ -903,7 +903,7 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAll
 // entries written without descriptions clear any stored ones. Every entry's
 // CIDR must be valid (a bad one is a 400 before any write). A nonempty list
 // enables external access for its sources; an empty list disables external
-// access. Only a store's first enable restarts it (requireRestartConfirmation).
+// access. Only an older store's first enable restarts it (requireRestartConfirmation).
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (KeyValueView, error) {
 	// Routed through the shared patch so this dedicated route cannot drift from
 	// PATCH /v1/key-value/{id}: before w4/m116 it wrote Spec.IPAllowList itself
@@ -1075,13 +1075,14 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 }
 
 // externalAccessRestarts reports whether turning external access on would
-// restart the running store: it has never run the TLS listener external access
-// is served on. Once it has, the operator keeps the listener and toggling
-// access restarts nothing; a suspended store has no process to restart
-// (w4/m233). Where BEX_KV_DOMAIN is unset no listener is ever added, so this
-// over-reports on such clusters.
+// restart the running store: an older store whose pod template has never run
+// the TLS listener external access is served on. A store that switches its
+// listener at runtime never restarts for it (w8/m134); an older store that has
+// run it keeps it, so toggling access restarts nothing; a suspended store has
+// no process to restart (w4/m233). Where BEX_KV_DOMAIN is unset no listener is
+// ever added, so this over-reports on such clusters.
 func externalAccessRestarts(kv *appv1alpha1.KeyValue) bool {
-	return !kv.Spec.Public && !kv.Status.TLSListener && !kv.Spec.Suspended
+	return !kv.Spec.Public && !kv.Status.TLSListener && !kv.Status.TLSRuntimeSwitch && !kv.Spec.Suspended
 }
 
 // requireRestartConfirmation refuses the first enable of external access on a

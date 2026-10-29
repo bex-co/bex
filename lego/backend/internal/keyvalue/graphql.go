@@ -46,7 +46,8 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"externalHost":     gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
 		"public":           gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
 		// externalAccessRestarts: turning external access on would restart the
-		// store (its first enable, w4/m233). bex extension.
+		// store (an older store's first enable, w4/m233; a store that switches TLS
+		// at runtime never restarts for it, w8/m134). bex extension.
 		"externalAccessRestarts": gqlutil.BoolField(func(v KeyValueView) any { return v.ExternalAccessRestarts }),
 		"ipAllowList":            gqlutil.StrsField(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) }),
 		"ipAllowListEntries":     gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),
