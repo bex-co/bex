@@ -7,6 +7,21 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import { PushNotificationSettingsPanel } from "@/features/notifications/components/push-notification-settings-panel";
+
+// The panel guards unsaved push edits with the router's blocker (w4/435). The
+// suite renders without a router, so capture the latest blocker options.
+const blocker = vi.hoisted(() => ({
+  options: null as null | {
+    shouldBlockFn: () => boolean;
+    enableBeforeUnload: boolean;
+  },
+}));
+vi.mock("@tanstack/react-router", () => ({
+  useBlocker: (options: typeof blocker.options) => {
+    blocker.options = options;
+    return { status: "idle" };
+  },
+}));
 import {
   publishedPushEvents,
   type PushEventUrgencies,
@@ -133,6 +148,8 @@ describe("PushNotificationSettingsPanel", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Push delivery is not configured",
     );
+    // An edit arms Save (w4/435); the missing provider never disables it.
+    await user.click(screen.getByText("Deploy failed"));
     await user.click(
       screen.getByRole("button", { name: "Save push settings" }),
     );
@@ -152,6 +169,27 @@ describe("PushNotificationSettingsPanel", () => {
 
     expect(update).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("valid IANA timezone");
+  });
+
+  it("arms Save, the hint and the navigation guard only while push edits are unsaved (w4/435)", async () => {
+    const user = userEvent.setup();
+    render(<PushNotificationSettingsPanel />);
+    const save = screen.getByRole("button", { name: "Save push settings" });
+
+    expect(save).toBeDisabled();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(blocker.options?.shouldBlockFn()).toBe(false);
+    expect(blocker.options?.enableBeforeUnload).toBe(false);
+
+    await user.click(screen.getByText("Deploy failed"));
+    expect(save).toBeEnabled();
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(blocker.options?.shouldBlockFn()).toBe(true);
+    expect(blocker.options?.enableBeforeUnload).toBe(true);
+
+    await user.click(screen.getByText("Deploy failed"));
+    expect(save).toBeDisabled();
+    expect(blocker.options?.shouldBlockFn()).toBe(false);
   });
 
   it("preserves returned closed events while editing another filter", async () => {
@@ -182,6 +220,8 @@ describe("PushNotificationSettingsPanel", () => {
         name: "Override with an exact event list",
       }),
     ).toBeChecked();
+    // Edit an unrelated workspace filter so Save is armed (w4/435).
+    await user.click(screen.getAllByText("Deploy failed")[0]);
     await user.click(
       screen.getByRole("button", { name: "Save push settings" }),
     );
