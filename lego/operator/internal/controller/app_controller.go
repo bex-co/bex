@@ -2495,6 +2495,17 @@ func maintenanceEnabled(app *appv1alpha1.App) bool {
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
+	result, err := r.reconcileKubernetesRuntime(ctx, app, image, port)
+	// Workspace Secrets bypass the manager's cache. Bound the next observation
+	// even for direct-published static sites and sleeping services without pod
+	// events, so issuance/deletion updates the certificate order within 30s.
+	if err == nil && len(effectiveHosts(app, r.BaseDomain)) > 1 {
+		result.RequeueAfter = soonerRequeue(result.RequeueAfter, childHealthRequeue)
+	}
+	return result, err
+}
+
+func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	r.routeFirstDeploy(ctx, app)
 	if res, halted := r.deployRegistryGate(ctx, app, image); halted {
 		return res, nil
@@ -3892,6 +3903,9 @@ func (r *AppReconciler) applyAppIngress(ctx context.Context, app *appv1alpha1.Ap
 			}
 			appendIngressHostRoute(ing, app.Name, host, i, svc, port)
 		}
+		if err := r.prioritizeIngressTLS(ctx, ing); err != nil {
+			return err
+		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	})
 	return err
@@ -4026,6 +4040,9 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 		ing.Labels = map[string]string{labelHostRedirectOwner: app.Name}
 		for _, source := range sources {
 			appendIngressHostRoute(ing, app.Name, source, slices.Index(hosts, source), svc, port)
+		}
+		if err := r.prioritizeIngressTLS(ctx, ing); err != nil {
+			return err
 		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	}); err != nil {

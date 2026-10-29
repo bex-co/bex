@@ -1,24 +1,25 @@
 # w8 · m118 — Redirect tenant HTTP to HTTPS
 
-**Worker:** worker8 **Goal:** A plain-HTTP request to any tenant web host (platform subdomain or custom domain) is redirected permanently to the same `https://` URL, as on Render, so credentials and cookies never travel in cleartext and apps only ever see `x-forwarded-proto: https`. **Status:** blocked — t001–t004 done 2026-10-18; t005 live check on production after the release pipeline deploys the operator
+**Worker:** worker8 **Goal:** A plain-HTTP request to any tenant web host (platform subdomain or custom domain) is redirected permanently to the same `https://` URL, as on Render, so credentials and cookies never travel in cleartext and apps only ever see `x-forwarded-proto: https`. **Status:** blocked — t001, t006, t002, t003, t004 done; t005 needs production operator rollout and the owned Cloudflare replay; the user authorized shipping on 2026-10-28. Implementation and local verification completed 2026-10-28.
 
 ## Tasks (in order)
 
-| id   | title                                                        | est | depends_on   |
-| ---- | ------------------------------------------------------------ | --- | ------------ |
-| t001 — **DONE** | Redirect the App Ingress's HTTP router to HTTPS              | 90m | —            |
-| t002 — **DONE** | Render parity: redirect contract across hosts and surfaces   | 20m | w8/m118/t001 |
-| t003 — **DONE** | Simplify the changed code                                    | 15m | w8/m118/t002 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 — **DONE** | Redirect the App Ingress's HTTP router to HTTPS | 90m | — |
+| t006 — **DONE** | Keep a missing platform TLS Secret from breaking a valid custom domain | 90m | w8/m118/t001 |
+| t002 — **DONE** | Render parity: redirect contract across hosts and surfaces | 20m | w8/m118/t006 |
+| t003 — **DONE** | Simplify the changed code | 15m | w8/m118/t002 |
 | t004 — **DONE** | Test coverage: redirect, exclusions, attribution, ACME paths | 40m | w8/m118/t002 |
-| t005 | Close out the milestone                                      | 15m | w8/m118/t004 |
+| t005 | Close out the milestone | 15m | w8/m118/t004 |
 
-Five tasks, 180m.
+Six tasks, 270m. All implementation and standing verification tasks are complete; t005 remains a production closeout.
 
 ## Definition of done
 
 - `curl -sI http://<slug>.onbex.co/x?y=1` on production returns a permanent 3xx whose `Location` is `https://<slug>.onbex.co/x?y=1`. The same holds for a verified custom domain and for a static site.
 - HTTPS behavior is unchanged: the same response bodies, the `websecure-` router carries the bytes (w1/m51), and an IP allow-list still refuses with 403.
-- cert-manager HTTP-01 issuance for a new custom domain still succeeds, because the solver's own Ingress is not redirected.
+- cert-manager HTTP-01 issuance for a new custom domain still succeeds, because the solver's own Ingress is not redirected. With the platform subdomain enabled, a missing platform-host TLS Secret does not prevent that ready custom certificate from serving trusted HTTPS.
 - `BEX_HTTPS_REDIRECT=false` keeps a cluster without certificates serving plain HTTP.
 
 ## Source + Goal linkage
@@ -44,3 +45,15 @@ A `/qa-find-bugs w4` pass ran t005's owned-fixture checks on production, pinned 
 | Same, `GET http://…/x?y=1` | `301` to `https://…/x?y=1`, and following it gives `403`: the redirect runs before the allow-list, and nothing beyond the hostname is disclosed |
 
 Not covered: the custom-domain bullet and HTTP-01 issuance (no domain this run controls), and `BEX_HTTPS_REDIRECT=false` (cluster config). No `Strict-Transport-Security` header is sent on HTTPS; the DoD does not ask for one.
+
+## Cloudflare unblock investigation — 2026-10-27 UTC
+
+The user's existing `cf` CLI provides DNS access. [The owned live test](evidence/cf-20261027/README.md) completed HTTP-01 issuance and passed custom-only redirect/HTTPS/403 controls, but exposed a default mixed-host TLS failure: the missing rate-limited `onbex.co` Secret stops Traefik from loading the ready custom certificate. t006 is the next actionable task; no external access or policy decision is outstanding. All test resources and DNS were deleted, with physical cluster cleanup and session revocation verified. This test does not close the milestone.
+
+## TLS fix prepared — 2026-10-28
+
+The missing-Secret loading failure is fixed in the working tree. [Pinned provider verification](evidence/provider-20261028/README.md) reproduces the old failure, then passes trusted HTTPS and redirect checks for both missing-platform and missing-custom neighbors. Issuance/deletion, incomplete Secrets, direct static sites, sleeping services and namespace-safe reads have regression coverage. Full operator tests and all-module lint/deadcode passed. The disposable test cluster was deleted. No production operator deployment or commit occurred; t005 is the only remaining task.
+
+## Ship authorization — 2026-10-28
+
+The user explicitly requested `ship`, clearing the commit/push gate. The prepared fix is being landed through the ship workflow. The remaining owner is the release pipeline for the production operator rollout, followed by QA for t005's owned Cloudflare replay and cleanup. No production acceptance is claimed by the ship.
