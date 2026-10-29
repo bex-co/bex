@@ -420,6 +420,14 @@ So a cx33 fits one build with **~297 MiB** spare, a cx43 fits two with **~1.0 Gi
 
 That margin is thin enough to erode silently: if a DaemonSet request grows, another DaemonSet gains the build toleration, or the build request rises, a cx33 stops fitting and **cluster-autoscaler declines to scale up without emitting an error**. `scripts/clusterapi-validate.sh` therefore computes the floor — build request (read from `build.go`, never a copied literal) + the summed requests of every repository-declared DaemonSet that tolerates the build taint + the off-repo sidecar — and fails closed if any build pool's hint drops below it, if the hint ever exceeds measured allocatable, or if a build pool appears on a server type whose allocatable is not recorded here. `scripts/clusterapi-validate.test.sh` proves it red in each of those directions.
 
+### Addendum (w8/m129, 2026-10-29) — builds that migrate their own database
+
+Render's free-plan recipe runs `migrate` at the end of the build command, so a build now depends on a datastore. Three effects on the build plane:
+
+- **Inputs.** `fromDatabase` and Key Value `fromService` variables (`spec.env` `SecretKeyRef`) join the App-owned merged env Secret that native and Dockerfile builds already mount. They feed the native cache revision like any other env byte, so a rotated password re-runs the env-dependent `RUN`. They never appear in the Job spec. kpack is unchanged (w1/121).
+- **Admission.** Before dispatch, a build whose linked database is still `Pending`/`Provisioning`, or whose connection Secret does not exist yet, reports `BuildQueued` and requeues every 10 s instead of failing. As with any queued wait (D6), the control plane's build budget restarts on the queued→building edge.
+- **Network.** While the build runs, two operator-owned NetworkPolicies let only this App's build pods reach datastore ports in their own workspace namespace. They are converged at dispatch and removed at the terminal observation ([ADR022 § Build reach](ADR022-tenant-isolation.md#build-reach-to-the-owning-workspaces-datastores-w8m129-2026-10-29)). A build that migrates is no longer hermetic: a retried build (D2) re-runs the tenant's migration, which Render's recipe already requires to be idempotent.
+
 ## Alternatives rejected
 
 - **A persistent shared buildkitd pool now (the Railway/Depot model).** It is the demonstrated end-state for build speed, but it makes a daemon's filesystem a cross-tenant trust boundary (rejected in ADR034 and still true), and long-lived buildkitd has real operational sharp edges (documented memory retention until OOM after hours of builds, GC disk-accounting drift, cache-lock races under concurrent clients) that demand a cell-recycling discipline we have no need to build at current volume. The registry cache (D3) captures most of the win with none of the trust-boundary change; per-workspace persistent cache volumes are the intermediate step if D3's hit rate proves insufficient.

@@ -971,6 +971,10 @@ func (r *AppReconciler) dispatchRuntime(ctx context.Context, app *appv1alpha1.Ap
 // cheap and frees the reconcile worker between reads.
 const buildObserveRequeue = 5 * time.Second
 
+// buildDatastoreWaitRequeue paces a build held for a linked datastore that is
+// still being created (w8/m129).
+const buildDatastoreWaitRequeue = 10 * time.Second
+
 // buildFromSource resolves the image for a repo-backed App by dispatching an
 // in-cluster build and OBSERVING it without blocking (ADR060 §D1): one
 // create-if-absent + one read per reconcile, requeuing while the build runs.
@@ -1075,32 +1079,13 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
-	var inputs buildInputs
-	buildLiterals := buildEnv(builder, app.Spec.Env)
-	switch builder {
-	case build.BuilderBuildpack:
-		projected, err := r.projectBuildpackBuildEnv(ctx, app, buildLiterals)
-		if err != nil {
-			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
-		}
-		buildLiterals = projected
-	default:
-		// Native builds and Dockerfile builds (including "auto", which builds
-		// the repo's Dockerfile) both receive the merged env and secret files:
-		// a Dockerfile build as build args and Render-id build secrets, as on
-		// Render (w1/m178). Its literals reach BuildKit directly, so they need
-		// no Secret, and only native builds use the cache revision they feed.
-		// Render's build-time platform variables ride along (w5/m148); the
-		// commit is added in the build pod, the only place that knows it.
-		buildLiterals = withBuildPlatformEnv(buildLiterals, app, r.BaseDomain)
-		projectLiterals := buildLiterals
-		if builder != build.BuilderNative {
-			projectLiterals = nil
-		}
-		var err error
-		if inputs, err = r.projectBuildInputs(ctx, app, buildNs, projectLiterals); err != nil {
-			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
-		}
+	buildLiterals, inputs, wait, err := r.prepareSourceBuildEnv(ctx, app, buildNs, builder)
+	if err != nil {
+		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
+	}
+	if wait != "" {
+		r.setBuildingPhase(ctx, app, reasonBuildQueued, wait)
+		return halt(ctrl.Result{RequeueAfter: buildDatastoreWaitRequeue}, nil)
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
@@ -1178,6 +1163,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
 		}
 	}
+	r.endBuildDatastoreReach(ctx, app, buildNs, obs.Phase)
 	switch obs.Phase {
 	case build.PhaseSucceeded:
 		return r.storeBuiltArtifact(ctx, app, obs, buildNs, artifact)
@@ -1595,6 +1581,57 @@ func effectiveBuilder(spec appv1alpha1.AppSpec) string {
 	}
 }
 
+// prepareSourceBuildEnv assembles what a source build receives beside its
+// source: the literal env, the projected Secret inputs, and — for native and
+// Dockerfile builds — reach to the workspace's own datastores (w8/m129). A
+// non-empty wait holds the dispatch as BuildQueued: a linked datastore is still
+// being created, and the build's `migrate` must not run before it exists.
+func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs, builder string) ([]corev1.EnvVar, buildInputs, string, error) {
+	literals := buildEnv(builder, app.Spec.Env)
+	if builder == build.BuilderBuildpack {
+		projected, err := r.projectBuildpackBuildEnv(ctx, app, literals)
+		if err != nil {
+			return nil, buildInputs{}, "", err
+		}
+		// kpack cannot mount the env Secret (w1/121), so its build gets no
+		// datastore credentials and no datastore reach either.
+		return projected, buildInputs{}, "", r.reconcileBuildDatastoreReach(ctx, app, buildNs, false)
+	}
+	db, err := r.buildDatabasePending(ctx, app, buildEnvRefs(app))
+	if err != nil {
+		return nil, buildInputs{}, "", fmt.Errorf("checking linked databases: %w", err)
+	}
+	if db != "" {
+		return nil, buildInputs{}, "Waiting for linked database " + db + " to become available before building", nil
+	}
+	// Native builds and Dockerfile builds (including "auto", which builds the
+	// repo's Dockerfile) both receive the merged env and secret files: a
+	// Dockerfile build as build args and Render-id build secrets, as on Render
+	// (w1/m178). Its literals reach BuildKit directly, so they need no Secret,
+	// and only native builds use the cache revision they feed. Render's
+	// build-time platform variables ride along (w5/m148); the commit is added
+	// in the build pod, the only place that knows it.
+	literals = withBuildPlatformEnv(literals, app, r.BaseDomain)
+	projectLiterals := literals
+	if builder != build.BuilderNative {
+		projectLiterals = nil
+	}
+	inputs, err := r.projectBuildInputs(ctx, app, buildNs, projectLiterals)
+	if errors.Is(err, errBuildEnvRefPending) {
+		return nil, buildInputs{}, "Waiting for a linked datastore's connection details before building", nil
+	}
+	if err != nil {
+		return nil, buildInputs{}, "", err
+	}
+	// The build may reach its own workspace's datastores and nothing else
+	// (docs/ADR022-tenant-isolation.md § Build reach); revoked at the build's
+	// terminal observation in buildFromSource.
+	if err := r.reconcileBuildDatastoreReach(ctx, app, buildNs, true); err != nil {
+		return nil, buildInputs{}, "", err
+	}
+	return literals, inputs, "", nil
+}
+
 // relocateBuildSecret copies one App-namespace Secret next to the build Job
 // when the build runs in a different namespace. A missing name or a same-
 // namespace build is a no-op, so callers need no guard of their own. label
@@ -1665,7 +1702,12 @@ const (
 // just the same, and one counter keeps a single durable home for the native
 // cache key (w4/m163).
 //
-// No Secret sources, no build-relevant literals and no files => ("", "none")
+// spec.env SecretKeyRef entries (fromDatabase, Key Value fromService) are
+// resolved into the same Secret after the envFrom sources (readBuildEnvRefs,
+// w8/m129), so DATABASE_URL reaches a native or Dockerfile build through the
+// mount and never as a Job-spec literal.
+//
+// No Secret sources, no SecretKeyRef entries, no build-relevant literals and no files => ("", "none")
 // with no Secret written. Literals or files alone still mint the App-owned
 // Secret so the revision survives operator restarts. A missing group Secret
 // contributes nothing, but any other read failure — including the own Secret
@@ -1678,13 +1720,22 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 	// The preparer's own literal set, so the revision covers exactly what the
 	// native RUN exports.
 	literals = build.BuildLiterals(literals)
-	if len(sources) == 0 && len(literals) == 0 && len(files) == 0 {
+	refs := buildEnvRefs(app)
+	if len(sources) == 0 && len(literals) == 0 && len(refs) == 0 && len(files) == 0 {
 		return "", build.NativeEnvNoneRevision, nil
 	}
 	data, err := r.readBuildEnvSources(ctx, app, sources)
 	if err != nil {
 		return "", "", err
 	}
+	// fromDatabase/fromService values join the same Secret after the envFrom
+	// sources, as a container-level env entry overrides envFrom at runtime
+	// (w8/m129). They reach the build only through this mount.
+	refData, err := r.readBuildEnvRefs(ctx, app, refs)
+	if err != nil {
+		return "", "", err
+	}
+	maps.Copy(data, refData)
 	input := nativeEnvInputToken(string(app.UID), data, literals, files)
 	var revision string
 	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nativeEnvSecretName(app.Name), Namespace: buildNs}}
