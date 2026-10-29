@@ -80,3 +80,13 @@ The source evidence uses real feature methods with fake storage/Kubernetes; proc
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Hosted remaining-variant acceptance — 2026-10-29 (`/loopx w8`)
+
+Production pin `b33dd43c4428`, bex-canary, released Bex v0.3.3 and pinned Render v2.27.0 against Bex, human device-login QA grant. One nested Blueprint (`projects → environments → services`, consumer listed **before** its source) applied through `POST /v1/blueprints/deploy`: groups `-a` (`QA_G=LX8B_A`) and `-b` (`LX8B_B`), source `qa-20261029-lx8b-src` with a seed-only `QA_VALUE` (`value: LX8B_SEED, sync: false`) plus both group links, consumer `qa-20261029-lx8b-copy` copying `QA_VALUE` and `QA_G` via `fromService`.
+
+- **Fresh seed-only first creation, nested, consumer-first:** both native validators and GraphQL/MCP report valid; apply 200. Stored and runtime (echo `ECHO_INCLUDE_ENV_VARS`) env agree — source `QA_VALUE=LX8B_SEED`, `QA_G=LX8B_B`; consumer `QA_COPY=LX8B_SEED`, `QA_GCOPY=LX8B_B`.
+- **Existing seed-only source refusal:** reapplying with a new group still copying the seeded `QA_VALUE` is refused before any write by both native clients, MCP with `workspaceId`, GraphQL with `ownerId` and REST apply (HTTP 400), all locating `projects[0].environments[0].services[0].envVars[1]` (line 28, column 9).
+- **New group appended:** without the seed copy, group `-c` (`LX8B_C`) appended last → source runtime `QA_G=LX8B_C`, consumer stored and runtime `QA_GCOPY=LX8B_C`.
+- **Defect found and fixed:** the dashboard Blueprint page's **Validate** panel sent `validateBlueprint(bexYaml)` with neither `ownerId` nor `blueprintId`, so it validated in the caller's default workspace and reported the refused manifest above as valid. `ValidatePanel` now passes the Blueprint's id (server scopes to that Blueprint's own workspace, as `blueprintPreview` already does); regression `use-validate-blueprint.test.ts`. Live re-check of the panel waits for this fix's deploy.
+- Cleanup: both services (API 404), three groups (204 → 404), project `prj-dbhftvtlp6pc7389fj90` and environment (404). No Blueprint record was created by the inline apply.

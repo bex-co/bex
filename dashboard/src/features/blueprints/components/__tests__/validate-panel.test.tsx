@@ -25,7 +25,9 @@ beforeEach(() => {
 
 describe("ValidatePanel", () => {
   it("shows the validate button and no result before running", () => {
-    render(<ValidatePanel manifest="services:\n  - name: api" />);
+    render(
+      <ValidatePanel blueprintId="blp-1" manifest="services:\n  - name: api" />,
+    );
     expect(
       screen.getByRole("button", { name: /run validate/i }),
     ).toBeInTheDocument();
@@ -39,7 +41,9 @@ describe("ValidatePanel", () => {
       return validateState.result;
     });
 
-    render(<ValidatePanel manifest="services:\n  - name: api" />);
+    render(
+      <ValidatePanel blueprintId="blp-1" manifest="services:\n  - name: api" />,
+    );
     await userEvent.click(
       screen.getByRole("button", { name: /run validate/i }),
     );
@@ -61,7 +65,7 @@ describe("ValidatePanel", () => {
       return validateState.result;
     });
 
-    render(<ValidatePanel manifest="bad yaml" />);
+    render(<ValidatePanel blueprintId="blp-1" manifest="bad yaml" />);
     await userEvent.click(
       screen.getByRole("button", { name: /run validate/i }),
     );
@@ -85,7 +89,7 @@ describe("ValidatePanel", () => {
   });
 
   it("disables the button when manifest is empty", () => {
-    render(<ValidatePanel manifest="" />);
+    render(<ValidatePanel blueprintId="blp-1" manifest="" />);
     expect(
       screen.getByRole("button", { name: /run validate/i }),
     ).toBeDisabled();
@@ -117,7 +121,9 @@ describe("ValidatePanel", () => {
       return validateState.result;
     });
 
-    render(<ValidatePanel manifest="services:\n  - name: api" />);
+    render(
+      <ValidatePanel blueprintId="blp-1" manifest="services:\n  - name: api" />,
+    );
     await userEvent.click(
       screen.getByRole("button", { name: /run validate/i }),
     );

@@ -599,7 +599,10 @@ export function BlueprintDetailPage() {
                 </CardContent>
               </Card>
 
-              <ValidatePanel manifest={blueprint.manifest} />
+              <ValidatePanel
+                manifest={blueprint.manifest}
+                blueprintId={blueprintId}
+              />
             </>
           ) : (
             <BlueprintDetailContentSkeleton />
