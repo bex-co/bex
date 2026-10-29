@@ -1,6 +1,6 @@
 # w4 · m211 — Keep batched hosting changes inside one response budget
 
-**Worker:** worker4 **Goal:** a hosting move sent as a GraphQL batch returns readable per-operation outcomes before the HTTP response deadline; a batch that has exhausted its budget starts no later operation. **Status:** blocked — t001–t006 done 2026-10-15; t007 needs the release pipeline and the live replay
+**Worker:** worker4 **Goal:** a hosting move sent as a GraphQL batch returns readable per-operation outcomes before the HTTP response deadline; a batch that has exhausted its budget starts no later operation. **Status:** done 2026-10-29 — live DoD replayed on pin `41924a54b377`: the batched service + group move answers readable per-operation success in both directions at 1440 and 390 after the `1ead2926d` store-backed scope fix, placement only (loopx w4).
 
 ## Tasks (in order)
 
