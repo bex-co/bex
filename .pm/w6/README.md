@@ -194,7 +194,10 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](098.md) — filed 2026-10-29 from w6/m153 t004.
+- [ ] **097** — **BLOCKED (user decision: build Render early-access object storage as a milestone, or record a signed ADR018 divergence with a plain "not offered" answer)** — [`bex ea objects` returns 404 in every region](blocked/097.md) — triaged 2026-10-29.
+- [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
+- [ ] **096** — [SSH gateway exec at ~43 KB/s and drops a quiet session](096.md) — output-tail truncation found and fixed 2026-10-29 (`e934c2842`); live re-check after deploy, idle cut and throughput gap open.
+- [ ] **095** — [A private service from a prebuilt image publishes only $PORT](095.md) — fixed 2026-10-29 (`d65c5638f`); live ClickHouse check after deploy.
 - [x] **087** — [Deploys starve under steady manifest-touching pushes](done/087.md) — closed 2026-10-29 by user decision: no recurrence since 10-22 (~35 pins, max ~12.5h wait on a red main); reopen as a new note if a green-main deploy waits >12h on supersession.
 - [x] **076** — [A deploy made while a free service sleeps never runs, then closes update_failed with the generic health-gate line](done/076.md) — done 2026-10-04; a deploy wakes an auto-hibernated free service once per release (`wakeForRelease`), so the release rolls and the row closes with its real outcome.
 - [x] **075** — [Honor Render region filters on Postgres and Key Value lists](done/075.md) — done 2026-10-02; literal placement filtering before pagination, repeated-value enum validation, and handler/composed regressions verified.
