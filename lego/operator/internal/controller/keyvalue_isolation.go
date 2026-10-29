@@ -20,7 +20,6 @@ import (
 	"context"
 	"maps"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,12 +50,13 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 	}
 }
 
-// holdIsolationLabel sets the isolation label on sts's pod template to want,
-// unless sts already existed, its template is otherwise unchanged from before,
+// holdIsolationLabel sets the isolation label on tmpl to want, unless its
+// workload already existed, the template is otherwise unchanged from before,
 // and the label differs: then the existing template value stays so the pods are
-// not rolled.
-func holdIsolationLabel(sts *appsv1.StatefulSet, before *corev1.PodTemplateSpec, want string) {
-	labels := maps.Clone(sts.Spec.Template.Labels)
+// not rolled. The Valkey StatefulSet and its internal proxy Deployment both
+// follow it; their running pods are relabelled in place instead.
+func holdIsolationLabel(tmpl *corev1.PodTemplateSpec, existed bool, before *corev1.PodTemplateSpec, want string) {
+	labels := maps.Clone(tmpl.Labels)
 	if labels == nil {
 		labels = map[string]string{}
 	}
@@ -66,13 +66,13 @@ func holdIsolationLabel(sts *appsv1.StatefulSet, before *corev1.PodTemplateSpec,
 		} else {
 			labels[labelNetworkIsolation] = v
 		}
-		sts.Spec.Template.Labels = labels
+		tmpl.Labels = labels
 	}
 	set(want)
-	if sts.CreationTimestamp.IsZero() || before.Labels[labelNetworkIsolation] == want {
+	if !existed || before.Labels[labelNetworkIsolation] == want {
 		return
 	}
-	if templateEqualIgnoringIsolation(before, &sts.Spec.Template) {
+	if templateEqualIgnoringIsolation(before, tmpl) {
 		set(before.Labels[labelNetworkIsolation])
 	}
 }
@@ -86,18 +86,33 @@ func templateEqualIgnoringIsolation(a, b *corev1.PodTemplateSpec) bool {
 	return equality.Semantic.DeepEqual(strip(a), strip(b))
 }
 
-// syncKeyValuePodIsolation relabels the store's running StatefulSet pods to the
-// isolation the CR carries. Patching metadata does not restart a pod.
+// syncKeyValuePodIsolation relabels the store's running StatefulSet pods and its
+// internal proxy's pods to the isolation the CR carries. Patching metadata does
+// not restart a pod, so same-environment clients keep their path through an
+// isolation toggle (w8/220).
 func (r *KeyValueReconciler) syncKeyValuePodIsolation(ctx context.Context, kv *appv1alpha1.KeyValue) error {
+	if err := r.relabelIsolation(ctx, kv, client.MatchingLabels{labelKeyValue: kv.Name}, func(owner *metav1.OwnerReference) bool {
+		return owner.Kind == "StatefulSet" && owner.Name == kv.Name
+	}); err != nil {
+		return err
+	}
+	// Proxy pods belong to the Deployment's ReplicaSets, which select them by the
+	// proxy label (never the isolation label), so a relabel keeps them owned.
+	return r.relabelIsolation(ctx, kv, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, func(owner *metav1.OwnerReference) bool {
+		return owner.Kind == "ReplicaSet"
+	})
+}
+
+func (r *KeyValueReconciler) relabelIsolation(ctx context.Context, kv *appv1alpha1.KeyValue, selector client.MatchingLabels, owned func(*metav1.OwnerReference) bool) error {
 	want := kv.Labels[labelNetworkIsolation]
 	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), client.MatchingLabels{labelKeyValue: kv.Name}); err != nil {
+	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), selector); err != nil {
 		return err
 	}
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		owner := metav1.GetControllerOf(pod)
-		if owner == nil || owner.Kind != "StatefulSet" || owner.Name != kv.Name || !pod.DeletionTimestamp.IsZero() {
+		if owner == nil || !owned(owner) || !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
 		if pod.Labels[labelNetworkIsolation] == want {

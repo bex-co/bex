@@ -403,7 +403,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](220.md) — found by the m136 live check 2026-10-29
+- [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
 - [ ] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](219.md) — found by the m133 live check 2026-10-29
 

@@ -64,6 +64,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 	}
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
+		before := dep.Spec.Template.DeepCopy()
 		replicas := int32(1)
 		if kv.Spec.Suspended {
 			replicas = 0
@@ -104,6 +105,9 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		}}
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 		applyPodSpecServerDefaults(&dep.Spec.Template.Spec)
+		// An isolation toggle alone must not roll the one proxy replica: its pods
+		// are relabelled in place (syncKeyValuePodIsolation, w8/220).
+		holdIsolationLabel(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before, kv.Labels[labelNetworkIsolation])
 		return controllerutil.SetControllerReference(kv, dep, r.Scheme)
 	}); err != nil {
 		return false, err

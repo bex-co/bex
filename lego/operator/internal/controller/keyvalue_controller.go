@@ -902,7 +902,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 		sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, sourceMode)}
 	}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
-	holdIsolationLabel(sts, before, kv.Labels[labelNetworkIsolation])
+	holdIsolationLabel(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before, kv.Labels[labelNetworkIsolation])
 }
 
 // applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto
