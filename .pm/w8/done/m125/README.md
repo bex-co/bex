@@ -1,6 +1,6 @@
 # w8 · m125 — Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs
 
-**Worker:** worker8 **Goal:** Every request to a web service or static site carries an edge-minted `Rndr-Id`. The app receives it, the client gets it back, and the request log entry shows the same value as `requestID`. An app that logs the header can find a request's whole history with `--text <id>`, as Render's logging guide describes. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t006 done 2026-10-20; t007 live check on production after GitOps syncs Traefik and the release pipeline deploys bex-api
+**Worker:** worker8 **Goal:** Every request to a web service or static site carries an edge-minted `Rndr-Id`. The app receives it, the client gets it back, and the request log entry shows the same value as `requestID`. An app that logs the header can find a request's whole history with `--text <id>`, as Render's logging guide describes. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: request correlation in ADR018/ADR010                        | 15m | w8/m125/t003               |
 | t005 — **DONE** | Simplify the changed code                                                  | 15m | w8/m125/t004               |
 | t006 — **DONE** | Test coverage: minted, overwritten, logged and surfaced                    | 30m | w8/m125/t004               |
-| t007 | Close out the milestone                                                    | 30m | w8/m125/t005, w8/m125/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m125/t005, w8/m125/t006 |
 
 ## Definition of done
 
@@ -24,8 +24,8 @@ Live on production after GitOps syncs Traefik and the release pipeline deploys b
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note `w8/148` on 2026-10-20 (`/qa-find-bugs-cli` sweeps 1241 and 1254, [evidence](../evidence/cli-sweep1254/README.md)). The note's text is kept in [`done/148.md`](../done/148.md).
-- **Goal linkage:** [ADR018](../../../docs/ADR018-render-parity.md) logs rows and [ADR010](../../../docs/ADR010-observability.md). render.com/docs/logging documents `Rndr-Id` and `requestID` as the request correlation contract.
+- **Source:** promoted from inbox note `w8/148` on 2026-10-20 (`/qa-find-bugs-cli` sweeps 1241 and 1254, [evidence](../../evidence/cli-sweep1254/README.md)). The note's text is kept in [`done/148.md`](../done/148.md).
+- **Goal linkage:** [ADR018](../../../../docs/ADR018-render-parity.md) logs rows and [ADR010](../../../../docs/ADR010-observability.md). render.com/docs/logging documents `Rndr-Id` and `requestID` as the request correlation contract.
 - **Expected outcome:** migrated apps that log `Rndr-Id` keep working, and support can trace one request through edge and app logs.
 - **Why now:** it builds directly on w8/m123's edge plugin, which every request already passes through.
 
@@ -46,3 +46,13 @@ Live on production after GitOps syncs Traefik and the release pipeline deploys b
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Owned replay on production (pin `479bd3fe243b`), bex-canary, fixture tag `lx9c`: Free web service `srv-dbhhbuqv8vqc73fvn5o0` (`python:3.12-alpine` header-echo server that also logs `rndr-id=<value>`) and Free static site `srv-dbhhbtav8vqc73fvn5k0` (`mdn/beginner-html-site`).
+
+- **Web service:** plain GETs returned `rndr-id` response headers, and the app received the same value each time. A request sending `Rndr-Id: forged-lx9c-123` got a freshly minted `4587130b-fb1e-4ca9-bc27-b09d906e1557` back, and the app received that minted value. `bex logs -r <id> --text 4587130b-…` returned the request line (label `requestID` and `request_/origin_/downstream_Rndr-Id` all equal) and the app's own line; `--text forged-lx9c` returned nothing on either fixture.
+- **Static site:** plain and forged requests got fresh `rndr-id` values; `--text <id>` found the request line with that `requestID`.
+- **`--type request -o json`:** refused on Hobby bex-canary (`HTTP request logs require the Pro plan or higher`, w8/m138); a read-only `--type request -o json --limit 2` on a pre-existing standard service in the `bex` workspace shows `requestID` equal to `request_Rndr-Id` on every entry.
+- Not re-run: GraphQL `requestId`, MCP and the dashboard request row (outside the DoD; t003/t006 tests). Note for w8/m138 t012: on Hobby the default all-types `--text` search still returns request lines; once t012 lands, this check needs a Pro workspace.
+- Cleanup: both fixtures deleted by ID, `GET` → 404.
