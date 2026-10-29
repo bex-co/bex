@@ -180,6 +180,7 @@ const link = new ApolloLink(
               notificationsToSend: "default",
               renderSubdomainPolicy: null,
               port: 0,
+              configuredPort: 0,
               openPorts: null,
               imagePorts: false,
               healthCheckPath: "",

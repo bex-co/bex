@@ -68,3 +68,15 @@ export function openPortsDisplay(s: PortFacts): OpenPortsDisplay {
 export function publishesImagePorts(s: PortFacts): boolean {
   return openPortsDisplay(s).kind !== "none";
 }
+
+/**
+ * The port the Settings row shows: the saved one. bex-api's `port` moves to a
+ * configured image port only once the deploy promotes it, so reading `port`
+ * snapped the field back to the old value after Save (w4/433).
+ */
+export function settingsPort(s: {
+  port?: number | null;
+  configuredPort?: number | null;
+}): number | null | undefined {
+  return s.configuredPort ?? s.port;
+}

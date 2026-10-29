@@ -59,6 +59,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     renderSubdomainPolicy: null,
     healthCheckPath: null,
     port: 3000,
+    configuredPort: 3000,
     openPorts: null,
     imagePorts: false,
     maxShutdownDelaySeconds: null,

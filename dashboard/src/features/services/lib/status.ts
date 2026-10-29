@@ -106,6 +106,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     // 0 is the backend's "this type binds no port" reading, not a real port —
     // project it to null so the Settings control never shows a bogus 0.
     port: "port" in s ? s.port || null : null,
+    configuredPort: "configuredPort" in s ? s.configuredPort || null : null,
     openPorts: "openPorts" in s ? toOpenPorts(s.openPorts) : null,
     imagePorts: "imagePorts" in s ? s.imagePorts === true : undefined,
     maxShutdownDelaySeconds:
