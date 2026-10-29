@@ -1,6 +1,6 @@
 # w4 · m205 — Keep overlapping file uploads unique
 
-**Worker:** worker4 **Goal:** overlapping secret-file selections produce a saveable draft with unique filenames and an honest skipped-duplicate notice **Status:** blocked (release pipeline deploys the dashboard; then QA replays the DoD for t006). t001–t005 done.
+**Worker:** worker4 **Goal:** overlapping secret-file selections produce a saveable draft with unique filenames and an honest skipped-duplicate notice **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: an overlapping duplicate-name selection after a 64-file batch is skipped, leaving 64 unique names with Save enabled, at 1440 and 390; the single-file save stores exact content with no rollout (loopx w4).
 
 ## Tasks (in order)
 
