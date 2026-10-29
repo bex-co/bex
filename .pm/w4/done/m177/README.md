@@ -1,6 +1,6 @@
 # w4 · m177 — Report container startup failures as startup failures
 
-**Worker:** worker4 **Goal:** a tenant whose container cannot execute its startup program can identify the missing executable from the deploy page and APIs without production Kubernetes access. **Status:** blocked
+**Worker:** worker4 **Goal:** a tenant whose container cannot execute its startup program can identify the missing executable from the deploy page and APIs without production Kubernetes access. **Status:** done 2026-10-29 — superseded on pin `c9ccd73df050`: since `7866fb3ee` runs a Docker Command the way Render does, the shell-less whoami with `/whoami -port 3000` starts and serves 200, so the startup failure this milestone diagnosed no longer occurs (loopx w4).
 
 ## Tasks (in order)
 
