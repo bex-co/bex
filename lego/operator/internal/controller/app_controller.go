@@ -2652,6 +2652,19 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 	}, restore); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
+	// The k8s core Service (ClusterIP) that fronts the App's pods, and the one
+	// the public Ingress routes to. It converges before reportDeploymentStarting
+	// can halt the pass: during a web image's HTTP port discovery every pass
+	// halts there, and a Service left unpinned while a port change rolls
+	// selected the ready candidate on the serving port, which it does not
+	// listen on (502s, w8/m142 t006). The slug Service already converges first
+	// (convergeSharedChildren), so both pin the serving revision together. A
+	// worker has no Service.
+	if !worker {
+		if err := r.applyClusterIPService(ctx, app, app.Name, port); err != nil {
+			return r.fail(ctx, app, "ServiceFailed", err)
+		}
+	}
 	if res, halt, err := r.reportDeploymentStarting(ctx, app, dep, image, port, plan.deploying()); halt {
 		return res, err
 	}
@@ -2671,11 +2684,6 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 			return r.holdFailedFirstRelease(ctx, app)
 		}
 		return r.reconcileWorkerStatus(ctx, app, image, dep, replicas)
-	}
-
-	// the k8s core Service (ClusterIP) that fronts the App's pods
-	if err := r.applyClusterIPService(ctx, app, app.Name, port); err != nil {
-		return r.fail(ctx, app, "ServiceFailed", err)
 	}
 
 	// Optional external exposure: when any host resolves (spec.host, the computed
