@@ -113,6 +113,15 @@ var rubyDefaultCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
 
 const rubyDefaultVersion = "3.4.4"
 
+// pythonDefaultVersion: Render's default Python for services created since
+// 2026-10-12 is exactly 3.14.8, not the newest 3.14 patch (w8/217). It applies
+// from pythonCreationCutoff, when bex's default line moved to 3.14 (w8/174);
+// an explicit PYTHON_VERSION=3.14 keeps the line's reviewed patch. The official
+// python:3.14.8 image is no longer rebuilt, so it predates the 3.14 line's
+// base-layer refresh (the Brotli fix, w1/136); w8/222 asks whether to keep the
+// reviewed patch instead.
+const pythonDefaultVersion = "3.14.8"
+
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
 // created, whose creation date picks the default line where Render's does.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
@@ -126,16 +135,31 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 	return choice, err
 }
 
+// exactDefaults are the runtimes whose Render default for new services is a
+// specific patch rather than the newest patch of the default line.
+var exactDefaults = map[string]struct {
+	cutoff  time.Time
+	version string
+}{
+	nativeRubyRuntime:   {rubyDefaultCutoff, rubyDefaultVersion},
+	nativePythonRuntime: {pythonCreationCutoff, pythonDefaultVersion},
+}
+
 // defaultExact is the exact version a service with no version signal builds on
-// where Render's default is a specific patch: Ruby's 3.4.4 for services created
-// since the cutoff. The resolve phase swaps in that version's official image and
-// falls back to the line's reviewed patch, saying so, when it cannot.
+// where Render's default is a specific patch: Ruby's 3.4.4 and Python's 3.14.8
+// for services created since the cutoff. The resolve phase swaps in that
+// version's official image and falls back to the line's reviewed patch, saying
+// so, when it cannot. A default equal to the reviewed patch needs no swap.
 func defaultExact(created time.Time, runtime string, choice NativeChoice) string {
-	if runtime == nativeRubyRuntime && choice.Source == "" && choice.Line == "3.4" &&
-		!created.IsZero() && !created.Before(rubyDefaultCutoff) {
-		return rubyDefaultVersion
+	d, ok := exactDefaults[runtime]
+	if !ok || choice.Source != "" || created.IsZero() || created.Before(d.cutoff) ||
+		!strings.HasPrefix(d.version, choice.Line+".") {
+		return ""
 	}
-	return ""
+	if line, _ := nativeToolchains[runtime].find(choice.Line); line.version == d.version {
+		return ""
+	}
+	return d.version
 }
 
 func resolveNativeLine(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {

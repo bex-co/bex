@@ -403,13 +403,15 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) (~20m + decision, minor) ← filed from w8/217 2026-10-29: the parity-first exact 3.14.8 default runs the frozen `python:3.14.8-bookworm`, whose `libbrotli1 1.0.9-2+b6` lacks the w1/136 fix — **needs the user's decision** (keep 3.14.8, revert to 3.14.10 as a divergence, or a bespoke patched 3.14.8 image)
+
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
 - [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](blocked/218.md) — **BLOCKED (2026-10-29: traced to the pinned CLI copying the source region `fsn1` and rejecting it client-side. Needs the user to decide whether the Render-shaped readback reports a Render region value such as `frankfurt` (clone parity) or stays `fsn1` per D1, with `--from` requiring `--region` recorded as a divergence)**
 
-- [ ] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — **needs the user's decision** (exact 3.14.8 like Ruby vs keep 3.14.10 for the security fixes)
+- [ ] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — option 1 implemented 2026-10-29 (exact 3.14.8 default; live acceptance pending; the keep-3.14.10 alternative is 222)
 
 
 - [ ] **216** — [A request that arrives while a sleeping free service is already waking gets an immediate 503 tagged `no-server`: neither held nor tagged `hibernate-pending-wake`](216.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29 (w8/213 acceptance): HTML request started the wake and was tagged correctly; a JSON request 1 s later got 503 `no-server` — the routing tag and hold key off `Phase == Hibernated` / per-process memory
