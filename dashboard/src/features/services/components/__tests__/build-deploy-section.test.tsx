@@ -13,6 +13,7 @@ const setBuildFilter = vi.fn(async () => true);
 const setBuildCommand = vi.fn(async () => true);
 const setStartCommand = vi.fn(async () => true);
 const setDockerfilePath = vi.fn(async () => true);
+const setDockerContext = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
@@ -40,6 +41,10 @@ vi.mock("@/features/services/hooks/use-start-command", () => ({
 
 vi.mock("@/features/services/hooks/use-dockerfile-path", () => ({
   useDockerfilePath: () => ({ setDockerfilePath, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-docker-context", () => ({
+  useDockerContext: () => ({ setDockerContext, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
@@ -99,6 +104,8 @@ beforeEach(() => {
   setRepo.mockClear();
   setRepo.mockResolvedValue(true);
   setDockerfilePath.mockResolvedValue(true);
+  setDockerContext.mockClear();
+  setDockerContext.mockResolvedValue(true);
 });
 
 /** Confirm a rebuild-affecting save through the row's AlertDialog. */
@@ -501,6 +508,79 @@ describe("BuildDeploySection", () => {
       "app",
       "docker/Dockerfile.prod",
     );
+  });
+
+  it("shows the Docker Build Context Directory only for Dockerfile builds and persists an edit (w8/m128)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir="backend"
+        runtime="node"
+        dockerContext="stale"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(
+      screen.queryByText("Docker Build Context Directory"),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir="backend"
+        runtime="docker"
+        dockerfilePath="./Dockerfile"
+        dockerContext="."
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showDockerfilePath={false}
+      />,
+    );
+    expect(
+      screen.queryByText("Docker Build Context Directory"),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir="backend"
+        runtime="docker"
+        dockerfilePath="./Dockerfile"
+        dockerContext="."
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    // Read back as the server reports it: "." is the Root Directory itself.
+    expect(
+      screen.getByRole("textbox", { name: "Docker Build Context Directory" }),
+    ).toHaveValue(".");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Edit Docker Build Context Directory",
+      }),
+    );
+    const input = screen.getByRole("textbox", {
+      name: "Docker Build Context Directory",
+    });
+    await user.clear(input);
+    await user.type(input, "ctx");
+    await confirmSave(user);
+
+    expect(setDockerContext).toHaveBeenCalledWith("app", "ctx");
+    expect(setDockerfilePath).not.toHaveBeenCalled();
   });
 
   it("keeps the Dockerfile Path draft after a failed mutation", async () => {
