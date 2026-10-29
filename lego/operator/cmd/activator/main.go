@@ -54,6 +54,17 @@ import (
 
 const annotLastActive = "app.bex.co/last-active"
 
+// annotWakeStarted records when a request woke the App from Hibernated (w8/216).
+// The wake patch moves the phase on, and the activator runs as more than one
+// replica, so a request that arrives during the cold start — on this replica or
+// another — reads "a wake is in flight" from this stamp rather than from the
+// phase or one process's memory.
+const annotWakeStarted = "app.bex.co/wake-started"
+
+// wakeWindow is how long after annotWakeStarted a request is treated as joining
+// that wake: the hold bound plus the slack the per-process waking entry keeps.
+const wakeWindow = holdBound + 30*time.Second
+
 const (
 	customPageTimeout = 5 * time.Second
 	customPageMaxSize = 1 << 20 // 1 MiB
@@ -236,18 +247,20 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name
-		// The tag is decided before the wake, while the phase still says
-		// whether this is a sleeping App or an awake one failing its health
-		// check (the readiness hold), and set only on the answer below: a
-		// held request is the App's own response once it wakes.
+		// Whether this request starts or joins a wake is decided before the
+		// wake, from the App as cached: hibernated, woken within the wake
+		// window by a request to any replica (w8/216), or woken by a wake this
+		// process started. An awake App failing its health check (the
+		// readiness hold) is none of these. The tag is set only on the answer
+		// below: a held request is the App's own response once it wakes.
+		waking := wakeInFlight(app, time.Now()) || (hold != nil && hold.wakingHere(key))
 		routing := routingNoServer
-		if app.Status.Phase == appv1alpha1.PhaseHibernated {
+		if waking {
 			routing = routingWake
 		}
 		// A client that is not a browser has no loading page to poll, so its
 		// request is held through the cold start and then served (w8/178).
-		// Decided before the wake: afterwards the cached phase is stale.
-		holdable := hold != nil && !acceptsHTML(r.Header.Values("Accept")) && hold.holding(app, key)
+		holdable := hold != nil && waking && !acceptsHTML(r.Header.Values("Accept"))
 		_, _, _ = wakeGroup.Do(key, func() (any, error) {
 			wakeApp(logf.IntoContext(ctx, log), c, app, host)
 			if hold != nil && app.Status.Phase == appv1alpha1.PhaseHibernated {
@@ -290,8 +303,19 @@ func writeRobotsResponse(w http.ResponseWriter, r *http.Request) {
 	writeBody(w, r, http.StatusOK, "text/plain; charset=utf-8", robotsDisallowAll)
 }
 
+// wakeInFlight reports whether a request for app starts or joins a cold start:
+// the App is hibernated, or a request woke it within wakeWindow.
+func wakeInFlight(app *appv1alpha1.App, now time.Time) bool {
+	if app.Status.Phase == appv1alpha1.PhaseHibernated {
+		return true
+	}
+	started, err := time.Parse(time.RFC3339, app.Annotations[annotWakeStarted])
+	return err == nil && now.Sub(started) < wakeWindow
+}
+
 // wakeApp patches last-active and scales the Deployment to 1 so the operator
-// stops auto-hibernating and the workload can come back.
+// stops auto-hibernating and the workload can come back. Waking a hibernated
+// App also stamps annotWakeStarted, so every replica knows a wake is in flight.
 func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host string) {
 	log := logf.FromContext(ctx)
 	// Touch last-active so the operator's shouldAutoHibernate returns false on
@@ -300,7 +324,11 @@ func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host st
 	if app.Annotations == nil {
 		app.Annotations = map[string]string{}
 	}
-	app.Annotations[annotLastActive] = time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339)
+	app.Annotations[annotLastActive] = now
+	if app.Status.Phase == appv1alpha1.PhaseHibernated {
+		app.Annotations[annotWakeStarted] = now
+	}
 	if err := c.Patch(ctx, app, client.MergeFrom(base)); err != nil {
 		log.Error(err, "patching last-active annotation", "app", app.Name)
 	}
