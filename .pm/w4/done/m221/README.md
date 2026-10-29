@@ -1,6 +1,6 @@
 # w4 · m221 — Preserve creation placement when lookup reads fail
 
-**Worker:** worker4 **Goal:** a failed Project/Environment lookup preserves the customer's selected placement and offers read recovery before creation continues. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned live replay and Free create on a deployed build) open
+**Worker:** worker4 **Goal:** a failed Project/Environment lookup preserves the customer's selected placement and offers read recovery before creation continues. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a failed Project/Environment lookup keeps the contextual selection with an error and read-only retry, and the recovered create lands in the intended Environment (loopx w4).
 
 **Estimate:** 2h35 (6 tasks). **Severity:** major. Implemented 2026-10-17; awaiting the deployed-build replay (t006).
 
