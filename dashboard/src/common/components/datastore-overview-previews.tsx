@@ -201,7 +201,8 @@ export function KeyValuePolicyPreview({
  * the data decides — the external-access status line and the rule list.
  * Those reserve the private, empty state (the default): one status line and
  * the one-line empty text, each wrapping to two lines below `sm` as their copy
- * does. A public store drops the status line and a store with rules lists
+ * does. A store that has never had external access shows the restart hint, so
+ * that is the help previewed (w4/303). A public store drops the status line and a store with rules lists
  * them; neither is assumed or rendered here (w4/303).
  */
 export function KeyValueNetworkingPreview() {
@@ -223,7 +224,7 @@ export function KeyValueNetworkingPreview() {
         </div>
         <section className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            {t("keyvalue.networkingHint")}
+            {t("keyvalue.networkingHintRestart")}
           </p>
           {/* Inline like the ready empty text, so the add row follows it
               with no block gap. */}
