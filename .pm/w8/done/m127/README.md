@@ -1,6 +1,6 @@
 # w8 · m127 — Free services cannot send outbound SMTP (25/465/587), as on Render
 
-**Worker:** worker8 **Goal:** A free web service, private service, worker or cron job is refused outbound TCP 25, 465 and 587, as Render's free instances are. Paid services keep 587 and 2525. 25 and 465 stay blocked for every plan by the provider, which the user decided on 2026-10-20 to keep. Tenants see one documented rule. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t006 done 2026-10-20; t007 live check on production after GitOps syncs the platform policy and the release pipeline deploys the operator and the dashboard
+**Worker:** worker8 **Goal:** A free web service, private service, worker or cron job is refused outbound TCP 25, 465 and 587, as Render's free instances are. Paid services keep 587 and 2525. 25 and 465 stay blocked for every plan by the provider, which the user decided on 2026-10-20 to keep. Tenants see one documented rule. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: egress ports per plan in ADR018                              | 15m | w8/m127/t003               |
 | t005 — **DONE** | Simplify the changed code                                                   | 15m | w8/m127/t004               |
 | t006 — **DONE** | Test coverage: free vs paid policies, plan changes, other ports untouched   | 30m | w8/m127/t004               |
-| t007 | Close out the milestone                                                     | 30m | w8/m127/t005, w8/m127/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m127/t005, w8/m127/t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@ Live on production after the release pipeline deploys the operator, with owned f
 ## Source + Goal linkage
 
 - **Source:** inbox note `w8/149` (`/qa-find-bugs-cli` sweep 1256, 2026-10-20), [kept in done/149.md](../done/149.md). User decision 2026-10-20: do **not** request Hetzner's 25/465 unblock; refuse free services 587 too, as on Render.
-- **Goal linkage:** [ADR018](../../../docs/ADR018-render-parity.md) "Outbound SMTP ports" row (render.com/docs/free: "Free web services can't send outbound network traffic on ports 25, 465, or 587"); free-tier anti-abuse; [ADR022](../../../docs/ADR022-tenant-isolation.md)/[ADR043](../../../docs/ADR043-tenant-namespace-isolation.md) per-App network policy.
+- **Goal linkage:** [ADR018](../../../../docs/ADR018-render-parity.md) "Outbound SMTP ports" row (render.com/docs/free: "Free web services can't send outbound network traffic on ports 25, 465, or 587"); free-tier anti-abuse; [ADR022](../../../../docs/ADR022-tenant-isolation.md)/[ADR043](../../../../docs/ADR043-tenant-namespace-isolation.md) per-App network policy.
 - **Expected outcome:** free-plan behavior matches Render's, free instances cannot be used to send spam over submission ports, and tenants get one documented rule instead of silent timeouts.
 - **Why now:** the user decided it on 2026-10-20, and the parity row already records the gap.
 - **Render parity included:** tenant-visible network behavior and dashboard copy change.
@@ -55,3 +55,14 @@ Live on production after the release pipeline deploys the operator, with owned f
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `479bd3fe243b`, which carries the dashboard copy `2a43b1db3`; `CiliumClusterwideNetworkPolicy deny-free-plan-smtp-egress` reports `Valid=True`), bex-canary. Fixture: image web service `srv-dbhhhs619k3s73ep2gl0` (`qa-20261029-lx9e-smtp`, `python:3.12-alpine`) whose `GET /probe` makes parallel 5 s TCP connects to `smtp.gmail.com:{25,465,587,443}` and `portquiz.net:{25,465,587,443,2525,8080}` and reads the SMTP greeting.
+
+- **Free** (pod labelled `app.bex.co/free-plan=true`): 25/465/587 on both hosts time out at 5.0 s (dropped by policy); `portquiz.net` 443, 2525 and 8080 connect in 0.02–0.03 s.
+- **Starter** (D4 short-lived paid fixture, ~2 min; deploy `dep-dbhhjh619k3s73ep2gpg`): the new pod has no free-plan label; `smtp.gmail.com:587` connects and greets `220 smtp.gmail.com ESMTP … gsmtp`; `portquiz.net` 587 and 2525 open; 25 and 465 still time out on both hosts (the provider block).
+- **Back to Free:** the new pod carries the label again and 587 times out on both hosts; 443, 2525 and 8080 stay open.
+- **One documented rule:** ADR018's "Outbound SMTP ports" row, ADR022 §Free-plan SMTP egress and the dashboard plan-picker copy (`services.planPickerFreeSmtp` / `planPickerPaidSmtp`, en and zh) say the same thing. `smtp.gmail.com` never listens on 443, so `portquiz.net:443` is the "443 still connects" control.
+- Not re-run live: private services, workers, cron runs and pre-deploy Jobs (labelling covered by `free_plan_smtp_test.go` and the envtest); the rendered dashboard picker (copy checked in source at the deployed pin).
+- Cleanup: deleted by ID, `GET` → 404, public host 404.
