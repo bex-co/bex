@@ -22,6 +22,12 @@
 #   WINDOW_DAYS          required continuous clean days (default 14)
 #   COVERAGE_GRACE_HOURS max allowed gap inside the window (default 2)
 #   EVIDENCE_START       RFC3339 / epoch override for coverage start (optional)
+#   SCOPED_IDENTITY_SINCE  RFC3339 / epoch; Apps created at or after it were
+#                        born workspace-scoped (ADR074 operator live, m92
+#                        Phases 2–3 done) and never had a legacy repo/prefix,
+#                        so they are not migration debt (default 2026-09-08)
+#   BEX_REGISTRY_HOST    bex's own registry; only images there are checked
+#                        for a scoped ref (default zot.bex-registry.svc:5000)
 #   LOKI_ADDR            host:port of reachable Loki (skip port-forward)
 #   KUBECONFIG           cluster for inventory + Loki port-forward
 #   READINESS_FIXTURE_DIR  if set, read inventory.json + evidence.json instead
@@ -32,6 +38,8 @@ cd "$ROOT"
 
 WINDOW_DAYS="${WINDOW_DAYS:-14}"
 COVERAGE_GRACE_HOURS="${COVERAGE_GRACE_HOURS:-2}"
+SCOPED_IDENTITY_SINCE="${SCOPED_IDENTITY_SINCE:-2026-09-08T00:00:00Z}"
+BEX_REGISTRY_HOST="${BEX_REGISTRY_HOST:-zot.bex-registry.svc:5000}"
 MON_NS=monitoring
 WINDOW_SECS=$((WINDOW_DAYS * 86400))
 
@@ -43,11 +51,11 @@ emit() { printf '%s\n' "$*"; }
 
 # Shared fail-closed evaluator. Args: inventory.json evidence.json
 evaluate() {
-  python3 - "$1" "$2" "$WINDOW_DAYS" "$COVERAGE_GRACE_HOURS" "${EVIDENCE_START:-}" <<'PY'
+  python3 - "$1" "$2" "$WINDOW_DAYS" "$COVERAGE_GRACE_HOURS" "${EVIDENCE_START:-}" "$SCOPED_IDENTITY_SINCE" <<'PY'
 import json, sys, time
 from datetime import datetime
 
-inv_path, ev_path, window_days, grace_hours, evidence_start_override = sys.argv[1:6]
+inv_path, ev_path, window_days, grace_hours, evidence_start_override, scoped_since_raw = sys.argv[1:7]
 window_secs = int(window_days) * 86400
 grace_secs = int(grace_hours) * 3600
 
@@ -71,6 +79,17 @@ if ev.get("source_error"):
     print(f"RESULT status=insufficient_evidence reason=source_error detail={ev['source_error']}")
     sys.exit(1)
 
+def try_ts(v):
+    try:
+        return parse_ts(v)
+    except ValueError:
+        return None
+
+scoped_since = try_ts(scoped_since_raw)
+if scoped_since is None:
+    print("RESULT status=insufficient_evidence reason=missing_scoped_identity_since")
+    sys.exit(1)
+
 migrated = []
 for row in inv.get("apps", []):
     ws = (row.get("workspace") or "").strip()
@@ -78,16 +97,22 @@ for row in inv.get("apps", []):
     name = row.get("name") or ""
     if not ws:
         continue  # unlabeled — excluded from migration debt
-    if not tomb:
+    # Fail closed: a row without a creation time counts as legacy-era.
+    created = try_ts(row.get("created"))
+    born_scoped = created is not None and created >= scoped_since
+    if not tomb and not born_scoped:
         print(f"RESULT status=insufficient_evidence reason=untombstoned_labeled name={name}")
         sys.exit(1)
     image = row.get("image") or ""
-    if image:
+    # Public-registry images (docker.io/…, quay.io/…) never had a bex identity.
+    # Fail closed: a row without the flag is treated as a bex-registry image.
+    if image and row.get("bexRegistry", True):
         want = f"{ws}/{name}"
         if want not in image:
             print(f"RESULT status=insufficient_evidence reason=unscoped_image name={name}")
             sys.exit(1)
-    migrated.append(name)
+    if tomb:
+        migrated.append(name)
 
 required = set(ev.get("required_services") or ["zot", "static-server"])
 live = set(ev.get("live_services") or [])
@@ -222,9 +247,10 @@ if ! kubectl get apps.app.bex.co -A -o json >"$tmp/apps.json" 2>"$tmp/apps.err";
   exit 1
 fi
 
-python3 - "$tmp/apps.json" >"$tmp/inventory.json" <<'PY'
+python3 - "$tmp/apps.json" "$BEX_REGISTRY_HOST" >"$tmp/inventory.json" <<'PY'
 import json, sys
 raw = json.load(open(sys.argv[1]))
+registry = sys.argv[2].rstrip("/") + "/"
 apps = []
 for item in raw.get("items", []):
     md = item.get("metadata") or {}
@@ -237,6 +263,8 @@ for item in raw.get("items", []):
         "workspace": labels.get("app.bex.co/workspace", ""),
         "tombstone": ann.get("app.bex.co/identity-tombstone", ""),
         "image": st.get("image", "") or "",
+        "bexRegistry": (st.get("image", "") or "").startswith(registry),
+        "created": md.get("creationTimestamp", ""),
         "staticPrefix": st.get("staticPrefix", "") or "",
     })
 json.dump({"apps": apps}, sys.stdout)

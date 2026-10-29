@@ -141,6 +141,56 @@ EOF
 )"
 expect unscoped "RESULT status=insufficient_evidence reason=unscoped_image"
 
+# --- w2/035: Apps born workspace-scoped (created after SCOPED_IDENTITY_SINCE)
+# never had a legacy repo, so no tombstone is owed; public-registry images are
+# not bex identities. Legacy-era rows still fail closed.
+CLEAN_EV=$(cat <<EOF
+{"now":$NOW,"coverage_start":$((NOW - 16 * DAY)),"coverage_end":$NOW,
+ "required_services":["zot","static-server"],"live_services":["zot","static-server"],
+ "gaps":[],"legacy_reads":[]}
+EOF
+)
+BORN=2026-10-19T11:07:31Z
+write_pair born_scoped "$(cat <<EOF
+{"apps":[
+  {"namespace":"tea-aaaaaaaaaaaaaaaaaaaa","name":"tea-aaaaaaaaaaaaaaaaaaaa-web","workspace":"tea-aaaaaaaaaaaaaaaaaaaa","tombstone":"true","image":"zot.example/tea-aaaaaaaaaaaaaaaaaaaa/tea-aaaaaaaaaaaaaaaaaaaa-web:gen-1","bexRegistry":true,"created":"2026-07-28T00:00:00Z"},
+  {"namespace":"tea-aaaaaaaaaaaaaaaaaaaa","name":"tea-aaaaaaaaaaaaaaaaaaaa-new","workspace":"tea-aaaaaaaaaaaaaaaaaaaa","tombstone":"","image":"zot.example/tea-aaaaaaaaaaaaaaaaaaaa/tea-aaaaaaaaaaaaaaaaaaaa-new:gen-2","bexRegistry":true,"created":"$BORN"},
+  {"namespace":"tea-aaaaaaaaaaaaaaaaaaaa","name":"tea-aaaaaaaaaaaaaaaaaaaa-nginx","workspace":"tea-aaaaaaaaaaaaaaaaaaaa","tombstone":"","image":"docker.io/library/nginx:latest","bexRegistry":false,"created":"$BORN"}
+]}
+EOF
+)" "$CLEAN_EV"
+expect born_scoped "RESULT status=clean"
+out_born="$(run_case "$tmp/born_scoped")"
+if [[ "$out_born" != *"migrated=1"* ]]; then
+  echo "FAIL [born_scoped_not_migrated]: born-scoped Apps must not count as migrated:" >&2
+  printf '%s\n' "$out_born" >&2
+  failures=$((failures + 1))
+else
+  echo "PASS [born_scoped_not_migrated]"
+fi
+
+write_pair legacy_era_untomb "$(cat <<EOF
+{"apps":[{"namespace":"tea-aaaaaaaaaaaaaaaaaaaa","name":"tea-aaaaaaaaaaaaaaaaaaaa-old","workspace":"tea-aaaaaaaaaaaaaaaaaaaa","tombstone":"","image":"zot.example/tea-aaaaaaaaaaaaaaaaaaaa/tea-aaaaaaaaaaaaaaaaaaaa-old:gen-1","bexRegistry":true,"created":"2026-09-07T23:59:59Z"}]}
+EOF
+)" "$CLEAN_EV"
+expect legacy_era_untomb "RESULT status=insufficient_evidence reason=untombstoned_labeled"
+
+write_pair born_unscoped "$(cat <<EOF
+{"apps":[{"namespace":"tea-aaaaaaaaaaaaaaaaaaaa","name":"tea-aaaaaaaaaaaaaaaaaaaa-new","workspace":"tea-aaaaaaaaaaaaaaaaaaaa","tombstone":"","image":"zot.example/tea-aaaaaaaaaaaaaaaaaaaa-new:gen-1","bexRegistry":true,"created":"$BORN"}]}
+EOF
+)" "$CLEAN_EV"
+expect born_unscoped "RESULT status=insufficient_evidence reason=unscoped_image"
+
+write_pair bad_since "$MIGRATED_INV" "$CLEAN_EV"
+out_since="$(READINESS_FIXTURE_DIR="$tmp/bad_since" SCOPED_IDENTITY_SINCE=" " bash "$guard" 2>&1 || true)"
+if [[ "$out_since" != *"reason=missing_scoped_identity_since"* ]]; then
+  echo "FAIL [bad_since]: a blank cutoff must fail closed, got:" >&2
+  printf '%s\n' "$out_since" >&2
+  failures=$((failures + 1))
+else
+  echo "PASS [bad_since]"
+fi
+
 if [ "$failures" -ne 0 ]; then
   echo "$failures failure(s)" >&2
   exit 1
