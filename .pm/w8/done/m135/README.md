@@ -1,6 +1,6 @@
 # w8 · m135 — `PATCH /services/{id}` saves settings without deploying, as on Render
 
-**Worker:** worker8 **Goal:** A Render-shaped service update (`bex services update`, REST `PATCH /v1/services/{id}`) saves the change and deploys nothing. The service reports `undeployedChanges: true` until the caller deploys, as Render's API documents and as bex already does for env vars (w8/186) and image/source changes. **Status:** in progress — t001–t006 done 2026-10-29 (code, tests, ADR004/ADR018; see Progress below); t007 (live production DoD after the release pipeline deploys bex-api, the operator and the dashboard) open.
+**Worker:** worker8 **Goal:** A Render-shaped service update (`bex services update`, REST `PATCH /v1/services/{id}`) saves the change and deploys nothing. The service reports `undeployedChanges: true` until the caller deploys, as Render's API documents and as bex already does for env vars (w8/186) and image/source changes. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity: GraphQL/MCP/dashboard save modes, ADR004/ADR018 (w6/m51 note) — **DONE** | 30m | w8/m135/t002, w8/m135/t003 |
 | [t005](done/t005.md) | Simplify the changed code — **DONE** | 15m | w8/m135/t004               |
 | [t006](done/t006.md) | Test coverage: each field stages, deploy applies, cancel/rollback neighbors — **DONE** | 40m | w8/m135/t004               |
-| t007 | Close out the milestone                                                        | 30m | w8/m135/t005, w8/m135/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m135/t005, w8/m135/t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@ Live on production after the release pipeline deploys bex-api (and the dashboard
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 6e1b, 2026-10-23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, `https://api.bex.co/v1/`, platform pin `fa8ac5bba24a`, `bex-canary` (`tea-daif693dqjvc73e7as3g`), human device login. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). [Render API, Update service](https://api-docs.render.com/reference/update-service): "Update service allows you to update the configuration details of service, such as start commands and branches. Changes will **not** be deployed automatically. Instead you must call the deploy API to have changes pushed out to your service, irrespective of the `autoDeploy` option set on the service." w8/186 applied the identical sentence to env vars; this is the settings sibling.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). [Render API, Update service](https://api-docs.render.com/reference/update-service): "Update service allows you to update the configuration details of service, such as start commands and branches. Changes will **not** be deployed automatically. Instead you must call the deploy API to have changes pushed out to your service, irrespective of the `autoDeploy` option set on the service." w8/186 applied the identical sentence to env vars; this is the settings sibling.
 - **Expected outcome:** scripts and CI that change several settings in a row (common with the CLI and Terraform-style tooling) get one deploy when they ask for it, not one unrequested production rollout per field with intermediate configurations.
 - **Why now:** major. Unrequested production rollouts, each against a half-applied configuration. A pre-deploy (migration) command change runs the migration immediately. Render parity task included: REST/CLI behavior changes; GraphQL/MCP/dashboard save semantics must be decided consistently.
 
@@ -95,7 +95,7 @@ Reading the code before starting showed the milestone is several times its 225m 
 
 ## Progress 2026-10-29 (t001–t006, branch `worktree-agent-aeb0bb0a0d89ef909`)
 
-Design: [ADR004 § Settings saves wait for a deploy](../../../docs/ADR004-app-deployment.md#settings-saves-wait-for-a-deploy-w8m135-2026-10-29). ADR018's w6/m51 note is amended.
+Design: [ADR004 § Settings saves wait for a deploy](../../../../docs/ADR004-app-deployment.md#settings-saves-wait-for-a-deploy-w8m135-2026-10-29). ADR018's w6/m51 note is amended.
 
 - **t001 (backend).** `ApplyServicePatch` (REST `PATCH /v1/services/{id}`, MCP `update_service`) runs every row except plan under `rollout.WithSaveOnly`. `Snapshot.Stamp` holds a rolling change exactly as it holds one on a suspended service: it sets `app.bex.co/pending-source-generation` (generation + 1), stamps no release generation and opens no row. The audit/config-changed event is unchanged. Plan still deploys at once. A PATCH that carries plan with other fields opens one `settings_change` row whose stamp covers every held field.
 - **t001/t002 (operator).** Release records now keep the release's adopted spec (`adoptedSpec`, written once, only while the saved spec is still that release's). While a save is pending (`sourceUpdatePending`), the pass runs on `pendingReleaseView`: the current release's adopted spec plus the saved operational fields. Template, Service port, probe, shutdown delay and command stay the release's own, and no pre-deploy runs. A deploy verb's stamp at or past the pending generation ends the hold. The next release adopts the saved spec, runs the saved pre-deploy and rolls everything together. `undeployedChanges` now also checks the served record's settings fingerprint, so fields outside the recorded values (shutdown delay, pre-deploy, build settings) count.
@@ -113,3 +113,14 @@ Design: [ADR004 § Settings saves wait for a deploy](../../../docs/ADR004-app-de
 5. Also check a service created **before** the deploy. After the operator has reconciled it once, a held PATCH must still not roll it (its served record gains `adoptedSpec` on the first post-upgrade template write). Then delete the fixtures by ID with a 404 proof.
 
 **Residual / open (recorded in ADR004).** Restart and rollback consume a pending save. Their selected record supplies the start command, health path, env and instance count, but the shutdown delay, pre-deploy and port come from the saved spec, as for a pending source update before this change. A release with no recorded adopted spec falls back to projecting the saved spec. That covers a release whose first template write predates this operator or never happened, such as a first image release still in pre-deploy. Static sites hold the change but still have no `undeployedChanges` comparison (ADR004 w4/m145).
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Production pin `69f0b17d1fad`, bex-canary. Fixture `srv-dbhlu5ikl95s73b454hg` (echo-server 0.9.2, Free, created after the rollout).
+
+- **Saves deploy nothing:** `bex services update --health-check-path /hz2`, `--max-shutdown-delay 40` and REST `PATCH` of `dockerCommand "node webserver"` each returned 0/200; 25 s later the deploy count was unchanged, `undeployedChanges: true`, the instance id unchanged and the running Deployment still on its TCP probe and 90 s grace.
+- **The next deploy applies all of them:** `bex deploys create --wait` → `dep-dbhlv7d5enhs73d3fc30`, trigger `api`, `envUpdated: false`, with the `/hz2` probe, 100 s grace and the new command; `undeployedChanges` cleared.
+- **Pre-deploy (Starter, D4):** saving `--pre-deploy-command` started no deploy and set `undeployedChanges`; the next manual deploy ran it (`predeploy lx9v-pd-42`) and cleared the flag.
+- **Controls:** rename and `autoDeploy:"no"` deploy nothing; `PUT /env-vars` still only saves; a plan change free → Starter opens one deploy (`service_updated`, `envUpdated: false`).
+- Not re-run: a service created before the rollout (none owned).
+- Cleanup: deleted, `GET` → 404.

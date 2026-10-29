@@ -1,6 +1,6 @@
 # w8 · m128 — `dockerContext` is relative to `rootDir`, as on Render
 
-**Worker:** worker8 **Goal:** Render's monorepo Docker shape (`rootDir: backend`, `dockerContext: .`, `dockerfilePath: ./Dockerfile`) builds on bex unchanged, every surface reads the context back the way Render reports it, and the context can be changed in place. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t008 done 2026-10-20; t009 live check on production after the release pipeline deploys bex-api and the dashboard
+**Worker:** worker8 **Goal:** Render's monorepo Docker shape (`rootDir: backend`, `dockerContext: .`, `dockerfilePath: ./Dockerfile`) builds on bex unchanged, every surface reads the context back the way Render reports it, and the context can be changed in place. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 — **DONE** | Render parity: dockerContext in ADR018 | 10m | w8/m128/t005 |
 | t007 — **DONE** | Simplify the changed code | 15m | w8/m128/t006 |
 | t008 — **DONE** | Test coverage: build paths, read-back, rebase, PATCH, round trip | 30m | w8/m128/t006 |
-| t009 | Close out the milestone | 30m | w8/m128/t007, w8/m128/t008 |
+| t009 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m128/t007, w8/m128/t008 |
 
 ## Definition of done
 
@@ -26,8 +26,8 @@ Live on production after the release pipeline deploys bex-api, on fresh free fix
 
 ## Source + Goal linkage
 
-- **Source:** inbox notes `w8/150` and `w8/151` (`/qa-find-bugs-cli` sweep 1266, 2026-10-20, [evidence](../evidence/cli-sweep1266/README.md)), kept in [done/150.md](../done/150.md) and [done/151.md](../done/151.md). Promoted 2026-10-20: about 2h across five surfaces, over the inbox size.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) Render alternative; [ADR018](../../../docs/ADR018-render-parity.md) docker settings; [ADR049](../../../docs/ADR049-render-yaml-parity.md) `render.yaml` parity. Render's schema: `dockerContext` is "relative to rootDir"; Render's monorepo guide lists the Docker build context among the settings that operate relative to the root directory.
+- **Source:** inbox notes `w8/150` and `w8/151` (`/qa-find-bugs-cli` sweep 1266, 2026-10-20, [evidence](../../evidence/cli-sweep1266/README.md)), kept in [done/150.md](../done/150.md) and [done/151.md](../done/151.md). Promoted 2026-10-20: about 2h across five surfaces, over the inbox size.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) Render alternative; [ADR018](../../../../docs/ADR018-render-parity.md) docker settings; [ADR049](../../../../docs/ADR049-render-yaml-parity.md) `render.yaml` parity. Render's schema: `dockerContext` is "relative to rootDir"; Render's monorepo guide lists the Docker build context among the settings that operate relative to the root directory.
 - **Expected outcome:** a team moving a Render monorepo gets a working first build instead of `"/requirements.txt": not found`, and a wrong context can be repaired without deleting the service.
 - **Why now:** it breaks Render-exported monorepo Docker services on import, a major migration path.
 - **Render parity included:** REST, MCP, GraphQL and Blueprint semantics change.
@@ -54,3 +54,13 @@ Live on production after the release pipeline deploys bex-api, on fresh free fix
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Post-fix re-check on production pin `69f0b17d1fad` (all `bex-system` deployments and the dashboard on the new digests), bex-canary.
+
+- **GraphQL:** `createService(… rootDir:"example-pserv", dockerContext:"../..")` is refused `dockerContext must be a relative path with no '..' components`; with `dockerContext:"."` it created `srv-dbhm2al5enhs73d3fe80` (render-examples/twingate-example, Free, Docker), which went live serving the example page. REST `envSpecificDetails.dockerContext` and GraphQL `service { dockerContext }` both read `"."`.
+- **Dashboard:** the Settings Build card shows "Docker Build Context Directory" `.`; Edit → confirm → Save changed it to `lx9v-missing`, read back on REST and GraphQL, and the next deploy built from that context (failing `build context "example-pserv/lx9v-missing" does not exist`, as it should); restoring `.` from the dashboard went live again (200).
+- Earlier the same day: build, REST/MCP/both-CLI readback, Blueprint export and the REST in-place change passed (pin `479bd3fe243b`).
+- Side note, outside this milestone: GraphQL `dockerfilePath` reads `""` where REST reads `./Dockerfile`.
+- Cleanup: deleted, `GET` → 404.
