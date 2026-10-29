@@ -1,6 +1,6 @@
 # w4 · m236 — The Metrics page shows one working Application Metrics card, not two
 
-**Worker:** worker4 **Goal:** a service's Metrics tab renders exactly one Application Metrics card and it carries data; tenant deploy/event surfaces stop printing the cluster-internal build registry host. **Status:** blocked (t001–t005, t007 done; t006 closeout gated on the dashboard deploy + live replay)
+**Worker:** worker4 **Goal:** a service's Metrics tab renders exactly one Application Metrics card and it carries data; tenant deploy/event surfaces stop printing the cluster-internal build registry host. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: one Application Metrics card on a fresh git-built service and on hello-go at 1440 and 390, and no internal registry host on deploy/event surfaces (loopx w4).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Simplify — **DONE**                                                                 | 15m | w4/m236/t003                  |
 | [t005](done/t005.md) | Test coverage — **DONE**                                                            | 30m | w4/m236/t003                  |
 | [t007](done/t007.md) | The dead card survives the pending-frame fix — remove the duplicate sibling key — **DONE** | 45m | w4/m236/t005 |
-| [t006](t006.md) | Closeout                                                                 | 15m | w4/m236/t004, w4/m236/t005, w4/m236/t007 |
+| [t006](done/t006.md) | Closeout                                                                 | 15m | w4/m236/t004, w4/m236/t005, w4/m236/t007 | — **DONE**
 
 Seven tasks, 215m (3h35m). One **major** finding and one **minor** finding. This milestone schedules the work only.
 

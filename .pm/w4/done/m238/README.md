@@ -1,6 +1,6 @@
 # w4 · m238 — A moved service's out-of-scope environment group is flagged, not silent
 
-**Worker:** worker4 **Goal:** a service that leaves its environment while still linked to that environment's group is moved knowingly, and every page that shows the link says it is out of scope. Today the move is silent, the service page lists the link as ordinary, and the group page calls it "Legacy". **Status:** blocked (t001–t006 done 2026-10-20, loopx w4; t007 closeout gated on the dashboard deploy + live DoD replay)
+**Worker:** worker4 **Goal:** a service that leaves its environment while still linked to that environment's group is moved knowingly, and every page that shows the link says it is out of scope. Today the move is silent, the service page lists the link as ordinary, and the group page calls it "Legacy". **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: the move confirms and names `<project> / Production`, Cancel writes nothing, an unlinked move is immediate, both pages flag the out-of-scope link without "Legacy", guards unchanged (loopx w4).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | w4/m238/t002, w4/m238/t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | w4/m238/t004               |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | w4/m238/t004               |
-| [t007](t007.md) | Closeout                                                                              | 20m | w4/m238/t005, w4/m238/t006 |
+| [t007](done/t007.md) | Closeout                                                                              | 20m | w4/m238/t005, w4/m238/t006 | — **DONE**
 
 Seven tasks, 185m (3h05m). One **major** finding, recorded with complete probes in [finding.md](finding.md). This milestone schedules the work only.
 
