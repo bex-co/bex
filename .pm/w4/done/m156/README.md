@@ -1,6 +1,6 @@
 # w4 · m156 — Report honest start times for successful deploys
 
-**Worker:** worker4 **Goal:** successful deploy durations and log chronology reflect observed execution evidence **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 live timestamp verification and t006 closeout remain
+**Worker:** worker4 **Goal:** successful deploy durations and log chronology reflect observed execution evidence **Status:** done 2026-10-29 — live DoD replayed on pin `55d99e66808d`: an image restart's start is omitted on REST/MCP, `""` on GraphQL, with no Started row or invented duration in the dashboard; real create and native-build starts are kept (loopx w4).
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Audit successful-skip evidence and sibling consumers | 35m | — |
 | t002 — **DONE** | Preserve evidence or unknown starts on successful terminal skips | 55m | t001 |
-| t003 | Render parity and live timestamp verification | 30m | t002 |
+| t003 — **DONE** | Render parity and live timestamp verification | 30m | t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 40m | t003 |
-| t006 | Closeout | 15m | t004, t005 |
+| t006 — **DONE** | Closeout | 15m | t004, t005 |
 
 ## Definition of done
 
