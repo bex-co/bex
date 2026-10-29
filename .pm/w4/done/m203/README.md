@@ -1,6 +1,6 @@
 # w4 · m203 — Anchor a newly selected relative range at the current time
 
-**Worker:** worker4 **Goal:** switching to a relative Logs or Metrics range immediately queries a window ending at the selection time. **Status:** blocked (release pipeline deploys the dashboard; then QA replays the DoD for t006). t001–t005 done.
+**Worker:** worker4 **Goal:** switching to a relative Logs or Metrics range immediately queries a window ending at the selection time. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: after 90 s on a Custom range, picking a relative Logs or Metrics range queries up to the selection instant with the exact span (loopx w4).
 
 ## Tasks (in order)
 
