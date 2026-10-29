@@ -99,11 +99,26 @@ func RepoSlug(repo string) string {
 		s = s[at+1:]
 	}
 	s = strings.TrimSuffix(strings.TrimRight(strings.ReplaceAll(s, ":", "/"), "/"), ".git")
-	parts := strings.Split(s, "/")
-	if len(parts) < 3 || parts[len(parts)-2] == "" || parts[len(parts)-1] == "" {
+	owner, name, ok := lastTwoPathSegments(s)
+	if !ok {
 		return ""
 	}
-	return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	return owner + "/" + name
+}
+
+// lastTwoPathSegments splits a host-qualified path ("host/owner/repo") into its
+// final two non-empty segments. The host is required, so a bare "owner/repo"
+// carries no owner to report.
+func lastTwoPathSegments(s string) (owner, name string, ok bool) {
+	parts := strings.Split(s, "/")
+	if len(parts) < 3 {
+		return "", "", false
+	}
+	owner, name = parts[len(parts)-2], parts[len(parts)-1]
+	if owner == "" || name == "" {
+		return "", "", false
+	}
+	return owner, name, true
 }
 
 // PlanCPUCount is max(1, ceil(plan CPUs)): the recommended web concurrency

@@ -26,7 +26,10 @@ func EnsureDashboardURL(use bool) {
 		return
 	}
 	current, err := config.Load()
-	if err != nil || current.DashboardURL != "" || (current.Host != "" && !isDefaultHost(current.Host)) {
+	if err != nil {
+		return
+	}
+	if current.DashboardURL != "" || (current.Host != "" && !isDefaultHost(current.Host)) {
 		return
 	}
 	current.DashboardURL = DefaultDashboardURL
@@ -38,7 +41,7 @@ func EnsureDashboardURL(use bool) {
 // omitted or explicit default HTTPS port (w8/090).
 func isDefaultHost(host string) bool {
 	u, err := url.Parse(strings.TrimSpace(host))
-	if err != nil || !strings.EqualFold(u.Scheme, "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+	if err != nil || !isPlainHTTPSOrigin(u) {
 		return false
 	}
 	if port := u.Port(); port != "" && port != "443" {
@@ -46,6 +49,12 @@ func isDefaultHost(host string) bool {
 	}
 	return strings.EqualFold(u.Hostname(), defaultHostURL.Hostname()) &&
 		strings.TrimSuffix(u.Path, "/") == strings.TrimSuffix(defaultHostURL.Path, "/")
+}
+
+// isPlainHTTPSOrigin reports whether u is an HTTPS origin with no credentials,
+// query, or fragment — the only shape the default control-plane host takes.
+func isPlainHTTPSOrigin(u *url.URL) bool {
+	return strings.EqualFold(u.Scheme, "https") && u.User == nil && u.RawQuery == "" && u.Fragment == ""
 }
 
 var defaultHostURL, _ = url.Parse(DefaultHost)

@@ -62,27 +62,17 @@ var httpClient = &http.Client{Timeout: 3 * time.Second}
 func IsRootVersionRequest(args []string, rootFlags *pflag.FlagSet) bool {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--version" || arg == "-v" || strings.HasPrefix(arg, "--version=") {
+		if isVersionFlag(arg) {
 			return true
 		}
-		if !strings.HasPrefix(arg, "-") || arg == "--" {
+		if isSubcommandToken(arg) {
 			return false
 		}
 		if strings.Contains(arg, "=") {
 			continue
 		}
-
-		var flag *pflag.Flag
-		if strings.HasPrefix(arg, "--") {
-			flag = rootFlags.Lookup(strings.TrimPrefix(arg, "--"))
-		} else {
-			short := strings.TrimPrefix(arg, "-")
-			if len(short) != 1 {
-				return false
-			}
-			flag = rootFlags.ShorthandLookup(short)
-		}
-		if flag == nil {
+		flag, ok := rootFlag(arg, rootFlags)
+		if !ok {
 			return false
 		}
 		if flag.Value.Type() != "bool" && flag.NoOptDefVal == "" {
@@ -90,6 +80,33 @@ func IsRootVersionRequest(args []string, rootFlags *pflag.FlagSet) bool {
 		}
 	}
 	return false
+}
+
+// isVersionFlag reports whether arg is one of the two version spellings the
+// root command accepts, inline value included.
+func isVersionFlag(arg string) bool {
+	return arg == "--version" || arg == "-v" || strings.HasPrefix(arg, "--version=")
+}
+
+// isSubcommandToken reports whether arg ends the global-flag prefix: the first
+// non-flag token, or the "--" terminator.
+func isSubcommandToken(arg string) bool {
+	return !strings.HasPrefix(arg, "-") || arg == "--"
+}
+
+// rootFlag resolves a single global flag token. ok is false for a flag the root
+// command does not define, or for a clustered shorthand, which ends the scan.
+func rootFlag(arg string, rootFlags *pflag.FlagSet) (*pflag.Flag, bool) {
+	if strings.HasPrefix(arg, "--") {
+		flag := rootFlags.Lookup(strings.TrimPrefix(arg, "--"))
+		return flag, flag != nil
+	}
+	short := strings.TrimPrefix(arg, "-")
+	if len(short) != 1 {
+		return nil, false
+	}
+	flag := rootFlags.ShorthandLookup(short)
+	return flag, flag != nil
 }
 
 // IsReleaseBuild reports whether version is a real release identity rather
