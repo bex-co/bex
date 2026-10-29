@@ -266,12 +266,21 @@ type KeyValueStatus struct {
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
 
-	// TLSListener is true once the Valkey pod runs the TLS listener external
-	// access is served on. It stays on after external access is turned off,
-	// so turning access on again does not restart the store; only the first
-	// enable does (w4/m233).
+	// TLSListener is true while the Valkey process runs the TLS listener
+	// external access is served on. On a store with TLSRuntimeSwitch it
+	// follows external access, switched at runtime. On an older store it is
+	// part of the pod template and stays on after external access is turned
+	// off, so only that store's first enable restarts it (w4/m233).
 	// +optional
 	TLSListener bool `json:"tlsListener,omitempty"`
+
+	// TLSRuntimeSwitch is true once the Valkey pod can turn its TLS listener on
+	// and off without a restart (w8/m134): the certificate Secret is mounted
+	// optional, the server starts the listener only when the certificate is
+	// present, and the operator switches tls-port with CONFIG SET. Turning
+	// external access on or off then never restarts the store.
+	// +optional
+	TLSRuntimeSwitch bool `json:"tlsRuntimeSwitch,omitempty"`
 
 	// ObservedGeneration is the .metadata.generation the controller last reconciled.
 	// +optional

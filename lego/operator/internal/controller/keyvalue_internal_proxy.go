@@ -31,6 +31,11 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// tlsForwarded reports whether the auth proxy and backend Service carry the
+// TLS port: always for a runtime-switch store, so opening its listener rolls
+// nothing, and while an older store's static listener runs.
+func (i keyValueIntent) tlsForwarded() bool { return i.tlsRuntime || i.tlsListener }
+
 func keyValueInternalProxyName(kv *appv1alpha1.KeyValue) string   { return kv.Name + "-internal" }
 func keyValueInternalBackendName(kv *appv1alpha1.KeyValue) string { return kv.Name + "-backend" }
 
@@ -49,7 +54,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		backend.Spec.Type = corev1.ServiceTypeClusterIP
 		backend.Spec.Selector = map[string]string{labelKeyValue: kv.Name}
 		backend.Spec.Ports = []corev1.ServicePort{{Name: keyValueContainerName, Port: kvPort, TargetPort: intstr.FromInt(kvPort)}}
-		if intent.tlsListener {
+		if intent.tlsForwarded() {
 			backend.Spec.Ports = append(backend.Spec.Ports, corev1.ServicePort{Name: "valkey-tls", Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort)})
 		}
 		applyServicePortServerDefaults(backend.Spec.Ports)
@@ -78,7 +83,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 			kvSecretEnv(kvPasswordEnv, intent.authSecretName),
 		}
 		ports := []corev1.ContainerPort{{Name: keyValueContainerName, ContainerPort: kvPort}}
-		if intent.tlsListener {
+		if intent.tlsForwarded() {
 			env = append(env,
 				corev1.EnvVar{Name: "BEX_KV_TLS_ADDR", Value: ":6380"},
 				corev1.EnvVar{Name: "BEX_KV_TLS_UPSTREAM_ADDR", Value: fmt.Sprintf("%s.%s.svc:%d", backend.Name, kv.Namespace, kvTLSPort)},

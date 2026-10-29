@@ -389,7 +389,7 @@ func admissionApplicationWorkloads(namespace, policy string) []client.Object {
 func admissionPlatformWorkloads(namespace string) []client.Object {
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "strict-valkey", Namespace: namespace, UID: "strict-valkey-uid"}}
 	plan, _ := resolveKVPlan(kv.Spec)
-	intent := keyValueIntentFor(kv, plan, 1, "", false)
+	intent := keyValueIntentFor(kv, plan, 1, "", false, true)
 	intent.authSecretName = "strict-valkey-auth"
 	intent.platformSecretName = "strict-valkey-platform"
 	cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).Build()
