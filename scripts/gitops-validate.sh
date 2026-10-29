@@ -2857,6 +2857,16 @@ for openbao_marker in 'unauthenticated_metrics_access = true' 'prometheus_retent
   }
 done
 
+echo "==> bex-api reads OpenBao through the active node (w4/m130)"
+# OpenBao 2.5 standbys answer reads locally and may lag. The revision-checked
+# env save reads its compare-and-set write straight back, so through the
+# all-nodes Service it saw the previous version and failed after landing.
+grep -A1 -F 'name: BEX_OPENBAO_URL' lego/operator/config/api/deployment.yaml \
+  | grep -qF 'value: http://openbao-active.secrets.svc:8200' || {
+  echo "FAIL: bex-api BEX_OPENBAO_URL must target openbao-active.secrets.svc (standby reads are eventually consistent)" >&2
+  fail=1
+}
+
 echo "==> tenant rollout headroom stays preemptible, pool-scoped, and tier-sized"
 # Every invariant below fails SILENTLY: the placeholder keeps running, the
 # render stays green, and the only symptom is the original outage coming back

@@ -100,7 +100,7 @@ func TenantFromContext(ctx context.Context) string {
 // on demand (including when a still-cached token is rejected). Scoped by policy to
 // tenants/* only.
 type openBaoStore struct {
-	addr    string // BEX_OPENBAO_URL, e.g. http://openbao.secrets.svc:8200
+	addr    string // BEX_OPENBAO_URL, e.g. http://openbao-active.secrets.svc:8200 (the active node; standbys may serve stale reads)
 	role    string
 	mount   string
 	jwtPath string

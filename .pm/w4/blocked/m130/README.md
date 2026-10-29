@@ -6,7 +6,7 @@
 
 | id   | title                                                                                     | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | Diagnose why a CAS patch that durably applies its write returns `ENVIRONMENT_REVISION_CONFLICT` — **BLOCKED** | 45m | —            |
+| t001 | Diagnose why a CAS patch that durably applies its write returns `ENVIRONMENT_REVISION_CONFLICT` — **DONE** | 45m | —            |
 | t002 | Make the outcome and the response agree: a landed write never reports a conflict — **DONE** | 40m | w4/m130/t001 |
 | t003 | Return the new revision from `EnvironmentPatchResult`, as the env-group sibling already does — **DONE** | 25m | w4/m130/t001 |
 | t004 | Carry the fix across REST and MCP, which expose the same `expectedEnvRevision` parameter — **DONE** | 30m | w4/m130/t002 |
