@@ -1,6 +1,6 @@
 # w4 · m161 — Bind environment-group revisions to editing drafts
 
-**Worker:** worker4 **Goal:** an older dashboard draft cannot silently overwrite a newer saved group value after polling **Status:** blocked — t001–t005 done 2026-10-03; t006 live two-tab acceptance and closeout remain
+**Worker:** worker4 **Goal:** an older dashboard draft cannot silently overwrite a newer saved group value after polling **Status:** done 2026-10-29 — live two-tab DoD replayed on dashboard pin `55d99e66808d`: a stale draft keeps its base revision across real polls and reloads and is refused with ENV_GROUP_REVISION_CONFLICT without touching B's value; discard and fresh edit save normally; stale REST/GraphQL/MCP are refused; sweep-48 controls hold (loopx w4).
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 — **DONE** | Verify API and Render parity without weakening conflicts | 20m | w4/m161/t002 |
 | t004 — **DONE** | Simplify the draft revision lifecycle | 15m | w4/m161/t003 |
 | t005 — **DONE** | Test polling, conflicts, recovery and unaffected callers | 45m | w4/m161/t003, w4/m161/t004 |
-| t006 | Closeout after live two-tab acceptance | 15m | w4/m161/t005 |
+| t006 — **DONE** | Closeout after live two-tab acceptance | 15m | w4/m161/t005 |
 
 Total: **6 tasks, about 2h 55m**.
 
