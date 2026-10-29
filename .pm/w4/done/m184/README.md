@@ -1,6 +1,6 @@
 # w4 · m184 — Say "applying" while the carrying deploy runs, not "deploy to apply"
 
-**Worker:** worker4 **Goal:** while an in-flight standard deploy carries the saved configuration, the service header and Environment page say the changes go live when it finishes, instead of telling the user to start another deploy. **Status:** blocked
+**Worker:** worker4 **Goal:** while an in-flight standard deploy carries the saved configuration, the service header and Environment page say the changes go live when it finishes, instead of telling the user to start another deploy. **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: a healthCheckPath PATCH deploy says saved changes go live when it finishes, the standard hint returns after it fails or is cancelled and during a restart, and REST/GraphQL/MCP agree (loopx w4).
 
 ## Tasks (in order)
 
