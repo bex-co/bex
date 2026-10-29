@@ -65,3 +65,7 @@ Read-only, as the QA user in workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`)
 - The watermark reset to the new month start and is again stuck there 19 days in. So the stall is not a September-only gap or a one-off backfill: no active stream has had a contiguous healthy prefix from the 1st in either month.
 - The Billing page (`/usage` redirects to `/billing`) shows "Partial data" on the Charges card. Its per-resource tree is otherwise sound: 1,748 usage rows this month, and deleted resources keep their names ("qa-20261019-0a57a8-kv1 (deleted)"). "Included usage: Services 7 / 25" matches the 7 live services.
 - t002 (the production DB read of `usage_source_streams` / `usage_source_health`) remains the blocker. The bullet **"Coverage advances, or its stall is named" still FAILS.**
+
+## Re-probe (2026-10-29, loopx w4)
+
+`bex-canary` GraphQL `usage.coverage` on 2026-10-29 07:44Z: `{state: "partial", through: "2026-10-01T00:00:00Z", degradedSources: [direct, http, instance, key_value, postgres, sandbox, websocket]}`. The watermark is still pinned at the month start 28 days in. `aggregateUsageCoverage` takes the minimum contiguous-healthy `usage_source_health` window across every active `usage_source_streams` row, so a single stream with a missing first window pins it. Naming that stream still needs the production DB read (t002); API and logs cannot answer it.
