@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done — the launcher replaces `skills` with an embedded 20-skill bex pack derived from render-oss/skills, with state in the bex config dir; Render's skills and state are never touched. Local sandbox acceptance passed. Needs the next `bex-cli/v*` release (user-run `/release cli`), then a QA spot-check of an agent deploying through the installed bex-cli skill, with the fixture deleted with a 404 proof)**
 
-- [ ] **m142** — [Clear image-network choices when PORT intent changes](m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）**
+- [x] **m142** — [Clear image-network choices when PORT intent changes](done/m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）** — **DONE 2026-10-29** (PORT removal and rollback with zero errors, on production)
 
 - [x] **m141** — [HTTP-aware Docker web listener selection](done/m141/README.md) (8 tasks;215m) ← promoted from w8/205,2026-10-28 — **DONE 2026-10-29** (RabbitMQ serves 15672 deterministically, on production)
 
@@ -450,7 +450,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **198** — [A new Ruby service with no version signal builds on 3.4.11; Render's default is exactly 3.4.4 (Bun 1.4.3 vs 1.4.4 too)](done/198.md) (~45m) ← `/qa-find-bugs-cli` loop sweep c7e2 2026-10-23 (minor) — DONE 2026-10-23 (Ruby 3.4.4 live-verified 2026-10-26 sweep c7b6; Bun addendum not re-checked)
 
-- [ ] **197** — [`ERLANG_VERSION=28.3` builds on the Elixir image's OTP (28.5.0.6) while the log says it was honored](197.md) (~50m) ← `/qa-find-bugs-cli` loop sweep a5c0 2026-10-23 (minor) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **197** — [`ERLANG_VERSION=28.3` builds on the Elixir image's OTP (28.5.0.6) while the log says it was honored](done/197.md) (~50m) ← `/qa-find-bugs-cli` loop sweep a5c0 2026-10-23 (minor) — **DONE 2026-10-29** (exact Erlang/OTP installed or refused by name, on production)
 
 - [x] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](done/196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor) — DONE 2026-10-23 (live-verified 2026-10-23 sweep d4e8; rechecked 2026-10-26 sweep cbcd)
 
