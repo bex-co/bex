@@ -220,7 +220,8 @@ spec:
               memory: 64Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              # 128Mi of it is the exec drain buffer (BEX_SSH_DRAIN_BUFFER_TOTAL, w6/099).
+              memory: 512Mi
           volumeMounts:
             - name: host-key
               mountPath: /var/run/bex-ssh-host-key
