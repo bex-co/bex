@@ -1,6 +1,6 @@
 # w8 · m122 — Report the image digest each prebuilt-image deploy ran
 
-**Worker:** worker8 **Goal:** Every live deploy of an image-backed service reports Render's `image.sha`, the digest its tag resolved to when the deploy ran, on REST, MCP, GraphQL, the dashboard and the pinned CLI. Today the field is never sent, so `bex deploys list` prints `SHA:` blank and a user cannot tell which bytes a `:latest` deploy actually ran. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t006 done 2026-10-20; t007 live check on production after the release pipeline deploys the operator and bex-api
+**Worker:** worker8 **Goal:** Every live deploy of an image-backed service reports Render's `image.sha`, the digest its tag resolved to when the deploy ran, on REST, MCP, GraphQL, the dashboard and the pinned CLI. Today the field is never sent, so `bex deploys list` prints `SHA:` blank and a user cannot tell which bytes a `:latest` deploy actually ran. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity: deploy image object across REST, GraphQL, MCP, UI and CLI    | 20m | w8/m122/t003               |
 | t005 — **DONE** | Simplify the changed code                                                   | 15m | w8/m122/t004               |
 | t006 — **DONE** | Test coverage: digest capture, per-row attribution and projection           | 30m | w8/m122/t004               |
-| t007 | Close out the milestone                                                     | 30m | w8/m122/t005, w8/m122/t006 |
+| t007 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m122/t005, w8/m122/t006 |
 
 ## Definition of done
 
@@ -26,8 +26,8 @@ Live on production after the release pipeline deploys the operator and bex-api, 
 
 ## Source + Goal linkage
 
-- **Source:** `/qa-find-bugs-cli` sweep 1228, 2026-10-20 ([evidence](../evidence/cli-sweep1228/README.md)). Reproduction below.
-- **Goal linkage:** [ADR018](../../../docs/ADR018-render-parity.md) "List / get deploy objects" row: deploy history must describe what ran. [ADR006](../../../docs/ADR006-bex-api.md): REST and MCP use Render's deploy shape.
+- **Source:** `/qa-find-bugs-cli` sweep 1228, 2026-10-20 ([evidence](../../evidence/cli-sweep1228/README.md)). Reproduction below.
+- **Goal linkage:** [ADR018](../../../../docs/ADR018-render-parity.md) "List / get deploy objects" row: deploy history must describe what ran. [ADR006](../../../../docs/ADR006-bex-api.md): REST and MCP use Render's deploy shape.
 - **Expected outcome:** for a mutable tag (`:latest`), the deploy record says exactly which image bytes each live deploy ran. Render's pinned contract field is populated, so the CLI's `SHA:` line stops being blank.
 - **Why now:** `w4/m236` just cleaned the deploy and event image projection. This is the last missing member of Render's three-field `image` object that bex can honor truthfully (`registryCredential` is a separate, existing field question). Render parity is included because the fix changes the deploy shape on REST, GraphQL, MCP and the dashboard.
 
@@ -98,3 +98,15 @@ Live on production after the release pipeline deploys the operator and bex-api, 
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `b33dd43c4428`), bex-canary, released Bex v0.3.3, owned Free fixture `srv-dbhh3gu19k3s73ep2f4g` (`qa-20261029-lx8e-dig`, `docker.io/ealen/echo-server:0.9.2`), deleted afterwards (`GET` → 404):
+
+- **Create → live:** `dep-dbhh3gu19k3s73ep2f50` `image: {ref: docker.io/ealen/echo-server:0.9.2, sha: sha256:006b92e1…4790e2}`, equal to Docker Hub's `Docker-Content-Digest` for the tag's index, read the same minute.
+- **Second deploy:** `bex deploys create --wait` → `dep-dbhh3vqv8vqc73fvn4i0` live with its own `image.sha` (same index digest).
+- **Pinned CLI in a TTY:** the interactive `bex deploys list` detail line reads `Image: docker.io/ealen/echo-server:0.9.2 SHA: sha256:006b92e1…4790e2`; `-o json` carries it.
+- **Never-live deploy:** `--image …:lx8e-no-such-tag` → `dep-dbhh4du19k3s73ep2fcg` `update_failed` with `image: {ref}` and no `sha` (not the previous release's).
+- **Git-backed control:** an existing Git-backed live deploy (`dep-dbbacgabpdss73ci0od0`, read only) has no `image` object.
+- **Surfaces agree:** GraphQL `deploys { image imageSha }` and MCP `list_deploys` return the same digest per row and empty/absent for the failed one; the dashboard deploy detail shows `sha256:006b92e1d668` under the image reference.
+- By-digest creation reporting the same index digest was accepted on 2026-10-28 (w8/208).
