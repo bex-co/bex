@@ -28,6 +28,7 @@ import (
 var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SandboxNetworkPolicy",
 	Fields: graphql.Fields{
+		"type":    gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) }),
 		"default": gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) }),
 	},
 })
@@ -35,6 +36,7 @@ var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 var sandboxNetworkPolicyInput = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "SandboxNetworkPolicyInput",
 	Fields: graphql.InputObjectConfigFieldMap{
+		"type":    &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"default": &graphql.InputObjectFieldConfig{Type: graphql.String},
 	},
 })
@@ -104,7 +106,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
 				if raw, ok := p.Args["networkPolicy"].(map[string]any); ok {
-					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default"))}
+					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default")), Type: NetworkPolicyDefault(gqlutil.Str(raw, "type"))}
 				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID:        gqlutil.Str(p.Args, "ownerId"),

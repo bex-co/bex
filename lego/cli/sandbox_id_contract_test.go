@@ -88,25 +88,33 @@ func TestSandboxCopyRejectsBareUUID(t *testing.T) {
 
 func runBexCopy(t *testing.T, apiURL, src, dst string) (stdout, stderr string, err error) {
 	t.Helper()
-	home := t.TempDir()
-	configPath := filepath.Join(home, ".bex", "cli.yaml")
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	// A copy needs a selected workspace before it addresses a sandbox.
-	config := "version: 1\nworkspace: tea-bex\nworkspace_name: Bex\napi:\n  key: test-access-token\n"
-	if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	command := exec.Command(buildBex(), "ea", "sandboxes", "copy", src, dst, "-o", "json")
-	command.Env = append(withoutRenderEnv(os.Environ()),
-		"HOME="+home,
-		"BEX_HOST="+apiURL+"/v1/",
-		"BEX_ACCESS_TOKEN=test-access-token",
-	)
+	command := bexAgainst(t, apiURL, "ea", "sandboxes", "copy", src, dst, "-o", "json")
 	var out, errOut bytes.Buffer
 	command.Stdout = &out
 	command.Stderr = &errOut
 	err = command.Run()
 	return out.String(), errOut.String(), err
+}
+
+// bexAgainst is a bex command against a fake API at apiURL, with a fresh HOME
+// whose config has a selected workspace and a test token.
+func bexAgainst(t *testing.T, apiURL string, args ...string) *exec.Cmd {
+	t.Helper()
+	home := t.TempDir()
+	configPath := filepath.Join(home, ".bex", "cli.yaml")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := "version: 1\nworkspace: tea-bex\nworkspace_name: Bex\napi:\n  key: test-access-token\n"
+	if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(buildBex(), args...)
+	command.Env = append(withoutRenderEnv(os.Environ()),
+		"HOME="+home,
+		"BEX_HOST="+apiURL+"/v1/",
+		"BEX_ACCESS_TOKEN=test-access-token",
+		"BEX_NO_UPDATE_NOTIFIER=1",
+	)
+	return command
 }

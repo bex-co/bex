@@ -2,13 +2,13 @@
 
 `bex` deliberately imports the upstream command package rather than copying or forking it.
 
-- **Render release:** `v2.27.0`
-- **Upstream commit:** `a764810a768202704e7206eb7b87a47211fcd98e`
-- **Go module version:** `v1.1.3-0.20260909214233-a764810a7682`
+- **Render release:** `v2.29.0`
+- **Upstream commit:** `af9bdd180e90ab9d1e971d73185687fed9ef08d8`
+- **Go module version:** `v1.1.3-0.20261012175920-af9bdd180e90`
 
 The upstream repository's v2 tags are not valid Go-module major-version tags because its module path has no `/v2` suffix. Go therefore records the exact release commit as a pseudo-version in `go.mod`.
 
-**Go toolchain:** v2.26.0 upgraded upstream to Go 1.27 (`85c8c2c`); v2.27.0 stays on Go 1.27, so `lego/cli/go.mod` and the shared `lego/go.work` remain at `go 1.27.0`. The three platform modules (`types`/`operator`/`backend`) and the shipped image stay on the 1.26 line (the Docker build has no workspace file). The CI jobs that build the workspace derive their Go version from `lego/cli/go.mod`, so they follow this bump automatically; `GOWORK=off` jobs (operator/backend/govulncheck) are unaffected. See [lego/AGENTS.md](../AGENTS.md).
+**Go toolchain:** v2.26.0 upgraded upstream to Go 1.27 (`85c8c2c`); v2.29.0 requires Go 1.27.2, so `lego/cli/go.mod` and the shared `lego/go.work` are at `go 1.27.2`. The three platform modules (`types`/`operator`/`backend`) and the shipped image stay on the 1.26 line (the Docker build has no workspace file). The CI jobs that build the workspace derive their Go version from `lego/cli/go.mod`, so they follow this bump automatically; `GOWORK=off` jobs (operator/backend/govulncheck) are unaffected. See [lego/AGENTS.md](../AGENTS.md).
 
 ## Updating the pin
 

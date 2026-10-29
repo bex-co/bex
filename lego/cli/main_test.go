@@ -555,6 +555,11 @@ func TestBexHelpChromeIsBranded(t *testing.T) {
 	if !strings.Contains(text, "upgrade") || !strings.Contains(text, "code") {
 		t.Errorf("ungrouped Bex commands missing from help:\n%s", text)
 	}
+	// Upstream v2.29 points agents at `render skills install` and Render's
+	// skills; bex's `skills` installs the bex pack (w8/m67, w8/m143).
+	if !strings.Contains(text, "bex skills install --output json") || strings.Contains(text, "Render's agent skills") {
+		t.Errorf("agent hint not Bex-branded:\n%s", text)
+	}
 }
 
 func TestBexDocsCommandPointsAtBex(t *testing.T) {

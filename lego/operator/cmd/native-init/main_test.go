@@ -221,5 +221,7 @@ sleep 0.2; echo ready; wait`)
 	case <-time.After(500 * time.Millisecond):
 	}
 	_ = cmd.Process.Kill()
-	<-done
+	if err := <-done; err != nil {
+		t.Logf("native-init after the kill: %v", err) // expected: killed
+	}
 }

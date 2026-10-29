@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
 
@@ -87,7 +88,9 @@ func TestBuildTailEndsWhenTheDeployIsNotBuilding(t *testing.T) {
 
 // The WebSocket transport (the pinned Render CLI's) ends a refused build tail
 // with one Log-shaped `==>` line carrying the same text as the SSE error event,
-// instead of closing silently.
+// instead of closing silently, then a terminal close: Render CLI v2.29+
+// reconnects after a normal close, so a 1000 would retry a finished build
+// forever (w8/m67).
 func TestWebSocketBuildTailSendsTheRefusalAsALogLine(t *testing.T) {
 	svc := newService(nil, sampleApp("web"))
 	svc.BuildNamespace = "builds"
@@ -115,7 +118,22 @@ func TestWebSocketBuildTailSendsTheRefusalAsALogLine(t *testing.T) {
 	if !slices.ContainsFunc(line.Labels, func(l renderLabel) bool { return l.Name == "type" && l.Value == LogTypeBuild }) {
 		t.Errorf("labels = %+v, want type=build", line.Labels)
 	}
-	if _, _, err := conn.ReadMessage(); !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-		t.Errorf("after the refusal: %v, want a normal close", err)
+	_, _, err = conn.ReadMessage()
+	var closeErr *websocket.CloseError
+	if !errors.As(err, &closeErr) || closeErr.Code != CloseTailRefused || closeErr.Text != ErrBuildNotRunning.Error() {
+		t.Errorf("after the refusal: %v, want close %d %q", err, CloseTailRefused, ErrBuildNotRunning.Error())
+	}
+}
+
+// A close frame's reason holds 123 bytes; a longer refusal is cut on a rune
+// boundary instead of failing the close.
+func TestCloseReasonFitsTheFrame(t *testing.T) {
+	long := errors.New(strings.Repeat("é", 100))
+	got := closeReason(long)
+	if len(got) > 123 || !utf8.ValidString(got) {
+		t.Fatalf("closeReason = %d bytes, valid=%v", len(got), utf8.ValidString(got))
+	}
+	if short := closeReason(ErrBuildNotRunning); short != ErrBuildNotRunning.Error() {
+		t.Errorf("closeReason(short) = %q", short)
 	}
 }

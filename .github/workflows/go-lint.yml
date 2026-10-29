@@ -12,7 +12,7 @@ name: go lint
 #   cd lego/operator && make lint        # check
 #   cd lego/operator && make lint-fix    # auto-fix what's fixable
 #
-# The Makefile builds its pinned custom golangci-lint (v2.13.2 + operator
+# The Makefile builds its pinned custom golangci-lint (v2.15.0 + operator
 # plugins) and deadcode analyzer on first use, so this job needs no separate
 # tool install. Go comes from lego/cli/go.mod (1.27, since render-oss/cli
 # v2.26.0 moved cli + lego/go.work onto Go 1.27 — w8/m33); that one workspace

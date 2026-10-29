@@ -1,17 +1,17 @@
 # w8 · m67 — Keep native live logs running after a transient disconnect
 
-**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** todo（2026-10-29 解除阻塞；原记录：t001 done (v2.29 candidate qualified; the reconnect fix works, but its retry of normal closes conflicts with Bex's terminal build-tail close); t002–t007 wait on a user decision about how a tail ends, then a requested CLI release
+**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** todo (2026-10-29: t001, t002, t004–t006 done — pin v2.29.0 adopted and bex-api ends refused tails with close 4000; t003 live candidate check waits for this deploy, t007 for a `bex-cli/v*` release)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](t001.md) — **DONE** | 45m | — |
-| t002 | [Adopt the qualified upstream pin and review its hosting wire delta](t002.md) — **BLOCKED (build-tail end-of-stream decision)** | 35m | t001 |
+| t002 | [Adopt the qualified upstream pin and review its hosting wire delta](done/t002.md) — **DONE 2026-10-29** | 35m | t001 |
 | t003 | [Verify affected hosting callers through candidate Bex and upstream CLI](t003.md) | 30m | t002 |
-| t004 | [Render parity](t004.md) | 20m | t003 |
-| t005 | [Simplify](t005.md) | 10m | t004 |
-| t006 | [Test coverage](t006.md) | 20m | t004 |
+| t004 | [Render parity](done/t004.md) — **DONE 2026-10-29** | 20m | t003 |
+| t005 | [Simplify](done/t005.md) — **DONE 2026-10-29** | 10m | t004 |
+| t006 | [Test coverage](done/t006.md) — **DONE 2026-10-29** | 20m | t004 |
 | t007 | [Closeout](t007.md) | 10m | t005, t006 |
 
 Total: 2h50m, seven tasks. [Researched finding](finding.md), [native fault/recovery evidence](evidence/cli-sweep272/README.md).
@@ -54,3 +54,11 @@ After that, t002–t006 can proceed. t007 also needs an explicitly requested CLI
 - **结论：** 「没有正在运行的 build」时，服务端改用**不可重试的关闭码**（非 1000）结束 `logs --type build --tail`，CLI 以非零退出码结束并显示原因；然后升级到 v2.29 的重连行为。不采用「等上游修复」。
 - **剩余门槛：** 实施完成后，用户面的最终交付依赖一次 CLI 发布（`bex-cli/v*`，由用户发起 `/release cli`）。这只是收尾门槛，不阻塞 t002–t006 的实施。
 - **worker 下一步：** loopx 实施 t002–t006：选定关闭码，服务端加测试，CLI 在 v2.29 上验证恰好一次重连 A/B 且无运行中 build 时不循环。实施完成后如只剩 CLI 发布，再回到 blocked 并写明等用户发布。
+
+## Implementation — 2026-10-29 (`/loopx w8`, decision D2)
+
+- **Server (D2, option A):** `lego/backend/internal/logs/rest.go` ends a WebSocket tail it will not continue (no running build, logs unavailable) with the `==>` refusal line and then close **4000** (`CloseTailRefused`) carrying the reason, instead of 1000. Render CLI v2.29 treats 4000 as terminal and exits non-zero with the reason; v2.27 clients end on any close as before. Tests: `TestWebSocketBuildTailSendsTheRefusalAsALogLine` (close code + reason), `TestCloseReasonFitsTheFrame`.
+- **Pin (t002):** `render-oss/cli` → v2.29.0 `af9bdd180e90ab9d1e971d73185687fed9ef08d8` (module `v1.1.3-0.20261012175920-af9bdd180e90`, Go 1.27.2; `lego/go.work` follows). `UPSTREAM_RENDER_CLI.md`, `scripts/bex-cli-validate.sh`, `scripts/bex-cli-build.sh` (embedded upstream version 2.29.0) and the docs that name the pin are updated. Go 1.27.2 needs golangci-lint v2.15.0 (v2.13.2 cannot read 1.27.2 export data), so the Makefile and `.custom-gcl.yml` move to v2.15.0; its new errcheck finding in `cmd/native-init/main_test.go` is fixed.
+- **Wire delta review (t002/t004):** v2.29 `ea sandboxes create --network-policy` sends `networkPolicy.type` (Render renamed `default`, now an alias). bex-api accepted only `default` under strict decoding, so every v2.29 create with a policy would have failed `unknown field "type"`. REST/GraphQL/MCP now accept either, answer both, refuse `rules` and a disagreeing pair by name, and refuse `--from <name>` (`snapshotName`) like `--snapshot-id`. Root help's new "Start here (for AI agents)" block named `render skills install` and Render's skills; the branding overlay now prints `bex skills install --output json`. Full grading is the round-5 bullet in [`docs/cli-compatibility-checklist.md`](../../../docs/cli-compatibility-checklist.md).
+- **Tests (t006):** `lego/cli/logs_tail_contract_test.go` drives the real binary against a loopback API: a drop after A resumes with A and B exactly once, visible retry status and the process still following; refusal + close 4000 makes one connection and exits non-zero with the reason on stderr. Both fail at the v2.27.0 pin. `cd lego/cli && go test ./...`, `bash scripts/bex-cli-validate.sh`, `make lint` (all four modules), backend `internal/{api,logs,sandbox}` pass.
+- **Remaining:** t003 — after this deploy, run the candidate binary against production: reconnect continuity on a live tail, a finished-build tail exiting non-zero once, and `--network-policy deny-all`. t007 — needs a `bex-cli/v*` release (user-run `/release cli`) and the same check on the published binary.

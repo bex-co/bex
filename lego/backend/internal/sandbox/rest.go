@@ -53,6 +53,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// does for a policy bex will not claim to enforce.
 			Env        map[string]string `json:"env"`
 			SnapshotID string            `json:"snapshotId"`
+			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID
+			// still goes as snapshotId); refused the same way.
+			SnapshotName string `json:"snapshotName"`
 		}
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
@@ -61,7 +64,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := refuseUnsupportedCreateOptions(len(body.Env) > 0, body.SnapshotID != ""); err != nil {
+		if err := refuseUnsupportedCreateOptions(len(body.Env) > 0, body.SnapshotID != "" || body.SnapshotName != ""); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
