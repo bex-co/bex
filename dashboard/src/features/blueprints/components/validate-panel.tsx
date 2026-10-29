@@ -12,11 +12,12 @@ import { BlueprintErrorList } from "./blueprint-error-list";
 
 interface ValidatePanelProps {
   manifest: string;
+  blueprintId: string;
 }
 
-export function ValidatePanel({ manifest }: ValidatePanelProps) {
+export function ValidatePanel({ manifest, blueprintId }: ValidatePanelProps) {
   const { t } = useTranslations();
-  const { validate, result, loading } = useValidateBlueprint();
+  const { validate, result, loading } = useValidateBlueprint(blueprintId);
   const [ran, setRan] = useState(false);
 
   async function handleValidate() {

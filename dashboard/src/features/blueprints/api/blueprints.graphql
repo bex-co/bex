@@ -58,8 +58,10 @@ query BlueprintSyncs(
   }
 }
 
-query ValidateBlueprint($bexYaml: String!) {
-  validateBlueprint(bexYaml: $bexYaml) {
+# blueprintId scopes the check to that Blueprint's own workspace, so it sees the
+# same existing services an apply would (w8/m64).
+query ValidateBlueprint($bexYaml: String!, $blueprintId: String) {
+  validateBlueprint(bexYaml: $bexYaml, blueprintId: $blueprintId) {
     valid
     errors
     # Each error's code and source location (w8/019), rendered beside it (w4/151).
