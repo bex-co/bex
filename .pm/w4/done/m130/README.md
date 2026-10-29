@@ -1,6 +1,6 @@
 # w4 · m130 — `patchServiceEnvironment` applies the write and then reports a conflict
 
-**Worker:** worker4 **Goal:** a revision-aware environment save either applies and says so, or refuses and changes nothing — so a client doing a correct read-modify-write is never told to retry a save that already succeeded. **Status:** blocked (t002–t007 done; t001 needs original production failure attribution; t008 awaits deployment and live verification)
+**Worker:** worker4 **Goal:** a revision-aware environment save either applies and says so, or refuses and changes nothing — so a client doing a correct read-modify-write is never told to retry a save that already succeeded. **Status:** done 2026-10-29 — root cause (OpenBao 2.5 standby reads behind the all-nodes Service) fixed by dialing `openbao-active`; the 20-iteration CAS loop is clean on GraphQL, REST and MCP.
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — the environment save surface across REST/GraphQL/MCP/UI — **DONE** | 30m | w4/m130/t003, w4/m130/t004 |
 | t006 | Simplify — `/simplify` over the code this milestone changed — **DONE** | 25m | w4/m130/t005 |
 | t007 | Test coverage — a conflict means nothing was written; a success reports success — **DONE** | 45m | w4/m130/t005 |
-| t008 | Closeout — close the milestone once the definition of done actually holds — **BLOCKED** | 15m | w4/m130/t007 |
+| t008 | Closeout — close the milestone once the definition of done actually holds — **DONE** | 15m | w4/m130/t007 |
 
 ## Definition of done
 
