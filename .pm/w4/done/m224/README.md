@@ -1,6 +1,6 @@
 # w4 · m224 — Refresh Metrics status choices while the page stays open
 
-**Worker:** worker4 **Goal:** newly observed HTTP status codes become selectable on an already-open Metrics page. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned two-breakpoint live replay on a deployed build, then cleanup) open
+**Worker:** worker4 **Goal:** newly observed HTTP status codes become selectable on an already-open Metrics page. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: a mounted Status Code picker offers a newly seen code (204 on 390, 409 on 1440) on its next background discovery poll, without a reload, and keeps the current selection and Path (loopx w4).
 
 ## Tasks (in order)
 
