@@ -813,6 +813,17 @@ func NewServer(base *core.Base, d Deps) *Server {
 	rollouts := &rollout.Tracker{Store: d.DeployStore}
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets, Rollout: rollouts}
 	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Groups: d.EnvGroupsStore, Rollout: rollouts, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
+	if apps, ok := d.Store.(interface {
+		GetApp(context.Context, string) (store.App, error)
+	}); ok {
+		envGroupsSvc.ServiceEnvironment = func(ctx context.Context, serviceID string) (string, error) {
+			a, err := apps.GetApp(ctx, serviceID)
+			if err != nil {
+				return "", store.MapError(err)
+			}
+			return a.EnvironmentID, nil
+		}
+	}
 	var envSeeder apps.EnvSeeder
 	var envCopier apps.EnvCopier
 	var envNames apps.EnvNameSource
