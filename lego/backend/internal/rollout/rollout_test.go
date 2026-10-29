@@ -261,6 +261,55 @@ func TestARollingWriteOnASuspendedServiceIsHeldForTheNextDeploy(t *testing.T) {
 	}
 }
 
+// TestASaveOnlyRollingWriteIsHeldForTheNextDeploy is w8/m135: under
+// WithSaveOnly (Render's Update Service), a release-rolling write is saved and
+// held exactly like a suspended one — no row, no release stamp, the pending
+// marker set — through both Patch and PatchLocked, while an operational write
+// marks nothing pending.
+func TestASaveOnlyRollingWriteIsHeldForTheNextDeploy(t *testing.T) {
+	patches := map[string]func(*Tracker, context.Context, client.Client, *appv1alpha1.App, func(*appv1alpha1.App) error) error{
+		"Patch": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
+			return tr.Patch(ctx, cl, a, store.TriggerSettingsChange, m)
+		},
+		"PatchLocked": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
+			return tr.PatchLocked(ctx, cl, a, store.TriggerSettingsChange, m)
+		},
+	}
+	for name, patch := range patches {
+		t.Run(name, func(t *testing.T) {
+			cl, a := lockedPatchFixture(t, interceptor.Funcs{})
+			ds := &fakeDeployStore{}
+			tr := &Tracker{Store: ds}
+			ctx := WithSaveOnly(context.Background())
+			if err := patch(tr, ctx, cl, a, func(a *appv1alpha1.App) error {
+				a.Spec.HealthCheckPath = "/hz2"
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			_, stamped := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]
+			if len(ds.created) != 0 || stamped || a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" {
+				t.Fatalf("save-only write: rows %d, stamped %v, annotations %v; want no row, no stamp, pending",
+					len(ds.created), stamped, a.Annotations)
+			}
+			if a.Spec.HealthCheckPath != "/hz2" {
+				t.Fatalf("healthCheckPath = %q, want the saved /hz2", a.Spec.HealthCheckPath)
+			}
+
+			cl, a = lockedPatchFixture(t, interceptor.Funcs{})
+			if err := patch(tr, ctx, cl, a, func(a *appv1alpha1.App) error {
+				a.Spec.Replicas = 3
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if _, pending := a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]; pending || len(ds.created) != 0 {
+				t.Fatalf("an operational save-only write marked a release pending or opened a row")
+			}
+		})
+	}
+}
+
 // TestStagedGroupLinksShipWithTheNextRollingWriteOnly (w4/m239): a staged link
 // changes no release-identity field, a write that does not roll leaves it
 // staged, and the write that rolls folds it into the spec under its own row.

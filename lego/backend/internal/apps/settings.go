@@ -175,6 +175,10 @@ type servicePatchOp struct {
 	// with it (w5/m116).
 	check func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error
 	apply func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error)
+	// deploys marks the one row whose change still deploys at once: a plan
+	// (instance type) change resizes the running service, as it does on
+	// Render. Every other row saves only (rollout.WithSaveOnly, w8/m135).
+	deploys bool
 }
 
 // canOperate/canCreate are the two fixed relations most rows use; only the
@@ -291,6 +295,7 @@ var servicePatchTable = []servicePatchOp{
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetPlan(ctx, id, *p.Plan)
 		},
+		deploys: true,
 	},
 	{
 		fields:   []string{"IdleTTLSeconds"},
@@ -753,12 +758,11 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	if read == nil {
 		return s.Get(ctx, id)
 	}
-	// One PATCH is one rollout. The table below applies each present field as
-	// its own setter, and every build-relevant setter opens a deploy row
-	// (w6/m51) — so without this a four-field save would read back as four
-	// deploys, three of them immediately canceled. Deferred rather than run on
-	// success only: a table that fails partway has still changed the service for
-	// the fields it did apply, and that rollout is still owed its row.
+	// Every row but plan saves only (rollout.WithSaveOnly, w8/m135). A plan
+	// change deploys at once, carrying every change held so far, and Batch
+	// keeps the request to one deploy row. Deferred rather than run on success
+	// only: a table that fails partway after the plan row has still rolled the
+	// service, and that rollout is still owed its row.
 	ctx, flushRollout := rollout.Batch(ctx)
 	defer flushRollout()
 	// Each setter would also commit its own App write, and the operator
@@ -776,8 +780,12 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	// carry it to the final view.
 	var proxied []string
 	for _, row := range presentServicePatchRows(p) {
+		rowCtx := ctx
+		if !row.deploys {
+			rowCtx = rollout.WithSaveOnly(ctx)
+		}
 		ops.Add(true, func() (AppView, error) {
-			v, err := row.apply(ctx, staged, id, p)
+			v, err := row.apply(rowCtx, staged, id, p)
 			if v.IPAllowListProxiedDomains != nil {
 				proxied = v.IPAllowListProxiedDomains
 			}

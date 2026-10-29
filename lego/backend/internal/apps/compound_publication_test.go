@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -144,11 +145,23 @@ func TestCompoundClearNeverStoresTheRemovedCommandBesideTheOtherChange(t *testin
 	if len(stored) != 1 {
 		t.Fatalf("the patch stored %d spec changes, want exactly 1", len(stored))
 	}
-	if got := stored[0].Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != "5" {
-		t.Errorf("release generation = %q, want the read generation's next (5)", got)
+	// Render's Update Service saves only (w8/m135): the change is held for
+	// the next deploy under the generation the publish produced.
+	assertHeldForNextDeploy(t, &stored[0], "5")
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none: a settings PATCH deploys nothing", st.deployCalls)
 	}
-	if len(st.deployCalls) != 1 || st.deployCalls[0].Generation != 5 {
-		t.Fatalf("deploy rows = %+v, want one row filed under generation 5", st.deployCalls)
+}
+
+// assertHeldForNextDeploy checks a stored App holds its release change for
+// the next deploy at pending, without stamping a release of its own.
+func assertHeldForNextDeploy(t *testing.T, a *appv1alpha1.App, pending string) {
+	t.Helper()
+	if got := a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]; got != pending {
+		t.Errorf("pending generation = %q, want %s: the change waits for the next deploy", got, pending)
+	}
+	if got, ok := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; ok {
+		t.Errorf("release generation = %q, want none: a save-only change stamps no release", got)
 	}
 }
 
@@ -197,8 +210,9 @@ func TestWideCompoundPatchIsOneAppWrite(t *testing.T) {
 		got.MaxShutdownDelaySeconds == nil || *got.MaxShutdownDelaySeconds != delay || len(got.IPAllowListEntries) != 1 {
 		t.Fatalf("published spec = %+v, want every requested field", got)
 	}
-	if len(st.deployCalls) != 1 {
-		t.Fatalf("deploy rows = %d, want 1", len(st.deployCalls))
+	assertHeldForNextDeploy(t, &stored[0], "5")
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %d, want none: a settings PATCH deploys nothing", len(st.deployCalls))
 	}
 	if view.HealthCheckPath != health || view.StartCommand != start {
 		t.Errorf("answered view = health %q start %q, want the published configuration", view.HealthCheckPath, view.StartCommand)
@@ -237,11 +251,35 @@ func TestCompoundPatchRebasesOnALostRace(t *testing.T) {
 	if final.Spec.Replicas != 3 || final.Spec.HealthCheckPath != "" || final.Spec.PreDeployCommand != "" {
 		t.Fatalf("final spec = %+v, want the racing scale kept and both settings cleared", final.Spec)
 	}
-	if got := final.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != strconv.Itoa(8) {
-		t.Errorf("release generation = %q, want 8 (the raced generation's next)", got)
+	assertHeldForNextDeploy(t, final, strconv.Itoa(8))
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none", st.deployCalls)
 	}
-	if len(st.deployCalls) != 1 || st.deployCalls[0].Generation != 8 {
-		t.Fatalf("deploy rows = %+v, want one row filed under generation 8", st.deployCalls)
+}
+
+// TestCompoundPatchWithPlanDeploysEveryHeldChange: a plan change still
+// deploys at once, as on Render, and the one release it opens carries the
+// settings the same request saved — the stamp reaches the pending generation,
+// so nothing stays held behind it (w8/m135).
+func TestCompoundPatchWithPlanDeploysEveryHeldChange(t *testing.T) {
+	st := &recordingStore{}
+	svc, cl := newService(st, preDeployApp())
+	writes := observeAppWrites(svc, cl)
+	plan, health := "standard", "/livez"
+	if _, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{Plan: &plan, HealthCheckPath: &health}); err != nil {
+		t.Fatalf("ApplyServicePatch: %v", err)
+	}
+	stored := writes.specChanges(preDeployApp())
+	if len(stored) != 1 || stored[0].Spec.HealthCheckPath != health {
+		t.Fatalf("stored spec changes = %+v, want one carrying the plan and the health path", stored)
+	}
+	release, _ := strconv.ParseInt(stored[0].Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
+	pending, _ := strconv.ParseInt(stored[0].Annotations[appv1alpha1.AnnotationPendingSourceGeneration], 10, 64)
+	if release != 5 || pending > release {
+		t.Errorf("release = %d pending = %d, want release 5 covering every held change", release, pending)
+	}
+	if len(st.deployCalls) != 1 || st.deployCalls[0].Generation != 5 || st.deployCalls[0].Trigger != store.TriggerSettingsChange {
+		t.Fatalf("deploy rows = %+v, want one settings_change row filed under generation 5", st.deployCalls)
 	}
 }
 
@@ -439,7 +477,8 @@ func TestFailurePartwayStillPublishesTheRowsBeforeIt(t *testing.T) {
 	if len(stored) != 1 || stored[0].Spec.HealthCheckPath != "" || stored[0].Spec.PreDeployCommand != "" || stored[0].Spec.Port == port {
 		t.Fatalf("stored spec changes = %+v, want one carrying both clears and not the failed port", stored)
 	}
-	if len(st.deployCalls) != 1 {
-		t.Fatalf("deploy rows = %d, want the one the published rows owe", len(st.deployCalls))
+	assertHeldForNextDeploy(t, &stored[0], "5")
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %d, want none: the published rows are held for the next deploy", len(st.deployCalls))
 	}
 }

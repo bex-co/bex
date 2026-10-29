@@ -5173,19 +5173,41 @@ func (s *Service) patch(ctx context.Context, relation, name string, mutate func(
 // only spec fields change; the operator reconciles the rest. The single write
 // path every lifecycle verb ultimately shares.
 //
-// It is also the deploy-history gate (w6/m51). bex cannot apply a build- or
-// release-relevant spec change without rolling a new release, so any mutation
-// that moves the operator's release identity is a real rollout and gets its own
-// deploys row — the same guarantee w2/m30 gave Restart, now covering the
-// Settings-page verbs (start/build command, root dir, Dockerfile path,
-// pre-deploy command, health check path, plan, disks) that used to
-// rebuild invisibly. A purely operational mutation (scale, autoDeploy, custom
+// It is also the deploy-history gate (w6/m51). A mutation that moves the
+// operator's release identity (start/build command, root dir, Dockerfile path,
+// pre-deploy command, health check path, plan, disks, shutdown delay) is a
+// release: by default it is saved and deployed at once, as a dashboard
+// Settings save is, and gets its own settings_change deploy row. Under
+// rollout.WithSaveOnly — the REST PATCH /v1/services/{id} and MCP
+// update_service rows, Render's Update Service contract (w8/m135) — the same
+// mutation is saved and held for the next deploy instead: no row, no roll,
+// and the operator keeps serving the release it runs while undeployedChanges
+// reads true. A purely operational mutation (scale, autoDeploy, custom
 // domains, notification policy) changes nothing the operator rebuilds for and
-// deliberately mints no row. Update Source is the exception among release
-// fields: SetSourceAndRegistryCredential marks it pending and bypasses this
-// path so Render's "next deploy uses it" contract remains true.
+// mints no row either way. Update Source is held the same way through its own
+// path (SetSourceAndRegistryCredential).
 func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
-	return s.patchTracked(ctx, a, store.TriggerConfigChange, mutate)
+	// A service being deleted answers every write the way reads do (w8/023):
+	// 404, before a deploy row or CR patch lands on it.
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return AppView{}, err
+	}
+	err := s.rollouts().Patch(ctx, s.Client, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
+		before := a.Spec
+		mutate(a)
+		if a.Spec.Repo != before.Repo || a.Spec.Branch != before.Branch {
+			clearCheckedPending(a)
+		}
+		resourcemeta.Touch(a, s.Now())
+		return nil
+	})
+	if mapped, ok := core.InvalidFieldsError(err); ok {
+		return AppView{}, mapped
+	}
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.view(a), nil
 }
 
 // recordedPatch is patchFetched plus the deferred audit row its caller owes
@@ -5202,31 +5224,6 @@ func (s *Service) recordedPatch(ctx context.Context, verb string, a *appv1alpha1
 	}
 	s.RecordAppConfigChanged(ctx, a, verb)
 	return view, nil
-}
-
-// patchTracked is patchFetched with an explicit deploy-history trigger.
-func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) (AppView, error) {
-	// A service being deleted answers every write the way reads do (w8/023):
-	// 404, before a config_change row or CR patch lands on it.
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return AppView{}, err
-	}
-	err := s.rollouts().Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
-		before := a.Spec
-		mutate(a)
-		if a.Spec.Repo != before.Repo || a.Spec.Branch != before.Branch {
-			clearCheckedPending(a)
-		}
-		resourcemeta.Touch(a, s.Now())
-		return nil
-	})
-	if mapped, ok := core.InvalidFieldsError(err); ok {
-		return AppView{}, mapped
-	}
-	if err != nil {
-		return AppView{}, err
-	}
-	return s.view(a), nil
 }
 
 // patchUntracked applies a CR-only mutation without opening a generic deploy

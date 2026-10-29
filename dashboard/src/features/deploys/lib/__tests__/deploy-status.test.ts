@@ -87,6 +87,7 @@ describe("deployTriggerKey", () => {
     ["blueprint", "deploys.triggerBlueprint"],
     ["new_commit", "deploys.triggerNewCommit"],
     ["config_change", "deploys.triggerConfigChange"],
+    ["settings_change", "deploys.triggerSettingsChange"],
     ["restart", "deploys.triggerRestart"],
     ["deployed_by_render", "deploys.triggerDeployedByRender"],
   ] as const)("maps trigger=%s to %s", (trigger, key) => {

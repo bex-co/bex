@@ -275,7 +275,8 @@ func TestValidMultiFieldPatchStillAppliesEveryField(t *testing.T) {
 		!sameInt32Ptr(spec.MaxShutdownDelaySeconds, &delay) {
 		t.Fatalf("a valid five-field patch did not apply every field: %+v", spec)
 	}
-	if len(st.deployCalls) != 1 {
-		t.Fatalf("valid patch opened %d deploy rows, want exactly 1", len(st.deployCalls))
+	// A Render Update Service PATCH saves only (w8/m135).
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("valid patch opened %d deploy rows, want none", len(st.deployCalls))
 	}
 }

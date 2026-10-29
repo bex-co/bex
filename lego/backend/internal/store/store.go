@@ -238,13 +238,19 @@ const (
 	TriggerDeployHook = "deploy_hook" // the App's unauthenticated secret-URL trigger
 	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
 	TriggerNewCommit  = "new_commit"  // a git-push redeploy via the HMAC webhook (Render's spelling)
-	// TriggerConfigChange is a rollout a configuration write forced rather than
-	// an explicit deploy verb: a Settings-page field, an env var or secret file,
-	// an env-group link/unlink. bex cannot apply any of these without rolling a
-	// new release, so each is a real deploy the user must be able to see, retry,
-	// and roll back — spelled distinctly so the history still tells a settings
-	// save apart from a manual deploy (w6/m51).
+	// TriggerConfigChange is a rollout an environment write deployed rather
+	// than an explicit deploy verb: an env var or secret file, an env-group
+	// link/unlink, an environment "Save, rebuild, and deploy". Each is a real
+	// deploy the user must be able to see, retry, and roll back — spelled
+	// distinctly so the history still tells it apart from a manual deploy
+	// (w6/m51). Its deploy_started event reads envUpdated:true.
 	TriggerConfigChange = "config_change"
+	// TriggerSettingsChange is a rollout a service-settings save deployed: a
+	// dashboard Settings field (GraphQL), or a plan change through any
+	// surface. It is config_change's settings sibling, kept apart so only an
+	// environment change reads envUpdated:true (w8/m135). REST and MCP spell
+	// both Render's service_updated.
+	TriggerSettingsChange = "settings_change"
 	// TriggerRestart is a rollout Restart opened against the live release
 	// (w4/379): neither an explicit deploy verb nor a config write. Render
 	// spells a restart roll "manual", so REST maps this onto "other", which
@@ -260,7 +266,7 @@ const (
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart, TriggerDeployedByRender}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerDeployedByRender}
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:

@@ -177,12 +177,15 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 			}
 		}
 	}
-	// Cancellation also retains plan/pre-deploy settings outside the rollback
-	// record's selected fields. The served record's settings fingerprint says
-	// whether any of them differ; a cancel of an identical redeploy leaves
-	// nothing pending (w4/m165). A record without one cannot prove equality.
+	// Settings outside the record's selected fields — plan, pre-deploy command,
+	// shutdown delay, build settings — differ when the served record's settings
+	// fingerprint does not name the saved ones: a cancel retains them, and a
+	// Render Update Service PATCH saves them without deploying (w8/m135). A
+	// cancel of an identical redeploy leaves nothing pending (w4/m165). A
+	// record without a fingerprint cannot prove equality after a cancel, and
+	// otherwise predates both and keeps today's answer.
 	settingsDiffer := false
-	if !different && canceledOverServed(app) {
+	if !different && (canceledOverServed(app) || rec.spec.SettingsFingerprint != "") {
 		settingsDiffer = !recordedSettingsMatch(rec.spec, app.Spec)
 		different = settingsDiffer
 	}

@@ -157,7 +157,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.triggerConfigChange": {
     message: "配置变更",
     description:
-      "Deploy row: trigger=config_change label (a Settings, env var, or env-group edit that forced a rebuild)",
+      "Deploy row: trigger=config_change label (an env var, secret file, or env-group edit that deployed)",
+  },
+  "deploys.triggerSettingsChange": {
+    message: "设置变更",
+    description:
+      "Deploy row: trigger=settings_change label (a Settings save that deployed, or a plan change; w8/m135)",
   },
   "deploys.triggerRestart": {
     message: "重启",

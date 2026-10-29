@@ -70,7 +70,7 @@ func TestMigrateContainerPolicyPlansThenRollsOnce(t *testing.T) {
 			if got := policyOf(t, cl); got != appv1alpha1.ContainerPolicyRenderV1 {
 				t.Fatalf("CR policy = %q", got)
 			}
-			if len(rec.policyCalls) != 1 || rec.policyCalls[0] != "srv-ch=render-v1" || len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != store.TriggerConfigChange {
+			if len(rec.policyCalls) != 1 || rec.policyCalls[0] != "srv-ch=render-v1" || len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != store.TriggerSettingsChange {
 				t.Fatalf("row writes %v, deploys %+v", rec.policyCalls, rec.deployCalls)
 			}
 			if plan, err = svc.MigrateContainerPolicy(t.Context(), "srv-ch", true); err != nil || !plan.NoOp || plan.Applied || len(rec.deployCalls) != 1 {

@@ -44,8 +44,9 @@ type runtimeConfigRecord struct {
 	template corev1.PodTemplateSpec
 	// adopted, when set, is written as the release's adopted spec
 	// (releaseRecordAdoptedSpecKey). Reads leave it nil; writes without it keep
-	// the stored one.
-	adopted *appv1alpha1.AppSpec
+	// the stored one, or store adoptedIfAbsent when there is none.
+	adopted         *appv1alpha1.AppSpec
+	adoptedIfAbsent *appv1alpha1.AppSpec
 }
 
 func (r *AppReconciler) readReleaseRecordSecret(ctx context.Context, app *appv1alpha1.App, generation int64) (*corev1.Secret, error) {
@@ -374,7 +375,7 @@ func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.Ap
 	// A held release on its view runs its own new artifact, not the served one
 	// a staged source switch keeps (w8/m121).
 	runtime, err := r.retainReleaseSources(ctx, app)
-	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) || viewedRelease(ctx, app) {
+	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) || heldReleaseViewed(ctx, app) {
 		return runtime, launchUnknown, err
 	}
 	served := successfulReleaseGeneration(app)
@@ -472,6 +473,12 @@ func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *app
 		data := map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw, appv1alpha1.ReleaseRecordSpecKey: spec}
 		if adopted == nil {
 			adopted = rec.Data[releaseRecordAdoptedSpecKey]
+		}
+		if adopted == nil && record.adoptedIfAbsent != nil {
+			var err error
+			if adopted, err = json.Marshal(record.adoptedIfAbsent); err != nil {
+				return err
+			}
 		}
 		if adopted != nil {
 			data[releaseRecordAdoptedSpecKey] = adopted

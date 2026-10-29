@@ -66,6 +66,19 @@ func (r *AppReconciler) heldReleaseView(ctx context.Context, app *appv1alpha1.Ap
 	if app.ActiveReleaseConfig() != nil {
 		return nil, nil
 	}
+	return r.pendingReleaseView(ctx, app)
+}
+
+// pendingReleaseView is the spec the current release was adopted with, viewed
+// through the saved spec's operational fields, while a saved release-relevant
+// change waits for a deploy (sourceUpdatePending): Update Source, a Render
+// Update Service PATCH, a write held on a suspended service (w8/m135). The
+// release keeps rendering — template, Service, probes, shutdown delay — the
+// settings it runs, so the save rolls nothing; the next deploy adopts the
+// saved spec. nil when the saved spec is still the release's own, and for a
+// release with no recorded spec, which keeps projecting the saved spec as it
+// did before. heldReleaseView is the same view for a release in flight.
+func (r *AppReconciler) pendingReleaseView(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.AppSpec, error) {
 	gen := app.Status.ReleaseGeneration
 	if gen <= 0 || app.Status.ReleaseFingerprint == "" || desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
 		return nil, nil
@@ -107,10 +120,15 @@ func (r *AppReconciler) adoptedReleaseSpec(ctx context.Context, app *appv1alpha1
 
 type viewedReleaseKey struct{}
 
-// viewedReleaseMark is a pass running one App's held release on its view.
+// viewedReleaseMark is a pass running one App's release on its view: a held
+// release in flight (withViewedRelease), or the current release while a saved
+// change waits for a deploy (withPendingReleaseView).
 type viewedReleaseMark struct {
 	app  client.ObjectKey
 	spec appv1alpha1.AppSpec
+	// pending marks the pendingReleaseView: the release already runs its
+	// artifact, so it keeps the served launch a staged source switch reads.
+	pending bool
 }
 
 // withViewedRelease runs the rest of the pass on app's held release view:
@@ -118,8 +136,18 @@ type viewedReleaseMark struct {
 // snapshots (inFlightRelease), and keepReleaseView re-applies the view after a
 // status write decodes the stored spec back into app.
 func withViewedRelease(ctx context.Context, app *appv1alpha1.App, view appv1alpha1.AppSpec) context.Context {
+	return withReleaseView(ctx, app, view, false)
+}
+
+// withPendingReleaseView runs the rest of the pass on the current release's
+// pendingReleaseView, as withViewedRelease does for a held release.
+func withPendingReleaseView(ctx context.Context, app *appv1alpha1.App, view appv1alpha1.AppSpec) context.Context {
+	return withReleaseView(ctx, app, view, true)
+}
+
+func withReleaseView(ctx context.Context, app *appv1alpha1.App, view appv1alpha1.AppSpec, pending bool) context.Context {
 	app.Spec = view
-	return context.WithValue(ctx, viewedReleaseKey{}, &viewedReleaseMark{app: client.ObjectKeyFromObject(app), spec: *view.DeepCopy()})
+	return context.WithValue(ctx, viewedReleaseKey{}, &viewedReleaseMark{app: client.ObjectKeyFromObject(app), spec: *view.DeepCopy(), pending: pending})
 }
 
 func viewedReleaseOf(ctx context.Context, app *appv1alpha1.App) *viewedReleaseMark {
@@ -132,6 +160,12 @@ func viewedReleaseOf(ctx context.Context, app *appv1alpha1.App) *viewedReleaseMa
 
 func viewedRelease(ctx context.Context, app *appv1alpha1.App) bool {
 	return viewedReleaseOf(ctx, app) != nil
+}
+
+// heldReleaseViewed reports a pass on a held release's view (withViewedRelease).
+func heldReleaseViewed(ctx context.Context, app *appv1alpha1.App) bool {
+	mark := viewedReleaseOf(ctx, app)
+	return mark != nil && !mark.pending
 }
 
 // keepReleaseView re-applies a viewed pass's spec to obj after a status write

@@ -917,10 +917,11 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 		trigger string
 		want    Trigger
 	}{
-		// A config change is every Settings/env/secret-file/env-group write.
-		// EnvUpdated is the nearest flag Render's vocabulary has; the dashboard
-		// renders it as "Config Change" so the two surfaces agree (w4/100).
+		// A config change is an env/secret-file/env-group write: Render's
+		// envUpdated. A settings save is settings_change and claims no
+		// environment change (w8/m135), so like api it sets no flag.
 		{store.TriggerConfigChange, Trigger{EnvUpdated: true}},
+		{store.TriggerSettingsChange, Trigger{}},
 		// Manual is now exclusively the dashboard trigger (w4/413): on
 		// Render an API-key deploy reads trigger "api", manual false, so the
 		// api cause sets no flag. The exactly-one-flag guard below therefore
@@ -952,7 +953,7 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 				}
 			}
 			wantSet := 1
-			if tc.trigger == store.TriggerAPI {
+			if tc.trigger == store.TriggerAPI || tc.trigger == store.TriggerSettingsChange {
 				wantSet = 0 // Render's api record sets no manual flag (w4/413)
 			}
 			if set != wantSet {
