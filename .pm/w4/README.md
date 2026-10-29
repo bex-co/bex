@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **436** — [Custom domains: every row's "Show DNS setup" and actions-menu buttons share one accessible name](436.md) (~25m) ← live `/qa-find-bugs w4` loop run d25a, 2026-10-29 UTC (`muse.env`, pin `69f0b17d1fad`; minor). With three domain rows, all three triggers read "Open domain actions menu" / "Show DNS setup"; `custom-domains-section.tsx:274,287` use constant labels with `domain.name` in scope.
+
 - [x] **435** — [Notifications: unsaved mobile-push changes are silently lost on navigation, beside email switches that autosave](done/435.md) (~30m) — **DONE 2026-10-29** (live on pin `69f0b17d1fad`: Save disabled while clean, navigation and reload guarded while dirty; fix `23373696a`) ← live `/qa-find-bugs w4` loop run eec3, 2026-10-29 UTC (`muse.env`, pin `b33dd43c4428`; minor). A ticked push event filter vanished after an in-app navigation with no prompt; "Save push settings" is enabled even when clean. `push-notification-settings-panel.tsx:172` has no dirty tracking or `useBlocker`, unlike `service-environment-editor.tsx:386`.
 
 - [x] **432** — [On a Hobby workspace, the Webhooks loading skeleton draws the Pro list and then swaps to the shorter plan-gate card](done/432.md) (~30m) — **DONE 2026-10-29** (`9282eef95`; live on pin `41924a54b377`: pending and ready Hobby webhooks cards identical at 390 and 1440) ← loopx w4 replay of m220, 2026-10-29 UTC (`bex-canary`, pin `d66f96c06991`; minor).
