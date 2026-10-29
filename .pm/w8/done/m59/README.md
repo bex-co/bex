@@ -1,6 +1,6 @@
 # w8 · m59 — Return static sites to direct publication after clearing their build command
 
-**Worker:** worker8 **Goal:** clearing an implicit static build step publishes the current repository files regardless of creation history. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001/t002/t004 done; native build-created clears live-accepted (sweep184); t003 has live GraphQL/MCP clear acceptance (sweep257) but needs dashboard write receipts; t005 legacy/neighbor live acceptance and t006 remain.
+**Worker:** worker8 **Goal:** clearing an implicit static build step publishes the current repository files regardless of creation history. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 | Normalize implicit static strategy with command intent — **DONE 2026-10-12** | 35m | — |
 | t002 | Verify existing sites, shared callers and explicit strategy neighbors — **DONE 2026-10-12** | 30m | t001 |
-| t003 | Render parity across REST, GraphQL, MCP and dashboard — native core clear passes sweep184; code-level REST/GraphQL/MCP parity added 2026-10-13; **BLOCKED: live dashboard receipts** | 20m | t002 |
+| t003 | Render parity across REST, GraphQL, MCP and dashboard — **DONE 2026-10-29** | 20m | t002 |
 | t004 | Simplify the changed strategy projection — **DONE 2026-10-12** | 10m | t003 |
-| t005 | Test creation-history equivalence and command neighbors — code regressions done; sweep184 build-created cases pass; full neighbor/legacy acceptance remains | 30m | t003 |
-| t006 | Closeout after complete native and cross-surface acceptance | 10m | t004, t005 |
+| t005 | Test creation-history equivalence and command neighbors — **DONE 2026-10-29** | 30m | t003 |
+| t006 | Closeout after complete native and cross-surface acceptance — **DONE 2026-10-29** | 10m | t004, t005 |
 
 ## Definition of done
 
@@ -34,7 +34,7 @@
 ## Source + Goal linkage
 
 - **Source:** [researched live CLI finding](finding.md), sweep 99, 2026-10-11. Both native clients accept the clear payload; three sites created with build steps retain native Builder and fail, while the direct-created control returns to Live. All fixtures are cleaned.
-- **Goal linkage:** reliable Render-compatible hosting ([ADR018](../../../docs/ADR018-render-parity.md)) and optional static builds ([ADR029](../../../docs/ADR029-static-sites.md)).
+- **Goal linkage:** reliable Render-compatible hosting ([ADR018](../../../../docs/ADR018-render-parity.md)) and optional static builds ([ADR029](../../../../docs/ADR029-static-sites.md)).
 - **Expected outcome:** removing a build step deploys the intended plain files rather than trapping a site in an invalid native-build configuration.
 - **Why now:** create and update project the same current settings differently, leaving existing sites persistently unable to publish their requested no-build configuration. The related static rollback work does not fix command clearing.
 - **Size:** six tasks, 2h15. Shared existing-resource behavior, transport acceptance and meaningful regression coverage make this larger than an inbox note. Render parity is included because user-facing command semantics and shared setters are affected.
@@ -53,3 +53,14 @@
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Hosted acceptance on production (pin `b33dd43c4428`), workspace bex-canary, released Bex v0.3.3, human device-login QA grant. Fixture `srv-dbhfk176s0os738949ng` (`qa-20261029-lx8a-m59s`), created through `bex services create --type static_site` with the finding's build command, root `examples/static-site`, publish `dist`:
+
+- Initial deploy `dep-dbhfk176s0os738949o0` Live; `/` = `LX8A_INDEX`, `/version.txt` = `LX8A_ASSET`.
+- **Dashboard write (t003):** Settings → Edit build command → cleared → Save changes sent GraphQL `setBuildCommand` → `buildCommand:""`; Edit publish directory → `.` → `setPublishPath` → `publishPath:"."`. Service read shows `builder:"auto"`. The command save's deploy was superseded (canceled) by the publish save's; `dep-dbhfmj11gegc739oufpg` (trigger `service_updated`, commit `9b312cc02b90`) became Live. Served `/` is byte-identical (sha256 `1eb4041e…e8bb`) to `examples/static-site/index.html` at `9b312cc02b90`; the generated `/version.txt` returns 404.
+- **Neighbors (t005):** `bex services update --build-command "…LX8A_BACK…" --publish-directory dist` → `dep-dbhfn1h1gegc739oug20` Live serving `LX8A_BACK` (a non-empty command runs again). A following `services update --auto-deploy=false` that omits the command leaves `buildCommand` and `publishPath dist` unchanged.
+- Native REST clears from both clients (sweep184) and GraphQL/MCP adapter clears (sweep257) were already accepted; with this dashboard write every exposed setter is now live-covered.
+- Legacy already-implicitly-native records: not reproducible as fresh fixtures after the fix (create no longer persists `builder native` for a build-only static site); covered by `TestClearedStaticBuildCommandPublishesDirectly` (legacy-record case) and the operator `TestDirectStaticPublishAfterClearedBuildCommand`. Explicit runtime/Dockerfile/builder neighbors are covered by the same regression, not re-run live.
+- Cleanup: deleted by ID; `GET /v1/services/srv-dbhfk176s0os738949ng` → 404, absent from `services list`, public host 503 (no server).
