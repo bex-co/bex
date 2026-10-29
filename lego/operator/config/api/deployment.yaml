@@ -174,9 +174,11 @@ spec:
             # OpenBao KV v2, reached cluster-internally. bex-api authenticates as
             # its own ServiceAccount via OpenBao's Kubernetes auth (role bex-api,
             # scripts/bao-k8s-auth.sh). Unset => the env-vars verbs 503; everything
-            # else is unchanged.
+            # else is unchanged. The active node only: since OpenBao 2.5 a raft
+            # standby answers reads locally and may lag, so a read right after a
+            # compare-and-set write saw the previous version (w4/m130).
             - name: BEX_OPENBAO_URL
-              value: http://openbao.secrets.svc:8200
+              value: http://openbao-active.secrets.svc:8200
             # Control plane (source of truth, w1/m2): BEX_CP_DB_URI turns on the
             # Postgres store + the projector (apps rows -> App CRs) + the
             # cluster-internal tenant API on :8091 + tenant onboarding (w1/m9:
