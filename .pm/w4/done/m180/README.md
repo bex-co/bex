@@ -1,6 +1,6 @@
 # w4 · m180 — Save and deploy reuses the serving artifact
 
-**Worker:** worker4 **Goal:** an environment save requesting `deploy` applies the new configuration once using the serving artifact, without a source build. **Status:** blocked
+**Worker:** worker4 **Goal:** an environment save requesting `deploy` applies the new configuration once using the serving artifact, without a source build. **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: on a git-built Docker service, an env-only Save and deploy reuses the serving image with no build, Save only changes nothing running, rebuild runs one build, and Restart reuses the image (loopx w4).
 
 ## Tasks (in order)
 
