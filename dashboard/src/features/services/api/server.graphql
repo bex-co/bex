@@ -118,6 +118,9 @@ query Server($id: String!) {
     # For an image-port private service it is the PRIMARY port (the
     # `<slug>:<port>` suffix of internalAddress), 0 while discovery is pending.
     port
+    # configuredPort is the port the Settings row shows: an image-port service's
+    # configured primary, which port publishes only once promoted (w4/433).
+    configuredPort
     # openPorts is every TCP port the stable hostname serves (Render's
     # serviceDetails.openPorts, w6/m148): null for types without a network
     # address, [port] for a configured-port service, the image's declared TCP

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   openPortsDisplay,
   publishesImagePorts,
+  settingsPort,
   type PortFacts,
 } from "@/features/services/lib/port";
 
@@ -99,5 +100,18 @@ describe("publishesImagePorts", () => {
         openPorts: null,
       }),
     ).toBe(false);
+  });
+});
+
+// w4/433: a saved configured image port is published only at promotion, so
+// the Settings row reads configuredPort, falling back to port.
+describe("settingsPort", () => {
+  it("shows the saved port while the published one awaits promotion", () => {
+    expect(settingsPort({ port: 3001, configuredPort: 3000 })).toBe(3000);
+  });
+
+  it("falls back to port when configuredPort is absent", () => {
+    expect(settingsPort({ port: 8080, configuredPort: null })).toBe(8080);
+    expect(settingsPort({ port: 8080 })).toBe(8080);
   });
 });

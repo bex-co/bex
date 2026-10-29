@@ -331,6 +331,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"internalAddress": gqlutil.StrField(func(a AppView) any { return a.InternalAddress }),
 		// See AppView.Port — readable because it is settable (w4/m121).
 		"port": gqlutil.IntField(func(a AppView) any { return a.Port }),
+		// See AppView.ConfiguredPort.
+		"configuredPort": gqlutil.IntField(func(a AppView) any { return a.ConfiguredPort }),
 		// openPorts is every TCP port the stable hostnames serve (Render's
 		// serviceDetails.openPorts): null for types without a network address,
 		// [] while an image-port service's discovery is pending (w6/m148).

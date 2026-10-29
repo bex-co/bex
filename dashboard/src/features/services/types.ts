@@ -217,6 +217,12 @@ export interface ServiceView {
    */
   port?: number | null;
   /**
+   * The port the Settings row shows (w4/433): an image-port service's
+   * configured primary, which `port` publishes only once promoted. Null when
+   * not selected.
+   */
+  configuredPort?: number | null;
+  /**
    * Every TCP port the service's stable hostname serves (Render's
    * `serviceDetails.openPorts`, w6/m148). null for the types without a network
    * address (and when not selected); `[port]` for a configured-port service;

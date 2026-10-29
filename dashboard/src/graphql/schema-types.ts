@@ -3744,6 +3744,7 @@ export type Service = {
   builder: Maybe<Scalars['String']['output']>;
   cacheProfile: Maybe<Scalars['String']['output']>;
   command: Maybe<Scalars['String']['output']>;
+  configuredPort: Maybe<Scalars['Int']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
   disk: Maybe<ServiceDisk>;

@@ -45,7 +45,10 @@ import {
   serviceSettingsSections,
   type ServiceSettingsSectionId,
 } from "@/features/services/lib/settings-sections";
-import { publishesImagePorts } from "@/features/services/lib/port";
+import {
+  publishesImagePorts,
+  settingsPort,
+} from "@/features/services/lib/port";
 import { toServiceView } from "@/features/services/lib/status";
 import { ServiceSettingsSkeleton } from "@/common/components/route-skeletons";
 import {
@@ -319,7 +322,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             <CardContent>
               <ServicePortRow
                 serviceId={serviceId}
-                port={service?.port}
+                port={service ? settingsPort(service) : undefined}
                 imagePorts={
                   service
                     ? service.imagePorts === true ||

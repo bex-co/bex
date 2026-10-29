@@ -121,6 +121,19 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 	return a.Status.ImageNetwork
 }
 
+// ConfiguredImagePort is an image-port service's configured primary: a web
+// service's own PORT env (Status.EnvPort), which wins, else spec.port in a
+// configured mode. ok is false while the image chooses (w4/m243).
+func (a *App) ConfiguredImagePort() (port int32, ok bool) {
+	if a.Spec.UsesWebImagePorts() && a.Status.EnvPort > 0 {
+		return a.Status.EnvPort, true
+	}
+	if a.Spec.HasImagePorts() && (a.Spec.PortMode == PortModeImageConfiguredV1 || a.Spec.PortMode == PortModeWebImageConfiguredV1) {
+		return a.Spec.Port, true
+	}
+	return 0, false
+}
+
 // ServingPort is the port a configured (non-image-port) service listens on:
 // the port its own PORT environment variable selected, as the operator
 // recorded it, else an explicit non-default spec.port (w5/m149), else the detected

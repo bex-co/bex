@@ -78,6 +78,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     renderSubdomainPolicy: null,
     healthCheckPath: null,
     port: 3000,
+    configuredPort: 3000,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     publishPath: null,
@@ -137,6 +138,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     renderSubdomainPolicy: null,
     healthCheckPath: null,
     port: 3000,
+    configuredPort: 3000,
     openPorts: null,
     imagePorts: false,
     maxShutdownDelaySeconds: null,
@@ -224,6 +226,7 @@ describe("toServiceView", () => {
       // The list node does not select the port, so the mapper reports null
       // rather than inventing the platform default (w4/m121/t003).
       port: null,
+      configuredPort: null,
       // Nor the open ports: null (unknown), never [] (discovery pending).
       openPorts: null,
       maxShutdownDelaySeconds: null,

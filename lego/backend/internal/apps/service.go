@@ -551,9 +551,14 @@ type AppView struct {
 	// (spec.HasImagePorts: an image-port private service, or a web service
 	// created without a port since w4/m243). A bex extension: the dashboard
 	// reads it to describe the Port setting (w4/m243 t010).
-	ImagePorts bool   `json:"imagePorts,omitempty"`
-	CreatedAt  string `json:"createdAt"`
-	UpdatedAt  string `json:"updatedAt,omitempty"`
+	ImagePorts bool `json:"imagePorts,omitempty"`
+	// ConfiguredPort is the port the Settings row shows: an image-port
+	// service's configured primary (App.ConfiguredImagePort), else Port. Port
+	// moves only at promotion (w4/m243 t007), so a save would otherwise read
+	// back the old port until the deploy is live (w4/433). GraphQL only.
+	ConfiguredPort int32  `json:"-"`
+	CreatedAt      string `json:"createdAt"`
+	UpdatedAt      string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -1158,6 +1163,7 @@ func view(a *appv1alpha1.App) AppView {
 		// drift (ADR041 D2/D4).
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
+		ConfiguredPort:       settingsPort(a),
 		OpenPorts:            serverPorts(a.OpenPorts()),
 		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,
@@ -4764,6 +4770,15 @@ func addressablePort(app *appv1alpha1.App) int32 {
 		return 0
 	}
 	return app.ServicePort()
+}
+
+// settingsPort is AppView.ConfiguredPort: an image-port service's configured
+// primary, which the serving network adopts only once promoted.
+func settingsPort(app *appv1alpha1.App) int32 {
+	if port, ok := app.ConfiguredImagePort(); ok && port > 0 {
+		return port
+	}
+	return addressablePort(app)
 }
 
 // validateServicePort is the one port bounds check every surface shares, so a
