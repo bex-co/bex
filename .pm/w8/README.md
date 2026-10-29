@@ -403,7 +403,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) (~20m + decision, minor) ← filed from w8/217 2026-10-29: the parity-first exact 3.14.8 default runs the frozen `python:3.14.8-bookworm`, whose `libbrotli1 1.0.9-2+b6` lacks the w1/136 fix — **needs the user's decision** (keep 3.14.8, revert to 3.14.10 as a divergence, or a bespoke patched 3.14.8 image)
+- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](blocked/222.md) — **BLOCKED (2026-10-29: needs the user to choose: keep Render's exact 3.14.8 default (shipped by w8/217; its frozen image carries the unfixed system `libbrotli1`, which CPython itself does not link), revert to 3.14.10 as a signed-off divergence, or build a bex-owned 3.14.8 image on the patched base)**
 
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
