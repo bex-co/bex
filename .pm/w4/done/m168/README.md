@@ -1,6 +1,6 @@
 # w4 · m168 — Loop6: bound env/secret-file key length so a long name can't wedge a service's environment
 
-**Worker:** worker4 **Goal:** an over-long env key or secret-file name is a clear 400 on every surface, and no failed environment write can leave stored state that differs from what is mounted or that cannot be deleted **Status:** blocked — t001–t008 done 2026-10-04; t009 live closeout remains
+**Worker:** worker4 **Goal:** an over-long env key or secret-file name is a clear 400 on every surface, and no failed environment write can leave stored state that differs from what is mounted or that cannot be deleted **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: a 254-character secret-file name or env-var key is refused with a 400 naming the 253-character rule on REST, GraphQL and the dashboard; 253 still saves and nothing invalid persists (loopx w4).
 
 ## Tasks (in order)
 
