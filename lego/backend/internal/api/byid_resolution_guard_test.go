@@ -73,6 +73,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"workspaces":                         {"", "", "the path id is the workspace", nil},
 	"owners":                             {"", "", "the path id is the workspace", nil},
 	"ssh-keys":                           {"", "", "user-scoped: a caller's own public keys", nil},
+	"objects":                            {"", "", "reads nothing: every operation answers not offered (ADR018, w6/097)", nil},
 	"notification-device-subscriptions":  {"notifications", "ScopeByID", "the caller's own device, in the workspace it was registered in (w5/m115)", []string{"scopeDevice"}},
 	"notification-webpush-subscriptions": {"", "", "the caller's own browser registration", nil},
 }

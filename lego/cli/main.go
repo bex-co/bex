@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
+	"github.com/render-oss/cli/pkg/storage"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -52,6 +54,7 @@ func main() {
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.
 	replaceCommand(cmd.RootCmd, skills.Command())
+	notOfferObjectStorage(cmd.RootCmd)
 	// Branding mutates exported cobra metadata (Use/help/docs) after native
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
@@ -106,6 +109,33 @@ func main() {
 		printUpdateNotice(os.Stderr, notice)
 	}
 	os.Exit(exitCode)
+}
+
+// objectStorageNotOffered is what `bex ea objects` answers for cloud storage.
+const objectStorageNotOffered = "bex does not offer Render's early-access object storage yet; --local still stores objects in .render/objects/"
+
+// notOfferObjectStorage makes every `ea objects` subcommand say plainly that
+// bex has no object storage (ADR018, user decision 2026-10-29, w6/097)
+// instead of surfacing the API's 404 as "object not found". Local mode
+// (--local or RENDER_USE_LOCAL_DEV=true), which never calls the API, keeps
+// working.
+func notOfferObjectStorage(root *cobra.Command) {
+	objects, _, err := root.Find([]string{"ea", "objects"})
+	if err != nil || objects.Name() != "objects" {
+		return
+	}
+	for _, sub := range objects.Commands() {
+		run := sub.RunE
+		if run == nil {
+			continue
+		}
+		sub.RunE = func(c *cobra.Command, args []string) error {
+			if local, _ := c.Flags().GetBool("local"); local || storage.IsLocalMode() {
+				return run(c, args)
+			}
+			return errors.New(objectStorageNotOffered)
+		}
+	}
 }
 
 // replaceCommand swaps the root's child named like replacement.
