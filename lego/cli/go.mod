@@ -6,8 +6,9 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/render-oss/cli v1.1.3-0.20261012175920-af9bdd180e90
-	github.com/sigstore/protobuf-specs v0.5.1
+	github.com/sigstore/protobuf-specs v0.5.2
 	github.com/sigstore/sigstore-go v1.3.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -22,9 +23,9 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.43.7 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.32.38 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.37 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.47.1 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.33.6 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.20.6 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
@@ -85,7 +86,6 @@ require (
 	github.com/google/certificate-transparency-go v1.3.3 // indirect
 	github.com/google/go-containerregistry v0.21.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/in-toto/attestation v1.2.0 // indirect
 	github.com/in-toto/in-toto-golang v0.11.0 // indirect
@@ -106,7 +106,7 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/oapi-codegen/runtime v1.2.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
-	github.com/onsi/gomega v1.38.2 // indirect
+	github.com/onsi/gomega v1.44.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pjbgf/sha1cd v0.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -131,7 +131,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
