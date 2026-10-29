@@ -1,6 +1,6 @@
 # w4 · m165 — Loop1: workspace-switch navigation + identical-cancel undeployed flag
 
-**Worker:** worker4 **Goal:** workspace switch never shows cross-workspace data; cancel without changes never raises the saved-changes flag **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
+**Worker:** worker4 **Goal:** workspace switch never shows cross-workspace data; cancel without changes never raises the saved-changes flag **Status:** done 2026-10-29 — live DoD replayed on pin `c9ccd73df050`: workspace switches from project and service pages land on a clean Overview, an identical-commit deploy+cancel leaves no saved-changes state, and the saved-only control keeps its semantics (loopx w4).
 
 ## Tasks (in order)
 
