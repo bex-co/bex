@@ -403,6 +403,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **223** — [`bex login` tells the user to complete login in the "Render Dashboard"](223.md) (~45m) ← loopx w4 replay of w4/m116, 2026-10-29 UTC (released `bex-cli/v0.3.3`; minor). Upstream `pkg/tui/views/login.go` hard-codes the string; `branding.RewriteText` covers help text only, and w8/m29 t002 left runtime strings out of scope.
 - [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](blocked/222.md) — **BLOCKED (2026-10-29: needs the user to choose: keep Render's exact 3.14.8 default (shipped by w8/217; its frozen image carries the unfixed system `libbrotli1`, which CPython itself does not link), revert to 3.14.10 as a signed-off divergence, or build a bex-owned 3.14.8 image on the patched base)**
 
 - [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](blocked/221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **BLOCKED (2026-10-29: needs the user to decide: keep requested-size billing on a 10 GB volume, bill 10 GB, refuse under 10 GB, or cap the filesystem at the requested size)**
