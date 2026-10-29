@@ -1,6 +1,6 @@
 # w4 · m222 — Ignore obsolete dotenv file reads
 
-**Worker:** worker4 **Goal:** an active dotenv import follows the latest user choice, and canceled reads cannot repopulate a later dialog. **Status:** blocked — t001–t005 done 2026-10-17; t006 (owned live replay, save and deploy on a deployed build) open
+**Worker:** worker4 **Goal:** an active dotenv import follows the latest user choice, and canceled reads cannot repopulate a later dialog. **Status:** done 2026-10-29 — live DoD replayed on pin `d66f96c06991`: the latest selected .env file owns the import preview even if an older read finishes later, Cancel discards a pending read, and Save and deploy writes the second file's values (loopx w4).
 
 **Estimate:** 2h15 (6 tasks). **Severity:** major. Implemented 2026-10-17; awaiting the deployed-build replay (t006).
 
