@@ -1,6 +1,6 @@
 # w4 · m213 — Supply JavaScript companions in native Go, Rust and Elixir
 
-**Worker:** worker4 **Goal:** Node, npm, Yarn and pnpm execute during native Go/Rust/Elixir builds and in the started service, while each primary toolchain and its version controls remain intact. **Status:** blocked for remaining t007 verification — t001–t006 done 2026-10-16; default first and fresh-mobile manual deploys now pass, with full closeout still open
+**Worker:** worker4 **Goal:** Node, npm, Yarn and pnpm execute during native Go/Rust/Elixir builds and in the started service, while each primary toolchain and its version controls remain intact. **Status:** done 2026-10-29 — remaining live checks replayed on pin `d66f96c06991`: a started Go-compiler probe alongside the four JS tools, primary-only Go/Rust/Elixir controls live, and an unsupported NODE_VERSION refused by name before the build (loopx w4).
 
 ## Tasks (in order)
 
