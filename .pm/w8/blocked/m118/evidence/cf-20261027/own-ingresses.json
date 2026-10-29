@@ -1,0 +1,295 @@
+[
+  {
+    "apiVersion": "networking.k8s.io/v1",
+    "kind": "Ingress",
+    "metadata": {
+      "annotations": {
+        "cert-manager.io/cluster-issuer": "letsencrypt-prod",
+        "traefik.ingress.kubernetes.io/router.middlewares": "tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-https@kubernetescrd,tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-ws-egress@kubernetescrd"
+      },
+      "creationTimestamp": "2026-10-27T06:12:16Z",
+      "generation": 3,
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "ownerReferences": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "App",
+          "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+          "uid": "aafcce94-fd84-4cc8-ae8d-25f93d807722"
+        }
+      ],
+      "resourceVersion": "151569231",
+      "uid": "3f93e5be-15a6-4d58-9785-afceb060ce11"
+    },
+    "spec": {
+      "ingressClassName": "traefik",
+      "rules": [
+        {
+          "host": "qa-20261027-m118-19862e.onbex.co",
+          "http": {
+            "paths": [
+              {
+                "backend": {
+                  "service": {
+                    "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+                    "port": {
+                      "number": 10000
+                    }
+                  }
+                },
+                "path": "/",
+                "pathType": "Prefix"
+              }
+            ]
+          }
+        },
+        {
+          "host": "qa-20261027-m118-19862e.10x.pub",
+          "http": {
+            "paths": [
+              {
+                "backend": {
+                  "service": {
+                    "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+                    "port": {
+                      "number": 10000
+                    }
+                  }
+                },
+                "path": "/",
+                "pathType": "Prefix"
+              }
+            ]
+          }
+        }
+      ],
+      "tls": [
+        {
+          "hosts": [
+            "qa-20261027-m118-19862e.onbex.co"
+          ],
+          "secretName": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls"
+        },
+        {
+          "hosts": [
+            "qa-20261027-m118-19862e.10x.pub"
+          ],
+          "secretName": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls-qa-20261027-m118-19862e.10x.pub"
+        }
+      ]
+    },
+    "status": {
+      "loadBalancer": {
+        "ingress": [
+          {
+            "ip": "178.104.181.30",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "2.31.47.1",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "167.233.216.116",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "2.31.66.181",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "116.202.29.102",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "2.28.137.211",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "178.105.115.93",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "2.31.79.239",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "178.105.18.185",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "46.225.152.95",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "49.13.116.154",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          },
+          {
+            "ip": "46.225.151.66",
+            "ports": [
+              {
+                "port": 32207,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31218,
+                "protocol": "TCP"
+              },
+              {
+                "port": 31976,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

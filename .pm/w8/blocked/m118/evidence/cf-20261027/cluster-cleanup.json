@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-27T06:20:34.329265+00:00",
+  "remaining_owned_resources": [],
+  "query_succeeded": true,
+  "resource_types": "apps.app.bex.co,deployments,replicasets,pods,services,ingresses,certificates,certificaterequests,orders.acme.cert-manager.io,challenges.acme.cert-manager.io,middlewares.traefik.io,pvc,secrets,configmaps,jobs"
+}

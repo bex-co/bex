@@ -1,0 +1,114 @@
+[
+  {
+    "apiVersion": "cert-manager.io/v1",
+    "kind": "Certificate",
+    "metadata": {
+      "creationTimestamp": "2026-10-27T06:12:16Z",
+      "generation": 1,
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "ownerReferences": [
+        {
+          "apiVersion": "networking.k8s.io/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Ingress",
+          "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+          "uid": "3f93e5be-15a6-4d58-9785-afceb060ce11"
+        }
+      ],
+      "resourceVersion": "151569006",
+      "uid": "7969fc93-a53a-41ad-b10b-0596eb23ee24"
+    },
+    "spec": {
+      "dnsNames": [
+        "qa-20261027-m118-19862e.onbex.co"
+      ],
+      "issuerRef": {
+        "group": "cert-manager.io",
+        "kind": "ClusterIssuer",
+        "name": "letsencrypt-prod"
+      },
+      "secretName": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls",
+      "usages": [
+        "digital signature",
+        "key encipherment"
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-27T06:12:19Z",
+          "message": "The certificate request has failed to complete and will be retried: Failed to wait for order resource \"tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls-2904742093\" to become ready: order is in \"errored\" state: Failed to create Order: 429 urn:ietf:params:acme:error:rateLimited: too many certificates (50) already issued for \"onbex.co\" in the last 168h0m0s, retry after 2026-10-27 08:51:06 UTC: see https://letsencrypt.org/docs/rate-limits/#new-certificates-per-registered-domain",
+          "observedGeneration": 1,
+          "reason": "Failed",
+          "status": "False",
+          "type": "Issuing"
+        },
+        {
+          "lastTransitionTime": "2026-10-27T06:12:16Z",
+          "message": "Issuing certificate as Secret does not exist",
+          "observedGeneration": 1,
+          "reason": "DoesNotExist",
+          "status": "False",
+          "type": "Ready"
+        }
+      ],
+      "failedIssuanceAttempts": 1,
+      "lastFailureTime": "2026-10-27T06:12:19Z"
+    }
+  },
+  {
+    "apiVersion": "cert-manager.io/v1",
+    "kind": "Certificate",
+    "metadata": {
+      "creationTimestamp": "2026-10-27T06:12:34Z",
+      "generation": 1,
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls-qa-20261027-m118-19862e.10x.pub",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "ownerReferences": [
+        {
+          "apiVersion": "networking.k8s.io/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Ingress",
+          "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+          "uid": "3f93e5be-15a6-4d58-9785-afceb060ce11"
+        }
+      ],
+      "resourceVersion": "151569627",
+      "uid": "dfd7c793-5d5e-4615-9dbf-02a4f4d6d06d"
+    },
+    "spec": {
+      "dnsNames": [
+        "qa-20261027-m118-19862e.10x.pub"
+      ],
+      "issuerRef": {
+        "group": "cert-manager.io",
+        "kind": "ClusterIssuer",
+        "name": "letsencrypt-prod"
+      },
+      "secretName": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls-qa-20261027-m118-19862e.10x.pub",
+      "usages": [
+        "digital signature",
+        "key encipherment"
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-27T06:12:57Z",
+          "message": "Certificate is up to date and has not expired",
+          "observedGeneration": 1,
+          "reason": "Ready",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "notAfter": "2027-01-25T05:14:25Z",
+      "notBefore": "2026-10-27T05:14:26Z",
+      "renewalTime": "2026-12-26T05:14:25Z",
+      "revision": 1
+    }
+  }
+]

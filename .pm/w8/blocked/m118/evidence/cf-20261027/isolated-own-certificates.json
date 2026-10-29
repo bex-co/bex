@@ -1,0 +1,55 @@
+[
+  {
+    "apiVersion": "cert-manager.io/v1",
+    "kind": "Certificate",
+    "metadata": {
+      "creationTimestamp": "2026-10-27T06:12:16Z",
+      "generation": 2,
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "ownerReferences": [
+        {
+          "apiVersion": "networking.k8s.io/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Ingress",
+          "name": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e",
+          "uid": "3f93e5be-15a6-4d58-9785-afceb060ce11"
+        }
+      ],
+      "resourceVersion": "151573912",
+      "uid": "7969fc93-a53a-41ad-b10b-0596eb23ee24"
+    },
+    "spec": {
+      "dnsNames": [
+        "qa-20261027-m118-19862e.10x.pub"
+      ],
+      "issuerRef": {
+        "group": "cert-manager.io",
+        "kind": "ClusterIssuer",
+        "name": "letsencrypt-prod"
+      },
+      "secretName": "tea-d98210cbbpdc73dcrkvg-qa-20261027-m118-19862e-tls",
+      "usages": [
+        "digital signature",
+        "key encipherment"
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-27T06:17:11Z",
+          "message": "Certificate is up to date and has not expired",
+          "observedGeneration": 2,
+          "reason": "Ready",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "notAfter": "2027-01-25T05:18:38Z",
+      "notBefore": "2026-10-27T05:18:39Z",
+      "renewalTime": "2026-12-26T05:18:38Z",
+      "revision": 1
+    }
+  }
+]

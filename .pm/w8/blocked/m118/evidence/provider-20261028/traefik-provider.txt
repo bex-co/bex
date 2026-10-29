@@ -1,0 +1,53 @@
+Creating cluster "bex-tls-75141" ...
+ • Ensuring node image (kindest/node:v1.36.1) 🖼  ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ • Preparing nodes 📦   ...
+ ✓ Preparing nodes 📦 
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Waiting ≤ 2m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 2m0s for control-plane = Ready ⏳
+ • Ready after 27s 💚
+Set kubectl context to "kind-bex-tls-75141"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-bex-tls-75141 --kubeconfig /var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/tmp.2WeAoop2MR/cluster.kubeconfig
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+node/bex-tls-75141-control-plane labeled
+namespace/traefik created
+configmap/bex-client-ip-headers-plugin-g25d92dmgt created
+configmap/bex-websocket-egress-plugin-9745f4t2d6 created
+customresourcedefinition.apiextensions.k8s.io/apps.app.bex.co created
+Release "traefik" does not exist. Installing it now.
+NAME: traefik
+LAST DEPLOYED: Wed Oct 28 16:10:38 2026
+NAMESPACE: traefik
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+traefik with docker.io/traefik:v3.7.5 has been deployed successfully on traefik namespace!
+=== RUN   TestIngressTLSIsolationWithTraefik
+=== RUN   TestIngressTLSIsolationWithTraefik/platform-pending
+    ingress_tls_integration_test.go:193: old projection reproduced the custom-domain certificate mismatch
+    ingress_tls_integration_test.go:207: ready host certificates and wildcard fallback serve verified HTTPS; redirects preserve path/query
+=== RUN   TestIngressTLSIsolationWithTraefik/custom-pending
+    ingress_tls_integration_test.go:207: ready host certificates and wildcard fallback serve verified HTTPS; redirects preserve path/query
+=== RUN   TestIngressTLSIsolationWithTraefik/two-customs
+    ingress_tls_integration_test.go:207: ready host certificates and wildcard fallback serve verified HTTPS; redirects preserve path/query
+--- PASS: TestIngressTLSIsolationWithTraefik (14.53s)
+    --- PASS: TestIngressTLSIsolationWithTraefik/platform-pending (4.16s)
+    --- PASS: TestIngressTLSIsolationWithTraefik/custom-pending (2.13s)
+    --- PASS: TestIngressTLSIsolationWithTraefik/two-customs (1.82s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/controller	15.323s
+Deleting cluster "bex-tls-75141" ...
+Deleted nodes: ["bex-tls-75141-control-plane"]
