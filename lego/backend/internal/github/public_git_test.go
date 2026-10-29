@@ -79,7 +79,8 @@ func TestPublicGitCommitAdvertisedRefs(t *testing.T) {
 		{"Feature/Case", testCommitB}, {"feature/case", ""}, {"release", testCommitB},
 		{"refs/tags/release", testCommitA}, {"v1", testCommitA}, {"lightweight", testCommitB},
 		{testCommitA, testCommitA}, {strings.ToUpper(testCommitB), testCommitB},
-		{tagObject, testCommitA}, {strings.Repeat("e", 40), ""}, {sha256, sha256},
+		{tagObject, testCommitA}, {strings.Repeat("e", 40), strings.Repeat("e", 40)},
+		{strings.Repeat("E", 64), strings.Repeat("e", 64)}, {sha256, sha256}, {"180e352", ""},
 	} {
 		t.Run(tc.ref, func(t *testing.T) {
 			svc := &Service{publicGitHTTPClient: &http.Client{Transport: publicGitRoundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -112,6 +113,45 @@ func TestPublicGitResolveWithGitHubDisabled(t *testing.T) {
 	info, ok, err := svc.DeployCommitSource().ResolveCommit(context.Background(), "default", "https://git.example/project.git", "main")
 	if err != nil || !ok || info.Hash != testCommitA {
 		t.Fatalf("GitHub-disabled public resolve = %+v,%v,%v", info, ok, err)
+	}
+}
+
+// w8/209 hosted run: `deploys create --commit <full sha>` on a GitLab repo
+// recorded commit null and narrated "@main". An explicit full SHA is the
+// commit the clone pins and verifies, so it is recorded as requested whether
+// the advertisement lists it (historical commits never are) or the lookup
+// missed outright; an abbreviated SHA and a non-GitHub branch miss stay misses,
+// and github.com keeps its own API path.
+func TestPublicGitExplicitFullSHAIsRecordedAsRequested(t *testing.T) {
+	const historical = "180e352cc63d9c887ce4b1bffe84c6d5def07cd5"
+	advertised := &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return gitResponse(http.StatusOK, gitAdvertisement(testCommitA+" refs/heads/main\x00\n")), nil
+	})}
+	for name, client := range map[string]*http.Client{"advertised elsewhere": advertised, "lookup missed": missingPublicGitClient()} {
+		t.Run(name, func(t *testing.T) {
+			svc := &Service{publicGitHTTPClient: client}
+			for range 2 { // the second call is served from the cached miss
+				info, ok, err := svc.DeployCommitSource().ResolveCommit(context.Background(), "default", "https://gitlab.com/pages/plain-html", strings.ToUpper(historical))
+				if err != nil || !ok || info.Hash != historical || info.Message != "" || info.AuthorAt != nil {
+					t.Fatalf("explicit SHA = %+v,%v,%v; want %s with no fabricated metadata", info, ok, err, historical)
+				}
+			}
+			for _, ref := range []string{"180e352", "no-such-branch"} {
+				if info, ok, err := svc.DeployCommitSource().ResolveCommit(context.Background(), "default", "https://gitlab.com/pages/plain-html", ref); err != nil || ok || info.Hash != "" {
+					t.Fatalf("%s = %+v,%v,%v; want a miss", ref, info, ok, err)
+				}
+			}
+		})
+	}
+	svc := &Service{publicGitHTTPClient: &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("a github.com repo reached the generic Git transport")
+		return nil, nil
+	})}}
+	if info, ok, err := svc.DeployCommitSource().ResolveCommit(context.Background(), "default", "https://github.com/o/r", historical); err != nil || ok || info.Hash != "" {
+		t.Fatalf("GitHub with the App disabled = %+v,%v,%v; want its unchanged miss", info, ok, err)
+	}
+	if info, ok, err := svc.DeployCommitSource().ResolveCommit(context.Background(), "default", "http://gitlab.com/pages/plain-html", historical); err != nil || ok || info.Hash != "" {
+		t.Fatalf("non-HTTPS repo = %+v,%v,%v; want a miss", info, ok, err)
 	}
 }
 
