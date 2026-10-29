@@ -555,7 +555,12 @@ metadata:
 spec:
   clusterName: bex
   maxUnhealthy: 100%
-  nodeStartupTimeout: 15m
+  # A CP Machine whose server Hetzner never creates (resource_unavailable)
+  # has no providerID; CAPH's remediation then hands it straight to KCP for
+  # delete-and-recreate, but only once this timeout marks it unhealthy
+  # (w6/098). Healthy CP joins reach a Node in under 2 minutes (2026-10-29),
+  # so 8m bounds a capacity stall without remediating a slow join.
+  nodeStartupTimeout: 8m
   remediationTemplate:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: HCloudRemediationTemplate
