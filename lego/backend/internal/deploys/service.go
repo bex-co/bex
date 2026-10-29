@@ -989,7 +989,10 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // saved spec, and the operator rolls the survivor again under its own
 // generation (redispatchSurvivor).
 func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID string, d store.Deploy) (*store.Deploy, error) {
-	if (a.Spec.Repo == "" && a.Spec.Image == "") || !d.OverlapPending || d.Image != "" || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
+	// A saved-image service records its saved image on every row (Trigger), so
+	// a row "selects an image of its own" only when it differs from that (w8/m117).
+	selectsImage := func(row store.Deploy) bool { return row.Image != "" && row.Image != a.Spec.Image }
+	if (a.Spec.Repo == "" && a.Spec.Image == "") || !d.OverlapPending || selectsImage(d) || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
 		return nil, nil
 	}
 	open, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
@@ -999,7 +1002,7 @@ func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID 
 	// One deploy executes at a time, ahead of the pending one (prepareDeployCreate).
 	for i, o := range open {
 		if !o.OverlapPending && o.Generation > 0 && o.Generation < d.Generation {
-			if o.Image != "" {
+			if selectsImage(o) {
 				return nil, nil
 			}
 			return &open[i], nil
