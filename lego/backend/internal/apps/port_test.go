@@ -339,3 +339,27 @@ func TestCreateResponseReportsLiteralPortEnv(t *testing.T) {
 		t.Fatalf("create without PORT reports %d %+v, want pending 0", plain.Port, plain.OpenPorts)
 	}
 }
+
+// w4/m182: a web image service (web-image-v1) ignored a saved port, so
+// SetPort reported success while the operator kept the image's port. An
+// explicit port selects the configured web variant, as create does.
+func TestSetPortOnWebImageServiceSelectsConfiguredMode(t *testing.T) {
+	app := portApp("web", appv1alpha1.TypeWebService, 10000)
+	app.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-web"}
+	st := &recordingStore{}
+	svc, cl := newService(st, app)
+	if _, err := svc.SetPort(t.Context(), "web", 3001); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	if got.Spec.PortMode != appv1alpha1.PortModeWebImageConfiguredV1 || got.Spec.Port != 3001 {
+		t.Fatalf("saved port not honored: mode=%s port=%d", got.Spec.PortMode, got.Spec.Port)
+	}
+	if len(st.portCalls) != 1 || st.portCalls[0].mode != appv1alpha1.PortModeWebImageConfiguredV1 || st.portCalls[0].port != 3001 {
+		t.Fatalf("durable port update = %+v, want web-image-configured-v1 3001", st.portCalls)
+	}
+	if _, err := svc.SetPort(t.Context(), "web", 18012); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("reserved web image port: got %v, want bad request", err)
+	}
+}

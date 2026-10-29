@@ -276,7 +276,25 @@ func checkPort(a *appv1alpha1.App, port int32) error {
 	if a.Spec.UsesImagePorts() && appv1alpha1.IsReservedImagePort(port) {
 		return fmt.Errorf("%w: private image port %d is reserved", core.ErrBadRequest, port)
 	}
+	if a.Spec.UsesWebImagePorts() && appv1alpha1.IsReservedImagePort(port) {
+		return fmt.Errorf("%w: web image port %d is reserved", core.ErrBadRequest, port)
+	}
 	return validateServicePort(port)
+}
+
+// configuredPortMode is the port mode an explicit port selects, as create
+// chooses it: an image-port service keeps its image ports and honors the
+// configured primary. A web image service left in web-image-v1 ignored the
+// saved port, so SetPort reported success and changed nothing (w4/m182).
+func configuredPortMode(spec appv1alpha1.AppSpec) string {
+	switch {
+	case spec.UsesImagePorts():
+		return appv1alpha1.PortModeImageConfiguredV1
+	case spec.UsesWebImagePorts():
+		return appv1alpha1.PortModeWebImageConfiguredV1
+	default:
+		return spec.PortMode
+	}
 }
 
 func (s *Service) checkSubdomainPolicy(ctx context.Context, a *appv1alpha1.App, policy string) (string, error) {
