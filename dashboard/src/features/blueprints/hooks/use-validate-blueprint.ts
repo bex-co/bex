@@ -10,7 +10,9 @@ export interface UseValidateBlueprintResult {
   loading: boolean;
 }
 
-export function useValidateBlueprint(): UseValidateBlueprintResult {
+export function useValidateBlueprint(
+  blueprintId: string,
+): UseValidateBlueprintResult {
   const [run, { loading }] = useLazyQuery(ValidateBlueprintDocument, {
     fetchPolicy: "no-cache",
     // A lazy query's loading comes only from this emission, which the client
@@ -22,14 +24,14 @@ export function useValidateBlueprint(): UseValidateBlueprintResult {
   const validate = useCallback(
     async (bexYaml: string): Promise<BlueprintValidationResult | null> => {
       setResult(null);
-      const res = await run({ variables: { bexYaml } });
+      const res = await run({ variables: { bexYaml, blueprintId } });
       const validation = res.data?.validateBlueprint
         ? toBlueprintValidationResult(res.data.validateBlueprint)
         : null;
       setResult(validation);
       return validation;
     },
-    [run],
+    [run, blueprintId],
   );
 
   return { validate, result, loading };
