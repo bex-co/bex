@@ -54,8 +54,8 @@ jobs:
   release:
     needs: authorize
     runs-on: [self-hosted, Linux, ARM64, bex-production]
-    # Configure required reviewers and protected-main-only deployment rules on
-    # this environment. Store credentials are unavailable until approval.
+    # Main-only deployment rule over environment-scoped credentials; no manual
+    # gate (#ENV-REVIEWERS).
     environment: production-release
     permissions:
       contents: write
