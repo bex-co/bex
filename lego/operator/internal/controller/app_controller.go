@@ -7612,24 +7612,39 @@ func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1
 }
 
 func dockerConfigAuthHeader(secretData map[string][]byte, registryHost string) (string, error) {
+	auths, err := dockerConfigAuths(secretData)
+	if err != nil {
+		return "", err
+	}
+	return dockerConfigEntryHeader(auths, registryHost)
+}
+
+type dockerConfigAuth struct {
+	Auth     string `json:"auth"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// dockerConfigAuths parses a docker config Secret's auths map.
+func dockerConfigAuths(secretData map[string][]byte) (map[string]dockerConfigAuth, error) {
 	data := secretData[corev1.DockerConfigJsonKey]
 	if len(data) == 0 {
 		data = secretData["config.json"]
 	}
 	if len(data) == 0 {
-		return "", fmt.Errorf("has neither %s nor config.json", corev1.DockerConfigJsonKey)
+		return nil, fmt.Errorf("has neither %s nor config.json", corev1.DockerConfigJsonKey)
 	}
 	var cfg struct {
-		Auths map[string]struct {
-			Auth     string `json:"auth"`
-			Username string `json:"username"`
-			Password string `json:"password"`
-		} `json:"auths"`
+		Auths map[string]dockerConfigAuth `json:"auths"`
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return "", fmt.Errorf("parse docker config: %w", err)
+		return nil, fmt.Errorf("parse docker config: %w", err)
 	}
-	entry, ok := cfg.Auths[registryHost]
+	return cfg.Auths, nil
+}
+
+func dockerConfigEntryHeader(auths map[string]dockerConfigAuth, registryHost string) (string, error) {
+	entry, ok := auths[registryHost]
 	if !ok {
 		return "", fmt.Errorf("docker config has no auth entry for %s", registryHost)
 	}

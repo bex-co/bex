@@ -2538,9 +2538,9 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 // services never pass through this helper during Blueprint synchronization.
 //
 // Two independent decisions (ADR089 § Port slice decisions, w6/m148): a new
-// Git-built Docker private service publishes its image's TCP ports in every
-// workspace unless BEX_PRIVATE_IMAGE_PORTS=off, while the render-v1 container
-// policy follows BEX_IMAGE_COMPATIBILITY_WORKSPACES.
+// Docker private service — Git-built or prebuilt (w6/095) — publishes its
+// image's TCP ports in every workspace unless BEX_PRIVATE_IMAGE_PORTS=off,
+// while the render-v1 container policy follows BEX_IMAGE_COMPATIBILITY_WORKSPACES.
 func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, explicitPort bool) error {
 	if !runsContainerPolicy(*spec) {
 		return nil
@@ -2548,7 +2548,7 @@ func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv
 	if s.imageCompatibilityAdmits(ctx) {
 		spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
 	}
-	if spec.Type == appv1alpha1.TypePrivateService && spec.Repo != "" && !s.PrivateImagePortsDisabled {
+	if spec.Type == appv1alpha1.TypePrivateService && (spec.Repo != "" || spec.Image != "") && !s.PrivateImagePortsDisabled {
 		spec.PortMode = appv1alpha1.PortModeImageV1
 		if explicitPort {
 			spec.PortMode = appv1alpha1.PortModeImageConfiguredV1

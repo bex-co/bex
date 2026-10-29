@@ -304,3 +304,22 @@ func TestReadImageRevisionReadsTheLabelWithoutPortRules(t *testing.T) {
 		t.Fatal("a config blob that does not match its digest must be refused")
 	}
 }
+
+// A Basic credential is exchanged for a token only when the registry asks for
+// a Bearer token; a Basic challenge to a Basic credential is a plain failure.
+func TestExchangesForBearer(t *testing.T) {
+	for _, tc := range []struct {
+		authorization, challenge string
+		want                     bool
+	}{
+		{"", `Bearer realm="https://auth.test/token"`, true},
+		{"", `Basic realm="zot"`, true},
+		{"Basic Ym90OnB3", `Bearer realm="https://auth.test/token"`, true},
+		{"Basic Ym90OnB3", `Basic realm="zot"`, false},
+		{"Bearer tok", `Bearer realm="https://auth.test/token"`, false},
+	} {
+		if got := exchangesForBearer(tc.authorization, tc.challenge); got != tc.want {
+			t.Errorf("exchangesForBearer(%q, %q) = %v, want %v", tc.authorization, tc.challenge, got, tc.want)
+		}
+	}
+}

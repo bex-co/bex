@@ -65,6 +65,9 @@ func envValue(app *appv1alpha1.App, key string) (string, bool) {
 func TestBlueprintPortReferencesFollowAnEditedTargetPort(t *testing.T) {
 	ctx := context.Background()
 	service, client := newService(nil)
+	// These fixtures pin configured-port pservs; image-port discovery for a
+	// prebuilt pserv (w6/095) is covered by the propagator tests below.
+	service.PrivateImagePortsDisabled = true
 	manifest := serviceRefsManifest("    runtime: image\n    image: {url: 'api:1'}\n")
 	if _, err := service.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatal(err)
@@ -103,6 +106,7 @@ func TestBlueprintPortReferencesFollowAnEditedTargetPort(t *testing.T) {
 func TestMutualPortReferencesResolveWithoutACycleRule(t *testing.T) {
 	ctx := context.Background()
 	service, client := newService(nil)
+	service.PrivateImagePortsDisabled = true // configured-port pservs, as above
 	manifest := `
 services:
   - name: left

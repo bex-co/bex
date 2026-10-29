@@ -165,11 +165,13 @@ func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bea
 	return data, resp.StatusCode, nil, err
 }
 
-// anonymousBearerToken answers a registry's Bearer challenge without any
-// credential (public images, w4/m243): GET the realm with the challenge's
-// service/scope and return the issued token. The realm must be https, or
-// http on a loopback host (local registries in tests).
-func anonymousBearerToken(ctx context.Context, client *http.Client, challenge string) (string, error) {
+// bearerToken answers a registry's Bearer challenge: GET the realm with the
+// challenge's service/scope and return the issued token. basic is "" for a
+// public image (w4/m243), or the workspace credential's Basic header for a
+// private one (w6/095); like the registry request itself, it travels only over
+// https. The realm must be https, or http on a loopback host (local registries
+// in tests).
+func bearerToken(ctx context.Context, client *http.Client, challenge, basic string) (string, error) {
 	if !strings.HasPrefix(challenge, "Bearer ") {
 		return "", fmt.Errorf("image metadata request returned status 401 without a Bearer challenge")
 	}
@@ -202,6 +204,9 @@ func anonymousBearerToken(ctx context.Context, client *http.Client, challenge st
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
+	}
+	if basic != "" {
+		req.Header.Set("Authorization", basic)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -244,6 +249,13 @@ func blobRedirectPolicy(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
+// exchangesForBearer reports whether a 401 is answered with a token: always
+// for an anonymous read, and for a Basic credential only when the registry
+// asks for a Bearer token instead.
+func exchangesForBearer(authorization, challenge string) bool {
+	return authorization == "" || strings.HasPrefix(authorization, "Basic ") && strings.HasPrefix(challenge, "Bearer ")
+}
+
 func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, string, imageConfigDocument, error) {
 	base, err := imageRepoBase(registryHost, repo, reference, authorization)
 	if err != nil {
@@ -263,9 +275,11 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	// travels with it (presigned URLs carry their own authorization).
 	blobs := bounded
 	blobs.CheckRedirect = blobRedirectPolicy
+	// One token serves every manifest and blob read of this repository.
+	bearer := ""
 	fetch := func(client *http.Client, path, expectedDigest string) ([]byte, string, error) {
-		bearer := ""
-		for attempt := 0; ; attempt++ {
+		exchanged := false
+		for {
 			data, status, header, err := fetchOnce(ctx, client, base+path, authorization, bearer)
 			if err != nil {
 				return nil, "", err
@@ -277,15 +291,17 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 				}
 				return data, digest, nil
 			}
-			// An anonymous read of a public registry (w4/m243) may be asked
-			// for a bearer token: fetch one without credentials and retry
-			// once. Credentialed reads never take this path.
-			if status == http.StatusUnauthorized && authorization == "" && bearer == "" && attempt == 0 {
-				token, terr := anonymousBearerToken(ctx, &bounded, header.Get("WWW-Authenticate"))
+			// A registry may answer with a Bearer challenge: an anonymous read
+			// (w4/m243) fetches a token without credentials, a Basic-credentialed
+			// read (w6/095) exchanges its credential at the realm, then retries
+			// once. A registry that accepts Basic directly never challenges.
+			challenge := header.Get("WWW-Authenticate")
+			if status == http.StatusUnauthorized && !exchanged && exchangesForBearer(authorization, challenge) {
+				token, terr := bearerToken(ctx, &bounded, challenge, authorization)
 				if terr != nil {
 					return nil, "", terr
 				}
-				bearer = token
+				bearer, exchanged = token, true
 				continue
 			}
 			return nil, "", statusFailure("image metadata request", status, header)
