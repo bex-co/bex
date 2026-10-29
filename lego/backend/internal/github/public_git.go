@@ -62,14 +62,31 @@ var anonymousPublicGitClient = &http.Client{
 // no GitHub token, Git subprocess, credential helper, packfile or object fetch.
 // Failure is a cached miss like resolvePublicCommit, so provenance never stops
 // a deploy or distinguishes private, missing, malformed and unreachable repos.
+//
+// An explicit full SHA resolves to its advertised peeled tag target, else to
+// itself, whatever the lookup found. The advertisement cannot vouch for a
+// historical commit, yet that SHA is exactly what the build pins: the clone
+// fetches it and fails the deploy unless the checkout matches
+// (EXPECTED_COMMIT). So it is recorded as requested, as Render does (w8/209:
+// explicit-SHA GitLab deploys recorded no commit and logged "@main"). Echoing
+// the caller's own SHA reveals nothing about the repository.
 func (s *Service) resolvePublicGitCommit(ctx context.Context, repoURL, ref string) (store.CommitInfo, bool, error) {
 	endpoint, ok := publicGitAdvertisementURL(repoURL)
 	if !ok || !validPublicGitRef(ref) {
 		return store.CommitInfo{}, false, nil
 	}
+	entry := s.lookupPublicGitCommit(ctx, endpoint, ref)
+	if !entry.ok && core.ValidCommitSHA(ref) {
+		return store.CommitInfo{Hash: strings.ToLower(ref)}, true, nil
+	}
+	return entry.info, entry.ok, nil
+}
+
+// lookupPublicGitCommit is the cached, singleflighted advertisement read.
+func (s *Service) lookupPublicGitCommit(ctx context.Context, endpoint, ref string) cachedPublicCommit {
 	key := "git-http:" + endpoint + "\x00" + ref
 	if cached, hit := s.publicCommitMemo().Get(key); hit {
-		return cached.info, cached.ok, nil
+		return cached
 	}
 	value, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
 		if cached, hit := s.publicCommitMemo().Get(key); hit {
@@ -87,7 +104,7 @@ func (s *Service) resolvePublicGitCommit(ctx context.Context, repoURL, ref strin
 		return entry, nil
 	})
 	entry, _ := value.(cachedPublicCommit)
-	return entry.info, entry.ok, nil
+	return entry
 }
 
 func publicGitDestination(u *url.URL) bool {
