@@ -1,6 +1,6 @@
 # w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep
 
-**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** blocked on live acceptance — t001/t002 done 2026-10-03; t008 (request-arrival counter, keep filter, query, content-hashed plugin rollout) and the reopened t005/t006 done 2026-10-18; t003/t004 live replays after the operator, plugin and Prometheus changes deploy, then t007
+**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** done 2026-10-29 — live DoD replayed on pin `41924a54b377`: the edge plugin counts request starts, a single GET or an open SSE request keeps a Free service awake for its full idle timeout, steady traffic never sleeps it, and REST/GraphQL/MCP agree (loopx w4).
 
 ## Tasks (in order)
 
