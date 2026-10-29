@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/promql"
@@ -106,7 +107,7 @@ func flat(last time.Time, v float64) []sample { return between(last.Add(-30*time
 func then(a, b []sample) []sample { return append(append([]sample{}, a...), b...) }
 
 func activitySeries(app *appv1alpha1.App, metric string, extra ...string) labels.Labels {
-	kv := []string{labels.MetricName, metric, "job", "traefik", "instance", "10.244.36.122:9100", "pod", "traefik-776c44f94f-l9bfd"}
+	kv := []string{model.MetricNameLabel, metric, "job", "traefik", "instance", "10.244.36.122:9100", "pod", "traefik-776c44f94f-l9bfd"}
 	if metric == "traefik_service_requests_total" {
 		kv = append(kv, "service", traefikServiceLabel(app.Namespace, app.Name, app.Spec.EffectivePort()),
 			"method", "GET", "code", "200", "protocol", "http")
