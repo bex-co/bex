@@ -46,6 +46,9 @@ const IMAGE_PROBLEM_KEYS = {
   privateHost: "services.createImagePrivateHost",
 } as const;
 
+const CONNECT_PROMPT_CLASS =
+  "flex flex-col items-center gap-3 rounded-lg border p-6 text-center";
+
 /**
  * Source selection shared by create-service, create-Blueprint, and Update
  * Source: a connected GitHub repo, a public git URL, and — for services — a
@@ -168,9 +171,31 @@ export function ServiceSourcePicker({
 
         <TabsContent value="github" className="mt-3">
           {connectionLoading ? (
-            <Skeleton className="h-24 w-full" />
+            // The connect prompt's anatomy, the state a workspace sees until
+            // it connects GitHub: a bare block was ~95 px shorter, so the
+            // whole form jumped when the connections read settled (w4/434).
+            <div
+              inert
+              aria-busy="true"
+              data-preview="git-connect"
+              className={CONNECT_PROMPT_CLASS}
+            >
+              <Skeleton className="size-8 rounded-full" />
+              <div className="w-full">
+                <span className="flex h-6 items-center justify-center">
+                  <Skeleton className="h-4 w-32" />
+                </span>
+                <span className="mt-1 flex h-5 items-center justify-center">
+                  <Skeleton className="h-3.5 w-full max-w-md" />
+                </span>
+                <span className="flex h-5 items-center justify-center sm:hidden">
+                  <Skeleton className="h-3.5 w-2/3" />
+                </span>
+              </div>
+              <Skeleton className="h-9 w-40 rounded-md" />
+            </div>
           ) : gitHubDisconnected ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center">
+            <div className={CONNECT_PROMPT_CLASS}>
               <GithubIcon className="size-8 text-muted-foreground" />
               <div>
                 <p className="font-medium">
