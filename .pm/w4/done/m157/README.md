@@ -1,6 +1,6 @@
 # w4 · m157 — Preserve typed Postgres query values
 
-**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs, array shape and exact JSON values across query surfaces **Status:** blocked — t001/t002/t004/t005/t007/t008/t009 done 2026-10-03; t010–t014 (lossless JSON and expanded finite years, simplify and coverage) done 2026-10-18; t003 live result verification after the backend deploys and t006 closeout remain; earlier completed tasks retain their original scope
+**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs, array shape and exact JSON values across query surfaces **Status:** done 2026-10-29 — live DoD replayed on pin `b33dd43c4428`: special numbers, temporal infinity, out-of-range finite years, UUIDs, nested arrays and exact JSON hold their contracts on REST, both MCP forms, GraphQL and the desktop/mobile console; run read-only on the existing QA free database (the free slot is held) (loopx w4).
 
 ## Tasks (in order)
 
@@ -14,12 +14,12 @@
 | t010 — **DONE** | Audit JSON query consumers and bound codec registration | 30m | t001 |
 | t011 — **DONE** | Preserve exact JSON values before query result decoding | 45m | t010 |
 | t014 — **DONE** | Preserve finite temporal values outside JSON year bounds | 50m | t001, t002 |
-| t003 | Render parity and live result verification | 25m | t002, t007, t008, t009, t011, t014, w4/m158/t002 |
+| t003 — **DONE** | Render parity and live result verification | 25m | t002, t007, t008, t009, t011, t014, w4/m158/t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 40m | t003 |
 | t012 — **DONE** | Simplify the JSON and finite-temporal follow-ups | 15m | t003 |
 | t013 — **DONE** | Test JSON, finite temporal values and existing query consumers | 35m | t003 |
-| t006 | Closeout | 15m | t004, t005, t012, t013 |
+| t006 — **DONE** | Closeout | 15m | t004, t005, t012, t013 |
 
 ## Definition of done
 
