@@ -163,4 +163,42 @@ func TestPGDiskUsageStopsAtDeletion(t *testing.T) {
 	}
 }
 
+// w8/215: a disk below Hetzner's 10 GB volume floor is billed at the size
+// the user asked for, not the volume underneath it. A 1 GB disk grown to 5 GB
+// halfway through an hour owes 1 GB × 1800s + 5 GB × 1800s.
+func TestPGSmallDiskBillsTheRequestedSize(t *testing.T) {
+	s, ctx := newDiskTestStore(t)
+	tenantID, appID := seedDiskApp(t, ctx, s)
+
+	disk, err := s.CreateDisk(ctx, tenantID, appID, "data", "/var/data", 1)
+	if err != nil {
+		t.Fatalf("CreateDisk at 1 GB: %v", err)
+	}
+	if disk.SizeGB != 1 {
+		t.Fatalf("row size = %d, want 1", disk.SizeGB)
+	}
+	if _, err := s.UpdateDisk(ctx, disk.ID, nil, nil, ptrInt32(5)); err != nil {
+		t.Fatalf("grow 1 → 5: %v", err)
+	}
+	windowStart := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	mid := windowStart.Add(30 * time.Minute)
+	if _, err := s.Pool.Exec(ctx,
+		`UPDATE service_disk_sizes SET from_ts = $2, to_ts = $3 WHERE disk_id = $1 AND size_gb = 1`,
+		disk.ID, windowStart, mid); err != nil {
+		t.Fatalf("place the 1 GB period: %v", err)
+	}
+	if _, err := s.Pool.Exec(ctx,
+		`UPDATE service_disk_sizes SET from_ts = $2 WHERE disk_id = $1 AND size_gb = 5`, disk.ID, mid); err != nil {
+		t.Fatalf("place the 5 GB period: %v", err)
+	}
+
+	rows, err := s.DiskUsageForWindow(ctx, windowStart, windowStart.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("DiskUsageForWindow: %v", err)
+	}
+	if len(rows) != 1 || rows[0].GBSeconds != 1*1800+5*1800 {
+		t.Fatalf("rows = %+v, want 10800 GB-seconds (1 GB then 5 GB), never the 10 GB volume", rows)
+	}
+}
+
 func ptrInt32(v int32) *int32 { return &v }

@@ -330,15 +330,13 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, nil
 		}
 		// A service disk shares the datastore split: its logical/billed size is
-		// spec.disk.sizeGB (grown only by the operator's allocated high-water),
-		// while its PVC sits on the same fixed Hetzner floor. Report the logical
-		// size, matching the Disk tab's stated size — there is no plan floor here,
-		// the size is set directly on the disk.
-		allocatedGB := int32(0)
-		if app.Status.Disk != nil {
-			allocatedGB = app.Status.Disk.AllocatedSizeGB
-		}
-		logicalDiskGB = max(app.Spec.Disk.SizeGB, allocatedGB)
+		// spec.disk.sizeGB — the size the user asked for, grow-only by the CRD's
+		// own rule and never grown by the platform — while its PVC sits on the
+		// fixed Hetzner floor. Report the requested size, matching the Disk tab
+		// and the meter (w8/215). status.disk.allocatedSizeGB is deliberately not
+		// consulted: an operator before w8/215 folded the physical 10 GB volume
+		// into it, so a 1 GB disk created then would read 10 GB.
+		logicalDiskGB = app.Spec.Disk.SizeGB
 	default:
 		// An unknown kind names no resource to authorize against (there is no
 		// AuthorizeDatabase/AuthorizeKeyValue call to make) — fall back to a

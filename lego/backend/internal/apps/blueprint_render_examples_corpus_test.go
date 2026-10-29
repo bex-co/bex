@@ -34,7 +34,6 @@ import (
 var deliberateBlueprintDivergences = []string{
 	"preview environments are not available",        // incl. previewValue
 	"Render Workflows",                              // type: workflow and fromService workflow refs
-	"sizeGB must be at least 10",                    // bex's 10 GB disk minimum (w1/078)
 	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)
 	"a private_service requires a paid plan",        // Render has no free private service
 	"'dockerFilePath' not allowed",                  // Render's key is dockerfilePath

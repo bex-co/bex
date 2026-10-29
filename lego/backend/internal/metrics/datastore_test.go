@@ -592,17 +592,21 @@ func TestKeyValueDiskCapacityIsLogicalStorage(t *testing.T) {
 }
 
 // A service's attached disk (ADR082) shares the same split, so its capacity is
-// spec.disk.sizeGB (grown by the allocated high-water), not the 10 GiB PVC.
-func TestServiceDiskCapacityIsLogicalSize(t *testing.T) {
-	app := sampleAppWithDisk("web", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 1})
-	app.Status.Disk = &appv1alpha1.DiskStatus{AllocatedSizeGB: 4} // autoscaled up
-	svc := newService(nil, nil, app)
-	svc.DiskUsage = physicalPVCSource(10 * float64(bytesPerGiB))
-	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
-		Kind: DatastoreService, Resource: "web", Metric: MetricDiskCapacity,
-	})
-	if err != nil || len(series) != 1 || series[0].Points[0].Value != 4*float64(bytesPerGiB) {
-		t.Fatalf("service disk_capacity should be the logical high-water, not the 10 GiB PVC: %v %+v", err, series)
+// the requested spec.disk.sizeGB, not the 10 GiB PVC Hetzner's floor provides
+// (w8/215). A pre-w8/215 operator folded that physical floor into
+// status.disk.allocatedSizeGB, so the status must not leak into the reading.
+func TestServiceDiskCapacityIsRequestedSize(t *testing.T) {
+	for _, sizeGB := range []int32{1, 5, 25} {
+		app := sampleAppWithDisk("web", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: sizeGB})
+		app.Status.Disk = &appv1alpha1.DiskStatus{AllocatedSizeGB: max(sizeGB, 10), CapacityGB: max(sizeGB, 10)}
+		svc := newService(nil, nil, app)
+		svc.DiskUsage = physicalPVCSource(10 * float64(bytesPerGiB))
+		series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+			Kind: DatastoreService, Resource: "web", Metric: MetricDiskCapacity,
+		})
+		if err != nil || len(series) != 1 || series[0].Points[0].Value != float64(sizeGB)*float64(bytesPerGiB) {
+			t.Fatalf("sizeGB=%d: service disk_capacity should be the requested size, not the physical volume: %v %+v", sizeGB, err, series)
+		}
 	}
 }
 

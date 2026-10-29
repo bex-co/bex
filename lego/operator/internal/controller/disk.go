@@ -234,7 +234,13 @@ func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App)
 func (r *AppReconciler) growDiskPVC(ctx context.Context, app *appv1alpha1.App, pvc *corev1.PersistentVolumeClaim) error {
 	requestedGB := pvcRequestedStorageGB(pvc)
 	capacityGB := pvcCapacityStorageGB(pvc)
-	allocatedGB := max(app.Spec.Disk.SizeGB, requestedGB, capacityGB, diskAllocatedGB(app))
+	// The allocation is what bex asked for, never the physical capacity: a
+	// provider floor (Hetzner's 10 GB minimum volume) backs a 1 GB disk with a
+	// 10 GB volume, and folding that in recorded the disk as 10 GB (w8/215, the
+	// same rule growOnlyIntent states for datastores). A grow the volume
+	// already holds (1 → 5 GB on a 10 GB volume) still raises the request; the
+	// resizer has nothing to do until the request passes the capacity.
+	allocatedGB := max(app.Spec.Disk.SizeGB, requestedGB, diskAllocatedGB(app))
 
 	if allocatedGB > requestedGB {
 		if blocked, err := r.expandDiskPVC(ctx, app, pvc, allocatedGB); err != nil || blocked {

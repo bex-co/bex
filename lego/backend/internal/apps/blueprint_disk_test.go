@@ -18,6 +18,7 @@ package apps
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -145,6 +146,81 @@ func TestBlueprintDiskRefusesIneligibleServices(t *testing.T) {
 	}
 	if spec == nil || spec.SizeGB != diskDefaultSizeGB {
 		t.Fatalf("spec = %+v, want the 10GB default", spec)
+	}
+}
+
+// templateSmallDisk is shaped like Render's own Prometheus and Tailscale
+// templates (render-examples): a paid Docker private service with a 1 GB disk.
+func templateSmallDisk(sizeGB int) string {
+	return fmt.Sprintf(`services:
+  - type: pserv
+    name: prometheus
+    runtime: docker
+    repo: https://github.com/render-examples/prometheus
+    plan: starter
+    disk:
+      name: prometheus-data
+      mountPath: /var/lib/prometheus
+      sizeGB: %d
+`, sizeGB)
+}
+
+// w8/215: 11 of Render's official templates declare a 1 or 5 GB disk, and
+// every Blueprint stage refused them under w1/078's 10 GB floor. Validate,
+// plan and apply now take the file unchanged, price and record the size it
+// asks for, and keep the disk grow-only across later syncs.
+func TestBlueprintAcceptsRenderTemplateOneGBDisk(t *testing.T) {
+	manifest := templateSmallDisk(1)
+
+	v, err := workspaceValidator(t).ValidateBlueprint(ownershipCtx(), connOwner, manifest, "")
+	if err != nil || !v.Valid {
+		t.Fatalf("validate = %+v, %v; want valid", v.Errors, err)
+	}
+	if v.Plan == nil || len(v.Plan.Actions) != 1 || v.Plan.Actions[0].Operation != BlueprintPlanCreate {
+		t.Fatalf("plan = %+v, want one create", v.Plan)
+	}
+	if v.EstimatedPricing == nil || len(v.EstimatedPricing.Lines) != 1 || v.EstimatedPricing.Lines[0].StorageGB != 1 {
+		t.Fatalf("estimated pricing = %+v, want the disk priced at the 1 GB it asks for", v.EstimatedPricing)
+	}
+
+	rec := &recordingStore{}
+	svc, ctx := ownSourceService(newFakeBlueprintStore(), rec)
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	disk := func() *appv1alpha1.DiskSpec {
+		t.Helper()
+		var apps appv1alpha1.AppList
+		if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 1 {
+			t.Fatalf("apps = %d, %v", len(apps.Items), err)
+		}
+		return apps.Items[0].Spec.Disk
+	}
+	if got := disk(); got == nil || got.SizeGB != 1 || got.MountPath != "/var/lib/prometheus" {
+		t.Fatalf("spec.disk = %+v, want the template's 1 GB disk", got)
+	}
+	if len(rec.disks) != 1 {
+		t.Fatalf("disk rows = %d, want the one billing record", len(rec.disks))
+	}
+	for _, row := range rec.disks {
+		if row.SizeGB != 1 {
+			t.Fatalf("billed disk row = %d GB, want 1", row.SizeGB)
+		}
+	}
+
+	// A later sync grows 1 → 5 (still inside the 10 GB volume); a sync back to
+	// 1 is a shrink and fails before any write.
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: templateSmallDisk(5)}); err != nil {
+		t.Fatalf("grow sync: %v", err)
+	}
+	if got := disk(); got.SizeGB != 5 {
+		t.Fatalf("spec.disk.sizeGB after grow = %d, want 5", got.SizeGB)
+	}
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err == nil {
+		t.Fatal("a sync shrinking 5 → 1 GB was accepted")
+	}
+	if got := disk(); got.SizeGB != 5 {
+		t.Fatalf("a refused shrink changed spec.disk.sizeGB to %d", got.SizeGB)
 	}
 }
 

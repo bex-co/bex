@@ -165,20 +165,18 @@ func renderExample(t *testing.T, name string) string {
 	return string(manifest)
 }
 
-// The unchanged Ghost and WordPress examples (and Mattermost once its 1GB
-// service disk meets Bex's 10GB floor) validate standalone; the original
-// Mattermost receives only that documented floor, which the source refusal
-// used to mask (ADR082).
+// The unchanged Ghost, WordPress and Mattermost examples validate standalone.
+// Mattermost declares Render's smallest service disk, `sizeGB: 1`, which bex
+// refused under w1/078's 10 GB floor until w8/215 (ADR082 D6).
 func TestValidateBlueprintAcceptsUpstreamExamplesWithoutRepository(t *testing.T) {
 	mattermost := renderExample(t, "mattermost")
-	floor := strings.Replace(mattermost, "    mountPath: /mattermost/config\n    sizeGB: 1\n", "    mountPath: /mattermost/config\n    sizeGB: 10\n", 1)
-	if floor == mattermost {
+	if !strings.Contains(mattermost, "    mountPath: /mattermost/config\n    sizeGB: 1\n") {
 		t.Fatal("the Mattermost service disk declaration moved")
 	}
 	for name, manifest := range map[string]string{
-		"ghost":                  renderExample(t, "ghost"),
-		"wordpress":              renderExample(t, "wordpress"),
-		"mattermost-volume-10GB": floor,
+		"ghost":      renderExample(t, "ghost"),
+		"wordpress":  renderExample(t, "wordpress"),
+		"mattermost": mattermost,
 	} {
 		t.Run(name, func(t *testing.T) {
 			v, err := workspaceValidator(t).ValidateBlueprint(ownershipCtx(), connOwner, manifest, "")
@@ -187,15 +185,6 @@ func TestValidateBlueprintAcceptsUpstreamExamplesWithoutRepository(t *testing.T)
 			}
 		})
 	}
-	t.Run("mattermost", func(t *testing.T) {
-		v, err := workspaceValidator(t).ValidateBlueprint(ownershipCtx(), connOwner, mattermost, "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if v.Valid || len(v.Errors) != 1 || !strings.Contains(v.Errors[0].Error, "sizeGB must be at least 10") {
-			t.Fatalf("validation = %+v, want only the documented disk floor", v.Errors)
-		}
-	})
 }
 
 // Creation still needs the source: a direct apply of the same manifests has no

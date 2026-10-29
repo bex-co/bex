@@ -405,6 +405,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](blocked/222.md) — **BLOCKED (2026-10-29: needs the user to choose: keep Render's exact 3.14.8 default (shipped by w8/217; its frozen image carries the unfixed system `libbrotli1`, which CPython itself does not link), revert to 3.14.10 as a signed-off divergence, or build a bex-owned 3.14.8 image on the patched base)**
 
+- [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](blocked/221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **BLOCKED (2026-10-29: needs the user to decide: keep requested-size billing on a 10 GB volume, bill 10 GB, refuse under 10 GB, or cap the filesystem at the requested size)**
+
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
@@ -416,7 +418,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **216** — [A request that arrives while a sleeping free service is already waking gets an immediate 503 tagged `no-server`: neither held nor tagged `hibernate-pending-wake`](216.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29 (w8/213 acceptance): HTML request started the wake and was tagged correctly; a JSON request 1 s later got 503 `no-server` — the routing tag and hold key off `Phase == Hibernated` / per-process memory
 
-- [ ] **215** — [Render's own templates with a 1 GB or 5 GB disk fail every Blueprint check: 11 of 170 official `render.yaml` files are refused by bex's 10 GB disk floor](215.md) (~1h once decided, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: corpus of 170 render-examples Blueprints — for all 11 disk files the floor is the only blocker besides `region` (w8/152); w1/078's floor has no recorded user sign-off — **needs the user's decision** (accept and absorb / accept and bill 10 GB / keep and sign off)
+- [ ] **215** — [Render's own templates with a 1 GB or 5 GB disk fail every Blueprint check: 11 of 170 official `render.yaml` files are refused by bex's 10 GB disk floor](215.md) (~1h once decided, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: corpus of 170 render-examples Blueprints — for all 11 disk files the floor is the only blocker besides `region` (w8/152); w1/078's floor has no recorded user sign-off — **IMPLEMENTED 2026-10-29 (option 1, parity-sufficient: 1–9 GB accepted on every surface, 10 GB volume, requested size reported and billed; alternatives filed as w8/221; live acceptance open)**
 
 - [x] **214** — [`bex skills install` has no interactive picker (Render's TUI picks scope/tools/skills)](done/214.md) (~2h, minor) ← w8/m143 t002 design choice, 2026-10-28 — **DONE 2026-10-28** (TTY pickers for install/remove; flags skip steps)
 
