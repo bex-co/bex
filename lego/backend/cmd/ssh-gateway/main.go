@@ -151,7 +151,15 @@ func main() {
 		intEnv("BEX_SSH_MAX_CHANNELS_PER_IDENTITY", 32),
 	)
 	nonces := &sshgateway.NonceGuard{Store: st}
-	executor := &sshgateway.KubeExecutor{Config: restConfig, Client: clientset}
+	// Exec output is read from kube-apiserver at full speed into a bounded
+	// buffer, so a slow SSH client no longer loses its tail (w6/099).
+	executor := sshgateway.DrainingExecutor{
+		Executor: &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
+		Budget: sshgateway.NewDrainBudget(
+			intEnv("BEX_SSH_DRAIN_BUFFER_PER_CHANNEL", 64<<20),
+			intEnv("BEX_SSH_DRAIN_BUFFER_TOTAL", 128<<20),
+		),
+	}
 	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
 	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
 	// codex round-9 #6: every established stream (native-SSH exec, web shell,

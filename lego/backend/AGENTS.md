@@ -72,6 +72,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | ssh-gateway | `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` | CIDRs allowed to assert PROXY v1/v2 client IP |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS_PER_CONN` `16` | Zed multiplexing cap per conn for `ags-*` |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS` `512`, `…_PER_IDENTITY` `32` | process-wide exec-stream caps |
+| ssh-gateway | `BEX_SSH_DRAIN_BUFFER_PER_CHANNEL` `67108864`, `BEX_SSH_DRAIN_BUFFER_TOTAL` `134217728` | in-memory exec output buffer per channel / process (w6/099); `0` disables |
 | ssh-gateway | `BEX_SSH_REVALIDATE_INTERVAL` `1m` | live-stream fresh re-auth tick (SSH/webshell/agent/sandbox exec/files) |
 | ssh-gateway | `BEX_AGENT_GIT/MODEL_*_PREAUTH_CONNS` + `…_MAX_CONNS/PER_POD/READ_TIMEOUT/MAX_DURATION/MAX_REQUESTS_*` | Git/model proxy admission bounds (global 128/16, per-pod 64/4, `10m`, budgets `1000/5000`) |
 | ssh-gateway | `BEX_AGENT_GIT_MAX_RESPONSE_BYTES` | one streamed Git upstream response's byte budget (default 4 GiB); exceeding it aborts loudly (`git_proxy_upstream_failures_total{cause="response_cap"}`), never truncates silently |
