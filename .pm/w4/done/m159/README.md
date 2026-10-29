@@ -1,6 +1,6 @@
 # w4 · m159 — Keep confirmations open through permission refresh
 
-**Worker:** worker4 **Goal:** routine access refresh does not silently dismiss an unchanged service confirmation, while stale access never dispatches an action **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 live confirmation verification and t006 closeout remain
+**Worker:** worker4 **Goal:** routine access refresh does not silently dismiss an unchanged service confirmation, while stale access never dispatches an action **Status:** done 2026-10-29 — live DoD replayed on dashboard pin `55d99e66808d`: Restart and Suspend confirmations stay open and usable through three permission refreshes, confirm dispatches once, a source draft survives refresh, and rollback → Restart → standard deploy is correct (loopx w4).
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Separate confirmation intent from authorization eligibility | 25m | — |
 | t002 — **DONE** | Preserve same-context dialogs with fail-closed dispatch | 45m | t001 |
-| t003 | Render parity and live confirmation verification | 25m | t002 |
+| t003 — **DONE** | Render parity and live confirmation verification | 25m | t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 35m | t003 |
-| t006 | Closeout | 15m | t004, t005 |
+| t006 — **DONE** | Closeout | 15m | t004, t005 |
 
 ## Definition of done
 
