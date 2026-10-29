@@ -1,6 +1,6 @@
 # w4 · m243 — A Docker web service listens on its image's exposed port, as on Render
 
-**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** blocked — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26, t009–t011 done 2026-10-27, t012–t014 done 2026-10-28 (loopx w4); t006 waits for the release pipeline to deploy the operator, bex-api and dashboard, then QA replays the DoD live in `bex-canary`
+**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** done 2026-10-29 — live DoD replayed on pins `d66f96c06991` and `c9ccd73df050`: every check holds, including the echo PORT change with zero non-200 answers (loopx w4).
 
 ## Tasks (in order)
 
