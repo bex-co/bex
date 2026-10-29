@@ -380,13 +380,14 @@ func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
 
 	// A still-unsupported field rejects at the identical path on all three.
 	// `disk` is no longer one — ADR082 D7 made it a translated handler — so the
-	// cross-surface refusal is now demonstrated with `region`, which bex still
-	// cannot honestly provide (one configured placement, not per-resource).
-	disk := manifest + `    region: frankfurt
+	// cross-surface refusal was then demonstrated with `region`, until w8/152
+	// normalized Render regions to BEX_REGION; it is now `previewPlan`, since
+	// preview environments remain a recorded non-goal.
+	disk := manifest + `    previewPlan: starter
 `
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, disk))))
-	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || rest.Valid || len(rest.Errors) == 0 || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[2].region" {
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || rest.Valid || len(rest.Errors) == 0 || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[2].previewPlan" {
 		t.Fatalf("REST disk rejection = %+v err=%v", rest, err)
 	}
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errorDetails { path } } }`, disk)})
@@ -395,7 +396,7 @@ func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
 	}
 	gv := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
 	details, _ := gv["errorDetails"].([]any)
-	if gv["valid"] != false || len(details) == 0 || details[0].(map[string]any)["path"] != "services[2].region" {
+	if gv["valid"] != false || len(details) == 0 || details[0].(map[string]any)["path"] != "services[2].previewPlan" {
 		t.Fatalf("GraphQL disk rejection = %+v", gv)
 	}
 	mcpResult := call("validate_bex_yml", map[string]any{"bexYaml": disk})

@@ -56,6 +56,7 @@ type createKeyValueArgs struct {
 	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; assignment also joins its project"`
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
+	Region        string   `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
 	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
 	StorageGB     int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
 	Public        bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`
@@ -128,7 +129,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
-		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, region, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		allowList := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
@@ -136,6 +137,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			EnvironmentID:   in.EnvironmentID,
 			Name:            in.Name,
 			Plan:            in.Plan,
+			Region:          in.Region,
 			Version:         in.Version,
 			StorageGB:       in.StorageGB,
 			Public:          in.Public,

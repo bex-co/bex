@@ -170,7 +170,9 @@ type CreateKeyValueRequest struct {
 	Version       string `json:"version,omitempty"`
 	// Region is accepted from Render clients as a placement hint. bex currently
 	// exposes one configured region per control plane, so the server-owned
-	// BEX_REGION remains authoritative instead of persisting this request field.
+	// BEX_REGION remains authoritative instead of persisting this request field;
+	// a value that is neither a Render region nor BEX_REGION is refused
+	// (resourcemeta.CheckRequestedRegion, w8/152).
 	Region    string `json:"region,omitempty"`
 	StorageGB int32  `json:"storageGB,omitempty"`
 	Public    bool   `json:"public,omitempty"`
@@ -566,6 +568,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		return KeyValueView{}, err
 	}
 	if err := core.CheckDatastoreName(req.Name); err != nil {
+		return KeyValueView{}, err
+	}
+	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
 		return KeyValueView{}, err
 	}
 	req.Plan = tiers.Valkey.CanonicalID(req.Plan)

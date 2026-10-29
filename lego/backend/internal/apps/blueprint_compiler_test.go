@@ -317,16 +317,16 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 		manifest string
 		path     string
 	}{
-		"nested database region": {
+		"nested database preview plan": {
 			manifest: `projects:
   - name: product
     environments:
       - name: production
         databases:
           - name: data
-            region: oregon
+            previewPlan: basic-256mb
 `,
-			path: "#/projects/0/environments/0/databases/0/region",
+			path: "#/projects/0/environments/0/databases/0/previewPlan",
 		},
 		"unsupported postgres version": {
 			manifest: `databases:

@@ -59,6 +59,7 @@ type createPostgresArgs struct {
 	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
 	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
 	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
+	Region        string `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
 	// Version is a number on Render's MCP server (w5/m145); bex also keeps
 	// accepting the string form.
 	Version any `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (a number, as Render's MCP server sends; \"16\" also accepted). Omit for the default."`
@@ -127,7 +128,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries, enableHighAvailability, readReplicas and connectionPool are optional. Free storage is fixed at 1 GB; autoscaling and connection pooling require paid plans. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, region, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries, enableHighAvailability, readReplicas and connectionPool are optional. Free storage is fixed at 1 GB; autoscaling and connection pooling require paid plans. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		version, err := mcputil.NumberOrString("version", in.Version)
 		if err != nil {
@@ -140,6 +141,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DatabaseName:           in.DatabaseName,
 			DatabaseUser:           in.DatabaseUser,
 			Plan:                   in.Plan,
+			Region:                 in.Region,
 			Version:                version,
 			DiskSizeGB:             in.diskSizeGBValue(),
 			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
