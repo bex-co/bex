@@ -1,6 +1,6 @@
 # w8 · m137 — Inbound IP rules for web services, static sites and environments are a Scale/Enterprise workspace feature, as on Render
 
-**Worker:** worker8 **Goal:** Setting a non-empty inbound IP allowlist on a web service, static site or environment is refused unless the workspace is on Scale or Enterprise, as on Render. Postgres and Key Value allowlists stay available on every workspace plan. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001, t002, t003, t004, t005, t006, t007 done 2026-10-23; release pipeline deploys bex-api and the dashboard; QA runs t008 in bex-canary (Hobby): services create --plan free --ip-allow-list exits 1 with the Scale-plan sentence and creates nothing, services update --ip-allow-list refused (empty list accepted), PATCH /v1/environments with a restricting list refused, kv update --ip-allow-list on a Free Key Value accepted, dashboard sections show the Scale hint; inventory production workspaces below Scale that hold a rule (count into ADR018); delete fixtures by ID with 404 proofs
+**Worker:** worker8 **Goal:** Setting a non-empty inbound IP allowlist on a web service, static site or environment is refused unless the workspace is on Scale or Enterprise, as on Render. Postgres and Key Value allowlists stay available on every workspace plan. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree                        | 15m | w8/m137/t002, w8/m137/t003, w8/m137/t004 |
 | t006 — **DONE** | Simplify the changed code                                                        | 15m | w8/m137/t005               |
 | t007 — **DONE** | Test coverage: plan × resource type × empty/non-empty, downgrade, datastores     | 30m | w8/m137/t005               |
-| t008 | Close out the milestone                                                          | 30m | w8/m137/t006, w8/m137/t007 |
+| t008 | Close out the milestone — **DONE 2026-10-29** | 30m | w8/m137/t006, w8/m137/t007 |
 
 ## Definition of done
 
@@ -28,8 +28,8 @@ Live on production after the release pipeline deploys bex-api and the dashboard,
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep g7h2, 2026-10-23 UTC: bex v0.3.3, pin Render CLI v2.27.0 `a764810a7682`, platform pin `29d63e1f7bea`, `https://api.bex.co/v1/`, `bex-canary` (`tea-daif693dqjvc73e7as3g`, GraphQL `plan: "hobby"`), human device login. Evidence below.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/inbound-ip-rules](https://render.com/docs/inbound-ip-rules): web services and static sites, and environment- and workspace-level rules, are available to "Scale" and "Enterprise" orgs only; Render Postgres and Key Value rules are available to "All workspaces". Free is "not eligible for service/environment/workspace-level rules". The same restriction class as w8/m127 (free SMTP), w8/m130 and w8/m131, which shipped. ADR018:154 records no plan gate.
-- **Expected outcome:** workspace plan features match Render's. Pricing parity ([ADR030](../../../docs/ADR030-pricing.md): Hobby/Pro/Scale) is meaningful only if Scale-only features are Scale-only.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/inbound-ip-rules](https://render.com/docs/inbound-ip-rules): web services and static sites, and environment- and workspace-level rules, are available to "Scale" and "Enterprise" orgs only; Render Postgres and Key Value rules are available to "All workspaces". Free is "not eligible for service/environment/workspace-level rules". The same restriction class as w8/m127 (free SMTP), w8/m130 and w8/m131, which shipped. ADR018:154 records no plan gate.
+- **Expected outcome:** workspace plan features match Render's. Pricing parity ([ADR030](../../../../docs/ADR030-pricing.md): Hobby/Pro/Scale) is meaningful only if Scale-only features are Scale-only.
 - **Why now:** minor-to-major (pricing/feature parity, a Scale feature given away on Hobby). Render parity task included: REST/GraphQL/MCP/dashboard and Blueprint surfaces.
 
 ## Evidence (sweep g7h2)
@@ -82,3 +82,18 @@ Searched `.pm` open and done, ADR018:154, ADR030 and ADR032 for allowlist + Scal
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Live on production (pin `479bd3fe243b`), 10:20–10:27 UTC, released Bex v0.3.3 and pinned Render v2.27.0. GraphQL `workspaces` confirms bex-canary is `hobby` and `bex` is `scale`. Every refusal is the 400 `ipAllowList: inbound IP rules for web services, static sites and environments require the Scale plan or higher`.
+
+- **Create (Hobby):** both CLIs' `services create --type web_service … --ip-allow-list …` and `bex services create --type static_site …` exit 1; nothing is created.
+- **Update (Hobby, owned free web `srv-dbhhs4619k3s73ep2i90` and static `srv-dbhhs5619k3s73ep2ic0`):** both CLIs' `--ip-allow-list` (exit 1), REST `PATCH`, GraphQL `setServiceIpAllowList` (`entries` and `cidrs`) and MCP `update_service` (with and without `dryRun`) are refused; an empty list is accepted on REST, GraphQL and MCP. MCP `create_web_service`/`create_static_site` dry runs with a rule are refused.
+- **Environment (owned project `prj-dbhhshe19k3s73ep2iig`):** REST `PATCH /v1/environments/{id}` and `POST /v1/projects` with a restricting list, GraphQL `updateEnvironment`/`createEnvironment`, MCP `update_environment`/`create_environment` are refused; the allow-all pair is accepted.
+- **Blueprint:** GraphQL `validateBlueprint` and both native `blueprints validate` runs mark a web service and a static site carrying `ipAllowList` invalid on bex-canary and valid on `bex`.
+- **Postgres and Key Value stay available on every plan (no writes):** a Blueprint with KV/Postgres `ipAllowList` validates on bex-canary; MCP `update_key_value`/`update_postgres` dry runs on the existing free KV and Postgres echo the rule; both resources were unchanged afterwards.
+- **Scale control (dry run only):** MCP `create_web_service`/`create_static_site` dry runs in `bex` return previews carrying the rule.
+- **Dashboard (Hobby):** web/static Networking and the environment dialog show the Scale-plan hint and no editor; the free Key Value Networking section keeps its allowlist editor.
+- **Inventory (read-only):** 64 hobby, 2 scale, 1 enterprise workspaces; none of 37 Apps and neither existing environment holds a restricting rule below Scale.
+- Not re-run: a real Key Value allowlist write (accepted live on 2026-10-27) and the legacy-rule downgrade path (no such rule exists). Follow-ups noted: the Blueprint error path names `services[N].plan` rather than `services[N].ipAllowList`; `projects[].environments[].ipAllowList` is rejected by the schema on every plan.
+- Cleanup: both services and the project deleted by ID, `GET` → 404.
