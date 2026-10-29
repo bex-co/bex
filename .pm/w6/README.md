@@ -194,7 +194,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **097** — **BLOCKED (user decision: build Render early-access object storage as a milestone, or record a signed ADR018 divergence with a plain "not offered" answer)** — [`bex ea objects` returns 404 in every region](blocked/097.md) — triaged 2026-10-29.
+- [ ] **097** — [`bex ea objects` returns 404 in every region](097.md) — 2026-10-29 user decision: not offered (signed ADR018 divergence); API and CLI say so plainly — live check after deploy and the next bex-cli release.
 - [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
 - [ ] **096** — [SSH gateway exec at ~43 KB/s and drops a quiet session](096.md) — output-tail truncation found and fixed 2026-10-29 (`e934c2842`); live re-check after deploy, idle cut and throughput gap open.
 - [ ] **095** — [A private service from a prebuilt image publishes only $PORT](095.md) — fixed 2026-10-29 (`d65c5638f`); live ClickHouse check after deploy.

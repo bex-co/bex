@@ -114,6 +114,8 @@ var emptyListCases = []emptyListCase{
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{
+	"GET /v1/objects/{ownerId}/{region}":                 "answers 404 not offered, never a list (ADR018, w6/097)",
+	"GET /v1/objects/{ownerId}/{region}/{key...}":        "answers 404 not offered (ADR018, w6/097)",
 	"GET /v1/postgres/{id}/recovery":                     "recoveryStatus and optional startsAt only; no arrays",
 	"GET /v1/postgres/{id}/credentials":                  "always includes the default CNPG owner credential (postgres.ListCredentials)",
 	"GET /v1/metrics/disk-capacity":                      "the provisioned capacity of a disk — one constant series, never an empty list",
