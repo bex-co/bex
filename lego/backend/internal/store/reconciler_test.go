@@ -2071,9 +2071,8 @@ func TestFailureReasonCarriesTheQuotaBlock(t *testing.T) {
 	app := &appv1alpha1.App{}
 	app.Generation = 4
 	app.Status.Phase = appv1alpha1.PhaseDeploying
-	msg := `the rollout is blocked by the workspace resource quota — the new revision's pod cannot be created: ` +
-		`pods "web-new-abc12-" is forbidden: exceeded quota: tenant-quota, requested: pods=1, used: pods=20, limited: pods=20` +
-		` — the rollout resumes on its own once quota headroom is available`
+	msg := `the workspace's resource quota is full (instances: 20 of 20 in use, the new instance needs 1): ` +
+		appv1alpha1.QuotaStallWaiting + ` — to free it, delete, suspend or downsize another service, or upgrade the plan.`
 	app.Status.Conditions = []metav1.Condition{{
 		Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutBlockedByQuota",
 		Message: msg, ObservedGeneration: 4,
