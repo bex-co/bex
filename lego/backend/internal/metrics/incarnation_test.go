@@ -29,10 +29,13 @@ import (
 
 // TestPromResourceQueryExcludesPodsBeforeTheApp (w8/m124): cAdvisor pod
 // names cannot tell an App from a deleted one of the same name, so every
-// pod-scoped query drops the pods kube-state-metrics says predate the App.
+// pod-scoped query drops the pods kube-state-metrics says predate the App —
+// including one deleted moments ago, whose creation series has already ended
+// while its last memory sample still answers (the 2026-10-29 hosted replay
+// read the predecessor's two pods as the new service's memory and instances).
 func TestPromResourceQueryExcludesPodsBeforeTheApp(t *testing.T) {
 	created := time.Unix(1_760_950_000, 0)
-	const join = `unless on(pod) (kube_pod_created{namespace="tea-x"} < 1760950000)`
+	const join = `unless on(pod) (last_over_time(kube_pod_created{namespace="tea-x"}[10m]) < 1760950000)`
 	for _, metric := range []string{MetricCPU, MetricMemory, MetricInstanceCount} {
 		q := promResourceQueryFor(ResourceMetricsRangeRequest{Namespace: "tea-x", App: "web", Metric: metric, NotBefore: created, Resolution: time.Minute})
 		if !strings.Contains(q, join) {

@@ -276,17 +276,26 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 // than Prometheus's 5m lookback did.
 const instanceLivenessWindow = "90s"
 
+// podCreatedLookback is how far back a pod's creation is read. A deleted pod's
+// kube_pod_created series ends with it while its last cAdvisor samples still
+// answer for Prometheus's 5m lookback (and instanceLivenessWindow), so the
+// window must outlast both. Limit: pod names come from generated suffixes; a
+// same-named pod recreated inside the window (a StatefulSet's -0) would also
+// match the predecessor's earlier creation and be dropped until it ages out.
+const podCreatedLookback = "10m"
+
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	// Pod names cannot tell an App from an earlier one of the same name, but
 	// kube-state-metrics knows each pod's creation: drop the pods known to
 	// predate the App (w8/m124). `unless`, not `and`, so a pod KSM has no
-	// series for still charts rather than vanishing.
+	// series for still charts rather than vanishing. The creation is read over
+	// podCreatedLookback, so a predecessor deleted moments ago stays out.
 	own := func(perPod string) string {
 		if req.NotBefore.IsZero() {
 			return perPod
 		}
-		return fmt.Sprintf(`(%s) unless on(pod) (kube_pod_created{namespace=%q} < %d)`, perPod, req.Namespace, req.NotBefore.Unix())
+		return fmt.Sprintf(`(%s) unless on(pod) (last_over_time(kube_pod_created{namespace=%q}[%s]) < %d)`, perPod, req.Namespace, podCreatedLookback, req.NotBefore.Unix())
 	}
 	switch req.Metric {
 	case MetricMemory, MetricCPU:
