@@ -1,6 +1,6 @@
 # w6 · m153 — Production cluster access survives a control-plane roll
 
-**Worker:** worker6 **Goal:** every workflow that fetches the production kubeconfig keeps working across a control-plane roll, with SSH host keys still authenticated, never trusted on first use **Status:** todo (t009: prove the stable host key across the KCP roll its own push triggers; t001–t006, t008 done)
+**Worker:** worker6 **Goal:** every workflow that fetches the production kubeconfig keeps working across a control-plane roll, with SSH host keys still authenticated, never trusted on first use **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | Fail fast and name the cause when every pinned key mismatches — **DONE** | 30m | w6/m153/t001 |
 | t004 | Prove it across a real control-plane roll — **DONE** | 30m | w6/m153/t002, w6/m153/t003 |
 | t008 | Make the pin follow a full roll with no human: stable CP host keys (option a, user decision 2026-10-29) — **DONE** | 2h | w6/m153/t004 |
-| t009 | Re-prove across a full control-plane roll | 45m | w6/m153/t008 |
+| t009 | Re-prove across a full control-plane roll — **DONE** | 45m | w6/m153/t008 |
 | t005 | Simplify — **DONE** | 15m | w6/m153/t004 |
 | t006 | Test coverage — **DONE** | 20m | w6/m153/t004 |
-| t007 | Closeout | 10m | w6/m153/t005, w6/m153/t006, w6/m153/t009 |
+| t007 | Closeout — **DONE** | 10m | w6/m153/t005, w6/m153/t006, w6/m153/t009 |
 
 ## Definition of done
 
@@ -79,3 +79,10 @@ DoD 1 needs the pin to follow a full roll with no human. The retry cannot do tha
 - **Key custody:** generated on the operator laptop at `~/.ssh/bex_cp_host_ed25519` (fingerprint `SHA256:W/o3ED3/xJrcoF0ONPn3Cb1S98X32ubnDcTeYtSVRyU`). Its path is recorded in `.env` as `BEX_CP_SSH_HOST_KEY_FILE`, and it was pushed to `production-cluster` at 08:36 UTC.
 - **Transition pin:** set at 08:36 UTC in all four environments. It holds the three current per-IP lines plus `* ssh-ed25519 <stable key>`. Verified against a live CP beforehand: a wildcard-only pin passes strict checking, a stale per-IP line plus a matching wildcard passes, and a wrong wildcard is refused. Server-side dry-run of the overlay passed.
 - **Next (t009):** the push touches `infra/clusterapi/overlays/hetzner-caph/**`, so `app-cluster.yml` runs and the KCP spec change rolls every CP. Record that run plus a drill or deploy fetch after the roll. Then drop the three per-IP lines from the pin, leaving the wildcard only, and fetch once more.
+
+## t009 result and closeout — 2026-10-29 (DoD met)
+
+- **Roll:** `192c2c442` triggered `app-cluster.yml` run 40844324975 (success, 08:44–09:18 UTC). It installed `bex-control-plane-ssh-host-key` (fingerprint `W/o3ED3…`), applied the KCP change and drove the roll to completion. All three CP Machines were replaced: `btjrv`/`sdffv`/`kt5cz` → `2grcr`/`nrw67`/`kh4bq`. One replacement (`zrv5d`) hit the Hetzner capacity error again and was deleted by hand (second occurrence, w6/098).
+- **Every new node serves the stable key:** `ssh-keyscan` of 178.105.18.185, 2.28.137.211 and 91.107.197.144 all returned `SHA256:W/o3ED3/xJrcoF0ONPn3Cb1S98X32ubnDcTeYtSVRyU`.
+- **Fetches with no pin edit during or after the roll:** the app-cluster run fetched via 178.105.109.4 before the roll. After the roll the pin was reduced to the single wildcard line `* ssh-ed25519 <stable key>` in all four environments, and drill run 40848838767 fetched via 2.28.137.211 (success). Future rolls need no pin change.
+- **DoD:** (1) fetches survive a full roll with strict checking and no hand edit of `BEX_SSH_KNOWN_HOSTS` — met. (2) A stale pin fails with one named message — met (t004, run 40839917848). (3) `:22` stays key-only, with no source-IP allowlist — unchanged.
