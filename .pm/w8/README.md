@@ -175,7 +175,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m64** — [Keep Blueprint environment copies consistent across applies](m64/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
 
-- [ ] **m63** — [Keep completed initial hooks out of later deploys](m63/README.md) — **READY（2026-10-29 解除阻塞：生产 pin `b33dd43c4428` 已含修复；下一步：worker 执行线上验收）**
+- [x] **m63** — [Keep completed initial hooks out of later deploys](done/m63/README.md) — **DONE 2026-10-29** (hosted hook/regular counts accepted on pin b33dd43c4428)
 
 - [x] **m62** — [Reject unlaunchable environment values](done/m62/README.md)（原记录：） sweeps295–296 pass72 native and36 GraphQL/MCP validator calls plus34 focused named check events; sweeps297–298 add38 direct-writer passes and hosted binary-file preservation;109 bulk routing and dashboard feedback retain t003/t006 gates. The original MCP save error is unassigned and not reproduced by seven fresh controls. No production config applied. — **DONE 2026-10-29** (dashboard NUL refusal live-accepted on pin b33dd43c4428)
 
