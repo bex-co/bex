@@ -37,7 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
-- [ ] **m153** — **BLOCKED (t004: observe a fetch across the next control-plane roll; mid-roll retry shipped)** — [Production cluster access survives a control-plane roll](blocked/m153/README.md) (7 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch)
+- [ ] **m153** — **todo (t008: stable CP host keys via the KCP bootstrap, option (a) chosen 2026-10-29; then t009 re-proves across a full roll)** — [Production cluster access survives a control-plane roll](m153/README.md) (9 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch)
 - [x] **m154** — [A failed nightly disk backup says why](done/m154/README.md) (7 tasks) ← 2026-10-24 diagnosis of w6/089 (three nights of silent dskbak- failures)
 - [x] **m150** — [`render-v1` runs `io_uring` and unprivileged-userns workloads, as on Render (seccomp slice)](done/m150/README.md) (8 tasks) ← promoted from w6/085 (2026-10-20), ADR008 § Render parity first — **done 2026-10-21**, live in production
 - [x] **m149** — [Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)](done/m149/README.md) (14 tasks; t001, t002, t006 done; render-v1 value shipped; **unparked 2026-10-20** under Render parity first — RuntimeDefault seccomp, no `hostUsers`; follow-ups w6/085, w6/086) ← user decision 2026-10-17 ("render parity 比之前的 security hardening 重要，所以修改 adr，同时对应的实际改动，一并都 /pm for w6"). Amends ADR089 D2 (accepted), ADR022, ADR018; depends on m148 t002/t007. — **done 2026-10-21**: unchanged ClickHouse and nginx live in a customer workspace (`done/m149/evidence/README.md`)
@@ -194,6 +194,8 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](098.md) — filed 2026-10-29 from w6/m153 t004.
+- [x] **087** — [Deploys starve under steady manifest-touching pushes](done/087.md) — closed 2026-10-29 by user decision: no recurrence since 10-22 (~35 pins, max ~12.5h wait on a red main); reopen as a new note if a green-main deploy waits >12h on supersession.
 - [x] **076** — [A deploy made while a free service sleeps never runs, then closes update_failed with the generic health-gate line](done/076.md) — done 2026-10-04; a deploy wakes an auto-hibernated free service once per release (`wakeForRelease`), so the release rolls and the row closes with its real outcome.
 - [x] **075** — [Honor Render region filters on Postgres and Key Value lists](done/075.md) — done 2026-10-02; literal placement filtering before pagination, repeated-value enum validation, and handler/composed regressions verified.
 
