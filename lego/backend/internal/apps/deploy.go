@@ -426,7 +426,9 @@ type bexFromRegistryCreds struct {
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
 // honors plan/diskSizeGB/postgresMajorVersion/ipAllowList/readReplicas/
 // highAvailability/storageAutoscalingEnabled/connectionPool plus the create-time
-// physical databaseName/user. Region remains unsupported.
+// physical databaseName/user. Region is accepted and normalized to BEX_REGION
+// like every other surface (ADR049 D7, w8/152): the schema enum has already
+// refused anything that is not a Render region.
 type bexDatabase struct {
 	Name                      string                            `json:"name"`
 	DatabaseName              string                            `json:"databaseName"`
@@ -439,7 +441,6 @@ type bexDatabase struct {
 	IPAllowList               []bexIPEntry                      `json:"ipAllowList"`
 	ReadReplicas              []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
 	HighAvailability          *bexHA                            `json:"highAvailability"`
-	Region                    string                            `json:"region"`
 	PreviewPlan               string                            `json:"previewPlan"`
 	PreviewDiskSizeGB         *int32                            `json:"previewDiskSizeGB"`
 	EnvironmentID             string                            `json:"environmentId"`
@@ -3045,12 +3046,11 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		name    string
 		present bool
 	}{
-		{"region", d.Region != ""},
 		{"previewPlan", d.PreviewPlan != ""},
 		{"previewDiskSizeGB", d.PreviewDiskSizeGB != nil},
 	} {
 		if unsupported.present {
-			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments or per-resource region placement", core.ErrBadRequest, d.Name, unsupported.name)
+			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments", core.ErrBadRequest, d.Name, unsupported.name)
 		}
 	}
 	if d.DatabaseName != "" {

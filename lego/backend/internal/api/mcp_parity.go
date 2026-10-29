@@ -86,25 +86,11 @@ func (d mcpDivergence) breaksCompatibility() bool {
 // Keep the reason specific enough to re-litigate later: "why is this fine" and
 // "what would make it not fine".
 var mcpAcceptedDivergences = map[string]string{
-	// bex has no multi-region placement. BEX_REGION projects a single operator-
-	// configured placement name onto REST metadata; there is nothing for a
-	// caller to choose, so accepting `region` would be accepting a value bex
-	// must then ignore. Revisit if bex ever runs more than one region.
-	//
-	// The w1/m165 re-pin (upstream d9a8abd) also found upstream bc94f8d (#154,
-	// Dockerfile-based creation) had added dockerCommand/dockerContext to the
-	// two Git-backed create tools. w1/118 implemented both with upstream's
-	// names and docker-only semantics, mapped onto the fields REST's
-	// envSpecificDetails reaches, so region is again their only break —
-	// TestMCPParityGitCreateToolsBreakOnlyOnRegion holds that to be true.
-	"create_web_service": "no multi-region placement (BEX_REGION is operator-set, not caller-chosen); `region` would be accepted and silently ignored",
-	"create_cron_job":    "same as create_web_service — `region` is not a caller-chosen value in bex",
-	"create_key_value":   "same as create_web_service — `region` is not a caller-chosen value in bex",
-
-	// Same region omission as the other create tools. diskSizeGb was repaired
-	// in w2/m91 (legacy diskSizeGB kept as a compat alias; Render wins when both
-	// are set), so the only remaining break is region.
-	"create_postgres": "`region` as above — diskSizeGb casing repaired in w2/m91",
+	// The four create tools (create_web_service, create_cron_job,
+	// create_key_value, create_postgres) used to omit Render's `region`. w8/152
+	// (user decision D1, 2026-10-29) gave every surface one region policy: a
+	// Render region is accepted and normalized to BEX_REGION, so they now take
+	// it and are no longer divergent.
 
 	// bex requires publishPath because a static site with no publish directory
 	// has nothing to serve; upstream defaults it. autoDeploy/buildCommand were

@@ -112,7 +112,7 @@ var restCreateRules = map[string]wireRule{
 	"secretFiles[].name":                     to("SecretFiles"),
 	"secretFiles[].content":                  to("SecretFiles"),
 	"serviceDetails.plan":                    to("Plan"),
-	"serviceDetails.region":                  inert("bex is single-region: the pinned Render schema validates region, and the service lands in the configured placement"),
+	"serviceDetails.region":                  to("Region"),
 	"serviceDetails.numInstances":            to("Replicas"),
 	"serviceDetails.healthCheckPath":         to("HealthCheckPath"),
 	"serviceDetails.maxShutdownDelaySeconds": to("MaxShutdownDelaySeconds").given(30, 45),
@@ -238,6 +238,7 @@ var gqlCreateRules = map[string]wireRule{
 	"dockerContext":                    to("DockerContext"),
 	"builder":                          to("Builder"),
 	"plan":                             to("Plan"),
+	"region":                           to("Region"),
 	"autoDeploy":                       to("AutoDeploy"),
 	"autoDeployTrigger":                to("AutoDeploy").given("commit", "off"),
 	"notifyOnFail":                     to("NotifyOnFail"),
@@ -304,6 +305,7 @@ var mcpCreateRules = map[string]wireRule{
 	}},
 	"builder":         to("Builder"),
 	"plan":            to("Plan"),
+	"region":          to("Region"),
 	"envVars[].key":   to("Env"),
 	"envVars[].value": to("Env"),
 	// See restCreateRules: paired with a literal value by the guard, the
@@ -441,11 +443,6 @@ func to(fields ...string) wireRule {
 // refused is a field whose variants answer 400 on every shape.
 func refused(values ...any) wireRule {
 	return wireRule{values: values, want: func(createShape) wireOutcome { return wireOutcome{refused: true} }}
-}
-
-// inert is a field that changes nothing on any shape, and why.
-func inert(why string) wireRule {
-	return wireRule{want: func(createShape) wireOutcome { return wireOutcome{inert: why} }}
 }
 
 // given replaces the kind's sentinels with the rule's own values.

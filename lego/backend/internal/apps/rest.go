@@ -255,8 +255,9 @@ type imageRef struct {
 type serviceDetailsReq struct {
 	Plan string `json:"plan"`
 	// Region is emitted by the official CLI on service creation. bex is a
-	// single-region platform, so the pinned Render schema validates the value
-	// and the adapter intentionally normalizes it to the configured placement.
+	// single-region platform: Create checks it against the shared policy
+	// (resourcemeta.CheckRequestedRegion) and normalizes it to the configured
+	// placement, as Blueprints do (w8/152).
 	Region                  string        `json:"region"`
 	NumInstances            int32         `json:"numInstances"`
 	HealthCheckPath         string        `json:"healthCheckPath"`
@@ -513,7 +514,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
 	subdomainPolicy := r.RenderSubdomainPolicy
-	var runtime, buildCommand, startCommand, dockerfilePath, dockerContext string
+	var runtime, region, buildCommand, startCommand, dockerfilePath, dockerContext string
 	var nestedRegistryCredentialID json.RawMessage
 	preDeploy := r.PreDeployCommand
 	var replicas int32
@@ -534,6 +535,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
+		region = r.ServiceDetails.Region
 		health = r.ServiceDetails.HealthCheckPath
 		runtime = r.ServiceDetails.Runtime
 		if runtime == "" {
@@ -642,6 +644,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	return CreateRequest{
 		OwnerID:                 ownerID,
 		EnvironmentID:           r.EnvironmentID,
+		Region:                  region,
 		Name:                    r.Name,
 		Type:                    r.Type,
 		Schedule:                schedule,

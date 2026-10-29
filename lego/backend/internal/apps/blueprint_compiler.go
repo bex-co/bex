@@ -711,8 +711,6 @@ func blueprintUnsupportedCapabilityMessage(registry *BlueprintCapabilityRegistry
 		return "preview environments are not available on bex"
 	case "#/definitions/envVarFromKeyValue/properties/previewValue":
 		return "previewValue is not available on bex because preview environments are not available"
-	case "#/definitions/serverService/properties/region", "#/definitions/cronService/properties/region", "#/definitions/database/properties/region", "#/definitions/redisServer/properties/region":
-		return "per-resource region placement is not available on bex"
 	case "#/allOf/1/properties/buildSources", "#/allOf/1/properties/ungrouped/properties/buildSources", "#/definitions/project/properties/buildSources", "#/definitions/serverService/properties/buildSource":
 		return field + ": Render Build Sources (shared build reuse) are not available on bex; declare the repo or image and build settings on each service instead"
 	default:
@@ -756,7 +754,6 @@ func tenantFacingReason(reason string) string {
 		{"PR preview environments", "preview environments are not available on bex"},
 		{"Render Workflows", "Render Workflows are not available on bex"},
 		{"buildSource", "Render Build Sources (shared build reuse) are not available on bex"},
-		{"single-region", "per-resource region placement is not available on bex"},
 	} {
 		if strings.Contains(reason, family.marker) {
 			return family.sentence

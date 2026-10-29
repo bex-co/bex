@@ -122,13 +122,14 @@ func createProbeRequests() []CreateRequest {
 	return []CreateRequest{
 		{
 			// A repo-backed web service carries the widest field surface one
-			// valid request can. OwnerID/EnvironmentID/SecretFiles/
+			// valid request can. OwnerID/EnvironmentID/Region/SecretFiles/
 			// InitialDeployHook/DryRun are consumed by Create/applyCreate, not
 			// specFromCreate; they are set here only to satisfy the coverage
 			// guard with zero effect on the produced spec.
 			OwnerID:                 "tea-probe",
 			EnvironmentID:           "env-probe",
 			EnvironmentSpecified:    true,
+			Region:                  "oregon",
 			Name:                    "probe-web",
 			Type:                    appv1alpha1.TypeWebService,
 			Repo:                    "https://github.com/acme/web",
