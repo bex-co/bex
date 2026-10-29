@@ -626,6 +626,16 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// waits behind it (w8/m121). In memory only: no App spec write follows
 		// the release decision.
 		ctx = withViewedRelease(ctx, &app, *view)
+	} else if releaseDecision.sourcePending {
+		// A saved change waits for a deploy: the current release keeps running
+		// the settings it was adopted with (w8/m135). In memory only, as above.
+		pending, err := r.pendingReleaseView(ctx, &app)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if pending != nil {
+			ctx = withPendingReleaseView(ctx, &app, *pending)
+		}
 	}
 	if releaseDecision.releaseChanged && pinnableSourceRelease(&app) {
 		if err := r.recordAdoptedRelease(ctx, &app); err != nil {

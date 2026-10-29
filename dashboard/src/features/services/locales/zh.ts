@@ -4138,7 +4138,7 @@ const zhServices: Record<string, TranslationEntry> = {
     // See the en copy — w4/100.
     message: "配置变更",
     description:
-      "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+      "Deploy event trigger: an environment change (env var, secret file, or env-group edit); a Settings save no longer sets envUpdated (w8/m135)",
   },
   "services.eventsTriggerDeployHook": {
     message: "部署钩子",

@@ -28,7 +28,10 @@ limitations under the License.
 // This package is the shared seam every remaining App-spec writer patches
 // through. It answers one question — does this patch roll a new release? — from
 // the same classification the operator fingerprints with
-// (appv1alpha1.SpecRollsRelease), so the two planes cannot drift.
+// (appv1alpha1.SpecRollsRelease), so the two planes cannot drift. A rolling
+// patch on a suspended service, or one made under WithSaveOnly (Render's
+// Update Service, w8/m135), is held for the next deploy instead: the operator
+// keeps serving the release it runs until a deploy verb stamps a newer one.
 package rollout
 
 import (
@@ -106,8 +109,28 @@ type Snapshot struct {
 	generation int64
 	spec       appv1alpha1.AppSpec
 	// rolls is Stamp's verdict: the write stamped a release, so Open files
-	// its row. A change held on a suspended App does not roll.
+	// its row. A change held on a suspended App, or saved only, does not roll.
 	rolls bool
+	// saveOnly holds a rolling change for the next deploy instead of
+	// stamping one (WithSaveOnly).
+	saveOnly bool
+}
+
+type saveOnlyKey struct{}
+
+// WithSaveOnly marks ctx so a rolling write through Patch or PatchLocked is
+// saved and held for the next deploy rather than deployed: Render's Update
+// Service contract, "Changes will not be deployed automatically. Instead you
+// must call the deploy API" (w8/m135). The REST PATCH /v1/services/{id} and
+// MCP update_service rows run under it; the dashboard's GraphQL Settings
+// saves do not, so they keep saving and deploying.
+func WithSaveOnly(ctx context.Context) context.Context {
+	return context.WithValue(ctx, saveOnlyKey{}, true)
+}
+
+func saveOnly(ctx context.Context) bool {
+	held, _ := ctx.Value(saveOnlyKey{}).(bool)
+	return held
 }
 
 // Before captures a. Callers take it before mutating, exactly where they take
@@ -123,6 +146,15 @@ func Before(a *appv1alpha1.App) Snapshot {
 	}
 }
 
+// beforeIn is Before for a write made under ctx, which may be save-only.
+// A Stage's publish re-stamps only what its staged writes already stamped,
+// so it uses Before.
+func beforeIn(ctx context.Context, a *appv1alpha1.App) Snapshot {
+	s := Before(a)
+	s.saveOnly = saveOnly(ctx)
+	return s
+}
+
 // Stamp reports whether the mutation a now carries rolls a new release, and
 // when it does stamps the release-generation annotation so the deploy row
 // created after the patch lands names the same release the operator will
@@ -131,9 +163,10 @@ func Before(a *appv1alpha1.App) Snapshot {
 //
 // It must be called after the mutation and before the Patch, so the annotation
 // rides the same write. A hand-applied App (no control-plane row) has no deploy
-// history to keep, so it is left alone. On a suspended App a rolling change is
-// held for the next deploy instead (the pending-source annotation), and Stamp
-// reports false: nothing deploys while the service is suspended.
+// history to keep, so it is left alone. On a suspended App, and for a
+// save-only write (WithSaveOnly), a rolling change is held for the next deploy
+// instead (the pending-source annotation), and Stamp reports false: nothing
+// deploys while the service is suspended, or until the caller deploys.
 func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 	if s == nil || a == nil || s.appID == "" {
 		return false
@@ -145,7 +178,7 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 	if a.Annotations == nil {
 		a.Annotations = map[string]string{}
 	}
-	if a.Spec.Suspended {
+	if a.Spec.Suspended || s.saveOnly {
 		// A suspended service deploys nothing (Trigger and Rollback refuse it),
 		// so a write that would roll a release is held for the next deploy
 		// instead: no release stamp and no deploy row, which the reconciler
@@ -171,7 +204,7 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 //
 // A nil Tracker still applies the patch; it just records nothing.
 func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App) error) error {
-	before := Before(a)
+	before := beforeIn(ctx, a)
 	base := client.MergeFrom(a.DeepCopy())
 	if err := mutate(a); err != nil {
 		return err
@@ -197,7 +230,7 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 	var before Snapshot
 	tracked := false
 	if err := PatchAppLocked(ctx, cl, a, func(a *appv1alpha1.App) error {
-		before = Before(a)
+		before = beforeIn(ctx, a)
 		if err := mutate(a); err != nil {
 			return err
 		}

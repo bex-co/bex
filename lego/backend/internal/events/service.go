@@ -1006,10 +1006,10 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Type = TypeDeployStarted
 			ev.Details.Trigger = &Trigger{
 				FirstBuild: r.Trigger == store.TriggerCreate,
-				// Render's envUpdated is "a configuration write caused this
-				// rollout" — the nearest flag in its vocabulary for the deploys
-				// a Settings field, env var, secret file, or env-group link now
-				// opens (w6/m51). Manual stays false: nobody clicked Deploy.
+				// Render's envUpdated says an environment change caused this
+				// rollout: an env var, secret file, or env-group write (w6/m51).
+				// A settings save rolls as settings_change and reads false
+				// (w8/m135). Manual stays false: nobody clicked Deploy.
 				EnvUpdated: r.Trigger == store.TriggerConfigChange,
 				// Only a dashboard Manual Deploy is manual (w4/413): an
 				// API-key POST .../deploys is "api" with manual false, as
