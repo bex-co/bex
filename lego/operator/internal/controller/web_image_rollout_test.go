@@ -18,16 +18,19 @@ package controller
 
 import (
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -292,21 +295,18 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 
 	// No candidate pod Ready yet: nothing moves.
 	dep := project(app, deploymentParams{image: candidate.Image, port: 9090})
-	dep.Namespace = app.Namespace
+	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy()).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
+	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
 		t.Fatalf("no ready pod: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
 	}
 
-	// A Ready candidate pod: routing moves now, the served network is kept.
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "whoami-new", Namespace: app.Namespace, Labels: dep.Spec.Template.Labels},
-		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
-	}
-	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy(), pod).Build()
+	// A Ready pod of the written template: routing moves now, the served
+	// network is kept.
+	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy())...).Build()
 	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	moved, err := r.promotePortChangeEarly(t.Context(), app, dep, candidate.Image, 9090)
+	moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090)
 	if err != nil || !moved || !reflect.DeepEqual(app.Status.ServingNetwork, candidate) || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
 		t.Fatalf("ready pod: moved=%v err=%v serving=%+v prior=%+v", moved, err, app.Status.ServingNetwork, app.Status.PriorServingNetwork)
 	}
@@ -363,4 +363,64 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	if got := project(app, deploymentParams{image: candidate.Image, port: 9090}).Spec.MinReadySeconds; got != 0 {
 		t.Fatalf("minReadySeconds after early promotion = %d, want 0", got)
 	}
+}
+
+// A Ready pod of the same release under a replaced template (HTTP port
+// discovery's probe on /) is drained once the written template's ReplicaSet
+// exists, so it never moves routing: the Services stay on the serving release
+// until a pod of the written template is Ready (w8/m142 t006).
+func TestPortChangeRoutesOnlyToTheWrittenTemplate(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:a", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
+	candidate := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 10000, Ports: []int32{10000}}
+	app := webImageApp(2)
+	app.Namespace = "tea-a"
+	app.Status.ServingNetwork, app.Status.ImageNetwork = serving, candidate
+	dep := project(app, deploymentParams{image: candidate.Image, port: 10000})
+	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
+	replaced := dep.Spec.Template.DeepCopy()
+	replaced.Spec.Containers[0].ReadinessProbe = &corev1.Probe{ProbeHandler: healthCheckHandler("/", 10000, "")}
+
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "discovery", *replaced), app.DeepCopy())...).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000); err != nil || moved || app.Status.PriorServingNetwork != nil {
+		t.Fatalf("ready pod of a replaced template: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
+	}
+	if !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
+		t.Fatalf("serving network = %+v, want the serving release's", app.Status.ServingNetwork)
+	}
+}
+
+// readyTemplatePod is a Ready pod of tmpl and its ReplicaSet, as fake-client
+// objects.
+func readyTemplatePod(dep *appsv1.Deployment, hash string, tmpl corev1.PodTemplateSpec) []client.Object {
+	rs, pod := templateReplicaSetPod(dep, hash, tmpl, true)
+	return []client.Object{rs, pod}
+}
+
+// templateReplicaSetPod is what the Deployment controller and kubelet write
+// for tmpl: a ReplicaSet controlled by dep under the pod-template-hash hash,
+// and one pod of it, Ready when ready is set.
+func templateReplicaSetPod(dep *appsv1.Deployment, hash string, tmpl corev1.PodTemplateSpec, ready bool) (*appsv1.ReplicaSet, *corev1.Pod) {
+	labels := maps.Clone(tmpl.Labels)
+	labels[appsv1.DefaultDeploymentUniqueLabelKey] = hash
+	tmpl.Labels = labels
+	owner := func(kind, name string, uid types.UID) []metav1.OwnerReference {
+		return []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: kind, Name: name, UID: uid, Controller: new(true)}}
+	}
+	rs := &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{Name: dep.Name + "-" + hash, Namespace: dep.Namespace, Labels: labels, OwnerReferences: owner("Deployment", dep.Name, dep.UID)},
+		Spec: appsv1.ReplicaSetSpec{
+			Replicas: new(int32(1)),
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: labels[labelApp], appsv1.DefaultDeploymentUniqueLabelKey: hash}},
+			Template: tmpl,
+		},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: rs.Name + "-0", Namespace: dep.Namespace, Labels: labels, OwnerReferences: owner("ReplicaSet", rs.Name, rs.UID)},
+		Spec:       tmpl.Spec,
+	}
+	if ready {
+		pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+	}
+	return rs, pod
 }
