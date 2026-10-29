@@ -1,6 +1,6 @@
 # w8 · m84 — Make packaged pgvector usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary application connections can use the supplied vector extension in new and existing supported managed databases. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t005 done; sweep367 verifies fresh custom-identity PG18 through both native clients; t006 still needs hosted existing-parent backfill
+**Worker:** worker8 **Goal:** ordinary application connections can use the supplied vector extension in new and existing supported managed databases. **Status:** done (2026-10-29)
 
 ## Tasks (in order)
 
@@ -36,7 +36,7 @@ Six tasks,220m total.
 
 ## Hosted default identity — sweep368
 
-[Render-created default identity acceptance](../evidence/postgres-native-notifications-sweep368/README.md) now passes both original migrations, real vectors/HNSW, rollback and extension controls through both native clients, with exact cleanup. Together with sweep367, fresh default/custom identities and both native create paths are verified on PG18. Hosted existing-parent backfill remains unverified; t006 stays todo and this milestone remains blocked.
+[Render-created default identity acceptance](../../evidence/postgres-native-notifications-sweep368/README.md) now passes both original migrations, real vectors/HNSW, rollback and extension controls through both native clients, with exact cleanup. Together with sweep367, fresh default/custom identities and both native create paths are verified on PG18. Hosted existing-parent backfill remains unverified; t006 stays todo and this milestone remains blocked.
 
 ## PostgreSQL13 lifecycle replay — sweep371
 
@@ -44,19 +44,19 @@ Six tasks,220m total.
 
 ## Fresh PostgreSQL14 native acceptance — sweep373
 
-[PG14 large-object and vector neighbor](../evidence/postgres-large-objects-sweep373/README.md) adds15 passing vector controls on the same own fresh Free PG14 fixture: both original migrations, real HNSW/distance/data, dimension-error transaction rollback, hstore neighbors, catalogs and exact schema cleanup. PG13, PG14 and PG18 fresh paths are now live exercised. Hosted pre-fix existing-parent backfill remains unverified; t006 stays todo and this milestone stays blocked.
+[PG14 large-object and vector neighbor](../../evidence/postgres-large-objects-sweep373/README.md) adds15 passing vector controls on the same own fresh Free PG14 fixture: both original migrations, real HNSW/distance/data, dimension-error transaction rollback, hstore neighbors, catalogs and exact schema cleanup. PG13, PG14 and PG18 fresh paths are now live exercised. Hosted pre-fix existing-parent backfill remains unverified; t006 stays todo and this milestone stays blocked.
 
 ## Fresh PostgreSQL15 native acceptance — sweep376
 
-[PG15 isolation and vector acceptance](../evidence/postgres-native-isolation-sweep376/README.md) adds15 passing vector controls after27 real two-native-client isolation/error recovery stages. Both original migrations, real HNSW/distance/data, expected dimension errors with independent rollback reads, hstore/catalog neighbors and exact schema/database/credential cleanup pass. Fresh PG13/14/15/18 paths are live exercised; hosted pre-fix existing-parent backfill remains open. t006 stays todo and the milestone stays blocked.
+[PG15 isolation and vector acceptance](../../evidence/postgres-native-isolation-sweep376/README.md) adds15 passing vector controls after27 real two-native-client isolation/error recovery stages. Both original migrations, real HNSW/distance/data, expected dimension errors with independent rollback reads, hstore/catalog neighbors and exact schema/database/credential cleanup pass. Fresh PG13/14/15/18 paths are live exercised; hosted pre-fix existing-parent backfill remains open. t006 stays todo and the milestone stays blocked.
 
 ## Fresh PostgreSQL16 native acceptance — sweep377
 
-[PG16 binary COPY and vector neighbor](../evidence/postgres-native-binary-copy-sweep377/README.md) adds15 passing fresh vector controls after the15-command/27-check binary import/export journey. Both original migrations, real HNSW/distance/data, expected dimension errors/independent rollback, hstore/catalog neighbors and exact schema/database/credential cleanup pass. Fresh PG13/14/15/16/18 are live exercised; fresh17 and hosted pre-fix existing-parent backfill remain unverified. t006 stays todo and the milestone stays blocked.
+[PG16 binary COPY and vector neighbor](../../evidence/postgres-native-binary-copy-sweep377/README.md) adds15 passing fresh vector controls after the15-command/27-check binary import/export journey. Both original migrations, real HNSW/distance/data, expected dimension errors/independent rollback, hstore/catalog neighbors and exact schema/database/credential cleanup pass. Fresh PG13/14/15/16/18 are live exercised; fresh17 and hosted pre-fix existing-parent backfill remain unverified. t006 stays todo and the milestone stays blocked.
 
 ## Fresh PostgreSQL17 native acceptance — sweep378
 
-[PG17 cursors and vector acceptance](../evidence/postgres-native-cursors-sweep378/README.md) adds15 passing fresh vector controls after32 native cursor/prepared-statement stages. Both original migrations, real HNSW/distance/data, dimension-error rollback, hstore/catalog neighbors and exact fixture/credential cleanup pass. Fresh majors13–18 are now live exercised; hosted pre-fix existing-parent backfill remains open. t006 stays todo and the milestone stays blocked.
+[PG17 cursors and vector acceptance](../../evidence/postgres-native-cursors-sweep378/README.md) adds15 passing fresh vector controls after32 native cursor/prepared-statement stages. Both original migrations, real HNSW/distance/data, dimension-error rollback, hstore/catalog neighbors and exact fixture/credential cleanup pass. Fresh majors13–18 are now live exercised; hosted pre-fix existing-parent backfill remains open. t006 stays todo and the milestone stays blocked.
 
 ## Half-precision, sparse and binary index execution — sweep443
 
@@ -71,3 +71,17 @@ Six tasks,220m total.
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## Closeout — 2026-10-29 (`/loopx w8`)
+
+Remaining gate was hosted existing-parent backfill. Verified read-only on production (pin `b33dd43c4428`) with the production kubeconfig — catalog reads and an expression query inside a read-only transaction as each database's own application owner, no writes, no fixture:
+
+| Cluster (created) | Database CR (created) | `vector` ensure / applied | As app owner |
+| --- | --- | --- | --- |
+| `dpg-d9nqg95cavls73fp8m20` (2026-08-21) | 2026-10-16 | present / true | `vector` 0.8.6; `'[1,2,3]'::vector <-> '[1,2,4]'` = 1 |
+| `dpg-d9rrkoc4h4mc73edurp0` (2026-08-21) | 2026-10-16 | present / true | 0.8.6; 1 |
+| `dpg-d9rs3ee0ccis738kc7c0` (2026-08-21) | 2026-10-16 | present / true | 0.8.6; 1 |
+| `dpg-db34l9bor55s73cqpq9g` (2026-10-07, custom db `qa_r16_data`) | 2026-10-16 | present / true | 0.8.6; 1 |
+| `dpg-db9r654flioc739mcpbg` (2026-10-17, PG14, bex-canary) | 2026-10-17 | present / true | 0.8.6; 1 |
+
+The four pre-fix parents (created before the 2026-10-16 fix) got their owned CNPG `Database` resource from the backfill, keep their original cluster identity and creation time, and their ordinary owner can use `vector`. Fresh-parent acceptance across PG13–18, both native clients, default and custom identities, suspend/resume and typed-vector indexes was already recorded in sweeps 367–443. Restore/import/upgrade dispositions are covered by the t005 regressions, not re-run live.
