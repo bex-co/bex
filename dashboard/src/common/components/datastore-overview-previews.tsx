@@ -264,10 +264,11 @@ export function KeyValueNetworkingPreview() {
 
 /**
  * Mirrors the database HA panel (features/databases/components/ha-panel.tsx,
- * w5/m138): its static title and description, the status row, the plan line,
- * and the Read replicas header with its Add action over one list line. The
- * status badge, the plan line and the replicas are data, so they stay
- * skeletons; the plan line keeps two lines below xl, where its copy wraps.
+ * w5/m138): its static title and description, the status row with the HA
+ * switch (w2/m171), the plan line, and the Read replicas header with its Add
+ * action over one list line. The status badge, the switch position, the plan
+ * line and the replicas are data, so they stay skeletons; the plan line keeps
+ * two lines below xl, where its copy wraps.
  */
 export function DatabaseHighAvailabilityPreview() {
   const { t } = useTranslations();
@@ -285,6 +286,10 @@ export function DatabaseHighAvailabilityPreview() {
               {t("databases.haStatus")}
             </span>
             <Skeleton className="h-[22px] w-16 rounded-full" />
+          </div>
+          {/* The HA switch (w2/m171); its position is data. */}
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-5 w-9 rounded-full" />
           </div>
         </div>
         <div>

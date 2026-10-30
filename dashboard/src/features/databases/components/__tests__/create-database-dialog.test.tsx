@@ -179,9 +179,63 @@ describe("CreateDatabaseDialog", () => {
       version: "",
       diskSizeGB: 0,
       public: false,
+      highAvailability: false,
       environmentId: undefined,
     });
     expect(onCreated).toHaveBeenCalledWith("shop-db");
+  });
+
+  // w2/m171: the ≥1-CPU plans offer high availability at create, as on
+  // Render; a plan below 1 CPU shows the switch off, disabled and explained,
+  // and never sends it — bex-api's own rule, read from the catalog.
+  it("offers high availability only on a plan that supports it", async () => {
+    const ONE_CPU: DatabaseInstanceTypeView = {
+      ...BASIC,
+      id: "1c-2g",
+      name: "1c-2g",
+      cpu: "1",
+      memory: "2Gi",
+      storageGB: 10,
+      supportsHighAvailability: true,
+      monthlyUsd: "28.00",
+    };
+    instanceTypesState.instanceTypes = [FREE, BASIC, ONE_CPU];
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+
+    const ha = () =>
+      within(dialog).getByRole("switch", { name: "High availability" });
+    expect(ha()).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "Free does not offer high availability. Choose a plan with at least 1 CPU.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(await screen.findByRole("option", { name: /^1c-2g/ }));
+    expect(ha()).toBeEnabled();
+    await user.click(ha());
+    expect(ha()).toBeChecked();
+
+    // Back to a plan below 1 CPU: off, disabled, not sent.
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
+    expect(ha()).not.toBeChecked();
+    expect(ha()).toBeDisabled();
+
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(await screen.findByRole("option", { name: /^1c-2g/ }));
+    expect(ha()).toBeChecked();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: "1c-2g", highAvailability: true }),
+    );
   });
 
   it("submits a free-form name trimmed, as bex-api takes it (w5/m153)", async () => {

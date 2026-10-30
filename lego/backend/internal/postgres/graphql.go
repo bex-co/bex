@@ -49,12 +49,16 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),
 		"diskAutoscalingEnabled":  gqlutil.BoolField(func(v PostgresView) any { return v.DiskAutoscalingEnabled }),
 		"highAvailabilityEnabled": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityEnabled }),
-		"readReplicas":            gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
-		"suspended":               gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
-		"suspenders":              gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),
-		"role":                    gqlutil.StrField(func(v PostgresView) any { return v.Role }),
-		"createdAt":               gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
-		"updatedAt":               gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
+		// highAvailabilityRequested is spec intent (bex extension, w2/m171):
+		// highAvailabilityEnabled reports the observed standby, so the
+		// dashboard's HA switch reads this to show a request still converging.
+		"highAvailabilityRequested": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityRequested }),
+		"readReplicas":              gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
+		"suspended":                 gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
+		"suspenders":                gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),
+		"role":                      gqlutil.StrField(func(v PostgresView) any { return v.Role }),
+		"createdAt":                 gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
+		"updatedAt":                 gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
 		// expiresAt: Render's free-database expiry, null for a paid plan (w8/m126).
 		"expiresAt":          gqlutil.OptionalStrField(func(v PostgresView) any { return v.ExpiresAt }),
 		"region":             gqlutil.StrField(func(v PostgresView) any { return v.Region }),
@@ -578,6 +582,26 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				enabled := p.Args["enabled"].(bool)
 				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{EnableDiskAutoscaling: &enabled})
+			},
+		},
+		// updateDatabaseHighAvailability is REST's PATCH enableHighAvailability
+		// (w2/m171): the same admission — enabling needs a plan with at least
+		// 1 CPU (POSTGRES_HA_PLAN_UNSUPPORTED), disabling is always allowed —
+		// and the same postgres_ha_status_changed event.
+		"updateDatabaseHighAvailability": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"enabled": gqlutil.ReqArg(graphql.Boolean),
+				"dryRun":  gqlutil.Arg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				enabled := p.Args["enabled"].(bool)
+				patch := PostgresPatch{EnableHighAvailability: &enabled}
+				if gqlutil.Bool(p.Args, "dryRun") {
+					return s.UpdatePostgresDryRun(p.Context, p.Args["id"].(string), patch)
+				}
+				return s.UpdatePostgres(p.Context, p.Args["id"].(string), patch)
 			},
 		},
 		// setDatabaseReadReplicas replaces the named replica set (w5/m138), the

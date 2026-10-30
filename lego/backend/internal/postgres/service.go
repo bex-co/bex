@@ -126,6 +126,10 @@ type PostgresView struct {
 	// the requested value on that response so CLI diffs are meaningful (w5/065);
 	// a subsequent GET still reports observed readiness.
 	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled"`
+	// HighAvailabilityRequested is spec.highAvailability — the intent a
+	// standby is converging to. GraphQL only (the dashboard's HA switch,
+	// w2/m171); Render's object has no such field, so REST and MCP omit it.
+	HighAvailabilityRequested bool `json:"-"`
 	// ReadReplicas is the named replica array — each with its host info.
 	// Password is not included here; use PostgresConnectionInfo for credentials.
 	// Render's readReplicas: [{name, connectionInfo}]. Required in Render's
@@ -561,36 +565,37 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return PostgresView{
-		ID:                      d.Name,
-		Name:                    d.Spec.Name,
-		Plan:                    d.Spec.Plan,
-		Version:                 version,
-		Status:                  status,
-		StatusReason:            reason,
-		StatusReasonCode:        reasonCode,
-		DatabaseName:            dbn,
-		DatabaseUser:            dbUser,
-		DiskSizeGB:              DatabaseStorageHighWater(d),
-		DiskAutoscalingEnabled:  d.Spec.DiskAutoscaling,
-		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
-		ReadReplicas:            replicas,
-		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
-		Suspenders:              suspenders,
-		Role:                    "primary",
-		CreatedAt:               created,
-		ExpiresAt:               expires,
-		UpdatedAt:               resourcemeta.UpdatedAt(d),
-		ExternalHost:            d.Status.ExternalHost,
-		Public:                  d.Spec.Public,
-		IPAllowList:             core.AllowListOrEmpty(core.AllowListFromSpec(d.Spec.IPAllowList)),
-		PoolerEnabled:           d.Spec.Pooler,
-		ConnectionPool:          connectionPoolEnum(d.Spec.Pooler),
-		BackupsEnabled:          d.Status.BackupsEnabled,
-		ParameterOverrides:      declaredParameters(d),
-		OwnerID:                 d.Labels[core.LabelTenant],
-		ProjectID:               d.Labels[core.LabelProject],
-		EnvironmentID:           id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
-		BlueprintID:             d.Labels[core.LabelBlueprint],
+		ID:                        d.Name,
+		Name:                      d.Spec.Name,
+		Plan:                      d.Spec.Plan,
+		Version:                   version,
+		Status:                    status,
+		StatusReason:              reason,
+		StatusReasonCode:          reasonCode,
+		DatabaseName:              dbn,
+		DatabaseUser:              dbUser,
+		DiskSizeGB:                DatabaseStorageHighWater(d),
+		DiskAutoscalingEnabled:    d.Spec.DiskAutoscaling,
+		HighAvailabilityEnabled:   d.Status.HighAvailabilityEnabled,
+		HighAvailabilityRequested: d.Spec.HighAvailability,
+		ReadReplicas:              replicas,
+		Suspended:                 core.SuspendedEnum(d.Spec.Suspended),
+		Suspenders:                suspenders,
+		Role:                      "primary",
+		CreatedAt:                 created,
+		ExpiresAt:                 expires,
+		UpdatedAt:                 resourcemeta.UpdatedAt(d),
+		ExternalHost:              d.Status.ExternalHost,
+		Public:                    d.Spec.Public,
+		IPAllowList:               core.AllowListOrEmpty(core.AllowListFromSpec(d.Spec.IPAllowList)),
+		PoolerEnabled:             d.Spec.Pooler,
+		ConnectionPool:            connectionPoolEnum(d.Spec.Pooler),
+		BackupsEnabled:            d.Status.BackupsEnabled,
+		ParameterOverrides:        declaredParameters(d),
+		OwnerID:                   d.Labels[core.LabelTenant],
+		ProjectID:                 d.Labels[core.LabelProject],
+		EnvironmentID:             id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
+		BlueprintID:               d.Labels[core.LabelBlueprint],
 	}
 }
 

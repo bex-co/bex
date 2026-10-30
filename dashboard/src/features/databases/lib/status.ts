@@ -20,6 +20,15 @@ type DatabaseNode = NonNullable<
 >;
 type DatabaseDetailNode = NonNullable<DatabaseQuery["database"]>;
 
+/**
+ * Whether high availability is ON in the database's spec — the value bex-api's
+ * HA plan rule checks (w2/m171). highAvailabilityEnabled lags it while the
+ * standby starts or stops.
+ */
+export function highAvailabilityRequested(db: DatabaseDetailView): boolean {
+  return db.highAvailabilityRequested ?? db.highAvailabilityEnabled;
+}
+
 /** Map a wire `Database` list node onto the normalized DatabaseView. */
 export function toDatabaseView(d: DatabaseNode): DatabaseView {
   return {
@@ -68,6 +77,8 @@ export function toDatabaseDetailView(
     databaseName: d.databaseName ?? null,
     databaseUser: d.databaseUser ?? null,
     highAvailabilityEnabled: d.highAvailabilityEnabled ?? false,
+    highAvailabilityRequested:
+      d.highAvailabilityRequested ?? d.highAvailabilityEnabled ?? false,
     diskAutoscalingEnabled: d.diskAutoscalingEnabled ?? false,
     poolerEnabled: d.poolerEnabled ?? false,
     readReplicas: (d.readReplicas ?? [])

@@ -95,6 +95,7 @@ describe("toDatabaseDetailView", () => {
       diskSizeGB: 1,
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
+      highAvailabilityRequested: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -110,6 +111,8 @@ describe("toDatabaseDetailView", () => {
     expect(d.databaseUser).toBe("db1_user");
     expect(d.externalHost).toBe("db1.db.bex.co");
     expect(d.highAvailabilityEnabled).toBe(false);
+    // An older bex-api with no spec-intent field reads as the observed state.
+    expect(d.highAvailabilityRequested).toBe(false);
     expect(d.poolerEnabled).toBe(true);
     expect(d.region).toBeNull();
   });
@@ -130,6 +133,7 @@ describe("toDatabaseDetailView", () => {
       diskSizeGB: 1,
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
+      highAvailabilityRequested: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -161,6 +165,7 @@ describe("toDatabaseDetailView", () => {
       diskSizeGB: 1,
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
+      highAvailabilityRequested: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -193,6 +198,7 @@ describe("toDatabaseDetailView", () => {
       diskSizeGB: 1,
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
+      highAvailabilityRequested: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
