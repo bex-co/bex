@@ -74,12 +74,18 @@ func TestReconcileProvisionsHostingNamespaceWithBaseObjects(t *testing.T) {
 		t.Errorf("PSS enforce label = %q, want baseline", ns.Labels["pod-security.kubernetes.io/enforce"])
 	}
 
-	var quota corev1.ResourceQuota
+	var quota, compute corev1.ResourceQuota
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "tenant-quota"}, &quota); err != nil {
 		t.Fatalf("resource quota not created: %v", err)
 	}
-	if quota.Spec.Hard.Pods().IsZero() {
-		t.Error("resource quota has no pod cap")
+	if pvcs := quota.Spec.Hard[corev1.ResourcePersistentVolumeClaims]; pvcs.IsZero() {
+		t.Error("resource quota has no PVC cap")
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: nsName, Name: core.TenantComputeQuotaName}, &compute); err != nil {
+		t.Fatalf("compute quota not created: %v", err)
+	}
+	if compute.Spec.Hard.Pods().IsZero() {
+		t.Error("compute quota has no pod cap")
 	}
 	var lr corev1.LimitRange
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "tenant-limits"}, &lr); err != nil {
@@ -249,10 +255,11 @@ func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 		wantStorage string
 		wantPVCs    int64
 	}{
-		// Raised for persistent service disks (ADR082 D10): a hobby workspace
-		// must fit a couple of default 10 GB disks beside its datastore floors.
-		{free.ID, "120Gi", 8},
-		{paid.ID, "5Ti", 200},
+		// The plan budget (hobby 120Gi / 8: a couple of default 10 GB disks,
+		// ADR082 D10; paid 5Ti / 200) plus room for every datastore the count
+		// caps allow at its largest shape (w2/056): 1875Gi / 200.
+		{free.ID, "1995Gi", 208},
+		{paid.ID, "6995Gi", 400},
 	} {
 		q := quotaFor(tc.nsID)
 		if got := hard(q, corev1.ResourceRequestsStorage); got.String() != tc.wantStorage {
@@ -362,9 +369,13 @@ func TestComputeQuotaExemptsDatastores(t *testing.T) {
 		if rest.Spec.ScopeSelector != nil || len(rest.Spec.Scopes) != 0 {
 			t.Errorf("%s: tenant-quota must stay unscoped so counts and storage cover datastores, got %+v", ns, rest.Spec)
 		}
-		// Exactly the four compute dimensions moved; nothing was dropped.
-		if len(compute.Spec.Hard) != 4 {
-			t.Errorf("%s: compute quota carries %v, want only requests/limits cpu/memory", ns, compute.Spec.Hard)
+		// Exactly the four compute dimensions and the pod count (w2/056)
+		// moved; nothing was dropped.
+		if len(compute.Spec.Hard) != 5 {
+			t.Errorf("%s: compute quota carries %v, want only requests/limits cpu/memory and pods", ns, compute.Spec.Hard)
+		}
+		if _, ok := compute.Spec.Hard[corev1.ResourcePods]; !ok {
+			t.Errorf("%s: compute quota has no pods cap", ns)
 		}
 		for key, q := range want {
 			got, inCompute := compute.Spec.Hard[key]
@@ -377,7 +388,7 @@ func TestComputeQuotaExemptsDatastores(t *testing.T) {
 				t.Errorf("%s: %s = %s, want %s", ns, key, got.String(), q.String())
 			}
 		}
-		for _, key := range []corev1.ResourceName{corev1.ResourcePods, corev1.ResourceRequestsStorage, corev1.ResourceRequestsEphemeralStorage, DatabasesQuotaCountKey} {
+		for _, key := range []corev1.ResourceName{corev1.ResourcePersistentVolumeClaims, corev1.ResourceRequestsStorage, corev1.ResourceRequestsEphemeralStorage, DatabasesQuotaCountKey} {
 			if _, ok := rest.Spec.Hard[key]; !ok {
 				t.Errorf("%s: tenant-quota lost %s", ns, key)
 			}
