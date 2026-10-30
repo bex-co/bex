@@ -152,7 +152,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--disk-size-gb <int>` — free is fixed at 1 GB; paid storage is capped at 16,384 GB (w8/m50)
     - [x] `--disk-autoscaling` — requires a paid plan; free is a named 400 (w8/m50)
     - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** CLI validates the enum then sends `connectionPool`; bex folds it onto its native `pooler` bool (`resolvePooler`), so `pgbouncer` provisions the CNPG Pooler on paid plans and `none` leaves it off; free enable returns a named 400 (w8/m50) (wire-shape graded; w2/024 alignment)
-    - [x] `--high-availability` — persists to the CR spec (status flips once replicas are ready)
+    - [x] `--high-availability` — only on plans with at least 1 CPU (`1c-2g`, `pro-4gb`, `basic-4gb`); other plans get a named 400 `POSTGRES_HA_PLAN_UNSUPPORTED`; persists to the CR spec (status flips once replicas are ready) (w2/m171)
     - [x] `--read-replica <name>` — requires at least 0.5 CPU and 10 GB storage; maximum five; the existing `basic-1gb` plan qualifies at 10 GB (w8/m50)
     - [x] `--database-name <string>` — persisted as the immutable physical database name and live-proven through CNPG SQL identity
     - [x] `--database-user <string>` — persisted as the immutable owner role and live-proven through CNPG SQL identity; either custom-name flag may be omitted independently
@@ -169,7 +169,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--disk-size-gb` — grow succeeds; shrink returns a named 400 and leaves intent/state unchanged (w2/m60 exact PATCH regression)
     - [x] `--disk-autoscaling` — paid enable/disable; free enable is refused and legacy free disable remains allowed (w8/m50)
     - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** PATCH decodes `connectionPool` via `resolvePooler`; paid enable and legacy free disable are allowed, free enable is refused (w8/m50)
-    - [x] `--high-availability`
+    - [x] `--high-availability` — toggles HA on an existing database (≥1-CPU plans only); a plan change to a <1-CPU plan while HA stays on is refused unless the same request disables it (w2/m171)
     - [x] `--ip-allow-list cidr=…,description=…` — replaces the list and enables external access for matching sources; description returns (w2/m166)
     - [x] `--clear-ip-allow-list` — clears rules and disables primary/pooler/replica external routes after convergence (w2/m166); internal access remains available
     - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
