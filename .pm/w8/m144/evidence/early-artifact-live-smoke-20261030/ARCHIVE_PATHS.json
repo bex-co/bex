@@ -1,0 +1,67 @@
+{
+  "run-final.json": {
+    "stored": "run-final.json",
+    "rawSha256": "47b6ba81f90fd529b0a2450efaba650c29384c7883818b011af80b03dea455c1",
+    "rawBytes": 11520
+  },
+  "download-jobs-before.json": {
+    "stored": "download-jobs-before.json",
+    "rawSha256": "b04ab3c637f0a0f5ae3ba5ae6a3971c4baea183064ed037d78930f2ee7d01fba",
+    "rawBytes": 6365
+  },
+  "download-jobs-after.json": {
+    "stored": "download-jobs-after.json",
+    "rawSha256": "b04ab3c637f0a0f5ae3ba5ae6a3971c4baea183064ed037d78930f2ee7d01fba",
+    "rawBytes": 6365
+  },
+  "download-artifact.json": {
+    "stored": "download-artifact.json",
+    "rawSha256": "614c3d4b92718e3c9d14f16c74236671e284b6756eba2951b32889d946b7a453",
+    "rawBytes": 753
+  },
+  "download-artifacts-response.json": {
+    "stored": "download-artifacts-response.json",
+    "rawSha256": "7e83cf01317b81c69e7e24cb6f19173887a3ad68614c54efa4dff769535fd70d",
+    "rawBytes": 878
+  },
+  "download-receipt.json": {
+    "stored": "download-receipt.json",
+    "rawSha256": "1a3a819c71ae03147b1849add3988dc9e40266d6d813d8b5e0f902f9e80202ec",
+    "rawBytes": 430
+  },
+  "negative-real-readiness.json": {
+    "stored": "negative-real-readiness.json",
+    "rawSha256": "8abb88b4c6d52b13e7e99d1a8ce555073bcbe2e6c040ee83cb4e61aaf4f9abb2",
+    "rawBytes": 279
+  },
+  "terminal.json": {
+    "stored": "terminal.json",
+    "rawSha256": "32003540e6509aedae5b24c4186569d13489bad38ca64c95e61ef4f4674b8259",
+    "rawBytes": 334
+  },
+  "current-private-plan-update.json": {
+    "stored": "current-private-plan-update.json",
+    "rawSha256": "495221711a8f1afb453d3a266ec1a7bb7025ca043363c51dc76afa7490457d57",
+    "rawBytes": 448
+  },
+  "download/bex-fixture-channel-smoke.json": {
+    "stored": "download__bex-fixture-channel-smoke.json",
+    "rawSha256": "f3bb1ac50e8bca480487e03db631b3b56e17aadc043567ab9be3f40b112112f6",
+    "rawBytes": 182
+  },
+  "watch.py": {
+    "stored": "watch.py.gz",
+    "rawSha256": "f61b1e94015a99a0a510583ce1b08ac2ffd880ab38d822faade7f902d35ff935",
+    "rawBytes": 2616
+  },
+  "watch-output.txt": {
+    "stored": "watch-output.txt",
+    "rawSha256": "1c6f9e67b82b3453e7446cbdd4450a82d6e6a396094bd2a9eec9583f248b2997",
+    "rawBytes": 1491
+  },
+  "download-output.txt": {
+    "stored": "download-output.txt",
+    "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rawBytes": 0
+  }
+}

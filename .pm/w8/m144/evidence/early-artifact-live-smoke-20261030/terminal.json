@@ -1,0 +1,24 @@
+{
+  "observedAt": "2026-10-30T13:53:08.953073+00:00",
+  "downloaded": true,
+  "jobs": [
+    [
+      "validate",
+      "completed",
+      "success",
+      []
+    ],
+    [
+      "observer-channel-smoke",
+      "completed",
+      "success",
+      []
+    ],
+    [
+      "cluster",
+      "completed",
+      "skipped",
+      []
+    ]
+  ]
+}

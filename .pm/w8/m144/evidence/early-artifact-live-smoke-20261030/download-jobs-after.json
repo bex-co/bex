@@ -1,0 +1,185 @@
+{
+  "total_count": 3,
+  "jobs": [
+    {
+      "id": 124099218114,
+      "run_id": 41066532463,
+      "workflow_name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41066532463",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOL1E4iM8AAAAc5OPKwg",
+      "head_sha": "f857566a8d7089b46126543804712a46acf58285",
+      "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124099218114",
+      "html_url": "https://github.com/bex-co/bex/actions/runs/41066532463/job/124099218114",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-30T13:50:06Z",
+      "started_at": "2026-10-30T13:50:10Z",
+      "completed_at": "2026-10-30T13:51:47Z",
+      "name": "validate",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-30T13:50:11Z",
+          "completed_at": "2026-10-30T13:50:14Z"
+        },
+        {
+          "name": "Set up runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-30T13:50:14Z",
+          "completed_at": "2026-10-30T13:50:14Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-30T13:50:14Z",
+          "completed_at": "2026-10-30T13:51:40Z"
+        },
+        {
+          "name": "validate operation and require reviewed pin for rollout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-30T13:51:40Z",
+          "completed_at": "2026-10-30T13:51:40Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-30T13:51:40Z",
+          "completed_at": "2026-10-30T13:51:41Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-30T13:51:41Z",
+          "completed_at": "2026-10-30T13:51:41Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124099218114",
+      "labels": [
+        "self-hosted",
+        "Linux",
+        "ARM64",
+        "bex-ci"
+      ],
+      "runner_id": 21825,
+      "runner_name": "d54551a8722a",
+      "runner_group_id": 3,
+      "runner_group_name": "bex-ci"
+    },
+    {
+      "id": 124100094662,
+      "run_id": 41066532463,
+      "workflow_name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41066532463",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOL1E4iM8AAAAc5PEqxg",
+      "head_sha": "f857566a8d7089b46126543804712a46acf58285",
+      "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124100094662",
+      "html_url": "https://github.com/bex-co/bex/actions/runs/41066532463/job/124100094662",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-10-30T13:51:48Z",
+      "started_at": "2026-10-30T13:51:51Z",
+      "completed_at": null,
+      "name": "observer-channel-smoke",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-30T13:51:52Z",
+          "completed_at": "2026-10-30T13:51:57Z"
+        },
+        {
+          "name": "Set up runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-30T13:51:57Z",
+          "completed_at": "2026-10-30T13:51:57Z"
+        },
+        {
+          "name": "write resource-free artifact protocol marker",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-30T13:51:57Z",
+          "completed_at": "2026-10-30T13:51:57Z"
+        },
+        {
+          "name": "publish protocol marker before this job finishes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-30T13:51:57Z",
+          "completed_at": "2026-10-30T13:52:00Z"
+        },
+        {
+          "name": "keep the resource-free job active for artifact API verification",
+          "status": "in_progress",
+          "conclusion": null,
+          "number": 5,
+          "started_at": "2026-10-30T13:52:00Z",
+          "completed_at": null
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124100094662",
+      "labels": [
+        "self-hosted",
+        "Linux",
+        "ARM64",
+        "bex-ci"
+      ],
+      "runner_id": 21820,
+      "runner_name": "239d6e52dba9",
+      "runner_group_id": 3,
+      "runner_group_name": "bex-ci"
+    },
+    {
+      "id": 124100134051,
+      "run_id": 41066532463,
+      "workflow_name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41066532463",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOL1E4iM8AAAAc5PHEow",
+      "head_sha": "f857566a8d7089b46126543804712a46acf58285",
+      "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124100134051",
+      "html_url": "https://github.com/bex-co/bex/actions/runs/41066532463/job/124100134051",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-10-30T13:51:52Z",
+      "started_at": "2026-10-30T13:51:52Z",
+      "completed_at": "2026-10-30T13:51:48Z",
+      "name": "cluster",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124100134051",
+      "labels": [
+        "self-hosted",
+        "Linux",
+        "ARM64",
+        "bex-production"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}

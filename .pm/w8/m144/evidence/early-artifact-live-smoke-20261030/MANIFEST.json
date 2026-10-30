@@ -1,0 +1,68 @@
+{
+  "files": {
+    "ARCHIVE_PATHS.json": {
+      "sha256": "35801e043c1e84c4a764429c2e77881bd1327f753e83891233c6890bd2e68b4c",
+      "bytes": 2365
+    },
+    "negative-real-readiness.json": {
+      "sha256": "8abb88b4c6d52b13e7e99d1a8ce555073bcbe2e6c040ee83cb4e61aaf4f9abb2",
+      "bytes": 279
+    },
+    "download-jobs-after.json": {
+      "sha256": "b04ab3c637f0a0f5ae3ba5ae6a3971c4baea183064ed037d78930f2ee7d01fba",
+      "bytes": 6365
+    },
+    "download-jobs-before.json": {
+      "sha256": "b04ab3c637f0a0f5ae3ba5ae6a3971c4baea183064ed037d78930f2ee7d01fba",
+      "bytes": 6365
+    },
+    "current-private-plan-update.json": {
+      "sha256": "495221711a8f1afb453d3a266ec1a7bb7025ca043363c51dc76afa7490457d57",
+      "bytes": 448
+    },
+    "download-output.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "download-artifact.json": {
+      "sha256": "614c3d4b92718e3c9d14f16c74236671e284b6756eba2951b32889d946b7a453",
+      "bytes": 753
+    },
+    "README.md": {
+      "sha256": "8403aadb5e1b06e4d29c9fdbbc9a4def7e48ef8186c36f4ef63ccbfb29501e01",
+      "bytes": 1126
+    },
+    "current-acceptance-plan.json": {
+      "sha256": "aa7c1d6cba1c9952ee1d3b55ad9ffe3b3b9396700389667b349db868c82ac4d5",
+      "bytes": 33023
+    },
+    "watch-output.txt": {
+      "sha256": "1c6f9e67b82b3453e7446cbdd4450a82d6e6a396094bd2a9eec9583f248b2997",
+      "bytes": 1491
+    },
+    "watch.py.gz": {
+      "sha256": "3e725b0a9546f21c8933da37db1d4c8afe499222122d1fa94dd194f22fb9b536",
+      "bytes": 1200
+    },
+    "download-receipt.json": {
+      "sha256": "1a3a819c71ae03147b1849add3988dc9e40266d6d813d8b5e0f902f9e80202ec",
+      "bytes": 430
+    },
+    "terminal.json": {
+      "sha256": "32003540e6509aedae5b24c4186569d13489bad38ca64c95e61ef4f4674b8259",
+      "bytes": 334
+    },
+    "download-artifacts-response.json": {
+      "sha256": "7e83cf01317b81c69e7e24cb6f19173887a3ad68614c54efa4dff769535fd70d",
+      "bytes": 878
+    },
+    "run-final.json": {
+      "sha256": "47b6ba81f90fd529b0a2450efaba650c29384c7883818b011af80b03dea455c1",
+      "bytes": 11520
+    },
+    "download__bex-fixture-channel-smoke.json": {
+      "sha256": "f3bb1ac50e8bca480487e03db631b3b56e17aadc043567ab9be3f40b112112f6",
+      "bytes": 182
+    }
+  }
+}

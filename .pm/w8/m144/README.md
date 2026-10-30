@@ -72,3 +72,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Early readiness artifact channel — 2026-10-30
 
 [The reviewed early artifact channel](evidence/early-readiness-artifact-20261030/README.md) makes the actual watch/provider readiness marker downloadable while the observer remains active; active log API access was confirmed unavailable. Three reviews and49 local cases cover supervision, cancellation, durable terminal status and strict smoke/real authority separation. The resource-free live GitHub artifact smoke is still required before relying on the channel. No paid fixture exists.
+
+## Actual early artifact smoke — 2026-10-30
+
+[The resource-free GitHub smoke](evidence/early-artifact-live-smoke-20261030/README.md) passed. Its marker downloaded successfully while the exact smoke job remained in progress before and after download; the production cluster job was skipped. The real readiness validator rejects the invalid smoke marker. Actual production release/readiness, queue fit and the owned disk watch/provider/lifecycle checks remain required; no paid fixture or root gate exists.

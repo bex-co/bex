@@ -1,0 +1,7 @@
+{
+  "actualDownloadedSmokeSha256": "f3bb1ac50e8bca480487e03db631b3b56e17aadc043567ab9be3f40b112112f6",
+  "guard": "disk_fixture.observer_ready",
+  "accepted": false,
+  "reason": "observer readiness belongs to another fixture",
+  "checkedAt": "2026-10-30T13:52:45.534800+00:00"
+}

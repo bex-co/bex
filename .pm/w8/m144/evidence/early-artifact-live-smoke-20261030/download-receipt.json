@@ -1,0 +1,15 @@
+{
+  "runId": 41066532463,
+  "sourceSha": "f857566a8d7089b46126543804712a46acf58285",
+  "startedAt": "2026-10-30T13:52:03.988176+00:00",
+  "finishedAt": "2026-10-30T13:52:05.885055+00:00",
+  "downloadExit": 0,
+  "jobActiveBefore": true,
+  "jobActiveAfter": true,
+  "files": {
+    "bex-fixture-channel-smoke.json": {
+      "sha256": "f3bb1ac50e8bca480487e03db631b3b56e17aadc043567ab9be3f40b112112f6",
+      "bytes": 182
+    }
+  }
+}
