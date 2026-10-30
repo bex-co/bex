@@ -67,7 +67,7 @@ describe("useServices", () => {
     renderHook(() => useServices());
     expect(mockUseQuery).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ pollInterval: 30_000 }),
+      expect.objectContaining({ pollInterval: 25_000 }),
     );
 
     renderHook(() => useServices({ poll: false }));

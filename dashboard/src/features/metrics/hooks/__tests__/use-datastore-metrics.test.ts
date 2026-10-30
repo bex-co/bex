@@ -37,7 +37,7 @@ describe("useDatastoreMetrics", () => {
           },
         },
         skip: false,
-        pollInterval: 30_000,
+        pollInterval: 25_000,
       }),
     );
   });

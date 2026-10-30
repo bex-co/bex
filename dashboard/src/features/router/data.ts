@@ -7,6 +7,7 @@ import {
   DeleteRouterKeyDocument as DeleteDocument,
   type RouterOverviewQuery,
 } from "@/graphql/definitions";
+import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 export type RouterOverview = NonNullable<RouterOverviewQuery["routerOverview"]>;
 export type RouterKey = RouterOverview["keys"][number];
 export type RouterKeyOptions = Omit<
@@ -21,7 +22,7 @@ export function useRouterOverview() {
     variables: { ownerId },
     skip: !ownerId,
     fetchPolicy: "no-cache",
-    pollInterval: 30_000,
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
   });
   const [create] = useMutation(CreateDocument);
   const [update] = useMutation(UpdateDocument);

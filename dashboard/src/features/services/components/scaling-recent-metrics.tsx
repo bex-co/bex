@@ -54,7 +54,7 @@ export function ScalingRecentMetrics({
 }) {
   const { t } = useTranslations();
   // pollIntervalMs: 0 — the live-range tick is the one refresh schedule;
-  // Apollo's default 30s poll would be a second, redundant one re-sending the
+  // the default baseline poll would be a second, redundant one re-sending the
   // same frozen bounds (the Metrics tab encodes the same decision).
   const window = { ...useLiveRange(RECENT_WINDOW), pollIntervalMs: 0 };
 
