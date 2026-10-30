@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；正在实现和验证补丁发布流程
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；修正后的本地构建/启动验收完成，推进双架构签名发布与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -96,3 +96,11 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - 四个旧 Node 补丁改用固定 Bullseye 编译基座，最终镜像保留原官方主运行时和系统版本。Python/Ruby 集成测试显式选择 Node20 并核查 build/start 的真实双运行时版本；不改变用户版本来规避失败。
 - check.Dockerfile 增加实际 Bullseye companion gate，最终阶段消费检查产物，双架构发布都会执行。已用旧 Node20 候选证明 gate 失败，用 Node14 候选证明 gate 通过；见 [红绿对照](evidence/node-portability-gate-controls.json)。修正后 Node20 的完整编译及真实组合仍需通过，未预先宣称成功。
 - 当前有证据的最旧 reviewed primary 为 Bullseye；最旧可选 Elixir1.17/OTP27 的官方历史配方已是 Bookworm，见 [来源核查](evidence/oldest-primary-metadata.json)。此结论不建立永久发行版 allowlist。旧配方发布停止采用，正式发布/接入/rollout 仍保持未完成。
+
+### 可移植修复本地验收通过 — 2026-10-29
+
+- 新 Node20.20.2/Brotli1.1.1 已在 Bullseye 完整编译，npm/运行时身份检查通过；ELF 需求降至 GLIBC2.29 / GLIBCXX3.4.26，在原始 Python3.7/Ruby3.0 Bullseye 均通过 canonical 畸形/健康 decoder 探针。新二进制配置与官方除已解释的 prefix/release URL metadata 外一致；见 [编译与基座证明](evidence/portable-node20-compiler.json)。
+- 更新后的真实 native fixture 均通过（47.459s）：Python3.7.17/Poetry1.5.1 + Node20.20.2，Ruby3.0.7 + Node20.20.2，build/start 两阶段系统、私有和 companion Node 探针及 HTTP 双运行时版本均通过；见 [组合绿对照](evidence/companion-native-green.json)。
+- Python/Ruby 的当前完整配方与原版 check.Dockerfile 通过；Node20 组合当前最终配方，仅复用刚验证的编译产物，保留原 Bookworm 主镜像/ENV/npm，完整工具、Bullseye gate、安全检查及真实主运行时构建/HTTP（6.680s）均通过。见 [Python/Ruby](evidence/portable-python-ruby-suppliers.json)、[Node20 主镜像](evidence/portable-node20-final-native.json)。
+- [ABI/config 补充核查](evidence/node-config-compatibility.json) 未发现 Node14/20 的配置或实际 release/module paths/features/FIPS/ICU 合同变化。所有本地 overlay 已明确范围，不代替签名发布验收。
+- 修正配方已通过 `bfdeb6221` ship。正式发布 41000570846 正在构建首批 Node14/16；11 个不可变签名候选、接入和 live 验收仍未完成，t002–t008 保持开放。
