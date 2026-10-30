@@ -81,3 +81,8 @@ The [actual native-init coexistence proof](evidence/native-init-coexistence-2026
 ## Fresh acceptance identities and baseline checkpoint — 2026-10-30
 
 The [preparation refresh](evidence/acceptance-preparation-refresh-20261030/README.md) changes only unused display names/date arguments and adds UTC/prior-intent guards, preserving all twenty-eight original program/data/command identities. A removed foreign QA fixture has a documented cleanup and independent exact 404; historical IDs remain protected, and baseline reclassification requires fresh evidence before any own create. Pure guard checks pass. No native hosted request or acceptance is claimed; actual adoption and the fresh own-authenticated baseline remain required.
+
+
+## Python 3.7 recovery eligibility checkpoint — 2026-10-30
+
+[Python 3.7 publication evidence](evidence/publication-python37-recovery-20261030/README.md) shows an actual successful build, both runtime architectures and both scans, followed by a first-SPDX Rekor POST failure with no underlying status exposed. Exact anonymous metadata and unchanged recipe/base checks pass. A data-only authorization permits only that immutable artifact through the existing full-gate recovery path; no new dispatch or approval is claimed. The same phase also failed in Node 14 recovery, so report-size/API behavior is being investigated before repeating it. Actual publication, full catalog adoption and hosted acceptance remain open.
