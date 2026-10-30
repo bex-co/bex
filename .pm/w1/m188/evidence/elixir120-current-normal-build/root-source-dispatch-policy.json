@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.modern-e20-source-dispatch-policy/v1",
+  "at": "2026-10-30T23:26:55.595250+00:00",
+  "root_approved": true,
+  "admitted_exact_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "reviewed_base_source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "all_changes_from_base_pm_only": true,
+  "scope": "At most ONE modern Elixir1.20 normal-build dispatch, no cancellations/recovery entries/legacy source roles/promotion",
+  "approved_source_family": "Exact8af or descendants whose entire non-PM Git tree is byte-identical8af. Before dispatch record literal actual source and full non-PM diff predicate. If non-PM change exists, stop for root review. Each literal actual dispatched source must have immutable source-role receipt, never alias to9cb/800/8af.",
+  "current_9cb_addition": ".pm/w4/439.md only since800; no recipe, workflow, catalog or matrix change",
+  "required_workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "required_install_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+  "dispatch_conditions": [
+    "Fresh exact actual main source admitted by family predicate",
+    "Full all-source recent and known-run dedupe shows no nonterminalElixir1.20 request/native job",
+    "Current catalog noElixir1.20 recovery; normal build only",
+    "At most1POST total across earlier exact800 and renewedpreflight; earlier exact800 used0",
+    "Record actual run/job/source/attempt; indexdelay permits read-only discovery, never blindretry"
+  ],
+  "source_scope": "ModernElixir1.20 only; legacy aggregate/guard source roles unchanged"
+}

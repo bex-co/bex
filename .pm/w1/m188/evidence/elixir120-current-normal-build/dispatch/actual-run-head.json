@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T23:28:54.936232+00:00",
+  "run_id": 41144656779,
+  "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "run_attempt": 1,
+  "event": "workflow_dispatch",
+  "branch": "main",
+  "created_at": "2026-10-30T23:28:15Z",
+  "requested_tag": "elixir-1.20",
+  "native_binding_pending": true,
+  "discovery_sha256": "8fb592a9a23c7d3228ca9e62a3e49ef78bf52c6555602b638c0e888e6c13b4bd",
+  "no_legacy_source_policy_append": true
+}

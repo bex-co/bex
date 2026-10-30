@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-30T23:29:18.690102+00:00",
+  "literal_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "immutable_source_files": {
+    ".github/workflows/native-base-image.yml": {
+      "file": "/tmp/bex-m188-elixir120-normal-dispatch/source-workflow.yml",
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "bytes": 14144
+    },
+    "deploy/native-base/install.sh": {
+      "file": "/tmp/bex-m188-elixir120-normal-dispatch/source-install.sh",
+      "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "bytes": 2003
+    },
+    ".github/native-base-recovery.json": {
+      "file": "/tmp/bex-m188-elixir120-normal-dispatch/source-recovery-catalog.json",
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "bytes": 6422
+    }
+  },
+  "recovery_entry_absent": true,
+  "normal_build_required": true,
+  "modern_only": true
+}

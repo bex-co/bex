@@ -1,0 +1,692 @@
+{
+  "schema": "bex.m188.immutable-archive/v2",
+  "created_at": "2026-10-30T23:33:42.802161+00:00",
+  "scope": "Actual old99f ARM Syft transport failure, guarded one normal-current9cb build request, first actual native binding, priorzeroPOSTpreflight and original404 observations. No supplier acceptance/recovery, no legacy source roles, no task closure. Mutable modern status excluded.",
+  "files": [
+    {
+      "path": "dispatch/actual-native-binding.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/actual-native-binding.json",
+      "bytes": 628,
+      "sha256": "3b3a55b73523435beedfa1ae2f3bca7f080906ab018c8e5becb238a8a15a3779",
+      "encoding": "identity",
+      "original_bytes": 628,
+      "original_sha256": "3b3a55b73523435beedfa1ae2f3bca7f080906ab018c8e5becb238a8a15a3779"
+    },
+    {
+      "path": "dispatch/actual-prepost-source-role-receipt.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/actual-prepost-source-role-receipt.json",
+      "bytes": 762,
+      "sha256": "c2291e998b3e6bd211bdc045abe6d02378e757334059a12894ac9b69a10f7215",
+      "encoding": "identity",
+      "original_bytes": 762,
+      "original_sha256": "c2291e998b3e6bd211bdc045abe6d02378e757334059a12894ac9b69a10f7215"
+    },
+    {
+      "path": "dispatch/actual-run-head.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/actual-run-head.json",
+      "bytes": 440,
+      "sha256": "33f743b3934409d0aa4567187cf3e2ac6db606f5cd3b53be41b0d8ad47bea13f",
+      "encoding": "identity",
+      "original_bytes": 440,
+      "original_sha256": "33f743b3934409d0aa4567187cf3e2ac6db606f5cd3b53be41b0d8ad47bea13f"
+    },
+    {
+      "path": "dispatch/all-source-runs-1-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/all-source-runs-1-request.json",
+      "bytes": 273,
+      "sha256": "f56aa6dc2727146348de57740c79b2e6a27237c2c527385d5683dc4da4b39cbb",
+      "encoding": "identity",
+      "original_bytes": 273,
+      "original_sha256": "f56aa6dc2727146348de57740c79b2e6a27237c2c527385d5683dc4da4b39cbb"
+    },
+    {
+      "path": "dispatch/all-source-runs-1.json.gz",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/all-source-runs-1.json",
+      "bytes": 20616,
+      "sha256": "1fb6a737022c6d039cffaa408a794d4313fcf939c02dc0b2e1aa96924b0e22da",
+      "encoding": "gzip",
+      "original_bytes": 923122,
+      "original_sha256": "1b9db2c7b91593c58879c87cc70e154a5381be80d7c4855035eb18ed667ebd9e"
+    },
+    {
+      "path": "dispatch/dedupe-41101339222-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41101339222-jobs-request.json",
+      "bytes": 239,
+      "sha256": "fddcf31526ad3bf223dc98b8bd88940bf4de4c1c5e82b613037892738ccc1205",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "fddcf31526ad3bf223dc98b8bd88940bf4de4c1c5e82b613037892738ccc1205"
+    },
+    {
+      "path": "dispatch/dedupe-41101339222-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41101339222-jobs.json",
+      "bytes": 6099,
+      "sha256": "97e0e54489e6ffa069e4125a22d9b092f2e44b95356319088d4ce6d03b1673cf",
+      "encoding": "identity",
+      "original_bytes": 6099,
+      "original_sha256": "97e0e54489e6ffa069e4125a22d9b092f2e44b95356319088d4ce6d03b1673cf"
+    },
+    {
+      "path": "dispatch/dedupe-41113367877-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41113367877-jobs-request.json",
+      "bytes": 239,
+      "sha256": "7c48236d0c0f7c9ce5becc2bcdc268431babc189f994ecd0d0740f2b75d7862a",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "7c48236d0c0f7c9ce5becc2bcdc268431babc189f994ecd0d0740f2b75d7862a"
+    },
+    {
+      "path": "dispatch/dedupe-41113367877-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41113367877-jobs.json",
+      "bytes": 6099,
+      "sha256": "0649b0ba30295a446c99e0e5322fdcbbf3d363732b49e21a32ec5c98369cc389",
+      "encoding": "identity",
+      "original_bytes": 6099,
+      "original_sha256": "0649b0ba30295a446c99e0e5322fdcbbf3d363732b49e21a32ec5c98369cc389"
+    },
+    {
+      "path": "dispatch/dedupe-41113373387-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41113373387-jobs-request.json",
+      "bytes": 239,
+      "sha256": "80189f23d915dbcd5af7595665472c17dafbdaacf70af39d887dc5b27384b8a9",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "80189f23d915dbcd5af7595665472c17dafbdaacf70af39d887dc5b27384b8a9"
+    },
+    {
+      "path": "dispatch/dedupe-41113373387-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41113373387-jobs.json",
+      "bytes": 2875,
+      "sha256": "7b5c02b0063d9182f61b3626018dc730423a64f1a6a63942c3906d9123524acd",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "7b5c02b0063d9182f61b3626018dc730423a64f1a6a63942c3906d9123524acd"
+    },
+    {
+      "path": "dispatch/dedupe-41121900239-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41121900239-jobs-request.json",
+      "bytes": 239,
+      "sha256": "b76a05a48dd4f622ffbdca5c0e6c50fc6f5fd5f83474c24f8a1281d8269f1f0f",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "b76a05a48dd4f622ffbdca5c0e6c50fc6f5fd5f83474c24f8a1281d8269f1f0f"
+    },
+    {
+      "path": "dispatch/dedupe-41121900239-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41121900239-jobs.json",
+      "bytes": 2875,
+      "sha256": "d85baba1f829aebaab8ba90b639229167715a627f4303563781570db49ca7d80",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "d85baba1f829aebaab8ba90b639229167715a627f4303563781570db49ca7d80"
+    },
+    {
+      "path": "dispatch/dedupe-41121921308-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41121921308-jobs-request.json",
+      "bytes": 239,
+      "sha256": "427aa33b6dcb0b39065ac739ffd96dbd1ba2a4dcf36849ed2de6f65dff0227ab",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "427aa33b6dcb0b39065ac739ffd96dbd1ba2a4dcf36849ed2de6f65dff0227ab"
+    },
+    {
+      "path": "dispatch/dedupe-41121921308-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41121921308-jobs.json",
+      "bytes": 2875,
+      "sha256": "6973451e9c8fa3a2c5f5d329ff2d6ff14cdf7e69e31f6f4287e85266e26b3965",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "6973451e9c8fa3a2c5f5d329ff2d6ff14cdf7e69e31f6f4287e85266e26b3965"
+    },
+    {
+      "path": "dispatch/dedupe-41127588682-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41127588682-jobs-request.json",
+      "bytes": 239,
+      "sha256": "d80ee9e9c18f1b19d328cb924c484d0b21d55b768f10f043b5e8b0f331e49b38",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "d80ee9e9c18f1b19d328cb924c484d0b21d55b768f10f043b5e8b0f331e49b38"
+    },
+    {
+      "path": "dispatch/dedupe-41127588682-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41127588682-jobs.json",
+      "bytes": 2875,
+      "sha256": "be2271befa0debb6669463841472e4e4e1f2f813a26dc5bb5e7c0516b0d2dc03",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "be2271befa0debb6669463841472e4e4e1f2f813a26dc5bb5e7c0516b0d2dc03"
+    },
+    {
+      "path": "dispatch/dedupe-41128855169-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41128855169-jobs-request.json",
+      "bytes": 239,
+      "sha256": "ff2fa1593b3ada4203f880ef86303fb99c95e2a27e5b37f7ade632df6830761f",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "ff2fa1593b3ada4203f880ef86303fb99c95e2a27e5b37f7ade632df6830761f"
+    },
+    {
+      "path": "dispatch/dedupe-41128855169-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41128855169-jobs.json",
+      "bytes": 2875,
+      "sha256": "bc3b40e6c5a6d5e3d64e482643d773c87549841e3ca4ba25e1b858e28fbf4365",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "bc3b40e6c5a6d5e3d64e482643d773c87549841e3ca4ba25e1b858e28fbf4365"
+    },
+    {
+      "path": "dispatch/dedupe-41129008590-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129008590-jobs-request.json",
+      "bytes": 239,
+      "sha256": "af8fbeeb1403efc743373ed66b1c3c6a33c38a1eab7ede8a759b9eeafbd4992a",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "af8fbeeb1403efc743373ed66b1c3c6a33c38a1eab7ede8a759b9eeafbd4992a"
+    },
+    {
+      "path": "dispatch/dedupe-41129008590-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129008590-jobs.json",
+      "bytes": 2875,
+      "sha256": "162c5cd2400e6e395d4b4e35d80b8bcaecb8310d08dc6c926f7939818c5be80e",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "162c5cd2400e6e395d4b4e35d80b8bcaecb8310d08dc6c926f7939818c5be80e"
+    },
+    {
+      "path": "dispatch/dedupe-41129044087-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129044087-jobs-request.json",
+      "bytes": 239,
+      "sha256": "e688a2f8465e1e38fc7fbda1fbc4ba0cf9018be21bc27bf123e9b0f4b01a2d00",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "e688a2f8465e1e38fc7fbda1fbc4ba0cf9018be21bc27bf123e9b0f4b01a2d00"
+    },
+    {
+      "path": "dispatch/dedupe-41129044087-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129044087-jobs.json",
+      "bytes": 2875,
+      "sha256": "697595255b1b63f35769da720e9b90bff779e3a19d0bb5666a0fd7e70ba1821c",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "697595255b1b63f35769da720e9b90bff779e3a19d0bb5666a0fd7e70ba1821c"
+    },
+    {
+      "path": "dispatch/dedupe-41129082245-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129082245-jobs-request.json",
+      "bytes": 239,
+      "sha256": "407a21996691c0d0b4497d822454542fdabba6b15cf66bc8030b69d78b21a0d0",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "407a21996691c0d0b4497d822454542fdabba6b15cf66bc8030b69d78b21a0d0"
+    },
+    {
+      "path": "dispatch/dedupe-41129082245-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129082245-jobs.json",
+      "bytes": 2875,
+      "sha256": "f40554d76bea82dc9cb05e2c8b15cf8a2b3a1309355c8cc445c0c1d6f4a366eb",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "f40554d76bea82dc9cb05e2c8b15cf8a2b3a1309355c8cc445c0c1d6f4a366eb"
+    },
+    {
+      "path": "dispatch/dedupe-41129116273-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129116273-jobs-request.json",
+      "bytes": 239,
+      "sha256": "b10983139e147ac488a289fa0522d3f7d04ef381287763dec68282e5870ae01d",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "b10983139e147ac488a289fa0522d3f7d04ef381287763dec68282e5870ae01d"
+    },
+    {
+      "path": "dispatch/dedupe-41129116273-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129116273-jobs.json",
+      "bytes": 2875,
+      "sha256": "c527e6ed77f836302c9af6f60f51fe9241715c16f586e7ec5465ce2566ae938b",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "c527e6ed77f836302c9af6f60f51fe9241715c16f586e7ec5465ce2566ae938b"
+    },
+    {
+      "path": "dispatch/dedupe-41129176570-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129176570-jobs-request.json",
+      "bytes": 239,
+      "sha256": "8844e674273dff360a163bb2ac277a06fae91d815566562150630bcede669792",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "8844e674273dff360a163bb2ac277a06fae91d815566562150630bcede669792"
+    },
+    {
+      "path": "dispatch/dedupe-41129176570-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129176570-jobs.json",
+      "bytes": 2875,
+      "sha256": "4a2249d6a93740adae284068b7ca1d63af1525b6baff3dc417ffeaabc62f55d3",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "4a2249d6a93740adae284068b7ca1d63af1525b6baff3dc417ffeaabc62f55d3"
+    },
+    {
+      "path": "dispatch/dedupe-41129224760-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129224760-jobs-request.json",
+      "bytes": 239,
+      "sha256": "bfae471442fccc9627043fd452db04fb80717885d2266d33fc60cf80f36566a0",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "bfae471442fccc9627043fd452db04fb80717885d2266d33fc60cf80f36566a0"
+    },
+    {
+      "path": "dispatch/dedupe-41129224760-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129224760-jobs.json",
+      "bytes": 2875,
+      "sha256": "5c893078cdc591c36685229d01d5b5b2f625c17bbc599d9360c421f03d262bec",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "5c893078cdc591c36685229d01d5b5b2f625c17bbc599d9360c421f03d262bec"
+    },
+    {
+      "path": "dispatch/dedupe-41129277963-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129277963-jobs-request.json",
+      "bytes": 239,
+      "sha256": "2155ef634bcc01e34772dcdbb48f6cc1c37331e3a8ee075325e7fe947940adf3",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "2155ef634bcc01e34772dcdbb48f6cc1c37331e3a8ee075325e7fe947940adf3"
+    },
+    {
+      "path": "dispatch/dedupe-41129277963-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129277963-jobs.json",
+      "bytes": 2875,
+      "sha256": "55c0bb16fc1f31c2415873ac180ee7e519926b1da16f8c77f2ba59b1fb8ebf11",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "55c0bb16fc1f31c2415873ac180ee7e519926b1da16f8c77f2ba59b1fb8ebf11"
+    },
+    {
+      "path": "dispatch/dedupe-41129321189-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129321189-jobs-request.json",
+      "bytes": 239,
+      "sha256": "f55b6874d8d2451cc31789972f2d0f527fe10ea824fe37c6f57016cafdf5fe2d",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "f55b6874d8d2451cc31789972f2d0f527fe10ea824fe37c6f57016cafdf5fe2d"
+    },
+    {
+      "path": "dispatch/dedupe-41129321189-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129321189-jobs.json",
+      "bytes": 2875,
+      "sha256": "e4b41eda9d31a2a9c4a7251c6eb2d7fff503d3b00468343326db008a5925e74c",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "e4b41eda9d31a2a9c4a7251c6eb2d7fff503d3b00468343326db008a5925e74c"
+    },
+    {
+      "path": "dispatch/dedupe-41129372376-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129372376-jobs-request.json",
+      "bytes": 239,
+      "sha256": "aeeeb9fd2d46f9292fdbb84032a859467ef25fc15f6561ed88e18e6b5f6f39ff",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "aeeeb9fd2d46f9292fdbb84032a859467ef25fc15f6561ed88e18e6b5f6f39ff"
+    },
+    {
+      "path": "dispatch/dedupe-41129372376-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41129372376-jobs.json",
+      "bytes": 2875,
+      "sha256": "d24dd4869fe555709ca3c103475ef87cb580b2f2c80039d4620720ff6d62dd43",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "d24dd4869fe555709ca3c103475ef87cb580b2f2c80039d4620720ff6d62dd43"
+    },
+    {
+      "path": "dispatch/dedupe-41142870861-jobs-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41142870861-jobs-request.json",
+      "bytes": 239,
+      "sha256": "301dcee687be729343b5f25765796c66d41c3ee94d0099627857ab582d23f81c",
+      "encoding": "identity",
+      "original_bytes": 239,
+      "original_sha256": "301dcee687be729343b5f25765796c66d41c3ee94d0099627857ab582d23f81c"
+    },
+    {
+      "path": "dispatch/dedupe-41142870861-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-41142870861-jobs.json",
+      "bytes": 2875,
+      "sha256": "28c0a3aa6d50de4128719ee261e552d19e08cce433a0d335c5f05490686622bb",
+      "encoding": "identity",
+      "original_bytes": 2875,
+      "original_sha256": "28c0a3aa6d50de4128719ee261e552d19e08cce433a0d335c5f05490686622bb"
+    },
+    {
+      "path": "dispatch/dedupe-summary.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-summary.json",
+      "bytes": 6929,
+      "sha256": "01714b99dd7265de5949c2f4430e2e6d2a79128259022c63bfe81f1142229632",
+      "encoding": "identity",
+      "original_bytes": 6929,
+      "original_sha256": "01714b99dd7265de5949c2f4430e2e6d2a79128259022c63bfe81f1142229632"
+    },
+    {
+      "path": "dispatch/dispatch-input.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dispatch-input.json",
+      "bytes": 68,
+      "sha256": "7db329e0ac0d851529a395b1fef46341a89c72276f90ec7f8e616c1c17756bf1",
+      "encoding": "identity",
+      "original_bytes": 68,
+      "original_sha256": "7db329e0ac0d851529a395b1fef46341a89c72276f90ec7f8e616c1c17756bf1"
+    },
+    {
+      "path": "dispatch/dispatch-intent.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dispatch-intent.json",
+      "bytes": 458,
+      "sha256": "3a5d16de6b8131e2f6b9ebc19f7cd65e828ac62da223695e47a9311e2275cd3c",
+      "encoding": "identity",
+      "original_bytes": 458,
+      "original_sha256": "3a5d16de6b8131e2f6b9ebc19f7cd65e828ac62da223695e47a9311e2275cd3c"
+    },
+    {
+      "path": "dispatch/dispatch-result.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/dispatch-result.json",
+      "bytes": 1887,
+      "sha256": "75c44cf3ef6dbdbdd8d2ad2b395313c606d601d26fd1406686de7e92e44c2674",
+      "encoding": "identity",
+      "original_bytes": 1887,
+      "original_sha256": "75c44cf3ef6dbdbdd8d2ad2b395313c606d601d26fd1406686de7e92e44c2674"
+    },
+    {
+      "path": "dispatch/first-native-jobs.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/first-native-jobs.json",
+      "bytes": 2885,
+      "sha256": "af909136929cccb2c4b54c67a57d71f768073e238008c6e1f67c08d1d7215a3e",
+      "encoding": "identity",
+      "original_bytes": 2885,
+      "original_sha256": "af909136929cccb2c4b54c67a57d71f768073e238008c6e1f67c08d1d7215a3e"
+    },
+    {
+      "path": "dispatch/first-native-run.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/first-native-run.json",
+      "bytes": 11470,
+      "sha256": "10bc3df1aa54b7ba7d4a706f33a72fd41c96a6cfa55b6a61e8495b8998150b2a",
+      "encoding": "identity",
+      "original_bytes": 11470,
+      "original_sha256": "10bc3df1aa54b7ba7d4a706f33a72fd41c96a6cfa55b6a61e8495b8998150b2a"
+    },
+    {
+      "path": "dispatch/immediate-prepost-main-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/immediate-prepost-main-request.json",
+      "bytes": 215,
+      "sha256": "3898dd438ee791e48545d94b956c8d87d9028d4e59e7d790702a99c6ecc04960",
+      "encoding": "identity",
+      "original_bytes": 215,
+      "original_sha256": "3898dd438ee791e48545d94b956c8d87d9028d4e59e7d790702a99c6ecc04960"
+    },
+    {
+      "path": "dispatch/immediate-prepost-main.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/immediate-prepost-main.json",
+      "bytes": 318,
+      "sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac",
+      "encoding": "identity",
+      "original_bytes": 318,
+      "original_sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac"
+    },
+    {
+      "path": "dispatch/initial-main-request.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/initial-main-request.json",
+      "bytes": 215,
+      "sha256": "54f507b18ce178758c0d605dcefad3753d0786e08c8442689e1d98152ff34ddb",
+      "encoding": "identity",
+      "original_bytes": 215,
+      "original_sha256": "54f507b18ce178758c0d605dcefad3753d0786e08c8442689e1d98152ff34ddb"
+    },
+    {
+      "path": "dispatch/initial-main.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/initial-main.json",
+      "bytes": 318,
+      "sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac",
+      "encoding": "identity",
+      "original_bytes": 318,
+      "original_sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac"
+    },
+    {
+      "path": "dispatch/initial-source-predicate.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/initial-source-predicate.json",
+      "bytes": 762,
+      "sha256": "5648aa06717e735954372ce76301f938c89c93a4bbaa41d0c6708c9b4b9164df",
+      "encoding": "identity",
+      "original_bytes": 762,
+      "original_sha256": "5648aa06717e735954372ce76301f938c89c93a4bbaa41d0c6708c9b4b9164df"
+    },
+    {
+      "path": "dispatch/native-binding-receipt.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/native-binding-receipt.json",
+      "bytes": 2867,
+      "sha256": "7bbcbeb74bef899a76d61148804c400396830272486bf7f79c2801adee68e3c7",
+      "encoding": "identity",
+      "original_bytes": 2867,
+      "original_sha256": "7bbcbeb74bef899a76d61148804c400396830272486bf7f79c2801adee68e3c7"
+    },
+    {
+      "path": "dispatch/post-discovery-1.json.gz",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/post-discovery-1.json",
+      "bytes": 20926,
+      "sha256": "d43491e4151c6b747efec19fc8d728c0e776269ee0abb3bcbf62263826f2c772",
+      "encoding": "gzip",
+      "original_bytes": 934598,
+      "original_sha256": "8fb592a9a23c7d3228ca9e62a3e49ef78bf52c6555602b638c0e888e6c13b4bd"
+    },
+    {
+      "path": "dispatch/source-files.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/source-files.json",
+      "bytes": 937,
+      "sha256": "13a34e9efa9db0d99a54a5ed94535636485ac16ee87ac892c517ce1ba5cac1a3",
+      "encoding": "identity",
+      "original_bytes": 937,
+      "original_sha256": "13a34e9efa9db0d99a54a5ed94535636485ac16ee87ac892c517ce1ba5cac1a3"
+    },
+    {
+      "path": "dispatch/source-install.sh",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/source-install.sh",
+      "bytes": 2003,
+      "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "encoding": "identity",
+      "original_bytes": 2003,
+      "original_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462"
+    },
+    {
+      "path": "dispatch/source-recovery-catalog.json",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/source-recovery-catalog.json",
+      "bytes": 6422,
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "encoding": "identity",
+      "original_bytes": 6422,
+      "original_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e"
+    },
+    {
+      "path": "dispatch/source-workflow.yml",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/source-workflow.yml",
+      "bytes": 14144,
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "encoding": "identity",
+      "original_bytes": 14144,
+      "original_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f"
+    },
+    {
+      "path": "dispatch/watch-modern-elixir120.py",
+      "source_path": "/tmp/bex-m188-elixir120-normal-dispatch/watch-modern-elixir120.py",
+      "bytes": 3707,
+      "sha256": "4fb57eda87788e8e3792ebd7cfa3a53902534d8d88a86d5b9ff1ee94691d7378",
+      "encoding": "identity",
+      "original_bytes": 3707,
+      "original_sha256": "4fb57eda87788e8e3792ebd7cfa3a53902534d8d88a86d5b9ff1ee94691d7378"
+    },
+    {
+      "path": "earlier-active-log-attempt/active-job-log.body",
+      "source_path": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/active-job-log.body",
+      "bytes": 215,
+      "sha256": "650b3b8e1992371d484c139751fb2e547b799c8b47150d01ea43c3b2f451b54f",
+      "encoding": "identity",
+      "original_bytes": 215,
+      "original_sha256": "650b3b8e1992371d484c139751fb2e547b799c8b47150d01ea43c3b2f451b54f"
+    },
+    {
+      "path": "earlier-active-log-attempt/active-job-log.stderr",
+      "source_path": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/active-job-log.stderr",
+      "bytes": 13,
+      "sha256": "6c5ec582d3b25e97273d17fd4088d0e13837c8384ee94aba555afc35856ec3ae",
+      "encoding": "identity",
+      "original_bytes": 13,
+      "original_sha256": "6c5ec582d3b25e97273d17fd4088d0e13837c8384ee94aba555afc35856ec3ae"
+    },
+    {
+      "path": "earlier-active-log-attempt/job-metadata.body",
+      "source_path": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/job-metadata.body",
+      "bytes": 4529,
+      "sha256": "a3b8cf4c3b0450ebbf48dddfd2b4ced275e4daf3c7d705adc294d6655913c611",
+      "encoding": "identity",
+      "original_bytes": 4529,
+      "original_sha256": "a3b8cf4c3b0450ebbf48dddfd2b4ced275e4daf3c7d705adc294d6655913c611"
+    },
+    {
+      "path": "earlier-active-log-attempt/job-metadata.stderr",
+      "source_path": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/job-metadata.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "earlier-active-log-attempt/receipt.json",
+      "source_path": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/receipt.json",
+      "bytes": 7406,
+      "sha256": "3e29295aded808a591b1165db9f858a6e3ad0079245c2b08c46db8a0ac6ff30f",
+      "encoding": "identity",
+      "original_bytes": 7406,
+      "original_sha256": "3e29295aded808a591b1165db9f858a6e3ad0079245c2b08c46db8a0ac6ff30f"
+    },
+    {
+      "path": "executed-dispatcher.py",
+      "source_path": "/tmp/bex-m188-elixir120-dispatch-authorized.py",
+      "bytes": 7118,
+      "sha256": "fd7dec1764a58b483b9d82f87f483bc9ca2e8f1dad59ae40dd9e3e1bc485a4d0",
+      "encoding": "identity",
+      "original_bytes": 7118,
+      "original_sha256": "fd7dec1764a58b483b9d82f87f483bc9ca2e8f1dad59ae40dd9e3e1bc485a4d0"
+    },
+    {
+      "path": "failure/completed-job-log.raw.gz",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw",
+      "bytes": 257768,
+      "sha256": "721c83abff4b41f88158d6702d0041d34ce6fa608b07fea2a0bceefe73fe099e",
+      "encoding": "gzip",
+      "original_bytes": 2261157,
+      "original_sha256": "75b259e96013ec857ccecc9a9e226b95d920e980e9d09f3a1637e12ebec7eab2",
+      "stored_source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw.gz"
+    },
+    {
+      "path": "failure/completed-job-log.stderr",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "failure/download-receipt.json",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/download-receipt.json",
+      "bytes": 1939,
+      "sha256": "080e5f1b00a7edb77a6d54ca510ce5d489ca24969389399ccc040f53b0c5e26f",
+      "encoding": "identity",
+      "original_bytes": 1939,
+      "original_sha256": "080e5f1b00a7edb77a6d54ca510ce5d489ca24969389399ccc040f53b0c5e26f"
+    },
+    {
+      "path": "failure/failure-intake.json",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/failure-intake.json",
+      "bytes": 9632,
+      "sha256": "0a7ccd8225413457cd503a24d9af3af1e45a5385e7e4e1e882da51238ee0e292",
+      "encoding": "identity",
+      "original_bytes": 9632,
+      "original_sha256": "0a7ccd8225413457cd503a24d9af3af1e45a5385e7e4e1e882da51238ee0e292"
+    },
+    {
+      "path": "failure/job-metadata.raw",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/job-metadata.raw",
+      "bytes": 5322,
+      "sha256": "02c45371a007ce0f1c02ee3c835c7234fbf18081bf632ebce6f2de31b4344164",
+      "encoding": "identity",
+      "original_bytes": 5322,
+      "original_sha256": "02c45371a007ce0f1c02ee3c835c7234fbf18081bf632ebce6f2de31b4344164"
+    },
+    {
+      "path": "failure/job-metadata.stderr",
+      "source_path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/job-metadata.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "initial-exact800-preflight/fresh-main.json",
+      "source_path": "/tmp/bex-m188-elixir120-exact800-preflight/fresh-main.json",
+      "bytes": 318,
+      "sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac",
+      "encoding": "identity",
+      "original_bytes": 318,
+      "original_sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac"
+    },
+    {
+      "path": "initial-exact800-preflight/preflight.json",
+      "source_path": "/tmp/bex-m188-elixir120-exact800-preflight/preflight.json",
+      "bytes": 866,
+      "sha256": "bee5ef14b1ea5ba10855d1a3b1f2573432b41425ba3bab75403ed02dbd663a2b",
+      "encoding": "identity",
+      "original_bytes": 866,
+      "original_sha256": "bee5ef14b1ea5ba10855d1a3b1f2573432b41425ba3bab75403ed02dbd663a2b"
+    },
+    {
+      "path": "old99f-workflow.yml",
+      "source_path": "/tmp/bex-m188-elixir120-old-source-workflow.yml",
+      "bytes": 11989,
+      "sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+      "encoding": "identity",
+      "original_bytes": 11989,
+      "original_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    {
+      "path": "production-pool-slot-observation.json",
+      "source_path": "/tmp/bex-m188-prod-deploy-slot-observation.json",
+      "bytes": 22412,
+      "sha256": "854814fccc8a3af06f42eb76ec711eccff98e8b44cb7291740cc9b79cc5c44d4",
+      "encoding": "identity",
+      "original_bytes": 22412,
+      "original_sha256": "854814fccc8a3af06f42eb76ec711eccff98e8b44cb7291740cc9b79cc5c44d4"
+    },
+    {
+      "path": "root-audit.json",
+      "source_path": "/tmp/bex-m188-elixir120-root-audit.json",
+      "bytes": 857,
+      "sha256": "5c6eaba79e33c5591c2006d610124d9ec282ffdbf4c940e6d2f4c85d68018d70",
+      "encoding": "identity",
+      "original_bytes": 857,
+      "original_sha256": "5c6eaba79e33c5591c2006d610124d9ec282ffdbf4c940e6d2f4c85d68018d70"
+    },
+    {
+      "path": "root-source-dispatch-policy.json",
+      "source_path": "/tmp/bex-m188-elixir120-9cb-source-and-dispatch-policy.json",
+      "bytes": 1631,
+      "sha256": "5dd8405b1d0c4fe42ea6e5af371a0c7eaf8a06818d3abd97c9731835935f445a",
+      "encoding": "identity",
+      "original_bytes": 1631,
+      "original_sha256": "5dd8405b1d0c4fe42ea6e5af371a0c7eaf8a06818d3abd97c9731835935f445a"
+    },
+    {
+      "path": "source-admission-exact800.json",
+      "source_path": "/tmp/bex-m188-elixir120-current-source-admission.json",
+      "bytes": 5553,
+      "sha256": "b44142fdb654721264b832a4492f5d9c325f6f7489434ec410b0301aa550323d",
+      "encoding": "identity",
+      "original_bytes": 5553,
+      "original_sha256": "b44142fdb654721264b832a4492f5d9c325f6f7489434ec410b0301aa550323d"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "schema": "bex.m188.immutable-archive/v2",
+  "created_at": "2026-10-30T23:33:42.813035+00:00",
+  "scope": "ExplicitlySYNTHETIC writer-only actual-main RED/GREEN regression; onlyvalidate_candidate mocked, NOcrypto acceptance or genuine published receipt completion/adoption. Exact2line local-variable fix after real candidate validation; allvalidationfunctions unchanged. Actual8receipt incomplete refusal and61protected hashes retained.",
+  "files": [
+    {
+      "path": "SYNTHETIC-writer-fixture/REAL-8-plan.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/REAL-8-plan.json",
+      "bytes": 17170,
+      "sha256": "293bb65eccacf228e9f400445206919ee15433102a5ba83f1d64dd6798817337",
+      "encoding": "identity",
+      "original_bytes": 17170,
+      "original_sha256": "293bb65eccacf228e9f400445206919ee15433102a5ba83f1d64dd6798817337"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-11-writer-receipt.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-11-writer-receipt.json",
+      "bytes": 5349,
+      "sha256": "c920550fd5b070ebcf443c169a9a650b9c4b9e93e6ff64735e9ffede43180a21",
+      "encoding": "identity",
+      "original_bytes": 5349,
+      "original_sha256": "c920550fd5b070ebcf443c169a9a650b9c4b9e93e6ff64735e9ffede43180a21"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-NOT-AN-ACCEPTANCE.txt",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-NOT-AN-ACCEPTANCE.txt",
+      "bytes": 165,
+      "sha256": "bf811524771ed83ae50723941f3d4639cb56730161a5169a0a3984f84f950f1a",
+      "encoding": "identity",
+      "original_bytes": 165,
+      "original_sha256": "bf811524771ed83ae50723941f3d4639cb56730161a5169a0a3984f84f950f1a"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-new-output-NOT-FOR-ADOPTION/native.go",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-new-output-NOT-FOR-ADOPTION/native.go",
+      "bytes": 27491,
+      "sha256": "c44b6b35ec76d2ce6afd1693f20ea292bfe446924a41da8345578869f0f413e1",
+      "encoding": "identity",
+      "original_bytes": 27491,
+      "original_sha256": "c44b6b35ec76d2ce6afd1693f20ea292bfe446924a41da8345578869f0f413e1"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-new-output-NOT-FOR-ADOPTION/plan.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-new-output-NOT-FOR-ADOPTION/plan.json",
+      "bytes": 17193,
+      "sha256": "4aae5a249d9e0daca94bee6cbdc79fd7f8692e8ec111a13a1e03cd2098a679ec",
+      "encoding": "identity",
+      "original_bytes": 17193,
+      "original_sha256": "4aae5a249d9e0daca94bee6cbdc79fd7f8692e8ec111a13a1e03cd2098a679ec"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-new-output-NOT-FOR-ADOPTION/toolchain-freshness.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-new-output-NOT-FOR-ADOPTION/toolchain-freshness.json",
+      "bytes": 33052,
+      "sha256": "6fbf692e341872a9b5e6c5b71727cb1598eaf10e5f2d8e9ced27731bccca69bb",
+      "encoding": "identity",
+      "original_bytes": 33052,
+      "original_sha256": "6fbf692e341872a9b5e6c5b71727cb1598eaf10e5f2d8e9ced27731bccca69bb"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-new-plan.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-new-plan.json",
+      "bytes": 17193,
+      "sha256": "4aae5a249d9e0daca94bee6cbdc79fd7f8692e8ec111a13a1e03cd2098a679ec",
+      "encoding": "identity",
+      "original_bytes": 17193,
+      "original_sha256": "4aae5a249d9e0daca94bee6cbdc79fd7f8692e8ec111a13a1e03cd2098a679ec"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-old-plan.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-old-plan.json",
+      "bytes": 17193,
+      "sha256": "ed737dbb330005a2966e28e49da3e4da76f25f04533e66a9dd2fad73fc619ffc",
+      "encoding": "identity",
+      "original_bytes": 17193,
+      "original_sha256": "ed737dbb330005a2966e28e49da3e4da76f25f04533e66a9dd2fad73fc619ffc"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/SYNTHETIC-writer-regression.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-writer-regression.json",
+      "bytes": 7554,
+      "sha256": "0681eb365b04b1c9e3e571a7f74b0ba7486dd47652c984ccb31257c2dae7db44",
+      "encoding": "identity",
+      "original_bytes": 7554,
+      "original_sha256": "0681eb365b04b1c9e3e571a7f74b0ba7486dd47652c984ccb31257c2dae7db44"
+    },
+    {
+      "path": "SYNTHETIC-writer-fixture/actual-input-mappings.json",
+      "source_path": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/actual-input-mappings.json",
+      "bytes": 17170,
+      "sha256": "4b967e8c813fecfd0e1003853fb92dddf1fc8b5ab785c15d0ec1722f1cca07f7",
+      "encoding": "identity",
+      "original_bytes": 17170,
+      "original_sha256": "4b967e8c813fecfd0e1003853fb92dddf1fc8b5ab785c15d0ec1722f1cca07f7"
+    },
+    {
+      "path": "activation.json",
+      "source_path": "/tmp/bex-m188-writer-locals-activation.json",
+      "bytes": 14252,
+      "sha256": "06a5b2203791ef18c19b6f09e318eb8bd18f002be344ceec6fa4133ea71ea06e",
+      "encoding": "identity",
+      "original_bytes": 14252,
+      "original_sha256": "06a5b2203791ef18c19b6f09e318eb8bd18f002be344ceec6fa4133ea71ea06e"
+    },
+    {
+      "path": "proposal/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py.gz",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "bytes": 22384,
+      "sha256": "9f17b2d5efb623e141a08eed4033fb4f7bf556b6ca5b090d789dbfeb37f24664",
+      "encoding": "gzip",
+      "original_bytes": 86114,
+      "original_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58"
+    },
+    {
+      "path": "proposal/448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4.writer-harness.py",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4.writer-harness.py",
+      "bytes": 9213,
+      "sha256": "448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4",
+      "encoding": "identity",
+      "original_bytes": 9213,
+      "original_sha256": "448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4"
+    },
+    {
+      "path": "proposal/SYNTHETIC-writer-harness-execution.json",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/SYNTHETIC-writer-harness-execution.json",
+      "bytes": 1086,
+      "sha256": "5d638b84d61b90b9caa61d6fb05ce17bc4ddfe809eae52499c49880120402cc1",
+      "encoding": "identity",
+      "original_bytes": 1086,
+      "original_sha256": "5d638b84d61b90b9caa61d6fb05ce17bc4ddfe809eae52499c49880120402cc1"
+    },
+    {
+      "path": "proposal/SYNTHETIC-writer-harness.stderr.log",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/SYNTHETIC-writer-harness.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "proposal/SYNTHETIC-writer-harness.stdout.log",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/SYNTHETIC-writer-harness.stdout.log",
+      "bytes": 377,
+      "sha256": "5fda1cd818fb047b7f84ded7d2e4c888fa70b8e45fcce9fc68374e69d52eafc7",
+      "encoding": "identity",
+      "original_bytes": 377,
+      "original_sha256": "5fda1cd818fb047b7f84ded7d2e4c888fa70b8e45fcce9fc68374e69d52eafc7"
+    },
+    {
+      "path": "proposal/guard.diff",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/guard.diff",
+      "bytes": 573,
+      "sha256": "d5881a2802969bde14a410d414b275e70210a8e3566fdb14319113c691c58ba1",
+      "encoding": "identity",
+      "original_bytes": 573,
+      "original_sha256": "d5881a2802969bde14a410d414b275e70210a8e3566fdb14319113c691c58ba1"
+    },
+    {
+      "path": "proposal/proposal.json",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/proposal.json",
+      "bytes": 942,
+      "sha256": "855a14fbecbd7a586f3313de3d710acca572fdf67a790793cedf36ef3d8a43a6",
+      "encoding": "identity",
+      "original_bytes": 942,
+      "original_sha256": "855a14fbecbd7a586f3313de3d710acca572fdf67a790793cedf36ef3d8a43a6"
+    },
+    {
+      "path": "root-approval.json",
+      "source_path": "/tmp/bex-m188-writer-locals-root-approval.json",
+      "bytes": 1338,
+      "sha256": "32fd9bf077eb22b11529eaeb9335a0d27b62300db96763b007a73694057d849f",
+      "encoding": "identity",
+      "original_bytes": 1338,
+      "original_sha256": "32fd9bf077eb22b11529eaeb9335a0d27b62300db96763b007a73694057d849f"
+    },
+    {
+      "path": "root-audit.json",
+      "source_path": "/tmp/bex-m188-writer-locals-root-audit.json",
+      "bytes": 731,
+      "sha256": "7b0a7fe127db1229757762510e5285d13441e32997769b25e672d8cad2323d1a",
+      "encoding": "identity",
+      "original_bytes": 731,
+      "original_sha256": "7b0a7fe127db1229757762510e5285d13441e32997769b25e672d8cad2323d1a"
+    }
+  ]
+}

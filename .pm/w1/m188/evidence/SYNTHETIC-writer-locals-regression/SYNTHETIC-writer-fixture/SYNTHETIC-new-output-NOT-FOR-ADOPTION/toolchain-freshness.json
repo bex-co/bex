@@ -1,0 +1,617 @@
+{
+  "schema": "bex.build-toolchain-freshness/v1",
+  "images": [
+    {
+      "id": "cnb-builder",
+      "kind": "builder",
+      "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:bd03726c07e9e32c45151e211789e707e6a867adaeaacc670140901b190ee125",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "files": [
+        "lego/operator/cmd/manager/main.go",
+        "lego/operator/config/manager/manager.yaml",
+        "deploy/gitops/charts/kpack/platform.yaml"
+      ]
+    },
+    {
+      "id": "cnb-stack-build",
+      "kind": "stack",
+      "upstream": "docker.io/paketobuildpacks/build-jammy-base:latest",
+      "committed": "paketobuildpacks/build-jammy-base@sha256:2492a2d7dd93179755b4f3706b7931754156aa3711349649ee76bc5d5ac1842c",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "files": [
+        "deploy/gitops/charts/kpack/platform.yaml"
+      ]
+    },
+    {
+      "id": "cnb-stack-run",
+      "kind": "stack",
+      "upstream": "docker.io/paketobuildpacks/run-jammy-base:latest",
+      "committed": "paketobuildpacks/run-jammy-base@sha256:8a671e0f8a5b5404f8a12579f00a3389ce824de8f18c6bc8f0f33403398fa5ab",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "files": [
+        "deploy/cnb-run/Dockerfile"
+      ]
+    },
+    {
+      "id": "cnb-run-image",
+      "kind": "stack",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:c737a6661e034d564a934c424f01f18b3f139c7beb0d107aa04ca37b59843192",
+      "resolved_at": "2026-10-30T01:07:30Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 40790621050 from 63fd10231; both platforms passed Node 26 startup checks, libbrotli1 1.0.9-2ubuntu0.1 and libatomic1 12.3.0-1ubuntu1~22.04.3 verified from digest-authenticated dpkg layers; cosign workflow identity and transparency-log verification passed",
+      "files": [
+        "deploy/gitops/charts/kpack/platform.yaml"
+      ]
+    },
+    {
+      "id": "helper-aws-cli",
+      "kind": "helper",
+      "upstream": "docker.io/amazon/aws-cli:2.22.35",
+      "committed": "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub amazon/aws-cli:2.22.35 multi-arch index",
+      "files": [
+        "lego/operator/internal/publish/publish.go"
+      ]
+    },
+    {
+      "id": "helper-buildkit",
+      "kind": "helper",
+      "upstream": "docker.io/moby/buildkit:v0.30.0",
+      "committed": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub moby/buildkit:v0.30.0 multi-arch index",
+      "files": [
+        "lego/operator/internal/build/build.go",
+        "deploy/gitops/base/build-image-prewarm.yaml"
+      ]
+    },
+    {
+      "id": "helper-cosign",
+      "kind": "helper",
+      "upstream": "gcr.io/projectsigstore/cosign:v2.4.1",
+      "committed": "gcr.io/projectsigstore/cosign:v2.4.1@sha256:b03690aa52bfe94054187142fba24dc54137650682810633901767d8a3e15b31",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "gcr.io projectsigstore/cosign:v2.4.1 multi-arch index",
+      "files": [
+        "lego/operator/internal/build/build.go"
+      ]
+    },
+    {
+      "id": "helper-git",
+      "kind": "helper",
+      "upstream": "docker.io/alpine/git:v2.52.0",
+      "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
+      "resolved_at": "2026-10-16T00:00:00Z",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes \u2014 w8/m89)",
+      "files": [
+        "lego/operator/internal/build/build.go",
+        "lego/operator/internal/publish/publish.go"
+      ]
+    },
+    {
+      "id": "helper-skopeo",
+      "kind": "helper",
+      "upstream": "quay.io/skopeo/stable:v1.22.2",
+      "committed": "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8",
+      "resolved_at": "2026-09-30T18:08:55Z",
+      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable \u2014 w7/m85)",
+      "files": [
+        "lego/operator/internal/build/build.go"
+      ]
+    },
+    {
+      "id": "native-busybox",
+      "kind": "helper",
+      "upstream": "docker.io/library/busybox:1.37.0",
+      "committed": "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
+      "resolved_at": "2026-10-11T02:05:00Z",
+      "source": "Docker Hub library/busybox:1.37.0 multi-arch index",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-elixir",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.18",
+      "committed": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-go",
+      "kind": "native-base",
+      "upstream": "docker.io/library/golang:1.27-bookworm",
+      "committed": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-bun-1-2",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.2",
+      "committed": "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74",
+      "resolved_at": "2026-10-15T20:30:00Z",
+      "source": "Docker Hub oven/bun:1.2 multi-arch index (linux/amd64 + linux/arm64), Bun 1.2.23; binary copied into the native toolchain image (w8/m71)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-bun",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.4",
+      "committed": "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d",
+      "resolved_at": "2026-10-23T22:00:00Z",
+      "source": "Docker Hub oven/bun:1.4 multi-arch index (linux/amd64 + linux/arm64), Bun 1.4.4 (same digest as oven/bun:1.4.4), Render's default line (w5/m144); binary copied into the native toolchain image (w8/m71)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-bun-1-3",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.3",
+      "committed": "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4",
+      "resolved_at": "2026-10-15T20:30:00Z",
+      "source": "Docker Hub oven/bun:1.3 multi-arch index (linux/amd64 + linux/arm64), Bun 1.3.14; binary copied into the native toolchain image (w8/m71)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ffmpeg",
+      "kind": "native-base",
+      "upstream": "docker.io/mwader/static-ffmpeg:9.0.2-1",
+      "committed": "mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822",
+      "resolved_at": "2026-10-16T12:00:00Z",
+      "source": "Docker Hub mwader/static-ffmpeg:9.0.2-1 multi-arch index (linux/amd64 + linux/arm64), FFmpeg 9.0.2 static ffmpeg/ffprobe copied into every native toolchain image (w8/m82); upstream publishes fixed per-release tags only, so this entry reports a rebuilt release, not a new FFmpeg release, which is a reviewed bump",
+      "files": [
+        "lego/operator/internal/build/nativeffmpeg.go"
+      ]
+    },
+    {
+      "id": "native-hugo-amd64",
+      "kind": "release-asset",
+      "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-amd64.tar.gz:v0.111.3",
+      "committed": "hugo_extended_0.111.3_linux-amd64.tar.gz@sha256:b382aacb522a470455ab771d0e8296e42488d3ea4e61fe49c11c32ec7fb6ee8b",
+      "resolved_at": "2026-10-17T12:00:00Z",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-amd64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "files": [
+        "lego/operator/internal/build/nativehugo.go"
+      ]
+    },
+    {
+      "id": "native-hugo-arm64",
+      "kind": "release-asset",
+      "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-arm64.tar.gz:v0.111.3",
+      "committed": "hugo_extended_0.111.3_linux-arm64.tar.gz@sha256:695176416dbe09d8c84abeb093f5f27132e6811221569811c855b577122bd670",
+      "resolved_at": "2026-10-17T12:00:00Z",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-arm64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "files": [
+        "lego/operator/internal/build/nativehugo.go"
+      ]
+    },
+    {
+      "id": "native-pnpm",
+      "kind": "npm-package",
+      "upstream": "registry.npmjs.org/pnpm:latest-10",
+      "committed": "pnpm-10.34.7.tgz@sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "resolved_at": "2026-10-16T10:32:32Z",
+      "source": "npm registry pnpm@latest-10 = 10.34.7 tarball sha256 (registry integrity sha512-fhrmaoOpFDwRjMGUTzfMTyuKzd7aSwAc+niQj25G5F4VKSc5ymydAmQmzHV+kxjMmMVVHWoWwWUJewAouoe05g== verified); pure-JS, engines node>=18.12, installed into every native Node image (w8/m73)",
+      "files": [
+        "lego/operator/internal/build/nativepnpm.go"
+      ]
+    },
+    {
+      "id": "native-node",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:24-bookworm",
+      "committed": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go",
+        "deploy/native-base/Dockerfile"
+      ]
+    },
+    {
+      "id": "native-python",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.13-bookworm",
+      "committed": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.4-bookworm",
+      "committed": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-rust",
+      "kind": "native-base",
+      "upstream": "docker.io/library/rust:1-bookworm",
+      "committed": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-10",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.10-bookworm",
+      "committed": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+      "resolved_at": "2026-10-11T02:05:00Z",
+      "source": "Docker Hub library/python:3.10-bookworm multi-arch index (w8/m51 version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-11",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.11-bookworm",
+      "committed": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-12",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.12-bookworm",
+      "committed": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-14",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.14-bookworm",
+      "committed": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-node-22",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:22-bookworm",
+      "committed": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-node-26",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:26-bookworm",
+      "committed": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby-3-3",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.3-bookworm",
+      "committed": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby-4-0",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:4.0-bookworm",
+      "committed": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-elixir-1-17",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.17",
+      "committed": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-elixir-1-19",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.19",
+      "committed": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-node-14",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:14-bullseye",
+      "committed": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:14-bullseye multi-arch index (14.21.3; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go",
+        "deploy/native-base/Dockerfile",
+        "deploy/native-base/check.Dockerfile"
+      ]
+    },
+    {
+      "id": "native-node-16",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:16-bookworm",
+      "committed": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:16-bookworm multi-arch index (16.20.2; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-node-18",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:18-bookworm",
+      "committed": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:18-bookworm multi-arch index (18.20.8; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-node-20",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:20-bookworm",
+      "committed": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:20-bookworm multi-arch index (20.20.2; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-7",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.7-bullseye",
+      "committed": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.7-bullseye multi-arch index (3.7.17; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-8",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.8-bookworm",
+      "committed": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.8-bookworm multi-arch index (3.8.20; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-python-3-9",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.9-bookworm",
+      "committed": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.9-bookworm multi-arch index (3.9.25; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby-3-0",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.0-bullseye",
+      "committed": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.0-bullseye multi-arch index (3.0.7; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby-3-1",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.1-bookworm",
+      "committed": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.1-bookworm multi-arch index (3.1.7; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-ruby-3-2",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.2-bookworm",
+      "committed": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.2-bookworm multi-arch index (3.2.11; w8/173 Render-supported version line)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-elixir-1-20",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.20",
+      "committed": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+      "resolved_at": "2026-10-28T23:35:54Z",
+      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-node-14",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye@sha256:58282574ad5232e601ce392441266406de0d2bf9276fb174310c3333a653cc8c",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000001/job/990000000001; producer 75c5f73aa1d2b5ec34d5b2ed64798026e4ea5aaa; verification 08de8096ebab1f3c548699739851bb5b874ef9a6; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-node-16",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm@sha256:784f3dbe9a30b5f5030083196b52982c0bbb312c4cf13db80fd57dd33a65654f",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000002/job/990000000002; producer cecb28f3910a3789667b72a138144376f3bf022c; verification 5d4a3cff2d14b6abfa23258858bb461164962243; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-node-18",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm@sha256:a832715f05566ba47e0225aec35dfa073a3066a58b0b54d21f0195dc3e3e87ac",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000003/job/990000000003; producer 9303c21faa2c1a52e6e22e4f079c9d729f08ccea; verification 0299c68222f24c1688fd4a0374a641d9f0c6e84b; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-node-20",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm@sha256:b0ca536ae698ab2d9456b9366ac5b0e4052a4429694705349ff22dee210877ca",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000004/job/990000000004; producer 5174dbc8d5327cecc4b3cd3ca0140a5858f22518; verification f68cc62c4f7d8a8c4ee18fc3ec398624bacecbc1; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-python-3-7",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye@sha256:b53fc20b9ad7c0e4ff0980a7a09be4217153db58ad98a4a74e27a672c891e963",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000005/job/990000000005; producer f03126572be57883a89d44278a8ee468329aed09; verification 8902b2b3651733c67f35bb12a0149d1528189dcf; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-python-3-8",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm@sha256:89020e5f7543198065307bf05064d3b1d0c92b5ab50a02efab98073e2691b393",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000006/job/990000000006; producer 68948706337aba2c16b3f94fd77c1e6589dd97ec; verification 68f100a8f909c21d4cba743265d1b850319bd803; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-python-3-9",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm@sha256:8d453987650429c8068f4456bc43f25deb43d5914aad8f4f1848c7bcb7cd249b",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000007/job/990000000007; producer 582f115ce433fae671a3b7bdbfb1da3f0745a478; verification 987eb5af08cc0d4ea45fbda197a14ef7000ca590; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-python-3-10",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm@sha256:ef7d0605044cfc00996c83206523260ed57b3f28ba777eec89ed566f10c7900d",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000008/job/990000000008; producer 9d75e3f2d6b26448f926c582719d92e0b26d249e; verification bdfcd08d3d4721f01e67f515b32ed7e33ae835c9; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-ruby-3-0",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye@sha256:82fe12b271993e1220aaed86912883828879136658ab2f985a427dffe778e337",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000009/job/990000000009; producer 6ca166ac8b9467f910eaae053ce09e25758664ed; verification c99cfacaf49ac877e58674fc3275250f7f37e6c8; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-ruby-3-1",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm@sha256:336696e3e96cbd467417ad54e0950df4661b05519527ecb82e4ae53504b0d224",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000010/job/990000000010; producer 7cbdfe9727000d221cdec14873d3906ab130a184; verification cdfb725534c290c966f77f99f16f4af6a983a8b0; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "platform-native-ruby-3-2",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm@sha256:db549dd6e91a0d5b05e0b523fa8071330c6912466815b294c4523a37da79f8c5",
+      "resolved_at": "2026-10-30T00:00:00Z",
+      "source": "Verified native Brotli backport; https://github.com/bex-co/bex/actions/runs/900000000011/job/990000000011; producer 6c7580d95f786cdc49bd23069fb7236274e78f49; verification fa801d064133c63e685f8b5256f9e4c8704e4963; amd64+arm64 signature, SPDX, signed scans and offline runtime gates",
+      "files": [
+        "lego/operator/internal/build/native.go"
+      ]
+    }
+  ]
+}

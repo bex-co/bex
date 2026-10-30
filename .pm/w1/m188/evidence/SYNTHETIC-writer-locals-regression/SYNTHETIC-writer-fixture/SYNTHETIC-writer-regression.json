@@ -1,0 +1,157 @@
+{
+  "schema": "bex.m188.SYNTHETIC-actual-main-writer-regression/v1",
+  "at": "2026-10-30T23:32:03.405268+00:00",
+  "synthetic_test_only": true,
+  "crypto_validation_tested": false,
+  "genuine_candidate_acceptance_or_adoption": false,
+  "only_mocked_function": "validate_candidate",
+  "real_functions_executed": [
+    "main plan and writer loop",
+    "verify_local_green_proofs",
+    "native official matrix parser/equality",
+    "freshness.parse_inventory",
+    "incomplete11 refusal"
+  ],
+  "harness": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4.writer-harness.py",
+    "sha256": "448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4"
+  },
+  "old_guard": {
+    "file": "/tmp/bex-m188-guard-snapshots/0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+    "sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+    "actual_main_result": "NameError",
+    "error": "name 'digest' is not defined",
+    "validator_calls": [
+      "node-14-bullseye"
+    ],
+    "output_absent": true
+  },
+  "proposed_guard": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+    "sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+    "actual_main_result": "PASS",
+    "validator_calls": [
+      "node-14-bullseye",
+      "node-16-bookworm",
+      "node-18-bookworm",
+      "node-20-bookworm",
+      "python-3.7-bullseye",
+      "python-3.8-bookworm",
+      "python-3.9-bookworm",
+      "python-3.10-bookworm",
+      "ruby-3.0-bullseye",
+      "ruby-3.1-bookworm",
+      "ruby-3.2-bookworm"
+    ]
+  },
+  "synthetic_receipt": {
+    "file": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-11-writer-receipt.json",
+    "sha256": "c920550fd5b070ebcf443c169a9a650b9c4b9e93e6ff64735e9ffede43180a21"
+  },
+  "synthetic_output": {
+    "directory": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-new-output-NOT-FOR-ADOPTION",
+    "native_sha256": "c44b6b35ec76d2ce6afd1693f20ea292bfe446924a41da8345578869f0f413e1",
+    "inventory_sha256": "6fbf692e341872a9b5e6c5b71727cb1598eaf10e5f2d8e9ced27731bccca69bb",
+    "original44_entries_preserved": true,
+    "all_other_original_inventory_fields_preserved": true,
+    "total_images": 55,
+    "all11_digest_and_job_provenance_distinct_and_correct": true,
+    "official_matrix_unchanged": true,
+    "exact_native_row_replacements_only": true,
+    "row_checks": [
+      {
+        "tag": "node-14-bullseye",
+        "platform_id": "platform-native-node-14",
+        "digest": "sha256:58282574ad5232e601ce392441266406de0d2bf9276fb174310c3333a653cc8c",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000001/job/990000000001",
+        "matched_own_row": true
+      },
+      {
+        "tag": "node-16-bookworm",
+        "platform_id": "platform-native-node-16",
+        "digest": "sha256:784f3dbe9a30b5f5030083196b52982c0bbb312c4cf13db80fd57dd33a65654f",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000002/job/990000000002",
+        "matched_own_row": true
+      },
+      {
+        "tag": "node-18-bookworm",
+        "platform_id": "platform-native-node-18",
+        "digest": "sha256:a832715f05566ba47e0225aec35dfa073a3066a58b0b54d21f0195dc3e3e87ac",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000003/job/990000000003",
+        "matched_own_row": true
+      },
+      {
+        "tag": "node-20-bookworm",
+        "platform_id": "platform-native-node-20",
+        "digest": "sha256:b0ca536ae698ab2d9456b9366ac5b0e4052a4429694705349ff22dee210877ca",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000004/job/990000000004",
+        "matched_own_row": true
+      },
+      {
+        "tag": "python-3.7-bullseye",
+        "platform_id": "platform-native-python-3-7",
+        "digest": "sha256:b53fc20b9ad7c0e4ff0980a7a09be4217153db58ad98a4a74e27a672c891e963",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000005/job/990000000005",
+        "matched_own_row": true
+      },
+      {
+        "tag": "python-3.8-bookworm",
+        "platform_id": "platform-native-python-3-8",
+        "digest": "sha256:89020e5f7543198065307bf05064d3b1d0c92b5ab50a02efab98073e2691b393",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000006/job/990000000006",
+        "matched_own_row": true
+      },
+      {
+        "tag": "python-3.9-bookworm",
+        "platform_id": "platform-native-python-3-9",
+        "digest": "sha256:8d453987650429c8068f4456bc43f25deb43d5914aad8f4f1848c7bcb7cd249b",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000007/job/990000000007",
+        "matched_own_row": true
+      },
+      {
+        "tag": "python-3.10-bookworm",
+        "platform_id": "platform-native-python-3-10",
+        "digest": "sha256:ef7d0605044cfc00996c83206523260ed57b3f28ba777eec89ed566f10c7900d",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000008/job/990000000008",
+        "matched_own_row": true
+      },
+      {
+        "tag": "ruby-3.0-bullseye",
+        "platform_id": "platform-native-ruby-3-0",
+        "digest": "sha256:82fe12b271993e1220aaed86912883828879136658ab2f985a427dffe778e337",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000009/job/990000000009",
+        "matched_own_row": true
+      },
+      {
+        "tag": "ruby-3.1-bookworm",
+        "platform_id": "platform-native-ruby-3-1",
+        "digest": "sha256:336696e3e96cbd467417ad54e0950df4661b05519527ecb82e4ae53504b0d224",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000010/job/990000000010",
+        "matched_own_row": true
+      },
+      {
+        "tag": "ruby-3.2-bookworm",
+        "platform_id": "platform-native-ruby-3-2",
+        "digest": "sha256:db549dd6e91a0d5b05e0b523fa8071330c6912466815b294c4523a37da79f8c5",
+        "job_url": "https://github.com/bex-co/bex/actions/runs/900000000011/job/990000000011",
+        "matched_own_row": true
+      }
+    ]
+  },
+  "real8_incomplete_refusal": {
+    "passed": true,
+    "error": "REFUSING adoption copies: receipt is incomplete; all 11 independently verified published candidates are required",
+    "output_absent": true
+  },
+  "protected_original_files": 61,
+  "repository_inputs_unchanged": {
+    "/Users/tianpan/projects/bex/lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "/Users/tianpan/projects/bex/lego/operator/internal/build/toolchain-freshness.json": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+    "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebases.go": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+    "/Users/tianpan/projects/bex/deploy/native-base/matrix.py": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+    "/Users/tianpan/projects/bex/scripts/lib/toolchain-freshness.py": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b"
+  },
+  "active_guard_unchanged": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "aggregate_unchanged": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "scope": "Clearly synthetic local writer regression only. No signature/runtime/scan verification claim, real aggregate change, active guard change, repository change, source role addition, promotion or actual source adoption."
+}

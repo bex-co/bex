@@ -1,0 +1,229 @@
+{
+  "scope": "ONE active-log endpoint attempt plus fresh job metadata; read-only GitHub; no retries",
+  "run_id": 41067568389,
+  "job_id": 124104286411,
+  "log": {
+    "argv": [
+      "gh",
+      "api",
+      "repos/bex-co/bex/actions/jobs/124104286411/logs"
+    ],
+    "started_utc": "2026-10-30T22:25:15.320345+00:00",
+    "finished_utc": "2026-10-30T22:25:17.426064+00:00",
+    "exit_code": 1,
+    "stopped": null,
+    "elapsed_seconds": 2.106,
+    "body_file": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/active-job-log.body",
+    "body_bytes": 215,
+    "body_sha256": "650b3b8e1992371d484c139751fb2e547b799c8b47150d01ea43c3b2f451b54f",
+    "stderr_file": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/active-job-log.stderr",
+    "stderr_sha256": "6c5ec582d3b25e97273d17fd4088d0e13837c8384ee94aba555afc35856ec3ae",
+    "http_status_from_gh_stderr": 404
+  },
+  "metadata": {
+    "argv": [
+      "gh",
+      "api",
+      "repos/bex-co/bex/actions/jobs/124104286411"
+    ],
+    "started_utc": "2026-10-30T22:25:15.320535+00:00",
+    "finished_utc": "2026-10-30T22:25:15.884207+00:00",
+    "exit_code": 0,
+    "stopped": null,
+    "elapsed_seconds": 0.564,
+    "body_file": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/job-metadata.body",
+    "body_bytes": 4529,
+    "body_sha256": "a3b8cf4c3b0450ebbf48dddfd2b4ced275e4daf3c7d705adc294d6655913c611",
+    "stderr_file": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/job-metadata.stderr",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "job": {
+    "id": 124104286411,
+    "run_id": 41067568389,
+    "head_sha": "99f95c17afd5709365869dfff1408265e5d514ec",
+    "status": "in_progress",
+    "conclusion": null,
+    "started_at": "2026-10-30T19:01:34Z",
+    "completed_at": null,
+    "runner_name": "49aefcdc6924",
+    "runner_group_name": "bex-production",
+    "labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-production"
+    ],
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:01:37Z",
+        "completed_at": "2026-10-30T19:02:55Z"
+      },
+      {
+        "number": 2,
+        "name": "Set up runner",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:02:55Z",
+        "completed_at": "2026-10-30T19:02:55Z"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:02:55Z",
+        "completed_at": "2026-10-30T19:05:58Z"
+      },
+      {
+        "number": 4,
+        "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:05:58Z",
+        "completed_at": "2026-10-30T19:10:16Z"
+      },
+      {
+        "number": 5,
+        "name": "log in to GHCR with bounded transport retries",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:10:16Z",
+        "completed_at": "2026-10-30T19:10:19Z"
+      },
+      {
+        "number": 6,
+        "name": "select a reviewed recovery artifact when its recipe is unchanged",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:10:19Z",
+        "completed_at": "2026-10-30T19:10:19Z"
+      },
+      {
+        "number": 7,
+        "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T19:10:19Z",
+        "completed_at": "2026-10-30T22:20:33Z"
+      },
+      {
+        "number": 8,
+        "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T22:20:33Z",
+        "completed_at": "2026-10-30T22:20:33Z"
+      },
+      {
+        "number": 9,
+        "name": "verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T22:20:33Z",
+        "completed_at": "2026-10-30T22:21:03Z"
+      },
+      {
+        "number": 10,
+        "name": "prepare bounded full-scan retries",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-30T22:21:03Z",
+        "completed_at": "2026-10-30T22:21:03Z"
+      },
+      {
+        "number": 11,
+        "name": "scan amd64 candidate",
+        "status": "in_progress",
+        "conclusion": null,
+        "started_at": "2026-10-30T22:21:03Z",
+        "completed_at": null
+      },
+      {
+        "number": 12,
+        "name": "scan arm64 candidate",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 13,
+        "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 14,
+        "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 15,
+        "name": "sign and attest the immutable candidate",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 16,
+        "name": "remove GHCR credentials",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 28,
+        "name": "Post scan amd64 candidate",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 29,
+        "name": "Post verify real native tool transformations without network on both architectures",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 30,
+        "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 31,
+        "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "number": 32,
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "pending",
+        "conclusion": null,
+        "started_at": null,
+        "completed_at": null
+      }
+    ]
+  },
+  "log_endpoint_status": "unavailable_http_404",
+  "conclusion": "One endpoint attempt unavailable: HTTP404; no active log-stage inference. Fresh metadata independently reports build and both-architecture runtime gates success, amd64 scan in_progress."
+}

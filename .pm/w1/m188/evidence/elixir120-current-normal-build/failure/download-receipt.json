@@ -1,0 +1,58 @@
+{
+  "scope": "ONE completed-job-log request plus fresh read-only metadata; no retries or remote mutations",
+  "run_id": 41067568389,
+  "job_id": 124104286411,
+  "log": {
+    "argv": [
+      "gh",
+      "api",
+      "repos/bex-co/bex/actions/jobs/124104286411/logs"
+    ],
+    "started_utc": "2026-10-30T23:23:22.010076+00:00",
+    "finished_utc": "2026-10-30T23:23:27.196764+00:00",
+    "exit_code": 0,
+    "stopped": null,
+    "elapsed_seconds": 5.187,
+    "files": {
+      "out": {
+        "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw",
+        "bytes": 2261157,
+        "sha256": "75b259e96013ec857ccecc9a9e226b95d920e980e9d09f3a1637e12ebec7eab2"
+      },
+      "err": {
+        "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "metadata": {
+    "argv": [
+      "gh",
+      "api",
+      "repos/bex-co/bex/actions/jobs/124104286411"
+    ],
+    "started_utc": "2026-10-30T23:23:22.010277+00:00",
+    "finished_utc": "2026-10-30T23:23:23.263132+00:00",
+    "exit_code": 0,
+    "stopped": null,
+    "elapsed_seconds": 1.253,
+    "files": {
+      "out": {
+        "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/job-metadata.raw",
+        "bytes": 5322,
+        "sha256": "02c45371a007ce0f1c02ee3c835c7234fbf18081bf632ebce6f2de31b4344164"
+      },
+      "err": {
+        "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/job-metadata.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "gzip": {
+    "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw.gz",
+    "bytes": 257768,
+    "sha256": "721c83abff4b41f88158d6702d0041d34ce6fa608b07fea2a0bceefe73fe099e"
+  }
+}

@@ -1,0 +1,11 @@
+--- ACTIVE-0bfb
++++ INACTIVE-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58
+@@ -852,6 +852,8 @@
+     for row in mappings:
+         verified = receipt['verified'][row['receipt_key']]
+         sha, verification_sha = validate_candidate(verified, row, receipt, matrix, native)
++        digest = verified['digest']
++        joburl = verified['job_url']
+         image = row['inventory_template']['upstream'] + '@' + digest
+         token = 'image: "' + row['upstream'] + '"'
+         check(prepared.count(token) == 1, 'native row changed during preparation')

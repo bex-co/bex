@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-30T23:28:13.831741+00:00",
+  "literal_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "base": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "root_policy_sha256": "5dd8405b1d0c4fe42ea6e5af371a0c7eaf8a06818d3abd97c9731835935f445a",
+  "modern_scope": "elixir-1.20",
+  "source_admitted_by_exact_root_family_predicate": true,
+  "entire_non_pm_diff": [],
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "install_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+  "catalog_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+  "recovery_entry_absent": true,
+  "normal_build_required": true,
+  "legacy_source_role_or_guard_context_append": false
+}

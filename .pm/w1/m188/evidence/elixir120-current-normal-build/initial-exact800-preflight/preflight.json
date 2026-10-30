@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-30T23:25:44.626303+00:00",
+  "route": "repos/bex-co/bex/git/ref/heads/main",
+  "expected_source": "800cd3f352c5df190fd83ee2f7e625e619fe49bc",
+  "actual_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "earlier_independent_read_actual_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "head_matches": false,
+  "dispatch_performed": false,
+  "cancel_performed": false,
+  "source_alias_created": false,
+  "outcome": "mutation held because authorized exact head changed",
+  "response": {
+    "file": "/tmp/bex-m188-elixir120-exact800-preflight/fresh-main.json",
+    "sha256": "ce92fa7ad5085140fe1c7b510399d00184918cdd8669f8ddb516bf5b1a3e25ac"
+  },
+  "root_source_admission_file": "/tmp/bex-m188-elixir120-current-source-admission.json",
+  "root_source_admission_sha256": "b44142fdb654721264b832a4492f5d9c325f6f7489434ec410b0301aa550323d"
+}

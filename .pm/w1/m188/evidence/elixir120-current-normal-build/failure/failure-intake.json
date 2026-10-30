@@ -1,0 +1,157 @@
+{
+  "created_utc": "2026-10-30T23:24:25.696268+00:00",
+  "scope": "Completed producer-log diagnosis only; no cryptographic verification, candidate approval, automatic recovery authorization, repo or remote mutation",
+  "run_id": 41067568389,
+  "job_id": 124104286411,
+  "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "producer_literal_log_line": 18784,
+  "base": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+  "index": "sha256:2b51f00d0d91fad593b6203bde98da580c23086ffbb8c99fe978685faf474425",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2b51f00d0d91fad593b6203bde98da580c23086ffbb8c99fe978685faf474425",
+  "job_status": "completed",
+  "job_conclusion": "failure",
+  "completed_at": "2026-10-30T23:21:22Z",
+  "original_gates": [
+    {
+      "number": 7,
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "conclusion": "success",
+      "started_at": "2026-10-30T19:10:19Z",
+      "completed_at": "2026-10-30T22:20:33Z"
+    },
+    {
+      "number": 9,
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success",
+      "started_at": "2026-10-30T22:20:33Z",
+      "completed_at": "2026-10-30T22:21:03Z"
+    },
+    {
+      "number": 11,
+      "name": "scan amd64 candidate",
+      "conclusion": "success",
+      "started_at": "2026-10-30T22:21:03Z",
+      "completed_at": "2026-10-30T22:46:10Z"
+    },
+    {
+      "number": 12,
+      "name": "scan arm64 candidate",
+      "conclusion": "success",
+      "started_at": "2026-10-30T22:46:10Z",
+      "completed_at": "2026-10-30T22:52:22Z"
+    },
+    {
+      "number": 15,
+      "name": "sign and attest the immutable candidate",
+      "conclusion": "failure",
+      "started_at": "2026-10-30T22:53:46Z",
+      "completed_at": "2026-10-30T23:20:51Z"
+    }
+  ],
+  "failure": {
+    "stage": "ARM64 registry Syft SBOM generation before ARM64 attestations",
+    "command_template": "syft \"registry:$REF\" --platform \"linux/arm64\" -o spdx-json > \"native-arm64.spdx.json\"",
+    "protocol": "HTTP/2",
+    "error": "unable to populate layer cache: stream error: stream ID 9; PROTOCOL_ERROR; received from peer",
+    "layer": "sha256:ea0b45ed46be75ab3cf2ce68c13851d0a46e7a10514908d234c2d75d99373d35",
+    "time": "2026-10-30T23:20:51.1583685Z",
+    "shell_exit": 1,
+    "classification": "Concrete registry transport failure; not a cosign/Rekor signing error",
+    "fallback_diagnostic": "oci-model: not an OCI model artifact (config media type: ) follows registry resolution failure; no evidence candidate is supposed to be an OCI model"
+  },
+  "proof_commands": {
+    "completed_count_from_log_and_bash_e_order": 3,
+    "cryptographic_complete": false,
+    "items": [
+      {
+        "kind": "image-signature",
+        "command_completed": true,
+        "evidence": "18795 push-signature message; subsequent amd64 Syft/attest execution proves preceding retry_signing returned success"
+      },
+      {
+        "kind": "amd64-spdx",
+        "command_completed": true,
+        "evidence": "18796 Using payload native-amd64.spdx.json;18806 next Trivy payload proves SPDX attest returned success"
+      },
+      {
+        "kind": "amd64-trivy",
+        "command_completed": true,
+        "evidence": "18806 Using payload native-amd64.trivy.json;18816\u201318818 subsequent ARM Syft source-resolution error proves prior attest returned success under sequential bash -e loop"
+      },
+      {
+        "kind": "arm64-spdx",
+        "command_completed": false,
+        "evidence": "ARM Syft exited1 before corresponding cosign attest"
+      },
+      {
+        "kind": "arm64-trivy",
+        "command_completed": false,
+        "evidence": "Unreached after ARM Syft failure"
+      }
+    ],
+    "discovery_tag_commands_reached": false,
+    "limit": "Command-success evidence only; no OCI signature enumeration or crypto replay requested/performed"
+  },
+  "source_binding": {
+    "workflow_source": "99f95c17afd5709365869dfff1408265e5d514ec:.github/workflows/native-base-image.yml",
+    "workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+    "signing_loop_lines": {
+      "first_line": 239,
+      "last_line": 249,
+      "text": "          retry_signing cosign signing-config create --with-default-rekor-v2 --out \"$RUNNER_TEMP/native-signing-config.json\"\n          retry_signing cosign sign --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" \"$REF\"\n          for arch in amd64 arm64; do\n            syft \"registry:$REF\" --platform \"linux/$arch\" -o spdx-json > \"native-$arch.spdx.json\"\n            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" --type spdxjson --predicate \"native-$arch.spdx.json\" \"$REF\"\n            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate \"native-$arch.trivy.json\" \"$REF\"\n          done\n          # Only verified, scanned and signed candidates reach this discovery\n          # tag. Adopting its immutable digest still requires a reviewed commit.\n          docker buildx imagetools create --tag \"${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}-${GITHUB_SHA}\" \"$REF\"\n          docker buildx imagetools create --tag \"${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}\" \"$REF\""
+    },
+    "current_head": "800cd3f352c5df190fd83ee2f7e625e619fe49bc",
+    "current_workflow_has_bounded_http11_syft": true,
+    "install_delta": "diff --git a/deploy/native-base/install.sh b/deploy/native-base/install.sh\nindex 73b1df4c8..0f0edd6cc 100644\n--- a/deploy/native-base/install.sh\n+++ b/deploy/native-base/install.sh\n@@ -28,7 +28,7 @@ printf 'deb [signed-by=/usr/share/keyrings/bex-pgdg.asc] %s %s-pgdg main\\n' \\\n apt-get update\n DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n   postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools pandoc \\\n-  pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip \\\n+  pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip unzip \\\n   gnupg2 nano vim libbrotli1 libbrotli-dev\n \n sh /tmp/bex-patch-system-brotli.sh\n",
+    "recovery_limit": "Current non-Markdown installer includes explicit unzip and differs from this old index recipe; no same-recipe automatic recovery claim. Root decides normal current-source build."
+  },
+  "artifacts": {
+    "raw_log": {
+      "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw",
+      "bytes": 2261157,
+      "sha256": "75b259e96013ec857ccecc9a9e226b95d920e980e9d09f3a1637e12ebec7eab2"
+    },
+    "raw_gzip": {
+      "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/completed-job-log.raw.gz",
+      "bytes": 257768,
+      "sha256": "721c83abff4b41f88158d6702d0041d34ce6fa608b07fea2a0bceefe73fe099e"
+    },
+    "job_metadata": {
+      "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/job-metadata.raw",
+      "bytes": 5322,
+      "sha256": "02c45371a007ce0f1c02ee3c835c7234fbf18081bf632ebce6f2de31b4344164"
+    },
+    "download_receipt": {
+      "path": "/tmp/bex-m188-elixir120-sign-failure-124104286411-yi3jo7jb/download-receipt.json",
+      "sha256": "080e5f1b00a7edb77a6d54ca510ce5d489ca24969389399ccc040f53b0c5e26f"
+    }
+  },
+  "evidence": [
+    {
+      "first_line": 16224,
+      "last_line": 16224,
+      "text": "2026-10-30T21:58:20.9778137Z #54 exporting manifest list sha256:2b51f00d0d91fad593b6203bde98da580c23086ffbb8c99fe978685faf474425 done"
+    },
+    {
+      "first_line": 18783,
+      "last_line": 18784,
+      "text": "2026-10-30T22:53:46.3902883Z   REF: ghcr.io/bex-co/bex-cnb-run@sha256:2b51f00d0d91fad593b6203bde98da580c23086ffbb8c99fe978685faf474425\n2026-10-30T22:53:46.3903318Z   PRODUCER: 99f95c17afd5709365869dfff1408265e5d514ec"
+    },
+    {
+      "first_line": 18793,
+      "last_line": 18796,
+      "text": "2026-10-30T22:53:47.5765700Z Generating ephemeral keys...\n2026-10-30T22:53:47.9173274Z Signing artifact...\n2026-10-30T22:53:49.9933062Z Pushing signature to: ghcr.io/bex-co/bex-cnb-run\n2026-10-30T23:06:38.5136363Z Using payload from: native-amd64.spdx.json"
+    },
+    {
+      "first_line": 18804,
+      "last_line": 18806,
+      "text": "2026-10-30T23:06:39.0693572Z Generating ephemeral keys...\n2026-10-30T23:06:39.6360657Z Signing artifact...\n2026-10-30T23:07:11.5153383Z Using payload from: native-amd64.trivy.json"
+    },
+    {
+      "first_line": 18814,
+      "last_line": 18819,
+      "text": "2026-10-30T23:07:11.7878385Z Generating ephemeral keys...\n2026-10-30T23:07:12.2757372Z Signing artifact...\n2026-10-30T23:20:51.1582222Z [0772] ERROR could not determine source: errors occurred attempting to resolve 'ghcr.io/bex-co/bex-cnb-run@sha256:2b51f00d0d91fad593b6203bde98da580c23086ffbb8c99fe978685faf474425':\n2026-10-30T23:20:51.1583685Z   - oci-registry: unable to populate layer cache dir=\"/tmp/stereoscope-1802921968/oci-registry-image-2817088591/sha256:ea0b45ed46be75ab3cf2ce68c13851d0a46e7a10514908d234c2d75d99373d35\" : stream error: stream ID 9; PROTOCOL_ERROR; received from peer\n2026-10-30T23:20:51.1584472Z   - oci-model: not an OCI model artifact (config media type: )\n2026-10-30T23:20:51.1635763Z ##[error]Process completed with exit code 1."
+    }
+  ],
+  "earlier_active_404_preserved": "/tmp/bex-m188-elixir120-active-log-124104286411-p3agmfow/receipt.json"
+}

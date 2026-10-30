@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-30T23:33:26.782726+00:00",
+  "reviewer": "root",
+  "raw_first_run_jobs_independently_read": true,
+  "actual_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "run": 41144656779,
+  "job": 124367871533,
+  "attempt": 1,
+  "native_binding_status": "queued",
+  "original_failure_intake_read": "0a7ccd8225413457cd503a24d9af3af1e45a5385e7e4e1e882da51238ee0e292",
+  "source_family_independently_checked": "8af to9cb allnonPM byteidentical",
+  "initial_exact800_preflight_retained_zero_POSTs": true,
+  "total_dispatch_POSTs": 1,
+  "cancellations": 0,
+  "old_index_recovery_not_authorized": true,
+  "modern_build_runtime_scan_sign_and_crypto_acceptance_not_claimed": true,
+  "legacy_context_unchanged": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "scope": "ModernElixir1.20 CI rollforward; adoption belongs w8/m91"
+}

@@ -1,0 +1,1 @@
+Writer-layer unit fixture only. validate_candidate is MOCKED. Digests/jobs/sources are synthetic. No signatures or artifact verification. Never adopt these outputs.

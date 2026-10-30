@@ -1,0 +1,114 @@
+{
+  "SYNTHETIC_TEST_ONLY": true,
+  "CRYPTO_VALIDATION_MOCKED": true,
+  "source_model": "separate_image_producer_and_signature_verification/v2",
+  "state": "complete",
+  "remaining": [],
+  "failures": [],
+  "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+  "tag_prefix": "native-",
+  "workflow": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "required_security_ancestor": "a1f63153a9a5f84fbde0b9ecc29319a9f0da09d0",
+  "checked_at": "2026-10-30T00:00:00Z",
+  "verified": {
+    "node-14-bullseye": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:58282574ad5232e601ce392441266406de0d2bf9276fb174310c3333a653cc8c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000001/job/990000000001",
+      "source": "75c5f73aa1d2b5ec34d5b2ed64798026e4ea5aaa",
+      "verification_source": "08de8096ebab1f3c548699739851bb5b874ef9a6",
+      "runtime": "node",
+      "version": "14.21.3"
+    },
+    "node-16-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:784f3dbe9a30b5f5030083196b52982c0bbb312c4cf13db80fd57dd33a65654f",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000002/job/990000000002",
+      "source": "cecb28f3910a3789667b72a138144376f3bf022c",
+      "verification_source": "5d4a3cff2d14b6abfa23258858bb461164962243",
+      "runtime": "node",
+      "version": "16.20.2"
+    },
+    "node-18-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:a832715f05566ba47e0225aec35dfa073a3066a58b0b54d21f0195dc3e3e87ac",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000003/job/990000000003",
+      "source": "9303c21faa2c1a52e6e22e4f079c9d729f08ccea",
+      "verification_source": "0299c68222f24c1688fd4a0374a641d9f0c6e84b",
+      "runtime": "node",
+      "version": "18.20.8"
+    },
+    "node-20-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:b0ca536ae698ab2d9456b9366ac5b0e4052a4429694705349ff22dee210877ca",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000004/job/990000000004",
+      "source": "5174dbc8d5327cecc4b3cd3ca0140a5858f22518",
+      "verification_source": "f68cc62c4f7d8a8c4ee18fc3ec398624bacecbc1",
+      "runtime": "node",
+      "version": "20.20.2"
+    },
+    "python-3.7-bullseye": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:b53fc20b9ad7c0e4ff0980a7a09be4217153db58ad98a4a74e27a672c891e963",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000005/job/990000000005",
+      "source": "f03126572be57883a89d44278a8ee468329aed09",
+      "verification_source": "8902b2b3651733c67f35bb12a0149d1528189dcf",
+      "runtime": "python",
+      "version": "3.7.17"
+    },
+    "python-3.8-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:89020e5f7543198065307bf05064d3b1d0c92b5ab50a02efab98073e2691b393",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000006/job/990000000006",
+      "source": "68948706337aba2c16b3f94fd77c1e6589dd97ec",
+      "verification_source": "68f100a8f909c21d4cba743265d1b850319bd803",
+      "runtime": "python",
+      "version": "3.8.20"
+    },
+    "python-3.9-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:8d453987650429c8068f4456bc43f25deb43d5914aad8f4f1848c7bcb7cd249b",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000007/job/990000000007",
+      "source": "582f115ce433fae671a3b7bdbfb1da3f0745a478",
+      "verification_source": "987eb5af08cc0d4ea45fbda197a14ef7000ca590",
+      "runtime": "python",
+      "version": "3.9.25"
+    },
+    "python-3.10-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:ef7d0605044cfc00996c83206523260ed57b3f28ba777eec89ed566f10c7900d",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000008/job/990000000008",
+      "source": "9d75e3f2d6b26448f926c582719d92e0b26d249e",
+      "verification_source": "bdfcd08d3d4721f01e67f515b32ed7e33ae835c9",
+      "runtime": "python",
+      "version": "3.10.22"
+    },
+    "ruby-3.0-bullseye": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:82fe12b271993e1220aaed86912883828879136658ab2f985a427dffe778e337",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000009/job/990000000009",
+      "source": "6ca166ac8b9467f910eaae053ce09e25758664ed",
+      "verification_source": "c99cfacaf49ac877e58674fc3275250f7f37e6c8",
+      "runtime": "ruby",
+      "version": "3.0.7"
+    },
+    "ruby-3.1-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:336696e3e96cbd467417ad54e0950df4661b05519527ecb82e4ae53504b0d224",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000010/job/990000000010",
+      "source": "7cbdfe9727000d221cdec14873d3906ab130a184",
+      "verification_source": "cdfb725534c290c966f77f99f16f4af6a983a8b0",
+      "runtime": "ruby",
+      "version": "3.1.7"
+    },
+    "ruby-3.2-bookworm": {
+      "SYNTHETIC_TEST_ONLY": true,
+      "digest": "sha256:db549dd6e91a0d5b05e0b523fa8071330c6912466815b294c4523a37da79f8c5",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/900000000011/job/990000000011",
+      "source": "6c7580d95f786cdc49bd23069fb7236274e78f49",
+      "verification_source": "fa801d064133c63e685f8b5256f9e4c8704e4963",
+      "runtime": "ruby",
+      "version": "3.2.11"
+    }
+  }
+}

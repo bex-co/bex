@@ -1,0 +1,6 @@
+{
+  "ref": "main",
+  "inputs": {
+    "runtime": "elixir-1.20"
+  }
+}
