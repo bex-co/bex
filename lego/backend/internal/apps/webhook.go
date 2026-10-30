@@ -282,6 +282,38 @@ func (ev pushEvent) changedPaths() []string {
 
 // ServeHTTP verifies the signature, resolves the pushed repo+branch to matching
 // Apps, and redeploys each. An absent/mismatched signature is 401 with no action.
+// slowDeliveryLog is how long a push delivery may take before its per-step
+// timings are logged (w3/m248): GitHub gives up after 10 s, and bex-api cannot
+// write a response after its 30 s WriteTimeout.
+const slowDeliveryLog = 5 * time.Second
+
+// deliveryTrace records how long each step of a push delivery took, so a slow
+// or hung delivery names the step that held it.
+type deliveryTrace struct {
+	start, last time.Time
+	steps       []string
+}
+
+func newDeliveryTrace() *deliveryTrace {
+	now := time.Now()
+	return &deliveryTrace{start: now, last: now}
+}
+
+func (t *deliveryTrace) mark(step string) {
+	now := time.Now()
+	t.steps = append(t.steps, fmt.Sprintf("%s=%s", step, now.Sub(t.last).Round(time.Millisecond)))
+	t.last = now
+}
+
+func (t *deliveryTrace) logIfSlow(ctx context.Context, key string) {
+	total := time.Since(t.start)
+	if total < slowDeliveryLog {
+		return
+	}
+	log.Printf("webhook: slow delivery %s total=%s ctxErr=%v steps=[%s]",
+		key, total.Round(time.Millisecond), ctx.Err(), strings.Join(t.steps, " "))
+}
+
 func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.configured() {
 		core.WriteErrStatus(w, http.StatusServiceUnavailable, "git webhook not configured (BEX_WEBHOOK_SECRET / BEX_GITHUB_WEBHOOK_SECRET unset)")
@@ -347,11 +379,14 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ev.DeliveryKey = deliveryKey(r, body)
+	trace := newDeliveryTrace()
+	defer trace.logIfSlow(r.Context(), ev.DeliveryKey)
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	// codex #7 / ADR078 §4a: confine a GitHub-App-signed delivery to the
 	// workspaces that PROVED a binding for its installation. proceed=false ⇒
 	// validly signed but unresolvable ⇒ act on nothing, never a global match.
 	scopes, proceed := h.scopesFor(r.Context(), key, ev.Installation.ID)
+	trace.mark("scopes")
 	if !proceed {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
@@ -367,6 +402,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, scope := range scopes {
 		candidates, err := h.repoCandidates(r.Context(), urls, scope)
+		trace.mark("candidates")
 		if err != nil {
 			claims.release(r.Context())
 			core.WriteErr(w, err)
@@ -378,6 +414,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			candidates = branchCandidates(candidates, branch)
 		} else {
 			blueprintTargets, err = h.blueprintAutoSyncTargets(r.Context(), branch, scope, urls, ev.changedPaths())
+			trace.mark("blueprintTargets")
 			if err != nil {
 				claims.release(r.Context())
 				core.WriteErr(w, err)
@@ -397,6 +434,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// mutation branch. A scope that already processed them is skipped, not an
 		// abort — another workspace's delivery still has work to do.
 		fresh, err := claims.claim(r.Context(), key, replayScope(key, scope, ev.Installation.ID), body)
+		trace.mark("claim")
 		if err != nil {
 			claims.release(r.Context())
 			writeClaimErr(w, err)
@@ -414,7 +452,9 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Check acceptance can fail on a storage or authoritative-source read.
 		// Fail before any ordinary redeploy in this scope, and release its replay
 		// claim so the sender can redeliver the failed request safely.
-		if err := h.prepareCheckedPush(r.Context(), ev, branch, candidates); err != nil {
+		err = h.prepareCheckedPush(r.Context(), ev, branch, candidates)
+		trace.mark("checkedPush")
+		if err != nil {
 			log.Printf("webhook: accept checked push: %v", err)
 			claims.release(r.Context())
 			core.WriteErrStatus(w, http.StatusServiceUnavailable, "failed to accept checked commit; redeliver this webhook")
@@ -423,12 +463,15 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Durable Blueprint intents before acknowledgment (w8/m38): enqueue first
 		// so a failure returns 5xx (claims released → redelivery is safe) without
 		// having already mutated Apps. Successful inserts survive an API restart.
-		if err := h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets); err != nil {
+		err = h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets)
+		trace.mark("blueprintIntents")
+		if err != nil {
 			claims.release(r.Context())
 			core.WriteErrStatus(w, http.StatusInternalServerError, "failed to persist blueprint auto-sync intent")
 			return
 		}
 		scopeRedeployed, _ := h.redeployCandidates(r.Context(), ev, branch, candidates)
+		trace.mark(fmt.Sprintf("redeploy(%d)", len(candidates)))
 		redeployed = append(redeployed, scopeRedeployed...)
 		// Earlier completed scopes must retain their claims if a later one fails.
 		claims.taken = nil
