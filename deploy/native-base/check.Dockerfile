@@ -4,6 +4,7 @@ FROM ${NATIVE_BASE}
 COPY testdata/archive.dump.b64 /tmp/archive.dump.b64
 COPY testdata/rows.txt /tmp/expected-rows.txt
 COPY check-tools.py /tmp/check-tools.py
+COPY check-brotli.py /tmp/check-brotli.py
 RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump \
   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c - \
   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump \
@@ -12,3 +13,4 @@ RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump \
   && psql --version && pg_dump --version \
   && ! pg_restore --file=/tmp/invalid.sql /dev/null
 RUN --network=none /usr/bin/python3 /tmp/check-tools.py
+RUN --network=none /usr/bin/python3 /tmp/check-brotli.py

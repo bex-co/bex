@@ -157,6 +157,9 @@ type nativeToolchain struct {
 // runtime that offers no selection. otp is an Elixir line's Erlang/OTP major.
 type nativeLine struct {
 	line, version, otp, image string
+	// upstream retains the reviewed official input when image is a verified
+	// platform derivative. Exact-patch lookup must still use the official tag.
+	upstream string
 }
 
 func (t nativeToolchain) find(line string) (nativeLine, bool) {

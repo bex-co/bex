@@ -1,0 +1,45 @@
+[
+  {
+    "id": "native-node-16",
+    "stdout": "libbrotli1:arm64\t1.0.9-2+b6\n{\"node\":\"16.20.2\",\"v8\":\"9.4.146.26-node.26\",\"uv\":\"1.43.0\",\"zlib\":\"1.2.11\",\"brotli\":\"1.0.9\",\"ares\":\"1.19.1\",\"modules\":\"93\",\"nghttp2\":\"1.47.0\",\"napi\":\"8\",\"llhttp\":\"6.0.11\",\"openssl\":\"1.1.1v+quic\",\"cldr\":\"41.0\",\"icu\":\"71.1\",\"tz\":\"2022f\",\"unicode\":\"14.0\",\"ngtcp2\":\"0.8.1\",\"nghttp3\":\"0.7.0\"}\nPRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\nVERSION=\"12 (bookworm)\"\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "id": "native-python-3-7",
+    "image": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "platform": "linux/arm64",
+    "checked_at": "2026-10-30T01:04:31.831655+00:00",
+    "probes": [
+      {
+        "command": [
+          "dpkg-query",
+          "-W",
+          "libbrotli1"
+        ],
+        "stdout": "libbrotli1:arm64\t1.0.9-2+b2\n",
+        "stderr": "",
+        "exit": 0
+      },
+      {
+        "command": [
+          "python3",
+          "-c",
+          "import sys, importlib.util; print(sys.version); print(importlib.util.find_spec(\"brotli\"))"
+        ],
+        "stdout": "3.7.17 (default, Sep 20 2023, 21:55:51) \n[GCC 10.2.1 20210110]\nNone\n",
+        "stderr": "",
+        "exit": 0
+      },
+      {
+        "command": [
+          "ldd",
+          "/usr/local/bin/python3"
+        ],
+        "stdout": "\tlinux-vdso.so.1 (0x0000ffff8bd2f000)\n\tlibpython3.7m.so.1.0 => /usr/local/bin/../lib/libpython3.7m.so.1.0 (0x0000ffff8b9c8000)\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff8b854000)\n\tlibpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000ffff8b823000)\n\tlibdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000ffff8b80f000)\n\tlibutil.so.1 => /lib/aarch64-linux-gnu/libutil.so.1 (0x0000ffff8b7fb000)\n\tlibm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000ffff8b750000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff8bd00000)\n",
+        "stderr": "",
+        "exit": 0
+      }
+    ]
+  }
+]

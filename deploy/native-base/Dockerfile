@@ -9,8 +9,15 @@ RUN npm ci --ignore-scripts --no-audit --no-fund \
 
 FROM ${BASE_IMAGE}
 USER root
+COPY node-brotli/patch.sh /tmp/bex-node-brotli/patch.sh
+# Patch the interpreter itself before adding utilities: Node's bundled Brotli
+# is independent of Debian's libbrotli1. The script is a no-op off EOL Node.
+RUN sh /tmp/bex-node-brotli/patch.sh && rm -rf /tmp/bex-node-brotli
+COPY node-brotli/check.js /usr/share/bex-security/node-check.js
 COPY --link --from=node-tools /opt/bex/native-node-tools /opt/bex/native-node-tools
 COPY tsc webpack /usr/bin/
 COPY install.sh /tmp/bex-native-install.sh
+COPY patch-system-brotli.sh /tmp/bex-patch-system-brotli.sh
 RUN chmod 755 /usr/bin/tsc /usr/bin/webpack \
-  && sh /tmp/bex-native-install.sh && rm /tmp/bex-native-install.sh
+  && sh /tmp/bex-native-install.sh \
+  && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh

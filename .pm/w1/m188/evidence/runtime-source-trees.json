@@ -1,0 +1,58 @@
+[
+  {
+    "repo": "python/cpython",
+    "ref": "v3.7.17",
+    "source": "https://api.github.com/repos/python/cpython/git/trees/v3.7.17?recursive=1",
+    "truncated": false,
+    "tree_entries": 4312,
+    "brotli_paths": []
+  },
+  {
+    "repo": "python/cpython",
+    "ref": "v3.8.20",
+    "source": "https://api.github.com/repos/python/cpython/git/trees/v3.8.20?recursive=1",
+    "truncated": false,
+    "tree_entries": 4520,
+    "brotli_paths": []
+  },
+  {
+    "repo": "python/cpython",
+    "ref": "v3.9.25",
+    "source": "https://api.github.com/repos/python/cpython/git/trees/v3.9.25?recursive=1",
+    "truncated": false,
+    "tree_entries": 4738,
+    "brotli_paths": []
+  },
+  {
+    "repo": "python/cpython",
+    "ref": "v3.10.22",
+    "source": "https://api.github.com/repos/python/cpython/git/trees/v3.10.22?recursive=1",
+    "truncated": false,
+    "tree_entries": 4762,
+    "brotli_paths": []
+  },
+  {
+    "repo": "ruby/ruby",
+    "ref": "v3_0_7",
+    "source": "https://api.github.com/repos/ruby/ruby/git/trees/v3_0_7?recursive=1",
+    "truncated": false,
+    "tree_entries": 10745,
+    "brotli_paths": []
+  },
+  {
+    "repo": "ruby/ruby",
+    "ref": "v3_1_7",
+    "source": "https://api.github.com/repos/ruby/ruby/git/trees/v3_1_7?recursive=1",
+    "truncated": false,
+    "tree_entries": 10976,
+    "brotli_paths": []
+  },
+  {
+    "repo": "ruby/ruby",
+    "ref": "v3_2_11",
+    "source": "https://api.github.com/repos/ruby/ruby/git/trees/v3_2_11?recursive=1",
+    "truncated": false,
+    "tree_entries": 11364,
+    "brotli_paths": []
+  }
+]

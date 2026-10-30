@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** todo
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；正在实现和验证补丁发布流程
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -14,7 +14,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | 清点旧版运行时的实际使用与受影响库 | 45m | — |
+| t001 | 清点旧版运行时的实际使用与受影响库 — **DONE** | 45m | — |
 | t002 | 建立平台统一补丁镜像的构建、验证与发布流程 | 2h | w1/m188/t001 |
 | t003 | 接入 native pin 与持续维护记录 | 45m | w1/m188/t002 |
 | t004 | 验证发布、rollout 与受影响服务重建 | 1h | w1/m188/t003 |
@@ -45,3 +45,19 @@
 ## loopx 交接
 
 `/loopx w1`（Codex：`$loopx w1`）。先做 t001 的只读现状与库清点，再按表推进；沿用上述已确认决定，不重复询问是否允许集中修补。若实施发现新外部条件或同版本修复不可行，写明具体版本、证据、责任人与下一步，并完成其余可实施部分。
+
+## 实施进展 — 2026-10-29
+
+用户已执行 `$loopx w1`，开始实现；上文“本次仅记录决定”保留的是决策阶段历史。t001 核查完成，见 [assessment.md](assessment.md)。main 已有统一 native 基础镜像发布流程，t002 复用该流程增加系统及 Node 自带 Brotli 修复，不新增平行框架。尚未完成发布、接入和验收。
+
+### 补丁验证进展
+
+Bullseye 系统补丁已在 amd64/arm64 编译，Debian 的 14 项上游测试与实际 decoder 回归均通过；原 Python3.7 镜像在相同安全门槛下失败（错误 -9），修复后返回永久格式错误 -17，健康 round-trip 保持。见 [组件证据](evidence/system-brotli-component.json)。这只是本地组件验证，未冒充签名平台镜像发布。Node14/20 完整编译与 operator 全套验证仍在进行。
+
+### 发布流程实现交接
+
+统一配方、系统回移、同版本 Node 编译、双架构安全门槛、provenance、SBOM/扫描 attestation 和已验证 discovery tag 已实现。原官方 pin 保留为独立 upstream 输入，精确 patch 查询不误向平台 registry 请求，失败继续用已审核镜像；实际平台 digest 尚未接入。
+
+本地 `GOWORK=off make test`（含 envtest）通过；构建包复测、matrix 行/递归/精确来源测试、Actions 和 image-pin 守卫通过；`/simplify` 三路复核已应用多行输入修正、重复 probe 清理和编译缓存改进。Bullseye 双架构组件测试通过。Node14 第一次完整编译成功且实测永久错误 -17，但旧版测试预期错误名称写错，已修正并开始干净重跑；版本身份与 streaming 验收不以那次失败记录冒充通过。Node20 的完整编译仍在运行。
+
+发布配方需要先 ship 才能通过 main-only OIDC 工作流生成签名候选；发布、逐版本验证、source/inventory 接入与 live 验收仍未完成。t002–t008 保持开放，本次源码提交不代表里程碑 done。
