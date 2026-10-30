@@ -1,6 +1,6 @@
 # w3 · m175 — Static sites and the activator survive a node drain
 
-**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** blocked — t001–t003, t006, t007 done; t004 needs your OK for the public canary fixture repo, t005 drill needs a mock-cluster rebuild; t008 closeout follows
+**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** todo — t001–t003, t006, t007 done; 2026-10-29 unblock: t004 approved (public fixture repo), t005 drill on a rebuilt mock cluster (production replicas/PDB already verified); t008 closeout follows
 
 ## Tasks (in order)
 
@@ -37,3 +37,11 @@
 - **Expected outcome:** platform-node rolls, CAPI replacements and single-pod crashes stop being platform-wide static-hosting and wake outages; a regression is visible per component.
 - **Why now:** every platform-node roll (Kubernetes upgrades, CAPI Machine replacements — e.g. the 2026-07-28 rolls) evicts the only pod of each with no PDB to hold it; one crash is a platform-wide outage for every static site and every sleeping free service, and nothing alerts on it specifically.
 - **Render parity omitted:** no REST/GraphQL/MCP/UI change — replica count, disruption budget, metrics and alerts only; tenant-visible behavior changes only in availability.
+
+## Unblock 记录（2026-10-29，/unblock w3，origin/main `e4d9c65d6`）
+
+- **涉及：** t004、t005、t008。
+- **用户明确决定 D3（2026-10-29）：** 批准新建公开仓库 `bex-co/bex-canary-static`（只放一个静态 `index.html`，不需要构建、不含 secret），并设置仓库变量 `BEX_CANARY_STATIC_REPO` 指向它。
+- **现有规则（AGENTS.md「Local dev environments are pre-approved」）：** `scripts/mock-cluster.sh` 的完整重建（包括 reprovision）不需要用户批准，mock cluster 宕机不构成 blocked。2026-10-29 复核：`docker ps` 仍只剩 `bex-tenant-0-…` 一个容器，worker 需先重建，并在交接里报告重建了什么。
+- **本次复核证据（生产只读）：** `kubectl -n bex-system get deploy,pdb`：`bex-activator` 2/2、`bex-static-server` 2/2，PDB `minAvailable: 1`（已存在 8 天）；副本分布在 `bex-platform-qs4bv-fzhbs` 和 `bex-platform-qs4bv-zsnxg`。t005 第 5 步（生产确认）已满足。
+- **剩余阻塞：** 无。worker 做 t004（建仓库、设变量、dispatch canary，记录静态段执行且为绿的 run id，更新 ADR088 §6）→ t005（重建 mock cluster 后做 drain/roll 演练）→ t008。
