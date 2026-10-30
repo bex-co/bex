@@ -1,0 +1,75 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1153,
+      "sha256": "ed0e1301d4bafca557419432fe66c30409239a760b3382dd84fd395c90e85d71"
+    },
+    {
+      "path": "config-amd64.json",
+      "bytes": 6384,
+      "sha256": "2a45c855afe4e75f93903ee89d308f87afbdb0bcada48eaf0dedcff60d7cacb9"
+    },
+    {
+      "path": "crypto-review.json",
+      "bytes": 1536,
+      "sha256": "1a85cbdeb4a28662b8e13902668e492b77dfe706bc3bd0a52b77727f97078533"
+    },
+    {
+      "path": "custody.json",
+      "bytes": 2048,
+      "sha256": "170f9dbb48549e5c514807994a3dc4387ab6e7586f5829be561c5151181e99f2"
+    },
+    {
+      "path": "index.json",
+      "bytes": 856,
+      "sha256": "a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+    },
+    {
+      "path": "jobs-at-build-success.json.gz",
+      "bytes": 3077,
+      "sha256": "a76a7491b30bfc9d94e1a5ea7d1d980ecb00bf7afbcc71b78f9885211b65bb83"
+    },
+    {
+      "path": "manifest-amd64.json",
+      "bytes": 5828,
+      "sha256": "042d1018cf0fb73783e071164d5596a7188b79c9676e89770a363df876c3f20f"
+    },
+    {
+      "path": "metadata-review.json",
+      "bytes": 699,
+      "sha256": "56ba43f4e8eb56a7ef5eff9627650261cd4958439a95cbbf015493dc3d521cfb"
+    },
+    {
+      "path": "reviewer-MANIFEST.json",
+      "bytes": 1487,
+      "sha256": "9f2bb29d08aaf3aa626f3380f0a52ad188ead38268fa581459eaaf108a935517"
+    },
+    {
+      "path": "signature.json",
+      "bytes": 627,
+      "sha256": "372b3e0198172deef526b4d874dc0504aae95d28d10b1266a75b471e0e66bd63"
+    },
+    {
+      "path": "signature.stderr",
+      "bytes": 391,
+      "sha256": "3c91e7da8fc9754c3769b9a533fd60cce0f941ddd22f1dd5d981e9aac016f24e"
+    },
+    {
+      "path": "source-review.json",
+      "bytes": 3409,
+      "sha256": "9d710a929504c29be68320a104e86de76b92b9580c24ef8cd472c2641ae4a186"
+    },
+    {
+      "path": "spdx.json.gz",
+      "bytes": 285294,
+      "sha256": "bdaef5571795c724f07705600c92181878c5f9ae6bb0dbe561dcc53d6d0fb416"
+    },
+    {
+      "path": "spdx.stderr",
+      "bytes": 391,
+      "sha256": "3c91e7da8fc9754c3769b9a533fd60cce0f941ddd22f1dd5d981e9aac016f24e"
+    }
+  ]
+}

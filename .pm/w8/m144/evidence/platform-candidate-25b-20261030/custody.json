@@ -1,0 +1,68 @@
+{
+  "reviewer_manifest_sha256": "9f2bb29d08aaf3aa626f3380f0a52ad188ead38268fa581459eaaf108a935517",
+  "files": [
+    {
+      "path": "config-amd64.json",
+      "bytes": 6384,
+      "sha256": "2a45c855afe4e75f93903ee89d308f87afbdb0bcada48eaf0dedcff60d7cacb9",
+      "stored": "config-amd64.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "crypto-review.json",
+      "bytes": 1536,
+      "sha256": "1a85cbdeb4a28662b8e13902668e492b77dfe706bc3bd0a52b77727f97078533",
+      "stored": "crypto-review.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "index.json",
+      "bytes": 856,
+      "sha256": "a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c",
+      "stored": "index.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "manifest-amd64.json",
+      "bytes": 5828,
+      "sha256": "042d1018cf0fb73783e071164d5596a7188b79c9676e89770a363df876c3f20f",
+      "stored": "manifest-amd64.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "metadata-review.json",
+      "bytes": 699,
+      "sha256": "56ba43f4e8eb56a7ef5eff9627650261cd4958439a95cbbf015493dc3d521cfb",
+      "stored": "metadata-review.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "signature.json",
+      "bytes": 627,
+      "sha256": "372b3e0198172deef526b4d874dc0504aae95d28d10b1266a75b471e0e66bd63",
+      "stored": "signature.json",
+      "encoding": "identity"
+    },
+    {
+      "path": "signature.stderr",
+      "bytes": 391,
+      "sha256": "3c91e7da8fc9754c3769b9a533fd60cce0f941ddd22f1dd5d981e9aac016f24e",
+      "stored": "signature.stderr",
+      "encoding": "identity"
+    },
+    {
+      "path": "spdx.json",
+      "bytes": 2729554,
+      "sha256": "41c2d5ffd5382d16bfcc769566af91009c7fd089a9c203e840ff189c28be7318",
+      "stored": "spdx.json.gz",
+      "encoding": "gzip"
+    },
+    {
+      "path": "spdx.stderr",
+      "bytes": 391,
+      "sha256": "3c91e7da8fc9754c3769b9a533fd60cce0f941ddd22f1dd5d981e9aac016f24e",
+      "stored": "spdx.stderr",
+      "encoding": "identity"
+    }
+  ]
+}
