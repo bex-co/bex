@@ -1,0 +1,384 @@
+{
+  "index_digest": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "candidate_approved": false,
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "actual_registry_child_digest": "sha256:b804a9b7989a1aa091ea2daa4107e8286a21ede331ed8d9e662f8289d934c028",
+      "actual_registry_config_digest": "sha256:f397a0a9bb129a0effba26312e216b5325d81036a3c22e22d975cf25a542a526",
+      "derived_docker_manifest_digest": "sha256:325cdf9c065cefaf1c8726e280236c0e968645d8ee445351591d6898582089a4",
+      "manual_decompressed_layer_hashing_performed": true,
+      "layer_proofs": [
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:012c0b3e998c1a0c0bedcf712eaaafb188580529dd026a04aa1ce13fdb39e42b",
+          "compressed_bytes": 49557216,
+          "uncompressed_digest": "sha256:b8544860ba0b7d8751836ee3b386eb4faa732d87d63f6dec7d5948c520b0c181",
+          "uncompressed_bytes": 121287680,
+          "anonymous_full_get_at": "2026-10-30T10:37:58.862609+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:00046d1e755ea94fa55a700ca9a10597e4fac7c47be19d970a359b0267a51fbf",
+          "compressed_bytes": 24030451,
+          "uncompressed_digest": "sha256:1a26fac01f32d4e7f5c1ccfbfb946762adc6bfa3b63cebf04bef9d3969e11d01",
+          "uncompressed_bytes": 49560576,
+          "anonymous_full_get_at": "2026-10-30T10:38:25.642189+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:9f13f5a53d118643c1f1ff294867c09f224d00edca21f56caa71c2321f8ca004",
+          "compressed_bytes": 64112250,
+          "uncompressed_digest": "sha256:acd413ce78f8a43f4428c441ffa31c6168649e00b1983d3e7a97b5459ac39f9b",
+          "uncompressed_bytes": 181449728,
+          "anonymous_full_get_at": "2026-10-30T10:36:24.514753+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:e13e76ad6279c3d69aa6842a935288c7db66878ec3b7815edd3bb34647bd7ed0",
+          "compressed_bytes": 210994155,
+          "uncompressed_digest": "sha256:8fe5334a79c94fa44a7e236601960bd50941f23a1404b1d167098c7a0767af8b",
+          "uncompressed_bytes": 596831232,
+          "anonymous_full_get_at": "2026-10-30T10:35:45.436021+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:95103e803d28f894dcd63cb26fd3ace3211c34974f1584c71a37a9251dfcbab9",
+          "compressed_bytes": 3367,
+          "uncompressed_digest": "sha256:5bee294ea097aaecc344fb49da4882c36239cbd110c464a7c95e5b8aa24af0fd",
+          "uncompressed_bytes": 22528,
+          "anonymous_full_get_at": "2026-10-30T10:38:28.897231+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:17499e04ad8e55a919faeff704d4042378f6cf440c49a08979b797e400ec9571",
+          "compressed_bytes": 34792590,
+          "uncompressed_digest": "sha256:1472ff3cfc667f2c8d4d980a533619ac295bcd67b853ed9a4306bfdfc8274f9b",
+          "uncompressed_bytes": 100883968,
+          "anonymous_full_get_at": "2026-10-30T10:38:12.120319+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:033f54d9f2e0aeb01f8abde27cc6e7c0de07861401e6798827b0a9a14edaadbb",
+          "compressed_bytes": 2272802,
+          "uncompressed_digest": "sha256:610de4dfef44d8507cb232ffde048ecee46566e84f752ba08abc5ecda388489e",
+          "uncompressed_bytes": 7612928,
+          "anonymous_full_get_at": "2026-10-30T10:38:27.277060+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:87caf308af95b0bf7428bc03ccae4e280ebd05ac393b7ee5269acbb09a999441",
+          "compressed_bytes": 448,
+          "uncompressed_digest": "sha256:67d7ee9129227642c777d63e08f9a35ada36c2165da441ebbd2f598e56f15649",
+          "uncompressed_bytes": 3584,
+          "anonymous_full_get_at": "2026-10-30T10:38:34.104291+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:264ffe9f7111e422d389fdc7ae31e57c11a6475b6f925206fbfde2ff61523d08",
+          "compressed_bytes": 32035461,
+          "uncompressed_digest": "sha256:75a7d81269089cd4c30ef8022a5629882dfedb7b01085c396db775ce7736472b",
+          "uncompressed_bytes": 84026880,
+          "anonymous_full_get_at": "2026-10-30T10:38:19.017143+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:8d1bc264a8497ead922a074d9b43d1bad2ed9700eabe8d5ec12ff8815728440c",
+          "compressed_bytes": 1045,
+          "uncompressed_digest": "sha256:70f580d283540a8622d396b653eb1094935aae6c4aa376bd06066bc11e8297ac",
+          "uncompressed_bytes": 5120,
+          "anonymous_full_get_at": "2026-10-30T10:38:33.574408+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:8c208cd04ea34b6f31965f4e50421b9e4747361485a6d5ee44c1f78c2e863596",
+          "compressed_bytes": 62633857,
+          "uncompressed_digest": "sha256:862d52b1296a422b345dbf006a8e53753f0237d9956924bfc906cb017987cd8d",
+          "uncompressed_bytes": 190082560,
+          "anonymous_full_get_at": "2026-10-30T10:37:40.571804+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:b6c4c4e8be0af4ae3e722dffe6c5c2772ac86a6a2c8d8739f15aa0e87939dcca",
+          "compressed_bytes": 258,
+          "uncompressed_digest": "sha256:009a7a0e363f00ee47bf5a272c68650a4f56547dad54e7731212bd6eed915c8c",
+          "uncompressed_bytes": 4096,
+          "anonymous_full_get_at": "2026-10-30T10:38:35.329824+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:c885f3d2973de082360393da91fac16affa8fd9c4d220e5f2ce40d903fccad52",
+          "compressed_bytes": 2894,
+          "uncompressed_digest": "sha256:d851b37d698badb08fe84279fa3333c17f2a65f4273f16823b1a7e357862c148",
+          "uncompressed_bytes": 13312,
+          "anonymous_full_get_at": "2026-10-30T10:38:30.776045+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:a6d1972db5c623070c17f0bd1496e4004e701d058876671c9c8541306b69ca32",
+          "compressed_bytes": 354,
+          "uncompressed_digest": "sha256:c8c08c82d1b251ae4c5051ae12e912e606a043f354b423894bcd62a9c28adf3a",
+          "uncompressed_bytes": 3072,
+          "anonymous_full_get_at": "2026-10-30T10:38:34.886485+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:4bc3fbb88a4f051bdd8a670e82d10223405cc475bb2ffdfc0da6df7fa8aca820",
+          "compressed_bytes": 1144,
+          "uncompressed_digest": "sha256:aa952ba992275f2cf94e70c20d007b7ee4da4949da619d8ebb268c418579fdaa",
+          "uncompressed_bytes": 4096,
+          "anonymous_full_get_at": "2026-10-30T10:38:32.857086+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:80e25003eb6088759e73844562d28de274e16005b8a87b6435de5ad469af210d",
+          "compressed_bytes": 1394,
+          "uncompressed_digest": "sha256:15be0dc20038e7e00b5d324c697124128fe22b46990a67a05f0d53712c01c3c6",
+          "uncompressed_bytes": 4608,
+          "anonymous_full_get_at": "2026-10-30T10:38:32.316247+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:59699bdecca6447796e25f44ddcba5a1c3ad09921ec7c59b5c31b79f08aa42a3",
+          "compressed_bytes": 238190112,
+          "uncompressed_digest": "sha256:d47558d1b18fe612a5f8ba8f50f4424b9db347007d914038dec3ecaf291cf7b7",
+          "uncompressed_bytes": 754891776,
+          "anonymous_full_get_at": "2026-10-30T10:33:35.139288+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "compressed_bytes": 32,
+          "uncompressed_digest": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "uncompressed_bytes": 1024,
+          "anonymous_full_get_at": "2026-10-30T09:38:14.327440+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        }
+      ]
+    },
+    {
+      "architecture": "arm64",
+      "actual_registry_child_digest": "sha256:01ae1249d1354a381494a9b5ba49f8b607c2ae30e91ee8a498648cadd8e500e6",
+      "actual_registry_config_digest": "sha256:a71aa0eb8e85d50ad9720503d6a4560bfa631a8ef88756b6ab63070db24ab562",
+      "derived_docker_manifest_digest": "sha256:d409272e7704e39d8d4bbe0ea56f1327c778d89707242d0e8d557e3689cf32b4",
+      "manual_decompressed_layer_hashing_performed": true,
+      "layer_proofs": [
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:fa34261389f3dee2ecffe9bfe38ae7fd05a1908e98a7486354905aee0f648a6e",
+          "compressed_bytes": 49590783,
+          "uncompressed_digest": "sha256:e30e8c7e2485ccf98a8e5a6be33282919f401c3d97152a0f1154c6630568bf17",
+          "uncompressed_bytes": 143580160,
+          "anonymous_full_get_at": "2026-10-30T10:37:59.138243+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:993525952a483617183655b735562fd3eee4b3a85a472e3dc3c79a258adca100",
+          "compressed_bytes": 23570086,
+          "uncompressed_digest": "sha256:3b852f4c1d9cbd6919905ce9d7db1f939329b43130415f18e8770ea00023a2c9",
+          "uncompressed_bytes": 49682432,
+          "anonymous_full_get_at": "2026-10-30T10:38:32.287931+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:12916f73f9de8e251c4eb4f2d079fa6cd63205b7ba8a7bd88e1f9446105e9ef1",
+          "compressed_bytes": 63988504,
+          "uncompressed_digest": "sha256:2043bcdb2d1af4e6310540acf6bbeafa261a6d564c3753f6151b814f91f24daf",
+          "uncompressed_bytes": 187451392,
+          "anonymous_full_get_at": "2026-10-30T10:37:27.276448+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:371506b77bb850df2c7768a7e0e38b6259d82a0e6cd2d287800c151aa7d771c4",
+          "compressed_bytes": 202390936,
+          "uncompressed_digest": "sha256:dc54c23e3947e7d1dfc8abcfd070917c1744f09b0c4cbb0cbaa777a2a490264b",
+          "uncompressed_bytes": 569410048,
+          "anonymous_full_get_at": "2026-10-30T10:36:51.132564+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:11a8ec249f38e533804a7c8de0165bf07f8a67f344ec070231bc43309be6ea0a",
+          "compressed_bytes": 3365,
+          "uncompressed_digest": "sha256:fda3e3f40143eab9e11e079efa4dc086dfc4ac19e7d6494d3b851e1873968c6b",
+          "uncompressed_bytes": 22528,
+          "anonymous_full_get_at": "2026-10-30T10:38:29.466372+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:a9b5737654afadd77aec68777c0f26ddf19fa2d43a2a4ac674bc31b968a40b5e",
+          "compressed_bytes": 35027522,
+          "uncompressed_digest": "sha256:0cbb78e460457f9a652c8d5baa0bc0b17f5b9a0e3bedf6e3ee96ac8a49d3ebf7",
+          "uncompressed_bytes": 100548608,
+          "anonymous_full_get_at": "2026-10-30T10:38:08.787045+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:6280d700dd4509d7a44f0bc3b354cc861ff8841eacb24ec725c077c5a1a858ea",
+          "compressed_bytes": 2272612,
+          "uncompressed_digest": "sha256:cad4f647f7ce6b6162d403727f5268c0eace3d363372886fff4224b23c9634ce",
+          "uncompressed_bytes": 7612928,
+          "anonymous_full_get_at": "2026-10-30T10:38:28.298319+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:acdfa848f141528c5cd10e0e985d7035efb67627f2bec40703b7add8c05407b5",
+          "compressed_bytes": 450,
+          "uncompressed_digest": "sha256:8118d4eff814eb70df69d65a1ac5a055e9f95b2725cc470fea499efc6d841070",
+          "uncompressed_bytes": 3584,
+          "anonymous_full_get_at": "2026-10-30T10:38:34.141435+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:a86265dc4690a08cb2ad427317cb1ee99fc0ce0fd0528900c0b4507e194c951c",
+          "compressed_bytes": 31848982,
+          "uncompressed_digest": "sha256:6fb0c1f764674e87b39c800c9a0f2d48c703fac300596398df2719380587dc9c",
+          "uncompressed_bytes": 83199488,
+          "anonymous_full_get_at": "2026-10-30T10:38:23.685353+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:c68bdc78e1e6859364c78baed40bf43ca6ed18a5d8b35f22c8ddb3e21e390aa7",
+          "compressed_bytes": 1049,
+          "uncompressed_digest": "sha256:904d7814edcf4bcd385e8eb61039ca7e91f859d28ece70ef4b42d61602d2a546",
+          "uncompressed_bytes": 5120,
+          "anonymous_full_get_at": "2026-10-30T10:38:33.627736+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:299a123b9f85760b236b7ff0853bb159b4afe912cc4b76ab7c239200da899622",
+          "compressed_bytes": 61850932,
+          "uncompressed_digest": "sha256:3ba9fafe3b9e021772c652f59af756d4b54770dbed017e502c525306b6dfa9ae",
+          "uncompressed_bytes": 185351680,
+          "anonymous_full_get_at": "2026-10-30T10:37:41.810611+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:5cfd3fed3e959ceec23a02f10da32c001c70f5dd7e1fc4441cafae2915885b74",
+          "compressed_bytes": 260,
+          "uncompressed_digest": "sha256:5c9954e6cbec2680623c4e2f88886d2ed834f007b138f276017669c95027f68c",
+          "uncompressed_bytes": 4096,
+          "anonymous_full_get_at": "2026-10-30T10:38:35.336852+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:5b6e609579a955d7cc15eff0656a57e453b34dea0302fc0955480bc29c79ed45",
+          "compressed_bytes": 2895,
+          "uncompressed_digest": "sha256:8215ea8ca285ec4715cd95c63006b2da62c9a9d3abff4d59d13adc7224ee50a5",
+          "uncompressed_bytes": 13312,
+          "anonymous_full_get_at": "2026-10-30T10:38:30.248479+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:29f0b4a1ad2c6c37c818f44ebf0f4a8d90f4f92fe7546ebe1c0bd6068e54bf7b",
+          "compressed_bytes": 356,
+          "uncompressed_digest": "sha256:f5939d1a879e9a01dbf126e7bbdce0bea6baeba8b9180978742208556ae0d61c",
+          "uncompressed_bytes": 3072,
+          "anonymous_full_get_at": "2026-10-30T10:38:34.671596+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:ca2b31ea7329a44e38733a20001058904749d2dc301d5a9b7942373fd3c6c4e7",
+          "compressed_bytes": 1146,
+          "uncompressed_digest": "sha256:691e21bcc9182a58ad19bd9d669f533a0274f0a534c82294919c813584625846",
+          "uncompressed_bytes": 4096,
+          "anonymous_full_get_at": "2026-10-30T10:38:32.937907+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:7741820d92cf6bbc002e00cca3b040d023254cf61a7e250a83728d33ecc7fdd3",
+          "compressed_bytes": 1396,
+          "uncompressed_digest": "sha256:f5d0aa45329fc777ac4a6539973fb64c1c063894b744044030e4e9a008800a83",
+          "uncompressed_bytes": 4608,
+          "anonymous_full_get_at": "2026-10-30T10:38:31.577296+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:9718894d0647d2bdf581cd5addeef66968ca3a8e0bc07a8adefa4e75df1dc485",
+          "compressed_bytes": 241044876,
+          "uncompressed_digest": "sha256:c2e0227b9832c25c83d5e83bf76090b942d6b49aad44cebaaf9d66e4e180b2d4",
+          "uncompressed_bytes": 759967232,
+          "anonymous_full_get_at": "2026-10-30T10:33:44.509876+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        },
+        {
+          "schema": "bex.native-compressed-and-diffid-proof/v1",
+          "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+          "compressed_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "compressed_bytes": 32,
+          "uncompressed_digest": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "uncompressed_bytes": 1024,
+          "anonymous_full_get_at": "2026-10-30T09:38:14.327440+00:00",
+          "manual_decompressed_layer_hashing_performed": true
+        }
+      ]
+    }
+  ]
+}

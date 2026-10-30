@@ -1,0 +1,89 @@
+{
+  "scope": "All small original crypto logs are retained byte-identically with .txt suffixes so normal git add includes them despite the global *.log ignore.",
+  "files": [
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031-positive.stderr.log",
+      "archived_file": "crypto/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8-positive.stderr.log",
+      "archived_file": "crypto/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541-positive.stderr.log",
+      "archived_file": "crypto/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054-positive.stdout.log",
+      "archived_file": "crypto/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-subject.stderr.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-subject.stderr.txt",
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-positive.stderr.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-source.stderr.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-source.stderr.txt",
+      "bytes": 467,
+      "sha256": "5bada548945017cf2fed1209ac4407aab3f1863bbc2182bb2a3e9a16ce4381ef"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031-positive.stdout.log",
+      "archived_file": "crypto/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8-positive.stdout.log",
+      "archived_file": "crypto/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-subject.stdout.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-subject.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054-positive.stderr.log",
+      "archived_file": "crypto/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541-positive.stdout.log",
+      "archived_file": "crypto/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-source.stdout.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-wrong-source.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-positive.stdout.log",
+      "archived_file": "crypto/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

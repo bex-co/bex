@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-30T10:45:54.436111+00:00",
+  "scope": "Only completed owned uncompressed bundle duplicates removed after verifying existing gzip bytes and every decompressed SHA/size. All five complete signed bundles remain losslessly preserved; no active input or image/proofholder removed.",
+  "reclaimed_bytes": 240448595,
+  "removed": [
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json",
+      "raw_bytes": 9507,
+      "raw_sha256": "6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json.gz",
+      "gzip_bytes": 6136,
+      "gzip_sha256": "57f2004b0a03d12fa827191ed7192314971546406f0fb0b481bc2b262897eda3",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json",
+      "raw_bytes": 33210519,
+      "raw_sha256": "f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json.gz",
+      "gzip_bytes": 4942896,
+      "gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json",
+      "raw_bytes": 86996735,
+      "raw_sha256": "479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json.gz",
+      "gzip_bytes": 17287704,
+      "gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json",
+      "raw_bytes": 86999443,
+      "raw_sha256": "882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json.gz",
+      "gzip_bytes": 17285335,
+      "gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json",
+      "raw_bytes": 33232391,
+      "raw_sha256": "8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json.gz",
+      "gzip_bytes": 4949113,
+      "gzip_sha256": "63efb540e54a3e07ea9a30a0224ece46077a95ff76d21d4085c530d0788b7b3c",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    }
+  ],
+  "active_inputs_removed": false,
+  "image_layers_persisted": false
+}

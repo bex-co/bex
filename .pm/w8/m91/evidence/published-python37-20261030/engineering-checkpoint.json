@@ -1,0 +1,49 @@
+{
+  "schema": "bex.native-supplier-engineering-evidence/v1",
+  "scope": "Actual supplier review with the generic native-only driver. Compact metadata only; complete signed payloads remain in verified gzip and immutable public OCI blobs.",
+  "source_recipe_equality_files": 22,
+  "bundle_discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:0b397d15e087a5017924a96b5a5806a46cdd2d0c396375fa612ff20f2a2bd972",
+    "native_API_404": true,
+    "unselected_descriptor_count": 1
+  },
+  "generic_driver_sha256": "278dcb063b4c1c571932e8f358056d5abe9154b48cb057365e67242865d27a36",
+  "canonical_policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "source_and_subject_negative_controls": "Actual same bundle rejected for wrong GithubWorkflowSHA and wrong artifact digest; stderr retained in crypto/.",
+  "anonymous_pull": {
+    "all_unique_config_and_layer_bytes_fully_hashed": true,
+    "unique_blob_count": 37,
+    "bytes_hashed_this_finalization": 36551,
+    "bytes_reused_from_prior_verified_full_read": 1163553052,
+    "prior_receipts_also_rechecked_by_anonymous_head": true
+  },
+  "new_manual_layer_reads": 34,
+  "layer_storage": "Compressed layers were streamed and discarded; only SHA/size/DiffID proof receipts persist. Prior immutable byte proofs are reused with current anonymous HEAD checks.",
+  "full_report_storage": "Raw duplicate bundles removed only after validating existing gzip and decompressed hashes/sizes. No complete report copied to Git.",
+  "spdx_root_bindings": [
+    {
+      "architecture": "amd64",
+      "spdx_root_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+      "actual_registry_child_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "actual_registry_config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 18,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "1d16149a3bfaea8b3911a052b8c0d8f365b0751f581afcf64937a0d504b7ffd1",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/actual-layer-proof"
+    },
+    {
+      "architecture": "arm64",
+      "spdx_root_digest": "sha256:7c8ed47e2690d5c92e38882c6ee4753a88c2c2a2993f2909faaccb24141e7abe",
+      "actual_registry_child_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "actual_registry_config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 18,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "1d16149a3bfaea8b3911a052b8c0d8f365b0751f581afcf64937a0d504b7ffd1",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/actual-layer-proof"
+    }
+  ],
+  "production_catalog_changed": false
+}

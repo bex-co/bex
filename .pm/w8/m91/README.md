@@ -98,3 +98,10 @@ The [preparation refresh](evidence/acceptance-preparation-refresh-20261030/READM
 The [published Node 14 review](evidence/published-node14-20261030/README.md) verifies the actual immutable supplier on amd64 and arm64: separate producer/verification identities, unchanged recipe/base, successful current runtime and scan gates, all five full signed bundles, strict source/issuer/subject/transparency/TSA checks and anonymous image-byte proofs pass. The compact archive preserves immutable object IDs, complete-predicate retrieval and hashes, exact Docker-source root derivation and meaningful rejection guards. Full payloads stay outside Git.
 
 Critical scan findings, including the custom Brotli backport flags, remain recorded; this is no security waiver or zero-CVE claim. Only this supplier evidence is approved. The production catalog is unchanged, and other supplier reviews, complete adoption and the original generated/hosted acceptance remain open. No task is closed by this checkpoint.
+
+
+## Three published supplier reviews — 2026-10-30
+
+The same strict review now passes for [Node 16 Bookworm](evidence/published-node16-20261030/README.md) and [Python 3.7 Bullseye](evidence/published-python37-20261030/README.md), alongside the earlier Node 14 supplier. Each has five complete signed bundles, independent amd64/arm64 report and image-byte bindings, current successful runtime/scan gates, exact producer/recovery inputs and actual wrong-source/wrong-subject rejection controls. The generic native-only review driver and compact full-predicate replay records are retained; complete report bodies remain outside Git in verified gzip/public immutable OCI objects.
+
+All critical findings remain visible, including the Bullseye custom-backport flags. These are supplier identity/runtime/report reviews, not security waivers. The full 27-line catalog, production adoption, exact generated-image replay and original hosted DoDs remain open; no task or milestone is closed.

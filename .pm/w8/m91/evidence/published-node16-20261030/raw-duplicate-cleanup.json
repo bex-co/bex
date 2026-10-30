@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-30T10:45:51.708912+00:00",
+  "scope": "Only completed owned uncompressed bundle duplicates removed after verifying existing gzip bytes and every decompressed SHA/size. All five complete signed bundles remain losslessly preserved; no active input or image/proofholder removed.",
+  "reclaimed_bytes": 240789991,
+  "removed": [
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f.bundle.json",
+      "raw_bytes": 30319127,
+      "raw_sha256": "f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f.bundle.json.gz",
+      "gzip_bytes": 4480796,
+      "gzip_sha256": "4977388050e7e059c15d908a1a45947ab06df5a8be2793df8ba73d909ca7f4b0",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21.bundle.json",
+      "raw_bytes": 90060983,
+      "raw_sha256": "cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21.bundle.json.gz",
+      "gzip_bytes": 18117540,
+      "gzip_sha256": "7d349e064cf7621b6e25fdacd66e7e29963ba43db572d30a383b128d55e7fec8",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66.bundle.json",
+      "raw_bytes": 9603,
+      "raw_sha256": "e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66.bundle.json.gz",
+      "gzip_bytes": 6205,
+      "gzip_sha256": "0188a72dc293924a1110e2a42844ff5ff1f49a80daf45eb0ace492223898e870",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc.bundle.json",
+      "raw_bytes": 30331607,
+      "raw_sha256": "824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc.bundle.json.gz",
+      "gzip_bytes": 4480824,
+      "gzip_sha256": "c2622ee27538d736f57862e3466700ddb03cfc97c65c71f7fd69bf95d5a686d8",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    },
+    {
+      "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3.bundle.json",
+      "raw_bytes": 90068671,
+      "raw_sha256": "971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3",
+      "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3.bundle.json.gz",
+      "gzip_bytes": 18096024,
+      "gzip_sha256": "cb855b3d1303a88131d012fb46dbe0feb8e30770936dc5aa4bca13ecde13eb67",
+      "raw_retained_for_replay": false,
+      "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+    }
+  ],
+  "active_inputs_removed": false,
+  "image_layers_persisted": false
+}

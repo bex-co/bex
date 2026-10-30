@@ -1,0 +1,285 @@
+{
+  "schema": "bex.native-full-predicate-retrieval/v1",
+  "repository": "bex-co/bex-cnb-run",
+  "policy": {
+    "schema": "bex.native-published-supplier-evidence/v1",
+    "reviewed_at": "2026-10-30T10:37:44.757832+00:00",
+    "scope": "Published supplier identity/runtime/report evidence only. All findings retained; no zero-CVE claim or security waiver. Complete catalog adoption, generated exact-image replay and original hosted acceptance remain separate. No production pin/resource changed.",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+    "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "verification_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "workflow_run": 41029603442,
+    "job_id": 123977642604,
+    "cosign_version": "3.1.4",
+    "verified_darwin_arm64_binary_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+    "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+    "subject_digest_algorithm": "sha256",
+    "subject_digest": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+    "source_policy": "Actual fully green verification job; exact reviewed producer/ref/base with all22 unchanged non-documentation recipe blobs/modes. OCI labels retain producer; every accepted certificate binds verification SHA.",
+    "crypto_policy": "Every accepted bundle passes exact subject/issuer/workflow/source, transparency inclusion and explicit signed RFC3161 timestamps. No ignore flags. Actual wrong-source and wrong-subject controls rejected.",
+    "report_policy": "Both architectures bind separately to actual config/child, DiffIDs and exact independently derived Docker-export manifest roots. No architecture-union acceptance. All findings retained; no security waiver or zero-CVE claim.",
+    "source_counts": {
+      "arm64": [
+        714
+      ],
+      "amd64": [
+        717
+      ]
+    },
+    "trivy": {
+      "arm64": [
+        {
+          "findings": 17654,
+          "severity_counts": {
+            "LOW": 5023,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "brotli",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            },
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "libbrotli-dev",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            },
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "libbrotli1",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            }
+          ]
+        }
+      ],
+      "amd64": [
+        {
+          "findings": 17655,
+          "severity_counts": {
+            "LOW": 5024,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "brotli",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            },
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "libbrotli-dev",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            },
+            {
+              "VulnerabilityID": "CVE-2026-111497",
+              "PkgName": "libbrotli1",
+              "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+              "FixedVersion": null,
+              "Status": "affected",
+              "Severity": "CRITICAL"
+            }
+          ]
+        }
+      ]
+    },
+    "production_catalog_changed": false,
+    "remaining": "Other24 suppliers, complete catalog adoption, exact generated-image replay and original hosted acceptance remain separate."
+  },
+  "canonicalization": "Complete decoded predicate, UTF-8 Python json.dumps(sort_keys=True,separators=(comma,colon),ensure_ascii=False,allow_nan=False). Semantic-document hash; raw signed-statement and bundle SHA256 bind original signed bytes.",
+  "entries": [
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "manifest_digest": "sha256:0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2",
+      "bundle_digest": "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "bundle_bytes": 9507,
+      "signed_statement_sha256": "b50d27d7f09ec347250fdcd25752c6057269db75b2c38884eb1550063530a9f5",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "decoded_predicate_sorted_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "decoded_predicate_sorted_json_bytes": 2,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "full_private_scratch_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json",
+        "raw_bytes": 9507,
+        "raw_sha256": "6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json.gz",
+        "gzip_bytes": 6136,
+        "gzip_sha256": "57f2004b0a03d12fa827191ed7192314971546406f0fb0b481bc2b262897eda3",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      },
+      "extracted_full_predicate_gzip_sha256": "b977cfffb3f68c9fd753359821f9c92aa57d293b3a773f112f10b119d22e3528",
+      "extracted_full_predicate_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "extracted_full_predicate_json_bytes": 2,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/image-signature-None-6550f13a128b.predicate.json.gz"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837",
+      "bundle_digest": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "bundle_bytes": 33210519,
+      "signed_statement_sha256": "4c3bf49c1fc12168f9638224abe3e26c442b16fb1d552905ef401f5e43e85a75",
+      "predicate_type": "https://spdx.dev/Document",
+      "decoded_predicate_sorted_json_sha256": "63c3d9c7583f792309ba255b2d9e778e548d1de0b24c2aa3cecc9bdf06b984a4",
+      "decoded_predicate_sorted_json_bytes": 24436541,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "full_private_scratch_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json",
+        "raw_bytes": 33210519,
+        "raw_sha256": "f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json.gz",
+        "gzip_bytes": 4942896,
+        "gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      },
+      "extracted_full_predicate_gzip_sha256": "ad027097b353fd918e4afc0fd51fdb094995905527d3c93d6777f87e7d59dcc8",
+      "extracted_full_predicate_json_sha256": "63c3d9c7583f792309ba255b2d9e778e548d1de0b24c2aa3cecc9bdf06b984a4",
+      "extracted_full_predicate_json_bytes": 24436541,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/sbom-arm64-f4d91e938902.predicate.json.gz"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758",
+      "bundle_digest": "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "bundle_bytes": 86996735,
+      "signed_statement_sha256": "3b064aa73c8a8584c506bcf5f68f9ac0646e32dae47207bcc72bdebbf2e0815c",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "decoded_predicate_sorted_json_sha256": "6e318a030354f9f64d47df00799dc81e3b0487f80e26a7fadc506e82d71fd492",
+      "decoded_predicate_sorted_json_bytes": 64209863,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "full_private_scratch_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json",
+        "raw_bytes": 86996735,
+        "raw_sha256": "479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json.gz",
+        "gzip_bytes": 17287704,
+        "gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      },
+      "extracted_full_predicate_gzip_sha256": "3539cf11e59a95e9aa88492eb60e9cfcaf72d934f5559017b79692ce909d1891",
+      "extracted_full_predicate_json_sha256": "6e318a030354f9f64d47df00799dc81e3b0487f80e26a7fadc506e82d71fd492",
+      "extracted_full_predicate_json_bytes": 64209863,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/vulnerability-arm64-479faaf7930f.predicate.json.gz"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788",
+      "bundle_digest": "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "bundle_bytes": 86999443,
+      "signed_statement_sha256": "fecb29287f7e0498ff2e7be43e5277d0981c2e5a2e57cd0e525ac0619d917235",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "decoded_predicate_sorted_json_sha256": "fa1f53d8f85431ee91364e8b61aa2e544159cd9b8e8b17484074de1428337a3c",
+      "decoded_predicate_sorted_json_bytes": 64211866,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "full_private_scratch_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json",
+        "raw_bytes": 86999443,
+        "raw_sha256": "882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json.gz",
+        "gzip_bytes": 17285335,
+        "gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      },
+      "extracted_full_predicate_gzip_sha256": "b8ab91fd5888e6ed55ae0c670eff64238b5d90b41543e876315d8864923ebe25",
+      "extracted_full_predicate_json_sha256": "fa1f53d8f85431ee91364e8b61aa2e544159cd9b8e8b17484074de1428337a3c",
+      "extracted_full_predicate_json_bytes": 64211866,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/vulnerability-amd64-882463fa09b7.predicate.json.gz"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561",
+      "bundle_digest": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "bundle_bytes": 33232391,
+      "signed_statement_sha256": "1e1cc450be8dc3d01c06550787502593277c8f87d4a3d5b9323c7f4846961e83",
+      "predicate_type": "https://spdx.dev/Document",
+      "decoded_predicate_sorted_json_sha256": "c47594e9e687f83a9d4eea942d60eb8cda7d1956b3b0b60c8657c26f46e7ba83",
+      "decoded_predicate_sorted_json_bytes": 24452588,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "full_private_scratch_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json",
+        "raw_bytes": 33232391,
+        "raw_sha256": "8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json.gz",
+        "gzip_bytes": 4949113,
+        "gzip_sha256": "63efb540e54a3e07ea9a30a0224ece46077a95ff76d21d4085c530d0788b7b3c",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      },
+      "extracted_full_predicate_gzip_sha256": "2eec34142bd0c2ef1a3de4ddb8bc13cedb11c9330b2958dfe6d150d354e6cd27",
+      "extracted_full_predicate_json_sha256": "c47594e9e687f83a9d4eea942d60eb8cda7d1956b3b0b60c8657c26f46e7ba83",
+      "extracted_full_predicate_json_bytes": 24452588,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/sbom-amd64-8d3ef79f2dfe.predicate.json.gz"
+    }
+  ]
+}
