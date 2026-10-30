@@ -1,0 +1,175 @@
+{
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "candidate_state": "verified_pending_guard_alignment",
+  "guard_alignment_required": true,
+  "architecture_binding_verified": true,
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+    "sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+    "complete": true
+  },
+  "verified_at": "2026-10-30T15:08:43.384728+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+  "digest": "sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+  "runtime": "python",
+  "version": "3.10.22",
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer": {
+    "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "run_id": 41000570846,
+    "job_id": 124001233726,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+    "digest": "sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+    "original_build_passed": true,
+    "original_runtime_gates_passed": true,
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    },
+    "recipe_changes_ignored_markdown_only": [
+      "deploy/native-base/README.md"
+    ],
+    "log_gzip": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-job.log.gz",
+    "log_sha256": "39da9514f584d7789c00d39c9b4f59b3fdc884f4768e738f1399be71c1f2f9b6"
+  },
+  "recovered": true,
+  "recovery_authorization": {
+    "base": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+    "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "run_id": 41000570846,
+    "job_id": 124001233726,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Python3.10.22 gates. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+    "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "source_path": ".github/native-base-recovery.json"
+  },
+  "run_id": 41063724329,
+  "job_id": 124091064696,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41063724329/job/124091064696",
+  "verification_run_id": 41063724329,
+  "verification_job_id": 124091064696,
+  "verification_job_completed_at": "2026-10-30T15:06:50Z",
+  "scans": {
+    "amd64": {
+      "attestation_verified": true,
+      "architecture": "amd64",
+      "severity_counts": {
+        "LOW": 3227,
+        "HIGH": 829,
+        "MEDIUM": 3258,
+        "UNKNOWN": 128,
+        "CRITICAL": 35
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    },
+    "arm64": {
+      "attestation_verified": true,
+      "architecture": "arm64",
+      "severity_counts": {
+        "LOW": 3227,
+        "HIGH": 829,
+        "MEDIUM": 3258,
+        "UNKNOWN": 128,
+        "CRITICAL": 35
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    }
+  },
+  "security": {
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    },
+    "cve": "CVE-2026-111497",
+    "behavioral_gates_verified": true,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "permanent_decoder_error": -17,
+    "healthy_round_trip_verified": true,
+    "bundled_brotli_version": null,
+    "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+  },
+  "signature": {
+    "verified": true,
+    "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "oidc_issuer": "https://token.actions.githubusercontent.com",
+    "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "proof_mode": "targeted_sigstore_bundles/v1",
+    "signed_subject": {
+      "digest": {
+        "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+      },
+      "annotations": {}
+    },
+    "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+  },
+  "runtime_gate_steps": [
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "conclusion": "success"
+    }
+  ],
+  "platforms": {
+    "amd64": {
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.10.22"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+        }
+      ]
+    },
+    "arm64": {
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.10.22"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+        }
+      ]
+    }
+  },
+  "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "anonymous_metadata_pull": true,
+  "proof_directory": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+  "targeted_proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b"
+}

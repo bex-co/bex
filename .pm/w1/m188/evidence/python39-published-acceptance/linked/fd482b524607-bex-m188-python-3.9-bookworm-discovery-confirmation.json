@@ -1,0 +1,11 @@
+{
+  "schema": "native_stable_discovery_confirmation/v1",
+  "checked_at": "2026-10-30T15:14:59.740936+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm",
+  "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "header_digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "anonymous_registry_access": true,
+  "raw_bytes": 1611,
+  "raw_file": "/tmp/bex-m188-python-3.9-bookworm-discovery-confirmation.raw.json",
+  "raw_sha256": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b"
+}

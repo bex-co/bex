@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-30T15:07:43.852547+00:00",
+  "argv": [
+    "/tmp/bex-w1-136-cosign/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--check-claims=true",
+    "--use-signed-timestamps=true",
+    "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha=0000000000000000000000000000000000000000",
+    "--timeout=120s",
+    "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/root-index.raw.json"
+  ],
+  "exit_code": 1,
+  "verification_source": "0000000000000000000000000000000000000000",
+  "root_index_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/root-index.raw.json",
+  "root_index_sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+  "bundle_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.json",
+  "bundle_raw_sha256": "04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7",
+  "stdout_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.stderr",
+  "stderr_sha256": "61150d122f6e7b7b5be05646dd2afb3f18f78161bc9088ffc020c94872186a13"
+}

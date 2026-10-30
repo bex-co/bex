@@ -1,0 +1,286 @@
+{
+  "schema": "targeted_sigstore_bundles/v1",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "complete": true,
+  "cryptographic_complete": true,
+  "repo": "ghcr.io/bex-co/bex-cnb-run",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "tool": {
+    "file": "/tmp/bex-w1-136-cosign/cosign",
+    "version": "3.1.4",
+    "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "root_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/root-index.raw.json",
+    "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+    "bytes": 1611
+  },
+  "bundles": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "oci_manifest_digest": "sha256:9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4.json",
+      "oci_blob_digest": "sha256:04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7",
+      "raw_sha256": "04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7",
+      "raw_bytes": 9747,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.json",
+      "statement_sha256": "7b7e7cde48356d9510d3ee76c3b9542fa3b3e1ac2c207a5d96c60efbe5e5fbfe",
+      "subject": {
+        "digest": {
+          "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+        },
+        "annotations": {}
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.command.json",
+      "command_sha256": "c7408dfe1dcf39ae568cebee4a00124fbf7e4ad381872f0796520177a788bd1f",
+      "exit_code": 0,
+      "gzip_sha256": "9d11355af9c400ff8a5499595ac99382ef2040fadedadd8fb6e94d822bb67d58"
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24.json",
+      "oci_blob_digest": "sha256:4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76",
+      "raw_sha256": "4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76",
+      "raw_bytes": 30529667,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76.json",
+      "statement_sha256": "5ea0387f21c1aca45e94f69a83871dbb3285510ae2a2660e936ce70d6f6dfc86",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76.command.json",
+      "command_sha256": "a0df9592669df8601555259f02c6ad955287c0d69187e256b4b749bef022a1f0",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321?arch=amd64",
+        "root_purl_digest": "sha256:091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321",
+        "expected_registry_child": "sha256:091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "13b7c4c09f3751b21f51160a29b5e50e4bcb471e3dc559f8555f2e234541956c"
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a.json",
+      "oci_blob_digest": "sha256:996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044",
+      "raw_sha256": "996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044",
+      "raw_bytes": 30542027,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044.json",
+      "statement_sha256": "6c55cd8832fa83f59b1f339140040be2eb27501950cad1160e636d4440d79a05",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044.command.json",
+      "command_sha256": "2405187a0fd180310fa62cbd2618123a418063135b596049754e0af5ece7491e",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53?arch=arm64",
+        "root_purl_digest": "sha256:0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53",
+        "expected_registry_child": "sha256:0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "1ff0594bf6117985a4d7276f30ba7af387a352ad52e3b28905f66984232b184c"
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9.json",
+      "oci_blob_digest": "sha256:2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f",
+      "raw_sha256": "2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f",
+      "raw_bytes": 29879179,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f.json",
+      "statement_sha256": "c9f2bee248e39e0ca90ed21cef73f05f4bff6caff94d6a21157d927f8790d864",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f.command.json",
+      "command_sha256": "41f016ac12358f50e8f424d6183acb8e0bc1927b42e273cb2bccefdd83d90e45",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989",
+        "expected_config_digest": "sha256:58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "61be0d65bf84af1b85187271bc9031004abf869c2512508c368ea28ae69684cf"
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1.json",
+      "oci_blob_digest": "sha256:e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e",
+      "raw_sha256": "e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e",
+      "raw_bytes": 29883967,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e.json",
+      "statement_sha256": "3ce553601d87fc141d1a5f9455da89ce598ebaa319168dffecf452f33c15f6f0",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e.command.json",
+      "command_sha256": "01d2fac5c321024aea089e3e5bacb0885d172eba1f7aabb2b2088e4e91e70878",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53",
+        "expected_config_digest": "sha256:b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "5bcbd7dbe728372f08b02d80794331b219ec1769b66de9329555272cbc00e89c"
+    }
+  ],
+  "derived": {
+    "image_statement": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/image-signature.statement.json",
+      "sha256": "7b7e7cde48356d9510d3ee76c3b9542fa3b3e1ac2c207a5d96c60efbe5e5fbfe",
+      "bundle_digest": "sha256:04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7",
+      "derived": false
+    },
+    "sbom": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-sbom.jsonl.gz",
+      "raw_sha256": "d98d223b88b270f0897700ea00af1a1db0d1d684d43b536d12b75490b65744b2",
+      "raw_bytes": 61053096,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044"
+        }
+      ],
+      "gzip_sha256": "313dfc0f4d27bdfaa6ac35b55b1f4671d2fbf95b57e5c8abffe2fcec045af934"
+    },
+    "scans": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+      "raw_sha256": "fa92ac0aa78bf471a295c3613ba8b652b7d746f124e28b89b435ed8eefec4f12",
+      "raw_bytes": 59744644,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e"
+        }
+      ],
+      "gzip_sha256": "f4e246017da312bdf394feaa4caf88afa74e32e89d0b45aebfca28a7d25dd667"
+    }
+  },
+  "controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/controls.json",
+    "sha256": "12fb5b9ccbd7e0208802a4a9f4cd7fe5e94d90d9493b7b2ea550aaf21ef7ef39"
+  },
+  "rejected_bundles": [],
+  "updated_at": "2026-10-30T15:08:43.384378+00:00",
+  "architecture_children": {
+    "amd64": {
+      "manifest_digest": "sha256:091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321.registry-child.json",
+      "config_digest": "sha256:58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989"
+    },
+    "arm64": {
+      "manifest_digest": "sha256:0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53.registry-child.json",
+      "config_digest": "sha256:b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53"
+    }
+  },
+  "collection_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/collection-index.raw.json",
+    "sha256": "e1d4df49547d33c7e201e4d0dc95e84e1b00060e47a4086c36e6da87d32668f7"
+  },
+  "semantic_checks": {
+    "architecture_binding_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+    "architecture_binding_sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+    "official_base": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+    "producer_runtime_approved": true,
+    "both_arch_runtime_versions_verified": true,
+    "both_arch_fixed_brotli_packages_verified": true,
+    "both_arch_scans_disposition_verified": true,
+    "fresh_runtime_scan_sign_gates_passed": true,
+    "fresh_runtime_gate_log_bound_to_index": true,
+    "verification_job_log": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verification-job.log.gz",
+    "verification_job_log_sha256": "2e8bec8a77e5510b5575072c4083f6e47b800e7841552cf3356a6907de839ca1",
+    "immutable_completed_job_snapshot": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/publisher-job.json",
+      "sha256": "712f58e39999a73e52fb23d571600b435bccc5b7ab2ff87dbe6cd13398644ae7",
+      "job_id": 124091064696,
+      "run_id": 41063724329,
+      "run_attempt": 1,
+      "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "completed_at": "2026-10-30T15:06:50Z"
+    },
+    "anonymous_immutable_tag_intake": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/immutable-tag-intake.json",
+      "sha256": "9838f6db8c7ce3b571a81fc60841b7fbe49d9e2e22a0937654dd250c73f30d56"
+    },
+    "raw_registry_configs": {
+      "amd64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989.config.json",
+        "sha256": "58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989",
+        "bytes": 16539
+      },
+      "arm64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53.config.json",
+        "sha256": "b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53",
+        "bytes": 16539
+      }
+    },
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    }
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+    "sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+    "complete": true
+  },
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json"
+}

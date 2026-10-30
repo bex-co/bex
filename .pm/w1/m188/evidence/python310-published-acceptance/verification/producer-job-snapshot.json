@@ -1,0 +1,9 @@
+{
+  "reused_at": "2026-10-30T15:08:41.181460+00:00",
+  "source_snapshot_file": "/tmp/bex-m188-publisher-job-snapshots/124001233726-86e0088f619f9a12fa7e53171ea4c40bcc9ff4741467bbbc1404646c3cb421aa.json",
+  "source_snapshot_sha256": "86e0088f619f9a12fa7e53171ea4c40bcc9ff4741467bbbc1404646c3cb421aa",
+  "source_snapshot_file_mtime_utc": "2026-10-30T12:28:06.694325+00:00",
+  "job_id": 124001233726,
+  "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-job.json",
+  "sha256": "86e0088f619f9a12fa7e53171ea4c40bcc9ff4741467bbbc1404646c3cb421aa"
+}

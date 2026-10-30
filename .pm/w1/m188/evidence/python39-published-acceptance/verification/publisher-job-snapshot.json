@@ -1,0 +1,11 @@
+{
+  "file": "/tmp/bex-m188-publisher-job-snapshots/124090465681-461adc69bfca0337a4916b88079ce19a48fbb9a9d4c0539d1f74c47c9583d946.json",
+  "sha256": "461adc69bfca0337a4916b88079ce19a48fbb9a9d4c0539d1f74c47c9583d946",
+  "retrieved_at": "2026-10-30T15:08:05.248678+00:00",
+  "job_id": 124090465681,
+  "run_id": 41063720126,
+  "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "reused_from_observer": true,
+  "reused_at": "2026-10-30T15:09:18.993672+00:00",
+  "live_snapshot_checked_at": "2026-10-30T15:09:02.721236+00:00"
+}

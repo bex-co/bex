@@ -1,0 +1,24 @@
+{
+  "schema": "bex.m188.compact-acceptance-archive-audit/v1",
+  "at": "2026-10-30T15:17:37.487963+00:00",
+  "passed": true,
+  "archives": [
+    {
+      "name": "python310",
+      "files": 67,
+      "bytes": 825055,
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "receipt_sha256": "608363e390ae125cc5fb89c77a9d11c524a5c2ccd1a9154ccb438d8183c32630",
+      "all_original_receipt_links_retained": true
+    },
+    {
+      "name": "python39",
+      "files": 70,
+      "bytes": 993118,
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "receipt_sha256": "a478c5505793f72f4697908a8275dddaef6844f36644283127e764eb7ed08612",
+      "all_original_receipt_links_retained": true
+    }
+  ],
+  "limits": "Original signed large predicate bodies remain digest-addressed public OCI and local verified gzip; archive retains hash-bound metadata, commands, original prevalidated bodies, transition records, frozen accepting guards and promotion snapshots. Py39 chronology records subsequent final-validation review honestly."
+}

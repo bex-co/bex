@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8 签名发布独立验收通过（4/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10 签名发布独立验收通过（6/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -195,3 +195,11 @@ Node16旧arm64扫描、Node20旧amd64扫描及当前canonical Node14 amd64扫描
 剩余7项为Node18/20、Python3.9/3.10、Ruby3.0/3.1/3.2，已排入使用HTTP/1.1与有界完整扫描重试的新来源队列。当前source pin、inventory采用和生产rollout仍待全部11项及实际集成验证，t002–t008继续开放。
 
 归档另保留 [批准状态元数据对应记录](evidence/python38-published-acceptance/metadata-transition/acceptance-metadata-transition-hash-recovery.json)：完整守卫验证的候选为 `ace338ee…`，计入完成后为 `4540a299…`。仅五项批准状态元数据变化；已在事后按已记录哈希精确恢复原7405字节用于复验，并如实标注非原始时间点捕获。签名证明、验证记录、验收收据和最终候选保留原始字节。
+
+### Python3.9/3.10 正式验收推进至 6/11 — 2026-10-30（UTC 15:15Z）
+
+[Python3.10 收据](evidence/python310-published-acceptance/acceptance.json) 与 [Python3.9 收据](evidence/python39-published-acceptance/acceptance.json) 分别计为第5、6项。两者保留原BF producer和新FD verification的区别；五份严格签名、两架构直接registry子镜像/配置绑定、实际运行与完整扫描、固定Python版本和系统补丁均通过，完整采用守卫及新鲜匿名discovery body/header一致。其他旧运行时漏洞仍保留在完整报告内，不宣称零漏洞。
+
+本次在批准前保存了实际候选原文，并保留冻结守卫、验证记录、批准状态转换和各自计数时的aggregate快照；原四项收据与证据保持原字节。Python3.10原batch的人为取消不冒充原扫描成功，新FD已重做全部门槛。两项临时恢复授权已清理，十四项实际隔离Git选择器检查通过；见 [清理后行为验证](evidence/recovery-selection-python39-310-retired.json)。
+
+剩余Node18/20、Ruby3.0/3.1/3.2继续发布与逐项验收。source pin、inventory尚未采用；全部11项、真实应用测试和生产rollout完成前，t002–t008继续开放。

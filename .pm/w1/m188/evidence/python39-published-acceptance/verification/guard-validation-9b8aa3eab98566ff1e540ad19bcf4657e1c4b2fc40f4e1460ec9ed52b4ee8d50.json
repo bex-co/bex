@@ -1,0 +1,40 @@
+{
+  "schema": "bex.m188.full-candidate-guard-validation/v1",
+  "at": "2026-10-30T15:14:06.239072+00:00",
+  "full_candidate_guard_passed": true,
+  "candidate": "python-3.9-bookworm",
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+  "candidate_sha256": "4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13",
+  "validated_candidate_snapshot": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13.json",
+    "sha256": "4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13",
+    "bytes": 7312,
+    "capture_kind": "actual_input_bytes_captured_after_successful_validation_before_any_promotion"
+  },
+  "approved_source_guard_receipt_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context-input.json",
+    "sha256": "4663937713b4f2516c0cfe210a16ab1a25ae6a37a59d0cca9c7df6b6a0f3424a",
+    "only_live_receipt_delta": "none; exact current aggregate copy after authorizedPy310 promotion, accepted5 and existing FD approval unchanged",
+    "source_policy_approval_file": "/tmp/bex-m188-guard-receipt-context-fd358-approval.json",
+    "source_policy_approval_sha256": "55babc3a6dcef2472e9c8cd0a11799f0451734eb06f3857023d44e6e048ab368",
+    "source_policy_approval_scope": "Existing FD source admission only; context input is an unchanged exact copy of live aggregate after separately authorized Py310 promotion.",
+    "live_aggregate_file": "/tmp/bex-m188-published-acceptance.json",
+    "live_aggregate_sha256": "4663937713b4f2516c0cfe210a16ab1a25ae6a37a59d0cca9c7df6b6a0f3424a"
+  },
+  "actual_proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "guard_file": "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+  "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+  "seconds": 2.137,
+  "candidate_digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "all_five_original_crypto_records_and_derived_linkage_checked": true,
+  "amd64_binding": "exact_registry_manifest",
+  "arm64_binding": "exact_registry_manifest",
+  "direct_architecture_child_config_bindings_checked": true,
+  "controls_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-structural-controls.json",
+  "controls_sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691",
+  "receipt_count_not_modified": 5,
+  "no_adoption_copies": true,
+  "scope": "Actual full source/cryptographic/semantic guard validation only. Parent owns promotion; no source or aggregate mutation."
+}
