@@ -1174,7 +1174,7 @@ export function WorkspaceCreatePageSkeleton() {
         </Region>
         <Region name="workspace-details" className="space-y-4">
           <Skeleton className="h-7 w-44" />
-          <FieldRowsSkeleton rows={2} />
+          <FieldRowsSkeleton rows={3} />
         </Region>
         <Region name="workspace-plans" className="space-y-2">
           <Skeleton className="h-4 w-24" />

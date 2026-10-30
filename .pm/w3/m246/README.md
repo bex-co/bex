@@ -1,6 +1,6 @@
 # w3 · m246 — Workspaces get Render's freeform display name ("<Name>'s Workspace")
 
-**Worker:** worker3 **Goal:** every workspace has a freeform display name, as on Render, shown wherever a workspace is named; a new account's workspace is called "<Name>'s Workspace" instead of its raw id, while the DNS-label slug keeps its current jobs **Status:** in progress — t001–t003 done; t004 dashboard next
+**Worker:** worker3 **Goal:** every workspace has a freeform display name, as on Render, shown wherever a workspace is named; a new account's workspace is called "<Name>'s Workspace" instead of its raw id, while the DNS-label slug keeps its current jobs **Status:** in progress — t001–t004 done; t005 parity, t006 simplify, t007 coverage, t008 closeout
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Record Render's workspace naming contract (owner object, dashboard, CLI) and decide the slug/display split — **DONE** | 30m | — |
 | t002 | Store: `tenants.display_name` (freeform, not unique) + backfill; signup sets "<Name>'s Workspace" — **DONE** | 1h | t001 |
 | t003 | REST/GraphQL/MCP: Render's owner `name` is the display name; the slug stays reachable as a bex extension — **DONE** | 1h | t002 |
-| t004 | Dashboard: switcher, settings (rename) and pickers show the display name; create flow asks for a name | 1h | t003 |
+| t004 | Dashboard: switcher, settings (rename) and pickers show the display name; create flow asks for a name — **DONE** | 1h | t003 |
 | t005 | Render parity | 20m | t004 |
 | t006 | Simplify | 15m | t004 |
 | t007 | Test coverage | 30m | t004 |

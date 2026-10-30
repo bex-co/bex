@@ -3,7 +3,9 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CancelWorkspaceCreationDocument,
+  FinalizeWorkspaceCreationDocument,
   PrepareWorkspaceCreationDocument,
+  RenameWorkspaceDocument,
   WorkspaceCreationAttemptDocument,
 } from "@/graphql/definitions";
 import type { WorkspacePlanId } from "@/features/workspaces/types";
@@ -50,23 +52,29 @@ let policyRead: { data?: unknown; loading: boolean; error?: Error };
 let resumeRead: { data?: unknown; loading: boolean };
 const prepareMutation = vi.fn();
 const cancelMutation = vi.fn();
+const finalizeMutation = vi.fn();
+const renameMutation = vi.fn();
 
 beforeEach(() => {
   policyRead = resolvedPolicy;
   resumeRead = { data: undefined, loading: true };
   prepareMutation.mockReset();
   cancelMutation.mockReset();
+  finalizeMutation.mockReset();
+  renameMutation.mockReset();
   mockUseQuery.mockReset();
   mockUseQuery.mockImplementation((document: unknown) =>
     document === WorkspaceCreationAttemptDocument ? resumeRead : policyRead,
   );
   mockUseMutation.mockReset();
+  const mutations = new Map<unknown, unknown>([
+    [PrepareWorkspaceCreationDocument, prepareMutation],
+    [CancelWorkspaceCreationDocument, cancelMutation],
+    [FinalizeWorkspaceCreationDocument, finalizeMutation],
+    [RenameWorkspaceDocument, renameMutation],
+  ]);
   mockUseMutation.mockImplementation((document: unknown) => [
-    document === PrepareWorkspaceCreationDocument
-      ? prepareMutation
-      : document === CancelWorkspaceCreationDocument
-        ? cancelMutation
-        : vi.fn(),
+    mutations.get(document) ?? vi.fn(),
   ]);
 });
 
@@ -137,6 +145,53 @@ describe("useWorkspaceCreationBilling", () => {
       variables: { attemptId: "wca-1" },
     });
     expect(result.current.attempt).toBeNull();
+  });
+
+  // w3/m246: the freeform name the user chose is applied once the workspace
+  // exists; a failed rename keeps the created workspace under its slug.
+  it("names the finalized workspace, and keeps the slug if naming fails", async () => {
+    resumeRead = {
+      data: {
+        workspaceCreationAttempt: attemptRow({ state: "setup_succeeded" }),
+      },
+      loading: false,
+    };
+    const created = {
+      __typename: "Workspace",
+      id: "tea-new",
+      name: "acme",
+      slug: "acme",
+      plan: "pro",
+      role: "admin",
+      createdAt: null,
+    };
+    finalizeMutation.mockResolvedValue({
+      data: { finalizeWorkspaceCreation: created },
+    });
+    renameMutation.mockResolvedValueOnce({
+      data: { renameWorkspace: { ...created, name: "Acme Corp" } },
+    });
+    const { result } = renderHook(() =>
+      useWorkspaceCreationBilling("pro", "wca-1"),
+    );
+    let ws: Awaited<ReturnType<typeof result.current.finalize>> = null;
+    await act(async () => {
+      ws = await result.current.finalize(result.current.attempt!, "Acme Corp");
+    });
+    expect(renameMutation).toHaveBeenCalledWith({
+      variables: { id: "tea-new", name: "Acme Corp" },
+    });
+    expect(ws).toMatchObject({
+      id: "tea-new",
+      name: "Acme Corp",
+      slug: "acme",
+    });
+
+    renameMutation.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      ws = await result.current.finalize(result.current.attempt!, "Acme Corp");
+    });
+    expect(ws).toMatchObject({ id: "tea-new", name: "acme" });
   });
 
   it("drops the previous plan's error as soon as the plan changes", async () => {

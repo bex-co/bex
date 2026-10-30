@@ -212,6 +212,10 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "名称",
     description: "Workspace name field label (shared by create + settings)",
   },
+  "workspaces.fieldDisplayNamePlaceholder": {
+    message: "例如：Acme 预发环境",
+    description: "/new/workspace freeform name placeholder",
+  },
   "workspaces.fieldNamePlaceholder": {
     message: "例如 acme-staging",
     description: "Workspace name field placeholder",

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { slugify } from "@/features/workspaces/lib/slug";
+import {
+  MAX_LABEL_LENGTH,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -38,13 +43,13 @@ export const Route = createFileRoute("/new/workspace")({
 export function NewWorkspacePage() {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
-  const slugRef = useRef<HTMLInputElement>(null);
-  // The server HTML's native autofocus cannot land on the slug while it is
+  const nameRef = useRef<HTMLInputElement>(null);
+  // The server HTML's native autofocus cannot land on the name while it is
   // disabled for hydration, so hand focus over once it enables — unless the
   // visitor has already focused something else.
   useEffect(() => {
     if (hydrated && document.activeElement === document.body) {
-      slugRef.current?.focus({ preventScroll: true });
+      nameRef.current?.focus({ preventScroll: true });
     }
   }, [hydrated]);
   const navigate = useNavigate();
@@ -56,7 +61,10 @@ export function NewWorkspacePage() {
   const accountEmail =
     typeof traits?.email === "string" ? traits.email.trim().toLowerCase() : "";
 
-  const [draftName, setDraftName] = useState("");
+  // Render asks for a freeform name; bex derives the unique slug from it until
+  // the slug is edited by hand (w3/m246).
+  const [draftDisplayName, setDraftDisplayName] = useState("");
+  const [draftSlug, setDraftSlug] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<WorkspacePlanId>("hobby");
   const [draftBillingEmail, setDraftBillingEmail] = useState(accountEmail);
   const [confirmedAttemptId, setConfirmedAttemptId] = useState<string | null>(
@@ -64,7 +72,10 @@ export function NewWorkspacePage() {
   );
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const creation = useWorkspaceCreationBilling(selectedPlan, resumeAttemptId);
-  const name = creation.attempt?.name ?? draftName;
+  const name = creation.attempt?.name ?? draftSlug ?? slugify(draftDisplayName);
+  const displayName = creation.attempt
+    ? (readPendingDisplayName(creation.attempt.id) ?? draftDisplayName)
+    : draftDisplayName;
   const plan = creation.attempt?.plan ?? selectedPlan;
   const billingEmail =
     creation.attempt?.billingEmail ??
@@ -82,16 +93,19 @@ export function NewWorkspacePage() {
 
   const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
+  const displayNameValid = isValidLabel(displayName);
   const emailValid = isValidEmail(billingEmail);
   const showEmailError = billingEmail.length > 0 && !emailValid;
   const paymentBlocked = paymentRequired && !paymentConfirmed;
   const busy = creation.busy || creation.policyLoading;
-  const canSubmit = nameValid && emailValid && !busy && !paymentBlocked;
+  const canSubmit =
+    displayNameValid && nameValid && emailValid && !busy && !paymentBlocked;
 
   async function handleAddPaymentMethod() {
-    if (!nameValid || !emailValid) return;
+    if (!displayNameValid || !nameValid || !emailValid) return;
     setPaymentError(null);
-    await creation.prepare(name, billingEmail, true);
+    const pending = await creation.prepare(name, billingEmail, true);
+    if (pending) rememberPendingDisplayName(pending.id, displayName.trim());
   }
 
   async function handleSubmit() {
@@ -101,8 +115,10 @@ export function NewWorkspacePage() {
       pending = await creation.prepare(name, billingEmail, false);
     }
     if (!pending) return;
-    const workspace = await creation.finalize(pending);
+    const chosen = displayName.trim();
+    const workspace = await creation.finalize(pending, chosen);
     if (!workspace) return;
+    forgetPendingDisplayName(pending.id);
     setCurrentWorkspaceId(workspace.id);
     await navigate({ to: "/", replace: true });
   }
@@ -141,19 +157,34 @@ export function NewWorkspacePage() {
               {t("workspaces.detailsTitle")}
             </h2>
             <div className="space-y-2">
+              <Label htmlFor="workspace-display-name">
+                {t("workspaces.fieldName")}
+              </Label>
+              <Input
+                ref={nameRef}
+                id="workspace-display-name"
+                value={displayName}
+                onChange={(e) => setDraftDisplayName(e.target.value)}
+                placeholder={t("workspaces.fieldDisplayNamePlaceholder")}
+                maxLength={MAX_LABEL_LENGTH}
+                autoComplete="off"
+                autoFocus
+                // Uneditable until handlers attach: a name typed into the
+                // server HTML is wiped by hydration (w4/m219).
+                disabled={!hydrated || creation.attempt != null}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="workspace-name">
                 {t("workspaces.fieldSlug")}
               </Label>
               <Input
-                ref={slugRef}
                 id="workspace-name"
                 value={name}
-                onChange={(e) => setDraftName(e.target.value.toLowerCase())}
+                onChange={(e) => setDraftSlug(e.target.value.toLowerCase())}
                 placeholder={t("workspaces.fieldNamePlaceholder")}
                 autoComplete="off"
-                autoFocus
-                // Uneditable until handlers attach: a slug typed into the
-                // server HTML is wiped by hydration (w4/m219).
                 disabled={!hydrated || creation.attempt != null}
                 aria-invalid={showNameError}
                 aria-describedby="workspace-slug-help"
@@ -258,4 +289,36 @@ export function NewWorkspacePage() {
       </div>
     </DashboardLayout>
   );
+}
+
+// The chosen name rides sessionStorage across the payment step's redirect: the
+// creation attempt stores only the slug, and the name is applied with
+// renameWorkspace once the workspace exists.
+const pendingDisplayNameKey = (attemptId: string) =>
+  `bex.workspaceCreation.displayName.${attemptId}`;
+
+function rememberPendingDisplayName(attemptId: string, name: string) {
+  try {
+    window.sessionStorage.setItem(pendingDisplayNameKey(attemptId), name);
+  } catch {
+    // storage blocked: the workspace is named by its slug
+  }
+}
+
+function readPendingDisplayName(attemptId: string): string | null {
+  try {
+    return typeof window === "undefined"
+      ? null
+      : window.sessionStorage.getItem(pendingDisplayNameKey(attemptId));
+  } catch {
+    return null;
+  }
+}
+
+function forgetPendingDisplayName(attemptId: string) {
+  try {
+    window.sessionStorage.removeItem(pendingDisplayNameKey(attemptId));
+  } catch {
+    // nothing stored
+  }
 }

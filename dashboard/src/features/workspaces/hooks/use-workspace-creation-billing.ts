@@ -5,6 +5,7 @@ import {
   CancelWorkspaceCreationDocument,
   FinalizeWorkspaceCreationDocument,
   PrepareWorkspaceCreationDocument,
+  RenameWorkspaceDocument,
   WorkspaceCreationAttemptDocument,
   WorkspaceCreationPolicyDocument,
   WorkspacesDocument,
@@ -87,6 +88,7 @@ export function useWorkspaceCreationBilling(
   const [prepareMutation] = useMutation(PrepareWorkspaceCreationDocument);
   const [finalizeMutation] = useMutation(FinalizeWorkspaceCreationDocument);
   const [cancelMutation] = useMutation(CancelWorkspaceCreationDocument);
+  const [renameMutation] = useMutation(RenameWorkspaceDocument);
 
   // Each new resume read replaces the attempt, and another plan starts without
   // the last one's error — both settled while rendering, so neither paints a
@@ -149,7 +151,7 @@ export function useWorkspaceCreationBilling(
   );
 
   const finalize = useCallback(
-    async (value: WorkspaceCreationAttempt) => {
+    async (value: WorkspaceCreationAttempt, displayName = "") => {
       setBusy(true);
       setLocalError(null);
       try {
@@ -169,12 +171,20 @@ export function useWorkspaceCreationBilling(
         const workspace = response.data?.finalizeWorkspaceCreation;
         if (!workspace?.id)
           throw new Error("workspace finalization returned no workspace");
-        toast.success(
-          t("workspaces.createSuccess", { name: workspace.name ?? value.name }),
-        );
+        // Render's freeform name (w3/m246). The workspace exists by now, so
+        // naming it is best effort: a failure leaves the slug as its name,
+        // renameable in settings.
+        let name = workspace.name ?? value.name;
+        if (displayName && displayName !== name) {
+          const renamed = await renameMutation({
+            variables: { id: workspace.id, name: displayName },
+          }).catch(() => null);
+          if (renamed?.data?.renameWorkspace) name = displayName;
+        }
+        toast.success(t("workspaces.createSuccess", { name }));
         return {
           id: workspace.id,
-          name: workspace.name ?? value.name,
+          name,
           slug: workspace.slug ?? value.name,
           plan: workspace.plan ?? value.plan,
           role: workspace.role ?? "admin",
@@ -187,7 +197,7 @@ export function useWorkspaceCreationBilling(
         setBusy(false);
       }
     },
-    [finalizeMutation, t],
+    [finalizeMutation, renameMutation, t],
   );
 
   const cancel = useCallback(async () => {
