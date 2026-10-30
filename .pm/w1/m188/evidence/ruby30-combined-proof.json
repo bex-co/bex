@@ -1,0 +1,38 @@
+{
+  "ruby": "3.0.7",
+  "openssl": "OpenSSL 1.1.1w  11 Sep 2023",
+  "zlib": "1.2.11",
+  "verified_at": "2026-10-30T03:18:18.122092+00:00",
+  "platform": "linux/arm64",
+  "candidate": "sha256:b07c164215b2cb59fd7383a658fb886ae6d89f7d935aedadc64d3f3af2f612c0",
+  "check_image": "sha256:650699bb556f3160f9604906e411fd745e545358118e32f5a8b3a0d323462a22",
+  "base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+  "system_brotli_packages": [
+    "libbrotli-dev:arm64 1.0.9-2+deb12u1+bex11u1",
+    "libbrotli1:arm64 1.0.9-2+deb12u1+bex11u1"
+  ],
+  "build_log": "/tmp/bex-m188-ruby30-combined.log",
+  "check_log": "/tmp/bex-m188-ruby30-combined-check.log",
+  "checks_passed": [
+    "Exact current deploy/native-base/Dockerfile without stubs",
+    "Exact current check.Dockerfile",
+    "Real PG18 archive restores expected rows; invalid archive rejected",
+    "All native utility transformations without network",
+    "System and private Node bundled Brotli malformed/healthy probes",
+    "Ruby JSON/OpenSSL/zlib module loads",
+    "Ruby zlib healthy compression/decompression round trip and OpenSSL digest operation"
+  ],
+  "limits": [
+    "Local arm64 full supplier verification, not signed publication or production readiness",
+    "Actual generated native Ruby build/HTTP fixture is a separate root check",
+    "No Gem downloads or claim of arbitrary Gem compatibility"
+  ],
+  "inputs_sha256": {
+    "deploy/native-base/Dockerfile": "abbb9d102636d4ec6312c09b5ceafbe83af5c8c7da138e5e28d6af128fef7998",
+    "deploy/native-base/check.Dockerfile": "81850d0d3a723b3f6f7739426ad41bee59d07676350217cb14ce7ee1457beee0",
+    "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "deploy/native-base/patch-system-brotli.sh": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+    "deploy/native-base/check-brotli.py": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+    "deploy/native-base/node-brotli/check.js": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e"
+  }
+}
