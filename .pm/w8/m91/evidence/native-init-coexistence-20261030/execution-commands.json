@@ -1,0 +1,56 @@
+{
+  "compile": {
+    "cwd": "lego/operator",
+    "executable": "cached Go1.26.10 darwin/arm64 cross-compiler",
+    "args": [
+      "go",
+      "build",
+      "-trimpath",
+      "-ldflags=-s -w",
+      "-o",
+      "operator-image/native-init",
+      "./cmd/native-init"
+    ],
+    "environment": {
+      "CGO_ENABLED": "0",
+      "GOOS": "linux",
+      "GOARCH": "arm64",
+      "GOWORK": "off",
+      "GOTOOLCHAIN": "local"
+    }
+  },
+  "generator": {
+    "cwd": "lego/operator",
+    "args": [
+      "go",
+      "test",
+      "-overlay",
+      "/private/tmp/bex-native-init-acceptance-eba08e70/overlay.json",
+      "./internal/build",
+      "-run",
+      "^TestScratchNativeInitSupplierCoexistence$",
+      "-count=1",
+      "-v"
+    ],
+    "environment": {
+      "GOWORK": "off",
+      "BEX_INIT_PROOF_DIR": "/private/tmp/bex-native-init-acceptance-eba08e70",
+      "BEX_INIT_SUPPLIER": "localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1"
+    }
+  },
+  "build": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--network=none",
+    "--progress=plain",
+    "--build-context",
+    "bex-init=/private/tmp/bex-native-init-acceptance-eba08e70/native/init",
+    "--secret",
+    "id=render-env,src=/private/tmp/bex-native-init-acceptance-eba08e70/render-env",
+    "-t",
+    "bex-native-init-qa:eba08e70",
+    "/private/tmp/bex-native-init-acceptance-eba08e70/context"
+  ],
+  "runtime": "exact owned create/start/inspect/cleanup commands and assertions in prove.py; all actual container config/HostConfig and commands retained per case"
+}

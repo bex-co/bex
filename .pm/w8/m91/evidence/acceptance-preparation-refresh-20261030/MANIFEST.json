@@ -1,0 +1,82 @@
+{
+  "scope": "Source-only harness changes, pure naming/baseline guards and actual read-only QA baseline; no hosted acceptance/publication/adoption/class activation claim. Credentials/session files, private token and live config excluded.",
+  "files": {
+    "native/hosted.py.gz": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/hosted.py",
+      "source_bytes": 21396,
+      "source_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+      "bytes": 7650,
+      "sha256": "749a8dc34d484a0683c897a7a548dfa9bd7c09183c0286485e621266039ab8fe"
+    },
+    "native/native_naming.py": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/native_naming.py",
+      "source_bytes": 2447,
+      "source_sha256": "e529c72901160913f4bfe2ab3ced92245027268f1da98d25cd313a569fb24d18",
+      "bytes": 2447,
+      "sha256": "e529c72901160913f4bfe2ab3ced92245027268f1da98d25cd313a569fb24d18"
+    },
+    "native/native-naming-refresh.json": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/native-naming-refresh.json",
+      "source_bytes": 4336,
+      "source_sha256": "f17378acbd5ebec3a00c52303b7ad9e328dc14c710a2e36e5586f63927da8b02",
+      "bytes": 4336,
+      "sha256": "f17378acbd5ebec3a00c52303b7ad9e328dc14c710a2e36e5586f63927da8b02"
+    },
+    "native/native-naming-check-results.json": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/native-naming-check-results.json",
+      "source_bytes": 436,
+      "source_sha256": "5d9fc9e5a480e77235f1ab721cc5fbe5b8ff29274f285bb9f5059ab45767c8f8",
+      "bytes": 436,
+      "sha256": "5d9fc9e5a480e77235f1ab721cc5fbe5b8ff29274f285bb9f5059ab45767c8f8"
+    },
+    "native/native-baseline-refresh-check-results.json": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/native-baseline-refresh-check-results.json",
+      "source_bytes": 915,
+      "source_sha256": "ead7bdbbc91d9e8addc3202b9a83e6ecde9779b48157d46b7aa959ff95ad41ad",
+      "bytes": 915,
+      "sha256": "ead7bdbbc91d9e8addc3202b9a83e6ecde9779b48157d46b7aa959ff95ad41ad"
+    },
+    "native/prepared-fixtures.json.gz": {
+      "source_path": "/private/tmp/bex7-native-acceptance-novb586u/prepared-fixtures.json",
+      "source_bytes": 294069,
+      "source_sha256": "ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb",
+      "bytes": 49066,
+      "sha256": "f6ed3ad9a2b08c65c8b437bb943aca5663afa6bf2e67ef76d599b8655690c135"
+    },
+    "disk/hosted-disk.py.gz": {
+      "source_path": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py",
+      "source_bytes": 20426,
+      "source_sha256": "723d6d131c477c3fcaf6b969493e6e9dcdd46a82354de8fbad674f8e434003b4",
+      "bytes": 7162,
+      "sha256": "9dff4d3d091325a3b249817b256018af1459cda5bb919fa39ba5d53fea791f8f"
+    },
+    "disk/baseline-refresh-readonly.json": {
+      "source_path": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/baseline-refresh-readonly.json",
+      "source_bytes": 450,
+      "source_sha256": "c259c3c2e8c0b24369ea33bfbeebc00e36852dc82a163cfdad8fc0008e26ea86",
+      "bytes": 450,
+      "sha256": "c259c3c2e8c0b24369ea33bfbeebc00e36852dc82a163cfdad8fc0008e26ea86"
+    },
+    "disk/baseline-refresh-harness-change.json": {
+      "source_path": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/baseline-refresh-harness-change.json",
+      "source_bytes": 628,
+      "source_sha256": "9fad4ee794d5507367b603f5507ac44b053ef81ea5657015e4b92f63dff640d3",
+      "bytes": 628,
+      "sha256": "9fad4ee794d5507367b603f5507ac44b053ef81ea5657015e4b92f63dff640d3"
+    },
+    "disk/baseline-summary.json": {
+      "source_path": "selected nonsecret actual disk ledger fields",
+      "source_bytes": 1068,
+      "source_sha256": "80986f3981f5fb84dfcf5d9819c55541c5c7f8573cdc73d5a4856c019f1557f1",
+      "bytes": 1068,
+      "sha256": "80986f3981f5fb84dfcf5d9819c55541c5c7f8573cdc73d5a4856c019f1557f1"
+    },
+    "disk/read-only-receipts.json.gz": {
+      "source_path": "bounded GET receipts from owned disk-acceptance harness",
+      "source_bytes": 15877,
+      "source_sha256": "85614f98a645c0c7b65546be077d8505670824f6c590007295cdc57a96068dea",
+      "bytes": 1867,
+      "sha256": "2b996a78032e7aeca9275bae8c52cbc252cecf587c4257909a3252e00eaacd96"
+    }
+  }
+}

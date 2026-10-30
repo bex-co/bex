@@ -37,3 +37,8 @@ The [fixed-class inventory extension](evidence/storageclass-preflight-20261030/R
 [Production inventory 41009352173](evidence/production-inventory-20261029/receipt-41009352173.json) confirms the nondeleting bounded class UID and every selected field, including binding/reclaim and all four Secret templates. Both original 10Gi bindings and handles are unchanged; there are no small or unmatched claims. The actual manager/API remain Ready on the signed old `2ac6fd…` source and effective legacy class. The newer platform run failed on Rekor attestation timeouts after existing retries; its second attempt is in flight.
 
 The [strengthened activation preview](evidence/class-activation-preview-20261030/README.md) passed full GitOps validation and all three final simplify reviews. Its exact patch/log/file hashes are archived, and the detached checkout is removed. The patch is not applied to main or production: newer signed operator readiness is still required before selection changes, followed by actual class/binding convergence and owned production acceptance.
+
+
+## Read-only fixture baseline refresh — 2026-10-30
+
+The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-20261030/README.md) records a fresh own QA login and GET-only baseline: the unrelated m162 fixture is confirmed deleted, the existing service stays protected, and no owned fixture/create intent exists. The last complete baseline is 07:58:14 UTC; later TLS failures remain failed reads. Historical IDs stay in the rejection checks, and any missing prepared ID requires a fresh exact 404. No class activation, root create gate or disk lifecycle acceptance is claimed; those gates remain open.

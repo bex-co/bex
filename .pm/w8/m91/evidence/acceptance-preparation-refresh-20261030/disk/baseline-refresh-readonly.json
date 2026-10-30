@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-30T07:53:58.390538+00:00",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "resources_created": 0,
+  "services": [
+    {
+      "id": "srv-da40m1qii7bs73drbqlg",
+      "name": "tianpan-v4-web",
+      "plan": "starter"
+    }
+  ],
+  "missing_prepared_baseline": [
+    {
+      "id": "srv-dbhtfte9e4qs73fgrfc0",
+      "HTTP": 404,
+      "request_id": null,
+      "at": "2026-10-30T07:53:56.979803+00:00"
+    }
+  ],
+  "no_mutations": true
+}

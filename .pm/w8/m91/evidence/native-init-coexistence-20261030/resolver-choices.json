@@ -1,0 +1,9 @@
+[
+  {
+    "Label": "Node",
+    "Line": "24",
+    "Image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+    "Source": "NODE_VERSION=24",
+    "Exact": ""
+  }
+]

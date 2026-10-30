@@ -1,0 +1,9 @@
+{
+  "all_owned_containers_absent": true,
+  "own_generated_image_tag_absent": true,
+  "removed_generated_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+  "no_new_builder_container_or_builder_instance": true,
+  "existing_supplier_registry_proofholders_preserved": true,
+  "shared_build_cache_not_pruned": true,
+  "own_generated_image_config_absent": true
+}

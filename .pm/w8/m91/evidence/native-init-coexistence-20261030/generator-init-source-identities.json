@@ -1,0 +1,46 @@
+{
+  "lego/Dockerfile": {
+    "bytes": 5681,
+    "sha256": "8f321cf44077d59c0250680a157f3310d8cc3c65cc6fb779a216bb6817cd1e9b"
+  },
+  "lego/operator/cmd/native-init/main.go": {
+    "bytes": 4775,
+    "sha256": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0"
+  },
+  "lego/operator/cmd/native-init/subreaper_linux.go": {
+    "bytes": 786,
+    "sha256": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564"
+  },
+  "lego/operator/cmd/native-init/subreaper_other.go": {
+    "bytes": 734,
+    "sha256": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002"
+  },
+  "lego/operator/go.mod": {
+    "bytes": 8400,
+    "sha256": "831374b2e7adfca3c78f82862c25ecfea4ba600f5523f2fdc360e0de3162ca66"
+  },
+  "lego/operator/go.sum": {
+    "bytes": 56204,
+    "sha256": "334ce02a18708ec1b6204c72f34d94030cc9ba22c01c457eb26d8ba553a98eb5"
+  },
+  "lego/operator/internal/build/build.go": {
+    "bytes": 82371,
+    "sha256": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061"
+  },
+  "lego/operator/internal/build/native.go": {
+    "bytes": 25979,
+    "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+  },
+  "lego/operator/internal/build/nativebases.go": {
+    "bytes": 7738,
+    "sha256": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5"
+  },
+  "lego/operator/internal/build/nativeinit.go": {
+    "bytes": 3182,
+    "sha256": "c6e0015f340bbc482a3922a6c5ee16f9c7531e3e5cadde09f0d0efdd6b3452a4"
+  },
+  "lego/operator/internal/build/nativeresolve.go": {
+    "bytes": 18138,
+    "sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3"
+  }
+}
