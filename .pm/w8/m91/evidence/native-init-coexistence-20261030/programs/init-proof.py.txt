@@ -1,0 +1,24 @@
+from pathlib import Path
+import hashlib,io,contextlib,json,os,runpy,sys
+r=Path(__file__).resolve().parent
+binary=Path('/native-init').read_bytes()
+assert os.readlink('/proc/1/exe')=='/native-init'
+assert hashlib.sha256(Path('/proc/1/exe').read_bytes()).hexdigest()==hashlib.sha256(binary).hexdigest()
+cmdline=Path('/proc/1/cmdline').read_bytes().split(b'\0')
+assert cmdline[0]==b'/native-init'
+assert os.environ['QA_LITERAL']=='literal $(NOT_EXPANDED) $HOME; "雪"\ntrailing\n'
+assert os.environ['QA_EMPTY']==''
+assert os.environ['PATH']==os.environ['QA_EXPECT_PATH']
+identity={'pid1_exe':os.readlink('/proc/1/exe'),'pid1_argv':[x.decode() for x in cmdline if x],'native_init_sha256':hashlib.sha256(binary).hexdigest(),'child_pid':os.getpid(),'child_ppid':os.getppid(),'env_literal_sha256':hashlib.sha256(os.environ['QA_LITERAL'].encode()).hexdigest(),'empty_env_preserved':True,'PATH_preserved':True,'actual_PATH':os.environ['PATH']}
+assert identity['child_pid']!=1
+print('BEX_INIT_PROCESS '+json.dumps(identity,ensure_ascii=False),flush=True)
+cap=io.StringIO()
+with contextlib.redirect_stdout(cap):
+ sys.argv=['extended-checks.py','runtime'];runpy.run_path(str(r/'extended-checks.py'),run_name='__main__')
+summary=json.loads(cap.getvalue());summary.pop('network',None);summary.pop('scope',None)
+summary['actual_scope']='Docker networknone, default generated native-init ENTRYPOINT/CMD; local arm64 Node24; unchanged companionPython3.11 aliases'
+print('BEX_INIT_UTILITIES '+json.dumps(summary,ensure_ascii=False),flush=True)
+proofs={f.name:json.loads(f.read_text()) for f in sorted((r/'qa-output').glob('runtime-*-runtime.json'))}
+assert len(proofs)==13 and sum(len(x) for x in proofs.values())==39 and all(q['pass'] for x in proofs.values() for q in x)
+print('BEX_INIT_HTTP_PROOFS '+json.dumps(proofs,ensure_ascii=False),flush=True)
+print('BEX_INIT_CHILD_FINISHED '+json.dumps({'child_pid':os.getpid(),'exit_code':0,'original_cases':13,'HTTP_proofs':39,'extra_behavior_groups':len(summary['extra_behavior_checks'])}),flush=True)

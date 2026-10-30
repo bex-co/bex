@@ -1,0 +1,15 @@
+/private/tmp/bex-native-init-acceptance-eba08e70/operator-image/native-init: go1.26.10
+	path	github.com/bex-co/bex/lego/operator/cmd/native-init
+	mod	github.com/bex-co/bex/lego/operator	(devel)	
+	dep	golang.org/x/sys	v0.49.0	h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=arm64
+	build	GOOS=linux
+	build	GOARM64=v8.0
+	build	vcs=git
+	build	vcs.revision=49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11
+	build	vcs.time=2026-10-30T07:54:37Z
+	build	vcs.modified=true

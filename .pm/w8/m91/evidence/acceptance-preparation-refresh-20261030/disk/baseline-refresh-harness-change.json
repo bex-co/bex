@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-30T07:56:24.249030+00:00",
+  "reason": "Prepared m162 fixture was removed by its owning worker. Fresh 2026-10-30T07:53:56.979803+00:00 exactGET404 independently confirms documented cleanup. Keep every historical protected ID in own-resource rejection checks; baseline requires a fresh exactGET404 for any missing historical ID.",
+  "source_before_sha256": "81cdc8b825aa8d2fa5a6d7483f0ebad21642f11a5b64956d3255ea5211eac3f0",
+  "source_after_sha256": "723d6d131c477c3fcaf6b969493e6e9dcdd46a82354de8fbad674f8e434003b4",
+  "product_code_changed": false,
+  "create_intent_exists": false,
+  "resources_created": 0
+}

@@ -1,0 +1,45 @@
+{
+  "run": "cc62f8e3a1ee8b8c",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "resources": [],
+  "baseline_at": "2026-10-30T07:58:14.002185+00:00",
+  "baseline_ids": [
+    "srv-da40m1qii7bs73drbqlg"
+  ],
+  "baseline_disks": [
+    "dsk-dbg4mfcd3d3c73caql6g",
+    "dsk-dbgrglhv7bds73bfnrfg"
+  ],
+  "limits": {
+    "services": {
+      "used": 1,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 0
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 1
+    }
+  },
+  "historical_protected_absence": {
+    "srv-dbhtfte9e4qs73fgrfc0": {
+      "HTTP": 404,
+      "at": "2026-10-30T07:58:11.465955+00:00",
+      "response_sha256": "fb60cbd43e13f7528ea0e21e0c92fba8e15995949117cf2520f65ea4fe1eb9cc"
+    }
+  },
+  "credential_refreshes": null,
+  "state": "Actual QA login and read-only baseline only; no fixture/create intent/root adoption gate."
+}

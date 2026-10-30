@@ -1,0 +1,202 @@
+{
+  "Id": "552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7",
+  "Created": "2026-10-30T08:03:22.895839359Z",
+  "Path": "/native-init",
+  "Args": [
+    "/usr/bin/python3",
+    "-c",
+    "import os,signal,sys,time; assert os.readlink(\"/proc/1/exe\")==\"/native-init\"; signal.signal(signal.SIGTERM,lambda s,f:(print(\"BEX_TERM_RECEIVED\",flush=True),sys.exit(23))); print(\"BEX_TERM_READY\",flush=True); time.sleep(30)"
+  ],
+  "State": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 23,
+    "Error": "",
+    "StartedAt": "2026-10-30T08:03:22.976941072Z",
+    "FinishedAt": "2026-10-30T08:03:23.102058113Z"
+  },
+  "Image": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+  "ResolvConfPath": "/var/lib/docker/containers/552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7/resolv.conf",
+  "HostnamePath": "/var/lib/docker/containers/552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7/hostname",
+  "HostsPath": "/var/lib/docker/containers/552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7/hosts",
+  "LogPath": "/var/lib/docker/containers/552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7/552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7-json.log",
+  "Name": "/bex-native-init-term-eba08e70",
+  "RestartCount": 0,
+  "Driver": "overlay2",
+  "Platform": "linux",
+  "MountLabel": "",
+  "ProcessLabel": "",
+  "AppArmorProfile": "",
+  "ExecIDs": null,
+  "HostConfig": {
+    "Binds": null,
+    "ContainerIDFile": "",
+    "LogConfig": {
+      "Type": "json-file",
+      "Config": {
+        "max-file": "5",
+        "max-size": "20m"
+      }
+    },
+    "NetworkMode": "none",
+    "PortBindings": {},
+    "RestartPolicy": {
+      "Name": "no",
+      "MaximumRetryCount": 0
+    },
+    "AutoRemove": false,
+    "VolumeDriver": "",
+    "VolumesFrom": null,
+    "ConsoleSize": [
+      0,
+      0
+    ],
+    "CapAdd": null,
+    "CapDrop": null,
+    "CgroupnsMode": "private",
+    "Dns": null,
+    "DnsOptions": [],
+    "DnsSearch": [],
+    "ExtraHosts": null,
+    "GroupAdd": null,
+    "IpcMode": "private",
+    "Cgroup": "",
+    "Links": null,
+    "OomScoreAdj": 0,
+    "PidMode": "",
+    "Privileged": false,
+    "PublishAllPorts": false,
+    "ReadonlyRootfs": false,
+    "SecurityOpt": null,
+    "UTSMode": "",
+    "UsernsMode": "",
+    "ShmSize": 8408530944,
+    "Runtime": "runc",
+    "Isolation": "",
+    "CpuShares": 0,
+    "Memory": 1073741824,
+    "NanoCpus": 2000000000,
+    "CgroupParent": "",
+    "BlkioWeight": 0,
+    "BlkioWeightDevice": [],
+    "BlkioDeviceReadBps": [],
+    "BlkioDeviceWriteBps": [],
+    "BlkioDeviceReadIOps": [],
+    "BlkioDeviceWriteIOps": [],
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "CpuRealtimePeriod": 0,
+    "CpuRealtimeRuntime": 0,
+    "CpusetCpus": "",
+    "CpusetMems": "",
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "DeviceRequests": null,
+    "MemoryReservation": 0,
+    "MemorySwap": 2147483648,
+    "MemorySwappiness": null,
+    "OomKillDisable": null,
+    "PidsLimit": 256,
+    "Ulimits": null,
+    "CpuCount": 0,
+    "CpuPercent": 0,
+    "IOMaximumIOps": 0,
+    "IOMaximumBandwidth": 0,
+    "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware"
+    ],
+    "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+    ]
+  },
+  "GraphDriver": {
+    "Data": {
+      "ID": "552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7",
+      "LowerDir": "/var/lib/docker/overlay2/92b309f01c31553910672c27ec4938beec2e0c663b6387dad4adfae49852b73a-init/diff:/var/lib/docker/overlay2/s4l3ndig30i5pew8z020e2n0a/diff:/var/lib/docker/overlay2/9e1kyx0dxq9dryb6n5rr1u6u1/diff:/var/lib/docker/overlay2/pautou0fj8og22edy4rs4js5b/diff:/var/lib/docker/overlay2/qzap85m2ucf56qg7iyijqt61d/diff:/var/lib/docker/overlay2/9qn7ex4gydbhz5x2z2xmj9e90/diff:/var/lib/docker/overlay2/dgv4xu2m8cqzx15lyba3iah7k/diff:/var/lib/docker/overlay2/9tsqt5yxgp9mlfafy2y6hhw6c/diff:/var/lib/docker/overlay2/dkv4f7hbuva2gq6jk7yal5ncq/diff:/var/lib/docker/overlay2/197n00vnyc5co1obclyed1r1m/diff:/var/lib/docker/overlay2/1jh44ugzov9d99ncblu7n5alm/diff:/var/lib/docker/overlay2/njqin4183lqr91cy2uzozuup3/diff:/var/lib/docker/overlay2/bgk2fwiokkpoi161b0gw2giwt/diff:/var/lib/docker/overlay2/iu5o068h4hq6td72s0fuo5b7q/diff:/var/lib/docker/overlay2/z59a7ki113bqd1zswcz3k7gqn/diff:/var/lib/docker/overlay2/vrk7pcdl5r4v41762wruxulnl/diff:/var/lib/docker/overlay2/cc1db1955251c6c19b6fa70b888e8a098e9efd88fbc2fbb24adbb480fe73d2b4/diff:/var/lib/docker/overlay2/3b3160594d027d9c401557bd19b330277f0a793873c1e6c10f2d69532fdae751/diff:/var/lib/docker/overlay2/12ac715b86aa39fbd665e4b282906ed4e7bc56ea35d03bfc100f703ce47cbaf8/diff:/var/lib/docker/overlay2/2eb7f220867854d5a591201788b73860c3ef582e065e7f17e5ad511bdfb48e7d/diff:/var/lib/docker/overlay2/62b16f960bdb40eddcde5d6efe4b1309bee0d023b3a2db6e363520489e5b6701/diff:/var/lib/docker/overlay2/13bf7eb5e73b8c41a2dc8b7c9898edd95e51c60df26b79fa050de58688552c14/diff:/var/lib/docker/overlay2/27e1bc0e6812710e7e6f17af001e2b9c12e3ba8211d7f8b820c601c2ddf2d2f5/diff:/var/lib/docker/overlay2/ab19d84ea4514e9ed98411a98b7cfa609f1a21668c4f0ffd5fdadb3ba8a7e158/diff",
+      "MergedDir": "/var/lib/docker/overlay2/92b309f01c31553910672c27ec4938beec2e0c663b6387dad4adfae49852b73a/merged",
+      "UpperDir": "/var/lib/docker/overlay2/92b309f01c31553910672c27ec4938beec2e0c663b6387dad4adfae49852b73a/diff",
+      "WorkDir": "/var/lib/docker/overlay2/92b309f01c31553910672c27ec4938beec2e0c663b6387dad4adfae49852b73a/work"
+    },
+    "Name": "overlay2"
+  },
+  "Mounts": [],
+  "Config": {
+    "Hostname": "552741e7b614",
+    "Domainname": "",
+    "User": "root",
+    "AttachStdin": false,
+    "AttachStdout": true,
+    "AttachStderr": true,
+    "Tty": false,
+    "OpenStdin": false,
+    "StdinOnce": false,
+    "Env": [
+      "QA_EXPECT_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "QA_LITERAL=literal $(NOT_EXPANDED) $HOME; \"雪\"\ntrailing\n",
+      "QA_EMPTY=",
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NODE_VERSION=24.22.1",
+      "YARN_VERSION=1.22.22",
+      "NODE_ENV=production",
+      "PORT=10000"
+    ],
+    "Cmd": [
+      "/usr/bin/python3",
+      "-c",
+      "import os,signal,sys,time; assert os.readlink(\"/proc/1/exe\")==\"/native-init\"; signal.signal(signal.SIGTERM,lambda s,f:(print(\"BEX_TERM_RECEIVED\",flush=True),sys.exit(23))); print(\"BEX_TERM_READY\",flush=True); time.sleep(30)"
+    ],
+    "Image": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "Volumes": null,
+    "WorkingDir": "/opt/render/project/src",
+    "Entrypoint": [
+      "/native-init"
+    ],
+    "Labels": {
+      "bex.qa.owner": "native-init-eba08e70"
+    }
+  },
+  "NetworkSettings": {
+    "SandboxID": "",
+    "SandboxKey": "",
+    "Ports": {},
+    "Networks": {
+      "none": {
+        "IPAMConfig": null,
+        "Links": null,
+        "Aliases": null,
+        "DriverOpts": null,
+        "GwPriority": 0,
+        "NetworkID": "53226892bdaeeefb43278e1d7610337f23197c3501a1c5316ffd09b4008dd75e",
+        "EndpointID": "",
+        "Gateway": "",
+        "IPAddress": "",
+        "MacAddress": "",
+        "IPPrefixLen": 0,
+        "IPv6Gateway": "",
+        "GlobalIPv6Address": "",
+        "GlobalIPv6PrefixLen": 0,
+        "DNSNames": null
+      }
+    }
+  }
+}

@@ -72,3 +72,12 @@ The [genuine amd64 exact-default proof](evidence/exact-python-default-amd64-2026
 ## Complete synthetic-catalog suite checkpoint — 2026-10-30
 
 The [full operator suite with a complete synthetic catalog](evidence/complete-catalog-suite-20261030/README.md) passed in 234.906 seconds, including build/native-resolve tests and controller/envtest. A Go overlay supplied twenty-seven explicitly synthetic references; image integration gates were unset, and all 550 source/codegen/RBAC hashes remained identical. The real source and empty production catalog were unchanged. This checks broader populated-catalog assumptions; it does not establish published suppliers, actual adoption or hosted acceptance, which remain open.
+
+## Actual local native-init coexistence checkpoint — 2026-10-30
+
+The [actual native-init coexistence proof](evidence/native-init-coexistence-20261030/README.md) ran `/native-init` as PID 1 with thirteen original programs, thirty-nine HTTP proofs and ten utility groups. PATH/literal/empty environment checks, child exit 37 and forwarded SIGTERM/exit 23 pass; all four new owned containers and the generated image are gone. The canonical generator/resolver, `StageNativeInit` and BuildJob named-context metadata are retained, while actual execution used Docker BuildKit, not a production buildctl container or Kubernetes build Job lifecycle. This is local arm64 Node with companion Python 3.11; it adds no primary-Python 3.13, amd64, publication, adoption or hosted claim. Those acceptance gates remain open.
+
+
+## Fresh acceptance identities and baseline checkpoint — 2026-10-30
+
+The [preparation refresh](evidence/acceptance-preparation-refresh-20261030/README.md) changes only unused display names/date arguments and adds UTC/prior-intent guards, preserving all twenty-eight original program/data/command identities. A removed foreign QA fixture has a documented cleanup and independent exact 404; historical IDs remain protected, and baseline reclassification requires fresh evidence before any own create. Pure guard checks pass. No native hosted request or acceptance is claimed; actual adoption and the fresh own-authenticated baseline remain required.

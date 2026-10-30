@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-30T08:25:41.593069+00:00",
+  "checks": [
+    {
+      "refresh": true,
+      "has_prior_intent": false,
+      "HTTP": "404",
+      "accepted": true
+    },
+    {
+      "refresh": false,
+      "has_prior_intent": false,
+      "HTTP": "404",
+      "accepted": false
+    },
+    {
+      "refresh": true,
+      "has_prior_intent": true,
+      "HTTP": "404",
+      "accepted": false
+    },
+    {
+      "refresh": true,
+      "has_prior_intent": false,
+      "HTTP": "403",
+      "accepted": false
+    }
+  ],
+  "source_before_sha256": "dc14600e811037c1065a207f8e7e1d0b06de967b59a26c77871081d410d289bc",
+  "source_after_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+  "scope": "Synthetic pure-function guards only; actual foreign fixture deletion separately confirmed by disk harness freshGET404 and w2/m162 cleanup record. No auth/network/hosted creation in these checks."
+}

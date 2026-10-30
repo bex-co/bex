@@ -1,0 +1,52 @@
+{
+  "created_at": "2026-10-30T07:58:11.659689+00:00",
+  "source_commit": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+  "source_supplier": "localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1",
+  "supplier_config": "sha256:af4b7a291268bbd0b27d8f6c09cf4246076d71b56acb15395754cc96f73df6a6",
+  "original_context_files_unchanged": 93,
+  "owned_images": [
+    {
+      "tag": "bex-native-init-qa:eba08e70",
+      "config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d"
+    }
+  ],
+  "owned_containers": [
+    {
+      "id": "1c85f0b73a2dec1b2758aaeb5a720fb8399a3dcfb6bfda1d23f710f5ded68057",
+      "name": "bex-native-init-default-eba08e70"
+    },
+    {
+      "id": "235926e3e85593d9383f7c02ff0ac35f5ba72a5e8ffbb7426e5d3f2fdee7d058",
+      "name": "bex-native-init-empty-path-eba08e70"
+    },
+    {
+      "id": "8d25fdcb29d6bb27f41558b45d80dd944a4d0ef668c2c92c9cb54a8e8d6de4ae",
+      "name": "bex-native-init-narrow-path-eba08e70"
+    },
+    {
+      "id": "552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7",
+      "name": "bex-native-init-term-eba08e70"
+    }
+  ],
+  "scope": "local arm64 native-init+retained supplied Node24 utility coexistence only; original systemPython3.11 aliases unchanged; no production/publication/amd64/genuinePython3.13/full lifecycle claim",
+  "native_init_binary_sha256": "aa1b41c5698379dcac6c1338327765f784fbb37c67bcaadd85a5f11cddb0b0e3",
+  "native_init_bytes": 1704098,
+  "native_init_build_command": [
+    "go",
+    "build",
+    "-trimpath",
+    "-ldflags=-s -w",
+    "-o",
+    "operator-image/native-init",
+    "./cmd/native-init"
+  ],
+  "native_init_build_environment": {
+    "CGO_ENABLED": "0",
+    "GOOS": "linux",
+    "GOARCH": "arm64",
+    "GOWORK": "off",
+    "GOTOOLCHAIN": "local"
+  },
+  "native_init_compiler": "go1.26.10 (matching current lego/Dockerfile, cached host cross-compiler)",
+  "image_tag": "bex-native-init-qa:eba08e70"
+}

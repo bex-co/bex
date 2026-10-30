@@ -1,0 +1,1 @@
+/private/tmp/bex-native-init-acceptance-eba08e70/operator-image/native-init: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=FLB2Z7NdY77uygWbh-Fk/-YrNy-sAiZBj4EM5ADgy/u5dd6zet8uz6zayAGAVE/4T8-rqr83UV9L0cFxOVd, BuildID[sha1]=0d1a289dd0dec005288c382f2a6873a1b0d37aa0, stripped

@@ -1,0 +1,131 @@
+{
+  "pass": true,
+  "completed_at": "2026-10-30T08:07:12.368993+00:00",
+  "source_commit": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+  "supplier_manifest": "localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1",
+  "supplier_config": "sha256:af4b7a291268bbd0b27d8f6c09cf4246076d71b56acb15395754cc96f73df6a6",
+  "generated_image_config": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+  "native_init_binary_sha256": "aa1b41c5698379dcac6c1338327765f784fbb37c67bcaadd85a5f11cddb0b0e3",
+  "native_init_compiler": "go1.26.10 (matching current lego/Dockerfile, cached host cross-compiler)",
+  "native_init_staged_bytes_and_mtime_match": true,
+  "canonical_generator_and_ResolveNativeBuild": true,
+  "canonical_named_context_and_resolver_env_exported": true,
+  "default_ENTRYPOINT_and_CMD_used": true,
+  "actual_PID1": {
+    "pid1_exe": "/native-init",
+    "pid1_argv": [
+      "/native-init",
+      "/bin/bash",
+      "-c",
+      "/usr/bin/python3 /opt/render/project/src/init-proof.py"
+    ],
+    "native_init_sha256": "aa1b41c5698379dcac6c1338327765f784fbb37c67bcaadd85a5f11cddb0b0e3",
+    "child_pid": 11,
+    "child_ppid": 1,
+    "env_literal_sha256": "4b8c8e01e358cd3771a60004e56cf4dfd61f0d7b0e8eedd0790b17ee640d216b",
+    "empty_env_preserved": true,
+    "PATH_preserved": true,
+    "actual_PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  },
+  "default_exit_code": 0,
+  "original_case_ids": [
+    91,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    107
+  ],
+  "independent_HTTP_proofs": 39,
+  "extra_behavior_groups": [
+    "original PG15 archive + genuine PG18 archive exact three rows, PG18client programs and malformed archive",
+    "libvips headers/pkg-config/C-link/pixels and invalid-image",
+    "Django original plurals + GNU extraction/merge/unique/catalog-format failure",
+    "original owned PDF + Helvetica/color PDF exact independent RGB and render failure",
+    "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure",
+    "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure",
+    "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics",
+    "SWIG runtime typemap/wrapper/C import + invalid interface failure",
+    "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure",
+    "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"
+  ],
+  "original_context_files_byte_identical_before_after": 93,
+  "same_image_process_controls": [
+    {
+      "case": "default",
+      "id": "1c85f0b73a2dec1b2758aaeb5a720fb8399a3dcfb6bfda1d23f710f5ded68057",
+      "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+      "default_ENTRYPOINT": true,
+      "default_CMD": true,
+      "network": "none",
+      "exit_code": 0,
+      "OOMKilled": false,
+      "pass": true
+    },
+    {
+      "case": "empty-path",
+      "id": "235926e3e85593d9383f7c02ff0ac35f5ba72a5e8ffbb7426e5d3f2fdee7d058",
+      "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+      "default_ENTRYPOINT": true,
+      "default_CMD": false,
+      "network": "none",
+      "exit_code": 37,
+      "OOMKilled": false,
+      "pass": true
+    },
+    {
+      "case": "narrow-path",
+      "id": "8d25fdcb29d6bb27f41558b45d80dd944a4d0ef668c2c92c9cb54a8e8d6de4ae",
+      "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+      "default_ENTRYPOINT": true,
+      "default_CMD": false,
+      "network": "none",
+      "exit_code": 37,
+      "OOMKilled": false,
+      "pass": true
+    },
+    {
+      "case": "TERM forwarding",
+      "id": "552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7",
+      "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+      "default_ENTRYPOINT": true,
+      "default_CMD": false,
+      "network": "none",
+      "one_real_child_signal_handler": true,
+      "exit_code": 23,
+      "pass": true
+    }
+  ],
+  "cleanup": {
+    "all_owned_containers_absent": true,
+    "own_generated_image_tag_absent": true,
+    "removed_generated_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "no_new_builder_container_or_builder_instance": true,
+    "existing_supplier_registry_proofholders_preserved": true,
+    "shared_build_cache_not_pruned": true,
+    "own_generated_image_config_absent": true
+  },
+  "scope": {
+    "actual_native_init_PID1_utility_coexistence": true,
+    "network": "Docker build RUN and every runtime networknone; cached app dependencies/source inputs retained unchanged; source-image/frontend metadata consumed from existing local cache/registry as normal Docker frontend inputs",
+    "architecture": "local Linux/arm64 only",
+    "primary_node": "v24.22.1",
+    "python": "system companion3.11.2; original explicit local aliases/version validator adaptation unchanged",
+    "genuine_primary_python313": false,
+    "publication_or_candidate_image_push": false,
+    "production_or_hosted": false,
+    "actual_Kubernetes_build_Job_lifecycle": false,
+    "actual_production_buildctl_container_execution": false,
+    "BuildKit_entry": "canonical Dockerfile/native-init named context built through existing Docker BuildKit frontend; generated canonical BuildJob named-context/env shape exported separately",
+    "operator_resolver_image": "synthetic unpulled registry.example/bex@zero digest activates the real generator; actual staged native-init provenance is local current-source compile, not that synthetic image",
+    "release_binary_identity": "compiler+flags match production Dockerfile; local VCS buildinfo records dirty checkout; no claim of byte identity to an already published operator release",
+    "prior_limits_not_retroactively_changed": "new proof supplements earlier utility and Kubernetes-predeploy bundles; no full platform lifecycle/other primary runtimes/amd64 claims"
+  }
+}

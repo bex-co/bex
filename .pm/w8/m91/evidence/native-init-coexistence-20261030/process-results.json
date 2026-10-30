@@ -1,0 +1,46 @@
+[
+  {
+    "case": "default",
+    "id": "1c85f0b73a2dec1b2758aaeb5a720fb8399a3dcfb6bfda1d23f710f5ded68057",
+    "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "default_ENTRYPOINT": true,
+    "default_CMD": true,
+    "network": "none",
+    "exit_code": 0,
+    "OOMKilled": false,
+    "pass": true
+  },
+  {
+    "case": "empty-path",
+    "id": "235926e3e85593d9383f7c02ff0ac35f5ba72a5e8ffbb7426e5d3f2fdee7d058",
+    "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "default_ENTRYPOINT": true,
+    "default_CMD": false,
+    "network": "none",
+    "exit_code": 37,
+    "OOMKilled": false,
+    "pass": true
+  },
+  {
+    "case": "narrow-path",
+    "id": "8d25fdcb29d6bb27f41558b45d80dd944a4d0ef668c2c92c9cb54a8e8d6de4ae",
+    "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "default_ENTRYPOINT": true,
+    "default_CMD": false,
+    "network": "none",
+    "exit_code": 37,
+    "OOMKilled": false,
+    "pass": true
+  },
+  {
+    "case": "TERM forwarding",
+    "id": "552741e7b614f88e4a0b68ee0f348b5b1c45da6f17d9f353874c941fd012eaf7",
+    "image_config_id": "sha256:7757c19c9c78a1765e93bb4d57de30b6d1a04ca2031aab846010ef289233b56d",
+    "default_ENTRYPOINT": true,
+    "default_CMD": false,
+    "network": "none",
+    "one_real_child_signal_handler": true,
+    "exit_code": 23,
+    "pass": true
+  }
+]

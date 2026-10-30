@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T08:06:27.156772+00:00",
+  "checks": [
+    "attempted identity unchanged; only unused peer refreshes",
+    "any prior intent refuses creation refresh",
+    "stale UTC day refused",
+    "last120seconds refused",
+    "current unused identity valid"
+  ],
+  "scope": "pure synthetic preparation guard checks; no authentication/network/resource mutation; actual28spec source/command identities compared during refresh"
+}
