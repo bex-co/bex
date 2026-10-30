@@ -10,12 +10,16 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
-import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import {
+  PlanTierSlots,
+  POSTGRES_PLAN_SLOTS,
+} from "@/common/components/datastore-plan-preview";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabasePlan } from "@/features/databases/hooks/use-update-database-plan";
+import { highAvailabilityRequested } from "@/features/databases/lib/status";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 export interface DatabasePlanSectionProps {
@@ -44,8 +48,10 @@ export function DatabasePlanSection({
   let planError: string | null = null;
   if (dirty && selectedType) {
     const params = { name: selectedType.name };
+    // The spec intent, as bex-api's rule checks it: a standby still starting
+    // already blocks a move below 1 CPU (w2/m171).
     if (
-      database.highAvailabilityEnabled &&
+      highAvailabilityRequested(database) &&
       !selectedType.supportsHighAvailability
     ) {
       planError = t("databases.planPickerHAUnsupported", params);
@@ -104,7 +110,7 @@ export function DatabasePlanSection({
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
-          <PlanTierSlots />
+          <PlanTierSlots count={POSTGRES_PLAN_SLOTS} />
         ) : instanceTypes.length === 0 ? (
           // A settled failed or empty catalog, not an empty choice (w4/m218).
           <PlanCatalogUnavailable

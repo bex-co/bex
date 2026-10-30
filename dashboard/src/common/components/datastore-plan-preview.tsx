@@ -41,18 +41,29 @@ export function PlanTierSlots({
   );
 }
 
+/**
+ * How many tiers each datastore catalog serves (lego/types/tiers/tiers.yaml),
+ * so the loading grid has the ready grid's rows. Postgres went from three to
+ * six with the ≥1-CPU plans (w2/m171): two rows at three columns, six stacked
+ * on a phone.
+ */
+export const POSTGRES_PLAN_SLOTS = 6;
+const KEY_VALUE_PLAN_SLOTS = 3;
+
 const PLAN_COPY = {
   postgres: {
     title: "databases.planTitle",
     description: "databases.planDescription",
     cancel: "databases.planPickerCancel",
     save: "databases.planPickerSave",
+    slots: POSTGRES_PLAN_SLOTS,
   },
   keyvalue: {
     title: "keyvalue.planTitle",
     description: "keyvalue.planDescription",
     cancel: "keyvalue.planPickerCancel",
     save: "keyvalue.planPickerSave",
+    slots: KEY_VALUE_PLAN_SLOTS,
   },
 } as const;
 
@@ -75,7 +86,7 @@ export function DatastorePlanPreview({
         <CardDescription>{t(copy.description)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <PlanTierSlots />
+        <PlanTierSlots count={copy.slots} />
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="outline" disabled>
             {t(copy.cancel)}

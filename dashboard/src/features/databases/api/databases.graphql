@@ -55,6 +55,9 @@ query Database($id: String!) {
     diskSizeGB
     diskAutoscalingEnabled
     highAvailabilityEnabled
+    # Spec intent (bex extension, w2/m171): the HA switch's position while the
+    # standby converges toward it.
+    highAvailabilityRequested
     readReplicas {
       ...ReadReplicaFields
     }
@@ -149,6 +152,17 @@ query DatabaseIpAllowList($id: String!) {
 
 mutation FailoverDatabase($id: String!) {
   failoverDatabase(id: $id)
+}
+
+# REST's PATCH enableHighAvailability (w2/m171): enabling needs a plan with at
+# least 1 CPU; disabling is always allowed.
+mutation UpdateDatabaseHighAvailability($id: String!, $enabled: Boolean!) {
+  updateDatabaseHighAvailability(id: $id, enabled: $enabled) {
+    id
+    status
+    highAvailabilityEnabled
+    highAvailabilityRequested
+  }
 }
 
 # Replaces the named read replica set (w5/m138) — REST's PATCH readReplicas.
@@ -283,6 +297,7 @@ mutation CreateDatabase(
   $version: String
   $diskSizeGB: Int
   $public: Boolean
+  $enableHighAvailability: Boolean
 ) {
   createDatabase(
     name: $name
@@ -294,6 +309,7 @@ mutation CreateDatabase(
     version: $version
     diskSizeGB: $diskSizeGB
     public: $public
+    enableHighAvailability: $enableHighAvailability
   ) {
     id
     name
