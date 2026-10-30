@@ -1,0 +1,7 @@
+# Owned-fixture credential refresh preparation
+
+Hydra access tokens last fifteen minutes (`deploy/gitops/base/values/hydra.values.yaml`). The two-hour disk walkthrough previously read the saved access token without refreshing it. The updated prepared driver checks `expires_at`, uses the published Bex CLI’s read-only `workspaces -o json` command with its own isolated config when expiry approaches, and rereads the persisted token. Output is discarded; receipts retain only time, command and exit status. A failed refresh refuses the next action and never replays a resource mutation. Nonexpiring machine credentials are unchanged.
+
+The real published v0.3.3 binary (`8c1eaa38e0ce3de0c9cae814ec432bcc1648737fd06d11a6950e910c7ede4081`) passed against a localhost-only server with synthetic credentials: it made two ordinary refresh requests, persisted the rotated credential, then read owners with it. Separate synthetic helper checks cover fresh/expiring credentials, safe receipt contents and refresh failure. Actual production refresh remains unverified. No production session, API request, service or disk was created.
+
+This is an incremental correction to [the original preparation](../fixture-preparation-20261029/README.md). The guarded fixture target, date/nonce, probe program, resource/cost window, read-only ownership boundaries and production readiness requirement are unchanged. Preparation and UTC naming checks still pass. MANIFEST.json hashes the three updated source/result files; private credentials are excluded.
