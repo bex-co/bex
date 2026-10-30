@@ -89,3 +89,10 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - 新增两个集成测试，复用已有 native resolver、Dockerfile、构建和 HTTP helper，在 build/start 两阶段执行安全探针，HTTP 返回必须与构建产物及所选语言版本一致。临时 overlay 使用上述本地候选，实际 Python3.7.17 和 Ruby3.0.7 均通过；生产 pin 未改变。
 - Python3.7 显式使用兼容的 Poetry1.5.1，fixture 无 uv.lock；不声称默认 Poetry2.1.3 能运行在 Python3.7。旧版本需匹配 companion tool 是既有要求（w8/done/173 与 [Render Poetry 版本文档](https://render.com/docs/poetry-version)），本项不修改用户所选版本。
 - 见 [Python 完整配方](evidence/python37-combined-proof.json)、[Ruby 完整配方](evidence/ruby30-combined-proof.json)、[真实 native 启动](evidence/local-python-ruby-native-start.json)。以上是本地兼容性证据，签名双架构发布、采用与线上验收仍待完成。
+
+### 验收发现并修复 companion 可移植性缺口 — 2026-10-29（UTC 03:50Z）
+
+- 真实对照复现：官方 Node20.20.2 需要 GLIBC2.28 / GLIBCXX3.4.21，在 Python3.7/Ruby3.0 Bullseye 均启动；Bookworm 重编版本需要 GLIBC2.34 / GLIBCXX3.4.30，在两者均失败。此前本地 Node20 主镜像通过不覆盖 companion 合同，该候选不能采用；见 [ABI 与实际启动证据](evidence/companion-node-abi-regression.json)。Node14 的 Bullseye 编译在两者启动正常。
+- 四个旧 Node 补丁改用固定 Bullseye 编译基座，最终镜像保留原官方主运行时和系统版本。Python/Ruby 集成测试显式选择 Node20 并核查 build/start 的真实双运行时版本；不改变用户版本来规避失败。
+- check.Dockerfile 增加实际 Bullseye companion gate，最终阶段消费检查产物，双架构发布都会执行。已用旧 Node20 候选证明 gate 失败，用 Node14 候选证明 gate 通过；见 [红绿对照](evidence/node-portability-gate-controls.json)。修正后 Node20 的完整编译及真实组合仍需通过，未预先宣称成功。
+- 当前有证据的最旧 reviewed primary 为 Bullseye；最旧可选 Elixir1.17/OTP27 的官方历史配方已是 Bookworm，见 [来源核查](evidence/oldest-primary-metadata.json)。此结论不建立永久发行版 allowlist。旧配方发布停止采用，正式发布/接入/rollout 仍保持未完成。

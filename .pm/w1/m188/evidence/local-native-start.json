@@ -31,5 +31,6 @@
     "signed published digests and anonymous pull",
     "native source/inventory adoption",
     "actual operator rollout and final live census"
-  ]
+  ],
+  "subsequent_compatibility_finding": "The Bookworm-compiled Node20 component passed primary-image tests but failed Bullseye Python3.7/Ruby3.0 companion startup (GLIBC/GLIBCXX). It is not adoptable. See companion-node-abi-regression.json; portable compiler and per-architecture publisher gate replace that recipe."
 }

@@ -32,6 +32,10 @@ func TestNativePythonBackportBuildAndStart(t *testing.T) {
 	if !ok {
 		t.Fatal("missing reviewed Python 3.7 line")
 	}
+	node20, ok := nativeToolchains[nativeNodeRuntime].find("20")
+	if !ok {
+		t.Fatal("missing reviewed Node 20 companion")
+	}
 	probe, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "native-base", "check-brotli.py"))
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +48,8 @@ func TestNativePythonBackportBuildAndStart(t *testing.T) {
 		"system-probe.py": string(probe),
 		"runtime_info.py": `import json, platform, ssl, subprocess
 def current():
-    return {"python": platform.python_version(), "poetry": subprocess.check_output(["poetry", "--version"], universal_newlines=True).strip(), "ssl": ssl.OPENSSL_VERSION}
+    node = json.loads(subprocess.check_output(["node", "-p", "JSON.stringify({node:process.versions.node,brotli:process.versions.brotli})"], universal_newlines=True))
+    return dict(node, python=platform.python_version(), poetry=subprocess.check_output(["poetry", "--version"], universal_newlines=True).strip(), ssl=ssl.OPENSSL_VERSION)
 if __name__ == "__main__":
     print(json.dumps(current()))
 `,
@@ -62,15 +67,15 @@ class Handler(BaseHTTPRequestHandler):
 HTTPServer(("127.0.0.1", 10000), Handler).serve_forever()
 `,
 	}
-	tag := buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": line.version, "POETRY_VERSION": "1.5.1"}, files,
+	tag := buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": line.version, "POETRY_VERSION": "1.5.1", "NODE_VERSION": node20.version}, files,
 		fmt.Sprintf("bex-m188-python37-start:%d", os.Getpid()))
 	body, _ := runServing(t, tag, fmt.Sprintf("bex-m188-python37-http-%d", os.Getpid()), "http://127.0.0.1:10000/", "--network", "none")
-	var got struct{ Python, Poetry, SSL string }
+	var got struct{ Python, Poetry, SSL, Node, Brotli string }
 	if err := json.Unmarshal([]byte(body), &got); err != nil {
 		t.Fatalf("runtime response: %v: %s", err, body)
 	}
-	if got.Python != line.version || got.Poetry != "Poetry (version 1.5.1)" || got.SSL == "" {
-		t.Fatalf("runtime = %+v; want Python %s, Poetry 1.5.1 and working SSL", got, line.version)
+	if got.Python != line.version || got.Poetry != "Poetry (version 1.5.1)" || got.SSL == "" || got.Node != node20.version || got.Brotli == "" {
+		t.Fatalf("runtime = %+v; want Python %s, Poetry 1.5.1, working SSL and Node %s with Brotli", got, line.version, node20.version)
 	}
-	t.Logf("build and HTTP start preserved Python %s and %s; system and provided Node decoder probes passed", got.Python, got.Poetry)
+	t.Logf("build and HTTP start preserved Python %s, %s and Node %s with Brotli %s; system and provided Node decoder probes passed", got.Python, got.Poetry, got.Node, got.Brotli)
 }

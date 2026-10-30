@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-10-30T03:47:54.528119+00:00",
+  "metadata_only": true,
+  "images": [
+    {
+      "ref": "erlang:27.0.0.0@sha256:b85e2c3670db757156fdf016478fb1778e5b94c347ed77010ccb2d327982c94b",
+      "platforms": {
+        "amd64": {
+          "manifest": "sha256:aaf1ff2728d9b9207c7628060dc5e4f610191a62dd11989021abd6fad68973f6",
+          "config": "sha256:ea04d0728466935c587979d664f010b15271b000bcc7e3d07588c68c9c67d7e3",
+          "created": "2024-05-22T09:03:56Z",
+          "env": [
+            "OTP_VERSION=27.0"
+          ],
+          "root_history": "/bin/sh -c #(nop) ADD file:0d5bdf84bbcdfa95d42190537e3cad2c0a5876f9127fae6a1d1c485d3539c77d in / ",
+          "explicit_suite_history": [],
+          "layers": [
+            {
+              "digest": "sha256:903681d87777d28dc56866a07a2774c3fd5bf65fd734b24c9d0ecd9a13c9f636",
+              "size": 49554080
+            }
+          ]
+        },
+        "arm64": {
+          "manifest": "sha256:c2a889ae5fed234151d79c54552bf529eb36b21722a8b3e512073cf05c0021d2",
+          "config": "sha256:39f41392e04b157f982fec2cb2553ef6275b2278746eee090535c1ccb28ffe5c",
+          "created": "2024-05-22T09:03:56Z",
+          "env": [
+            "OTP_VERSION=27.0"
+          ],
+          "root_history": "/bin/sh -c #(nop) ADD file:e81dd8b32e45ea6e761021a3e01b6efd339dd9248a2036dc4b51a2c1de560b4c in / ",
+          "explicit_suite_history": [],
+          "layers": [
+            {
+              "digest": "sha256:7b24851aa36de07cd94173b8e2052846573dacc3b241620d713254e647352394",
+              "size": 49588592
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "elixir:1.17.0@sha256:03379a22c57881d2a7ccb0f4b4d39a208c3e750ef66c9fa2ed53bb097b3ee320",
+      "platforms": {
+        "amd64": {
+          "manifest": "sha256:37d1e13ac09ddecde0b32a6f69c0e6fbc5df77ed62650d48041e3aaec5888cab",
+          "config": "sha256:beac3480f1d73c5a5ac6c4d33f34839ec3779b36c5846cbed6526578747259d1",
+          "created": "2024-06-12T11:57:50Z",
+          "env": [
+            "OTP_VERSION=27.0",
+            "ELIXIR_VERSION=v1.17.0"
+          ],
+          "root_history": "/bin/sh -c #(nop) ADD file:b532f8e401e9a1fcc2ea1fc034adf820a5269c6ace45769f60a81fcb673f01b8 in / ",
+          "explicit_suite_history": [],
+          "layers": [
+            {
+              "digest": "sha256:fea1432adf0957427b45b0ef8e37cbfe045b7cf8c15e3f43e48f2f613e214d16",
+              "size": 49576643
+            }
+          ]
+        },
+        "arm64": {
+          "manifest": "sha256:d7c6a287d53ee13f2901033b411b35628021098a59ff8c7236580c83b5cc899b",
+          "config": "sha256:9c127ec11638490ccfaced9ddb264b766ba5a408d871bb0954cba6590f66be61",
+          "created": "2024-06-12T11:57:50Z",
+          "env": [
+            "OTP_VERSION=27.0",
+            "ELIXIR_VERSION=v1.17.0"
+          ],
+          "root_history": "/bin/sh -c #(nop) ADD file:cfc8f76c8181d3ae6dda16ae894b184c69dbba114d446426e466126fe0ae62e5 in / ",
+          "explicit_suite_history": [],
+          "layers": [
+            {
+              "digest": "sha256:1e60a453843e00d6f3d4242dbd696365f0894e3ca2f02f4ce1ab098d7ff7907f",
+              "size": 49613402
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "official_historical_source": [
+    {
+      "repo": "erlang/docker-erlang-otp",
+      "path": "27/Dockerfile",
+      "commit": "a8b82f1afd392c59a2f661dee663ed6084255a65",
+      "commit_date": "2024-05-22T09:03:56Z",
+      "url": "https://raw.githubusercontent.com/erlang/docker-erlang-otp/a8b82f1afd392c59a2f661dee663ed6084255a65/27/Dockerfile",
+      "FROM": [
+        "FROM buildpack-deps:bookworm"
+      ],
+      "OTP_VERSION": [
+        "ENV OTP_VERSION=\"27.0\" \\"
+      ]
+    },
+    {
+      "repo": "erlef/docker-elixir",
+      "path": "1.17/Dockerfile",
+      "commit": "48f4d063c460d225011e3f631207b4c345cd91e2",
+      "commit_date": "2024-06-12T11:57:50Z",
+      "url": "https://raw.githubusercontent.com/erlef/docker-elixir/48f4d063c460d225011e3f631207b4c345cd91e2/1.17/Dockerfile",
+      "FROM": [
+        "FROM erlang:27"
+      ],
+      "OTP_VERSION": []
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "node20-original": {
+    "GLIBC_max": "2.28",
+    "GLIBCXX_max": "3.4.21",
+    "CXXABI_max": "1.3.9",
+    "python37_bullseye": {
+      "returncode": 0,
+      "stdout": "v20.20.2\n",
+      "stderr": "Unable to find image 'python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a' locally\ndocker.io/library/python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a: Pulling from library/python\n31f5dc1f52c8: Already exists\nbb60045eb75c: Already exists\n292737ab468e: Already exists\n0d93979d6242: Already exists\n5a9f8670f1b8: Already exists\ncd0152b2afe3: Already exists\n5770af76823a: Already exists\n023d3e7bc423: Already exists\nDigest: sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\nStatus: Downloaded newer image for python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\n"
+    },
+    "ruby30_bullseye": {
+      "returncode": 0,
+      "stdout": "v20.20.2\n",
+      "stderr": "Unable to find image 'ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72' locally\ndocker.io/library/ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72: Pulling from library/ruby\n078d9526cc72: Already exists\n691cb555e773: Already exists\n9dce35208529: Already exists\ne9dcef9945e6: Already exists\nf29f8a33d223: Already exists\ne3957eeac77d: Already exists\nf255592834a2: Already exists\nDigest: sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\nStatus: Downloaded newer image for ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\n"
+    }
+  },
+  "node20-patched": {
+    "GLIBC_max": "2.34",
+    "GLIBCXX_max": "3.4.30",
+    "CXXABI_max": "1.3.9",
+    "python37_bullseye": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+    },
+    "ruby30_bullseye": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+    }
+  },
+  "node14-original": {
+    "GLIBC_max": "2.17",
+    "GLIBCXX_max": "3.4.18",
+    "CXXABI_max": "1.3.5",
+    "python37_bullseye": {
+      "returncode": 0,
+      "stdout": "v14.21.3\n",
+      "stderr": ""
+    }
+  },
+  "node14-patched": {
+    "GLIBC_max": "2.29",
+    "GLIBCXX_max": "3.4.26",
+    "CXXABI_max": "1.3.9",
+    "python37_bullseye": {
+      "returncode": 0,
+      "stdout": "v14.21.3\n",
+      "stderr": ""
+    },
+    "ruby30_bullseye": {
+      "returncode": 0,
+      "stdout": "v14.21.3\n",
+      "stderr": ""
+    }
+  },
+  "metadata": {
+    "checked_at": "2026-10-30T03:50:30.296748+00:00",
+    "architecture": "linux/arm64",
+    "python37_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "ruby30_base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+    "node20_original": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "node20_patched_image": "sha256:fdb7cd99076f7eb1f54fa3cf8e0d17de4b7510c0be3ade1b2ba6341b6fd8c3c7",
+    "node14_original": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+    "node14_patched_image": "sha256:038005cf52053b649ec15eec02d238e4780f6c52041fa1035a7465984dbb76cb",
+    "restoration": "Existing BuildKit cached outputs only; no duplicate compilation",
+    "binary_sha256": {
+      "node20-original": "05a69ccdcb795f2a8b86c145e71a6a37cce84fccef5aaf25a8fe38bc9423e732",
+      "node20-patched": "e49bb92db66c02944f1f8fea24548e47d472cb1184b5ab976876b5a1bd80752e",
+      "node14-original": "50e0d6f7ebd0637769715433d10bde9d02034971bc985ef2cdab889bd9cdc99f",
+      "node14-patched": "7113ae93a25a35afcf7eaffd92187b78ef4fd6a36e97959b28d4fb943858ed4a"
+    }
+  }
+}
