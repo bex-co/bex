@@ -1,0 +1,5 @@
+PASS: real Kubernetes JSONPath projection claims
+PASS: real Kubernetes JSONPath projection volumes
+PASS: real Kubernetes JSONPath projection deployments
+PASS: real Kubernetes JSONPath projection pods
+PASS: real Kubernetes JSONPath projection apps

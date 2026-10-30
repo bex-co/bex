@@ -1,0 +1,10 @@
+test_binding_mismatch_and_missing_volume_are_not_reported_as_safe (scripts.test_service_disk_inventory.InventoryTests.test_binding_mismatch_and_missing_volume_are_not_reported_as_safe) ... ok
+test_joins_exact_app_lifetime_and_preserves_requested_vs_physical_capacity (scripts.test_service_disk_inventory.InventoryTests.test_joins_exact_app_lifetime_and_preserves_requested_vs_physical_capacity) ... ok
+test_platform_adoption_reports_image_ids_and_ready_replicas_only (scripts.test_service_disk_inventory.InventoryTests.test_platform_adoption_reports_image_ids_and_ready_replicas_only) ... ok
+test_projection_width_is_checked_before_reporting (scripts.test_service_disk_inventory.InventoryTests.test_projection_width_is_checked_before_reporting) ... ok
+test_volume_names_cannot_inject_kubectl_options (scripts.test_service_disk_inventory.InventoryTests.test_volume_names_cannot_inject_kubectl_options) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK

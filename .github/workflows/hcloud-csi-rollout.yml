@@ -1,10 +1,18 @@
-name: hcloud CSI rollout (manual, reviewed digest)
+name: hcloud CSI (manual inventory or reviewed rollout)
 
-# This workflow changes only the existing CSI Helm release. It never applies
-# infrastructure/CAPI, rotates provider credentials, or flips the disk class.
-# The image comes solely from a reviewed, committed digest values file.
+# Inventory is read-only and needs no candidate image pin. Explicit rollout
+# changes only the existing CSI Helm release; it never applies CAPI/Terraform,
+# rotates provider credentials, or flips the disk class. Rollout images come
+# solely from a reviewed, committed digest values file.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read-only disk inventory or explicit reviewed CSI rollout
+        type: choice
+        required: true
+        default: inventory
+        options: [inventory, rollout]
 
 permissions:
   contents: read
@@ -22,10 +30,17 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: require a reviewed committed derivative digest
-        run: bash scripts/install-hcloud-csi.sh validate-pin
+      - name: validate operation and require reviewed pin for rollout
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          case "$OPERATION" in
+            inventory) ;;
+            rollout) bash scripts/install-hcloud-csi.sh validate-pin ;;
+            *) echo 'operation must be inventory or rollout' >&2; exit 1 ;;
+          esac
 
-  rollout:
+  cluster:
     needs: validate
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
@@ -40,6 +55,7 @@ jobs:
         with:
           version: v1.36.1
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        if: inputs.operation == 'rollout'
         with:
           version: v3.19.0
       - name: fetch production kubeconfig with authoritative SSH trust
@@ -61,7 +77,10 @@ jobs:
       - name: scrub SSH credentials
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      - name: inventory service-disk binding and capacity metadata (read-only)
+        run: bash scripts/service-disk-inventory.sh
       - name: upgrade only CSI and verify every controller/node driver pod
+        if: inputs.operation == 'rollout'
         run: bash scripts/install-hcloud-csi.sh rollout
       - name: scrub kubeconfig
         if: always()

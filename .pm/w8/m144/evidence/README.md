@@ -15,3 +15,8 @@ Captured 2026-10-29 local / 2026-10-30 UTC on Linux/arm64 (OrbStack kernel 7.2.9
 - `scoped-installer-tests.txt` / `scoped-rollout-validator-tests.txt`: credential-free installer/pin and every-pod readiness regression results for the prepared scoped rollout path.
 - `scoped-rollout-workflow-validation.txt`: production environment/pool/ref/host-trust and credential cleanup guard validation.
 - `actual-chart-rendered-image-pins.txt`: both images extracted from actual Helm rendering of the checksum-authenticated hcloud-csi 2.22.0 archive using `official.values.json`; both match its exact image digest with empty tags. This validates chart expansion, not derivative publication or deployment.
+
+- `inventory-unit-tests.txt` / `inventory-protocol-tests.txt` / `inventory-workflow-validation.txt`: the prepared read-only App/PVC/PV/platform-adoption inventory, exact-lifetime joins, safe operation dispatch and credential scope checks. No real production inventory has yet run.
+- `inventory-jsonpath-proof.txt`: the real Kubernetes JSONPath engine processed all five synthetic projections; a separate join check preserved binding/image facts while excluding private canary fields. These are protocol proofs, not production facts.
+
+- [Render disk contract review](render-disk-contract-review-20261029.md): primary documentation review supplied by root; it preserves the separate migration, actual capacity, billing, metrics and cross-surface production acceptance requirements.
