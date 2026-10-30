@@ -64,6 +64,30 @@ class InventoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.read_rows("apps", path)
 
+    def test_fixed_class_contract_is_selected_and_absence_is_explicit(self):
+        bounded = row("classes", name="hcloud-volumes-luks-bounded", uid="class-current", provisioner="csi.hetzner.cloud", allowVolumeExpansion="true", volumeBindingMode="WaitForFirstConsumer", reclaimPolicy="Delete", filesystemType="ext4", boundedFilesystem="ext4-v1", publishSecretName="${pvc.name}-luks", publishSecretNamespace="${pvc.namespace}", expandSecretName="${pvc.name}-luks", expandSecretNamespace="${pvc.namespace}")
+        bounded["unselectedPrivateParameter"] = "PRIVATE-CANARY"
+        result = module.inventory([], [], [], classes=[bounded])["storageClasses"]
+        self.assertEqual(result[0], {"name": "hcloud-volumes-luks", "present": False})
+        self.assertEqual(result[1]["uid"], "class-current")
+        self.assertTrue(result[1]["allowVolumeExpansion"])
+        self.assertEqual(result[1]["filesystemType"], "ext4")
+        self.assertEqual(result[1]["boundedFilesystem"], "ext4-v1")
+        self.assertEqual(result[1]["publishSecretName"], "${pvc.name}-luks")
+        self.assertEqual(result[1]["expandSecretNamespace"], "${pvc.namespace}")
+        self.assertNotIn("PRIVATE-CANARY", str(result))
+        legacy = row("classes", name="hcloud-volumes-luks", uid="legacy", deletingAt="2026-10-30T00:00:00Z", allowVolumeExpansion="false")
+        selected = module.disk_class_facts([legacy])[0]
+        self.assertFalse(selected["allowVolumeExpansion"])
+        self.assertEqual(selected["deletingAt"], "2026-10-30T00:00:00Z")
+        self.assertEqual(selected["expandSecretName"], "")
+
+    def test_class_projection_refuses_unrequested_or_duplicate_objects(self):
+        own = row("classes", name="hcloud-volumes-luks", allowVolumeExpansion="true")
+        for rows in ([row("classes", name="foreign-platform-class")], [own, own], [row("classes", name="hcloud-volumes-luks", allowVolumeExpansion="unexpected")]):
+            with self.subTest(rows=rows), self.assertRaises(ValueError):
+                module.disk_class_facts(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
