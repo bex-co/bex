@@ -80,12 +80,10 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	if err != nil {
 		return nil, err
 	}
-	if choice.erlang != "" {
-		if choice, err = pinErlangVersion(ctx, exact, choice); err != nil {
-			return nil, err
-		}
-	} else {
-		choice = pinExactVersion(ctx, exact, choice)
+	reviewed := choice
+	choice, err = pinNativePrimary(ctx, exact, runtime, reviewed)
+	if err != nil {
+		return nil, err
 	}
 	bun, withBun, err := ResolveNativeBun(env, readFile)
 	if err != nil {
@@ -164,6 +162,9 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 			return nil, err
 		}
 		choices = append(choices, bun)
+	}
+	if rewritten, err = applyNativeSuppliedBase(rewritten, reviewed.Image, choice, nativeSuppliedBases); err != nil {
+		return nil, err
 	}
 	if err := os.WriteFile(dockerfilePath, []byte(rewritten), 0o600); err != nil {
 		return nil, fmt.Errorf("write generated Dockerfile: %w", err)

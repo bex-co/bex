@@ -1,0 +1,103 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from primary-transplant-check.Dockerfile
+#1 transferring dockerfile: 851B 0.0s done
+#1 DONE 0.1s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a
+#4 DONE 1.1s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 209B done
+#6 DONE 0.1s
+
+#7 [primary 1/1] FROM docker.io/library/python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a
+#7 resolve docker.io/library/python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a 0.1s done
+#7 sha256:bcbcfb6e661887b4006b457e0883bacefe9958c2cfc4d2ad8fc4eae464cfceb8 2.01kB / 2.01kB done
+#7 sha256:fe333f4c5697e0ed62bccfe92efc04d7417914b3eeaedc8bb3dafb51bcf83038 8.14kB / 8.14kB done
+#7 sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a 1.86kB / 1.86kB done
+#7 DONE 0.3s
+
+#8 [supplied 1/6] COPY python-tools.json fetch-python-tools.py install-python-tools.py /opt/bex/python-tools/
+#8 DONE 0.4s
+
+#9 [supplied 2/6] COPY bex-native-python-tools /usr/bin/
+#9 DONE 0.3s
+
+#10 [supplied 3/6] RUN chmod 755 /usr/bin/bex-native-python-tools && /usr/local/bin/python3 /opt/bex/python-tools/fetch-python-tools.py
+#10 7.732 11e52c67415a381d10d6b462ced9cfb97066179f0e871399e006c4ab101fc85f  setuptools-68.0.0-py3-none-any.whl
+#10 7.732 2dd50a7f42dddfa1d02a36f275dbe716f38ed250224f609d35fb60a09593d93e  setuptools-75.3.4-py3-none-any.whl
+#10 7.732 062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922  setuptools-80.9.0-py3-none-any.whl
+#10 7.732 177f9c9b0d45c47873b619f5b650346d632cdc35fb5e4d25058e09c9e581433d  wheel-0.42.0-py3-none-any.whl
+#10 7.732 708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248  wheel-0.45.1-py3-none-any.whl
+#10 7.732 3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab  wheel-0.48.0-py3-none-any.whl
+#10 7.732 29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484  packaging-25.0-py3-none-any.whl
+#10 DONE 7.9s
+
+#11 [supplied 4/6] RUN --network=none /usr/bin/bex-native-python-tools
+#11 0.661 Processing /opt/bex/python-tools/wheels/setuptools-68.0.0-py3-none-any.whl
+#11 0.670 Processing /opt/bex/python-tools/wheels/wheel-0.42.0-py3-none-any.whl
+#11 0.672 Installing collected packages: wheel, setuptools
+#11 0.672   Attempting uninstall: wheel
+#11 0.673     Found existing installation: wheel 0.41.2
+#11 0.676     Uninstalling wheel-0.41.2:
+#11 0.680       Successfully uninstalled wheel-0.41.2
+#11 0.691   Attempting uninstall: setuptools
+#11 0.692     Found existing installation: setuptools 57.5.0
+#11 0.705     Uninstalling setuptools-57.5.0:
+#11 0.726       Successfully uninstalled setuptools-57.5.0
+#11 0.764 Successfully installed setuptools-68.0.0 wheel-0.42.0
+#11 0.764 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#11 0.961 -c:1: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+#11 0.973 native primary Python packaging ready: setuptools-68.0.0, wheel-0.42.0
+#11 DONE 1.2s
+
+#12 [supplied 5/6] COPY check-primary-python.py /tmp/check-primary-python.py
+#12 DONE 0.1s
+
+#13 [supplied 6/6] RUN --network=none /usr/local/bin/python3 /tmp/check-primary-python.py
+#13 1.966 native primary Python 3.7.17 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#13 DONE 2.5s
+
+#14 [stage-2 1/3] RUN rm -rf /usr/local
+#14 DONE 0.7s
+
+#15 [stage-2 2/3] COPY --link --from=primary /usr/local/ /usr/local/
+#15 DONE 0.5s
+
+#16 [stage-2 3/3] RUN --network=none /usr/bin/bex-native-python-tools && /usr/local/bin/python3 /tmp/check-primary-python.py
+#16 1.154 Processing /opt/bex/python-tools/wheels/setuptools-68.0.0-py3-none-any.whl
+#16 1.158 Processing /opt/bex/python-tools/wheels/wheel-0.42.0-py3-none-any.whl
+#16 1.160 Installing collected packages: wheel, setuptools
+#16 1.160   Attempting uninstall: wheel
+#16 1.161     Found existing installation: wheel 0.41.2
+#16 1.164     Uninstalling wheel-0.41.2:
+#16 1.167       Successfully uninstalled wheel-0.41.2
+#16 1.183   Attempting uninstall: setuptools
+#16 1.183     Found existing installation: setuptools 57.5.0
+#16 1.199     Uninstalling setuptools-57.5.0:
+#16 1.225       Successfully uninstalled setuptools-57.5.0
+#16 1.262 Successfully installed setuptools-68.0.0 wheel-0.42.0
+#16 1.263 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#16 1.482 -c:1: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+#16 1.493 native primary Python packaging ready: setuptools-68.0.0, wheel-0.42.0
+#16 3.388 native primary Python 3.7.17 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#16 DONE 4.2s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 0.3s done
+#17 writing image sha256:27f1543c67ab249b02e1feb32532e7366de41fc63e2b14c7b84d17104885c3c6
+#17 writing image sha256:27f1543c67ab249b02e1feb32532e7366de41fc63e2b14c7b84d17104885c3c6 done
+#17 naming to docker.io/library/bex-primary-tools-acceptance:37-transplant done
+#17 DONE 0.3s

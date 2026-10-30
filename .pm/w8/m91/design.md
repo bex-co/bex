@@ -91,3 +91,9 @@ With C or A approved, the 13 milestones' implementation and per-tool regression 
 ## 2026-10-29 复核结论
 
 采用 C；来源为现有 parity 规则和工程判断，不是用户新授权。上述 A/B/C/D 是历史对比。新增发布工作流、共享镜像和版本锁定属于实现工作，不再作为用户选型门槛。m91 先建立供应机制，m93–m103、m107 复用；每项仍须分别满足原 DoD。不得据此新增云资源或提交/push。
+
+## Implementation review — 2026-10-29
+
+The live table now has 27 reviewed primary lines, including Bullseye, Bookworm and Trixie. The supplier keeps the official image references for version/companion selection and places reviewed derivative references in `nativeSuppliedBases`; exact primary trees and verified image environment are restored before companion installation. Exact OTP 28.0 is Bookworm and selects a Bookworm derivative even when its Elixir line normally uses Trixie. A generated-image gate exercised the actual installed release, Elixir, clients, libraries and offline runtime; legacy-history execution remains separately bounded.
+
+Publish candidates as `ghcr.io/bex-co/bex-cnb-run:native-<line>-<commit>`. This reuses the existing public build-plane package, whose anonymous pull was verified, and never moves its CNB `latest` tag. New GHCR packages start private and this session has no package-visibility API or connected browser; distinct public tags supply the same reviewed artifacts without an external console gate or a new credential. This is an engineering routing choice under the existing parity decision, not a new user product decision. Pin only after the per-line multiarch checks, signature/SBOM review and anonymous pull pass.

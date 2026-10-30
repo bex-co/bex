@@ -1,0 +1,27 @@
+{
+  "generated_image_architecture": "linux/arm64",
+  "supplied_source": "reviewed Elixir1.17 Bookworm image + actual shared factory recipe before m103 Python-hook addition",
+  "supplied_config_id": "sha256:1d55f899bd5b7d14ac2fc1e31ab525a6d592bb7fd46f20013b7b5201201e90fe",
+  "supplied_local_manifest": "localhost:32828/native-bookworm@sha256:29e85dec2901b622cb18ef10e2eb594a3de7f642c83d27f533c1c813dc7de2be",
+  "upstream_exact": "erlang:28.0.0.0@sha256:7f5ef6ecbd63f3b65ac306c4e82f3a294d0a3e3ba03de074590e3b8bf0d2fadd",
+  "cold_test_seconds": 489.13,
+  "final_strengthened_test_seconds": 11.0,
+  "verified": [
+    "PG18 real custom archive conversion and exact row cmp at build and offline runtime",
+    "invalid archive refusal",
+    "installed full OTP_VERSION file is28.0",
+    "Elixir1.18.4 and OTP28.0 metadata/actual runtime",
+    "every Erlang .so resolves required shared libraries",
+    "crypto SHA256, SSL startup, ETS round trip",
+    "Node24.22.1, npm11.19.1, private TS7.0.2 survive transplant"
+  ],
+  "earlier_failed_attempts": "Broad Hub search reached page11/1193 tags and returned403; fully specified OTP releases now delimit stable Debian tag family, with regression test. No identity/proxy/credential workaround.",
+  "unverified": [
+    "generated-image amd64",
+    "separate legacy ADD-image execution",
+    "other exact primary image executions",
+    "publication/global production adoption/hosted acceptance"
+  ],
+  "production_adoption_map": "empty; no production pins changed",
+  "cleanup": "pending own local registry/proof container removal; no production resource or credential created"
+}

@@ -1,0 +1,5 @@
+=== RUN   TestNativeSuppliedImageRunsOldExactOTP
+    nativebases_test.go:359: source erlang:28.0.0.0@sha256:7f5ef6ecbd63f3b65ac306c4e82f3a294d0a3e3ba03de074590e3b8bf0d2fadd on bookworm, supplied base localhost:32828/native-bookworm@sha256:29e85dec2901b622cb18ef10e2eb594a3de7f642c83d27f533c1c813dc7de2be; build/runtime real PG18 archive, complete Erlang shared-library closure, crypto/SSL/ETS and Node companion pass
+--- PASS: TestNativeSuppliedImageRunsOldExactOTP (489.13s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	489.793s

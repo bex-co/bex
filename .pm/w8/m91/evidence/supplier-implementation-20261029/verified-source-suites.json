@@ -1,0 +1,95 @@
+[
+  {
+    "image": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+    "platforms": {
+      "linux/amd64": {
+        "root_history": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=27.3.4.19",
+          "ELIXIR_VERSION=v1.17.3"
+        ]
+      },
+      "linux/arm64": {
+        "root_history": "# debian.sh --arch 'arm64' out/ 'bookworm' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=27.3.4.19",
+          "ELIXIR_VERSION=v1.17.3"
+        ]
+      }
+    }
+  },
+  {
+    "image": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+    "platforms": {
+      "linux/amd64": {
+        "root_history": "# debian.sh --arch 'amd64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=28.5.0.8",
+          "ELIXIR_VERSION=v1.18.4"
+        ]
+      },
+      "linux/arm64": {
+        "root_history": "# debian.sh --arch 'arm64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=28.5.0.8",
+          "ELIXIR_VERSION=v1.18.4"
+        ]
+      }
+    }
+  },
+  {
+    "image": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+    "platforms": {
+      "linux/amd64": {
+        "root_history": "# debian.sh --arch 'amd64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=28.5.0.8",
+          "ELIXIR_VERSION=v1.19.6"
+        ]
+      },
+      "linux/arm64": {
+        "root_history": "# debian.sh --arch 'arm64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=28.5.0.8",
+          "ELIXIR_VERSION=v1.19.6"
+        ]
+      }
+    }
+  },
+  {
+    "image": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+    "platforms": {
+      "linux/amd64": {
+        "root_history": "# debian.sh --arch 'amd64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=29.1.2",
+          "ELIXIR_VERSION=v1.20.4"
+        ]
+      },
+      "linux/arm64": {
+        "root_history": "# debian.sh --arch 'arm64' out/ 'trixie' '@1793059200'",
+        "version_environment": [
+          "OTP_VERSION=29.1.2",
+          "ELIXIR_VERSION=v1.20.4"
+        ]
+      }
+    }
+  },
+  {
+    "image": "erlang:28.0.0.0@sha256:7f5ef6ecbd63f3b65ac306c4e82f3a294d0a3e3ba03de074590e3b8bf0d2fadd",
+    "platforms": {
+      "linux/amd64": {
+        "root_history": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'",
+        "version_environment": [
+          "OTP_VERSION=28.0"
+        ]
+      },
+      "linux/arm64": {
+        "root_history": "# debian.sh --arch 'arm64' out/ 'bookworm' '@1749513600'",
+        "version_environment": [
+          "OTP_VERSION=28.0"
+        ]
+      }
+    }
+  }
+]

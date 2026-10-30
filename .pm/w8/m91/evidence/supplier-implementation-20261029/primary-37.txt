@@ -1,0 +1,52 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from primary-check.Dockerfile
+#1 transferring dockerfile: 547B 0.0s done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.5s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context:
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [1/7] FROM docker.io/library/python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.71kB done
+#7 DONE 0.0s
+
+#8 [2/7] COPY python-tools.json fetch-python-tools.py install-python-tools.py /opt/bex/python-tools/
+#8 CACHED
+
+#9 [3/7] COPY bex-native-python-tools /usr/bin/
+#9 CACHED
+
+#10 [4/7] RUN chmod 755 /usr/bin/bex-native-python-tools && /usr/local/bin/python3 /opt/bex/python-tools/fetch-python-tools.py
+#10 CACHED
+
+#11 [5/7] RUN --network=none /usr/bin/bex-native-python-tools
+#11 CACHED
+
+#12 [6/7] COPY check-primary-python.py /tmp/check-primary-python.py
+#12 DONE 0.1s
+
+#13 [7/7] RUN --network=none /usr/local/bin/python3 /tmp/check-primary-python.py
+#13 1.552 native primary Python 3.7.17 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#13 DONE 1.8s
+
+#14 exporting to image
+#14 exporting layers
+#14 exporting layers 0.2s done
+#14 writing image sha256:541518537303383cdd442cccaccfebbaaccdec6874f608667ee70a865a43265a done
+#14 naming to docker.io/library/bex-primary-tools-acceptance:37 done
+#14 DONE 0.2s

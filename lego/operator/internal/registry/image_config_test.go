@@ -32,7 +32,7 @@ import (
 
 func imageMetadataFixture(t *testing.T) (*http.Client, string, map[string][]byte) {
 	t.Helper()
-	config := []byte(`{"architecture":"amd64","os":"linux","config":{"ExposedPorts":{"9009/tcp":{},"8123/tcp":{},"9000/tcp":{}}}}`)
+	config := []byte(`{"architecture":"amd64","os":"linux","history":[{"created_by":"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}],"config":{"Env":["PYTHON_VERSION=3.14.8","PATH=/usr/local/bin:/usr/bin"],"ExposedPorts":{"9009/tcp":{},"8123/tcp":{},"9000/tcp":{}}}}`)
 	configDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(config))
 	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q}}`, configDigest))
 	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(manifest))
@@ -321,5 +321,21 @@ func TestExchangesForBearer(t *testing.T) {
 		if got := exchangesForBearer(tc.authorization, tc.challenge); got != tc.want {
 			t.Errorf("exchangesForBearer(%q, %q) = %v, want %v", tc.authorization, tc.challenge, got, tc.want)
 		}
+	}
+}
+
+func TestReadImageRuntimeMetadataVerifiesTheConfig(t *testing.T) {
+	client, digest, routes := imageMetadataFixture(t)
+	env, history, err := ReadImageRuntimeMetadata(t.Context(), client, "https://registry.test", "owned/clickhouse", digest, "Basic fixture")
+	if err != nil || !reflect.DeepEqual(env, []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}) || len(history) != 1 || history[0] != "# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'" {
+		t.Fatalf("environment = %v, %v", env, err)
+	}
+	for path, body := range routes {
+		if strings.Contains(path, "/blobs/") {
+			routes[path] = []byte(strings.ReplaceAll(string(body), "3.14.8", "3.14.9"))
+		}
+	}
+	if env, _, err := ReadImageRuntimeMetadata(t.Context(), client, "https://registry.test", "owned/clickhouse", digest, "Basic fixture"); err == nil || env != nil {
+		t.Fatalf("accepted tampered image environment: %v, %v", env, err)
 	}
 }
