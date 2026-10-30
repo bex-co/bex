@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import {
   Link,
   Outlet,
@@ -98,6 +99,7 @@ function BlueprintsListPage() {
             size="sm"
             onClick={() => void navigate({ to: "/blueprints/new" })}
           >
+            <Plus className="size-4" />
             {t("blueprints.createButton")}
           </Button>
         </div>
@@ -122,6 +124,7 @@ function BlueprintsListPage() {
                 className="mt-4"
                 onClick={() => void navigate({ to: "/blueprints/new" })}
               >
+                <Plus className="size-4" />
                 {t("blueprints.createButton")}
               </Button>
             </div>
