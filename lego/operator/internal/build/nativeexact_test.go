@@ -31,6 +31,14 @@ type fakeExact struct {
 	digests map[string]string
 	err     error
 	asked   []string
+	env     []string
+	envErr  error
+	history []string
+}
+
+func (f *fakeExact) ImageMetadata(_ context.Context, image string) (env, history []string, err error) {
+	f.asked = append(f.asked, "env "+image)
+	return f.env, f.history, f.envErr
 }
 
 func (f *fakeExact) ResolveTag(_ context.Context, repo, tag string) (string, bool, error) {

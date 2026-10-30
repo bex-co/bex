@@ -88,10 +88,10 @@ const (
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
 	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68"},
-		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351"},
-		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842"},
-		{line: "1.20", version: "1.20.4", otp: "29", image: "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68", debian: "bookworm"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351", debian: "trixie"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842", debian: "trixie"},
+		{line: "1.20", version: "1.20.4", otp: "29", image: "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb", debian: "trixie"},
 	}},
 	// Render offers no Go version selection for native services; neither does
 	// bex. Render builds with Go's latest stable release, so this line tracks
@@ -156,7 +156,7 @@ type nativeToolchain struct {
 // pinned image carries — what a version range is matched against; empty for a
 // runtime that offers no selection. otp is an Elixir line's Erlang/OTP major.
 type nativeLine struct {
-	line, version, otp, image string
+	line, version, otp, image, debian string
 	// upstream retains the reviewed official input when image is a verified
 	// platform derivative. Exact-patch lookup must still use the official tag.
 	upstream string
