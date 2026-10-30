@@ -1,0 +1,21 @@
+{
+  "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "names": [
+    "elixir-1.17",
+    "elixir-1.18",
+    "elixir-1.19",
+    "elixir-1.20",
+    "golang-1.27-bookworm",
+    "node-22-bookworm",
+    "node-24-bookworm",
+    "node-26-bookworm",
+    "python-3.11-bookworm",
+    "python-3.12-bookworm",
+    "python-3.13-bookworm",
+    "python-3.14-bookworm",
+    "ruby-3.3-bookworm",
+    "ruby-3.4-bookworm",
+    "ruby-4.0-bookworm",
+    "rust-1-bookworm"
+  ]
+}

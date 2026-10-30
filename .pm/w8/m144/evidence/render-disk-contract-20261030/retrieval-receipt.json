@@ -1,0 +1,67 @@
+{
+  "sources": {
+    "disks": {
+      "url": "https://render.com/docs/disks",
+      "finalUrl": "https://render.com/docs/disks",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:29.405460+00:00",
+      "sha256": "2f7e89a3e607deb0b4bd313c077dcb4c7cdf9bfe36a76c6c6d9b787bb405dbb8",
+      "bytes": 356142,
+      "privateRawFile": "disks.html.gz"
+    },
+    "update-disk": {
+      "url": "https://api-docs.render.com/reference/update-disk",
+      "finalUrl": "https://api-docs.render.com/reference/update-disk",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:30.203464+00:00",
+      "sha256": "69f0e9ae5c5dcfd26aa773b72f1b7aef9e5f4ca963f326bfe63376b1f551f2d7",
+      "bytes": 482499,
+      "privateRawFile": "update-disk.html.gz"
+    },
+    "list-snapshots": {
+      "url": "https://api-docs.render.com/reference/list-snapshots",
+      "finalUrl": "https://api-docs.render.com/reference/list-snapshots",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:30.203377+00:00",
+      "sha256": "7c95371f3c3e10f1a966ce3c4982c2b79b69751fbaca08fe4fb579055760c490",
+      "bytes": 474906,
+      "privateRawFile": "list-snapshots.html.gz"
+    },
+    "restore-snapshot": {
+      "url": "https://api-docs.render.com/reference/restore-snapshot",
+      "finalUrl": "https://api-docs.render.com/reference/restore-snapshot",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:30.668554+00:00",
+      "sha256": "dbfdddc0d4187b5f14dd8b915cea8bae619429b7d4613590e4877e54f36ccf0c",
+      "bytes": 483890,
+      "privateRawFile": "restore-snapshot.html.gz"
+    },
+    "disk-usage": {
+      "url": "https://api-docs.render.com/reference/get-disk-usage",
+      "finalUrl": "https://api-docs.render.com/reference/get-disk-usage",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:32.055309+00:00",
+      "sha256": "5035dcd051c917ecd24a44eb4127288fe8467ef19742e2b95cc9fc93ed494ab3",
+      "bytes": 468629,
+      "privateRawFile": "disk-usage.html.gz"
+    },
+    "disk-capacity": {
+      "url": "https://api-docs.render.com/reference/get-disk-capacity",
+      "finalUrl": "https://api-docs.render.com/reference/get-disk-capacity",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:32.079027+00:00",
+      "sha256": "9fdf7635397b5239f3ecb71070adf7c002381f51da77435c436af506b171baee",
+      "bytes": 468818,
+      "privateRawFile": "disk-capacity.html.gz"
+    },
+    "metric-units": {
+      "url": "https://render.com/docs/metrics-streams-reference",
+      "finalUrl": "https://render.com/docs/metrics-streams-reference",
+      "http": 200,
+      "retrievedAt": "2026-10-30T13:59:32.280618+00:00",
+      "sha256": "900ae05ef735b09c47c8b6a7505bb90a9d80fc1301386c64f13ad3b3e52946e1",
+      "bytes": 826339,
+      "privateRawFile": "metric-units.html.gz"
+    }
+  }
+}
