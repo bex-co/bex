@@ -115,6 +115,11 @@ const en: Record<string, TranslationEntry> = {
     message: "Invite a teammate",
     description: "Checklist item linking to workspace settings (team)",
   },
+  "onboarding.gettingStarted.upgradeToInvite": {
+    message: "Upgrade your plan to invite teammates",
+    description:
+      "Checklist item shown instead of Invite a teammate while every seat is used (Hobby); opens the plan change",
+  },
 };
 
 export default en;

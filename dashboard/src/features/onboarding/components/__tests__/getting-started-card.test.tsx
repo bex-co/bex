@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   gitConnected: false,
   members: 1,
   invites: 0,
+  seats: null as { used: number; limit: number } | null,
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -28,6 +29,7 @@ vi.mock("@/features/team/hooks/use-team", () => ({
   useTeam: () => ({
     members: Array.from({ length: state.members }, (_, i) => ({ id: `m${i}` })),
     invites: Array.from({ length: state.invites }, (_, i) => ({ id: `i${i}` })),
+    seats: state.seats,
   }),
 }));
 
@@ -60,6 +62,7 @@ beforeEach(() => {
   state.gitConnected = false;
   state.members = 1;
   state.invites = 0;
+  state.seats = null;
 });
 
 describe("GettingStartedCard (ADR075 D2)", () => {
@@ -87,6 +90,32 @@ describe("GettingStartedCard (ADR075 D2)", () => {
     expect(
       within(card).getByRole("link", { name: "Create your first service" }),
     ).toHaveAttribute("href", "/services/new");
+  });
+
+  // A Hobby workspace has one seat: inviting would dead-end in the seat wall.
+  it("offers the plan change instead of an invite while every seat is used", async () => {
+    state.seats = { used: 1, limit: 1 };
+    const { router } = renderCard();
+    const card = await screen.findByTestId("getting-started-card");
+    expect(
+      within(card).queryByRole("link", { name: "Invite a teammate" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      within(card).getByRole("link", {
+        name: "Upgrade your plan to invite teammates",
+      }),
+    );
+    expect(router.state.location.pathname).toBe("/workspace/settings");
+    expect(router.state.location.search).toEqual({ plan: "change" });
+  });
+
+  it("keeps the invite step while a seat is free", async () => {
+    state.seats = { used: 1, limit: 10 };
+    renderCard();
+    const card = await screen.findByTestId("getting-started-card");
+    expect(
+      within(card).getByRole("link", { name: "Invite a teammate" }),
+    ).toHaveAttribute("href", "/workspace/settings");
   });
 
   it("stays dismissed across a reload, per workspace", async () => {
