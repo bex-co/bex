@@ -2,6 +2,7 @@
 """Use the reviewed official pins as publishing inputs; never move a pin."""
 import json
 import re
+import sys
 from pathlib import Path
 
 
@@ -31,4 +32,9 @@ def matrix(source):
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[2]
     source = (root / "lego/operator/internal/build/native.go").read_text()
-    print(json.dumps(matrix(source), separators=(",", ":")))
+    if len(sys.argv) == 3 and sys.argv[1] == "--changed-from":
+        print(str(matrix(source) != matrix(Path(sys.argv[2]).read_text())).lower())
+    elif len(sys.argv) == 1:
+        print(json.dumps(matrix(source), separators=(",", ":")))
+    else:
+        raise SystemExit("usage: matrix.py [--changed-from previous-native.go]")

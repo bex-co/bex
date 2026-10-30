@@ -61,3 +61,9 @@ Bullseye 系统补丁已在 amd64/arm64 编译，Debian 的 14 项上游测试�
 本地 `GOWORK=off make test`（含 envtest）通过；构建包复测、matrix 行/递归/精确来源测试、Actions 和 image-pin 守卫通过；`/simplify` 三路复核已应用多行输入修正、重复 probe 清理和编译缓存改进。Bullseye 双架构组件测试通过。Node14 第一次完整编译成功且实测永久错误 -17，但旧版测试预期错误名称写错，已修正并开始干净重跑；版本身份与 streaming 验收不以那次失败记录冒充通过。Node20 的完整编译仍在运行。
 
 发布配方需要先 ship 才能通过 main-only OIDC 工作流生成签名候选；发布、逐版本验证、source/inventory 接入与 live 验收仍未完成。t002–t008 保持开放，本次源码提交不代表里程碑 done。
+
+### 后续发布效率与 CI 检查
+
+已修正 adoption-only native pin 提交会取消其余镜像发布的问题：比较原始发布输入，相同输入不重建；并发取消仅限同一运行时的新发布。手动 refresh 和真实配方/上游变更仍发布。4 项 matrix 行为测试、Actions 校验和增量代码复核通过。Node 编译输出写入构建临时日志，只在失败时输出末尾，避免 BuildKit 截断有用结果。
+
+Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/actions/runs/40968544989) 是 Alpine CDN 的一次 TLS 下载故障；上一绿 run 40966856467 使用相同 Dockerfile 成功。附近三次失败原因均不同，暂不添加无依据的源码修改；已仅重跑失败任务并立即继续，未等待 CI。见 [诊断证据](evidence/red-main-40968544989.json)。

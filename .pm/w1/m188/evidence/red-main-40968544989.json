@@ -1,0 +1,39 @@
+{
+  "checked_at": "2026-10-30T01:26:31.772554+00:00",
+  "failed_run": {
+    "id": 40968544989,
+    "source": "3ae1e6f35a459a1ef8c148531b23749fb7d538d6",
+    "job": "build",
+    "file": "deploy/opensandbox/controller.Dockerfile:25",
+    "command": "apk add --no-cache git",
+    "failure": "Alpine v3.24 main x86_64 APKINDEX TLS unspecified error after150.6s; apk consequently reports git no such package",
+    "failure_at": "2026-10-30T01:21:51Z"
+  },
+  "last_green": {
+    "id": 40966856467,
+    "source": "885d613176b55ded60e3c022778cd462fc7570c5",
+    "same_apk_step_success_at": "2026-10-29T23:21:09Z"
+  },
+  "controller_dockerfile_blobs": {
+    "885d613176b55ded60e3c022778cd462fc7570c5": "192fea495c5925fe6ddfa00f8c04f7cd3a0a5ba8",
+    "3ae1e6f35a459a1ef8c148531b23749fb7d538d6": "192fea495c5925fe6ddfa00f8c04f7cd3a0a5ba8",
+    "HEAD": "192fea495c5925fe6ddfa00f8c04f7cd3a0a5ba8"
+  },
+  "recent_prior_failures": [
+    {
+      "id": 40882851365,
+      "failure": "deploy Git push rejected (concurrent main change); not apk TLS"
+    },
+    {
+      "id": 40876081762,
+      "failure": "test-dashboard / dashboard typecheck + lint + test failed; build skipped; no apk execution"
+    },
+    {
+      "id": 40872547525,
+      "failure": "operator go build fatal error: fault (emulation/compiler crash); not apk TLS"
+    }
+  ],
+  "verdict": "isolated infrastructure/network flake in reviewed nearby failures; no source mutation required now",
+  "action": "Root requested gh run rerun 40968544989 --failed; do not wait or monitor; resume m188",
+  "no_gate_weakened": true
+}
