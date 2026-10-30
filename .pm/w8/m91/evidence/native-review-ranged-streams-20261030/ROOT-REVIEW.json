@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-30T20:18:42.147176+00:00",
+  "scope": "tool validation only; not Ruby31 supplier approval",
+  "driver_sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+  "policy_copy_sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+  "quality": {
+    "reviewer": "root",
+    "result": "PASS",
+    "basis": "overlong and full-size tamper reach unchanged canonical rejection; exact offset/end/total/remaining-length requirements; no synthetic EOF at descriptor size, no ignored200/policy-error retry; repeated11range controls exit0"
+  },
+  "reuse": {
+    "reviewer": "fixture_quality",
+    "result": "PASS",
+    "basis": "optional opener only; existing descriptor, whole hash/size, public scope, cache locks/commit and ordered pool reused; file-download200 restart deliberately excluded from stream path"
+  },
+  "efficiency": {
+    "reviewer": "disk221",
+    "result": "PASS",
+    "basis": "three GET budget; <=1MiB chunks and no body files; bounded fresh auth and metadata writes; responses closed; unchanged worker/capacity bounds"
+  },
+  "root_assignment": "One firstV11/fourthcompleteRuby31 validation assigned after allreviews; separate fresh output/cache/controls,21genuinepriorfullreceipts with custody/HEAD, failedblobsfromzero, allactualcurrentgates required. Result not part of this tool capsule."
+}
