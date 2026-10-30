@@ -1,0 +1,19 @@
+{
+  "requested_at": "2026-10-30T07:17:17.314974+00:00",
+  "authorized_scope": "one rerun of Node18 login-transport failure only; no other job/run cancellation or retry",
+  "command": [
+    "gh",
+    "run",
+    "rerun",
+    "41000570846",
+    "--job",
+    "123925180265"
+  ],
+  "reason": "actual GHCR token request timed out awaiting headers before any build; no credential denial",
+  "source_error_log": "node18-job.log:465",
+  "automatic_retries": 0,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "job 123925180265 cannot be rerun\n",
+  "response_at": "2026-10-30T07:17:40.012585+00:00"
+}

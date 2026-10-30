@@ -1,0 +1,71 @@
+{
+  "run": 41000570846,
+  "source_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "actual_log_findings": {
+    "node16": {
+      "job": 123885951331,
+      "stage": "scan amd64 candidate",
+      "exact_location": "node16-job.log:8052",
+      "cause": "Trivy v0.70.0 analysis timeout at usr/lib/gcc/x86_64-linux-gnu/12/lto1; semaphore acquire: context deadline exceeded",
+      "vulnerability_and_secret_scanners": "both enabled",
+      "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "approval": "ungated; failed scan and skipped later gates do not authorize adoption"
+    },
+    "node18": {
+      "job": 123925180265,
+      "stage": "docker/login-action before build",
+      "exact_location": "node18-job.log:465",
+      "cause": "GHCR token request timed out waiting for response headers; no authentication denial reported",
+      "classification": "first transport flake, separate from Trivy deadline exhaustion"
+    }
+  },
+  "node18_single_rerun": {
+    "requested_at": "2026-10-30T07:17:17.314974+00:00",
+    "authorized_scope": "one rerun of Node18 login-transport failure only; no other job/run cancellation or retry",
+    "command": [
+      "gh",
+      "run",
+      "rerun",
+      "41000570846",
+      "--job",
+      "123925180265"
+    ],
+    "reason": "actual GHCR token request timed out awaiting headers before any build; no credential denial",
+    "source_error_log": "node18-job.log:465",
+    "automatic_retries": 0,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "job 123925180265 cannot be rerun\n",
+    "response_at": "2026-10-30T07:17:40.012585+00:00"
+  },
+  "read_only_reconciliation": {
+    "node18": {
+      "id": 123925180265,
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    "old_run": {
+      "id": 41000570846,
+      "status": "in_progress",
+      "conclusion": null,
+      "run_attempt": 1,
+      "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    "checked_at": "2026-10-30T07:21:45.441328+00:00"
+  },
+  "disposition": "One rerun request was rejected while workflow remained active; no automatic write retries. Node18 remains failed attempt1 and overall run is still in_progress attempt1. Root owns new timeout-fixed workflow recovery.",
+  "source_changes": "none in this task; narrow timeout fix already shipped separately by root as059c163b3",
+  "workflow_cancellations": 0,
+  "new_watches": 0,
+  "cache_measurement": "not duplicated; delegated to nativeutility_efficiency",
+  "evidence_sha256": {
+    "node16-job.log": "9a9b8f9019b3a713aa19d1098d128d54068a2023ad8226db41b82aec0b27bc5f",
+    "node18-job.log": "a84793e6fe956bcf08a6aa339312b65c2619c30a5b090ac01900fb33bb4554ec",
+    "node16-failure-excerpt.txt": "25d49389c7d34ce0f479616e471b9ee4b7f763237b03e8bb4fd31b22f9cde9a3",
+    "node18-failure-excerpt.txt": "c2e458dbae74e56fc0012983683a115968fce0033e7d89cdc37c059709bb99d7",
+    "node18-rerun-receipt.json": "cb411d6a8997792e335b085e5648674bcce07f4598e2cd66a497fe84290afefc",
+    "node18-rerun-reconciliation.json": "94c1e0b9ed9ea415fab6843552c51e9f9f252e81a38785d8f46ddfc941414b68"
+  }
+}

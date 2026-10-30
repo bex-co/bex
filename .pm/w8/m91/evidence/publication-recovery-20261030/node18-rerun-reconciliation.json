@@ -1,0 +1,17 @@
+{
+  "node18": {
+    "id": 123925180265,
+    "status": "completed",
+    "conclusion": "failure",
+    "run_attempt": 1,
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+  },
+  "old_run": {
+    "id": 41000570846,
+    "status": "in_progress",
+    "conclusion": null,
+    "run_attempt": 1,
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+  },
+  "checked_at": "2026-10-30T07:21:45.441328+00:00"
+}

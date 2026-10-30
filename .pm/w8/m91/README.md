@@ -63,3 +63,8 @@ This is local execution evidence. Published amd64/arm64 suppliers, actual produc
 The [dev-8 Job proof](evidence/dev8-predeploy-20261030/README.md) executes the canonical controller-generated PodTemplate with the retained immutable Node image: thirteen original programs, thirty-nine loopback HTTP proofs, ten utility groups and env/file/credential checks pass. An omitted-pull-secret revision remains unstarted with authentication denial even after caching the image. Exact owned objects, Pods and the isolated registry proxy are removed; baseline UIDs are unchanged. It uses companion Python 3.11 and a metadata owner wrapper, so it does not establish primary-Python, native-init or full controller/backend release behavior.
 
 The [genuine amd64 exact-default proof](evidence/exact-python-default-amd64-20261030/README.md) independently verifies Python 3.14.8, all eighty shared libraries, actual loading/C-extension behavior and patched Brotli in full genuine Syft/SPDX archives. It uses the reviewed Python primary with the unchanged factory recipe, rather than the earlier bounded generic supplier. Published-supplier replay, actual production adoption and original fresh hosted acceptance remain open; no task is closed by these local checkpoints.
+
+
+## Publication recovery checkpoint — 2026-10-30
+
+[Actual failed-job evidence](evidence/publication-recovery-20261030/README.md) separates Node 14/16 scan-analysis deadlines from Node 18's pre-build registry transport timeout. The narrow fifteen-minute scan fix shipped as `059c163b3`, retaining every scan/probe/signature and existing runner. Its new matrix is queued; no failed candidate or cache was approved, no running compile was cancelled, and no successful publication/adoption is claimed.

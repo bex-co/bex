@@ -1,0 +1,85 @@
+{
+  "recorded_at": "2026-10-30T07:27:39.932744+00:00",
+  "files": [
+    {
+      "path": "node16-node18-diagnosis-summary.json",
+      "source_name": "node16-node18-diagnosis-summary.json",
+      "sha256": "bab0a8f0c64a279e06248f10a13c49c0faf548cb23b66f70522a18610ea8e3bc",
+      "bytes": 3231,
+      "source_sha256": "bab0a8f0c64a279e06248f10a13c49c0faf548cb23b66f70522a18610ea8e3bc",
+      "source_bytes": 3231
+    },
+    {
+      "path": "node16-failure-excerpt.txt.gz",
+      "source_name": "node16-failure-excerpt.txt",
+      "sha256": "c1873fcae45796da9d321d43d8e5f18e896d0f74281a495ab0f6b6e044a0aacd",
+      "bytes": 1181,
+      "source_sha256": "25d49389c7d34ce0f479616e471b9ee4b7f763237b03e8bb4fd31b22f9cde9a3",
+      "source_bytes": 2749
+    },
+    {
+      "path": "node18-failure-excerpt.txt.gz",
+      "source_name": "node18-failure-excerpt.txt",
+      "sha256": "c1ccc40111d7fde82a5e44e6a8c36b229b069ffc2d0770e326095d37e1eb931a",
+      "bytes": 665,
+      "source_sha256": "c2e458dbae74e56fc0012983683a115968fce0033e7d89cdc37c059709bb99d7",
+      "source_bytes": 1608
+    },
+    {
+      "path": "node18-rerun-receipt.json",
+      "source_name": "node18-rerun-receipt.json",
+      "sha256": "cb411d6a8997792e335b085e5648674bcce07f4598e2cd66a497fe84290afefc",
+      "bytes": 590,
+      "source_sha256": "cb411d6a8997792e335b085e5648674bcce07f4598e2cd66a497fe84290afefc",
+      "source_bytes": 590
+    },
+    {
+      "path": "node18-rerun-reconciliation.json",
+      "source_name": "node18-rerun-reconciliation.json",
+      "sha256": "94c1e0b9ed9ea415fab6843552c51e9f9f252e81a38785d8f46ddfc941414b68",
+      "bytes": 412,
+      "source_sha256": "94c1e0b9ed9ea415fab6843552c51e9f9f252e81a38785d8f46ddfc941414b68",
+      "source_bytes": 412
+    },
+    {
+      "path": "candidate-cache-receipt.json",
+      "source_name": "candidate-cache-receipt.json",
+      "sha256": "302d4be0c615fb20916c600d1a81a60e0ef636b47953be5a08c2b156a0b266b4",
+      "bytes": 1501,
+      "source_sha256": "302d4be0c615fb20916c600d1a81a60e0ef636b47953be5a08c2b156a0b266b4",
+      "source_bytes": 1501
+    },
+    {
+      "path": "builder-and-cache-log-excerpt.txt.gz",
+      "source_name": "builder-and-cache-log-excerpt.txt",
+      "sha256": "73b08a14911c795a674cb29ac5161ded5904245ffdb612192b859fae4534085d",
+      "bytes": 332,
+      "source_sha256": "5f1a9ada7965c23254f16b0fee6b57728b4cb452e88ef45a731031442d493d8a",
+      "source_bytes": 868
+    },
+    {
+      "path": "node14-job.log.gz",
+      "source_name": "node14-job.log",
+      "sha256": "2c857a248abc65c7dcc2a1fbb1172d60376431a5d8edeefed758b827ce9002b3",
+      "bytes": 152459,
+      "source_sha256": "5886d2f39e3ac78679242e06b8dad8dda98f26e952893f7a8ef3d7586d9ad7d9",
+      "source_bytes": 1092178
+    },
+    {
+      "path": "node16-job.log.gz",
+      "source_name": "node16-job.log",
+      "sha256": "dcb864daf236186cece3fe2e92868a6a5fb7f872ef7d61e3dba9a7a9e6c6fddd",
+      "bytes": 122276,
+      "source_sha256": "9a9b8f9019b3a713aa19d1098d128d54068a2023ad8226db41b82aec0b27bc5f",
+      "source_bytes": 792312
+    },
+    {
+      "path": "node18-job.log.gz",
+      "source_name": "node18-job.log",
+      "sha256": "5ba5a901af8f38aa70532fb4dc10af5a2ab265df470942c7079df9fcc311e5b8",
+      "bytes": 8419,
+      "source_sha256": "a84793e6fe956bcf08a6aa339312b65c2619c30a5b090ac01900fb33bb4554ec",
+      "source_bytes": 36726
+    }
+  ]
+}
