@@ -412,19 +412,27 @@ func (r *NamespaceReconciler) workspaceNamespaceObject(name string, t Tenant, re
 // baseResourceQuotas are the per-namespace aggregate ceilings, split in two
 // because a scoped quota may only carry Pod resources (w2/m247):
 //
-//   - tenant-compute-quota: requests/limits CPU and memory, scoped to Pods
-//     whose PriorityClass is NOT appv1alpha1.DatastorePriorityClassName. A Pod
-//     with no class has PriorityClassName "", which `NotIn` matches (verified
+//   - tenant-compute-quota: requests/limits CPU and memory and the pod count,
+//     scoped to Pods whose PriorityClass is NOT
+//     appv1alpha1.DatastorePriorityClassName. A Pod with no class has
+//     PriorityClassName "", which `NotIn` matches (verified
 //     on a v1.36 API server: a classless Pod is charged, a bex-datastore Pod is
 //     not, and a classless Pod past the cap is refused), so every service, job
-//     and build stays charged while Postgres/Key Value Pods are exempt.
-//   - tenant-quota: everything else, unscoped — object counts, pods, storage,
-//     PVCs, LoadBalancers and ephemeral storage still cover datastores too. It
-//     keeps the historical name because callers read its count caps
-//     (core.TenantQuotaName).
+//     and build stays charged while Postgres/Key Value Pods are exempt. The
+//     pod count moved here in w2/056 so datastore Pods stop using up the
+//     services' pod budget; the same proof holds for `pods` on a v1.36 API
+//     server (a classless Pod past pods=1 is refused, bex-datastore Pods past
+//     it are admitted).
+//   - tenant-quota: everything else, unscoped — object counts, storage, PVCs,
+//     LoadBalancers and ephemeral storage still cover datastores too, because
+//     the API server refuses a PriorityClass scope on them ("unsupported scope
+//     applied to resource"; a scoped count/jobs.batch is accepted but never
+//     matches a Job, so it would charge nothing). quotaForPlan sizes these with
+//     room for every datastore instead. It keeps the historical name because
+//     callers read its count caps (core.TenantQuotaName).
 //
-// Compute comes first so a namespace being migrated from the single-quota
-// shape is never without a CPU cap: the scoped quota exists before the update
+// Compute comes first so a namespace being migrated from an older shape is
+// never without a CPU or pod cap: the scoped quota exists before the update
 // that drops those keys from tenant-quota.
 func (r *NamespaceReconciler) baseResourceQuotas(namespace string, t Tenant) []*corev1.ResourceQuota {
 	compute, rest := splitComputeQuota(quotaForPlan(t.Plan))
@@ -452,17 +460,18 @@ func (r *NamespaceReconciler) baseResourceQuotas(namespace string, t Tenant) []*
 	}}
 }
 
-// computeQuotaKeys are the dimensions datastores are exempt from. Pods and
-// ephemeral storage stay in the unscoped quota: Kubernetes refuses
-// ephemeral-storage under a PriorityClass scope, and the pod count is an object
-// count the decision keeps covering every Pod.
+// computeQuotaKeys are the dimensions datastores are exempt from: CPU,
+// memory and the pod count, the only ones a PriorityClass scope accepts.
+// Ephemeral storage stays in the unscoped quota because Kubernetes refuses it
+// under that scope.
 var computeQuotaKeys = []corev1.ResourceName{
 	corev1.ResourceRequestsCPU, corev1.ResourceRequestsMemory,
 	corev1.ResourceLimitsCPU, corev1.ResourceLimitsMemory,
+	corev1.ResourcePods,
 }
 
-// splitComputeQuota separates the CPU/memory dimensions of a plan's caps from
-// the rest.
+// splitComputeQuota separates the CPU/memory/pod dimensions of a plan's caps
+// from the rest.
 func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceList) {
 	compute, rest = corev1.ResourceList{}, caps.DeepCopy()
 	for _, key := range computeQuotaKeys {
@@ -496,33 +505,26 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
 // autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
 // cannot inflate a namespace's storage — and its per-GB-second bill — without
-// limit. Derivation: the tier catalog's largest datastore floor (10 GB: the
-// ≥1-CPU postgres plans, w2/m171) × the plan's Postgres+Key Value count caps,
-// times a generous autoscale-headroom factor, kept deliberately far below "every
-// datastore at the 16 TiB disk-autoscale ceiling" (which would be ~400 TiB for a
-// paid namespace). paid: 50 datastores × 10 GB × ~10 ≈ 5 TiB; free: 2 × 1 GB × ~10
-// = 20 GiB. persistentvolumeclaims covers each datastore's PVC (HA replicas
-// included) plus slack.
-//
-// Persistent service DISKS (docs/ADR082-persistent-disks.md) are the second
-// claimant on both dimensions: one RWO PVC per disk-bearing service, sized by
-// the owner rather than by a plan floor. The paid ceiling already absorbs them
-// (100 services at the 10 GB default is 1 TiB inside a 5 TiB budget, and the
-// disk's own bill is the real limiter — provisioned capacity is charged whether
-// or not it is used). The free/hobby figures are raised to 120 GiB / 8 PVCs so a
-// hobby workspace can attach a couple of default-size disks to its paid services
-// beside its datastore floors; at 20 GiB / 4 PVCs a single disk would have eaten
-// a quarter of the claim budget and most of the storage. services.loadbalancers/nodeports are zeroed because bex
-// only ever creates ClusterIP Services in a tenant namespace — a defense-in-depth
-// denial of billable cloud LBs against an operator bug or a compromised principal.
+// limit. Each is the plan's own budget below plus the datastore room
+// (datastoreQuotaRoom, w2/056, derived at the end of this comment). The budget
+// is what persistent service DISKS (docs/ADR082-persistent-disks.md: one RWO
+// PVC per disk-bearing service, sized by the owner) and datastore growth past
+// the plan floors draw on: paid 5 TiB / 200 PVCs (100 services at the 10 GB
+// default disk is 1 TiB, and the disk's own bill is the real limiter —
+// provisioned capacity is charged whether or not it is used); hobby 120 GiB /
+// 8 PVCs, room for a couple of default-size disks on its paid services. Both
+// stay far below "every datastore at the 16 TiB disk-autoscale ceiling".
+// services.loadbalancers/nodeports are zeroed because bex only ever creates
+// ClusterIP Services in a tenant namespace — a defense-in-depth denial of
+// billable cloud LBs against an operator bug or a compromised principal.
 //
 // requests/limits.ephemeral-storage (round-14 #2) bound the aggregate
 // writable-layer + log disk — the axis PVC quotas cannot see. Per-container the
 // tier ladder already bounds it (resourcesForTier, 1→32Gi) and the LimitRange
-// defaults tierless containers to 1Gi/10Gi, so these aggregates are the
-// defense-in-depth ceiling sized to hold a plan's worst case: paid ≈ 50
+// defaults tierless containers to 1Gi/10Gi, so the plan budget is the
+// defense-in-depth ceiling sized to hold the services' worst case: paid ≈ 50
 // CPU-requested pro-ultra pods × 32 Gi ≈ 1.6 Ti < 2 Ti; free ≈ 50 tierless
-// containers × 1 Gi = 50 Gi < 100 Gi.
+// containers × 1 Gi = 50 Gi < 100 Gi. The datastore room is added on top.
 //
 // The compute axes carry +1 surge pod of headroom above the plan's
 // steady-state budget: App Deployments use the default RollingUpdate strategy
@@ -547,6 +549,37 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // Render does not have: a Hobby workspace's 3 CPU could never hold a `2c-4g`
 // HA pair, while the same plan allows 25 paid Postgres. Datastores are bounded
 // by their count caps (QuotaCapsForPlan) and per-instance billing instead.
+//
+// The count caps must also bind before every dimension datastores still share
+// with services (w2/056). Hobby allows 25 Postgres and 25 Key Value, but on a
+// v1.36 API server the old `persistentvolumeclaims: 8` refused the fifth HA
+// Postgres, and the 10 Gi of ephemeral-storage limits the LimitRange gives
+// every datastore container had used up the 200 Gi cap by then, refusing every
+// new service Pod too; `pods: 50` came next. Render has no such cap. So:
+//
+//   - pods moved into the scoped compute quota (baseResourceQuotas) and now
+//     counts services, jobs and builds only. A datastore's Pods are bounded by
+//     its shape (at most 7 instances + a pooler) times its count cap.
+//   - PVCs, storage, ephemeral storage and count/jobs.batch cannot be scoped
+//     by PriorityClass, so each gets datastoreQuotaRoom on top of the plan
+//     budget: the count caps times the largest shape the operator builds.
+//     Per Postgres: HA primary + standby + 5 read replicas = 7 instances, one
+//     data PVC each (no separate WAL volume) at the 10 GB floor. Containers
+//     charged the LimitRange's 1 Gi / 10 Gi ephemeral defaults: 7 instances ×
+//     2 (postgres, barman-cloud), PgBouncer and its surge Pod, one CNPG
+//     initdb/join Job and 3 concurrent exports, 20 in all. Jobs: 3 exports, 3
+//     expiries, 1 purge and 1 CNPG Job = 8. Per Key Value: 1 PVC at the 5 GB floor; valkey + exporter +
+//     the proxy and its surge Pod = 4 defaulted containers, plus a running
+//     backup's declared 2 × 5 + 1 = 11 Gi; Jobs: 3 + 3 kept by the backup
+//     CronJob + 1 running = 7. At 25 + 25 that is 200 PVCs, 1875 Gi of
+//     storage, 875 Gi / 6275 Gi of ephemeral requests/limits and 375 Jobs, so
+//     Hobby holds 208 PVCs, 1995 Gi, 975 Gi / 6475 Gi and 400 Jobs.
+//
+// Services stay bounded: their Pods by the scoped CPU/memory/pod quota, which
+// is unchanged; their disks by one disk per service under the services cap
+// and the shared storage ceiling; their ephemeral storage by the tier ladder
+// under the compute quota. A datastore larger than its floor grows into the
+// plan budget, as before.
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant,
 	// plus one pro-ultra surge pod of rollout headroom).
@@ -560,7 +593,7 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		ephReq, ephLim = "100Gi", "200Gi"
 	}
 	caps := QuotaCapsForPlan(plan)
-	return corev1.ResourceList{
+	quota := corev1.ResourceList{
 		corev1.ResourceRequestsCPU:              resource.MustParse(cpuReq),
 		corev1.ResourceRequestsMemory:           resource.MustParse(memReq),
 		corev1.ResourceLimitsCPU:                resource.MustParse(cpuLim),
@@ -577,6 +610,12 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		DatabasesQuotaCountKey:                  *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
 		KeyValuesQuotaCountKey:                  *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
+	for key, room := range datastoreQuotaRoom(caps) {
+		total := quota[key]
+		total.Add(room)
+		quota[key] = total
+	}
+	return quota
 }
 
 // baseLimitRange supplies request/limit defaults for pods that omit them

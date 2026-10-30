@@ -53,12 +53,12 @@ This is reachability control, not data-loss prevention: an approved writable HTT
 
 Other communication is opt-in, namespace-scoped so an allow physically cannot cross tenants, and narrowed to named services/ports. Plan-tier caps move out of bex-api code (`BEX_MAX_*`) into per-namespace `ResourceQuota`/`LimitRange` — enforced by the API server, not bypassable by an application bug.
 
-**Per-plan quota dimensions (w7/m59, ADR045 Finding 4).** `quotaForPlan` (`lego/backend/internal/store/namespaces.go`) stamps each namespace's `tenant-quota` ResourceQuota with compute (cpu/memory requests+limits), `pods`, `count/jobs.batch`, the object-count caps that retire `BEX_MAX_*` (`count/{apps,databases,keyvalues}.app.bex.co`), and the storage/Service axis that bounds the cost-abuse vector:
+**Per-plan quota dimensions (w7/m59, ADR045 Finding 4).** `quotaForPlan` (`lego/backend/internal/store/namespaces.go`) stamps each namespace's quotas. Since w2/m247 and w2/056, compute (cpu/memory requests+limits) and `pods` live in `tenant-compute-quota`, scoped `PriorityClass NotIn [bex-datastore]`, so they bound services, jobs and builds and never a Postgres or Key Value Pod. The unscoped `tenant-quota` carries ephemeral storage, `count/jobs.batch`, the object-count caps that retire `BEX_MAX_*` (`count/{apps,databases,keyvalues}.app.bex.co`), and the storage/Service axis that bounds the cost-abuse vector:
 
 | dimension | free | paid | rationale |
 | --- | --- | --- | --- |
-| `requests.storage` | 20Gi | 5Ti | aggregate tenant disk ceiling. The CNPG disk-autoscaler grows PVCs automatically, so without this an autoscaling Postgres is an unbounded per-GB-second bill. Derived from the tier catalog's largest datastore floor (5 GB) × the plan's Postgres+Key Value count caps × a generous autoscale-headroom factor, kept far below "every datastore at the 16 TiB disk-autoscale ceiling" (~400 TiB for a paid namespace). |
-| `persistentvolumeclaims` | 4 | 200 | one PVC per datastore (HA replicas included) plus slack. |
+| `requests.storage` | 1995Gi | 6995Gi | aggregate tenant disk ceiling. The CNPG disk-autoscaler grows PVCs automatically, so without this an autoscaling Postgres is an unbounded per-GB-second bill. The plan budget (hobby 120Gi, paid 5Ti: service disks per [ADR082](ADR082-persistent-disks.md) plus datastore growth past the floors) plus room for every datastore the count caps allow at its largest shape (w2/056: 25 Postgres × 7 instances × 10 GB + 25 Key Value × 5 GB = 1875Gi), kept far below "every datastore at the 16 TiB disk-autoscale ceiling". |
+| `persistentvolumeclaims` | 208 | 400 | plan budget (hobby 8, paid 200) plus one PVC per datastore instance at the count caps (25 × 7 + 25 = 200), so the count caps bind first. |
 | `services.loadbalancers` | 0 | 0 | bex only ever creates ClusterIP Services in a tenant namespace; deny billable cloud LBs outright (defense-in-depth against an operator bug or compromised principal). |
 | `services.nodeports` | 0 | 0 | same — no NodePort exposure from a tenant namespace. |
 
