@@ -2606,7 +2606,9 @@ for required_operator_workload_guard in \
   "c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL']" \
   "['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID']" \
   "['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']" \
-  "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"; do
+  "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']" \
+  "variables.pod.priorityClassName == 'bex-datastore'" \
+  "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'KeyValue'"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
     echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2
     fail=1
@@ -2614,11 +2616,12 @@ for required_operator_workload_guard in \
 done
 # DELETE is namespace-confined above, but must not re-validate the old Pod
 # against today's CREATE/UPDATE grammar: doing so could make a legacy workload
-# impossible for the operator to clean up. Each of the six shape validations
-# explicitly short-circuits on DELETE.
+# impossible for the operator to clean up. Each of the seven shape validations
+# (the seventh is the w2/m247 priority grammar) explicitly short-circuits on
+# DELETE.
 operator_delete_shape_bypasses="$(grep -Fc "request.operation == 'DELETE' ||" deploy/gitops/base/operator-workload-admission.yaml || true)"
-if [ "$operator_delete_shape_bypasses" -ne 6 ]; then
-  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 6" >&2
+if [ "$operator_delete_shape_bypasses" -ne 7 ]; then
+  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 7" >&2
   fail=1
 fi
 # w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
@@ -2994,6 +2997,27 @@ if grep -q 'expendable-pods-priority-cutoff' infra/clusterapi/autoscaler-values.
   echo "FAIL: autoscaler-values.yaml sets expendable-pods-priority-cutoff — bex-tenant-headroom's priority is chosen against the -10 default; re-derive both together before pinning it" >&2
   fail=1
 fi
+
+echo "==> datastore PriorityClass changes nothing but the compute quota (w2/m247)"
+# bex-datastore exists only so tenant-compute-quota can exclude it. Any value
+# but 0 changes scheduling between datastores and services (above 0 it would
+# preempt tenant Pods); globalDefault would hand every classless service the
+# exemption. The name is the Go contract both bex-api and the operator use.
+datastore_pc="$(yq -N 'select(.kind == "PriorityClass") |
+  [.metadata.name, .value, .globalDefault, .preemptionPolicy] | join("|")' \
+  deploy/gitops/base/datastore-priority.yaml | tr -d '\n')"
+if [ "$datastore_pc" != 'bex-datastore|0|false|PreemptLowerPriority' ]; then
+  echo "FAIL: datastore PriorityClass is '$datastore_pc' (want bex-datastore|0|false|PreemptLowerPriority)" >&2
+  fail=1
+fi
+grep -qF 'DatastorePriorityClassName = "bex-datastore"' lego/types/v1alpha1/datastore_priority.go || {
+  echo "FAIL: appv1alpha1.DatastorePriorityClassName no longer names deploy/gitops/base/datastore-priority.yaml's class" >&2
+  fail=1
+}
+grep -qF 'deploy/gitops/base/datastore-priority.yaml' scripts/mock-cluster.sh || {
+  echo "FAIL: scripts/mock-cluster.sh must install the datastore PriorityClass, or every local datastore Pod is refused" >&2
+  fail=1
+}
 
 echo "==> render-v1 seccomp profile keeps its exact delta from RuntimeDefault (w6/m150)"
 # The profile is generated (scripts/seccomp-render-v1/generate.sh); this pins

@@ -45,6 +45,7 @@ resources:
   - platform-namespaces.yaml # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
   - tenant-namespace.yaml # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
   - tenant-quotas.yaml # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
+  - datastore-priority.yaml # bex-datastore PriorityClass (value 0): datastore Pods carry it so the workspace compute quota excludes them (w2/m247)
   - bex-api-apps-rbac.yaml # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)
   - bex-ssh-apps-rbac.yaml # SSH gateway's namespace-scoped pod read + exec grant
   - operator-apps-rbac.yaml # operator's apps-namespace-scoped secrets grants (w7/m7)

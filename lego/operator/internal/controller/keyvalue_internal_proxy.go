@@ -105,6 +105,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		}}
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 		applyPodSpecServerDefaults(&dep.Spec.Template.Spec)
+		holdDatastorePriority(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before)
 		// An isolation toggle alone must not roll the one proxy replica: its pods
 		// are relabelled in place (syncKeyValuePodIsolation, w8/220).
 		holdIsolationLabel(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before, kv.Labels[labelNetworkIsolation])

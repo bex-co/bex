@@ -466,6 +466,11 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"requests": map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
 			"limits":   map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
 		},
+		// Every instance Pod CNPG generates runs under the datastore class, so
+		// the workspace compute quota does not charge it (w2/m247). An existing
+		// Cluster may withhold it until its Pods roll anyway
+		// (clusterAdoptsDatastorePriority).
+		"priorityClassName": appv1alpha1.DatastorePriorityClassName,
 	}
 	// A single-instance Cluster gets no PodDisruptionBudget. CNPG's default
 	// per-primary PDB allows zero disruptions, so it blocks every node drain
@@ -609,6 +614,7 @@ func poolerSpec(clusterName string) map[string]any {
 		"instances":    int64(1),
 		"type":         "rw",
 		"pgbouncer":    map[string]any{"poolMode": "transaction"},
+		"template":     poolerTemplate(),
 	}
 }
 
@@ -889,7 +895,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// --- PgBouncer Pooler when requested ---
-	if poolerRequeue, err := r.reconcilePooler(ctx, &db); err != nil {
+	if poolerRequeue, err := r.reconcilePooler(ctx, &db, cluster); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonPoolerFailed, err)
 	} else if poolerRequeue {
 		// CNPG creates source credentials after accepting its bootstrap spec.
@@ -979,6 +985,9 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.currentInstances = cnpgInstanceCount(cluster)
 		spec := cnpgClusterSpec(params)
+		if !clusterAdoptsDatastorePriority(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
+			delete(spec, "priorityClassName")
+		}
 		// Mark CNPG-managed pods as tenant databases so the node log shipper can
 		// exclude platform/auth CNPG clusters. Propagate workspace identity through
 		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
@@ -1197,8 +1206,9 @@ func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha
 
 // reconcilePooler creates/removes the owned CNPG Pooler and its derived
 // connection Secret. Its boolean result means the source Secret is not ready
-// yet and reconciliation should retry.
-func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha1.Database) (bool, error) {
+// yet and reconciliation should retry. cluster is the live CNPG Cluster, whose
+// datastore class the Pooler follows (poolerAdoptsDatastorePriority).
+func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured) (bool, error) {
 	if !db.Spec.Pooler {
 		if err := deleteOwned(ctx, r.Client, db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
 			return false, fmt.Errorf("remove pooler: %w", err)
@@ -1209,7 +1219,18 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 		db.Status.PoolerHost = ""
 		return false, nil
 	}
-	if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgPoolerGVK, db.Name+"-pooler", poolerSpec(db.Name)); err != nil {
+	pooler := &unstructured.Unstructured{}
+	pooler.SetGroupVersionKind(cnpgPoolerGVK)
+	pooler.SetName(db.Name + "-pooler")
+	pooler.SetNamespace(db.Namespace)
+	if err := r.Get(ctx, client.ObjectKeyFromObject(pooler), pooler); err != nil && !apierrors.IsNotFound(err) {
+		return false, fmt.Errorf("read pooler: %w", err)
+	}
+	spec := poolerSpec(db.Name)
+	if !poolerAdoptsDatastorePriority(pooler, cluster) {
+		delete(spec, "template")
+	}
+	if err := upsertOwnedObject(ctx, r.Client, r.Scheme, db, pooler, spec); err != nil {
 		return false, fmt.Errorf("create pooler: %w", err)
 	}
 	db.Status.PoolerHost = fmt.Sprintf("%s-pooler.%s.svc", db.Name, db.Namespace)

@@ -487,6 +487,13 @@ require "metrics-server availability" \
 require "build boundary (bex-build)" \
   env KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f deploy/gitops/base/build-boundary.yaml
 
+# The bex-datastore PriorityClass (w2/m247): the operator stamps it on every
+# new Postgres/Key Value Pod so the workspace compute quota excludes them, and
+# a Pod naming a class that does not exist is refused at admission. Production
+# gets it from deploy/gitops/base/datastore-priority.yaml through Argo CD.
+require "datastore PriorityClass" \
+  env KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f deploy/gitops/base/datastore-priority.yaml
+
 # The render-v1 Localhost seccomp profile (w6/m150): bex-api creates every new
 # Docker/image service as render-v1 by default (w6/090), and those pods ask the
 # kubelet for profiles/bex-render-v1.json, so a node without the file fails

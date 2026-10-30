@@ -186,6 +186,33 @@ var _ = Describe("Application container policy admission", func() {
 					}
 				}
 
+				// The datastore PriorityClass exempts a Pod from the workspace
+				// compute quota (w2/m247): only KeyValue-controlled workloads may
+				// carry it, and no operator workload may name any other class.
+				keyValueOwned := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
+					return o.APIVersion == appv1alpha1.SchemeGroupVersion.String() && o.Kind == "KeyValue" && o.Controller != nil && *o.Controller
+				})
+				priorities := []struct{ name, class string }{{"foreign-priority", "system-cluster-critical"}}
+				if keyValueOwned {
+					Expect(admissionPodTemplate(workload).Spec.PriorityClassName).To(Equal(appv1alpha1.DatastorePriorityClassName), scenario)
+					unowned := workload.DeepCopyObject().(client.Object)
+					unowned.SetOwnerReferences(nil)
+					expectDenied(operator.Create(ctx, admissionFreshWorkload(unowned), client.DryRunAll), scenario+" unowned datastore priority create")
+				} else {
+					priorities = append(priorities, struct{ name, class string }{"datastore-priority", appv1alpha1.DatastorePriorityClassName})
+				}
+				for _, priority := range priorities {
+					bad := workload.DeepCopyObject().(client.Object)
+					admissionPodTemplate(bad).Spec.PriorityClassName = priority.class
+					label := scenario + "/" + priority.name
+					expectDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), label+" create")
+					if _, job := bad.(*batchv1.Job); job {
+						Expect(apierrors.IsInvalid(operator.Update(ctx, bad, client.DryRunAll))).To(BeTrue(), label+" immutable Job update")
+					} else {
+						expectDenied(operator.Update(ctx, bad, client.DryRunAll), label+" update")
+					}
+				}
+
 				if widened := admissionPodTemplate(workload).Labels["app.bex.co/container-policy"]; widened != "" {
 					// A capability outside this policy's set (for image-v1, one
 					// render-v1 adds): each set is exact, not the union of every

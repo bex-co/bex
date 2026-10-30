@@ -27,8 +27,16 @@ import (
 )
 
 // TenantQuotaName is the per-workspace ResourceQuota carrying the plan's
-// count/<resource> caps (store.NamespaceReconciler applies it into `<ws>`).
+// count/<resource> caps, plus the storage, pod and ephemeral-storage axes,
+// over every object in the namespace (store.NamespaceReconciler applies it
+// into `<ws>`).
 const TenantQuotaName = "tenant-quota"
+
+// TenantComputeQuotaName is the per-workspace ResourceQuota carrying the plan's
+// CPU/memory budget. It is scoped to Pods outside the datastore PriorityClass
+// (appv1alpha1.DatastorePriorityClassName), so it bounds services, jobs and
+// builds but never a Postgres or Key Value instance (w2/m247).
+const TenantComputeQuotaName = "tenant-compute-quota"
 
 // QuotaCapError translates a per-namespace ResourceQuota admission rejection
 // (the count/<resource> caps that replaced the retired app-code

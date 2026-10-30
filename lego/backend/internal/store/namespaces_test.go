@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func newTestNamespaceReconciler(t *testing.T) (*NamespaceReconciler, *memStore, client.Client) {
@@ -310,6 +312,76 @@ func TestResourceQuotaConvergesExistingNamespaceToNewShape(t *testing.T) {
 	}
 	if _, ok := q.Spec.Hard[corev1.ResourceServicesLoadBalancers]; !ok {
 		t.Error("reconcile did not add the services.loadbalancers cap to an existing quota")
+	}
+}
+
+// TestComputeQuotaExemptsDatastores pins w2/m247: the plan's CPU/memory budget
+// lives in its own quota scoped to Pods outside the datastore PriorityClass,
+// and every other dimension stays in the unscoped tenant-quota, so datastores
+// are exempt from compute only. It also migrates a namespace provisioned in the
+// single-quota shape (compute keys inside tenant-quota), which is what every
+// production namespace holds before this change.
+func TestComputeQuotaExemptsDatastores(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t)
+	fresh, _ := store.CreateTenant(ctx, "fresh", PlanHobby)
+	legacy, _ := store.CreateTenant(ctx, "legacy", PlanHobby)
+
+	legacyNS := WorkspaceNamespace(legacy.ID)
+	if err := cl.Create(ctx, r.workspaceNamespaceObject(legacyNS, legacy, RegimeHosting)); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(ctx, &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{Name: core.TenantQuotaName, Namespace: legacyNS, Labels: r.managedLabels(legacy.ID)},
+		Spec:       corev1.ResourceQuotaSpec{Hard: quotaForPlan(PlanHobby)},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	want := quotaForPlan(PlanHobby)
+	for _, tn := range []Tenant{fresh, legacy} {
+		ns := WorkspaceNamespace(tn.ID)
+		var compute, rest corev1.ResourceQuota
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: core.TenantComputeQuotaName}, &compute); err != nil {
+			t.Fatalf("%s: compute quota: %v", ns, err)
+		}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: core.TenantQuotaName}, &rest); err != nil {
+			t.Fatalf("%s: tenant quota: %v", ns, err)
+		}
+		wantScope := &corev1.ScopeSelector{MatchExpressions: []corev1.ScopedResourceSelectorRequirement{{
+			ScopeName: corev1.ResourceQuotaScopePriorityClass,
+			Operator:  corev1.ScopeSelectorOpNotIn,
+			Values:    []string{appv1alpha1.DatastorePriorityClassName},
+		}}}
+		if !equality.Semantic.DeepEqual(compute.Spec.ScopeSelector, wantScope) {
+			t.Errorf("%s: compute quota scope = %+v, want PriorityClass NotIn [%s]", ns, compute.Spec.ScopeSelector, appv1alpha1.DatastorePriorityClassName)
+		}
+		if rest.Spec.ScopeSelector != nil || len(rest.Spec.Scopes) != 0 {
+			t.Errorf("%s: tenant-quota must stay unscoped so counts and storage cover datastores, got %+v", ns, rest.Spec)
+		}
+		// Exactly the four compute dimensions moved; nothing was dropped.
+		if len(compute.Spec.Hard) != 4 {
+			t.Errorf("%s: compute quota carries %v, want only requests/limits cpu/memory", ns, compute.Spec.Hard)
+		}
+		for key, q := range want {
+			got, inCompute := compute.Spec.Hard[key]
+			if other, inRest := rest.Spec.Hard[key]; inRest == inCompute {
+				t.Errorf("%s: %s in compute=%v tenant-quota=%v, want exactly one", ns, key, inCompute, inRest)
+			} else if inRest {
+				got = other
+			}
+			if got.Cmp(q) != 0 {
+				t.Errorf("%s: %s = %s, want %s", ns, key, got.String(), q.String())
+			}
+		}
+		for _, key := range []corev1.ResourceName{corev1.ResourcePods, corev1.ResourceRequestsStorage, corev1.ResourceRequestsEphemeralStorage, DatabasesQuotaCountKey} {
+			if _, ok := rest.Spec.Hard[key]; !ok {
+				t.Errorf("%s: tenant-quota lost %s", ns, key)
+			}
+		}
 	}
 }
 
