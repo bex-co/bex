@@ -160,6 +160,10 @@ type ServiceEventRow struct {
 	// starts (w4/259) and ends.
 	FactExitCode *int32
 	FactRunID    string
+	// LeaderID is a datastore fact's new primary (postgres_cluster_leader_changed,
+	// w2/m171). Datastore facts have no service-list home, so only the by-id
+	// read (GetServiceEvent) fills it.
+	LeaderID string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -613,7 +617,8 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.exit_code END AS fact_exit_code,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.run_id, '') ELSE '' END AS fact_run_id,
        CASE WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache ELSE false END AS clear_cache,
-       COALESCE(h.app_id, h.service_id)
+       COALESCE(h.app_id, h.service_id),
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id
 FROM hit h
 LEFT JOIN deploys d
   ON h.source = '` + EventSourceDeploy + `' AND d.id = h.source_row_id
@@ -638,7 +643,7 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	var out ServiceEventLookup
 	r := &out.Event
 	err := s.Pool.QueryRow(ctx, getServiceEventQuery, workspaceID, eventID).Scan(
-		serviceEventScanDestinations(r, &out.ServiceID)...,
+		serviceEventScanDestinations(r, &out.ServiceID, &r.LeaderID)...,
 	)
 	if err != nil {
 		return ServiceEventLookup{}, classify("service event", err)

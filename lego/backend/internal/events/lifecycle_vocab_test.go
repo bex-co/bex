@@ -103,6 +103,7 @@ func TestObservedDatastoreTypesStayOutOfTheServiceFeed(t *testing.T) {
 		TypePostgresBackupCompleted, TypePostgresBackupFailed,
 		TypePostgresRestoreSucceeded, TypePostgresRestoreFailed,
 		TypePostgresUpgradeStarted, TypePostgresUpgradeSucceeded, TypePostgresUpgradeFailed,
+		TypePostgresClusterLeaderChanged,
 	} {
 		if slices.Contains(allFactTypes, ft) {
 			t.Errorf("%s is in allFactTypes — the service feed would filter service_event_facts by a datastore fact type and match nothing", ft)

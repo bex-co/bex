@@ -41,7 +41,54 @@ func observedDatastoreLifecycleFacts(obs ObservedDatastoreState, previous datast
 	facts = append(facts, walArchiveFacts(obs, previous, &next)...)
 	facts = append(facts, restoreFacts(obs, previous, &next)...)
 	facts = append(facts, upgradeFacts(obs, previous, &next)...)
+	facts = append(facts, leaderFacts(obs, previous, &next)...)
 	return facts, next
+}
+
+// leaderFacts reports the primary moving to another instance — Render's
+// postgres_cluster_leader_changed (w2/m171) — once per promotion, whether CNPG
+// failed over on its own or the failover verb asked for a switchover. The
+// first primary a database reports is its creation, not a change: the
+// baseline and a checkpoint that predates this latch (empty) only record it.
+// An unreported primary leaves the latch alone, so a CNPG read that failed
+// cannot turn the next good read into a change.
+//
+// Two bex-api replicas observe the same Database, and either may commit a
+// pass it read before the other's newer one. CNPG's promotion time orders
+// them: a pass whose primary was promoted no later than the latched one is
+// an older re-read, so it neither records nor moves the latch — otherwise it
+// would record a phantom change back to the old primary and another forward
+// again. When either side lacks a promotion time the change records (fail
+// open toward a real failover, never toward silence). The source key names
+// the promotion itself, so two passes that both see it share one row.
+func leaderFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
+	if obs.CurrentPrimary == "" {
+		return nil
+	}
+	ordered := !obs.CurrentPrimarySince.IsZero() && !previous.CurrentPrimarySince.IsZero()
+	if ordered && !obs.CurrentPrimarySince.After(previous.CurrentPrimarySince) {
+		return nil
+	}
+	next.CurrentPrimary = obs.CurrentPrimary
+	if !obs.CurrentPrimarySince.IsZero() {
+		next.CurrentPrimarySince = obs.CurrentPrimarySince
+	}
+	if previous.CurrentPrimary == "" || obs.CurrentPrimary == previous.CurrentPrimary {
+		return nil
+	}
+	at := obs.CurrentPrimarySince
+	if at.IsZero() {
+		at = obs.At
+	}
+	return []DatastoreEventFact{{
+		SourceKey:   fmt.Sprintf("%s:leader:%s:%d", obs.DatastoreID, obs.CurrentPrimary, at.UTC().UnixNano()),
+		WorkspaceID: obs.WorkspaceID,
+		DatastoreID: obs.DatastoreID,
+		Kind:        obs.Kind,
+		Type:        DatastoreFactPostgresClusterLeaderChanged,
+		At:          at,
+		LeaderID:    obs.CurrentPrimary,
+	}}
 }
 
 // checkpointStartedFacts reports a CNPG base backup starting — Render's
@@ -322,6 +369,16 @@ func stampPITRObservation(obs *ObservedDatastoreState, status *appv1alpha1.Datab
 		obs.Exports = append(obs.Exports, ObservedDatastoreExport{
 			ID: export.ID, Failed: failed, Reason: export.FailureReason, CompletedAt: completed,
 		})
+	}
+}
+
+// stampPrimaryObservation copies the CNPG primary and its promotion time off
+// a Database's status. Microsecond precision is what the checkpoint column
+// keeps, so a re-read compares equal to what was stored.
+func stampPrimaryObservation(obs *ObservedDatastoreState, status *appv1alpha1.DatabaseStatus) {
+	obs.CurrentPrimary = status.CurrentPrimary
+	if parsed, err := time.Parse(time.RFC3339, status.CurrentPrimaryTimestamp); err == nil {
+		obs.CurrentPrimarySince = parsed.UTC().Truncate(time.Microsecond)
 	}
 }
 

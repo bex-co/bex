@@ -1592,9 +1592,7 @@ func (r *DatabaseReconciler) readClusterStatus(
 	if major > 0 {
 		state.currentVersion = fmt.Sprintf("%d", major)
 	}
-	if cp, found, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimary"); found {
-		db.Status.CurrentPrimary = cp
-	}
+	stampPrimaryStatus(db, cluster)
 	// Trigger a CNPG switchover when spec.failoverAt has advanced and HA is on.
 	// Patches cluster.status.targetPrimary to a non-primary instance so CNPG
 	// promotes it (the planned-switchover path — docs/render-artifacts/postgres-ha.md).
@@ -1605,6 +1603,20 @@ func (r *DatabaseReconciler) readClusterStatus(
 	// HighAvailabilityEnabled: HA is on in spec AND the cluster has ≥2 ready instances.
 	db.Status.HighAvailabilityEnabled = db.Spec.HighAvailability && ready >= 2
 	return state
+}
+
+// stampPrimaryStatus projects CNPG's primary and its promotion time onto the
+// Database. The control plane turns a change of primary into Render's
+// postgres_cluster_leader_changed and orders concurrent observations by the
+// promotion time (w2/m171). A field CNPG has not reported keeps its last
+// value, so a partial status read never blanks a known primary.
+func stampPrimaryStatus(db *appv1alpha1.Database, cluster *unstructured.Unstructured) {
+	if cp, found, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimary"); found {
+		db.Status.CurrentPrimary = cp
+	}
+	if ts, found, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimaryTimestamp"); found {
+		db.Status.CurrentPrimaryTimestamp = ts
+	}
 }
 
 // stampWALArchivingCondition mirrors CNPG's ContinuousArchiving onto the

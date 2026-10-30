@@ -462,6 +462,13 @@ spec:
                   as an observability aid after a failover. Empty until HA is active.
                   bex extension (Render reports HA state but not the pod name).
                 type: string
+              currentPrimaryTimestamp:
+                description: |-
+                  CurrentPrimaryTimestamp is CNPG's status.currentPrimaryTimestamp: when
+                  CurrentPrimary was promoted (RFC3339). The control plane orders primary
+                  changes by it, so postgres_cluster_leader_changed records once per
+                  promotion even when two observers read the CR at different moments.
+                type: string
               currentVersion:
                 description: |-
                   CurrentVersion is the PostgreSQL major version reported by CNPG for the

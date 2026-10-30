@@ -37,7 +37,7 @@ func restEmittedTypes() []string {
 		TypePostgresUnavailable, TypePostgresAvailable, TypeKeyValueUnhealthy, TypeKeyValueAvailable,
 		TypePostgresBackupCompleted, TypePostgresBackupFailed, TypePostgresRestoreSucceeded,
 		TypePostgresRestoreFailed, TypePostgresUpgradeStarted, TypePostgresUpgradeSucceeded,
-		TypePostgresUpgradeFailed,
+		TypePostgresUpgradeFailed, TypePostgresClusterLeaderChanged,
 	)
 	slices.Sort(types)
 	return slices.Compact(types)
@@ -108,6 +108,7 @@ func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 		TypePostgresReadReplicasChanged:           datastore,
 		TypePostgresDiskAutoscalingEnabledChanged: datastore,
 		TypeKeyValueConfigRestart:                 datastore,
+		TypePostgresClusterLeaderChanged:          datastore,
 	}
 
 	raw, err := os.ReadFile("../api/openapi/render-public-api-1.json")

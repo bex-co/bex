@@ -69,6 +69,13 @@ const (
 	TypePostgresWALArchiveFailed        = "postgres_wal_archive_failed"
 )
 
+// TypePostgresClusterLeaderChanged is Render's "the primary moved" event
+// (w2/m171): an HA database's standby was promoted, by an automatic failover
+// or the failover verb. Observed from Database.status.currentPrimary, never
+// from the verb, so a requested switchover that does not happen records
+// nothing. Render's details carry the new primary as leaderId.
+const TypePostgresClusterLeaderChanged = "postgres_cluster_leader_changed"
+
 // Configuration-change names (w3/m82 t003). Audit-derived like the block at the
 // top of the file, but field-level rather than lifecycle: each is produced by a
 // successful PATCH that changed exactly that setting, and the audit row carries

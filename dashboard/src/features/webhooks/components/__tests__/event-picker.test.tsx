@@ -73,6 +73,7 @@ describe("catalogEntries (w1/m49/t002)", () => {
       "postgres_available",
       "postgres_unavailable",
       "postgres_ha_status_changed",
+      "postgres_cluster_leader_changed",
       "postgres_connection_pool_enabled_changed",
       "postgres_disk_size_changed",
       "postgres_backup_completed",

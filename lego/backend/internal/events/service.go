@@ -241,6 +241,9 @@ const (
 	TypePostgresPITRCheckpointCompleted = eventvocab.TypePostgresPITRCheckpointCompleted
 	TypePostgresPITRCheckpointFailed    = eventvocab.TypePostgresPITRCheckpointFailed
 	TypePostgresWALArchiveFailed        = eventvocab.TypePostgresWALArchiveFailed
+	// The primary moved (w2/m171), observed like its siblings; details carry
+	// the new primary as leaderId.
+	TypePostgresClusterLeaderChanged = eventvocab.TypePostgresClusterLeaderChanged
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -700,6 +703,9 @@ type Details struct {
 	// run's container exit status.
 	CronJobRunID string
 	ExitCode     *int32
+	// postgres_cluster_leader_changed (w2/m171): the instance that became
+	// primary — Render's leaderId.
+	LeaderID string
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1129,6 +1135,7 @@ func view(r store.ServiceEventRow, service string) Event {
 			}
 		}
 		ev.Details.ExitCode = r.FactExitCode
+		ev.Details.LeaderID = r.LeaderID
 	}
 	return ev
 }

@@ -149,6 +149,10 @@ const (
 	TypePostgresPITRCheckpointCompleted = eventvocab.TypePostgresPITRCheckpointCompleted
 	TypePostgresPITRCheckpointFailed    = eventvocab.TypePostgresPITRCheckpointFailed
 	TypePostgresWALArchiveFailed        = eventvocab.TypePostgresWALArchiveFailed
+	// The primary moved (w2/m171): a failover or the failover verb promoted
+	// the standby. The thin payload names the database; the new primary is
+	// leaderId on the hydrated event.
+	TypePostgresClusterLeaderChanged = eventvocab.TypePostgresClusterLeaderChanged
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
@@ -243,6 +247,7 @@ var factEvents = map[string]string{
 	string(store.DatastoreFactPostgresPITRCheckpointCompleted): TypePostgresPITRCheckpointCompleted,
 	string(store.DatastoreFactPostgresPITRCheckpointFailed):    TypePostgresPITRCheckpointFailed,
 	string(store.DatastoreFactPostgresWALArchiveFailed):        TypePostgresWALArchiveFailed,
+	string(store.DatastoreFactPostgresClusterLeaderChanged):    TypePostgresClusterLeaderChanged,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

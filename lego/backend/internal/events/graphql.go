@@ -125,6 +125,8 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// container exit status beside reasonCode non_zero_exit / oom_killed.
 		"cronJobRunId": gqlutil.StrField(func(d Details) any { return d.CronJobRunID }),
 		"exitCode":     gqlutil.IntField(func(d Details) any { return d.ExitCode }),
+		// postgres_cluster_leader_changed (w2/m171): the new primary, Render's leaderId.
+		"leaderId": gqlutil.StrField(func(d Details) any { return d.LeaderID }),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil
