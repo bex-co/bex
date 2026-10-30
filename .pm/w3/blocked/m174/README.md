@@ -1,6 +1,6 @@
 # w3 · m174 — Alerting and backups stop failing silently
 
-**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** todo — t001–t006, t008, t009, t011 done (heartbeat green in production, #99 closed 2026-10-30); t007 drill on the rebuilt mock cluster; t010 closeout
+**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** blocked — t007 local drill needs a decision on where its infrastructure runs (see the 2026-10-30 record); everything else done
 
 ## Tasks (in order)
 
@@ -26,9 +26,9 @@
 
 ## Evidence (2026-10-19)
 
-- No `Watchdog`/heartbeat rule, no Prometheus or Alertmanager self-scrape, no rule on failed notifications or failed rule evaluations (0 matches in `deploy/gitops/base/prometheus.yaml`; the scrape jobs at :263–742 cover neither). Delivery is one Alertmanager → SendGrid (`:122-158`) → one inbox; [`w8/m30` t004](../../w8/done/m30/done/t004.md) records 512 alert emails lost to a no-MX domain and two days of a critical backup alert never seen.
-- [ADR088](../../../docs/ADR088-platform-observability-ui.md):23,:220 rely on an "external uptime check" for whole-cluster outages that is defined nowhere in the repo.
-- `BackupCronJobStale` matches `etcd-backup|openbao-backup|kvbak-.*` only (`prometheus.yaml:1687-1694`), so the operator's `dskbak-*` CronJobs (`lego/operator/internal/controller/disk_backup.go:48`) — the only recovery point for tenant disks ([ADR082](../../../docs/ADR082-persistent-disks.md)) — are unwatched; ADR031's store tables have no disk row.
+- No `Watchdog`/heartbeat rule, no Prometheus or Alertmanager self-scrape, no rule on failed notifications or failed rule evaluations (0 matches in `deploy/gitops/base/prometheus.yaml`; the scrape jobs at :263–742 cover neither). Delivery is one Alertmanager → SendGrid (`:122-158`) → one inbox; [`w8/m30` t004](../../../w8/done/m30/done/t004.md) records 512 alert emails lost to a no-MX domain and two days of a critical backup alert never seen.
+- [ADR088](../../../../docs/ADR088-platform-observability-ui.md):23,:220 rely on an "external uptime check" for whole-cluster outages that is defined nowhere in the repo.
+- `BackupCronJobStale` matches `etcd-backup|openbao-backup|kvbak-.*` only (`prometheus.yaml:1687-1694`), so the operator's `dskbak-*` CronJobs (`lego/operator/internal/controller/disk_backup.go:48`) — the only recovery point for tenant disks ([ADR082](../../../../docs/ADR082-persistent-disks.md)) — are unwatched; ADR031's store tables have no disk row.
 - `PlatformDatabaseBackupStale` reads WAL-archiver time only (`prometheus.yaml:1761-1762`); no CNPG base-backup metric is scraped, so a failing nightly base backup under healthy WAL archiving leaves every alert green.
 - No rule on Pending/unschedulable tenant pods (only `BuildQueuedTooLong` for builds); the serving pool caps at 3 nodes, and `infra/clusterapi/overlays/hetzner-caph/cluster.yaml:373-376` records rollout pods that already went unschedulable.
 - 11 billing alerts link `docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair`, but the heading is `## 5. Operations: reconciliation and repair` (`:182`).
@@ -36,7 +36,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm for w3` 2026-10-19, item 3 (approved by the user the same day); verified against `prometheus.yaml`, `disk_backup.go`, ADR031/ADR082/ADR088 and `w8/m30`.
-- **Goal linkage:** V0 roadmap 2 (basic observability for operation); [ADR088](../../../docs/ADR088-platform-observability-ui.md) coverage and [ADR031](../../../docs/ADR031-platform-data-backup.md) backup detection bounds, which assume a working notification path.
+- **Goal linkage:** V0 roadmap 2 (basic observability for operation); [ADR088](../../../../docs/ADR088-platform-observability-ui.md) coverage and [ADR031](../../../../docs/ADR031-platform-data-backup.md) backup detection bounds, which assume a working notification path.
 - **Expected outcome:** the four silent failure classes above each reach a human; the alert path has an independent heartbeat, so "no alerts" again means "nothing is wrong".
 - **Why now:** alert delivery has already failed silently once; ADR082 disks are live in production and their only backups are unwatched; ADR031's annual all-store re-drill (next 2027-07-31) makes continuous detection the only near-term safety net.
 - **Render parity omitted:** platform-internal alerting, scrape and runbook changes — no REST/GraphQL/MCP/UI surface.
@@ -50,3 +50,10 @@
 - **本次复核证据（生产只读）：** Alertmanager 中 `Watchdog` 为 `active`；`bex_cnpg_backup_stopped_at_seconds` 覆盖全部 4 个平台集群（`bex-db` 177、`kratos-db`/`hydra-db`/`openfga-db` 各 8 条 Backup 序列；最新 base backup 在 17.8–19.5h 前）；`PostgresBaseBackupStale` 未 firing。t007 这三项生产检查已满足。
 - **新发现的真缺陷 → t011：** `alerting-heartbeat.yml` 每次运行都是 success，但脚本实际输出 `FAIL: cluster API or Alertmanager unreachable … / FAIL: Prometheus unreachable through the API server`（例如 run `40955985179`，2026-10-29T21:13Z），issue #99 自 2026-10-21 一直开着。kubeconfig 能取到（`via CP 91.107.197.144`），但本地复现 `kubectl get --raw /api/v1/namespaces/monitoring/services/prometheus-server:80/proxy/api/v1/rules` 超时，而 `kubectl port-forward svc/prometheus-server` 正常。所以问题在 apiserver→monitoring Pod 的 service-proxy 路径（可能是 CP 主机网络到 Pod 的路由，或 NetworkPolicy/Cilium 拦截了 apiserver 入站），`scripts/alerting-heartbeat.sh:47` 的 `2>/dev/null` 把错误吞掉了。「workflow 是绿的」**不能**当作 heartbeat 通过的证据。
 - **剩余阻塞：** 无。worker 依次做 t011 → t007（重建 mock cluster 后做四个注入，并补「heartbeat 首次 down=false 且 #99 自动关闭」的 run id）→ t010。
+
+## Blocked again (2026-10-30, loopx w3) — the drill needs infrastructure the shared mock cluster does not have
+
+- The mock cluster was not gone (the kind clusters run in another Docker context than `desktop-linux`); it is up and dev-3 runs on it. But `scripts/mock-cluster.sh` brings up substrate only, and the shared cluster has never had what this drill needs: **Prometheus + Alertmanager + kube-state-metrics (none deployed; `monitoring` holds only Loki), backup object storage for `dskbak-*` CronJobs and a CNPG ScheduledBackup to fail, and a tenant node pool to make a pod unschedulable**.
+- Building it means installing into the shared `bex-system` / `monitoring` namespaces every `dev-N` uses, which the isolation rule (AGENTS.md, local dev environments) does not cover.
+- **Decision needed (user):** (a) a separate disposable local kind cluster for drills (`bex-drill`: operator + object storage + Prometheus/Alertmanager/KSM), created and torn down by the worker — **recommended**, no shared impact; (b) build it on the shared mock cluster; (c) accept the production evidence below plus the rule/unit tests and descope the local drill (DoD change, needs sign-off).
+- Production evidence already recorded: Watchdog firing, CNPG base-backup metrics for all 4 platform clusters, no `PostgresBaseBackupStale`, heartbeat green with #99 closed by the workflow (t011).
