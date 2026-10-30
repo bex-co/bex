@@ -171,19 +171,52 @@ jobs:
       # Never hide these with a global CVE ignore or treat an SBOM as a probe.
       - name: prepare bounded full-scan retries
         run: |
-          # The pinned action supports TRIVY_CMD. Keep its 20m scan budget;
-          # the outer deadline adds only a minute for CLI teardown.
+          # Keep all scans and subjects unchanged; stage verified complete layers.
           cat > "$RUNNER_TEMP/native-trivy" <<'SH'
           #!/usr/bin/env bash
           set -euo pipefail
+          set +o posix
           : "${TRIVY_OUTPUT:?missing scan report path}"
+          : "${TRIVY_CACHE_DIR:?missing shared Trivy cache}"
+          : "${TRIVY_PLATFORM:?missing explicit architecture}"
+          max_image_bytes=$((8 * 1024 * 1024 * 1024))
+          minimum_kib=$(((3 * max_image_bytes + 4 * 1024 * 1024 * 1024) / 1024))
+          mkdir -p "$TRIVY_CACHE_DIR"
+          require_space() {
+            local space
+            space=$(df -Pk "$RUNNER_TEMP" "$TRIVY_CACHE_DIR")
+            printf '%s\n' "$space"
+            printf '%s\n' "$space" | awk -v minimum="$minimum_kib" '
+              NR > 1 { if ($4 !~ /^[0-9]+$/ || $4 < minimum) exit 1; rows++ }
+              END { if (rows != 2) exit 1 }
+            '
+          }
+          rm -f -- "$TRIVY_OUTPUT"
+          require_space
+          work_dir=$(mktemp -d "$RUNNER_TEMP/native-trivy.XXXXXXXX")
+          trap 'rm -rf -- "$work_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          # Bash uses KiB for RLIMIT_FSIZE. Bound each staged layer before copying it.
+          ulimit -c 0
+          ulimit -f "$((max_image_bytes / 1024))"
+          mkdir "$work_dir/db"
+          # Finish both databases before starting any complete 20m image scan.
+          for database in --download-db-only --download-java-db-only; do
+            TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s 21m trivy image "$database"
+          done
           for attempt in 1 2 3; do
+            require_space
             rm -f -- "$TRIVY_OUTPUT"
-            if timeout --kill-after=10s 21m trivy "$@"; then
+            attempt_dir="$work_dir/attempt-$attempt"
+            mkdir "$attempt_dir"
+            # Stock size validation stages whole remote layers before tar analysis.
+            if TMPDIR="$attempt_dir" timeout --kill-after=10s 21m trivy "$@" --image-src remote --parallel 1 --max-image-size "${max_image_bytes}B"; then
               exit 0
             fi
             echo "Trivy scan attempt $attempt failed" >&2
             rm -f -- "$TRIVY_OUTPUT"
+            rm -rf -- "$attempt_dir"
             [ "$attempt" -lt 3 ] || exit 1
             sleep "$((attempt * 5))"
           done

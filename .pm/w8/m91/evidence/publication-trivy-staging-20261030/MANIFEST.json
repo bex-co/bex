@@ -1,0 +1,907 @@
+{
+  "schema": "bex.w8.evidence-custody/v1",
+  "scope": "exact compressed original private source/log/control payloads, no supplier approval",
+  "files": [
+    {
+      "path": "proposal/actionlint-known-labels.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/actionlint-known-labels.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "proposal/actionlint.log.gz",
+      "bytes": 380,
+      "sha256": "a88da85a5ba609f4082552e75eb80209189a1dbadbf93cb459f95f852e887939",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/actionlint.log",
+      "original_bytes": 1750,
+      "original_sha256": "517256ca43117eb23bf765e64b1d8ce467bc718147ecd379a0bd8c94171b95fd"
+    },
+    {
+      "path": "proposal/before-core-limit/control-tests.log.gz",
+      "bytes": 373,
+      "sha256": "48ffeb10f87c71bcb451fcb2c23b280f31c701b489da49facc62cb6532428f09",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/control-tests.log",
+      "original_bytes": 1242,
+      "original_sha256": "8e0bea7893f1c536cee1b3a812d5c55287b8a76f5df0a9f1af19fec44706aa44"
+    },
+    {
+      "path": "proposal/before-core-limit/control-tests.py.gz",
+      "bytes": 2650,
+      "sha256": "b7a05c61b6c6fc6436ce636908746dc7b55077168f5f3df9bba03fa187f21a9b",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/control-tests.py",
+      "original_bytes": 7315,
+      "original_sha256": "f00add515d6222b5cd9942b801146090b4611eb88b52bba4b44b992b34b690d9"
+    },
+    {
+      "path": "proposal/before-core-limit/native-trivy.gz",
+      "bytes": 868,
+      "sha256": "a68b99ef4166be46bbb39db3e99bb12d785a933c997aeec2a3adc39efaea3dff",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/native-trivy",
+      "original_bytes": 1700,
+      "original_sha256": "2a3c96d9392cc8788333c670dd46339e988fa1d27c2c9a93aef9f209f8c5ff3d"
+    },
+    {
+      "path": "proposal/before-core-limit/proposed-workflow.yml.gz",
+      "bytes": 4734,
+      "sha256": "25d3e32877af2837216dcba1539c66bac93f91f9ee061c5c7a3e7609ab6bc3f1",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/proposed-workflow.yml",
+      "original_bytes": 14122,
+      "original_sha256": "48fdec25be0d69a297e721bf3632ef49ce0b8819b0c4f8977fcc55268313adf5"
+    },
+    {
+      "path": "proposal/before-core-limit/receipt.json.gz",
+      "bytes": 1976,
+      "sha256": "5048a01a4adb94ce81c39f579aee758c563006e2609fc570f224244d99b9700a",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/receipt.json",
+      "original_bytes": 4170,
+      "original_sha256": "b1f3f34203c7a92dfb4a7911066e15ed69529bfe5f55d5a7317d645d56429523"
+    },
+    {
+      "path": "proposal/before-core-limit/source-binding.json.gz",
+      "bytes": 501,
+      "sha256": "8c6720908ba334690f28dc3394b0b686cf4770e5c3f67309075687684767a51c",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/source-binding.json",
+      "original_bytes": 750,
+      "original_sha256": "a64e423d63764978ed1901aeb6e579f935e82bc4df1fb13eeb72f986d41b2670"
+    },
+    {
+      "path": "proposal/before-core-limit/source-facts.json.gz",
+      "bytes": 9331,
+      "sha256": "dcc062cd47d905d8373e879e85f694a1967a759029fe4d929d0466cdc48251be",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/source-facts.json",
+      "original_bytes": 29817,
+      "original_sha256": "c1a9d3a64a58f5680523dadfae4ed2fa0c68d2adddaee4b6ddccb74a539dd95d"
+    },
+    {
+      "path": "proposal/before-core-limit/workflow.patch.gz",
+      "bytes": 1189,
+      "sha256": "8ff9c2908b3a3019b9baafaa468433b7d26f3abe90ba68769d3977255a5baf64",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/before-core-limit/workflow.patch",
+      "original_bytes": 2809,
+      "original_sha256": "4e4d28567beee56e334a4f7883d8c2411f4dec8f3e7fb838adf9a7ab371c9b78"
+    },
+    {
+      "path": "proposal/control-tests.log.gz",
+      "bytes": 403,
+      "sha256": "703bff4a5c0587703f16916691cd3d90a7c944d3620ab236acf9cc61580f0fc2",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/control-tests.log",
+      "original_bytes": 1357,
+      "original_sha256": "06e7ff9d410bc1ee50a88c785a7e6797e7e381963f12918da3c67fc7cfea49e7"
+    },
+    {
+      "path": "proposal/control-tests.py.gz",
+      "bytes": 2804,
+      "sha256": "f63b1be3dad1bb5eb726a2aaa5a21eca66aa205a4a298ae9bb5b32755f7873ee",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/control-tests.py",
+      "original_bytes": 8105,
+      "original_sha256": "344f3ed902add484b20b2d8b0f7791288437ab8ba53bfd238e47313e60fa79cb"
+    },
+    {
+      "path": "proposal/database-prefetch-tradeoff.json.gz",
+      "bytes": 2766,
+      "sha256": "32b4992d6735e8ab0f3d5e44e13769161ad3bd5412202344236dca905193dcea",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/database-prefetch-tradeoff.json",
+      "original_bytes": 6455,
+      "original_sha256": "bc46bfbaebc0b38dfa99ac5a8d78878d43c9fc6f4c952c9403d7c3a604ce16b8"
+    },
+    {
+      "path": "proposal/native-trivy.gz",
+      "bytes": 873,
+      "sha256": "58d97b95b373355a1ff6b1a399643380aaef463e2f78289c373f595a465e8a52",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/native-trivy",
+      "original_bytes": 1712,
+      "original_sha256": "df12dddbf1823be3eda20ac96979c20b256b303aeb694bb440b556b59e0ee08e"
+    },
+    {
+      "path": "proposal/original-workflow.yml.gz",
+      "bytes": 4214,
+      "sha256": "fcfedcbe431d096b66d6f68227ce9ee3b5e34435a586620cce0fe80432341c8f",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/original-workflow.yml",
+      "original_bytes": 12496,
+      "original_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659"
+    },
+    {
+      "path": "proposal/proposed-workflow.yml.gz",
+      "bytes": 4740,
+      "sha256": "aa92dae2bea35e60316c14dcea7b8ac820908091e7523ba9bc4a2c59835af2ee",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/proposed-workflow.yml",
+      "original_bytes": 14144,
+      "original_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f"
+    },
+    {
+      "path": "proposal/receipt.json.gz",
+      "bytes": 2629,
+      "sha256": "23b2ccd4e33df2d9df4c2ea9d0f93bcdde5243a054df064a6f757959e9b1cd0c",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/receipt.json",
+      "original_bytes": 6255,
+      "original_sha256": "04a7832dcb3ada85ea2a146ac4b85ccfcfb15a78a7cda1b67b37ba12d6cfef0d"
+    },
+    {
+      "path": "proposal/source-binding.json.gz",
+      "bytes": 508,
+      "sha256": "d9088ff572ca1cb16d744888b1477a03da7fd0246a04a5a2bd91ff9344e05827",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/source-binding.json",
+      "original_bytes": 776,
+      "original_sha256": "6a1761e4d64ad285a3e657db0145c140b78fdf27a9a1dbb3a5b4a23e804b562c"
+    },
+    {
+      "path": "proposal/source-facts.json.gz",
+      "bytes": 9331,
+      "sha256": "dcc062cd47d905d8373e879e85f694a1967a759029fe4d929d0466cdc48251be",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/source-facts.json",
+      "original_bytes": 29817,
+      "original_sha256": "c1a9d3a64a58f5680523dadfae4ed2fa0c68d2adddaee4b6ddccb74a539dd95d"
+    },
+    {
+      "path": "proposal/structural-identity.log.gz",
+      "bytes": 235,
+      "sha256": "92cad93b049bb6cc29ea61575b48a7bc1d893b5949b2a1495a3e67aeae221e26",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/structural-identity.log",
+      "original_bytes": 306,
+      "original_sha256": "96ddefe69ae086c7d744bd66e8e0aebb3283e091c063eecededf05e842a41f03"
+    },
+    {
+      "path": "proposal/syntax-check.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/syntax-check.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "proposal/workflow.patch.gz",
+      "bytes": 1195,
+      "sha256": "dacde0e7f10b9f3a1ce9f8ac58ea3f9a8a639013d4c2c8c389ca965e83df2090",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-staging-proposal-20261030/workflow.patch",
+      "original_bytes": 2832,
+      "original_sha256": "08ca415d9a1402a10b5bb9e7c22ec6f0192f5f85b3e1569655e207356cf99dfc"
+    },
+    {
+      "path": "source-audit/facts.json.gz",
+      "bytes": 2042,
+      "sha256": "1d2f13906cb064063dfa10eb470c9172747d2ab491671e320e7ddb4fff6a1dcb",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/facts.json",
+      "original_bytes": 4020,
+      "original_sha256": "efcadbcec07e2abe03cb0f568c40128fb6fc7b5eff630ef35b09ca5383ef32d2"
+    },
+    {
+      "path": "source-audit/fetch-manifest.json.gz",
+      "bytes": 2303,
+      "sha256": "5d166db2ef21964592c2b16a735ba3b531b8723196a6ed6368dbf83c021da250",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/fetch-manifest.json",
+      "original_bytes": 11015,
+      "original_sha256": "3c6869c552a5ad0d05f6f6b38a661f7fa2d88840b0b0d5041e4760f0d4c4ee9c"
+    },
+    {
+      "path": "source-audit/gcr-tag-ref.json.gz",
+      "bytes": 227,
+      "sha256": "58c0d415ae4c004700a44ef0f52bde5e5f4e4b41739004e36b41ef1cc03c554d",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/gcr-tag-ref.json",
+      "original_bytes": 365,
+      "original_sha256": "9e9cf06108a698a1aea92610800b663fb1fa691b6a494d5b27961e909d5625d6"
+    },
+    {
+      "path": "source-audit/observed-log-lines.json.gz",
+      "bytes": 1442,
+      "sha256": "90f297c400794b894a982cf3286ef48ea8c6b93be31d28c626d3c5cc17dcc276",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/observed-log-lines.json",
+      "original_bytes": 6573,
+      "original_sha256": "cbc8c6068366e253d50ff139faca3f2468579d189cf49f127aadd122d9ddc3fb"
+    },
+    {
+      "path": "source-audit/observed-source99-workflow.yml.gz",
+      "bytes": 4133,
+      "sha256": "e6ce988fac073141c6bb91b023decc349e0801c7a23b49a00f3d286bb99b3f2a",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/observed-source99-workflow.yml",
+      "original_bytes": 11989,
+      "original_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    {
+      "path": "source-audit/proposal.json.gz",
+      "bytes": 1822,
+      "sha256": "bc02753ec1f56ceaadb5e4be7449f3f36c49d6bc96cbb423ae2ada3e0e0433f9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/proposal.json",
+      "original_bytes": 3469,
+      "original_sha256": "6a88461ac225ad94eaa3581527705016ca65eaa2cb7cf94d77aa8da94cc52f82"
+    },
+    {
+      "path": "source-audit/receipt.json.gz",
+      "bytes": 2997,
+      "sha256": "7c611f9a11e8ec8523d5e7bcc3e43a6d6b510b4292a8011098616d9905d96b33",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/receipt.json",
+      "original_bytes": 7529,
+      "original_sha256": "fffc117cb960d5b839fbb9fcbf8b5e0e19d3dd904a79f6387e9073b963d951fe"
+    },
+    {
+      "path": "source-audit/refs.json.gz",
+      "bytes": 193,
+      "sha256": "252eb229d55813e24da755125496f9168d3be4e2dc39643d3e9e038aae739c95",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/refs.json",
+      "original_bytes": 284,
+      "original_sha256": "bc2b61b83c30918c6af67c57ef11c688096f270e54dca204f176aad263855d6e"
+    },
+    {
+      "path": "source-audit/source-line-evidence.json.gz",
+      "bytes": 8043,
+      "sha256": "ac488060e7de6157021b3882bfdfe3e233c864ff2525bae7dc2ab0eb08719e73",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/source-line-evidence.json",
+      "original_bytes": 26228,
+      "original_sha256": "e04db672e7ac960a6b56043bfe8f93324cb6c2d71b1f756ead909874af574425"
+    },
+    {
+      "path": "source-audit/sources/gcr/internal/gzip/zip.go.gz",
+      "bytes": 1564,
+      "sha256": "02c75100a88def35e0eb34494ca69d625f9590b5295fc7f0d0adaa7b219e76ba",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/internal/gzip/zip.go",
+      "original_bytes": 3609,
+      "original_sha256": "dc56149dffc7cb605030b8e6478ef11a17b74dac24b9f094dc3f2f0334fc2656"
+    },
+    {
+      "path": "source-audit/sources/gcr/internal/verify/verify.go.gz",
+      "bytes": 1566,
+      "sha256": "5281e2b4fd614bc7c544cdd783e35dcbbaae0e5dbff1818b0fab3fd86711e76c",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/internal/verify/verify.go",
+      "original_bytes": 3508,
+      "original_sha256": "1283ba60f00badd9b5cc29374773b8efd268f3eba66737ea24ae2cd33c571368"
+    },
+    {
+      "path": "source-audit/sources/gcr/internal/zstd/zstd.go.gz",
+      "bytes": 1560,
+      "sha256": "e4a841ba64f30995c081f96e65b795f74928ff7890f91c4274aef375277dedde",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/internal/zstd/zstd.go",
+      "original_bytes": 3571,
+      "original_sha256": "292c6de9ef2241eccf5d60f52d207e44cfdd57196b70f6486d45d0c24824875a"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/cache/cache.go.gz",
+      "bytes": 1719,
+      "sha256": "bf2c75f19f88c762e4679cc741bb12c3be581c356982c551c0dd6d5bc1b3a809",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/cache/cache.go",
+      "original_bytes": 5556,
+      "original_sha256": "03a5e56e89b9a221c0b04ddc4d4189882583c9e2ab4c53ace63dbc062b410044"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/partial/compressed.go.gz",
+      "bytes": 1716,
+      "sha256": "a5512f151eb77a993bb6652063e86c2ca4366f57370a17aadfe61be1a1cbbd84",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/partial/compressed.go",
+      "original_bytes": 5391,
+      "original_sha256": "df2c4ef98c57a9d5d714e548edf9739aaafac0c639732a1a6ae6cac10f05065c"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/remote/fetcher.go.gz",
+      "bytes": 2652,
+      "sha256": "8fb3e35619a987049f245976167ed2b7ca72bd42af9af61b1176ca0254d5826c",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/remote/fetcher.go",
+      "original_bytes": 8921,
+      "original_sha256": "fc6d6a1f9ebb93d474663b1dccf9959fd9d0fdf42c3961dd2da9d6a2d590286a"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/remote/layer.go.gz",
+      "bytes": 1072,
+      "sha256": "5fd8d53831d941dbb2aa2b366907e5c82d1793c9f9e4d38aa8f27507031eb4a9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/remote/layer.go",
+      "original_bytes": 2443,
+      "original_sha256": "4e1237f02c92d9257391eae0bde87732e5784441163959f84e192c55c1007cbf"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/remote/options.go.gz",
+      "bytes": 3931,
+      "sha256": "2b893109214802737ebc349dee25579cd6caaa20a496b6e70cfda26ba8c32e0f",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/remote/options.go",
+      "original_bytes": 11130,
+      "original_sha256": "2bebb9e2356bc12af38f8bcf7940bdd12bf59bf49c758a5152bad637ffbb1b7e"
+    },
+    {
+      "path": "source-audit/sources/gcr/pkg/v1/remote/transport/retry.go.gz",
+      "bytes": 1216,
+      "sha256": "7c04ac4ff898ec48a53015ad5aea49ce4ad1e7d99bf6617394ea8b69e9102c08",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/gcr/pkg/v1/remote/transport/retry.go",
+      "original_bytes": 2764,
+      "original_sha256": "d88ef93817ab069f4b36104f7638c416357c73190f33bc50920e89747f0d3d34"
+    },
+    {
+      "path": "source-audit/sources/trivy/cmd/trivy/main.go.gz",
+      "bytes": 582,
+      "sha256": "a7cd94379c30b8f7ed9b33cc8247af905df67a2880e937a0ff8ee46718564537",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/cmd/trivy/main.go",
+      "original_bytes": 1146,
+      "original_sha256": "80e3a06311ef36b1a40522590a36fba349d95b9dd30152617f10914afc02e288"
+    },
+    {
+      "path": "source-audit/sources/trivy/docs/guide/references/configuration/cli/trivy_image.md.gz",
+      "bytes": 4313,
+      "sha256": "03d1a229621ee9592368c9fe90d02779bb2da80288c2b8b2fcba9862e27219c1",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/docs/guide/references/configuration/cli/trivy_image.md",
+      "original_bytes": 16116,
+      "original_sha256": "9f7763d26cc6614d85f56b2a0aae3ce4684ecefebeba163b4e30b488512d20d8"
+    },
+    {
+      "path": "source-audit/sources/trivy/go.mod.gz",
+      "bytes": 7370,
+      "sha256": "92fbf358c6469bf7c9207396df2e2cbfa2c31c957772b2dced6ff200e4e9acd9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/go.mod",
+      "original_bytes": 26601,
+      "original_sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/cache/dir.go.gz",
+      "bytes": 203,
+      "sha256": "3f7827a434fbbbf98378209c635740bf7bcc886752fe6b564c8021065a2f6b22",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/cache/dir.go",
+      "original_bytes": 272,
+      "original_sha256": "8c6fbdf74ff5a2160493303a5486653d72a92d2007809c72bc4cdd16fc50ac29"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/cache/fs.go.gz",
+      "bytes": 1614,
+      "sha256": "5088b28049915d340f1df5c150d3d13f68a16791baac5f0f71b0c26829cf67d9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/cache/fs.go",
+      "original_bytes": 6310,
+      "original_sha256": "bdd1c4a8cf0e016660d9bea5523ca882139bed3ee65dc504771633c820be344e"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/commands/artifact/run.go.gz",
+      "bytes": 7133,
+      "sha256": "8305abba5657241fb66251ba8219d1084ef6a67b29e9d00fb0592083bb31e261",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/commands/artifact/run.go",
+      "original_bytes": 27525,
+      "original_sha256": "2fc9c1a36fa4de3209c05db5cc3b7cf5bdf56a9890deb1b1de0268c534dc293e"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/commands/artifact/scanner.go.gz",
+      "bytes": 2090,
+      "sha256": "bb6d3eeaac380403f7be444346a0a7e6974238b333e2c533b1a49ed5e961eda1",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/commands/artifact/scanner.go",
+      "original_bytes": 12946,
+      "original_sha256": "4918df6eae53ad4083e9702c11c0d64c04ef395531b84cf341b2214a0a81e384"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/dependency/parser/java/jar/parse.go.gz",
+      "bytes": 3889,
+      "sha256": "3e520b83b3a979af1a329a5982d8bfec017cab641f277338f83a5fdadea02170",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/dependency/parser/java/jar/parse.go",
+      "original_bytes": 13855,
+      "original_sha256": "30744151821f0714aa8c38cdbe5d2188450ffd55d31518a5951077fec43a2709"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/analyzer/language/java/jar/jar.go.gz",
+      "bytes": 1021,
+      "sha256": "2ff2f0c030531a032b9093b6635d4a16cca838808a51aabbea9158630d555d6f",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/analyzer/language/java/jar/jar.go",
+      "original_bytes": 2484,
+      "original_sha256": "cc5edf5323b77a6ea049919d30b309ec5b01349070f4fedd27e7f781cfdeb2e5"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/artifact/image/image.go.gz",
+      "bytes": 5616,
+      "sha256": "aa77bd1cb0ab9897f38f41c4c863fef611b0f310301cd85e6c86415e8abc5aef",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/artifact/image/image.go",
+      "original_bytes": 19933,
+      "original_sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/archive.go.gz",
+      "bytes": 770,
+      "sha256": "31017066a5a84c29aff2d64f6afae1f5cefecbfb5dd1c7406baca01f1b487314",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/archive.go",
+      "original_bytes": 1932,
+      "original_sha256": "f2b2eb6f88cb61ab785f7dac21b12aacca1879073df23bb53ad1e6f56adb28a4"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/daemon/docker.go.gz",
+      "bytes": 914,
+      "sha256": "9b64221d8094432a4fadc9078974b8609e5faf04b953305d91144dc8ab3d4904",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/daemon/docker.go",
+      "original_bytes": 2069,
+      "original_sha256": "b441d80f06262f772c03c83b6e531ebc8b164821fdcc1cf7e616719fb2ed078c"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/daemon/image.go.gz",
+      "bytes": 2979,
+      "sha256": "657f040f736afcc18c469a834dc5957faedb425ad28c6cca3fc57fd9d2cfecc9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/daemon/image.go",
+      "original_bytes": 8347,
+      "original_sha256": "a8d66aab18b9707bc44deddd0b2e3538f0355c7aed55af0bdb37291b1cefae5e"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/daemon.go.gz",
+      "bytes": 410,
+      "sha256": "18445bd838512954b69e1ed8ea3eddcd8fdc178a0f73d6d810ac31104e89a462",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/daemon.go",
+      "original_bytes": 1358,
+      "original_sha256": "b7470e6d9c21000fcdc212bf1f75e7d6fd3740c43871470e96168357b0cc5dd4"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/docker.go.gz",
+      "bytes": 492,
+      "sha256": "aa86ffc19b493ca0cf48bd1cbb0199dad1588065b375c0472d20d6cb45da3ce8",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/docker.go",
+      "original_bytes": 1052,
+      "original_sha256": "288ef279c20cce2d886386fa7dd078dcf96bc29d68e61ad7bb31d0be59710e5d"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/image.go.gz",
+      "bytes": 1602,
+      "sha256": "bb4201633284ad9ce36c3fba33ba4b40f008f53bc1b10399bd546763739ad3b7",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/image.go",
+      "original_bytes": 4105,
+      "original_sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/image/remote.go.gz",
+      "bytes": 938,
+      "sha256": "fe7619c69f9eefe2646e18d4037d80c40a6edf4608a073a832f01d3091aebbd1",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/image/remote.go",
+      "original_bytes": 2290,
+      "original_sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/walker/cached_file.go.gz",
+      "bytes": 833,
+      "sha256": "c1cbed06c5e38b5512f8a5cf50585964f311908b18594cf55dd975c73466926f",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/walker/cached_file.go",
+      "original_bytes": 2011,
+      "original_sha256": "6a592f6a66581944878ae366af292bad70941f36ab93d999e603f76073aaea8c"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/fanal/walker/tar.go.gz",
+      "bytes": 1060,
+      "sha256": "f511a58a24e74f50f87ef9b3697623e08a31cc3b469e3439b94be06ef5eb85e7",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/fanal/walker/tar.go",
+      "original_bytes": 2546,
+      "original_sha256": "259eadf02a160d0db3b3d2efb22715df0c870cc896cf0ef54f5dd4245cb499f6"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/flag/db_flags.go.gz",
+      "bytes": 1599,
+      "sha256": "f12d2ca55366781131e66571cb2fca070db692d7c0e05d006c27e6061a782f4d",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/flag/db_flags.go",
+      "original_bytes": 5777,
+      "original_sha256": "6dae27a3924bf98de0024092920efb5b8609fd7b9ad37d78d3563c63dea344e9"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/flag/global_flags.go.gz",
+      "bytes": 1761,
+      "sha256": "e82a1751f06ee292585ff5529f382e6052076a304f6492f83557f1e6aebbec66",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/flag/global_flags.go",
+      "original_bytes": 5805,
+      "original_sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/flag/image_flags.go.gz",
+      "bytes": 1450,
+      "sha256": "86cb79d84ca235c8232cae8dad8dc2386f2b8bd26d39a58396d304f003d45a1d",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/flag/image_flags.go",
+      "original_bytes": 4615,
+      "original_sha256": "44e8d136a867341d15520314307ce0ec3f3bbdee3b491a154c318ce2c777fb97"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/flag/registry_flags.go.gz",
+      "bytes": 1003,
+      "sha256": "57bc13b4e489835e7c1796acd5b4ce5ddad00a49ba2c1d61229fce70045f0223",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/flag/registry_flags.go",
+      "original_bytes": 2909,
+      "original_sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/flag/scan_flags.go.gz",
+      "bytes": 2179,
+      "sha256": "d34d1d8a47a3a350997ee594753e2d2f010a63f3b953d544a204825d871a7398",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/flag/scan_flags.go",
+      "original_bytes": 7447,
+      "original_sha256": "170a8dcf34d93f3abd4d75310b789892e9a3c7d5935b63cce72999d51ea5c29d"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/javadb/client.go.gz",
+      "bytes": 2064,
+      "sha256": "674b00285bb84c7f7e2d4ac060fb94bfd13117b62856b58d2d2b915ef4d68ea5",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/javadb/client.go",
+      "original_bytes": 5840,
+      "original_sha256": "477290229b74f7e94e15b1b535f7eaa67d887bdd36a85e8995e664a66c81788d"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/log/logger.go.gz",
+      "bytes": 1081,
+      "sha256": "a7395d9b4d8895d5eb78fe90af4c1294ab4d31fc00eeddc0963a8b4dbf86ce94",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/log/logger.go",
+      "original_bytes": 2793,
+      "original_sha256": "ed244bb2463dfa26fc428a3833b9cde070a357578ced36922a27ae42aef05c34"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/parallel/pipeline.go.gz",
+      "bytes": 1083,
+      "sha256": "c92e0ebf33568ea10f4376f3a250b256d51660081aff8cd04e92e84674b8e889",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/parallel/pipeline.go",
+      "original_bytes": 2500,
+      "original_sha256": "14f28cc619019ee1fb6d9bd074767125e23539dbc3f63cd53e0424cbeeb75b9f"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/remote/remote.go.gz",
+      "bytes": 2456,
+      "sha256": "51d690fb1257dcf3da1994f8fc4c53fe6c519672b846319806efb9cbcc256aa0",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/remote/remote.go",
+      "original_bytes": 8666,
+      "original_sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/scan/service.go.gz",
+      "bytes": 2316,
+      "sha256": "87985a6da64bff242aa0cc6f2a3e9945a4f84d0bd55a58123dc9cf56593eae4b",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/scan/service.go",
+      "original_bytes": 6717,
+      "original_sha256": "538036f0a228d4725ba1884b01d40752b29597286c1bfe92bfe056f07a09cf98"
+    },
+    {
+      "path": "source-audit/sources/trivy/pkg/x/http/transport.go.gz",
+      "bytes": 1611,
+      "sha256": "95ccf2fda4853cde792c5ec4ed66f47a54bb319bc5ba064d858ffeaf5cb51052",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy/pkg/x/http/transport.go",
+      "original_bytes": 4292,
+      "original_sha256": "8ccd0bdde077510b46963a4f6b938d7ac6604cbb9332ca824f72c1d09f0f7637"
+    },
+    {
+      "path": "source-audit/sources/trivy-action/action.yaml.gz",
+      "bytes": 3410,
+      "sha256": "8d2e67ea3ced582f85d5ef30a8def0401e7a7fe0c74ad935ab52301d8f027eb1",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy-action/action.yaml",
+      "original_bytes": 10553,
+      "original_sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73"
+    },
+    {
+      "path": "source-audit/sources/trivy-action/entrypoint.sh.gz",
+      "bytes": 1305,
+      "sha256": "743dd327672532b53d9e299de35ad841b615d89acb3e0d4b75a395e16154256d",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/sources/trivy-action/entrypoint.sh",
+      "original_bytes": 2863,
+      "original_sha256": "5d35de70292a3461e55874ca658b3d8f6a56acc4d7098c64e546d965c34a0067"
+    },
+    {
+      "path": "source-audit/staging-action-manifest.json.gz",
+      "bytes": 208,
+      "sha256": "2d3612d0f874905193ac214f50547642e9e5f89c9b74cf62b749b29bea99a769",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/staging-action-manifest.json",
+      "original_bytes": 272,
+      "original_sha256": "7d40d09f238bb11083891b43b958598ec1fe110de35aac158662da4bd5a6bae8"
+    },
+    {
+      "path": "source-audit/staging-integrity-source-manifest.json.gz",
+      "bytes": 356,
+      "sha256": "65afab7111840769cc2d5bae0d0bd396d8ab1b6ee608896eee0739b10da79aa4",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/staging-integrity-source-manifest.json",
+      "original_bytes": 900,
+      "original_sha256": "51b25a09f9b1bb908c7889246ab5c2117c9248fd6a627d165eb70450bd215692"
+    },
+    {
+      "path": "source-audit/staging-java-source-manifest.json.gz",
+      "bytes": 373,
+      "sha256": "c909e2e7a6341ff86dbead5fba50ddc773640a3738721f98f0cdc4d71ede6ce9",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/staging-java-source-manifest.json",
+      "original_bytes": 952,
+      "original_sha256": "cf72a120b02459e7822a01f4fa8fb191c7b75412b81f5eb0c45509f3b0edb6a8"
+    },
+    {
+      "path": "source-audit/staging-source-fetch-manifest.json.gz",
+      "bytes": 499,
+      "sha256": "4e3e2f40ce7beca4280e40004b07ddc8ce2adaf954dd1c44f8f0a684fab92629",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/staging-source-fetch-manifest.json",
+      "original_bytes": 1166,
+      "original_sha256": "f61869a671e1af6a36d8d17be680cf9de9534e6c2c4699f08605757e2923cd41"
+    },
+    {
+      "path": "source-audit/trivy-tag-ref.json.gz",
+      "bytes": 223,
+      "sha256": "f878bef59597bb7af515763c2e78fc208d5ea17ef983724b5fdcb431ffb7a0e2",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/trivy-tag-ref.json",
+      "original_bytes": 347,
+      "original_sha256": "ff1860ab5e25adfa65fab790a4f1cb4462c1092ee04ea4f0f0923e69c37a465e"
+    },
+    {
+      "path": "source-audit/trivy-tree.json.gz",
+      "bytes": 199283,
+      "sha256": "cdceca02074b5dbb77ba35b2386ea0d2b65075888c0dc6da4a6b03f1a9016d8b",
+      "original_path": "/private/tmp/bex-w8-elixir118-trivy-diagnosis-20261030/trivy-tree.json",
+      "original_bytes": 1309420,
+      "original_sha256": "41acade5258d6ff2a1b56899d61cb9e0009262a4405d59401e8c0ceded43764f"
+    },
+    {
+      "path": "recovery-intake/elixir-1.18-index.json.gz",
+      "bytes": 451,
+      "sha256": "aad276509cf64135bf2341772eed67a10c553e705f18ff77659ea68b7784c2ed",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.18-index.json",
+      "original_bytes": 1611,
+      "original_sha256": "1678ee9a3d9e61ab5598dc643d7e0cd8a6191bc90889bf41684526073e38fdd8"
+    },
+    {
+      "path": "recovery-intake/elixir-1.18-job.json.gz",
+      "bytes": 1242,
+      "sha256": "002728f3d3b3fdd8e548d2d7ccd30aca48139f13b18e19fdeea32c3263163884",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.18-job.json",
+      "original_bytes": 4765,
+      "original_sha256": "a3dcd9c9fc189b6d8532e6e465b720cde24476cd731c5299ddcaaae198d20cf4"
+    },
+    {
+      "path": "recovery-intake/elixir-1.18-run.json.gz",
+      "bytes": 1687,
+      "sha256": "01f61cd3ee109f258a65472f2e5e763814246a53a993cda735d75def855ba11b",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.18-run.json",
+      "original_bytes": 11449,
+      "original_sha256": "67770c07ebc9361dbad94741c346c1706734a0587eab24f738a1064d53e520c1"
+    },
+    {
+      "path": "recovery-intake/elixir-1.19-index.json.gz",
+      "bytes": 453,
+      "sha256": "3c0d74945e4a396145e46bccbd17b28c3ee5ca89368846cddef906d8222c9cde",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.19-index.json",
+      "original_bytes": 1611,
+      "original_sha256": "30750c906589468572ce40aad749c065d8ca3d6d69c0740e8c2cb99886d36fa0"
+    },
+    {
+      "path": "recovery-intake/elixir-1.19-job.json.gz",
+      "bytes": 1273,
+      "sha256": "dcce80ebb0b51e60f849c2ae22a8b87d645ac87f11791677c9a7132a5fa88ad1",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.19-job.json",
+      "original_bytes": 5322,
+      "original_sha256": "c0da6f35a64cb11e775b3cf4480316b17ccab8a5b0679322afb61a3b825c502c"
+    },
+    {
+      "path": "recovery-intake/elixir-1.19-run.json.gz",
+      "bytes": 1687,
+      "sha256": "c12b740102de06f9ab7ce2bfca73a09923bc662d49bdf14b66cdb869ebbae8ed",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/elixir-1.19-run.json",
+      "original_bytes": 11449,
+      "original_sha256": "eef65918a5f027e22e36a349635ecf3027623039a5847bcacf0ae7c7f5ce32dd"
+    },
+    {
+      "path": "recovery-intake/intake.json.gz",
+      "bytes": 1015,
+      "sha256": "e63c263612e7b66b71eefd8dc42e9f855148b6bffb148bf9b488b2b9912290d1",
+      "original_path": "/private/tmp/bex-w8-elixir-recovery-intake-20261030/intake.json",
+      "original_bytes": 2428,
+      "original_sha256": "268d185654afebbdea16acecb53c7658d257cbc63e5ea346f40a7627eb5520bd"
+    },
+    {
+      "path": "repo-gates/0.log.gz",
+      "bytes": 221,
+      "sha256": "a6dda6ad2049863b3bd52cff889de55be55061a296b0589ea29194efdfeed723",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/0.log",
+      "original_bytes": 290,
+      "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "path": "repo-gates/1.log.gz",
+      "bytes": 824,
+      "sha256": "b5d68234d3d7b02615c701160833c7e8557111c518e8bce0158e128810ec86c9",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/1.log",
+      "original_bytes": 2751,
+      "original_sha256": "9079bcc89779321ec133f998ae19ca03107024f7f95d4be0e6b1d122c260f753"
+    },
+    {
+      "path": "repo-gates/2.log.gz",
+      "bytes": 54,
+      "sha256": "ec2629adc2bab5cddc0a782acf707d3489dff9ec318cb4181c7058b48d398887",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/2.log",
+      "original_bytes": 103,
+      "original_sha256": "888a0c0ed615e57d32cf72be501b0c355f33b8613c81dfdaa99db33d7959487e"
+    },
+    {
+      "path": "repo-gates/3.log.gz",
+      "bytes": 959,
+      "sha256": "5e2dc92fcaa67b6c47fbd21e63df39d9e57b945a50ff42feb1fbb4dce6d51139",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/3.log",
+      "original_bytes": 2185,
+      "original_sha256": "417ad5ceef3c9522551adb340302ba44c304ce15992481733d6c6c5a72b67acd"
+    },
+    {
+      "path": "repo-gates/configured-actionlint.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/configured-actionlint.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "repo-gates/elixir-1.18-match.output.gz",
+      "bytes": 118,
+      "sha256": "15b359e6afb0f4f21146a8f7efd724e62b3579787effa832edf2f72233c9a1dd",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.18-match.output",
+      "original_bytes": 129,
+      "original_sha256": "aa465f99e341232adee4c4b7a822f7dc3b15928879823384655f7c71d3fff405"
+    },
+    {
+      "path": "repo-gates/elixir-1.18False.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.18False.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "repo-gates/elixir-1.18True.log.gz",
+      "bytes": 178,
+      "sha256": "64b9744b9c0f6864dc60e5f84c1153ebb8ba6ca5a1ad2cb288a3c29ac7914ed9",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.18True.log",
+      "original_bytes": 206,
+      "original_sha256": "e46f72960f74c79e15d2e9b51b5142a13c64f1d400abd3d8a4a11d9e7dfb9156"
+    },
+    {
+      "path": "repo-gates/elixir-1.19-match.output.gz",
+      "bytes": 118,
+      "sha256": "410b25f46fd270378e62bbb60e088f088a214acb27f614a1d14e0ac8ae125b15",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.19-match.output",
+      "original_bytes": 129,
+      "original_sha256": "eb2f656ad3b5ecea5dd5b21054b596bcff348a3346a4fcda79df7de02514779e"
+    },
+    {
+      "path": "repo-gates/elixir-1.19False.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.19False.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "repo-gates/elixir-1.19True.log.gz",
+      "bytes": 180,
+      "sha256": "9ad0a365a58da0780947b3d0c27f18e711a43601503a9660912caaf7626b8d0a",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/elixir-1.19True.log",
+      "original_bytes": 206,
+      "original_sha256": "c4f8ade585d810f458db98fc7ff976f214fa451860c68d06bdb6f4715196742f"
+    },
+    {
+      "path": "repo-gates/executed-recovery.py.gz",
+      "bytes": 767,
+      "sha256": "64ce1421ff9f9e5fb5fbbb4a168279854858433e63f0c488a7bee772d6f3d38d",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/executed-recovery.py",
+      "original_bytes": 1507,
+      "original_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901"
+    },
+    {
+      "path": "repo-gates/final-0.log.gz",
+      "bytes": 221,
+      "sha256": "a6dda6ad2049863b3bd52cff889de55be55061a296b0589ea29194efdfeed723",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/final-0.log",
+      "original_bytes": 290,
+      "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "path": "repo-gates/final-1.log.gz",
+      "bytes": 824,
+      "sha256": "b5d68234d3d7b02615c701160833c7e8557111c518e8bce0158e128810ec86c9",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/final-1.log",
+      "original_bytes": 2751,
+      "original_sha256": "9079bcc89779321ec133f998ae19ca03107024f7f95d4be0e6b1d122c260f753"
+    },
+    {
+      "path": "repo-gates/final-2.log.gz",
+      "bytes": 54,
+      "sha256": "ec2629adc2bab5cddc0a782acf707d3489dff9ec318cb4181c7058b48d398887",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/final-2.log",
+      "original_bytes": 103,
+      "original_sha256": "888a0c0ed615e57d32cf72be501b0c355f33b8613c81dfdaa99db33d7959487e"
+    },
+    {
+      "path": "repo-gates/final-3.log.gz",
+      "bytes": 959,
+      "sha256": "5e2dc92fcaa67b6c47fbd21e63df39d9e57b945a50ff42feb1fbb4dce6d51139",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/final-3.log",
+      "original_bytes": 2185,
+      "original_sha256": "417ad5ceef3c9522551adb340302ba44c304ce15992481733d6c6c5a72b67acd"
+    },
+    {
+      "path": "repo-gates/initial-error.json.gz",
+      "bytes": 132,
+      "sha256": "f203b396bbfcbe6d05f09af428a63d4c7dc2f083f001fff232f22d5b4c54650a",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/initial-error.json",
+      "original_bytes": 145,
+      "original_sha256": "2a68e7578ba32d282b2e976c3af29291cb2153264d9e0669f3a583e1d1b58e04"
+    },
+    {
+      "path": "repo-gates/initial-extraction-error.json.gz",
+      "bytes": 154,
+      "sha256": "3e14052553d69ec434727990c8f064527dfa119dca134fc07558ac086e0979fd",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/initial-extraction-error.json",
+      "original_bytes": 192,
+      "original_sha256": "a8a126462d71dece798d8fab89f1a4895d15d429bd17859b49f35dc1669f7449"
+    },
+    {
+      "path": "repo-gates/receipt.json.gz",
+      "bytes": 719,
+      "sha256": "f5a58af0eef6ab27b8b0356550b9cfc3e9c912d170280edb640914af527e9450",
+      "original_path": "/private/tmp/bex-w8-trivy-repo-gates-20261030/receipt.json",
+      "original_bytes": 2173,
+      "original_sha256": "d91c2171f2a9f5c1115f137c847b5f4aa8220e03c7f1e35a6e0d32ad17004f7b"
+    },
+    {
+      "path": "elixir118-failure/job.json.gz",
+      "bytes": 1242,
+      "sha256": "002728f3d3b3fdd8e548d2d7ccd30aca48139f13b18e19fdeea32c3263163884",
+      "original_path": "/private/tmp/bex-w8-elixir118-failure-20261030/job.json",
+      "original_bytes": 4765,
+      "original_sha256": "a3dcd9c9fc189b6d8532e6e465b720cde24476cd731c5299ddcaaae198d20cf4"
+    },
+    {
+      "path": "elixir118-failure/job.json.fetch.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir118-failure-20261030/job.json.fetch.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "elixir118-failure/job.log.gz",
+      "bytes": 130078,
+      "sha256": "6b867a4c2f155176f59a23b19876c583e5901cf01fd6300ec146da151bfa878a",
+      "original_path": "/private/tmp/bex-w8-elixir118-failure-20261030/job.log",
+      "original_bytes": 1012257,
+      "original_sha256": "a4c8cb95c6adbd9a06ea568ca80b2255ac8a324112a5d20393745b2c59210bf8"
+    },
+    {
+      "path": "elixir118-failure/job.log.fetch.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir118-failure-20261030/job.log.fetch.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "elixir119-failure/job.json.gz",
+      "bytes": 1273,
+      "sha256": "dcce80ebb0b51e60f849c2ae22a8b87d645ac87f11791677c9a7132a5fa88ad1",
+      "original_path": "/private/tmp/bex-w8-elixir119-failure-20261030/job.json",
+      "original_bytes": 5322,
+      "original_sha256": "c0da6f35a64cb11e775b3cf4480316b17ccab8a5b0679322afb61a3b825c502c"
+    },
+    {
+      "path": "elixir119-failure/job.json.fetch.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir119-failure-20261030/job.json.fetch.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "elixir119-failure/job.log.gz",
+      "bytes": 155004,
+      "sha256": "1e53f3bc70d0f74918427c32c851791b6ff4d747caf3d8de075d810e3a019f65",
+      "original_path": "/private/tmp/bex-w8-elixir119-failure-20261030/job.log",
+      "original_bytes": 1254497,
+      "original_sha256": "06c8df0d1af2cd9189eb071ff091529a49e3646b7c69145d9a8a18d37fd32193"
+    },
+    {
+      "path": "elixir119-failure/job.log.fetch.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir119-failure-20261030/job.log.fetch.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reviews.json",
+      "bytes": 1051,
+      "sha256": "9723aa9525dcbedc3a8755fac2ff2f3f284decd52a1f326c767a2f41de01f62c"
+    }
+  ]
+}
