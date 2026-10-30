@@ -17,6 +17,7 @@ limitations under the License.
 package branding
 
 import (
+	"bytes"
 	"io"
 	"strings"
 	"testing"
@@ -24,6 +25,27 @@ import (
 	"github.com/render-oss/cli/cmd"
 	"github.com/spf13/cobra"
 )
+
+func TestLoginOutputPreservesDeviceData(t *testing.T) {
+	const data = " with code: Render Dashboard\nhttps://example.test/Render Dashboard?user_code=render.yaml\n"
+	var out bytes.Buffer
+	w := loginOutput{&out}
+	prompt := []byte("Complete login in the Render Dashboard" + data)
+	n, err := w.Write(prompt)
+	if err != nil || n != len(prompt) {
+		t.Fatalf("Write = %d, %v", n, err)
+	}
+	if want := "Complete login in the Bex dashboard" + data; out.String() != want {
+		t.Fatalf("prompt = %q, want %q", out.String(), want)
+	}
+	out.Reset()
+	if _, err := w.Write([]byte(data)); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != data {
+		t.Fatalf("non-prompt output changed: %q", out.String())
+	}
+}
 
 func TestRewriteTextPreservesRenderYAML(t *testing.T) {
 	in := "Validate a render.yaml Blueprint, then run:\n  render blueprints validate ./render.yaml"

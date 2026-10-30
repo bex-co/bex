@@ -1058,6 +1058,11 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 	if !strings.Contains(output, "Login successful!") {
 		t.Fatalf("login did not complete:\n%s", output)
 	}
+	if !strings.Contains(output, "Complete login in the Bex dashboard with code: BEX-123") ||
+		!strings.Contains(output, "https://dashboard.example.test/auth/device?user_code=BEX-123") ||
+		strings.Contains(output, "Render Dashboard") {
+		t.Errorf("login prompt did not preserve the Bex identity and exact device URL/code:\n%s", output)
+	}
 	if !strings.Contains(output, "v"+testBexVersion+" → v9.9.9") || !strings.Contains(output, "https://example.test/releases/bex-cli-v9.9.9") {
 		t.Errorf("login did not report the newest bex release:\n%s", output)
 	}
@@ -1067,6 +1072,14 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 	}
 	if strings.Contains(output, "render v") || strings.Contains(output, "render.com/docs/cli") {
 		t.Errorf("login advertised the Render CLI:\n%s", output)
+	}
+	for _, format := range []string{"text", "interactive"} {
+		output, _ := run("CI=1", "login", "-o", format)
+		if !strings.Contains(output, "Complete login in the Bex dashboard with code: BEX-123") ||
+			!strings.Contains(output, "https://dashboard.example.test/auth/device?user_code=BEX-123") ||
+			strings.Contains(output, "Render Dashboard") {
+			t.Errorf("login -o %s did not preserve the Bex prompt and device URL/code:\n%s", format, output)
+		}
 	}
 
 	if output, _ = run("", "login", "--help"); strings.Contains(output, "9.9.9") {
