@@ -1,0 +1,97 @@
+{
+  "schema": "bex.m188.queue-operation-custody/v1",
+  "at": "2026-10-30T18:05:07.502052+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-final.json",
+      "archive": "completion-final.json",
+      "bytes": 969,
+      "sha256": "81a1ea6305073a197a9b60254637aa3d827f31d993db2b4460c7c7fe28d9d4e9"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-jobs.json",
+      "archive": "completion-jobs.json",
+      "bytes": 857,
+      "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-later-jobs.json",
+      "archive": "completion-later-jobs.json",
+      "bytes": 857,
+      "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-later-pending.json",
+      "archive": "completion-later-pending.json",
+      "bytes": 564,
+      "sha256": "a4e29289b93084492691efffe3fa291b9387e2cada190ab1d1b9d4daa4f81470"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-later-run.json",
+      "archive": "completion-later-run.json",
+      "bytes": 11466,
+      "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-receipt.json",
+      "archive": "completion-receipt.json",
+      "bytes": 1149,
+      "sha256": "e174c4241eeba01bea920854dba5a12f0274586c9665ae5795adef4c8f8f5f77"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-run-1.json",
+      "archive": "completion-run-1.json",
+      "bytes": 11466,
+      "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-run-2.json",
+      "archive": "completion-run-2.json",
+      "bytes": 11466,
+      "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-run-3.json",
+      "archive": "completion-run-3.json",
+      "bytes": 11466,
+      "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/fresh-jobs.json",
+      "archive": "fresh-jobs.json",
+      "bytes": 857,
+      "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/fresh-run.json",
+      "archive": "fresh-run.json",
+      "bytes": 11466,
+      "sha256": "30fb086f9471e95bbaeee51da20ff9eecd3635b35bf61e1c9f13c61296e71743"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/request.json",
+      "archive": "request.json",
+      "bytes": 538,
+      "sha256": "d071e0982fb2a188d69129704ae49455784c0ea5310d07c07c7122aa71d1bcc4"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/review.json",
+      "archive": "review.json",
+      "bytes": 1120,
+      "sha256": "999e5166b7c2d407a56ea833284afc5ad07b97b12aa2e7cb78dd4e513ad3cedb"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/terminal-jobs.json",
+      "archive": "terminal-jobs.json",
+      "bytes": 897,
+      "sha256": "18da534bd37c2d482e189cfc59cb56b25567493de29d1150fc385eb28c7b4582"
+    },
+    {
+      "source": "/tmp/bex-m188-3990-auto-cancel-41100487883/terminal-run.json",
+      "archive": "terminal-run.json",
+      "bytes": 11476,
+      "sha256": "74e9d27e7f7dc4d0c3cdb7b4b7ef4b4ee54a5ac49690382a6dad48d5eb330320"
+    }
+  ],
+  "scope": "Actual source/run/job inspection and bounded request/terminal evidence; no candidate acceptance or source adoption claim."
+}

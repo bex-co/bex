@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0 签名发布独立验收通过（7/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1 签名发布独立验收通过（8/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -219,3 +219,13 @@ Ruby3.2的FD正常构建、双架构实际运行门槛与完整扫描均通过�
 Syft保持相同registry来源、平台和完整spdx-json，只在该命令设置 `GODEBUG=http2client=0`，最多3次完整尝试，每次30m与10s终止宽限，5/10s退避。每次前及失败后清理对应架构的输出；耗尽后不执行该架构证明或discovery。原cosign5m重试、TUF/证书/透明日志/时间戳验证及所有扫描范围保持不变。[八项实际完整shell控制](evidence/syft-transport-retry/validation.json) 验证双架构、部分输出恢复、三次失败、deadline、原签名失败阻止标签及参数/环境/完整报告保留；受控stub不冒充真实网络发布或30分钟计时。
 
 受限恢复仅增加已核实的Ruby3.2索引 `e7e887fb…`，保留原FD producer与固定base；新verification将重做全部运行门槛、双架构全扫描、完整SBOM及五份签名证明，成功discovery后清理授权。[十五项实际选择器检查](evidence/recovery-selection-ruby32-added.json) 通过。Ruby3.1独立证明核验继续；当前正式计数仍为7/11，source pin与生产接入尚未改变。
+
+### Ruby3.1 正式验收推进至 8/11 — 2026-10-30（UTC 17:53Z）
+
+[Ruby3.1收据](evidence/ruby31-published-acceptance/acceptance.json) 已完成五份严格证明、两架构直接registry子镜像/配置绑定、Ruby3.1.7与固定系统补丁核验、完整扫描和新鲜匿名discovery body/header确认。目标Brotli发现为零，其他旧版本漏洞仍保留在报告中。真实候选原文、批准状态转换、最终冻结守卫与计数时快照已归档，原七项证据保持原字节。
+
+传输修复的 [3990来源审核](evidence/publisher-source-reviews/3990-review.json) 与 [后续明确准入](evidence/publisher-source-reviews/3990-admission.json) 分开保留，历史审核状态不回填；新守卫保留FD等全部旧角色，[七项回归](evidence/3990-seven-candidate-regressions.json) 通过。Ruby3.1本身的producer、verification与证书仍是FD，不改写为新来源。
+
+后续4462仅增加PM记录，与3990所有非PM字节完全相同；[精确来源准入](evidence/publisher-source-reviews/4462-admission.json) 和 [仅来源策略追加](evidence/publisher-source-reviews/4462-activation.json) 均保留原八项。[八项回归及未满11项的实际采用拒绝](evidence/4462-eight-candidate-regressions.json) 通过，原守卫快照与验收记录不改。
+
+3990自动全量重复发布在原生任务尚未产生时提交一次取消，最终已确认cancelled，未损失编译；见 [逐次请求和实际终态](evidence/3990-duplicate-batch-cancellation/completion-final.json)。4462已有的Ruby3.2定向恢复请求 `41101339222` 经实际run/jobs确认，直接复用，没有重复派发；见 [请求核对](evidence/ruby32-4462-recovery-request/inspection.json)。剩余Node18/20、Ruby3.2继续；source pin、inventory、真实应用测试与生产rollout尚未完成。

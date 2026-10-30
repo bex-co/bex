@@ -1,0 +1,11 @@
+{
+  "schema": "bex.m188.compact-acceptance-archive-audit/v1",
+  "at": "2026-10-30T17:59:02.721701+00:00",
+  "passed": true,
+  "files": 67,
+  "bytes": 1174697,
+  "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+  "receipt_sha256": "8c2e63bed428a37f6501fcf115d73174e8e3ca5fc25f9e18535c306e385cdc6f",
+  "all_original_receipt_links_retained": true,
+  "source_adoption_performed": false
+}

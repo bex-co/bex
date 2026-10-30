@@ -1,0 +1,98 @@
+{
+  "schema": "bex.m188.explicit-root-source-admission/v1",
+  "admitted_at": "2026-10-30T17:49:07.788407+00:00",
+  "root_authorization": "Explicit root admission after reading immutable3489source review and exact3line futureguarddiff: ONLY3990 asproducer+verification all11; exactsource-only append; preserveaccepted7; no candidatepromotion.",
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "admitted": true,
+  "roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "inspection_record_unchanged": {
+    "file": "/tmp/bex-m188-3990-source-review.json",
+    "sha256": "3489c0942cb613a1b9cdf6242f861826b5522bd7de41cfc919f58fe750bb5430",
+    "inspection_still_admitted_false": true,
+    "meaning": "Earlier reviewed-pending state preserved, this is separate actual rootadmission, not backdated."
+  },
+  "guard_transition": {
+    "old_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+    "old_snapshot": "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+    "new_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+    "new_snapshot": "/tmp/bex-m188-guard-snapshots/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+    "active_file": "/tmp/bex-m188-prepare-adoption.py",
+    "future_proposal_file": "/tmp/bex-m188-guard-proposals/3990b9acf35f62ba1d702387bc2061a83342b2b3/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+    "oldFD_literal_and_all_prior_roles_retained": true,
+    "producer49ee_only_Node18_preserved": true,
+    "mutable_active_path_is_authorized_exception": "Only currentguard path changes. Historical guard bytes are retained at exacthash snapshots even if an old metadata record names mutable currentpath."
+  },
+  "aggregate_source_policy_transition": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "before": {
+      "file": "/tmp/bex-m188-aggregate-before-3990-source-admission-ca307b478249ac8a1eeedc27dfa43f3565184def93aafd206757291978e36a91.json",
+      "sha256": "ca307b478249ac8a1eeedc27dfa43f3565184def93aafd206757291978e36a91",
+      "bytes": 133162
+    },
+    "after": {
+      "file": "/tmp/bex-m188-guard-receipt-context-after-3990-source-admission.json",
+      "sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4",
+      "bytes": 133210
+    },
+    "changed_fields": [
+      "accepted_sources"
+    ],
+    "added_sources": [
+      "3990b9acf35f62ba1d702387bc2061a83342b2b3"
+    ],
+    "all_other_semantic_fields_unchanged": true,
+    "all7_verified_rows_unchanged": true,
+    "accepted_count": 7,
+    "existing_checked_at_unchanged": true
+  },
+  "Ruby31_fresh_guard_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context-after-3990-admission.json",
+    "sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4",
+    "original_ca307_input_not_overwritten": true
+  },
+  "preserved_hashes": {
+    "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+    "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+    "/tmp/bex-m188-adoption-guard-validation.json": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+    "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+    "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+    "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+    "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+    "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+    "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+    "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+    "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+    "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+    "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+    "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+    "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+    "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+    "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+    "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+    "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+    "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+    "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+    "/tmp/bex-m188-guard-snapshots/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+    "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+    "/tmp/bex-m188-guard-snapshots/5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c.py": "5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c",
+    "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+    "/tmp/bex-m188-guard-snapshots/98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8.py": "98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8",
+    "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+    "/tmp/bex-m188-guard-snapshots/da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4.py": "da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4",
+    "/tmp/bex-m188-guard-snapshots/166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93.py": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+    "/tmp/bex-m188-node14-acceptance.json": "535edeae8a0840df4d8978675df7af25cbe14832143c0bfc18e87e6f50e9ba03",
+    "/tmp/bex-m188-node-16-bookworm-acceptance.json": "0a7f01b6fd6730d32be046411dc6165b8c7ad1fb9b261c85aa1c3b60955cbb1f",
+    "/tmp/bex-m188-python-3.7-bullseye-acceptance.json": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346",
+    "/tmp/bex-m188-python-3.8-bookworm-acceptance.json": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20",
+    "/tmp/bex-m188-python-3.10-bookworm-acceptance.json": "608363e390ae125cc5fb89c77a9d11c524a5c2ccd1a9154ccb438d8183c32630",
+    "/tmp/bex-m188-python-3.9-bookworm-acceptance.json": "a478c5505793f72f4697908a8275dddaef6844f36644283127e764eb7ed08612",
+    "/tmp/bex-m188-ruby-3.0-bullseye-acceptance.json": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177"
+  },
+  "candidate_promoted": false,
+  "source_adoption_performed": false,
+  "scope": "Temporary source-policy metadata activation only explicitlyauthorized byroot. No repository/board/remote changes; no accepted candidate/proof/receipt rewrite."
+}

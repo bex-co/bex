@@ -1,0 +1,28 @@
+{
+  "schema": "native_auto_zero_start_cancellation_review/v1",
+  "checked_at": "2026-10-30T17:40:10.841016+00:00",
+  "run_id": 41100487883,
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "event": "push",
+  "branch": "main",
+  "run_status": "queued",
+  "run_attempt": 1,
+  "fresh_run": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/fresh-run.json",
+    "sha256": "30fb086f9471e95bbaeee51da20ff9eecd3635b35bf61e1c9f13c61296e71743",
+    "requested_at": "2026-10-30T17:40:09.670861+00:00",
+    "received_at": "2026-10-30T17:40:10.786065+00:00"
+  },
+  "fresh_jobs": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/fresh-jobs.json",
+    "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636",
+    "requested_at": "2026-10-30T17:40:09.671054+00:00",
+    "received_at": "2026-10-30T17:40:10.840850+00:00"
+  },
+  "native_jobs": [],
+  "native_job_count": 0,
+  "zero_start_condition_met": true,
+  "matrix_only_work_permitted_by_root": true,
+  "authorized_scope": "Only exact3990 automatic push/main native workflow; preserve all other runs.",
+  "other_runs_modified": false
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "native_approved_source_guard_context/v1",
+  "guard_context_only": true,
+  "candidate_promoted": false,
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "source_review": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/publisher-source-reviews/fd358.json",
+    "sha256": "73d430049f0fc970f10637dd27fdea6b37dac66d9d2a699c1da5fe5766059247"
+  },
+  "original_aggregate": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4"
+  },
+  "guard_receipt_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context.json",
+    "sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4"
+  },
+  "authorization": "Explicit root admission of existing FD producer+verification source; candidate promotion separately root-approved.",
+  "existing_accepted_rows_preserved": true
+}

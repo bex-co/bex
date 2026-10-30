@@ -1,0 +1,306 @@
+{
+  "schema": "bex.m188.shipped-source-review-awaiting-root-admission/v1",
+  "at": "2026-10-30T17:43:14.386518+00:00",
+  "exact_sha": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "result": "Publisher closure PASS; proposed roles await explicit root admission",
+  "admitted": false,
+  "reviewed_baselines": [
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+  ],
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "exact_approved_proposal_bytes": true,
+  "workflow_delta_only_generate_sbom_and_call": true,
+  "non_md_recipe_shared_actions_unchanged": true,
+  "native_go_matrix_inventory_version_resolver_and_nativebases_runtime_unchanged": true,
+  "official_matrix_rows": 27,
+  "current_supplied_map_empty": true,
+  "source_hashes": {
+    "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "lego/operator/internal/build/nativeversion.go": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+    "lego/operator/internal/build/nativeresolve.go": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+    "lego/operator/internal/build/nativebases.go": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+    "lego/operator/internal/build/toolchain-freshness.json": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+    "deploy/native-base/matrix.py": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+    "scripts/lib/toolchain-freshness.py": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b"
+  },
+  "final_shell_validation": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/syft-transport-retry/validation.json",
+    "sha256": "de312292a872e9461118d49223b750d9a76b392d19d38e92e760d11a2dc1f1ea",
+    "behavior_file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/syft-transport-retry/behavior-receipt.json",
+    "behavior_sha256": "e90716285ed190a82f628916efa6b5db15c3807c5efeefc7cbb2a1d55e4fa7c0",
+    "all8_passed": true,
+    "limits": "Controlled failures/deadline exit124 verify exact forwarded30m/10sargs, counts/backoff, cleanup and failclosed ordering; no actual30minute wait/realSyft/Cosign/image/registry run claimed. Successful AMD attestations precede ARM failure; no corresponding ARM attestation or discovery occurs. Config/trust/5m signing behavior unchanged."
+  },
+  "source_custody_files_verified": {
+    "syft-transport-retry": {
+      "manifest_sha256": "d1d2b178a58e014b04e6d6c281053e799d9fd273938aca91c1fed31314ca12dd",
+      "files": 34,
+      "bytes": 95627
+    },
+    "ruby32-recovery-intake": {
+      "manifest_sha256": "a3a86da1389fde03385a62b8164e82616d84e246891e4ddb9b1f40d500a18e89",
+      "files": 9,
+      "bytes": 189707
+    }
+  },
+  "auth_delta": {
+    "retired": [
+      "python-3.8-bookworm",
+      "python-3.9-bookworm",
+      "python-3.10-bookworm"
+    ],
+    "retired_refs_match_accepted7": true,
+    "added": {
+      "ruby-3.2-bookworm": {
+        "base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+        "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063737101,
+        "job_id": 124091095086,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41063737101/job/124091095086",
+        "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Ruby3.2.11 gates and both full Trivy scans. Image signing and amd64 SPDX/Trivy attestations completed; arm64 registry-Syft SBOM generation then failed reading a layer with HTTP2 PROTOCOL_ERROR. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, complete SBOMs, signatures and attestations.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+      }
+    },
+    "remaining_node18_node20_entries_unchanged": true,
+    "Ruby32_intake_metadata_and_original_build_runtime_scan_job_gates_verified": true,
+    "original_full5_not_complete": true,
+    "freshall5_gates_scans_required": true
+  },
+  "all_non_pm_delta": [
+    {
+      "status": "M",
+      "path": ".github/native-base-recovery.json",
+      "assessment": "Only known acceptedPython retirements plus exact gatedRuby32FD/e7e recovery; currentNode18/20 intact.",
+      "patch_sha256": "aad18e3072f2d9b30d744d9a2942011f44cf55f9d442a8625f2271e0e68d9f09"
+    },
+    {
+      "status": "M",
+      "path": ".github/workflows/hcloud-csi-rollout.yml",
+      "assessment": "SeparateCSI observer readiness/smoke workflow; no publisher import/invocation.",
+      "patch_sha256": "78177603a3b4e2e6d0fb8a76777c099f93392e642f6316bf0bb1997501d59af3"
+    },
+    {
+      "status": "A",
+      "path": ".github/workflows/native-backport-acceptance.yml",
+      "assessment": "Root manual6 fixture workflow; not invoked by native publisher; read-only preparation/acceptance tool.",
+      "patch_sha256": "b072849ba29b76724bd00dff3b27b7a36556d5a36d22fad6ef7cbf8824d1950d"
+    },
+    {
+      "status": "M",
+      "path": ".github/workflows/native-base-image.yml",
+      "assessment": "Exact tested new generate_sbom function and call substitution only; source/provider/platform/output and all Cosign trust/signing/scans/gates preserved.",
+      "patch_sha256": "4d282ce92ace046e8010c7062bf0669d1aa21c42556608e449bf0dbfcb998768"
+    },
+    {
+      "status": "M",
+      "path": "deploy/hcloud-csi/bounded-ext4.patch",
+      "assessment": "SeparateCSI encryption-key refusal patch; outside native buildcontext/input closure.",
+      "patch_sha256": "1d7eaef2b59abf2d34f5ff789819d490f6bd848accab034b8ddb4092b653e795"
+    },
+    {
+      "status": "M",
+      "path": "deploy/hcloud-csi/fixture-operations.md",
+      "assessment": "SeparateCSI observer documentation.",
+      "patch_sha256": "f8d1bd538ecfa8f8a4d88d3f275418c002be4ad5a590f3ea1e1159e9cf5fb1ae"
+    },
+    {
+      "status": "M",
+      "path": "deploy/hcloud-csi/reviewed.values.json",
+      "assessment": "SeparateCSI image pin update; outside native publisher.",
+      "patch_sha256": "042d3e50b9a10abe8302a5bf6b1dae20624f0dd01545831693c447916f205600"
+    },
+    {
+      "status": "M",
+      "path": "lego/operator/internal/build/nativebackport_python_test.go",
+      "assessment": "One selected runtime/companion image log; no runtime behavior change.",
+      "patch_sha256": "18a1ade648c115e1849856a0eab4ccd765b22476e328d59f9aabe47bc73cb1c9"
+    },
+    {
+      "status": "M",
+      "path": "lego/operator/internal/build/nativebackport_ruby_test.go",
+      "assessment": "One selected runtime/companion image log; no runtime behavior change.",
+      "patch_sha256": "7db4fb1c98a71b6c87e71c6936265685c0c53a1b135bdebd80e42f1c0c5736f4"
+    },
+    {
+      "status": "M",
+      "path": "lego/operator/internal/build/nativebackport_test.go",
+      "assessment": "One selected runtime image log; no runtime behavior change.",
+      "patch_sha256": "5c81a5ababd06241f9d53df30c14d088070aeeb648667e7d5b3e89a424fd7fbe"
+    },
+    {
+      "status": "M",
+      "path": "lego/operator/internal/build/nativebases_test.go",
+      "assessment": "971e: actual nonempty supplied map completeness assertion only; currentmapempty and m188 uses11lineimage/upstream fields, notpartialglobalmap.",
+      "patch_sha256": "8cf643b94396db1cb51c4beb7f7d10b2b7d873b57a7589d4a611887b2a6ac0c3"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-toolchain-freshness.test.sh",
+      "assessment": "971e: tests for canonical supplied-base pin coverage.",
+      "patch_sha256": "538ed8422bb76f0f7ec205aa69ed5ecaa37d1a15591a914e74646a562f68e7ed"
+    },
+    {
+      "status": "M",
+      "path": "scripts/disk_fixture.py",
+      "assessment": "SeparateCSI fixture lifecycle helper; no publisher invocation.",
+      "patch_sha256": "967d459d0d82d7610cf07e798ca0cffb83d3bc0004ef59436b7ccbcb8e68f400"
+    },
+    {
+      "status": "M",
+      "path": "scripts/github-actions-validate.sh",
+      "assessment": "Add pinned upload-artifact for separateCSI observer workflow; native publisher actionpins unchanged.",
+      "patch_sha256": "0c89652b3f166d27cb5d3d6e1ed00de52eeee99bb7ab32e45b9d18c4bbc072a2"
+    },
+    {
+      "status": "M",
+      "path": "scripts/lib/toolchain-freshness.py",
+      "assessment": "971e: addsnativebases.go to canonicalpin-sites. Not imported by publishermatrix.py; inventory parser unchanged. With emptymap no newactualpin and no11adoptionclosure gap.",
+      "patch_sha256": "b2aa00fb3d3e0a5f094f1f0bbc12ba2d9640bf722d1c096558b28646b24a44de"
+    },
+    {
+      "status": "M",
+      "path": "scripts/test_disk_fixture.py",
+      "assessment": "SeparateCSI fixture tests; no publisher input.",
+      "patch_sha256": "9ede61b46a01b3b3161ad1407a8a17b2287b2e58ad93b839ea7996a1dc0caa45"
+    }
+  ],
+  "intervening_parent0ea8": {
+    "full_sha": "0ea8dbcd099036c016fae63f8219a83f126b6f92",
+    "all16paths_PM_only": true,
+    "native_publisher_input_changes": false
+  },
+  "971e_interop_note": "Freshnessmodulehash changed onlycanonicalpin-site addition; suppliedmapempty means no newpin. Completecatalogtest activeonlyfornonemptyglobalmap; m18811lineimage/upstream+inventory55 plan remains valid. Do not rewrite historical proof sourcehashes.",
+  "proposed_roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "historical_roles_preserved": true,
+  "producer49ee_restriction_preserved": "ONLY node-18-bookworm",
+  "future_guard_snapshot": {
+    "file": "/tmp/bex-m188-guard-proposals/3990b9acf35f62ba1d702387bc2061a83342b2b3/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+    "sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+    "inactive": true,
+    "compiled_and_exact_old_roles_plus_only3990": true,
+    "oldFD_explicit_literal_retained": true,
+    "global_version_and_crypto_gate_code_unchanged": true
+  },
+  "current_guard_not_mutated": {
+    "file": "/tmp/bex-m188-prepare-adoption.py",
+    "sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f"
+  },
+  "aggregate_not_mutated": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "sha256": "ca307b478249ac8a1eeedc27dfa43f3565184def93aafd206757291978e36a91",
+    "accepted_count": 7
+  },
+  "protected_accepted7_inputs": {
+    "node-14-bullseye": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+        "sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+        "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697"
+      },
+      {
+        "file": "/tmp/bex-m188-adoption-guard-validation.json",
+        "sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037"
+      }
+    ],
+    "python-3.7-bullseye": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+        "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6"
+      }
+    ],
+    "node-16-bookworm": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+        "sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455"
+      }
+    ],
+    "python-3.8-bookworm": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+        "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+        "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+        "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944"
+      }
+    ],
+    "python-3.10-bookworm": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+        "sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf"
+      }
+    ],
+    "python-3.9-bookworm": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+        "sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50"
+      }
+    ],
+    "ruby-3.0-bullseye": [
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84"
+      },
+      {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+        "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df"
+      }
+    ]
+  },
+  "remaining_before_activation": [
+    "Root reads/approves this exact source review and proposes explicit3990role admission.",
+    "Only then activate this exactFUTUREsnapshot as currentguard+freeze, retain currentf595 and alloldproofs.",
+    "Revalidate all7existing candidates, test all11-copy refusal, refresh plan; do not alter acceptedrecords.",
+    "Then run slowRuby31 FDproducer/FDverifier/certFD under newcurrentclosure guard and publish one immutableFINALhandoff.",
+    "FutureRuby32 recovery requires source-pinned3990auth, producerFD/e7e, fresh2archgates/fullscans+all5strictbundles; no source-only candidate approval."
+  ],
+  "scope": "Read-only shipped source+small retained metadata review and inactive /tmp futureguard creation only. No liveguard/source/board/receipt/remote mutation, no candidate promotion/adoption."
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "native_zero_start_cancellation_completion/v1",
+  "confirmed_at": "2026-10-30T17:55:02.792983+00:00",
+  "run_id": 41100487883,
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "run_attempt": 1,
+  "status": "completed",
+  "conclusion": "cancelled",
+  "run": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/terminal-run.json",
+    "sha256": "74e9d27e7f7dc4d0c3cdb7b4b7ef4b4ee54a5ac49690382a6dad48d5eb330320"
+  },
+  "jobs": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/terminal-jobs.json",
+    "sha256": "18da534bd37c2d482e189cfc59cb56b25567493de29d1150fc385eb28c7b4582"
+  },
+  "native_job_count": 0,
+  "native_jobs": [],
+  "completed_cancellation_confirmed": true,
+  "original_request": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/request.json",
+    "sha256": "d071e0982fb2a188d69129704ae49455784c0ea5310d07c07c7122aa71d1bcc4"
+  },
+  "earlier_pending_records_preserved": true,
+  "no_other_run_modified": true
+}
