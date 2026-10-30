@@ -20,11 +20,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -41,6 +43,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
@@ -187,18 +190,35 @@ var _ = Describe("Application container policy admission", func() {
 				}
 
 				// The datastore PriorityClass exempts a Pod from the workspace
-				// compute quota (w2/m247): only KeyValue-controlled workloads may
-				// carry it, and no operator workload may name any other class.
-				keyValueOwned := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
-					return o.APIVersion == appv1alpha1.SchemeGroupVersion.String() && o.Kind == "KeyValue" && o.Controller != nil && *o.Controller
+				// compute quota (w2/m247, w2/057): only workloads controlled by a
+				// KeyValue or Database, and the datastores' unowned delete-time
+				// purge Jobs, may carry it, and no operator workload may name any
+				// other class.
+				datastoreOwned := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
+					return o.APIVersion == appv1alpha1.SchemeGroupVersion.String() && (o.Kind == "KeyValue" || o.Kind == "Database") && o.Controller != nil && *o.Controller
 				})
+				purgeLabel := admissionDatastorePurgeLabel(workload)
 				priorities := []struct{ name, class string }{{"foreign-priority", "system-cluster-critical"}}
-				if keyValueOwned {
+				switch {
+				case datastoreOwned:
 					Expect(admissionPodTemplate(workload).Spec.PriorityClassName).To(Equal(appv1alpha1.DatastorePriorityClassName), scenario)
 					unowned := workload.DeepCopyObject().(client.Object)
 					unowned.SetOwnerReferences(nil)
 					expectDenied(operator.Create(ctx, admissionFreshWorkload(unowned), client.DryRunAll), scenario+" unowned datastore priority create")
-				} else {
+					serviceOwned := workload.DeepCopyObject().(client.Object)
+					serviceOwned.SetOwnerReferences([]metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: "svc", UID: "svc-uid", Controller: new(true)}})
+					expectDenied(operator.Create(ctx, admissionFreshWorkload(serviceOwned), client.DryRunAll), scenario+" service-owned datastore priority create")
+				case purgeLabel != "":
+					Expect(admissionPodTemplate(workload).Spec.PriorityClassName).To(Equal(appv1alpha1.DatastorePriorityClassName), scenario)
+					unlabelled := admissionFreshWorkload(workload)
+					labels := maps.Clone(unlabelled.GetLabels())
+					delete(labels, purgeLabel)
+					unlabelled.SetLabels(labels)
+					expectDenied(operator.Create(ctx, unlabelled, client.DryRunAll), scenario+" purge without its datastore UID label")
+					renamed := admissionFreshWorkload(workload)
+					renamed.SetName("cleanup-" + workload.GetName())
+					expectDenied(operator.Create(ctx, renamed, client.DryRunAll), scenario+" renamed purge Job")
+				default:
 					priorities = append(priorities, struct{ name, class string }{"datastore-priority", appv1alpha1.DatastorePriorityClassName})
 				}
 				for _, priority := range priorities {
@@ -420,12 +440,19 @@ func admissionPlatformWorkloads(namespace string) []client.Object {
 	intent.authSecretName = "strict-valkey-auth"
 	intent.platformSecretName = "strict-valkey-platform"
 	cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).Build()
-	kvReconciler := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme()}
+	kvReconciler := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme(), Backup: testKeyValueBackupStore}
 	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: namespace}}
 	Expect(kvReconciler.reconcileKeyValueWorkload(ctx, kv, sts, intent)).To(Succeed())
+	kvBackup := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(kv.Name), Namespace: namespace},
+		Spec: kvReconciler.keyValueBackupCronJobSpec(kv, starterValkeyTier(), intent.platformSecretName)}
+	Expect(controllerutil.SetControllerReference(kv, kvBackup, cl.Scheme())).To(Succeed())
+	kvPurge := kvReconciler.keyValueBackupPurgeJob(kv)
 	db := exportTestDatabase(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
 	db.Namespace = namespace
+	// The export-expiry Job shares the export Job's Database-controlled shape.
 	export := exportJob(db, db.Spec.Exports[0], testStore)
+	Expect(controllerutil.SetControllerReference(db, export, cl.Scheme())).To(Succeed())
+	dbPurge := (&DatabaseReconciler{Backup: testStore}).dbBackupPurgeJob(db)
 	static := publish.PublishJob(publish.Options{
 		AppID: "strict-static", AppUID: "strict-static-uid", Namespace: namespace, AppNamespace: namespace,
 		Image: "busybox:latest", PublishPath: "/site", Revision: "rev-1",
@@ -438,7 +465,21 @@ func admissionPlatformWorkloads(namespace string) []client.Object {
 	Expect(r.createDiskRestoreJob(ctx, app, "disk/snapshot.tar.gz.age", "disk/snapshot.tar.gz.age")).To(Succeed())
 	restore := &batchv1.Job{}
 	Expect(cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: diskRestoreName(app.Name)}, restore)).To(Succeed())
-	return []client.Object{sts, export, static, backup, restore}
+	return []client.Object{sts, kvBackup, kvPurge, export, dbPurge, static, backup, restore}
+}
+
+// admissionDatastorePurgeLabel names the parent-UID label that identifies a
+// datastore's unowned delete-time purge Job, or "" for any other workload.
+func admissionDatastorePurgeLabel(workload client.Object) string {
+	if _, job := workload.(*batchv1.Job); !job {
+		return ""
+	}
+	for prefix, label := range map[string]string{dbPurgeJobPrefix: execution.LabelDatabaseUID, kvPurgeJobPrefix: execution.LabelKeyValueUID} {
+		if strings.HasPrefix(workload.GetName(), prefix) && workload.GetLabels()[label] != "" {
+			return label
+		}
+	}
+	return ""
 }
 
 func admissionPodTemplate(workload client.Object) *corev1.PodTemplateSpec {

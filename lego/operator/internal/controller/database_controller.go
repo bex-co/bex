@@ -1924,7 +1924,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 	deadline := int64((15 * time.Minute) / time.Second)
 	backoff := int32(3)
 	base := strings.TrimRight(r.Backup.DestinationPath, "/")
-	jobName := cleanupJobName("purge-db-", db.Name, db.UID)
+	jobName := cleanupJobName(dbPurgeJobPrefix, db.Name, db.UID)
 	labels := map[string]string{
 		"app.bex.co/database":      db.Name,
 		execution.LabelDatabaseUID: string(db.UID),
@@ -1948,6 +1948,8 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
+					// Not charged to the services' compute quota (datastore_priority.go).
+					PriorityClassName: appv1alpha1.DatastorePriorityClassName,
 					Containers: []corev1.Container{{
 						Name:  "purge",
 						Image: publish.DefaultAWSCLIImage,
