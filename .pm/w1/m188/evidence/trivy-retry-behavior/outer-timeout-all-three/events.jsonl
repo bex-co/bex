@@ -1,0 +1,5 @@
+{"command": "timeout", "args": ["--kill-after=10s", "21m", "trivy", "image", "ghcr.io/bex-co/bex-cnb-run@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}
+{"command": "sleep", "args": ["5"]}
+{"command": "timeout", "args": ["--kill-after=10s", "21m", "trivy", "image", "ghcr.io/bex-co/bex-cnb-run@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}
+{"command": "sleep", "args": ["10"]}
+{"command": "timeout", "args": ["--kill-after=10s", "21m", "trivy", "image", "ghcr.io/bex-co/bex-cnb-run@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}

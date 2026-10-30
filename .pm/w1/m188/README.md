@@ -175,3 +175,13 @@ Node16、Python3.7、Python3.8 的旧 amd64 SPDX 也未证明与实际子镜像�
 - 两项新候选的 amd64 Docker-save 合成摘要都由实际压缩层 digest、解压 DiffID/大小、顺序及原配置精确重建；arm64 均直接绑定 registry 子镜像，不使用未被实际签名的另一派生摘要。两份独立复核、保留的实际读取/完成记录、五份严格签名和全扫描语义均通过。新守卫的2个正向与26个有意篡改反例通过；保留发现与回移/探针处置，不将旧运行时宣称为零漏洞。
 - Python3.7 的重复定向恢复在重新确认 queued/runner0/steps0 后提交取消；Node16/Python3.7 临时授权的既有清理保留。当前源 pin 尚未采用；剩余Node18/20、Python3.8/3.9/3.10、Ruby3.0/3.1/3.2均有当前发布路径。t002–t008继续开放。
 - 已推送 `5803d2030` 并针对其实际 SHA [检查发布输入范围](evidence/publisher-source-reviews/5803.json)。Node18与Python3.10以新授权进入完整恢复；三项Ruby在相同当前配方下新建候选，均不因为已排队就计入通过。
+
+### 重复 registry HTTP/2 扫描传输故障的有界恢复 — 2026-10-30
+
+Node16旧arm64扫描、Node20旧amd64扫描及当前canonical Node14 amd64扫描，均在读取镜像层时收到peer的HTTP/2 `PROTOCOL_ERROR`；后两次均未耗尽20m预算，运行门槛已通过。同一不可变索引此前扫描成功，因此按已观察到的间歇传输失败处理，不推断具体上游故障来源。见 [逐任务日志诊断](evidence/scan-layer-transport-diagnosis/receipt.json)。
+
+现有固定Trivy action的 `TRIVY_CMD` 入口增加最多3次完整扫描、5/10s退避；每次前后清理失败报告，扫描自身仍为20m，另有21m/10s的进程终止界限。原镜像参数、架构、JSON、全部未修复发现与exit-code0报告语义保持；任一架构耗尽尝试仍中止签名和discovery。没有引入新action或更换扫描器。
+
+[六项实际入口行为检查](evidence/trivy-retry-behavior/receipt.json) 通过，覆盖双架构、含空格输出、失败恢复、三次失败、缺少输出路径及外部deadline；这是受控命令stub的配置/退出行为检查，不冒充真实安全扫描或21分钟计时。实际发布采用需在修复ship后继续逐项验证；当前3/11不因此增加。
+
+同步main的 `b83bf5035` 已为两架构扫描配置 `GODEBUG=http2client=0`，本次合并保留该协议设置并补充有界完整重试。合并后的六项官方入口行为检查再次通过，逐次调用均核对协议环境、架构和原扫描选项；扫描器版本、CVE报告范围与签名门槛保持。测试不宣称已在真实registry重现或证明peer根因，后续仍以实际发布结果验收。

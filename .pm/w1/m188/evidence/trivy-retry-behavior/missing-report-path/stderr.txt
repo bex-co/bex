@@ -1,0 +1,1 @@
+/tmp/bex-m188-trivy-wrapper-merged-review/runner-temp/native-trivy: line 3: TRIVY_OUTPUT: missing scan report path

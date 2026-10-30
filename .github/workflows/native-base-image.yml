@@ -169,12 +169,33 @@ jobs:
       # Report every known vulnerability as well, including unfixed findings;
       # old Node versions may still match version-only CVE rules after backport.
       # Never hide these with a global CVE ignore or treat an SBOM as a probe.
+      - name: prepare bounded full-scan retries
+        run: |
+          # The pinned action supports TRIVY_CMD. Keep its 20m scan budget;
+          # the outer deadline adds only a minute for CLI teardown.
+          cat > "$RUNNER_TEMP/native-trivy" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          : "${TRIVY_OUTPUT:?missing scan report path}"
+          for attempt in 1 2 3; do
+            rm -f -- "$TRIVY_OUTPUT"
+            if timeout --kill-after=10s 21m trivy "$@"; then
+              exit 0
+            fi
+            echo "Trivy scan attempt $attempt failed" >&2
+            rm -f -- "$TRIVY_OUTPUT"
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep "$((attempt * 5))"
+          done
+          SH
+          chmod 755 "$RUNNER_TEMP/native-trivy"
       - name: scan amd64 candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_PLATFORM: linux/amd64
           # Long layer streams failed twice with peer HTTP/2 PROTOCOL_ERROR.
           GODEBUG: http2client=0
+          TRIVY_CMD: ${{ runner.temp }}/native-trivy
         with:
           cache: false
           image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
@@ -187,6 +208,7 @@ jobs:
         env:
           TRIVY_PLATFORM: linux/arm64
           GODEBUG: http2client=0
+          TRIVY_CMD: ${{ runner.temp }}/native-trivy
         with:
           cache: false
           image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}

@@ -1,0 +1,1 @@
+{"ArtifactName": "ghcr.io/bex-co/bex-cnb-run@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "Metadata": {"ImageConfig": {"architecture": "amd64"}}, "Results": [{"Vulnerabilities": [{"VulnerabilityID": "CVE-test-retained", "Status": "will_not_fix"}]}]}
