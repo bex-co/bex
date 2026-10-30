@@ -1,0 +1,64 @@
+/*
+Copyright YEAR.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/bex-co/bex/lego/operator/internal/controller"
+	appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
+
+func main() {
+	ns := os.Getenv("M139_NAMESPACE")
+	if ns == "" {
+		panic("namespace required")
+	}
+	cfg, err := clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+	if err != nil {
+		panic(err)
+	}
+	scheme := runtime.NewScheme()
+	clientgoscheme.AddToScheme(scheme)
+	appv1.AddToScheme(scheme)
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		panic(err)
+	}
+	scoped := client.NewNamespacedClient(cl, ns)
+	r := &controller.AppReconciler{Client: scoped, BuildClient: scoped, Scheme: scheme, Mode: controller.ModeKubernetes, AppsNamespace: "dev-8", ActivatorService: "m139-activator", ActivatorNamespace: ns, ActivatorPort: 8888}
+	ctx := context.Background()
+	for {
+		var list appv1.AppList
+		if err := scoped.List(ctx, &list); err != nil {
+			fmt.Println(err)
+		}
+		for _, a := range list.Items {
+			_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(&a)})
+			if err != nil {
+				fmt.Println(a.Name, err)
+			}
+		}
+		time.Sleep(time.Second)
+	}
+}

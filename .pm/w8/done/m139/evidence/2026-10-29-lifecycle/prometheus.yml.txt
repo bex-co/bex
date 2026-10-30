@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: dev8-cadvisor
+    metrics_path: /unused
+    static_configs:
+      - targets: ['127.0.0.1:19098']
+        labels:
+          node: bex-kpwfg-98bls
+      - targets: ['127.0.0.1:19098']
+        labels:
+          node: bex-tenant-0-2kq5n-8m7cl-q7pxt
+      - targets: ['127.0.0.1:19098']
+        labels:
+          node: bex-worker-0-h9gfk-7qp66-d9jxz
+      - targets: ['127.0.0.1:19098']
+        labels:
+          node: bex-worker-0-h9gfk-7qp66-qjqbl
+    relabel_configs:
+      - source_labels: [node]
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: container_memory_working_set_bytes
+        action: keep

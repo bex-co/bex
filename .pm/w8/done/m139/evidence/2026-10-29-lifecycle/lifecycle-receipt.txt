@@ -1,0 +1,21 @@
+=== RUN   TestM139LiveAcceptance
+    m139_temp_acceptance_test.go:148: isolated fixture workspace tea-dbhu7jq9086o74vvn7pg services srv-dbhu7jq9086o74vvn7q0 srv-dbhu7jq9086o74vvn7r0 srv-dbhu7jq9086o74vvn7s0 srv-dbhu7jq9086o74vvn7t0
+    m139_temp_acceptance_test.go:187: two Free and one Starter service have Ready running pods; owner's suspended service has none
+    m139_temp_acceptance_test.go:200: actual cadvisor running seconds srv-dbhu7jq9086o74vvn7q0 75
+    m139_temp_acceptance_test.go:200: actual cadvisor running seconds srv-dbhu7jq9086o74vvn7r0 75
+    m139_temp_acceptance_test.go:232: 144 seconds / 180 seconds warns once and keeps Free and paid running
+    m139_temp_acceptance_test.go:259: actual AutoHibernated service contributes zero seconds after cadvisor stop tail
+    m139_temp_acceptance_test.go:284: 182 seconds / 180 suspends both Free services, billing suspender, manual resume refused; Starter remains Ready
+    m139_temp_acceptance_test.go:289: Free-to-Starter upgrade resumes service immediately
+    m139_temp_acceptance_test.go:310: injected UTC month boundary clears budget suspension and resets counter; owner suspension remains
+    m139_temp_acceptance_test.go:331: Mailpit delivery 568sH6bZNAcotne5hykUTk [bex] Your workspace has used all its Free instance hours
+    m139_temp_acceptance_test.go:331: Mailpit delivery 47gn7hnW3J3dZb4DhGHRLw [bex] Your workspace is nearly out of Free instance hours
+    m139_temp_acceptance_test.go:337: two repeated sweeps per phase yield exactly two delivered emails and two durable month-stage claims
+    m139_temp_acceptance_test.go:157: Kubernetes App GET 404 srv-dbhu7jq9086o74vvn7q0
+    m139_temp_acceptance_test.go:157: Kubernetes App GET 404 srv-dbhu7jq9086o74vvn7r0
+    m139_temp_acceptance_test.go:157: Kubernetes App GET 404 srv-dbhu7jq9086o74vvn7s0
+    m139_temp_acceptance_test.go:157: Kubernetes App GET 404 srv-dbhu7jq9086o74vvn7t0
+    m139_temp_acceptance_test.go:96: DB workspace/fixtures deleted tea-dbhu7jq9086o74vvn7pg
+--- PASS: TestM139LiveAcceptance (422.31s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/usage	422.915s

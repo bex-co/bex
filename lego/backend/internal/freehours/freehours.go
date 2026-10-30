@@ -102,19 +102,21 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 		return fmt.Errorf("free instance hours: %w", err)
 	}
 	budget := w.budgetHours()
+	// Keep thresholds in the meter's unit: 0.05 hours warns at exactly 144s.
+	budgetSeconds := budget * time.Hour.Seconds()
 	exhausted := map[string]bool{}
 	var errs []error
 	for workspaceID, seconds := range totals {
 		used := float64(seconds) / 3600
 		switch {
-		case used >= budget:
+		case float64(seconds) >= budgetSeconds:
 			exhausted[workspaceID] = true
 			// Skip the warning a later sweep would otherwise still owe.
 			if _, err := w.Store.ClaimFreeHoursNotice(ctx, workspaceID, monthStart, StageWarned); err != nil {
 				errs = append(errs, err)
 			}
 			errs = append(errs, w.notify(ctx, workspaceID, monthStart, StageExhausted, used, budget))
-		case used >= budget*warnFraction:
+		case float64(seconds) >= budgetSeconds*warnFraction:
 			errs = append(errs, w.notify(ctx, workspaceID, monthStart, StageWarned, used, budget))
 		}
 	}

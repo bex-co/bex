@@ -1,0 +1,363 @@
+//go:build integration
+
+/*
+Copyright YEAR.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package usage
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/freehours"
+	"github.com/bex-co/bex/lego/backend/internal/mailer"
+	"github.com/bex-co/bex/lego/backend/internal/notifications"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"io"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	"net/http"
+	"os"
+	"os/exec"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"testing"
+	"time"
+)
+
+type m139Resolver struct{ workspace string }
+
+func (r m139Resolver) Tenant(context.Context, core.Identity) (string, bool) { return r.workspace, true }
+func (r m139Resolver) IsMember(_ context.Context, _ core.Identity, w string) (bool, error) {
+	return r.workspace == w, nil
+}
+
+type m139Emails struct{ address string }
+
+func (r m139Emails) LookupEmails(_ context.Context, ss []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range ss {
+		out[s] = r.address
+	}
+	return out, nil
+}
+func TestM139LiveAcceptance(t *testing.T) {
+	ctx := context.Background()
+	uri := os.Getenv("BEX_ACC_DB")
+	if uri == "" {
+		t.Fatal("BEX_ACC_DB required")
+	}
+	if !strings.Contains(uri, "localhost:55080") {
+		t.Fatal("refusing non-dev-8 DB")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	st := store.NewPGStore(pool)
+	ws, err := st.CreateWorkspace(ctx, "qa-20261029-freehours", "hobby", "m139-acceptance-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := st.DeleteTenant(ctx, ws.ID); err != nil {
+			t.Error(err)
+		}
+		var n int
+		pool.QueryRow(ctx, "SELECT count(*) FROM tenants WHERE id=$1", ws.ID).Scan(&n)
+		if n != 0 {
+			t.Error("workspace not deleted")
+		}
+		t.Log("DB workspace/fixtures deleted", ws.ID)
+	})
+	cfg, err := clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scheme := runtime.NewScheme()
+	clientgoscheme.AddToScheme(scheme)
+	appv1.AddToScheme(scheme)
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ws.ID, Labels: map[string]string{store.ControlPlaneLabel: "dev-8"}}}
+	if err := cl.Create(ctx, ns); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := cl.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
+			t.Error(err)
+		}
+	}()
+	scoped := client.NewNamespacedClient(cl, ws.ID)
+	cmd := exec.Command("/tmp/m139-reconciler")
+	cmd.Env = append(os.Environ(), "M139_NAMESPACE="+ws.ID)
+	logf, err := os.Create("/tmp/m139-reconciler-run.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer logf.Close()
+	cmd.Stdout = logf
+	cmd.Stderr = logf
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { cmd.Process.Kill(); cmd.Wait() }()
+	now := time.Now().UTC()
+	base := &core.Base{Client: scoped, Namespace: "dev-8", Workspace: m139Resolver{ws.ID}, Clock: func() time.Time { return now }}
+	svc := &apps.Service{Base: base, Store: st}
+	ownerCtx := core.WithIdentity(ctx, core.Identity{Subject: "m139-acceptance-owner", Method: "session"})
+	fixtures := make([]store.App, 0, 4)
+	for i, tier := range []string{"free", "free", "starter", "free"} {
+		row, err := st.CreateApp(ownerCtx, store.App{TenantID: ws.ID, Name: fmt.Sprintf("qa-20261029-freehours-%d", i), Type: appv1.TypeWebService, Image: "docker.io/library/python:3.13-alpine", Branch: "main", Port: 8080, Replicas: 1, Tier: tier, Suspended: i == 3, CreationPending: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtures = append(fixtures, row)
+		a := &appv1.App{ObjectMeta: metav1.ObjectMeta{Name: row.ID, Namespace: ws.ID, Labels: map[string]string{core.LabelAppID: row.ID, core.LabelTenant: ws.ID, core.LabelWorkspace: ws.ID, core.LabelServiceName: row.Name, store.LabelManagedBy: store.ManagedByValue, store.ControlPlaneLabel: "dev-8"}}, Spec: appv1.AppSpec{Type: row.Type, Image: row.Image, Port: 8080, Replicas: 1, Tier: tier, Suspended: row.Suspended, IdleTTLSeconds: 3600, StartCommand: "python -m http.server 8080"}}
+		if err := scoped.Create(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Log("isolated fixture workspace", ws.ID, "services", fixtures[0].ID, fixtures[1].ID, fixtures[2].ID, fixtures[3].ID)
+	defer func() {
+		for _, row := range fixtures {
+			a := &appv1.App{}
+			key := client.ObjectKey{Namespace: ws.ID, Name: row.ID}
+			if err := scoped.Get(ctx, key, a); err == nil {
+				scoped.Delete(ctx, a)
+			}
+			m139Wait(t, "App cleanup", func() bool { return apierrors.IsNotFound(scoped.Get(ctx, key, &appv1.App{})) })
+			t.Log("Kubernetes App GET 404", row.ID)
+		}
+	}()
+	podsReady := func(row store.App, want int) bool {
+		var ps corev1.PodList
+		if err := scoped.List(ctx, &ps, client.MatchingLabels{core.PodLabelApp: row.ID}); err != nil {
+			return false
+		}
+		n := 0
+		for _, p := range ps.Items {
+			if p.Status.Phase == corev1.PodRunning {
+				if want == 0 {
+					n++
+					continue
+				}
+				if !p.DeletionTimestamp.IsZero() {
+					continue
+				}
+				for _, c := range p.Status.Conditions {
+					if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+						n++
+					}
+				}
+			}
+		}
+		return n == want
+	}
+	for _, row := range fixtures[:3] {
+		m139Wait(t, "service ready "+row.ID, func() bool { return podsReady(row, 1) })
+	}
+	t.Log("two Free and one Starter service have Ready running pods; owner's suspended service has none")
+	meter := NewService(base, st, "http://127.0.0.1:19099", nil)
+	time.Sleep(20 * time.Second)
+	start := time.Now().UTC()
+	time.Sleep(75 * time.Second)
+	end := time.Now().UTC()
+	var measured int64
+	for _, row := range fixtures[:2] {
+		seconds, ok := meter.queryInstanceSeconds(ctx, row.ID, ws.ID, start, end)
+		if !ok || seconds < 60 || seconds > 90 {
+			t.Fatalf("running meter %s=%d ok=%v", row.ID, seconds, ok)
+		}
+		measured += seconds
+		t.Log("actual cadvisor running seconds", row.ID, seconds)
+	}
+	if measured < 135 || measured > 180 {
+		t.Fatalf("two running services did not accrue 2x: %d", measured)
+	}
+	email := ws.ID + "@m139.local"
+	notifier := notifications.FreeHoursNotifier{Service: &notifications.Service{Base: base, Store: st, Mailer: mailer.New("localhost:60080", "bex dev-8 <no-reply@dev-8.local>", "", ""), Identities: m139Emails{email}, DashboardBaseURL: "http://localhost:50080"}}
+	sw := &freehours.Sweeper{Apps: apps.FreeHoursWorker{Svc: svc}, Store: st, Notifier: notifier, BudgetHours: 0.05}
+	window := start.Truncate(time.Hour)
+	writeSeconds := func(seconds int64) {
+		for _, row := range fixtures[:2] {
+			if err := st.UpsertUsageHourly(ctx, store.HourlyRow{WorkspaceID: ws.ID, ServiceID: row.ID, Kind: store.UsageKindInstanceSeconds, Tier: "free", ResourceKind: store.ResourceKindService, WindowStart: window, Quantity: seconds}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	// First claim at exactly 80%, then exhaust; the meter was independently measured above.
+	writeSeconds(72)
+	now = time.Now().UTC()
+	for range 2 {
+		if err := sw.SweepOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, row := range fixtures[:3] {
+		if !podsReady(row, 1) {
+			t.Fatal("warning suspended a running service", row.ID)
+		}
+	}
+	if n := m139MailCount(t, email); n != 1 {
+		t.Fatalf("warning delivery count = %d, want 1", n)
+	}
+	t.Log("144 seconds / 180 seconds warns once and keeps Free and paid running")
+	// Exercise actual operator hibernation on the second Free service.
+	sleeping := &appv1.App{}
+	if err := scoped.Get(ctx, client.ObjectKey{Namespace: ws.ID, Name: fixtures[1].ID}, sleeping); err != nil {
+		t.Fatal(err)
+	}
+	before := sleeping.DeepCopy()
+	sleeping.Spec.IdleTTLSeconds = 1
+	if sleeping.Annotations == nil {
+		sleeping.Annotations = map[string]string{}
+	}
+	sleeping.Annotations["app.bex.co/last-active"] = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)
+	if err := scoped.Patch(ctx, sleeping, client.MergeFrom(before)); err != nil {
+		t.Fatal(err)
+	}
+	m139Wait(t, "auto hibernation", func() bool {
+		a := &appv1.App{}
+		scoped.Get(ctx, client.ObjectKey{Namespace: ws.ID, Name: fixtures[1].ID}, a)
+		return a.Status.Phase == appv1.PhaseHibernated && podsReady(fixtures[1], 0)
+	})
+	time.Sleep(75 * time.Second)
+	sleepStart := time.Now().UTC()
+	time.Sleep(30 * time.Second)
+	seconds, ok := meter.queryInstanceSeconds(ctx, fixtures[1].ID, ws.ID, sleepStart, time.Now().UTC())
+	if !ok || seconds != 0 {
+		t.Fatalf("hibernated meter=%d ok=%v", seconds, ok)
+	}
+	t.Log("actual AutoHibernated service contributes zero seconds after cadvisor stop tail")
+	writeSeconds(91)
+	for range 2 {
+		if err := sw.SweepOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, row := range fixtures[:2] {
+		a := &appv1.App{}
+		scoped.Get(ctx, client.ObjectKey{Namespace: ws.ID, Name: row.ID}, a)
+		if !a.Spec.Suspended || a.Annotations[core.AnnotFreeHoursSuspended] != apps.FreeHoursMonth(now) {
+			t.Fatal("not budget suspended", row.ID)
+		}
+		m139Wait(t, "budget scale-down", func() bool { return podsReady(row, 0) })
+		view, err := svc.Get(ownerCtx, row.ID)
+		if err != nil || !view.Suspended || !view.FreeHoursSuspended {
+			t.Fatalf("suspender view %+v %v", view, err)
+		}
+	}
+	if !podsReady(fixtures[2], 1) {
+		t.Fatal("paid service stopped")
+	}
+	if _, err := svc.Resume(ownerCtx, fixtures[0].ID); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "Free instance hours") {
+		t.Fatalf("manual resume not refused: %v", err)
+	}
+	t.Log("182 seconds / 180 suspends both Free services, billing suspender, manual resume refused; Starter remains Ready")
+	if _, err := svc.SetPlan(ownerCtx, fixtures[0].ID, "starter"); err != nil {
+		t.Fatal("upgrade", err)
+	}
+	m139Wait(t, "upgraded service running", func() bool { return podsReady(fixtures[0], 1) })
+	t.Log("Free-to-Starter upgrade resumes service immediately")
+	now = time.Date(now.Year(), now.Month()+1, 1, 0, 1, 0, 0, time.UTC)
+	if err := sw.SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	a := &appv1.App{}
+	if err := scoped.Get(ctx, client.ObjectKey{Namespace: ws.ID, Name: fixtures[1].ID}, a); err != nil {
+		t.Fatal(err)
+	}
+	if a.Spec.Suspended || a.Annotations[core.AnnotFreeHoursSuspended] != "" {
+		t.Fatal("month reset did not resume")
+	}
+	totals, err := st.FreeInstanceSecondsByWorkspace(ctx, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), now)
+	if err != nil || totals[ws.ID] != 0 {
+		t.Fatalf("reset totals %v %v", totals, err)
+	}
+	ownerSuspended := &appv1.App{}
+	scoped.Get(ctx, client.ObjectKey{Namespace: ws.ID, Name: fixtures[3].ID}, ownerSuspended)
+	if !ownerSuspended.Spec.Suspended || ownerSuspended.Annotations[core.AnnotFreeHoursSuspended] != "" {
+		t.Fatal("owner suspension changed")
+	}
+	t.Log("injected UTC month boundary clears budget suspension and resets counter; owner suspension remains")
+	res, err := http.Get("http://localhost:53080/api/v1/search?query=to:" + email)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	var mail struct {
+		Total    int `json:"total"`
+		Messages []struct {
+			ID      string
+			Subject string
+		}
+	}
+	if err := json.Unmarshal(raw, &mail); err != nil {
+		t.Fatal(err)
+	}
+	if mail.Total != 2 || len(mail.Messages) != 2 {
+		t.Fatalf("Mailpit expected exactly warning+exhaustion delivery, got %s", raw)
+	}
+	for _, m := range mail.Messages {
+		t.Log("Mailpit delivery", m.ID, m.Subject)
+	}
+	var claims int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM free_hours_notices WHERE workspace_id=$1", ws.ID).Scan(&claims); err != nil || claims != 2 {
+		t.Fatalf("claims=%d err=%v", claims, err)
+	}
+	t.Log("two repeated sweeps per phase yield exactly two delivered emails and two durable month-stage claims")
+}
+func m139Wait(t *testing.T, label string, f func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Minute)
+	for time.Now().Before(deadline) {
+		if f() {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatal("timeout", label)
+}
+
+func m139MailCount(t *testing.T, email string) int {
+	t.Helper()
+	res, err := http.Get("http://localhost:53080/api/v1/search?query=to:" + email)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var m struct{ Total int }
+	if err := json.NewDecoder(res.Body).Decode(&m); err != nil {
+		t.Fatal(err)
+	}
+	return m.Total
+}

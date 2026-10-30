@@ -1,0 +1,71 @@
+{
+  "note": "Relevant fields projected from REST and MCP full usage responses; GraphQL response complete. Authentication cookies omitted. QA session revoked after read-only checks.",
+  "checks": [
+    {
+      "surface": "REST",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/usage?ownerId=tea-daif693dqjvc73e7as3g"
+      },
+      "response": {
+        "workspaceId": "tea-daif693dqjvc73e7as3g",
+        "period": "2026-10",
+        "freeInstanceHours": {
+          "used": 749.2833333333333,
+          "included": 750
+        }
+      },
+      "observedAt": "2026-10-30T00:06:59.145683+00:00"
+    },
+    {
+      "surface": "GraphQL",
+      "request": {
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "body": {
+          "query": "query { usage(ownerId:\"tea-daif693dqjvc73e7as3g\") { workspaceId period freeInstanceHours { used included } } }"
+        }
+      },
+      "response": {
+        "data": {
+          "usage": {
+            "freeInstanceHours": {
+              "included": 750,
+              "used": 749.2833333333333
+            },
+            "period": "2026-10",
+            "workspaceId": "tea-daif693dqjvc73e7as3g"
+          }
+        }
+      },
+      "observedAt": "2026-10-30T00:07:31.088365+00:00"
+    },
+    {
+      "surface": "MCP",
+      "request": {
+        "method": "POST",
+        "url": "https://api.bex.co/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/call",
+          "params": {
+            "name": "get_usage",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g"
+            }
+          }
+        }
+      },
+      "response": {
+        "workspaceId": "tea-daif693dqjvc73e7as3g",
+        "period": "2026-10",
+        "freeInstanceHours": {
+          "included": 750,
+          "used": 749.2833333333333
+        }
+      },
+      "observedAt": "2026-10-30T00:08:45.936832+00:00"
+    }
+  ]
+}
