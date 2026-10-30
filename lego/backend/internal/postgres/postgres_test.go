@@ -950,8 +950,8 @@ func TestPGTierDisplayName(t *testing.T) {
 		{"basic-4gb", "Basic 4GB"},
 		{"1c-2g", "1c-2g"}, // a flexible id with no family name reads as itself
 	} {
-		if got := pgTierDisplayName(c.id); got != c.want {
-			t.Errorf("pgTierDisplayName(%q) = %q, want %q", c.id, got, c.want)
+		if got := TierDisplayName(c.id); got != c.want {
+			t.Errorf("TierDisplayName(%q) = %q, want %q", c.id, got, c.want)
 		}
 	}
 }
