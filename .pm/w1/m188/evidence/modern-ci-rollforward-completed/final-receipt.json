@@ -1,0 +1,1170 @@
+{
+  "schema": "bex.m188.bounded-modern-ci-rollforward-completed/v1",
+  "at": "2026-10-30T21:32:47.904845+00:00",
+  "root_execution_approval": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/root-execution-approval.json",
+    "sha256": "6ed57d9e983e879881f4c7acf9966cd06a54645a9d3288e3ecbce118208ec6a6",
+    "bytes": 8419
+  },
+  "exact_source_admission": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/root-source-admission.json",
+    "sha256": "9e108c964380c624c442d04596b066b9ed29ff91764d2aae86be1fdb3b34a809",
+    "bytes": 1073
+  },
+  "request_heads": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/request-heads.json",
+    "sha256": "16593f0073e7e2e909fa2d589459b9ea211301d789eeaac74353071a9f963fc1",
+    "bytes": 3046
+  },
+  "executed_helpers": [
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/dispatch-authorized.py",
+      "sha256": "777026cd70724280dd7e9c22dfee0c692e1e0d4cf0c488c4b439c34d476de505",
+      "bytes": 11942
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/dispatch-authorized-v2.py",
+      "sha256": "b236e41dfb4f7684224fafee8e0a1070381b7c956f2e515dfbacd00351b1c236",
+      "bytes": 12987
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/bind-and-handoff.py",
+      "sha256": "62ff09dc04da6840df4a5691bbd715bad3c2cbb70be573ab5b254fb07d560930",
+      "bytes": 7195
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/record-terminals.py",
+      "sha256": "e14dda1bd557abb2d31a7a17e3d1039cbb5b746bdcb149b7a77a92b1807309ff",
+      "bytes": 3572
+    }
+  ],
+  "dispatch_posts": 10,
+  "unique_replacement_runs": 10,
+  "old_cancel_posts": 10,
+  "old_cancel_http202": 10,
+  "old_terminal_confirmed_cancelled_unstarted": 10,
+  "cancel_retries_or_force": 0,
+  "new_replacement_cancellations": 0,
+  "all_replacement_sources_exact": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "targets": [
+    {
+      "tag": "node-22-bookworm",
+      "base": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "old_run_id": 41067575985,
+      "old_job_id": 124104723836,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41128855169,
+      "replacement_job_id": 124317237455,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-binding.json",
+        "sha256": "9c4e6aa6b479422cf58be583dbd11ffaf731352d8db23234ddd0b62e79e26403",
+        "bytes": 458
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-zero-start-review.json",
+        "sha256": "3936dd50bda2b15bcc3a8f54e9e3973cdc925b43fff9dbec092ddf11f687ea78",
+        "bytes": 643
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/outcome.json",
+        "sha256": "398ab4e924711b4323e48c3f852fd69f3b5080242a3a8945938a6ca9a3ab12ad",
+        "bytes": 2148
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-confirmation.json",
+        "sha256": "e5b47a7499409242b9af8d8ae8a83ab41f15e55324d528285388ee97380dedda",
+        "bytes": 1205
+      }
+    },
+    {
+      "tag": "node-26-bookworm",
+      "base": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "old_run_id": 41067583832,
+      "old_job_id": 124105682346,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129008590,
+      "replacement_job_id": 124317150933,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-binding.json",
+        "sha256": "c5b0872a8ff18a96f59a4f695b52fc36c775ba86159193f1c40cba8463199850",
+        "bytes": 458
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-zero-start-review.json",
+        "sha256": "c923f6ef7cb10b618f24f98906c2f8b8e4bbb51ec068b2551c4762603148a95d",
+        "bytes": 643
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/outcome.json",
+        "sha256": "20113cb999035642912b7ed4a13640c895cd019498089979d1de741404da0d7e",
+        "bytes": 2148
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/terminal-confirmation.json",
+        "sha256": "9326f852254e0d6ee92f6d1b624fea60642e2e0bded1d0ea3237a33f5221e588",
+        "bytes": 1205
+      }
+    },
+    {
+      "tag": "python-3.11-bookworm",
+      "base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "old_run_id": 41067587985,
+      "old_job_id": 124105569005,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129044087,
+      "replacement_job_id": 124319471502,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-binding.json",
+        "sha256": "7f12b9a9735cb878e1cd6268b32e2d40bda8675a0eff098d98a644d1730efbd1",
+        "bytes": 462
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-zero-start-review.json",
+        "sha256": "734b4b07fb7f87a1444b08921d5137859bcd9a262b683afaca3034e4f12eee2e",
+        "bytes": 647
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/outcome.json",
+        "sha256": "34c6419a4ffeaa4d5f19347ae6f63b651b7c21892966741870168a97dcc4b70f",
+        "bytes": 2153
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-confirmation.json",
+        "sha256": "eae7065c9d05b941b011a18b018a9a4a48e2112c019e9725bcd0aecc21043ef2",
+        "bytes": 1221
+      }
+    },
+    {
+      "tag": "python-3.12-bookworm",
+      "base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+      "old_run_id": 41067592658,
+      "old_job_id": 124105703075,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129082245,
+      "replacement_job_id": 124318545123,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-binding.json",
+        "sha256": "1b1cfeba541a88fc4613d0c180ac00b5227779c95237356100adb5d2649f91c8",
+        "bytes": 462
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-zero-start-review.json",
+        "sha256": "3897557d362288dedc5dcdee0f096037573961a5a295209a4bd009c29d6791c3",
+        "bytes": 647
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/outcome.json",
+        "sha256": "181cc03c5602edf4d71ee8c15c23033e66424dd73933e54dd1be11a0dfb068ca",
+        "bytes": 2153
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/terminal-confirmation.json",
+        "sha256": "ab99afe365fac4789d7699f0565577ce74d5b55af5424248ce14371aebc292c1",
+        "bytes": 1221
+      }
+    },
+    {
+      "tag": "python-3.13-bookworm",
+      "base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "old_run_id": 41067596835,
+      "old_job_id": 124105431823,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129116273,
+      "replacement_job_id": 124319435370,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-binding.json",
+        "sha256": "74532e4a40c030b726bdf42db5a2f862cafad3bd3c19949a10b0a2d3a9defd0c",
+        "bytes": 462
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-zero-start-review.json",
+        "sha256": "f7518a3c18210b56ca59a629ca0203d03bdb3084b54731cbc5487d0b39d992d1",
+        "bytes": 647
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/outcome.json",
+        "sha256": "0fe244e055c6407e359c41fcb915271beaccc77a1ec395b6ea7ada464504a47c",
+        "bytes": 2153
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-confirmation.json",
+        "sha256": "0ed11a6b819a60c25d858dd0a92433708f1bfb358ae227e44422254ca7a3a693",
+        "bytes": 1221
+      }
+    },
+    {
+      "tag": "python-3.14-bookworm",
+      "base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "old_run_id": 41067601778,
+      "old_job_id": 124105472916,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129176570,
+      "replacement_job_id": 124319850868,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-binding.json",
+        "sha256": "3070cf4a704f2e70d2b6c619de97f4d79cf8c570ae08426d3c7210a9a6ea6430",
+        "bytes": 462
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-zero-start-review.json",
+        "sha256": "d99f5f264c081b4bb8fb9440d12acf1edf74388ec6d671f7c5e2978dc5a606c8",
+        "bytes": 647
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/outcome.json",
+        "sha256": "49308905e7d1e8b89789d9a45271f0f794d765bf0f8c121f0cd59a657147d86a",
+        "bytes": 2150
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/terminal-confirmation.json",
+        "sha256": "3be4b9a3afca5e380a8a7efef4f06e9303e3632b20c289919f0780da2975848e",
+        "bytes": 1221
+      }
+    },
+    {
+      "tag": "ruby-3.3-bookworm",
+      "base": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+      "old_run_id": 41067606635,
+      "old_job_id": 124106001249,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129224760,
+      "replacement_job_id": 124321508886,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-binding.json",
+        "sha256": "2e778c92f0f7157f223652f56747b51f3cb93ef1dab1a97dc99c24d0e8080437",
+        "bytes": 459
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-zero-start-review.json",
+        "sha256": "6371af3257cba289c829f0e8b9b04e833d3f6295c90810ab7e545d6ccb10752e",
+        "bytes": 644
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/outcome.json",
+        "sha256": "6dc60cf2a3071175f312191775be5e53e421bf05c819f673f6039cd6bb9e770f",
+        "bytes": 2150
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-confirmation.json",
+        "sha256": "ea34743904ae420b9b7cebd81498360d1ab4e8040386c899018e53e69f1f558d",
+        "bytes": 1209
+      }
+    },
+    {
+      "tag": "ruby-3.4-bookworm",
+      "base": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+      "old_run_id": 41067612513,
+      "old_job_id": 124106038502,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129277963,
+      "replacement_job_id": 124323020658,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-binding.json",
+        "sha256": "38de9426795b9486ab2af5dab3365eb8d387e82ba8bd35d0c6236f5f408dbcc5",
+        "bytes": 459
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-zero-start-review.json",
+        "sha256": "6488c562a9b1b10ab85dd661fee06e221ea109b5ed22e627a11a4a27e046c3bb",
+        "bytes": 644
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/outcome.json",
+        "sha256": "2b6c9be81ee3c2eb767e2058ff547bb8c6a214e594fc1b93daea77f5c52dd6d5",
+        "bytes": 2148
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/terminal-confirmation.json",
+        "sha256": "f93056549d9df741fb2d28fb47f6c80b131bc26d7ab5e1191d0249b81d280ccb",
+        "bytes": 1209
+      }
+    },
+    {
+      "tag": "ruby-4.0-bookworm",
+      "base": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+      "old_run_id": 41067617284,
+      "old_job_id": 124106162459,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129321189,
+      "replacement_job_id": 124322916655,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-binding.json",
+        "sha256": "fda7c8c033ac4e489c7537fe203b22552acb5b4f2dfef67479975c9b280e7905",
+        "bytes": 459
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-zero-start-review.json",
+        "sha256": "f2c0cf2c78c2323898b715573fa0ac4042831f7fa9a196ce401abc0cef58b9cd",
+        "bytes": 644
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/outcome.json",
+        "sha256": "912dc70b929dc54e57113c0526533898244ddfbf8ef5c10f6a71aacd5350e16b",
+        "bytes": 2150
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/terminal-confirmation.json",
+        "sha256": "ef8931df8e9894758ec416e0df7423199fcb62dd2814eff9181ed58570b1806b",
+        "bytes": 1209
+      }
+    },
+    {
+      "tag": "rust-1-bookworm",
+      "base": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+      "old_run_id": 41067622215,
+      "old_job_id": 124106478533,
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "replacement_run_id": 41129372376,
+      "replacement_job_id": 124322583428,
+      "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "replacement_run_attempt": 1,
+      "cancel_http_status": 202,
+      "old_terminal": "completed/cancelled",
+      "old_unstarted_confirmed": true,
+      "binding": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-binding.json",
+        "sha256": "b1c8a5f3c45fd932855aef75ba3d648c3e611121b582dc88cab9a3f91435e983",
+        "bytes": 457
+      },
+      "fresh_old_review": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-zero-start-review.json",
+        "sha256": "8f994a60324f70eb44c9cfcd863cf808182d10f476a1e91132e2567f7b8f482d",
+        "bytes": 642
+      },
+      "cancel_outcome": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/outcome.json",
+        "sha256": "6c71be8fc9265b72bc830884ba6c1144fc875aa168ca33c8b03bf7796631cba4",
+        "bytes": 2148
+      },
+      "terminal_confirmation": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-confirmation.json",
+        "sha256": "4a44b21df33171dc9038d984f6ed8b6e9e6e6eda3908bd0549d4111b21929780",
+        "bytes": 1201
+      }
+    }
+  ],
+  "legacy_preservation": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/legacy-preservation-at-completion.json",
+    "sha256": "c0f3e970bccf17f61ce72fa0f83469358e20705aade075b2f8b0f8fbdaaf5af2",
+    "bytes": 5898
+  },
+  "all8_accepted_aggregate_sha256_unchanged": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "guard_sha256_unchanged": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+  "artifact_promotions": 0,
+  "source_adoptions": 0,
+  "host_settings_auth_gate_changes": false,
+  "ownership": "Modern16 acceptance remains w8/m91; legacy11 acceptance remains w1/m188. Every modern target obligation retained; all started/other jobs preserved.",
+  "honest_prior_records": "Original immediate Node22 indexing delay and zero-cancel request-heads snapshot remain unchanged. Py3.11 terminal HTTP502 read-error receipt retained; no cancellation retry.",
+  "evidence_files": [
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/legacy-preservation-at-completion.json",
+      "sha256": "c0f3e970bccf17f61ce72fa0f83469358e20705aade075b2f8b0f8fbdaaf5af2",
+      "bytes": 5898
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/cancel-intent.json",
+      "sha256": "8617a97928cabe4bca12d4739e2770a97fed323537fd995ffe3bf5a406d060ae",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-jobs.json",
+      "sha256": "38958a58110cc3b46f833c5d3b80e25646047117ca7c11d1ab089fd3c7006b8c",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-jobs.request.json",
+      "sha256": "70158b41701d3d5a072465521885774b01dde3e9608dac8d640f4f3f4845d357",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-run.json",
+      "sha256": "faa686a58d8e5e51f687461adde0b1e43b03171863e70fca42cdd4ef72ae9bc8",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-run.request.json",
+      "sha256": "6f90d814d4a52791cc22ef6c699ff30e9435509e6cc09f88a5c72bd5f6424958",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/old-zero-start-review.json",
+      "sha256": "3936dd50bda2b15bcc3a8f54e9e3973cdc925b43fff9dbec092ddf11f687ea78",
+      "bytes": 643
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/outcome.json",
+      "sha256": "398ab4e924711b4323e48c3f852fd69f3b5080242a3a8945938a6ca9a3ab12ad",
+      "bytes": 2148
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-binding.json",
+      "sha256": "9c4e6aa6b479422cf58be583dbd11ffaf731352d8db23234ddd0b62e79e26403",
+      "bytes": 458
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-jobs.json",
+      "sha256": "1a357a1ad2fc06a5105a87f8d59093393a01eba140e03167d2b5c98b615cc024",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-jobs.request.json",
+      "sha256": "b9e9e1c2a12778c9010d6fe276a416cb532dd84d2b1f520735f3e299393b3fa7",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-run.json",
+      "sha256": "cfd50072b6e37268b029b05cbb3494c003512b5d7e030ab60583c10334047005",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/replacement-run.request.json",
+      "sha256": "675e239fa7aa492303c8ff96eff0ad1f37aec7e29f654bf75d68678e002c663c",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-confirmation.json",
+      "sha256": "e5b47a7499409242b9af8d8ae8a83ab41f15e55324d528285388ee97380dedda",
+      "bytes": 1205
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-read-20261030T212258461153/jobs.json",
+      "sha256": "f36ed842474ae7cbe037a34dfd0fca99f93db1e013ab347dface0e291f36eb6f",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-read-20261030T212258461153/run.json",
+      "sha256": "361138f5230ca41ef4db81726269091e2c207a30cfbafc8fa25a6112b6969110",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/cancel-intent.json",
+      "sha256": "780d68bf1936a221d5c5aed134c952db1f6babc3be24db1186b2e7e04e7661a3",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-jobs.json",
+      "sha256": "d5e6afc28ed91a67f34ea4356bbdd05625c66e3c2f825b4ecf315533da41aff3",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-jobs.request.json",
+      "sha256": "a5ff573804b1d041f1dd2ff5471251c8104458aa4609b7e2ce50cb3feabef062",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-run.json",
+      "sha256": "2b60113a9de75fa35ec21096795470bd34b865e435cd423ddf4a1a86fcf7c550",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-run.request.json",
+      "sha256": "006b3088dd560279fa434e4c99e9db375d9846727e72c7026eb9bd9af3830902",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/old-zero-start-review.json",
+      "sha256": "c923f6ef7cb10b618f24f98906c2f8b8e4bbb51ec068b2551c4762603148a95d",
+      "bytes": 643
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/outcome.json",
+      "sha256": "20113cb999035642912b7ed4a13640c895cd019498089979d1de741404da0d7e",
+      "bytes": 2148
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-binding.json",
+      "sha256": "c5b0872a8ff18a96f59a4f695b52fc36c775ba86159193f1c40cba8463199850",
+      "bytes": 458
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-jobs.json",
+      "sha256": "0930947222e47d1e26b7b5c9cc515fc72ffd6514dd518b3a42dab0a56c5c6607",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-jobs.request.json",
+      "sha256": "84f88c5ecf5be8bf1b9b49e6f7e3cdd9692db153c8279bb58c9ce30d056c82b1",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-run.json",
+      "sha256": "f2ed02fa87a9b10a90b51826b211c872e0137ba5b382b74b91c67e191ce4e883",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/replacement-run.request.json",
+      "sha256": "2db714f998bfeeac6cdf9222de6e41a4bc9e6d078b3be34ec1d9cc2fe9ea4164",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/terminal-confirmation.json",
+      "sha256": "9326f852254e0d6ee92f6d1b624fea60642e2e0bded1d0ea3237a33f5221e588",
+      "bytes": 1205
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/terminal-read-20261030T212300131532/jobs.json",
+      "sha256": "2313b18ad5dcf351ccd1c166268a73f32d18eaf604f7259289c6d9429ca3ea49",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-26-bookworm/terminal-read-20261030T212300131532/run.json",
+      "sha256": "77c91ef6027293a4cb8146b23d56a8b0141f05b66e257b9d362eacbc76dfecc5",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/cancel-intent.json",
+      "sha256": "7e3f2404a232486c9eb61033f2ce54dc1aba7577f4d0c69997fbd4d8cc0604c5",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-jobs.json",
+      "sha256": "b3a2543164da93c331ccdef931ca35d63ba85f8d602bf96481e61cd005a86819",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-jobs.request.json",
+      "sha256": "8509c98bcafc5db2212971e8e7108f4bde41d32c6d082722880bbc4d81d556d1",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-run.json",
+      "sha256": "8ba6855b9c3105f676407886a8fe5067798e410cb6b49fe1d03485a2b00a8c9b",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-run.request.json",
+      "sha256": "b080d2f8ae1984a909460d0092c29a40bd413f4ba07156d0308f1eaeeb08fcc0",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/old-zero-start-review.json",
+      "sha256": "734b4b07fb7f87a1444b08921d5137859bcd9a262b683afaca3034e4f12eee2e",
+      "bytes": 647
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/outcome.json",
+      "sha256": "34c6419a4ffeaa4d5f19347ae6f63b651b7c21892966741870168a97dcc4b70f",
+      "bytes": 2153
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-binding.json",
+      "sha256": "7f12b9a9735cb878e1cd6268b32e2d40bda8675a0eff098d98a644d1730efbd1",
+      "bytes": 462
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-jobs.json",
+      "sha256": "cdc1cdf38cc2b22d88863dc2c50206bb474474812d4cf039cdb89a0c7f3cc24a",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-jobs.request.json",
+      "sha256": "ae712f3e0de55656c22967ecddc1fa5342058a01c20313a37b8721409b421385",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-run.json",
+      "sha256": "776f27ae406a3b8167d7ec8af8be943d58afc3cc3b4a0bb0090dcf05e32b3012",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/replacement-run.request.json",
+      "sha256": "067ee5790305b002728ab8f3142d4cf3b5a78b175945bdbc61b04fe4be8f129d",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-confirmation.json",
+      "sha256": "eae7065c9d05b941b011a18b018a9a4a48e2112c019e9725bcd0aecc21043ef2",
+      "bytes": 1221
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-read-20261030T212301688471/error.json",
+      "sha256": "c8611481dba77a8d25331f9504f1e9e56b6425c27139daa079c9e04f2553f848",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-read-20261030T212301688471/run.json",
+      "sha256": "1921479b510fcb2a007d20f3fd2f4203d77c20937ff9b4ea6b04d7154d8ea62d",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-read-20261030T212422482236/jobs.json",
+      "sha256": "78f3ec4d9d1c1867a9583ec3c72aa71443d227bcd45bba7cebd0fba34ff58d6d",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.11-bookworm/terminal-read-20261030T212422482236/run.json",
+      "sha256": "1921479b510fcb2a007d20f3fd2f4203d77c20937ff9b4ea6b04d7154d8ea62d",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/cancel-intent.json",
+      "sha256": "088739a664f0c457489ae465b41a0e50dbd3fc816b4dc28803cf06e46a8c3287",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-jobs.json",
+      "sha256": "d9339a12da6b9783705df32a8160ca31215fb481a57d15956ad006b37e381140",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-jobs.request.json",
+      "sha256": "5838346a465334b6269aea87c338a4f5e40340553efc636af42b1b628bcc850f",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-run.json",
+      "sha256": "46a1805db30e7738f11e21b93ba873ee52013782a8d47236937bf829d0878c4c",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-run.request.json",
+      "sha256": "5ec91575b9846b3ebe35f663955bccfe32f55d62a2c8829995fc7ac88537eb4d",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/old-zero-start-review.json",
+      "sha256": "3897557d362288dedc5dcdee0f096037573961a5a295209a4bd009c29d6791c3",
+      "bytes": 647
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/outcome.json",
+      "sha256": "181cc03c5602edf4d71ee8c15c23033e66424dd73933e54dd1be11a0dfb068ca",
+      "bytes": 2153
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-binding.json",
+      "sha256": "1b1cfeba541a88fc4613d0c180ac00b5227779c95237356100adb5d2649f91c8",
+      "bytes": 462
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-jobs.json",
+      "sha256": "2f882cca1c73995264fd752e512831a0bb8fbd8590e2a76a1f745f53e959e9d8",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-jobs.request.json",
+      "sha256": "db15331bb696b53a727af254125b075b9b7b825fa272df8002c75680b3d8a52d",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-run.json",
+      "sha256": "47c4c131ffde754839898246b29ac2fdb8e754cbf2d3b5d5ce1062d63d7f78a5",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/replacement-run.request.json",
+      "sha256": "24ec54458ee2bf8351e162797eed6b39d76d216caec245a6f847079f6a34ef8c",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/terminal-confirmation.json",
+      "sha256": "ab99afe365fac4789d7699f0565577ce74d5b55af5424248ce14371aebc292c1",
+      "bytes": 1221
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/terminal-read-20261030T212312875653/jobs.json",
+      "sha256": "2ec905e17d9c261d9d5107ba2854b5e5a380e4c57fe75a2192df3970fd93868a",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.12-bookworm/terminal-read-20261030T212312875653/run.json",
+      "sha256": "aa67e98f83f0fcbc07eab4a03ce20658a7ca1576e1b99d506b51ed13aeadb705",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/cancel-intent.json",
+      "sha256": "baa63d7f1bd02548f1cbda0b5d253316d4a96c2ec25201581d1326467f913102",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-jobs.json",
+      "sha256": "924a294387427dfcf032e032c5fc7d1041d05b4d68ded5056c9ac347c05afa3f",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-jobs.request.json",
+      "sha256": "66421fd7d10f65c192832a3d429c6436b943162c105b467e3c28bf24d4a48c88",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-run.json",
+      "sha256": "eac658e3c5f94ab0827d7d1665efa188444369f85ef054d28b68e52857815f20",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-run.request.json",
+      "sha256": "6a431ff489d28253448470a906f54d6453b7aad6eef83c5906b97adebc7fa648",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/old-zero-start-review.json",
+      "sha256": "f7518a3c18210b56ca59a629ca0203d03bdb3084b54731cbc5487d0b39d992d1",
+      "bytes": 647
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/outcome.json",
+      "sha256": "0fe244e055c6407e359c41fcb915271beaccc77a1ec395b6ea7ada464504a47c",
+      "bytes": 2153
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-binding.json",
+      "sha256": "74532e4a40c030b726bdf42db5a2f862cafad3bd3c19949a10b0a2d3a9defd0c",
+      "bytes": 462
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-jobs.json",
+      "sha256": "7d8a0a69a2bd0bc184b2efa0f476b053fcc6dc71b09ea7b88a52c183f1898306",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-jobs.request.json",
+      "sha256": "9e121e625bdd1ef98090a274efc066ed3993b6461d7c7f0dd85cfd73d6047f53",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-run.json",
+      "sha256": "af710678d4942e401f1450af51ee4bcdded514c75cbfd0e17e9b7cead675983f",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/replacement-run.request.json",
+      "sha256": "22ed8e0ec1b76a00f04dac0d8ff80d979424f10e96819c688ccd975078082622",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-confirmation.json",
+      "sha256": "0ed11a6b819a60c25d858dd0a92433708f1bfb358ae227e44422254ca7a3a693",
+      "bytes": 1221
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-read-20261030T212314880168/jobs.json",
+      "sha256": "b697b5e16e529e8ea16f858b0177cf5d1cec405d2e91a27a39833414c7ca6099",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-read-20261030T212314880168/run.json",
+      "sha256": "b66990e4261d0233f0c4b57b00889081183335e77e91d515317fdb3d6670564f",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/cancel-intent.json",
+      "sha256": "5f7f8d7582d70b2d703eebfa21cd691d0669c37e77e97a53b1a7a8f32ce13626",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-jobs.json",
+      "sha256": "3f2660fd79ef95967c675368ca59f607d35573f70f1ab2cd364c9ab882593e49",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-jobs.request.json",
+      "sha256": "f15869bbc609ed30d34996a64ea215b52d3ad718d0aa9522dbf8cc5bd57136df",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-run.json",
+      "sha256": "d61318912f4fbd255ab8f84a033d7f54490c6f93387e1e1530660031816f07cd",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-run.request.json",
+      "sha256": "8e879110b1b4e4a48c61eecc654cbf49602714dba2d7584f325e8a9f8ce0a3c9",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/old-zero-start-review.json",
+      "sha256": "d99f5f264c081b4bb8fb9440d12acf1edf74388ec6d671f7c5e2978dc5a606c8",
+      "bytes": 647
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/outcome.json",
+      "sha256": "49308905e7d1e8b89789d9a45271f0f794d765bf0f8c121f0cd59a657147d86a",
+      "bytes": 2150
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-binding.json",
+      "sha256": "3070cf4a704f2e70d2b6c619de97f4d79cf8c570ae08426d3c7210a9a6ea6430",
+      "bytes": 462
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-jobs.json",
+      "sha256": "b454ecdd9d244fbe5605c4bbfa2e05d9ff56697d02beb8932f458f069fc01a96",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-jobs.request.json",
+      "sha256": "873ca5d91c338dc4b596321cf6b3efccdc4e4d5006902f8f6032bbfd0bdb4e55",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-run.json",
+      "sha256": "37d0a5077f8e9e3e0aeb9d1668ce40720e75d809e0e502b8c8ec8e753618319d",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/replacement-run.request.json",
+      "sha256": "57e255ab12ce553468ad33d6eaff911fcd96a0753140b6dfe496f57ae14febb6",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/terminal-confirmation.json",
+      "sha256": "3be4b9a3afca5e380a8a7efef4f06e9303e3632b20c289919f0780da2975848e",
+      "bytes": 1221
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/terminal-read-20261030T212423630793/jobs.json",
+      "sha256": "6ea2b46eefae03067d2872e52d12177408cf05774f8d6b03894b7d435f028735",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.14-bookworm/terminal-read-20261030T212423630793/run.json",
+      "sha256": "8b6edd0c61791e0892396b55e3c72c38d9fe736bbe125f46d5a30a21a0f29261",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/cancel-intent.json",
+      "sha256": "f8ecb169bcc2a378dedc0f749d88c37c49ea5c9e3b55771235fd4070ac8277f1",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-jobs.json",
+      "sha256": "3f05fb58c5ea209628ee01da586c51a5edcca157dc86d899e4240f47472b9802",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-jobs.request.json",
+      "sha256": "17f3090bf117ea6fbe247c71405520ad5c7e3cacb487e5c0971dde3b6f79c8e4",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-run.json",
+      "sha256": "5df86bf215edb4cd24a08069241e21f740ea688ee013ddf051980e65a1bb1ec1",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-run.request.json",
+      "sha256": "0289afcedd19ed335b57a7c3a0d1a3d79e5ac939f182e2e9305345122c91df15",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/old-zero-start-review.json",
+      "sha256": "6371af3257cba289c829f0e8b9b04e833d3f6295c90810ab7e545d6ccb10752e",
+      "bytes": 644
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/outcome.json",
+      "sha256": "6dc60cf2a3071175f312191775be5e53e421bf05c819f673f6039cd6bb9e770f",
+      "bytes": 2150
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-binding.json",
+      "sha256": "2e778c92f0f7157f223652f56747b51f3cb93ef1dab1a97dc99c24d0e8080437",
+      "bytes": 459
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-jobs.json",
+      "sha256": "d0fa158b76e0760fbd9151323211eff018d216d44d4c5c83d5d601a6ff68115d",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-jobs.request.json",
+      "sha256": "ef32a64cd86ae5f784cb3c7d256c072edc88e6cebae73723357a0190b07aa770",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-run.json",
+      "sha256": "e66cc2c2b49eb9a3ed53617d9d21148e7bfac064db53d9d0474a39c9a8961e63",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/replacement-run.request.json",
+      "sha256": "7d94d13e69f2edad568c2de894c68847d50e39502a3582830aa3d77e0a0aa939",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-confirmation.json",
+      "sha256": "ea34743904ae420b9b7cebd81498360d1ab4e8040386c899018e53e69f1f558d",
+      "bytes": 1209
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-read-20261030T212807262506/jobs.json",
+      "sha256": "68d0324add8762bbcd002b61c5f8bb5df8595d39e6aa645d3f72d1ff57ece112",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-read-20261030T212807262506/run.json",
+      "sha256": "885a90bde4798797e242b44476e3867b7d5a144b0b0627f225c08780fc1f8857",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/cancel-intent.json",
+      "sha256": "65604670345d76abcd178844ada94cf400f3fbd59a286f14028cf1cf3a33f587",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-jobs.json",
+      "sha256": "a1ee3bf8ccfcffbc4310edf53d913430aa7021f2dbf57682a2b2ed2f12bd7889",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-jobs.request.json",
+      "sha256": "e87283854c46bec86ff124ce051e52e4bbf49e659c8af87affd06095daaf1a3b",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-run.json",
+      "sha256": "5e0d48a476cca2baa3ee6f6631f948cf90b50cc933d5a24457b6d833794b698e",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-run.request.json",
+      "sha256": "43a8216f3794d348a33ec6136f491801ba3c11b59a5243b8041c5b281c1cd40d",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/old-zero-start-review.json",
+      "sha256": "6488c562a9b1b10ab85dd661fee06e221ea109b5ed22e627a11a4a27e046c3bb",
+      "bytes": 644
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/outcome.json",
+      "sha256": "2b6c9be81ee3c2eb767e2058ff547bb8c6a214e594fc1b93daea77f5c52dd6d5",
+      "bytes": 2148
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-binding.json",
+      "sha256": "38de9426795b9486ab2af5dab3365eb8d387e82ba8bd35d0c6236f5f408dbcc5",
+      "bytes": 459
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-jobs.json",
+      "sha256": "daf939f9ee4cc61c2d8f3f101ab4ebeef004fc505fdb4fc5b3d4bb8d0b92937e",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-jobs.request.json",
+      "sha256": "9986a1de7da53eeed7f0749f2c9a0b62c142ebf0afcebe64a8f05f1f9c413b2d",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-run.json",
+      "sha256": "7ef6a6075ba0d7be49919ad53bd6dec3e627ee9fa34c3a560053941689f49275",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/replacement-run.request.json",
+      "sha256": "6d76efe3019bf3ff0c38bd9fb96fe24a6267581e5862d4a8233454a6063f042d",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/terminal-confirmation.json",
+      "sha256": "f93056549d9df741fb2d28fb47f6c80b131bc26d7ab5e1191d0249b81d280ccb",
+      "bytes": 1209
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/terminal-read-20261030T213205440853/jobs.json",
+      "sha256": "cd0d1ecfddf031781cc934d368470bf5796319b9eae342871339c634ad68f864",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.4-bookworm/terminal-read-20261030T213205440853/run.json",
+      "sha256": "5d75190567d680d846e6d6148f1e003a7e5950c2252240c96a84da3b03e7c65f",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/cancel-intent.json",
+      "sha256": "c81dceb2ee75627912a25b6aa9f44cd3cbb9ba8f29dd8d05f626594991314b21",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-jobs.json",
+      "sha256": "f395b697fc3125dc285b0ebaa1ac37980d0af5b099fd6d5009e497f0955c8f89",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-jobs.request.json",
+      "sha256": "af0f0974f4af15b61d211cadb6c6c18d6b5d922e3e40bb5b1d34308e8248ef29",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-run.json",
+      "sha256": "fad73914fe46594db268920cb9e5008ea6aab4b8e57f8654c843384963201d5d",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-run.request.json",
+      "sha256": "f6ca8d5c734f246b7923160e097279bf1200c5ff3d9234043ddb18921a270d04",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/old-zero-start-review.json",
+      "sha256": "f2c0cf2c78c2323898b715573fa0ac4042831f7fa9a196ce401abc0cef58b9cd",
+      "bytes": 644
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/outcome.json",
+      "sha256": "912dc70b929dc54e57113c0526533898244ddfbf8ef5c10f6a71aacd5350e16b",
+      "bytes": 2150
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-binding.json",
+      "sha256": "fda7c8c033ac4e489c7537fe203b22552acb5b4f2dfef67479975c9b280e7905",
+      "bytes": 459
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-jobs.json",
+      "sha256": "122e9d6aefe8dd59303bc21f6d70c4f9dd6ebdc46fd23d463541cfc7e57daaa9",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-jobs.request.json",
+      "sha256": "3283357a32ce17a52121d1d9b10bc18000f4faaca35f974277b90cbefe852d6a",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-run.json",
+      "sha256": "eb6dc57d73d304ff332f25d24673b63d3d877b345d74713c3ad09e2e30f7576a",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/replacement-run.request.json",
+      "sha256": "3d6bfef05b162caa8e27578e05ef89a260b311e64114d7faac490ba0be8a3db7",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/terminal-confirmation.json",
+      "sha256": "ef8931df8e9894758ec416e0df7423199fcb62dd2814eff9181ed58570b1806b",
+      "bytes": 1209
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/terminal-read-20261030T213207158974/jobs.json",
+      "sha256": "8847d4991e271e3f02639c0ab8d09f87604b89067da5bce47200b1fb88f09851",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-4.0-bookworm/terminal-read-20261030T213207158974/run.json",
+      "sha256": "95d5d2906973961e3674bc8ab82f7b64b66d38c6dec0d5f920ffb6e8c9c16c74",
+      "bytes": 11451
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/cancel-intent.json",
+      "sha256": "41e0b32007da3c45e6230dce03f0f6b57da0a1f8c5e7553d7d6c86cbeb54624c",
+      "bytes": 211
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-jobs.json",
+      "sha256": "30bafd2825e90b21f6f7ee884de2253fe3245d0cafb98b6fe816122781081f08",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-jobs.request.json",
+      "sha256": "1695015a72125e3e478dad7d67d02e2f5508d1f4d99ce662bdd94779c2d603e7",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-run.json",
+      "sha256": "4182b99065236b26d60d6829616f4eb97f71437854e8b0a73d1d322dd224f3e8",
+      "bytes": 11441
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-run.request.json",
+      "sha256": "0d8b138047e2f6ac9578b25e086c3a4b306b93858d1711050a7f4e5347b0d536",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/old-zero-start-review.json",
+      "sha256": "8f994a60324f70eb44c9cfcd863cf808182d10f476a1e91132e2567f7b8f482d",
+      "bytes": 642
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/outcome.json",
+      "sha256": "6c71be8fc9265b72bc830884ba6c1144fc875aa168ca33c8b03bf7796631cba4",
+      "bytes": 2148
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-binding.json",
+      "sha256": "b1c8a5f3c45fd932855aef75ba3d648c3e611121b582dc88cab9a3f91435e983",
+      "bytes": 457
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-jobs.json",
+      "sha256": "fa8f14d6e6815986d5f6ee0cf505644ddb0e4a197db680d96bc88e06a80f6633",
+      "bytes": 2886
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-jobs.request.json",
+      "sha256": "6bf71d8bc541b65116c1fde4ec54dab5c57f4b800f72d11e07dfe715bd267b7d",
+      "bytes": 155
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-run.json",
+      "sha256": "814e2060e70c1b060119fec006249d9b6f4c16a66dd6a405313c8b275ac7bea8",
+      "bytes": 11604
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/replacement-run.request.json",
+      "sha256": "efeaf712a8ea79ad19e97755635e4e2cfcbd2f8284496ca607de0e56c2e7287a",
+      "bytes": 137
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-confirmation.json",
+      "sha256": "4a44b21df33171dc9038d984f6ed8b6e9e6e6eda3908bd0549d4111b21929780",
+      "bytes": 1201
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-read-20261030T213036969484/jobs.json",
+      "sha256": "4fadf5aa1d43cb030774558ba9f9f1f39e3d7bfd1f0c195f805c166ced74694f",
+      "bytes": 2903
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-read-20261030T213036969484/run.json",
+      "sha256": "a8cf3cec41fdcb2ba7be534471c08c2dd70c6a8d3e8c9b856f732933097bd2b0",
+      "bytes": 11451
+    }
+  ]
+}

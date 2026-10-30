@@ -1,0 +1,13 @@
+{
+  "began_at": "2026-10-30T21:19:48.918254+00:00",
+  "tag": "python-3.12-bookworm",
+  "old_run_id": 41067592658,
+  "old_job_id": 124105703075,
+  "replacement_run_id": 41129082245,
+  "cancel_post_performed": false,
+  "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "replacement_job_id": 124318545123,
+  "replacement_status": "pending",
+  "replacement_run_attempt": 1,
+  "replacement_binding_observed_at": "2026-10-30T21:19:50.921918+00:00"
+}

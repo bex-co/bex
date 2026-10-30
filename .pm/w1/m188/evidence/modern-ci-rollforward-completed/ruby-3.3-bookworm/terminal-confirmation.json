@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-30T21:28:10.561776+00:00",
+  "tag": "ruby-3.3-bookworm",
+  "old_run_id": 41067606635,
+  "old_job_id": 124106001249,
+  "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "run_attempt": 1,
+  "terminal_confirmed": true,
+  "conclusion": "cancelled",
+  "runner_id": 0,
+  "steps_count": 0,
+  "native_completed_at": "2026-10-30T21:26:54Z",
+  "evidence": [
+    {
+      "role": "run",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-read-20261030T212807262506/run.json",
+      "sha256": "885a90bde4798797e242b44476e3867b7d5a144b0b0627f225c08780fc1f8857"
+    },
+    {
+      "role": "jobs",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/terminal-read-20261030T212807262506/jobs.json",
+      "sha256": "68d0324add8762bbcd002b61c5f8bb5df8595d39e6aa645d3f72d1ff57ece112"
+    }
+  ],
+  "original_outcome": {
+    "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/ruby-3.3-bookworm/outcome.json",
+    "sha256": "6dc60cf2a3071175f312191775be5e53e421bf05c819f673f6039cd6bb9e770f"
+  },
+  "cancellation_repeated": false,
+  "remote_mutation_performed": false
+}

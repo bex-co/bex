@@ -1,0 +1,13 @@
+{
+  "began_at": "2026-10-30T21:17:10.602814+00:00",
+  "tag": "node-22-bookworm",
+  "old_run_id": 41067575985,
+  "old_job_id": 124104723836,
+  "replacement_run_id": 41128855169,
+  "cancel_post_performed": false,
+  "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "replacement_job_id": 124317237455,
+  "replacement_status": "pending",
+  "replacement_run_attempt": 1,
+  "replacement_binding_observed_at": "2026-10-30T21:17:12.017989+00:00"
+}

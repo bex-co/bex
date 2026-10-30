@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-30T21:30:39.401006+00:00",
+  "tag": "rust-1-bookworm",
+  "old_run_id": 41067622215,
+  "old_job_id": 124106478533,
+  "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "run_attempt": 1,
+  "terminal_confirmed": true,
+  "conclusion": "cancelled",
+  "runner_id": 0,
+  "steps_count": 0,
+  "native_completed_at": "2026-10-30T21:29:23Z",
+  "evidence": [
+    {
+      "role": "run",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-read-20261030T213036969484/run.json",
+      "sha256": "a8cf3cec41fdcb2ba7be534471c08c2dd70c6a8d3e8c9b856f732933097bd2b0"
+    },
+    {
+      "role": "jobs",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/terminal-read-20261030T213036969484/jobs.json",
+      "sha256": "4fadf5aa1d43cb030774558ba9f9f1f39e3d7bfd1f0c195f805c166ced74694f"
+    }
+  ],
+  "original_outcome": {
+    "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/rust-1-bookworm/outcome.json",
+    "sha256": "6c71be8fc9265b72bc830884ba6c1144fc875aa168ca33c8b03bf7796631cba4"
+  },
+  "cancellation_repeated": false,
+  "remote_mutation_performed": false
+}

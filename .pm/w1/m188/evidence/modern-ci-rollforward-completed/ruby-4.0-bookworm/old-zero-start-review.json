@@ -1,0 +1,18 @@
+{
+  "began_at": "2026-10-30T21:30:39.711727+00:00",
+  "tag": "ruby-4.0-bookworm",
+  "old_run_id": 41067617284,
+  "old_job_id": 124106162459,
+  "replacement_run_id": 41129321189,
+  "cancel_post_performed": false,
+  "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "replacement_job_id": 124322916655,
+  "replacement_status": "pending",
+  "replacement_run_attempt": 1,
+  "replacement_binding_observed_at": "2026-10-30T21:30:41.577626+00:00",
+  "old_fresh_status": "queued",
+  "old_fresh_conclusion": null,
+  "old_fresh_runner_id": 0,
+  "old_fresh_steps_count": 0,
+  "old_fresh_observed_at": "2026-10-30T21:30:43.622948+00:00"
+}
