@@ -1,0 +1,21 @@
+{"at": "2026-10-30T09:34:39.893521+00:00", "stage": "anonymous-decompressed-layer-read", "arch": "arm64", "layer": 4, "compressed_digest": "sha256:c26edf98ece5babdb6b65e76738cef2c2d05e7075161753d3ba95cd84480d211", "expected_compressed_bytes": 189727693}
+{"at": "2026-10-30T09:35:10.277804+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 4, "compressed_bytes": 46399498, "uncompressed_bytes": 145752064}
+{"at": "2026-10-30T09:35:40.341425+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 4, "compressed_bytes": 90832906, "uncompressed_bytes": 263192576}
+{"at": "2026-10-30T09:36:04.653822+00:00", "stage": "anonymous-decompressed-layer-read", "arch": "arm64", "layer": 17, "compressed_digest": "sha256:92c49ca9b0d46cc0864dd2dafc601a079af4d7e07f1b28efb70074d34c581905", "expected_compressed_bytes": 172932457}
+{"at": "2026-10-30T09:36:10.349715+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 4, "compressed_bytes": 150208522, "uncompressed_bytes": 414187520}
+{"at": "2026-10-30T09:36:34.661885+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 17, "compressed_bytes": 75890698, "uncompressed_bytes": 275775488}
+{"at": "2026-10-30T09:36:41.438762+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 4, "compressed_bytes": 186122250, "uncompressed_bytes": 482344960}
+{"at": "2026-10-30T09:36:46.861850+00:00", "stage": "layer-read-verified", "arch": "arm64", "layer": 4, "compressed_bytes": 189727693, "uncompressed_bytes": 497093120}
+{"at": "2026-10-30T09:36:47.219529+00:00", "stage": "anonymous-decompressed-layer-read", "arch": "amd64", "layer": 17, "compressed_digest": "sha256:ffe78072f8bfc1f7eadc02af987aa0f5876b496e2000d4da19c09faf9169290c", "expected_compressed_bytes": 169166388}
+{"at": "2026-10-30T09:37:04.764564+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 17, "compressed_bytes": 108134410, "uncompressed_bytes": 381681664}
+{"at": "2026-10-30T09:37:17.349297+00:00", "stage": "layer-read-progress", "arch": "amd64", "layer": 17, "compressed_bytes": 48627722, "uncompressed_bytes": 200278016}
+{"at": "2026-10-30T09:37:34.965723+00:00", "stage": "layer-read-progress", "arch": "arm64", "layer": 17, "compressed_bytes": 147718154, "uncompressed_bytes": 468713472}
+{"at": "2026-10-30T09:37:47.719426+00:00", "stage": "layer-read-progress", "arch": "amd64", "layer": 17, "compressed_bytes": 81133578, "uncompressed_bytes": 295698432}
+{"at": "2026-10-30T09:38:00.323540+00:00", "stage": "layer-read-verified", "arch": "arm64", "layer": 17, "compressed_bytes": 172932457, "uncompressed_bytes": 539403264}
+{"at": "2026-10-30T09:38:11.013727+00:00", "stage": "anonymous-decompressed-layer-read", "arch": "arm64", "layer": 13, "compressed_digest": "sha256:c27953bb77cd9e7928a1a1636b0af38342bded708f27b0a1ebb24c0851cde4e1", "expected_compressed_bytes": 2893}
+{"at": "2026-10-30T09:38:11.652590+00:00", "stage": "layer-read-verified", "arch": "arm64", "layer": 13, "compressed_bytes": 2893, "uncompressed_bytes": 13312}
+{"at": "2026-10-30T09:38:11.990996+00:00", "stage": "anonymous-decompressed-layer-read", "arch": "arm64", "layer": 16, "compressed_digest": "sha256:e62e0a7631ccb467e539ae3acfd5a518c041484f2892ca54512680e5d8a5b9d2", "expected_compressed_bytes": 1397}
+{"at": "2026-10-30T09:38:12.540221+00:00", "stage": "layer-read-verified", "arch": "arm64", "layer": 16, "compressed_bytes": 1397, "uncompressed_bytes": 4608}
+{"at": "2026-10-30T09:38:17.874333+00:00", "stage": "layer-read-progress", "arch": "amd64", "layer": 17, "compressed_bytes": 130023434, "uncompressed_bytes": 435159040}
+{"at": "2026-10-30T09:38:34.613988+00:00", "stage": "layer-read-verified", "arch": "amd64", "layer": 17, "compressed_bytes": 169166388, "uncompressed_bytes": 542286336}
+{"at": "2026-10-30T09:38:34.614643+00:00", "stage": "parallel-pending-layer-proof-complete", "tasks": 31}
