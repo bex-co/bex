@@ -1,0 +1,3069 @@
+{
+  "checked_at": "2026-10-30T15:36:44.591840+00:00",
+  "state": "in_progress",
+  "verified": {
+    "node-14-bullseye": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "verified_at": "2026-10-30T10:17:58.480288+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "runtime": "node",
+      "version": "14.21.3",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951138,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951138",
+        "digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "14",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T06:11:23.4870292Z #15 0.660 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T06:11:24.5695414Z #16 0.206 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/producer-job.log.gz",
+        "log_sha256": "2c857a248abc65c7dcc2a1fbb1172d60376431a5d8edeefed758b827ce9002b3"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951138,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951138",
+        "reason": "Authenticated main producer built this exact index and passed both architecture runtime/Bullseye checks; Trivy timed out analyzing GCC lto1. Rerun all checks, scans and signing without repeating compilation.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41029596739,
+      "job_id": 123976756119,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41029596739/job/123976756119",
+      "verification_run_id": 41029596739,
+      "verification_job_id": 123976756119,
+      "verification_job_completed_at": "2026-10-30T09:28:59Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 5146,
+            "HIGH": 3272,
+            "CRITICAL": 250,
+            "MEDIUM": 9630,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 5145,
+            "HIGH": 3272,
+            "CRITICAL": 250,
+            "MEDIUM": 9630,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "14",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T09:15:24.5677262Z #15 1.112 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T09:15:24.7072123Z #16 0.306 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.0.10",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "NODE_VERSION=14.21.3"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "NODE_VERSION=14.21.3"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+      "targeted_proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+        "sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+        "complete": true
+      },
+      "architecture_binding_verified_at": "2026-10-30T11:21:03.286219+00:00",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-adoption-guard-validation.json",
+        "sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+        "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+        "guard_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+        "actual_proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true
+      },
+      "accepted_at": "2026-10-30T11:27:05.754211+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-node14-discovery-confirmation.json",
+        "sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b"
+      }
+    },
+    "python-3.7-bullseye": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T12:36:42.569250+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "runtime": "python",
+      "version": "3.7.17",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123936350542,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+        "digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/producer-job.log.gz",
+        "log_sha256": "e4111cdcaf116dec5a7a2d287e99cbbb95d1b9dbbd81bf228aa89494cd0bbd5e"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123936350542,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+        "reason": "Original authenticated main build, both-architecture runtime checks and both Trivy scans passed; amd64 SPDX attestation failed on Rekor POST after2attempts. Underlying HTTP status/timeout cause is not provided in the raw log. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41029603442,
+      "job_id": 123977642604,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41029603442/job/123977642604",
+      "verification_run_id": 41029603442,
+      "verification_job_id": 123977642604,
+      "verification_job_completed_at": "2026-10-30T10:05:27Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 5024,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 5023,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.7.17"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.7&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.7&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.7.17"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.7&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.7&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "targeted_proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+        "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+        "guard_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+        "actual_proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+          "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T12:43:41.158572+00:00"
+      },
+      "accepted_at": "2026-10-30T12:43:41.158730+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.7-bullseye-discovery-confirmation.json",
+        "sha256": "7a4ce5bd0f55bf3d4a4f3b7ed270440e503b0e7da48d15e817e4c8da401ecafb"
+      }
+    },
+    "node-16-bookworm": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "d7620941df3e71fc8260a67dcfc853768b9a505edfbdde952914f4906d5b7e65",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T12:38:42.643295+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "digest": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "runtime": "node",
+      "version": "16.20.2",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951331,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951331",
+        "digest": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "16",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T06:51:05.1522305Z #15 0.605 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T06:51:06.0183162Z #23 0.226 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/producer-job.log.gz",
+        "log_sha256": "dcb864daf236186cece3fe2e92868a6a5fb7f872ef7d61e3dba9a7a9e6c6fddd"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951331,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951331",
+        "reason": "Authenticated main producer built this exact index and passed both architecture runtime/Bullseye checks; Trivy timed out analyzing GCC12 lto1. Rerun all checks, scans and signing without repeating compilation.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41029599983,
+      "job_id": 123977276970,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41029599983/job/123977276970",
+      "verification_run_id": 41029599983,
+      "verification_job_id": 123977276970,
+      "verification_job_completed_at": "2026-10-30T09:49:23Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 4096,
+            "HIGH": 3214,
+            "MEDIUM": 9187,
+            "UNKNOWN": 167,
+            "CRITICAL": 253
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 4096,
+            "HIGH": 3214,
+            "MEDIUM": 9187,
+            "UNKNOWN": 167,
+            "CRITICAL": 253
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "16",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T09:34:59.1247780Z #17 1.263 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T09:35:05.7903047Z #26 0.471 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.0.10",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "NODE_VERSION=16.20.2"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.1&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.1&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "NODE_VERSION=16.20.2"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.1&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.1&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "targeted_proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+        "sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+        "guard_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+        "actual_proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+          "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T12:45:18.618530+00:00"
+      },
+      "accepted_at": "2026-10-30T12:45:18.618682+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-node-16-bookworm-discovery-confirmation.json",
+        "sha256": "c20fba64dc1a0dfe0c93ab9f1ddd582d63a97bb4f77b03e11849ba9aae1c861b"
+      }
+    },
+    "python-3.8-bookworm": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "9c33da49c59249ce9999872e15ca1b8acdb02ca697aba1a76d9885b03ba09d82",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T13:18:12.340649+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+      "digest": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+      "runtime": "python",
+      "version": "3.8.20",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123967323852,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
+        "digest": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/producer-job.log.gz",
+        "log_sha256": "0a0b7c7029488a44c8e5f1ff86eb8a0f1deceb19cf4b40ab71c04f559b39864b"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123967323852,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
+        "reason": "Authenticated main build and both-architecture runtime checks/scans passed; first amd64 SPDX attestation failed posting to Rekor v1 after two attempts. HTTP status and server limit are not exposed. Reuse only this exact same-recipe/base index and rerun all current probes, scans, signatures and attestations.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41033903530,
+      "job_id": 123990866360,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41033903530/job/123990866360",
+      "verification_run_id": 41033903530,
+      "verification_job_id": 123990866360,
+      "verification_job_completed_at": "2026-10-30T10:29:27Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 3900,
+            "HIGH": 2657,
+            "MEDIUM": 7849,
+            "UNKNOWN": 157,
+            "CRITICAL": 229
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 3900,
+            "HIGH": 2657,
+            "MEDIUM": 7849,
+            "UNKNOWN": 157,
+            "CRITICAL": 229
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.8.20"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.7&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.7&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.8.20"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.7&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.7&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "targeted_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+        "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+        "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+        "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+          "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T13:30:48.784936+00:00"
+      },
+      "accepted_at": "2026-10-30T13:30:48.785080+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+        "sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5"
+      }
+    },
+    "python-3.10-bookworm": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T15:08:43.384728+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+      "digest": "sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+      "runtime": "python",
+      "version": "3.10.22",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 124001233726,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+        "digest": "sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-job.log.gz",
+        "log_sha256": "39da9514f584d7789c00d39c9b4f59b3fdc884f4768e738f1399be71c1f2f9b6"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 124001233726,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+        "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Python3.10.22 gates. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41063724329,
+      "job_id": 124091064696,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41063724329/job/124091064696",
+      "verification_run_id": 41063724329,
+      "verification_job_id": 124091064696,
+      "verification_job_completed_at": "2026-10-30T15:06:50Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 3227,
+            "HIGH": 829,
+            "MEDIUM": 3258,
+            "UNKNOWN": 128,
+            "CRITICAL": 35
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 3227,
+            "HIGH": 829,
+            "MEDIUM": 3258,
+            "UNKNOWN": 128,
+            "CRITICAL": 35
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.10.22"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.10.22"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "targeted_proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+        "sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05.json",
+          "sha256": "1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:10:54.017859+00:00"
+      },
+      "accepted_at": "2026-10-30T15:10:54.018469+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.10-bookworm-discovery-confirmation.json",
+        "sha256": "3024aff37b2c604f06c8d8c291971ee970b034d9690a9fd8b1d25ba98e2ea6ee"
+      }
+    },
+    "python-3.9-bookworm": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "6d445c720f19fbabe955a6373dd8c358e815a9a584a551a3c0c998aa9e27c70c",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T15:12:57.551117+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "runtime": "python",
+      "version": "3.9.25",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123982303737,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+        "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true,
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "recipe_changes_ignored_markdown_only": [
+          "deploy/native-base/README.md"
+        ],
+        "log_gzip": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-job.log.gz",
+        "log_sha256": "4f324240226544a785b363acd0c8a2aa365402017185e416f778617bfdea4d24"
+      },
+      "recovered": true,
+      "recovery_authorization": {
+        "base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+        "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123982303737,
+        "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+        "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Python3.9.25 gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+        "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication.",
+        "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "source_path": ".github/native-base-recovery.json"
+      },
+      "run_id": 41063720126,
+      "job_id": 124090465681,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41063720126/job/124090465681",
+      "verification_run_id": 41063720126,
+      "verification_job_id": 124090465681,
+      "verification_job_completed_at": "2026-10-30T15:07:14Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 3844,
+            "HIGH": 1988,
+            "MEDIUM": 6471,
+            "UNKNOWN": 151,
+            "CRITICAL": 184
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 3844,
+            "HIGH": 1988,
+            "MEDIUM": 6471,
+            "UNKNOWN": 151,
+            "CRITICAL": 184
+          },
+          "brotli_findings": [],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.9.25"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.12&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.12&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+          "runtime_env": [
+            "PYTHON_VERSION=3.9.25"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.12&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.12&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "targeted_proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+        "sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691.json",
+          "sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:15:02.064184+00:00"
+      },
+      "accepted_at": "2026-10-30T15:15:02.064699+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.9-bookworm-discovery-confirmation.json",
+        "sha256": "fd482b524607ac7d5d5cd78e36a20271fc1e3453c82279d7db16631969c7ef73"
+      }
+    },
+    "ruby-3.0-bullseye": {
+      "proof_mode": "targeted_sigstore_bundles/v1",
+      "candidate_state": "verified",
+      "guard_alignment_required": false,
+      "architecture_binding_verified": true,
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "3c98bb4e4b050ad9f30e7dabf3e8ca62578a52e5fb5ec0eea880e8be05d86c73",
+        "complete": true
+      },
+      "verified_at": "2026-10-30T15:31:29.466426+00:00",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+      "digest": "sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+      "runtime": "ruby",
+      "version": "3.0.7",
+      "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "producer_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "producer": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063729208,
+        "job_id": 124090806988,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988",
+        "digest": "sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "original_build_passed": true,
+        "original_runtime_gates_passed": true
+      },
+      "recovered": false,
+      "recovery_authorization": null,
+      "run_id": 41063729208,
+      "job_id": 124090806988,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988",
+      "verification_run_id": 41063729208,
+      "verification_job_id": 124090806988,
+      "verification_job_completed_at": "2026-10-30T15:27:16Z",
+      "scans": {
+        "amd64": {
+          "attestation_verified": true,
+          "architecture": "amd64",
+          "severity_counts": {
+            "LOW": 4901,
+            "HIGH": 2741,
+            "CRITICAL": 242,
+            "MEDIUM": 8429,
+            "UNKNOWN": 190
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "architecture": "arm64",
+          "severity_counts": {
+            "LOW": 4900,
+            "HIGH": 2741,
+            "CRITICAL": 242,
+            "MEDIUM": 8429,
+            "UNKNOWN": 190
+          },
+          "brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+        }
+      },
+      "security": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "signature": {
+        "verified": true,
+        "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
+        "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "proof_mode": "targeted_sigstore_bundles/v1",
+        "signed_subject": {
+          "digest": {
+            "sha256": "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd"
+          },
+          "annotations": {}
+        },
+        "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+      },
+      "runtime_gate_steps": [
+        {
+          "name": "verify real native tool transformations without network on both architectures",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan amd64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "scan arm64 candidate",
+          "conclusion": "success"
+        },
+        {
+          "name": "sign and attest the immutable candidate",
+          "conclusion": "success"
+        }
+      ],
+      "platforms": {
+        "amd64": {
+          "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+          "runtime_env": [
+            "RUBY_VERSION=3.0.7"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+            }
+          ]
+        },
+        "arm64": {
+          "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+          "runtime_env": [
+            "RUBY_VERSION=3.0.7"
+          ],
+          "brotli_packages": [
+            {
+              "name": "libbrotli-dev",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+            },
+            {
+              "name": "libbrotli1",
+              "version": "1.0.9-2+deb12u1+bex11u1",
+              "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+            }
+          ]
+        }
+      },
+      "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "anonymous_metadata_pull": true,
+      "proof_directory": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "targeted_proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+        "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+          "sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:36:44.591368+00:00"
+      },
+      "accepted_at": "2026-10-30T15:36:44.591840+00:00",
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-ruby-3.0-bullseye-discovery-confirmation.json",
+        "sha256": "f8362ec9f9d7de5715a59cdfa4ff17f19698165f45b604d0c2e6df896a00ec55"
+      }
+    }
+  },
+  "remaining": [
+    "node-18-bookworm",
+    "node-20-bookworm",
+    "ruby-3.1-bookworm",
+    "ruby-3.2-bookworm"
+  ],
+  "approved_recipe_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "recipe_failure_history": [
+    {
+      "at": "2026-10-30T03:52:45.036365+00:00",
+      "run_id": 40989646534,
+      "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+      "action": "cancel and quarantine known defective native recipe per root instruction",
+      "result": "\u2713 Request to cancel workflow 40989646534 submitted.",
+      "invalid_sources": [
+        "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+        "5d2223ec0f7a0f9add3a8d3df78cfdc81b32e58d"
+      ],
+      "reason": "Bookworm-built patched Node20 requires GLIBC2.34/GLIBCXX3.4.30 and fails on supported Bullseye Python3.7; official Node20 runs. Existing recipe cannot be adopted;16/18 carry same portability risk.",
+      "evidence_path": "/tmp/bex-m188-node-abi/comparison.json",
+      "evidence_sha256": "9fbbb330b506435ab4489356dd322c96b968a11f2c4451d79e78163f7a5e21ef",
+      "evidence": {
+        "node20-original": {
+          "GLIBC_max": "2.28",
+          "GLIBCXX_max": "3.4.21",
+          "CXXABI_max": "1.3.9",
+          "python37_bullseye": {
+            "returncode": 0,
+            "stdout": "v20.20.2\n",
+            "stderr": "Unable to find image 'python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a' locally\ndocker.io/library/python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a: Pulling from library/python\n31f5dc1f52c8: Already exists\nbb60045eb75c: Already exists\n292737ab468e: Already exists\n0d93979d6242: Already exists\n5a9f8670f1b8: Already exists\ncd0152b2afe3: Already exists\n5770af76823a: Already exists\n023d3e7bc423: Already exists\nDigest: sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\nStatus: Downloaded newer image for python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\n"
+          },
+          "ruby30_bullseye": {
+            "returncode": 0,
+            "stdout": "v20.20.2\n",
+            "stderr": "Unable to find image 'ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72' locally\ndocker.io/library/ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72: Pulling from library/ruby\n078d9526cc72: Already exists\n691cb555e773: Already exists\n9dce35208529: Already exists\ne9dcef9945e6: Already exists\nf29f8a33d223: Already exists\ne3957eeac77d: Already exists\nf255592834a2: Already exists\nDigest: sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\nStatus: Downloaded newer image for ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\n"
+          }
+        },
+        "node20-patched": {
+          "GLIBC_max": "2.34",
+          "GLIBCXX_max": "3.4.30",
+          "CXXABI_max": "1.3.9",
+          "python37_bullseye": {
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+          },
+          "ruby30_bullseye": {
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+          }
+        },
+        "node14-original": {
+          "GLIBC_max": "2.17",
+          "GLIBCXX_max": "3.4.18",
+          "CXXABI_max": "1.3.5",
+          "python37_bullseye": {
+            "returncode": 0,
+            "stdout": "v14.21.3\n",
+            "stderr": ""
+          }
+        },
+        "node14-patched": {
+          "GLIBC_max": "2.29",
+          "GLIBCXX_max": "3.4.26",
+          "CXXABI_max": "1.3.9",
+          "python37_bullseye": {
+            "returncode": 0,
+            "stdout": "v14.21.3\n",
+            "stderr": ""
+          },
+          "ruby30_bullseye": {
+            "returncode": 0,
+            "stdout": "v14.21.3\n",
+            "stderr": ""
+          }
+        },
+        "metadata": {
+          "checked_at": "2026-10-30T03:50:30.296748+00:00",
+          "architecture": "linux/arm64",
+          "python37_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+          "ruby30_base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+          "node20_original": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+          "node20_patched_image": "sha256:fdb7cd99076f7eb1f54fa3cf8e0d17de4b7510c0be3ade1b2ba6341b6fd8c3c7",
+          "node14_original": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+          "node14_patched_image": "sha256:038005cf52053b649ec15eec02d238e4780f6c52041fa1035a7465984dbb76cb",
+          "restoration": "Existing BuildKit cached outputs only; no duplicate compilation",
+          "binary_sha256": {
+            "node20-original": "05a69ccdcb795f2a8b86c145e71a6a37cce84fccef5aaf25a8fe38bc9423e732",
+            "node20-patched": "e49bb92db66c02944f1f8fea24548e47d472cb1184b5ab976876b5a1bd80752e",
+            "node14-original": "50e0d6f7ebd0637769715433d10bde9d02034971bc985ef2cdab889bd9cdc99f",
+            "node14-patched": "7113ae93a25a35afcf7eaffd92187b78ef4fd6a36e97959b28d4fb943858ed4a"
+          }
+        }
+      },
+      "requires_explicit_root_approved_replacement_source": true,
+      "cancelled_job_logs": [
+        {
+          "job_id": 123853109240,
+          "tag": "node-14-bullseye",
+          "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+          "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109240",
+          "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109240.log.gz",
+          "compressed_sha256": "ecce65f8855cef3de264790000b727be97c7b84792a62d3b8e52a3c989ad480d",
+          "uncompressed_bytes": 453193,
+          "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109240.timing-tail.txt",
+          "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+        },
+        {
+          "job_id": 123853109541,
+          "tag": "node-16-bookworm",
+          "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+          "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109541",
+          "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109541.log.gz",
+          "compressed_sha256": "5c00658acdaa520c69e136b81e5989559200092a12a81080f2bcbf4758756f1a",
+          "uncompressed_bytes": 379205,
+          "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109541.timing-tail.txt",
+          "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+        }
+      ],
+      "run_final_status": "completed",
+      "run_final_conclusion": "cancelled",
+      "log_archive_sha256": "78c26b22cae5318f6b86a780e0ea13b18377f4cacbcd3df12574d9c563370e29"
+    }
+  ],
+  "cancelled_recipe_log_proofs": [
+    {
+      "job_id": 123853109240,
+      "tag": "node-14-bullseye",
+      "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109240",
+      "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109240.log.gz",
+      "compressed_sha256": "ecce65f8855cef3de264790000b727be97c7b84792a62d3b8e52a3c989ad480d",
+      "uncompressed_bytes": 453193,
+      "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109240.timing-tail.txt",
+      "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+    },
+    {
+      "job_id": 123853109541,
+      "tag": "node-16-bookworm",
+      "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109541",
+      "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109541.log.gz",
+      "compressed_sha256": "5c00658acdaa520c69e136b81e5989559200092a12a81080f2bcbf4758756f1a",
+      "uncompressed_bytes": 379205,
+      "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109541.timing-tail.txt",
+      "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+    }
+  ],
+  "queue_cleanup": [
+    {
+      "at": "2026-10-30T03:30:03.237741+00:00",
+      "run_id": 40992252816,
+      "source": "5d2223ec0f7a0f9add3a8d3df78cfdc81b32e58d",
+      "action": "cancel redundant entirely pending equivalent publisher",
+      "basis": "root authorization; all build jobs pending with zero steps and no artifacts; non-Markdown recipes and legacy upstream inputs equal2de, workflow only concurrency/comments differ",
+      "jobs": [
+        {
+          "id": 123857903590,
+          "status": "pending",
+          "steps": 0
+        },
+        {
+          "id": 123857903827,
+          "status": "pending",
+          "steps": 0
+        }
+      ],
+      "result": "\u2713 Request to cancel workflow 40992252816 submitted.",
+      "retained_run_id": 40989646534
+    },
+    {
+      "checked_at": "2026-10-30T07:42:49.761719+00:00",
+      "run_id": 41017182776,
+      "source": "059c163b372c43b3b397751f1f1a95913b253404",
+      "replacement_run_id": 41021297194,
+      "replacement_source": "d95645e9f054238ec53a4932fac51560ffedd1f8",
+      "review_file": "/tmp/bex-m188-059-queued-cancel-review.json",
+      "review_sha256": "853a625293ad6731647af1311112df9c67a973d581574f2cc4342623145afb0d",
+      "authorized_by": "explicit root conditional authorization",
+      "all_builds_queued_no_steps": true,
+      "builds": [
+        {
+          "id": 123936794841,
+          "name": "build (node-16-bookworm, node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8...",
+          "status": "queued",
+          "step_count": 0
+        },
+        {
+          "id": 123936794937,
+          "name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+          "status": "queued",
+          "step_count": 0
+        }
+      ],
+      "cancel_requested": true,
+      "cancelled": true,
+      "preserved_runs": [
+        41000570846,
+        41021297194
+      ],
+      "cancel_request_exit_code": 0,
+      "cancel_request_at": "2026-10-30T07:43:14.225656+00:00",
+      "confirmation_at": "2026-10-30T07:44:02.250515+00:00",
+      "final_status": "completed",
+      "final_conclusion": "cancelled",
+      "post_cancel_checked_at": "2026-10-30T08:02:07.844747+00:00",
+      "post_cancel_builds": [
+        {
+          "id": 123936794841,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123936794937,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950611557,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950611761,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950611884,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950612146,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950613251,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614130,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614317,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614357,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614722,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614849,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950614954,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950615128,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950615802,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950615927,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616223,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616338,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616408,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616740,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616910,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950616991,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950617205,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950617334,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950617573,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950618297,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        },
+        {
+          "id": 123950618626,
+          "status": "completed",
+          "conclusion": "cancelled",
+          "step_count": 0
+        }
+      ],
+      "no_build_steps_ever_started": true
+    }
+  ],
+  "run_id": 41033903530,
+  "run_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "run_status": "queued",
+  "run_conclusion": "",
+  "workflow": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+  "tag_prefix": "native-",
+  "required_security_ancestor": "a1f63153a9a5f84fbde0b9ecc29319a9f0da09d0",
+  "pending": [
+    {
+      "tag": "node-18-bookworm",
+      "status": "not_started"
+    },
+    {
+      "tag": "node-20-bookworm",
+      "status": "not_started"
+    },
+    {
+      "tag": "ruby-3.1-bookworm",
+      "status": "not_started"
+    },
+    {
+      "tag": "ruby-3.2-bookworm",
+      "status": "not_started"
+    }
+  ],
+  "failures": [
+    {
+      "tag": "node-18-bookworm",
+      "job_id": 123925180265,
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    }
+  ],
+  "equivalent_recipe_base": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "equivalent_recipe_sha256": "3365ad95fdfd5bf0baf30043de4be8f5c063c5a1253ef14a1ff19950698b189a",
+  "publishers": [
+    {
+      "observed_at": "2026-10-30T09:46:24.001765+00:00",
+      "run_id": 41000570846,
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "status": "queued",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-20-bookworm",
+          "job_id": 123932798235,
+          "status": "in_progress",
+          "active_steps": [
+            {
+              "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+              "started_at": "2026-10-30T06:56:40Z"
+            }
+          ]
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "job_id": 123982303737,
+          "status": "queued",
+          "active_steps": []
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:46:29.240306+00:00",
+      "run_id": 41021297194,
+      "source": "d95645e9f054238ec53a4932fac51560ffedd1f8",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "pending": []
+    },
+    {
+      "observed_at": "2026-10-30T09:46:31.083699+00:00",
+      "run_id": 41026764209,
+      "source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "status": "completed",
+      "conclusion": "failure",
+      "pending": [
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:46:32.926575+00:00",
+      "run_id": 41026783847,
+      "source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "status": "completed",
+      "conclusion": "failure",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:46:34.514593+00:00",
+      "run_id": 41026904247,
+      "source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "status": "in_progress",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "job_id": 123967210277,
+          "status": "in_progress",
+          "active_steps": [
+            {
+              "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+              "started_at": "2026-10-30T08:51:12Z"
+            }
+          ]
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:46:37.695620+00:00",
+      "run_id": 41029482722,
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:46:39.119574+00:00",
+      "run_id": 41029596739,
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "status": "completed",
+      "conclusion": "success",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "job_id": 123976756119,
+          "status": "observer_transport_unavailable",
+          "reason": "Command '['/tmp/bex-w1-136-cosign/cosign', 'verify', '--certificate-github-workflow-sha=4330878c280bc9748444c8e1e50ff7388df1228a', '--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main', '--certificate-oidc-issuer=https://token.actions.githubusercontent.com', 'ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc']' timed out after 180 seconds"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:49:43.866095+00:00",
+      "run_id": 41029599983,
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "status": "in_progress",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "job_id": 123977276970,
+          "status": "observer_transport_unavailable",
+          "reason": "Command '['/tmp/bex-w1-136-cosign/cosign', 'verify-attestation', '--certificate-github-workflow-sha=4330878c280bc9748444c8e1e50ff7388df1228a', '--type', 'spdxjson', '--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main', '--certificate-oidc-issuer=https://token.actions.githubusercontent.com', 'ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113']' timed out after 180 seconds"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:55:15.686307+00:00",
+      "run_id": 41029603442,
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "status": "queued",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "job_id": 123977642604,
+          "status": "in_progress",
+          "active_steps": [
+            {
+              "name": "scan amd64 candidate",
+              "started_at": "2026-10-30T09:54:55Z"
+            }
+          ]
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:55:17.001435+00:00",
+      "run_id": 41030129157,
+      "source": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+      "status": "pending",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "job_id": 123978338135,
+          "status": "queued",
+          "active_steps": []
+        },
+        {
+          "tag": "node-16-bookworm",
+          "job_id": 123978338586,
+          "status": "queued",
+          "active_steps": []
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "observed_at": "2026-10-30T09:55:18.678385+00:00",
+      "run_id": 41033903530,
+      "source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+      "status": "queued",
+      "conclusion": "",
+      "pending": [
+        {
+          "tag": "node-14-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-16-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-18-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "node-20-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.7-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.8-bookworm",
+          "job_id": 123990866360,
+          "status": "queued",
+          "active_steps": []
+        },
+        {
+          "tag": "python-3.9-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "python-3.10-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.0-bullseye",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.1-bookworm",
+          "status": "not_started"
+        },
+        {
+          "tag": "ruby-3.2-bookworm",
+          "status": "not_started"
+        }
+      ]
+    }
+  ],
+  "accepted_sources": [
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "d95645e9f054238ec53a4932fac51560ffedd1f8",
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+    "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "d94787bb4fb93751e485fe6d47946d82cc6da052",
+    "e47a2c6157339a3a786118866f28b4ee8b619774",
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+  ],
+  "source_review_required": [
+    {
+      "source": "3f037dd390ebe44110f14ae0239694abd9ab9ec7",
+      "run_id": 41029941149
+    },
+    {
+      "source": "166b1745485af31429845542de733ce28ecc2104",
+      "run_id": 41029785532
+    },
+    {
+      "source": "059c163b372c43b3b397751f1f1a95913b253404",
+      "run_id": 41017182776
+    },
+    {
+      "source": "3d29a10af161b9431459bd862d2c320c37d46eb1",
+      "run_id": 40986883137
+    },
+    {
+      "source": "0cf38fd0c8a18878574177d6465e8f3b629bb797",
+      "run_id": 40986363838
+    },
+    {
+      "source": "a1f63153a9a5f84fbde0b9ecc29319a9f0da09d0",
+      "run_id": 40985656469
+    },
+    {
+      "source": "95a6b3295aaaa87b8200a3483587a8d10263d76f",
+      "run_id": 40980913819
+    },
+    {
+      "source": "982ab4a176f57975932d95b32872d4b43f1227d5",
+      "run_id": 40980167477
+    },
+    {
+      "source": "295e31e50639227d0ee15fbdfd97b4cfe9cbcc5b",
+      "run_id": 40978747119
+    }
+  ],
+  "source_model": "separate_image_producer_and_signature_verification/v2",
+  "publisher_failure_history": [
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123885951138,
+      "conclusion": "failure",
+      "failed_steps": [
+        "scan amd64 candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "job_id": 123885951331,
+      "conclusion": "failure",
+      "failed_steps": [
+        "scan amd64 candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-18-bookworm",
+      "job_id": 123925180265,
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "stage": "workflow_validation",
+      "conclusion": "failure",
+      "reason": "GitHub run failed before creating jobs",
+      "run_id": 41020368108,
+      "verification_source": "d309ffccde9071aa4551ca914543e57e655cdb3b"
+    },
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123952779240,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "job_id": 123952779121,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "node-18-bookworm",
+      "job_id": 123966574356,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "node-20-bookworm",
+      "job_id": 123966573931,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "job_id": 123966575179,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "job_id": 123966574923,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "python-3.9-bookworm",
+      "job_id": 123966575277,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "python-3.10-bookworm",
+      "job_id": 123966575344,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "ruby-3.0-bullseye",
+      "job_id": 123966575385,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "ruby-3.1-bookworm",
+      "job_id": 123966575297,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "ruby-3.2-bookworm",
+      "job_id": 123966575845,
+      "conclusion": "cancelled",
+      "failed_steps": [],
+      "run_id": 41021297194,
+      "verification_source": "d95645e9f054238ec53a4932fac51560ffedd1f8"
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "job_id": 123936350542,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123966807129,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41026764209,
+      "verification_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "job_id": 123966875686,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41026783847,
+      "verification_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11"
+    },
+    {
+      "stage": "matrix",
+      "job_id": 123975481174,
+      "conclusion": "cancelled",
+      "run_id": 41029482722,
+      "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a"
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "job_id": 123967323852,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123976756119,
+      "status": "verification_failed",
+      "reason": "missing signed scan for an architecture",
+      "run_id": 41029596739,
+      "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a"
+    }
+  ],
+  "observer_continues_after_job_failure": true,
+  "promotion_history": [
+    {
+      "tag": "node-14-bullseye",
+      "at": "2026-10-30T11:27:05.754211+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+        "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-adoption-guard-validation.json",
+        "sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+        "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+        "guard_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+        "actual_proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-node14-discovery-confirmation.json",
+        "sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b"
+      }
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "at": "2026-10-30T12:43:41.158730+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+        "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+        "guard_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+        "actual_proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+          "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T12:43:41.158572+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.7-bullseye-discovery-confirmation.json",
+        "sha256": "7a4ce5bd0f55bf3d4a4f3b7ed270440e503b0e7da48d15e817e4c8da401ecafb"
+      }
+    },
+    {
+      "tag": "node-16-bookworm",
+      "at": "2026-10-30T12:45:18.618682+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+        "sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+        "guard_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+        "actual_proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+          "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T12:45:18.618530+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-node-16-bookworm-discovery-confirmation.json",
+        "sha256": "c20fba64dc1a0dfe0c93ab9f1ddd582d63a97bb4f77b03e11849ba9aae1c861b"
+      }
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "at": "2026-10-30T13:30:48.785080+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+        "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+        "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+        "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+        "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+          "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T13:30:48.784936+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+        "sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5"
+      }
+    },
+    {
+      "tag": "python-3.10-bookworm",
+      "at": "2026-10-30T15:10:54.018469+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+        "sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05.json",
+          "sha256": "1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:10:54.017859+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.10-bookworm-discovery-confirmation.json",
+        "sha256": "3024aff37b2c604f06c8d8c291971ee970b034d9690a9fd8b1d25ba98e2ea6ee"
+      }
+    },
+    {
+      "tag": "python-3.9-bookworm",
+      "at": "2026-10-30T15:15:02.064699+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+        "sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691.json",
+          "sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:15:02.064184+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-python-3.9-bookworm-discovery-confirmation.json",
+        "sha256": "fd482b524607ac7d5d5cd78e36a20271fc1e3453c82279d7db16631969c7ef73"
+      }
+    },
+    {
+      "tag": "ruby-3.0-bullseye",
+      "at": "2026-10-30T15:36:44.591840+00:00",
+      "candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84"
+      },
+      "guard_validation": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+        "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+        "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+        "actual_proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+          "sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T15:36:44.591368+00:00"
+      },
+      "stable_discovery_confirmation": {
+        "file": "/tmp/bex-m188-ruby-3.0-bullseye-discovery-confirmation.json",
+        "sha256": "f8362ec9f9d7de5715a59cdfa4ff17f19698165f45b604d0c2e6df896a00ec55"
+      }
+    }
+  ],
+  "superseded_failure_history": [
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123885951138,
+      "conclusion": "failure",
+      "failed_steps": [
+        "scan amd64 candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-14-bullseye",
+      "job_id": 123966807129,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41026764209,
+      "verification_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11"
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "job_id": 123936350542,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "job_id": 123885951331,
+      "conclusion": "failure",
+      "failed_steps": [
+        "scan amd64 candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "job_id": 123966875686,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41026783847,
+      "verification_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11"
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "job_id": 123967323852,
+      "conclusion": "failure",
+      "failed_steps": [
+        "sign and attest the immutable candidate"
+      ],
+      "run_id": 41000570846,
+      "verification_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    }
+  ],
+  "source_adoption_authorized": false,
+  "all_11_required_before_source_adoption": true,
+  "live_status_file": "/tmp/bex-m188-publisher-status.json",
+  "metadata_note": "Per-candidate immutable acceptance is current. Live job phase/status comes from the independent live_status_file; historical publishers entries predate targeted proof collection.",
+  "binding_holds": {},
+  "superseded_binding_hold_history": [
+    {
+      "file": "/tmp/bex-m188-python-3.7-bullseye-binding-hold.json",
+      "sha256": "64668a36d2e95a6c9da03d2f5a0d81e2727abd64f28c9654331572301c89ce3f",
+      "reason": "signed SPDX root does not bind exact registry child; canonical recovery pending",
+      "tag": "python-3.7-bullseye",
+      "superseded_at": "2026-10-30T12:43:41.158730+00:00",
+      "accepted_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f"
+      }
+    },
+    {
+      "file": "/tmp/bex-m188-node16-binding-hold.json",
+      "sha256": "c63a4db2686a7229efaca657e47f0aea8f50d2440eb6f15909c9a06681916c0a",
+      "reason": "signed SPDX root does not bind exact registry child; canonical recovery pending",
+      "tag": "node-16-bookworm",
+      "superseded_at": "2026-10-30T12:45:18.618682+00:00",
+      "accepted_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d"
+      }
+    },
+    {
+      "file": "/tmp/bex-m188-python-3.8-bookworm-binding-hold.json",
+      "sha256": "21e964034161c8646fd33fd58ccd9b2e028914c4997f9f9abf18b5d06c93afd5",
+      "reason": "signed SPDX root does not bind exact registry child; canonical recovery pending",
+      "tag": "python-3.8-bookworm",
+      "superseded_at": "2026-10-30T13:30:48.785080+00:00",
+      "accepted_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+        "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+      }
+    }
+  ],
+  "source_policy_file": "/tmp/bex-m188-publisher-quarantine.json",
+  "source_policy_checked_at": "2026-10-30T12:49:12.355105+00:00"
+}

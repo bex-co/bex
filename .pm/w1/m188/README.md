@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10 签名发布独立验收通过（6/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0 签名发布独立验收通过（7/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -203,3 +203,11 @@ Node16旧arm64扫描、Node20旧amd64扫描及当前canonical Node14 amd64扫描
 本次在批准前保存了实际候选原文，并保留冻结守卫、验证记录、批准状态转换和各自计数时的aggregate快照；原四项收据与证据保持原字节。Python3.10原batch的人为取消不冒充原扫描成功，新FD已重做全部门槛。两项临时恢复授权已清理，十四项实际隔离Git选择器检查通过；见 [清理后行为验证](evidence/recovery-selection-python39-310-retired.json)。
 
 剩余Node18/20、Ruby3.0/3.1/3.2继续发布与逐项验收。source pin、inventory尚未采用；全部11项、真实应用测试和生产rollout完成前，t002–t008继续开放。
+
+### Ruby3.0 正式验收推进至 7/11 — 2026-10-30（UTC 15:36Z）
+
+[Ruby3.0验收收据](evidence/ruby30-published-acceptance/acceptance.json) 对应FD源码的正常双架构构建，producer与verifier相同，没有recovery授权。五份严格证明、两架构直接registry子镜像/配置绑定、Ruby3.0.7身份、实际运行门槛、完整扫描与新鲜匿名discovery body/header全部通过；原六项证据保持原字节。
+
+Bullseye的三条目标Brotli版本命中在两架构完整报告中均保留；其 `1.0.9-2+deb12u1+bex11u1` 已回移固定Debian安全源码，结合签名包身份、实际畸形输入永久错误与健康round-trip证据逐项处置，不使用ignore。省略发现或删除处置说明的反例均被完整守卫拒绝。
+
+最终validation只在全部检查完成后一次冻结发布；批准执行显式传入并校验人工复核的确切哈希，随后重做冻结守卫与匿名拉取确认。[错误批准哈希控制](evidence/promotion-approved-hash-control.json) 证明差异会在写入前拒绝。[归档核查](evidence/ruby30-acceptance-archive-audit.json) 确认全部链接与原始字节保留。剩余Node18/20、Ruby3.1/3.2继续；实际pin采用、应用测试与rollout仍待完成。
