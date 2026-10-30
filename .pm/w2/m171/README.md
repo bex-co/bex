@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004, t005 done; t003/t012 code shipped, their live Stripe steps pending; next t006 (live HA acceptance on `dev-2`)
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004, t005, t006 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t007 (docs)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Add the tiers to the catalog, pricing, Stripe catalog and schema enums, with Render's plan-change rules for HA | 1h | t002 |
 | t004 | Emit `postgres_cluster_leader_changed` when the primary changes — **DONE** | 1h | t003, w5/m138/t003 |
 | t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry — **DONE** | 45m | t003 |
-| t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event | 1h | t004, t005 |
+| t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event — **DONE** | 1h | t004, t005 |
 | t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist | 20m | t006 |
 | t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
 | t008 | Render parity | 30m | t007, t012 |
@@ -92,3 +92,14 @@ Not changed (follow-ups for t008 parity review): ADR049 says Render's Blueprints
 
 - **t004:** `postgres_cluster_leader_changed` (details `{"leaderId": "<new primary instance>"}`, the only field in Render's pinned schema). It comes from `Database.status.currentPrimary` against a latched checkpoint (migration `0173`): none at create (the first primary only latches), one per promotion, and none on unrelated status updates. Idempotency: `SELECT … FOR UPDATE` on the checkpoint, plus a promotion-keyed fact (`<dpg>:leader:<primary>:<promotedAt>`, `ON CONFLICT DO NOTHING`). A stale read from another replica is ignored through CNPG's `currentPrimaryTimestamp`, which the operator now projects. The event is subscribable on REST/GraphQL/MCP webhooks and the dashboard picker, and readable by id on all three. Like every datastore event, it has no service-events list home (w3/m82 boundary). Real-Postgres test `TestPGClusterLeaderChangedOncePerPromotion`.
 - **t005:** the pickers already read the catalog. Added: HA enable/disable on existing databases (GraphQL `updateDatabaseHighAvailability`, MCP `update_postgres.enableHighAvailability`, same rule as REST), a create-dialog HA switch shown only for HA-eligible plans, an HA panel switch with standby price confirmation, and the plan section's <1-CPU block using the requested state. Skeletons: the Postgres plan preview now shows 6 tier slots, pinned to `tiers.yaml`, and the HA preview gained a switch slot. Not done: a browser side-by-side of pending vs ready at 1440/390 px. t007 checks that.
+
+## t006 — live HA acceptance on `dev-2`, 2026-10-30 (PASS)
+
+Local CAPD cluster. The shared local operator was updated to main (`bex-operator:w2-m171`, built from `5b6ca4fb5`; CRDs reinstalled), and `dev-2`'s bex-api was rebuilt from the same tree. A throwaway Kratos identity and workspace (switched to Pro so webhooks are allowed) were deleted afterwards, along with the database and webhook.
+
+- **Create:** `POST /v1/postgres {"plan":"1c-2g","enableHighAvailability":true}` → `dpg-dbi03ohjg4r95gm7765g`. CNPG `instances: 2`, `resources` 1 CPU / 2Gi (Guaranteed), `affinity: {enablePodAntiAffinity: true, podAntiAffinityType: required}`. The instances landed on **two different nodes** (`bex-worker-0…`, `bex-tenant-0…`). REST then reported `status: available`, `plan: 1c-2g`, `highAvailabilityEnabled: true`.
+- **Primary loss:** deleting the primary Pod at 02:59:26Z promoted `-2` within about 5 s. A write through the unchanged `internalConnectionString` succeeded afterwards. `Database.status` showed `currentPrimary: …-2` and `currentPrimaryTimestamp: 02:59:28Z`.
+- **`failover` verb:** `POST /v1/postgres/{id}/failover` → 202 at 03:00:49Z, promoted `-1` within about 5 s, and writes still worked (`before,after-kill,after-verb`).
+- **Events:** exactly **two** `postgres_cluster_leader_changed` events, none at create and none on later reconciles (checked 2 min later): `evt-7amt1lb01e12k9pq5te8` (02:59:28Z, `{"leaderId":"…-2"}`) and `evt-cfr7bdtc2lr9p1iaqed4` (03:00:50Z, `{"leaderId":"…-1"}`), both readable via `GET /v1/events/{id}`.
+- **Webhook:** each event produced a delivery (`whd-…`, `eventType: postgres_cluster_leader_changed`, `serviceName: dpg-…`) plus one retry of the same event. The target was a deliberately local `https://localhost` URL, which the SSRF guard refused ("destination resolves to a blocked address"), so the event is deliverable through the pipeline. The production check of an external receiver happens in the closing live walk.
+- **Local-environment gap found (not product):** the local overlay deletes production's `allow-cnpg-apiserver-egress` Cilium policy without a Calico equivalent, so no tenant Postgres can initialize on the local cluster (initdb: `dial tcp 10.128.0.1:443: i/o timeout`). For this run, a namespaced NetworkPolicy was added in the throwaway tenant namespace. Filed as `w2/053`.
