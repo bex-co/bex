@@ -13,7 +13,7 @@ cat > "$work/bin/kubectl" <<'SH'
 set -eu
 printf '%s\n' "$*" >> "$FIXTURE/calls"
 case "$*" in
-  *'spec.env'*|*'secret'*|*'exec'*|*' -o json'|*' -o yaml') echo 'forbidden inventory operation' >&2; exit 99 ;;
+  *'spec.env'*|*'exec'*|*' -o json'|*' -o yaml'|'get secret '*|'get secrets '*|*' get secret '*|*' get secrets '*) echo 'forbidden inventory operation' >&2; exit 99 ;;
 esac
 case "$*" in
   'get apps.app.bex.co --all-namespaces -o jsonpath='*)
@@ -28,6 +28,11 @@ case "$*" in
     printf 'bex-system\tbex-api\tapi-id\t2\t2\t1\t1\t1\t1\tapi=operator@sha256:one;\t\n' ;;
   '-n bex-system get pods -l app.kubernetes.io/name in (control-plane,bex-api) -o jsonpath='*)
     printf 'bex-system\tmanager-one\tpod-id\tRunning\t\tmanager=operator@sha256:one;\tmanager=containerd://sha256:one;\tmanager=true;\n' ;;
+  'get storageclass hcloud-volumes-luks hcloud-volumes-luks-bounded --ignore-not-found -o jsonpath='*)
+    printf 'hcloud-volumes-luks\tlegacy-class-uid\t\tcsi.hetzner.cloud\ttrue\tWaitForFirstConsumer\tDelete\t\t\t${pvc.name}-luks\t${pvc.namespace}\t\t\n'
+    if [ "${OMIT_BOUNDED_CLASS:-}" != 1 ]; then
+      printf 'hcloud-volumes-luks-bounded\tbounded-class-uid\t\tcsi.hetzner.cloud\ttrue\tWaitForFirstConsumer\tDelete\text4\text4-v1\t${pvc.name}-luks\t${pvc.namespace}\t${pvc.name}-luks\t${pvc.namespace}\n'
+    fi ;;
   *) echo 'unexpected inventory operation' >&2; exit 98 ;;
 esac
 SH
@@ -45,9 +50,23 @@ assert len(report['platformImages']['deployments'])==2
 assert report['platformImages']['deployments'][0]['diskStorageClass']=='hcloud-volumes-luks-bounded'
 assert report['platformImages']['deployments'][1]['diskStorageClass']==''
 assert report['platformImages']['pods'][0]['containerImageIds']['manager']=='containerd://sha256:one'
+legacy,bounded=report['storageClasses']
+assert legacy['name']=='hcloud-volumes-luks' and legacy['present'] is True
+assert legacy['boundedFilesystem']=='' and legacy['expandSecretName']==''
+assert bounded['name']=='hcloud-volumes-luks-bounded' and bounded['present'] is True
+assert bounded['allowVolumeExpansion'] is True and bounded['boundedFilesystem']=='ext4-v1'
+assert bounded['publishSecretNamespace']==bounded['expandSecretNamespace']=='${pvc.namespace}'
 assert 'pvc-database' not in (Path(os.environ['FIXTURE'])/'calls').read_text()
+PY
+OMIT_BOUNDED_CLASS=1 PATH="$work/bin:$PATH" bash "$repo_root/scripts/service-disk-inventory.sh" > "$work/missing-class.json"
+python3 - <<'PY'
+import json,os
+from pathlib import Path
+report=json.loads((Path(os.environ['FIXTURE'])/'missing-class.json').read_text())
+assert report['storageClasses'][0]['present'] is True
+assert report['storageClasses'][1]=={'name':'hcloud-volumes-luks-bounded','present':False}
 PY
 if KUBECONFIG= PATH="$work/bin:$PATH" bash "$repo_root/scripts/service-disk-inventory.sh" > /dev/null 2>&1; then
   echo 'FAIL: accepted an implicit kubeconfig' >&2; exit 1
 fi
-printf 'PASS: service-disk/platform image inventory uses only read-only selected projections and excludes datastore volumes\n'
+printf 'PASS: disk/platform inventory and two fixed StorageClasses use only selected read-only projections; missing class is explicit\n'

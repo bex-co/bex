@@ -8,6 +8,8 @@ from pathlib import Path
 import re
 
 
+DISK_STORAGE_CLASSES = ("hcloud-volumes-luks", "hcloud-volumes-luks-bounded")
+
 FIELDS = {
     "apps": (
         ("namespace", "{.metadata.namespace}"),
@@ -66,6 +68,21 @@ FIELDS = {
         ("containerImageIds", '{range .status.containerStatuses[*]}{.name}{"="}{.imageID}{";"}{end}'),
         ("containerReady", '{range .status.containerStatuses[*]}{.name}{"="}{.ready}{";"}{end}'),
     ),
+    "classes": (
+        ("name", "{.metadata.name}"),
+        ("uid", "{.metadata.uid}"),
+        ("deletingAt", "{.metadata.deletionTimestamp}"),
+        ("provisioner", "{.provisioner}"),
+        ("allowVolumeExpansion", "{.allowVolumeExpansion}"),
+        ("volumeBindingMode", "{.volumeBindingMode}"),
+        ("reclaimPolicy", "{.reclaimPolicy}"),
+        ("filesystemType", r"{.parameters.csi\.storage\.k8s\.io/fstype}"),
+        ("boundedFilesystem", "{.parameters.boundedFilesystem}"),
+        ("publishSecretName", r"{.parameters.csi\.storage\.k8s\.io/node-publish-secret-name}"),
+        ("publishSecretNamespace", r"{.parameters.csi\.storage\.k8s\.io/node-publish-secret-namespace}"),
+        ("expandSecretName", r"{.parameters.csi\.storage\.k8s\.io/node-expand-secret-name}"),
+        ("expandSecretNamespace", r"{.parameters.csi\.storage\.k8s\.io/node-expand-secret-namespace}"),
+    ),
 }
 
 
@@ -73,7 +90,7 @@ def projection(kind):
     fields = '{"\\t"}'.join(expression for _, expression in FIELDS[kind]) + '{"\\n"}'
     if kind == "apps":
         return "{range .items[?(@.spec.disk)]}" + fields + "{end}"
-    if kind in ("claims", "deployments", "pods"):
+    if kind in ("claims", "deployments", "pods", "classes"):
         return "{range .items[*]}" + fields + "{end}"
     return fields
 
@@ -133,7 +150,21 @@ def platform_images(deployments, pods):
     return result
 
 
-def inventory(apps, claim_rows, volumes, deployments=(), pods=()):
+def disk_class_facts(rows):
+    by_name = {}
+    for row in rows:
+        name = row["name"]
+        if name not in DISK_STORAGE_CLASSES or name in by_name:
+            raise ValueError("unexpected or duplicate disk StorageClass metadata")
+        if row["allowVolumeExpansion"] not in ("true", "false", ""):
+            raise ValueError("invalid disk StorageClass expansion flag")
+        selected = {key: row[key] for key, _ in FIELDS["classes"]}
+        selected["allowVolumeExpansion"] = {"true": True, "false": False, "": None}[row["allowVolumeExpansion"]]
+        by_name[name] = {"present": True, **selected}
+    return [by_name.get(name, {"name": name, "present": False}) for name in DISK_STORAGE_CLASSES]
+
+
+def inventory(apps, claim_rows, volumes, deployments=(), pods=(), classes=()):
     claims = app_claims(claim_rows)
     by_volume = {volume["name"]: volume for volume in volumes}
     for claim in claims:
@@ -161,6 +192,7 @@ def inventory(apps, claim_rows, volumes, deployments=(), pods=()):
         "appsWithDisks": disk_apps,
         "claimsWhoseOwnerIsNotInDiskInventory": [claim for index, claim in enumerate(claims) if index not in matched],
         "platformImages": platform_images(deployments, pods),
+        "storageClasses": disk_class_facts(classes),
     }
 
 

@@ -26,6 +26,10 @@ while IFS= read -r name; do
 done < "$work/volume-names"
 deployments=$(python3 "$projector" projection deployments)
 pods=$(python3 "$projector" projection pods)
+classes=$(python3 "$projector" projection classes)
 kubectl -n bex-system get deployment bex-controller-manager bex-api -o "jsonpath=$deployments" > "$work/deployments.tsv"
 kubectl -n bex-system get pods -l 'app.kubernetes.io/name in (control-plane,bex-api)' -o "jsonpath=$pods" > "$work/pods.tsv"
-python3 "$projector" report "$work/apps.tsv" "$work/claims.tsv" "$work/volumes.tsv" "$work/deployments.tsv" "$work/pods.tsv"
+# These two names are the whole class preflight. Missing objects remain
+# explicit report entries; no arbitrary cluster configuration is enumerated.
+kubectl get storageclass hcloud-volumes-luks hcloud-volumes-luks-bounded --ignore-not-found -o "jsonpath=$classes" > "$work/classes.tsv"
+python3 "$projector" report "$work/apps.tsv" "$work/claims.tsv" "$work/volumes.tsv" "$work/deployments.tsv" "$work/pods.tsv" "$work/classes.tsv"
