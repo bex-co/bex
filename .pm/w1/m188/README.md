@@ -67,3 +67,10 @@ Bullseye 系统补丁已在 amd64/arm64 编译，Debian 的 14 项上游测试�
 已修正 adoption-only native pin 提交会取消其余镜像发布的问题：比较原始发布输入，相同输入不重建；并发取消仅限同一运行时的新发布。手动 refresh 和真实配方/上游变更仍发布。4 项 matrix 行为测试、Actions 校验和增量代码复核通过。Node 编译输出写入构建临时日志，只在失败时输出末尾，避免 BuildKit 截断有用结果。
 
 Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/actions/runs/40968544989) 是 Alpine CDN 的一次 TLS 下载故障；上一绿 run 40966856467 使用相同 Dockerfile 成功。附近三次失败原因均不同，暂不添加无依据的源码修改；已仅重跑失败任务并立即继续，未等待 CI。见 [诊断证据](evidence/red-main-40968544989.json)。
+
+### 本地组合与真实 native 启动验收 — 2026-10-29（UTC 02:03Z）
+
+- Node14.21.3 / Brotli1.0.10 和 Node20.20.2 / Brotli1.1.1 的 arm64 干净编译、原版本/ABI/关键库/npm 保留、同步/一字节流式畸形输入和健康 round-trip 全部通过。Google 原始 C 源码与 Node 自带树的对比没有发现会被覆盖的 Node 专有修复。
+- 使用已编译组件组合当前完整系统/工具配方，未修改其安装和安全步骤；两者均通过原版 check.Dockerfile（真实 PG18 archive、工具转换、系统和自带 Brotli，network=none）。
+- 新增 `nativebackport_test.go`，复用已有 resolver/Dockerfile 和 `runServing`，实际执行用户构建、保留构建产物、限时启动 HTTP 服务并核查同版本与安全行为。本地通过临时 Go overlay 仅替换两个候选镜像验证 Node14/20，生产 pin 未改变；最新测试在构建及启动阶段都运行探针，异常容器有清理。
+- 证据：[组合与 native 启动](evidence/local-native-start.json)、[Node14](evidence/node14-final-runtime.json)、[Node20](evidence/node20-final-runtime.json)、[源码对比](evidence/vendored-source-comparison.json)。签名双架构候选仍由正式发布任务生成，不能将本地成功算作 t002/t003/t004 完成。

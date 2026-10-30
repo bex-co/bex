@@ -1,0 +1,40 @@
+{
+  "versions": {
+    "node": "20.20.2",
+    "acorn": "8.16.0",
+    "ada": "2.9.2",
+    "ares": "1.34.6",
+    "brotli": "1.1.1",
+    "cjs_module_lexer": "2.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.3.1",
+    "modules": "115",
+    "napi": "9",
+    "nghttp2": "1.61.0",
+    "openssl": "3.0.19",
+    "simdutf": "6.4.2",
+    "tz": "2025c",
+    "undici": "6.24.1",
+    "unicode": "17.0",
+    "uv": "1.46.0",
+    "uvwasi": "0.0.23",
+    "v8": "11.3.244.8-node.38",
+    "zlib": "1.3.1-e00f703"
+  },
+  "npm": "10.8.2",
+  "sources": "Node 20.20.2; source sha256:7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca; Brotli 1.1.1; source sha256:1a84dfaa740994d19254bf78aa7d74a4a8040d1638f3d5f2cdecb188fd520da8",
+  "architecture": "arm64",
+  "platform": "linux/arm64",
+  "local_image": "sha256:fdb7cd99076f7eb1f54fa3cf8e0d17de4b7510c0be3ade1b2ba6341b6fd8c3c7",
+  "tests_passed": [
+    "same Node/modules/N-API/V8/libuv/OpenSSL/zlib/ICU versions",
+    "same npm version",
+    "sync malformed block-switch rejects errno-17 ERR__ERROR_FORMAT_BLOCK_SWITCH",
+    "one-byte streaming malformed block-switch rejects errno-17",
+    "healthy Brotli round trip",
+    "current network-free bounded probe on candidate"
+  ],
+  "scope": "local compiled component candidate, not a signed published native utility image; clean publisher gates on both architectures still required",
+  "compile_seconds": 2645.2
+}

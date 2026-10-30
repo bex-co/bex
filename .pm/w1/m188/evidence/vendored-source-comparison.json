@@ -1,0 +1,63 @@
+{
+  "method": "Compare GitHub Git blob SHA values for recursive c/ trees at exact Node tags against the matching original Google Brotli release. All common paths are byte-identical; differences below are upstream-only omitted files, not Node patches. Google fixed release comparisons only change c/common/version.h, c/dec/decode.c, c/include/brotli/decode.h among C library files.",
+  "versions": {
+    "14.21.3": {
+      "node_source": "https://github.com/nodejs/node/tree/v14.21.3/deps/brotli/c",
+      "google_baseline": "https://github.com/google/brotli/tree/v1.0.9/c",
+      "shared_files": 87,
+      "shared_content_identical": true,
+      "upstream_only_files": [
+        "fuzz/decode_fuzzer.c",
+        "fuzz/run_decode_fuzzer.c",
+        "fuzz/test_fuzzer.sh",
+        "tools/brotli.c",
+        "tools/brotli.md"
+      ]
+    },
+    "16.20.2": {
+      "node_source": "https://github.com/nodejs/node/tree/v16.20.2/deps/brotli/c",
+      "google_baseline": "https://github.com/google/brotli/tree/v1.0.9/c",
+      "shared_files": 87,
+      "shared_content_identical": true,
+      "upstream_only_files": [
+        "fuzz/decode_fuzzer.c",
+        "fuzz/run_decode_fuzzer.c",
+        "fuzz/test_fuzzer.sh",
+        "tools/brotli.c",
+        "tools/brotli.md"
+      ]
+    },
+    "18.20.8": {
+      "node_source": "https://github.com/nodejs/node/tree/v18.20.8/deps/brotli/c",
+      "google_baseline": "https://github.com/google/brotli/tree/v1.1.0/c",
+      "shared_files": 93,
+      "shared_content_identical": true,
+      "upstream_only_files": [
+        "common/dictionary.bin",
+        "common/dictionary.bin.br",
+        "fuzz/.bazelrc",
+        "fuzz/BUILD.bazel",
+        "fuzz/WORKSPACE.bazel",
+        "fuzz/decode_fuzzer.c",
+        "fuzz/run_decode_fuzzer.c",
+        "fuzz/test_fuzzer.sh"
+      ]
+    },
+    "20.20.2": {
+      "node_source": "https://github.com/nodejs/node/tree/v20.20.2/deps/brotli/c",
+      "google_baseline": "https://github.com/google/brotli/tree/v1.1.0/c",
+      "shared_files": 93,
+      "shared_content_identical": true,
+      "upstream_only_files": [
+        "common/dictionary.bin",
+        "common/dictionary.bin.br",
+        "fuzz/.bazelrc",
+        "fuzz/BUILD.bazel",
+        "fuzz/WORKSPACE.bazel",
+        "fuzz/decode_fuzzer.c",
+        "fuzz/run_decode_fuzzer.c",
+        "fuzz/test_fuzzer.sh"
+      ]
+    }
+  }
+}
