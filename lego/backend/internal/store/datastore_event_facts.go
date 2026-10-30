@@ -53,6 +53,8 @@ const (
 	DatastoreFactPostgresPITRCheckpointCompleted DatastoreEventFactType = eventvocab.TypePostgresPITRCheckpointCompleted
 	DatastoreFactPostgresPITRCheckpointFailed    DatastoreEventFactType = eventvocab.TypePostgresPITRCheckpointFailed
 	DatastoreFactPostgresWALArchiveFailed        DatastoreEventFactType = eventvocab.TypePostgresWALArchiveFailed
+
+	DatastoreFactPostgresClusterLeaderChanged DatastoreEventFactType = eventvocab.TypePostgresClusterLeaderChanged
 )
 
 // DatastoreKind separates the two managed datastore products. It is the CHECK
@@ -85,6 +87,10 @@ type DatastoreEventFact struct {
 	// means the fact has no schedule dimension at all (every availability
 	// fact), which is why it is a pointer rather than a plain bool.
 	Scheduled *bool
+	// LeaderID is the instance that became primary on a
+	// postgres_cluster_leader_changed fact — Render's details.leaderId. Empty
+	// on every other kind.
+	LeaderID string
 }
 
 // ObservedDatastoreState is the small level-triggered snapshot the control-plane
@@ -146,6 +152,13 @@ type ObservedDatastoreState struct {
 	CurrentVersion string
 	UpgradeFailed  bool
 
+	// CurrentPrimary is Database.status.currentPrimary: the CNPG instance
+	// serving as primary. Empty means unreported, which never moves the latch.
+	// CurrentPrimarySince is when CNPG promoted it (currentPrimaryTimestamp);
+	// zero when unreported.
+	CurrentPrimary      string
+	CurrentPrimarySince time.Time
+
 	// Checkpoint-only extras round-tripped by the memStore (PG keeps them in
 	// dedicated columns). Producers leave them empty; RecordObserved* fills them.
 	RestoreOutcome string
@@ -177,6 +190,12 @@ type datastoreCheckpointExtras struct {
 	// the checkpoint first saw this database (or before w5/m141 shipped) are
 	// history, not events. Zero until set.
 	ExportsSince time.Time
+	// CurrentPrimary latches the last primary seen, and CurrentPrimarySince
+	// its promotion time, so a primary change records
+	// postgres_cluster_leader_changed once and an older re-read never records
+	// one backwards (w2/m171).
+	CurrentPrimary      string
+	CurrentPrimarySince time.Time
 }
 
 // datastoreFactTypeFor names the availability edge for one datastore kind.
@@ -262,8 +281,8 @@ func datastoreFactSourceKey(obs ObservedDatastoreState, typ DatastoreEventFactTy
 const insertDatastoreEventFactSQL = `
 INSERT INTO datastore_event_facts (
     source_key, workspace_id, datastore_id, kind, fact_type, at, reason_code,
-    backup_name, backup_error, version_from, version_to, scheduled
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    backup_name, backup_error, version_from, version_to, scheduled, leader_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (source_key) DO NOTHING`
 
 // RecordObservedDatastoreState atomically advances a datastore checkpoint and
@@ -302,9 +321,9 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		selectCheckpoint := `SELECT phase, availability, suspended,
 			last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-			started_backup, wal_archiving, exports_since, updated_at
+			started_backup, wal_archiving, exports_since, current_primary, current_primary_since, updated_at
 			FROM datastore_observed_checkpoints WHERE datastore_id = $1 FOR UPDATE`
-		var exportsSince *time.Time
+		var exportsSince, primarySince *time.Time
 		var previousPhase, previousAvailability string
 		var previousSuspended bool
 		var previousChangedAt time.Time
@@ -313,7 +332,8 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			Scan(&previousPhase, &previousAvailability, &previousSuspended,
 				&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
 				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
-				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
+				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince,
+				&previousExtras.CurrentPrimary, &primarySince, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			// The baseline latches through the same arming rule as every later
 			// pass, so a first-ever observation caught mid-provisioning records
@@ -327,13 +347,14 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 				`INSERT INTO datastore_observed_checkpoints
 				     (datastore_id, workspace_id, kind, phase, availability, suspended, updated_at, healthy_transition_at,
 				      last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-				      started_backup, wal_archiving, exports_since)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+				      started_backup, wal_archiving, exports_since, current_primary, current_primary_since)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 				 ON CONFLICT (datastore_id) DO NOTHING`,
 				obs.DatastoreID, obs.WorkspaceID, obs.Kind, obs.Phase, baseline, obs.Suspended, obs.At, healthyTransition,
 				baselineExtras.LastBackupName, baselineExtras.LastBackupPhase,
 				baselineExtras.RestoreOutcome, baselineExtras.UpgradeKey,
-				baselineExtras.StartedBackup, baselineExtras.WALArchiving, nullTime(baselineExtras.ExportsSince))
+				baselineExtras.StartedBackup, baselineExtras.WALArchiving, nullTime(baselineExtras.ExportsSince),
+				baselineExtras.CurrentPrimary, nullTime(baselineExtras.CurrentPrimarySince))
 			if insertErr != nil {
 				return insertErr
 			}
@@ -344,13 +365,17 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 				Scan(&previousPhase, &previousAvailability, &previousSuspended,
 					&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
 					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
-					&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
+					&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince,
+					&previousExtras.CurrentPrimary, &primarySince, &previousChangedAt)
 		}
 		if err != nil {
 			return err
 		}
 		if exportsSince != nil {
 			previousExtras.ExportsSince = exportsSince.UTC()
+		}
+		if primarySince != nil {
+			previousExtras.CurrentPrimarySince = primarySince.UTC()
 		}
 
 		availability := previousAvailability
@@ -385,16 +410,18 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			     healthy_transition_at = COALESCE($7, healthy_transition_at),
 			     last_backup_name = $8, last_backup_phase = $9,
 			     restore_outcome = $10, upgrade_key = $11,
-			     started_backup = $13, wal_archiving = $14, exports_since = $15
+			     started_backup = $13, wal_archiving = $14, exports_since = $15,
+			     current_primary = $16, current_primary_since = $17
 			 WHERE datastore_id = $1
 			   AND (workspace_id, phase, availability, suspended,
 			        last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-			        started_backup, wal_archiving, exports_since)
-			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11, $13, $14, $15)`,
+			        started_backup, wal_archiving, exports_since, current_primary, current_primary_since)
+			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11, $13, $14, $15, $16, $17)`,
 			obs.DatastoreID, obs.WorkspaceID, obs.Phase, availability, obs.Suspended, obs.At, healthyTransition,
 			nextExtras.LastBackupName, nextExtras.LastBackupPhase,
 			nextExtras.RestoreOutcome, nextExtras.UpgradeKey, obs.AvailabilitySuppressed,
-			nextExtras.StartedBackup, nextExtras.WALArchiving, nullTime(nextExtras.ExportsSince))
+			nextExtras.StartedBackup, nextExtras.WALArchiving, nullTime(nextExtras.ExportsSince),
+			nextExtras.CurrentPrimary, nullTime(nextExtras.CurrentPrimarySince))
 		return err
 	})
 	if err != nil {
@@ -419,6 +446,10 @@ func datastoreBaselineExtras(obs ObservedDatastoreState) datastoreCheckpointExtr
 		// mid-flight (w5/m141 live walk).
 		WALArchiving: obs.WALArchiving,
 		ExportsSince: exportFloor(obs),
+		// The primary a database is first seen with is its creation, not a
+		// change: Render records no leader change at create.
+		CurrentPrimary:      obs.CurrentPrimary,
+		CurrentPrimarySince: obs.CurrentPrimarySince,
 	}
 	if obs.Recovering && obs.AvailabilityObserved && obs.Availability == "healthy" {
 		extras.RestoreOutcome = "succeeded"
@@ -438,7 +469,7 @@ func insertDatastoreEventFactTx(ctx context.Context, tx pgx.Tx, fact DatastoreEv
 	tag, err := tx.Exec(ctx, insertDatastoreEventFactSQL,
 		fact.SourceKey, fact.WorkspaceID, fact.DatastoreID, fact.Kind, fact.Type, fact.At,
 		fact.ReasonCode, fact.BackupName, fact.BackupError, fact.VersionFrom, fact.VersionTo,
-		fact.Scheduled)
+		fact.Scheduled, fact.LeaderID)
 	return err == nil && tag.RowsAffected() > 0, err
 }
 

@@ -163,6 +163,7 @@ func observedDatabaseStateFor(db *appv1alpha1.Database) (ObservedDatastoreState,
 	obs = applyDatastoreReadyCondition(obs, db.Status.Conditions, db.Status.Phase == appv1alpha1.DBPhaseReady)
 	stampBackupObservation(&obs, db.Status.LastBackup)
 	stampPITRObservation(&obs, &db.Status)
+	stampPrimaryObservation(&obs, &db.Status)
 	if db.Spec.Recovery != nil && db.Spec.Recovery.SourceBackupServerName != "" {
 		obs.Recovering = true
 	}

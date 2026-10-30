@@ -105,3 +105,22 @@ func TestWALArchivingConditionMirrorsCNPG(t *testing.T) {
 		t.Fatalf("blank reason = %+v", c)
 	}
 }
+
+// w2/m171: the primary and its promotion time the control plane turns into
+// postgres_cluster_leader_changed.
+func TestPrimaryStatusMirrorsCNPGPromotion(t *testing.T) {
+	db := &appv1alpha1.Database{}
+	cluster := &unstructured.Unstructured{Object: map[string]any{"status": map[string]any{
+		"currentPrimary":          "dpg-x-1",
+		"currentPrimaryTimestamp": "2026-10-29T10:00:00.123456Z",
+	}}}
+	stampPrimaryStatus(db, cluster)
+	if db.Status.CurrentPrimary != "dpg-x-1" || db.Status.CurrentPrimaryTimestamp != "2026-10-29T10:00:00.123456Z" {
+		t.Fatalf("status = %q @ %q", db.Status.CurrentPrimary, db.Status.CurrentPrimaryTimestamp)
+	}
+	// A status read that carries neither field keeps the known primary.
+	stampPrimaryStatus(db, &unstructured.Unstructured{Object: map[string]any{"status": map[string]any{}}})
+	if db.Status.CurrentPrimary != "dpg-x-1" || db.Status.CurrentPrimaryTimestamp == "" {
+		t.Fatalf("partial read blanked the primary: %q @ %q", db.Status.CurrentPrimary, db.Status.CurrentPrimaryTimestamp)
+	}
+}

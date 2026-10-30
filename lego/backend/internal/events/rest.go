@@ -126,6 +126,8 @@ type renderDetails struct {
 	// failed for an observed cause (w4/m114).
 	CronJobRunID string         `json:"cronJobRunId,omitempty"`
 	Reason       *cronRunReason `json:"reason,omitempty"`
+	// postgres_cluster_leader_changed: Render's leaderId, the new primary.
+	LeaderID string `json:"leaderId,omitempty"`
 }
 
 // cronRunReason is the reason object on Render's "Cron Job Run Ended" event.
@@ -268,6 +270,8 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
 		d.Reason = toCronRunReason(e.Details)
+	case TypePostgresClusterLeaderChanged:
+		d.LeaderID = e.Details.LeaderID
 	}
 	return renderEvent{
 		ID:        e.ID,

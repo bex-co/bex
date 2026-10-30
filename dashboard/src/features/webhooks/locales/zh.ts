@@ -644,6 +644,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres 高可用状态变更",
     description: "Event label — postgres_ha_status_changed",
   },
+  "webhooks.event.postgres_cluster_leader_changed": {
+    message: "Postgres 主节点切换",
+    description: "Event label — postgres_cluster_leader_changed",
+  },
   "webhooks.event.postgres_connection_pool_enabled_changed": {
     message: "Postgres 连接池变更",
     description: "Event label — postgres_connection_pool_enabled_changed",
