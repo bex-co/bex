@@ -1,0 +1,63 @@
+{
+  "schema": "bex.m188.recovery-intake-custody/v1",
+  "at": "2026-10-30T17:28:30.171516+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/manifests/25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e.json",
+      "archive": "manifests/25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e.json",
+      "bytes": 3525,
+      "sha256": "25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/manifests/93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871.config.json",
+      "archive": "manifests/93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871.config.json",
+      "bytes": 17211,
+      "sha256": "93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/manifests/b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa.json",
+      "archive": "manifests/b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa.json",
+      "bytes": 3525,
+      "sha256": "b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/manifests/e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9.config.json",
+      "archive": "manifests/e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9.config.json",
+      "bytes": 17218,
+      "sha256": "e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/producer-job.json",
+      "archive": "producer-job.json",
+      "bytes": 6776,
+      "sha256": "1b11ac5b4e00cb765679bda6e6c450b83da619ef4f096405f82a881276cd6c8d"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/producer-job.log.gz",
+      "archive": "producer-job.log.gz",
+      "bytes": 134309,
+      "sha256": "feda1dee7640faeaa36c3d250ecbf918cd888fca05c2eda771415165a8c92b7e"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/producer-workflow-signing-loop.txt",
+      "archive": "producer-workflow-signing-loop.txt",
+      "bytes": 856,
+      "sha256": "6c1596cff0192073baf8d6b468bbd2c25b6925c6f94a8e61768565c6a371b43d"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/receipt.json",
+      "archive": "receipt.json",
+      "bytes": 4676,
+      "sha256": "03a4a645a69206d652c1171a73214c89958550dfd0802b0b5eed3b38eec3bb5c"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby32-producer-intake/root-index.raw.json",
+      "archive": "root-index.raw.json",
+      "bytes": 1611,
+      "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+    }
+  ],
+  "candidate_accepted": false,
+  "source_adoption_performed": false,
+  "scope": "Exact producer export, original base, dual-architecture metadata and passed runtime/scans preserved. Incomplete signing is not acceptance; any recovery redoes all current gates."
+}

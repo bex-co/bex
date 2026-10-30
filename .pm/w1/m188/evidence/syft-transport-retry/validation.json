@@ -1,0 +1,155 @@
+{
+  "schema": "bex.syft-transport-retry-proposal-validation/v1",
+  "at": "2026-10-30T17:31:37.519692+00:00",
+  "repository_workflow_unchanged_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "proposed_copy": "/tmp/bex-m188-syft-retry-proposal/native-base-image.proposed.yml",
+  "patch": "/tmp/bex-m188-syft-retry-proposal/native-base-image.patch",
+  "behavior_receipt": "/tmp/bex-m188-syft-retry-proposal/behavior-receipt.json",
+  "checks": {
+    "eight_actual_proposed_shell_controls": "PASS",
+    "actionlint_with_existing_custom_runner_labels": "PASS",
+    "github_actions_validator_on_proposed_only_WORKFLOWS_DIR": "PASS portable trust/pin/runner checks; canonical tree inventory not rewritten; exact third-party refs equal baseline",
+    "bash_n_rendered_actual_step": "PASS",
+    "git_apply_check_without_applying": "PASS",
+    "only_new_function_and_one_call_difference": "PASS",
+    "existing_retry_signing_body": "BYTE IDENTICAL",
+    "full_recipe_and_all_other_workflow_blocks": "BYTE IDENTICAL"
+  },
+  "files_sha256": {
+    "native-base-image.before.yml": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+    "native-base-image.proposed.yml": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+    "native-base-image.patch": "1aa348c836518809bf4e46829e39833cc4a6378d54e940bd63125134b332a002",
+    "test.py": "5ac7157d8d29fea84fdf7d58002d42a7db7cebeba4570251a1e0854519186409",
+    "actual-proposed-signing-step.raw.sh": "1409a8106d40226bcd362523e21022d167cae9f1ba6323720137d30f1f488172",
+    "rendered-signing-step.sh": "df02b5e315b7674425256d701434323b3105a56389bfa67d734a5696f9c7d1fd",
+    "behavior-receipt.json": "e90716285ed190a82f628916efa6b5db15c3807c5efeefc7cbb2a1d55e4fa7c0"
+  },
+  "behavior_summary": [
+    {
+      "case": "healthy",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 1
+      },
+      "syft_outer_deadline_attempts": 2,
+      "cosign_5m_attempts": 6,
+      "attestation_attempts": 4,
+      "discovery_tags": 2,
+      "backoff_seconds": []
+    },
+    {
+      "case": "transient_arm",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 2
+      },
+      "syft_outer_deadline_attempts": 3,
+      "cosign_5m_attempts": 6,
+      "attestation_attempts": 4,
+      "discovery_tags": 2,
+      "backoff_seconds": [
+        5
+      ]
+    },
+    {
+      "case": "all_amd_fail",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 3,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 3,
+      "cosign_5m_attempts": 2,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    },
+    {
+      "case": "all_arm_fail",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 3
+      },
+      "syft_outer_deadline_attempts": 4,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 2,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    },
+    {
+      "case": "deadline_arm",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 4,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 2,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    },
+    {
+      "case": "sign_fail",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 0,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 0,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    },
+    {
+      "case": "last_attest_fail",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 1
+      },
+      "syft_outer_deadline_attempts": 2,
+      "cosign_5m_attempts": 8,
+      "attestation_attempts": 6,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    },
+    {
+      "case": "config_fail",
+      "pass": true,
+      "syft_calls_by_architecture": {
+        "amd64": 0,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 0,
+      "cosign_5m_attempts": 3,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ]
+    }
+  ],
+  "quality_review": "No concrete defect found. Registry source/platform/spdx-json args remain exact, GODEBUG scope reaches only Syft+its timeout child, report cleanup is per-architecture, exhaustedSyft stops correspondingattestation andalltags; existing config/sign/lastattest failures retain failclosed5m signing behavior.",
+  "limits": "No actual Syft/registry/Cosign, long deadline wait, scan or remote job. No repository/board/commit/push/dispatch mutation. Ruby3.1 current9bworkflow admission remains untouched."
+}

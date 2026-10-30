@@ -211,3 +211,11 @@ Node16旧arm64扫描、Node20旧amd64扫描及当前canonical Node14 amd64扫描
 Bullseye的三条目标Brotli版本命中在两架构完整报告中均保留；其 `1.0.9-2+deb12u1+bex11u1` 已回移固定Debian安全源码，结合签名包身份、实际畸形输入永久错误与健康round-trip证据逐项处置，不使用ignore。省略发现或删除处置说明的反例均被完整守卫拒绝。
 
 最终validation只在全部检查完成后一次冻结发布；批准执行显式传入并校验人工复核的确切哈希，随后重做冻结守卫与匿名拉取确认。[错误批准哈希控制](evidence/promotion-approved-hash-control.json) 证明差异会在写入前拒绝。[归档核查](evidence/ruby30-acceptance-archive-audit.json) 确认全部链接与原始字节保留。剩余Node18/20、Ruby3.1/3.2继续；实际pin采用、应用测试与rollout仍待完成。
+
+### Syft registry传输失败的有界恢复 — 2026-10-30（UTC 17:21Z）
+
+Ruby3.2的FD正常构建、双架构实际运行门槛与完整扫描均通过，签名步骤在ARM64 Syft读取镜像层时收到HTTP/2 `PROTOCOL_ERROR`。此前镜像签名和AMD SPDX/Trivy证明已完成；不将整个步骤名称误认为cosign/Rekor失败，也不将不完整证明算作验收。见 [精确失败日志](evidence/ruby32-syft-transport-failure/receipt.json) 与 [不可变产物核验](evidence/ruby32-recovery-intake/receipt.json)。同次AMD Trivy的两次EOF已由现有完整重试恢复，最终两架构扫描均成功。
+
+Syft保持相同registry来源、平台和完整spdx-json，只在该命令设置 `GODEBUG=http2client=0`，最多3次完整尝试，每次30m与10s终止宽限，5/10s退避。每次前及失败后清理对应架构的输出；耗尽后不执行该架构证明或discovery。原cosign5m重试、TUF/证书/透明日志/时间戳验证及所有扫描范围保持不变。[八项实际完整shell控制](evidence/syft-transport-retry/validation.json) 验证双架构、部分输出恢复、三次失败、deadline、原签名失败阻止标签及参数/环境/完整报告保留；受控stub不冒充真实网络发布或30分钟计时。
+
+受限恢复仅增加已核实的Ruby3.2索引 `e7e887fb…`，保留原FD producer与固定base；新verification将重做全部运行门槛、双架构全扫描、完整SBOM及五份签名证明，成功discovery后清理授权。[十五项实际选择器检查](evidence/recovery-selection-ruby32-added.json) 通过。Ruby3.1独立证明核验继续；当前正式计数仍为7/11，source pin与生产接入尚未改变。

@@ -1,0 +1,3 @@
+Syft arm64 attempt 1 failed
+Syft arm64 attempt 2 failed
+Syft arm64 attempt 3 failed

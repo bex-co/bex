@@ -1,0 +1,8 @@
+{"command": "timeout", "args": ["--kill-after=10s", "5m", "cosign", "signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
+{"command": "cosign", "args": ["signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
+{"command": "sleep", "args": ["5"], "GODEBUG": "gctrace=0", "report_exists": {"amd64": true, "arm64": true}}
+{"command": "timeout", "args": ["--kill-after=10s", "5m", "cosign", "signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
+{"command": "cosign", "args": ["signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
+{"command": "sleep", "args": ["10"], "GODEBUG": "gctrace=0", "report_exists": {"amd64": true, "arm64": true}}
+{"command": "timeout", "args": ["--kill-after=10s", "5m", "cosign", "signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
+{"command": "cosign", "args": ["signing-config", "create", "--with-default-rekor-v2", "--out", "/tmp/bex-m188-syft-retry-proposal/config_fail/native-signing-config.json"], "GODEBUG": "gctrace=0"}
