@@ -160,3 +160,11 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 ### 其余旧 SPDX 绑定与 registry 重放 — 2026-10-30
 
 Node16、Python3.7、Python3.8 的旧 amd64 SPDX 也未证明与实际子镜像内容绑定，见 [三项 held 收据](evidence/sbom-binding-holds-20261030.json)。这不是不安全内容的结论，也不添加任意 digest 别名；均保留既有精确索引授权，以明确 registry 来源重新运行完整门槛、报告及签名。Node16 由 41043547006 推进，Python3.7/3.8 分别定向重放 41051768218/41052230534，Python3.9 恢复为 41050319125。实际 [d947](evidence/publisher-source-reviews/d947.json) / [e47](evidence/publisher-source-reviews/e47.json) 源码逐一检查了发布输入范围，未把 main 的新提交默认当作已批准；当前仍为 1/11，source pin 未切换。
+
+### 已编译产物转交当前完整恢复 — 2026-10-30（UTC 12:26–12:29Z）
+
+- Python3.10.22 与 Node18.20.8 的实际双架构构建及全部运行/Bullseye 门槛通过；逐次重新查询确认没有尚未导出的编译后，停止旧 BF 批次及 Node18 单项旧流程。原 amd64 扫描被中断，arm64 扫描、SBOM 与签名未完成，不能据此算作验收，也不记录为 Rekor 失败。
+- 原 producer 分别为 BF 与仅适用于 Node18 的49ee；匿名 index/child/config 哈希、原版本、实际 gate 日志与未变配方均已绑定。见 [Python3.10](evidence/python310-recovery-intake/receipt.json)、[Node18](evidence/node18-recovery-intake/receipt.json)。新增精确恢复授权要求重新完成当前双架构门槛、两份全扫描、registry 来源 SBOM 与完整现代签名。
+- 旧21ed批次的两个剩余任务均 pending、0步骤，已提交取消；保留已在进行的 canonical5e89 全27项批次，避免重新冷编译刚完成的 Node18。见 [逐次安全检查与请求](evidence/obsolete-batch-transfer/21ed-obsolete-queued-cancel-review.json)。所有取消均保留已导出的不可变产物及历史证据，不以取消请求冒充发布或采用成功。
+
+同步 main 的 `59e9d38fa` 已清理 Node16/Python3.7 的临时恢复授权；保留该清理，不恢复已过期条目。本项独立完整采用守卫继续核验两者的已有签名与真实层证据，未仅凭其他 worker 的结论增加计数。当前五个授权路径与三个已清理路径、配方/包/base 等负向路径的十四项实际选择检查通过；新增授权与逐次取消证据另经 [独立复核](evidence/new-recovery-auth-cancel-review.json)。Node20 旧 attempt2 重跑只剩零步骤 pending native 任务，已停止该旧重跑，保留 `41053647412` 的当前 registry 来源恢复。

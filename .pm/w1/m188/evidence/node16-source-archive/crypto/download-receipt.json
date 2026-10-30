@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:219b2dc12e37804d2827343ec923de1ebd0147dad130d7e7a6e25cb66fa0329e",
+    "native_API_404": true,
+    "unselected_descriptor_count": 1
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:a69af41bac159dc1ef76574986c2bc7d90e4048c2bc86d5e36c93731974bb65f",
+      "bundle_digest": "sha256:f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f",
+      "bundle_bytes": 30319127,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "6b76779391397c77fd3459916c24dfb784d3d3b48613672c4cf10bfc2c4980e2"
+    },
+    {
+      "manifest_digest": "sha256:d86123fd070de94cdd29d2af108a774bf990796a8e6b4ed653aba46754d4a73c",
+      "bundle_digest": "sha256:cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21",
+      "bundle_bytes": 90060983,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "97feb58c83f1e57223abb4daae0c2840de71357a678a19e7146bd7f49dd3bd56"
+    },
+    {
+      "manifest_digest": "sha256:deed3ca84869d4ac49d7a2b21de5f610ac74437123b88599aec4f9c868b72b93",
+      "bundle_digest": "sha256:e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66",
+      "bundle_bytes": 9603,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "a34b3b5b141d0bd2ca8f67de641d6b142f6d66d7ea181e797db488d15b89458a"
+    },
+    {
+      "manifest_digest": "sha256:ef749dbc602691c5497e371051093efb2b21be4ceb9724cd11869318b4eab614",
+      "bundle_digest": "sha256:824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc",
+      "bundle_bytes": 30331607,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "b34b317dc9023e6d1d8bb3d2e9d9106ee993960db8948112469ee297605b2458"
+    },
+    {
+      "manifest_digest": "sha256:f93501e0f2c0fa003103a1fbeae576bc6de42e8626b136c54a793def87c09c60",
+      "bundle_digest": "sha256:971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3",
+      "bundle_bytes": 90068671,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "6c59faa6525e8aa6d635b425e24c6cfae06a07497c2661a26ea4082fa063988b"
+    }
+  ]
+}

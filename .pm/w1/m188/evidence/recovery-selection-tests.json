@@ -1,39 +1,51 @@
 {
-  "checked_at": "2026-10-30T11:42:10.622220+00:00",
+  "checked_at": "2026-10-30T12:36:43.635690+00:00",
   "method": "Actual workflow embedded selection script against isolated temporary Git commits; no Docker, signing, network, or production mutation",
   "results": [
     {
-      "case": "accepted Node14 authorization removed",
+      "case": "verified node-14-bullseye authorization retired",
       "expected": "build",
       "observed": "build",
       "exit": 0
     },
     {
-      "case": "authorized Node16 same recipe",
+      "case": "verified node-16-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.7-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "authorized python-3.8-bookworm same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0
     },
     {
-      "case": "authorized Node20 same recipe",
+      "case": "authorized node-20-bookworm same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0
     },
     {
-      "case": "authorized Python3.7 same recipe",
+      "case": "authorized python-3.9-bookworm same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0
     },
     {
-      "case": "authorized Python3.8 same recipe",
+      "case": "authorized python-3.10-bookworm same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0
     },
     {
-      "case": "authorized Python3.9 same recipe",
+      "case": "authorized node-18-bookworm same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0

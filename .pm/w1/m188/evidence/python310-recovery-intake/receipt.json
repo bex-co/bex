@@ -1,0 +1,629 @@
+{
+  "schema": "bex.local-producer-recovery-receipt/v1",
+  "checked_at": "2026-10-30T12:29:07.970740+00:00",
+  "tag": "python-3.10-bookworm",
+  "base": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+  "digest": "sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "run_id": 41000570846,
+  "job_id": 124001233726,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+  "producer_run_identity": {
+    "id": 41000570846,
+    "name": "native base images (build + verify)",
+    "node_id": "WFR_kwLOL1E4iM8AAAAJi9MP3g",
+    "head_branch": "main",
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "path": ".github/workflows/native-base-image.yml",
+    "display_title": "fix(build): preserve legacy Node companion portability",
+    "run_number": 9,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "workflow_id": 401231174,
+    "check_suite_id": 111141573313,
+    "check_suite_node_id": "CS_kwDOL1E4iM8AAAAZ4I3SwQ",
+    "url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41000570846",
+    "pull_requests": [],
+    "created_at": "2026-10-30T04:01:36Z",
+    "updated_at": "2026-10-30T12:27:22Z",
+    "actor": {
+      "login": "puncsky",
+      "id": 1387285,
+      "node_id": "MDQ6VXNlcjEzODcyODU=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1387285?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/puncsky",
+      "html_url": "https://github.com/puncsky",
+      "followers_url": "https://api.github.com/users/puncsky/followers",
+      "following_url": "https://api.github.com/users/puncsky/following{/other_user}",
+      "gists_url": "https://api.github.com/users/puncsky/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/puncsky/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/puncsky/subscriptions",
+      "organizations_url": "https://api.github.com/users/puncsky/orgs",
+      "repos_url": "https://api.github.com/users/puncsky/repos",
+      "events_url": "https://api.github.com/users/puncsky/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/puncsky/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "run_attempt": 1,
+    "referenced_workflows": [],
+    "run_started_at": "2026-10-30T04:01:36Z",
+    "triggering_actor": {
+      "login": "puncsky",
+      "id": 1387285,
+      "node_id": "MDQ6VXNlcjEzODcyODU=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1387285?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/puncsky",
+      "html_url": "https://github.com/puncsky",
+      "followers_url": "https://api.github.com/users/puncsky/followers",
+      "following_url": "https://api.github.com/users/puncsky/following{/other_user}",
+      "gists_url": "https://api.github.com/users/puncsky/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/puncsky/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/puncsky/subscriptions",
+      "organizations_url": "https://api.github.com/users/puncsky/orgs",
+      "repos_url": "https://api.github.com/users/puncsky/repos",
+      "events_url": "https://api.github.com/users/puncsky/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/puncsky/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "jobs_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846/jobs",
+    "logs_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846/logs",
+    "check_suite_url": "https://api.github.com/repos/bex-co/bex/check-suites/111141573313",
+    "artifacts_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846/artifacts",
+    "cancel_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846/cancel",
+    "rerun_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846/rerun",
+    "previous_attempt_url": null,
+    "workflow_url": "https://api.github.com/repos/bex-co/bex/actions/workflows/401231174",
+    "head_commit": {
+      "id": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "tree_id": "44c27ee2d1365b20a0c254c1ccbbaa235972918a",
+      "message": "fix(build): preserve legacy Node companion portability",
+      "timestamp": "2026-10-30T04:00:54Z",
+      "author": {
+        "name": "Tian Pan",
+        "email": "puncsky@gmail.com"
+      },
+      "committer": {
+        "name": "Tian Pan",
+        "email": "puncsky@gmail.com"
+      }
+    },
+    "repository": {
+      "id": 793852040,
+      "node_id": "R_kgDOL1E4iA",
+      "name": "bex",
+      "full_name": "bex-co/bex",
+      "private": false,
+      "owner": {
+        "login": "bex-co",
+        "id": 79443195,
+        "node_id": "MDEyOk9yZ2FuaXphdGlvbjc5NDQzMTk1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/79443195?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/bex-co",
+        "html_url": "https://github.com/bex-co",
+        "followers_url": "https://api.github.com/users/bex-co/followers",
+        "following_url": "https://api.github.com/users/bex-co/following{/other_user}",
+        "gists_url": "https://api.github.com/users/bex-co/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/bex-co/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/bex-co/subscriptions",
+        "organizations_url": "https://api.github.com/users/bex-co/orgs",
+        "repos_url": "https://api.github.com/users/bex-co/repos",
+        "events_url": "https://api.github.com/users/bex-co/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/bex-co/received_events",
+        "type": "Organization",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/bex-co/bex",
+      "description": "The open-source Render alternative \u2014 AI-native. Git push \u2192 build \u2192 deploy on your own infrastructure; agents are first-class users.",
+      "fork": false,
+      "url": "https://api.github.com/repos/bex-co/bex",
+      "forks_url": "https://api.github.com/repos/bex-co/bex/forks",
+      "keys_url": "https://api.github.com/repos/bex-co/bex/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/bex-co/bex/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/bex-co/bex/teams",
+      "hooks_url": "https://api.github.com/repos/bex-co/bex/hooks",
+      "issue_events_url": "https://api.github.com/repos/bex-co/bex/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/bex-co/bex/events",
+      "assignees_url": "https://api.github.com/repos/bex-co/bex/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/bex-co/bex/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/bex-co/bex/tags",
+      "blobs_url": "https://api.github.com/repos/bex-co/bex/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/bex-co/bex/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/bex-co/bex/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/bex-co/bex/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/bex-co/bex/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/bex-co/bex/languages",
+      "stargazers_url": "https://api.github.com/repos/bex-co/bex/stargazers",
+      "contributors_url": "https://api.github.com/repos/bex-co/bex/contributors",
+      "subscribers_url": "https://api.github.com/repos/bex-co/bex/subscribers",
+      "subscription_url": "https://api.github.com/repos/bex-co/bex/subscription",
+      "commits_url": "https://api.github.com/repos/bex-co/bex/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/bex-co/bex/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/bex-co/bex/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/bex-co/bex/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/bex-co/bex/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/bex-co/bex/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/bex-co/bex/merges",
+      "archive_url": "https://api.github.com/repos/bex-co/bex/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/bex-co/bex/downloads",
+      "issues_url": "https://api.github.com/repos/bex-co/bex/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/bex-co/bex/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/bex-co/bex/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/bex-co/bex/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/bex-co/bex/labels{/name}",
+      "releases_url": "https://api.github.com/repos/bex-co/bex/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/bex-co/bex/deployments"
+    },
+    "head_repository": {
+      "id": 793852040,
+      "node_id": "R_kgDOL1E4iA",
+      "name": "bex",
+      "full_name": "bex-co/bex",
+      "private": false,
+      "owner": {
+        "login": "bex-co",
+        "id": 79443195,
+        "node_id": "MDEyOk9yZ2FuaXphdGlvbjc5NDQzMTk1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/79443195?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/bex-co",
+        "html_url": "https://github.com/bex-co",
+        "followers_url": "https://api.github.com/users/bex-co/followers",
+        "following_url": "https://api.github.com/users/bex-co/following{/other_user}",
+        "gists_url": "https://api.github.com/users/bex-co/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/bex-co/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/bex-co/subscriptions",
+        "organizations_url": "https://api.github.com/users/bex-co/orgs",
+        "repos_url": "https://api.github.com/users/bex-co/repos",
+        "events_url": "https://api.github.com/users/bex-co/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/bex-co/received_events",
+        "type": "Organization",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/bex-co/bex",
+      "description": "The open-source Render alternative \u2014 AI-native. Git push \u2192 build \u2192 deploy on your own infrastructure; agents are first-class users.",
+      "fork": false,
+      "url": "https://api.github.com/repos/bex-co/bex",
+      "forks_url": "https://api.github.com/repos/bex-co/bex/forks",
+      "keys_url": "https://api.github.com/repos/bex-co/bex/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/bex-co/bex/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/bex-co/bex/teams",
+      "hooks_url": "https://api.github.com/repos/bex-co/bex/hooks",
+      "issue_events_url": "https://api.github.com/repos/bex-co/bex/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/bex-co/bex/events",
+      "assignees_url": "https://api.github.com/repos/bex-co/bex/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/bex-co/bex/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/bex-co/bex/tags",
+      "blobs_url": "https://api.github.com/repos/bex-co/bex/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/bex-co/bex/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/bex-co/bex/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/bex-co/bex/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/bex-co/bex/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/bex-co/bex/languages",
+      "stargazers_url": "https://api.github.com/repos/bex-co/bex/stargazers",
+      "contributors_url": "https://api.github.com/repos/bex-co/bex/contributors",
+      "subscribers_url": "https://api.github.com/repos/bex-co/bex/subscribers",
+      "subscription_url": "https://api.github.com/repos/bex-co/bex/subscription",
+      "commits_url": "https://api.github.com/repos/bex-co/bex/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/bex-co/bex/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/bex-co/bex/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/bex-co/bex/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/bex-co/bex/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/bex-co/bex/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/bex-co/bex/merges",
+      "archive_url": "https://api.github.com/repos/bex-co/bex/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/bex-co/bex/downloads",
+      "issues_url": "https://api.github.com/repos/bex-co/bex/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/bex-co/bex/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/bex-co/bex/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/bex-co/bex/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/bex-co/bex/labels{/name}",
+      "releases_url": "https://api.github.com/repos/bex-co/bex/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/bex-co/bex/deployments"
+    }
+  },
+  "producer_job_identity": {
+    "id": 124001233726,
+    "run_id": 41000570846,
+    "workflow_name": "native base images (build + verify)",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOL1E4iM8AAAAc3wyrPg",
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124001233726",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "created_at": "2026-10-30T09:58:36Z",
+    "started_at": "2026-10-30T10:30:50Z",
+    "completed_at": "2026-10-30T12:27:21Z",
+    "name": "build (python-3.10-bookworm, python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a...",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-30T10:30:51Z",
+        "completed_at": "2026-10-30T10:31:12Z"
+      },
+      {
+        "name": "Set up runner",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-30T10:31:12Z",
+        "completed_at": "2026-10-30T10:31:12Z"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-30T10:31:12Z",
+        "completed_at": "2026-10-30T10:31:30Z"
+      },
+      {
+        "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-30T10:31:30Z",
+        "completed_at": "2026-10-30T10:35:01Z"
+      },
+      {
+        "name": "Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-30T10:35:01Z",
+        "completed_at": "2026-10-30T10:35:03Z"
+      },
+      {
+        "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-30T10:35:03Z",
+        "completed_at": "2026-10-30T12:21:21Z"
+      },
+      {
+        "name": "verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-10-30T12:21:21Z",
+        "completed_at": "2026-10-30T12:21:59Z"
+      },
+      {
+        "name": "scan amd64 candidate",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "number": 8,
+        "started_at": "2026-10-30T12:21:59Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "scan arm64 candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 9,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 10,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "sign and attest the immutable candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 12,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "Post scan amd64 candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 19,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:45Z"
+      },
+      {
+        "name": "Post verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-10-30T12:26:45Z",
+        "completed_at": "2026-10-30T12:26:49Z"
+      },
+      {
+        "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-10-30T12:26:49Z",
+        "completed_at": "2026-10-30T12:26:53Z"
+      },
+      {
+        "name": "Post Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-10-30T12:26:53Z",
+        "completed_at": "2026-10-30T12:26:53Z"
+      },
+      {
+        "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-10-30T12:26:53Z",
+        "completed_at": "2026-10-30T12:27:16Z"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 24,
+        "started_at": "2026-10-30T12:27:16Z",
+        "completed_at": "2026-10-30T12:27:17Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25,
+        "started_at": "2026-10-30T12:27:17Z",
+        "completed_at": "2026-10-30T12:27:17Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124001233726",
+    "labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-production"
+    ],
+    "runner_id": 21743,
+    "runner_name": "45e29ad2967e",
+    "runner_group_id": 4,
+    "runner_group_name": "bex-production"
+  },
+  "job_api_file": "/tmp/bex-m188-python310-producer-job124001233726.json",
+  "job_api_file_sha256": "a73ed6e1f86f0a348d4c1007c445f6ca0dd9ae0b45be0431f1bac1042e1f13c1",
+  "run_api_file": "/tmp/bex-m188-python310-producer-run.json",
+  "run_api_file_sha256": "2705ddbad284ffc1a283c13ce6a5e32f9a8cbf10f52661be8bbcd8431c7eaa08",
+  "anonymous_metadata_pull": true,
+  "metadata_only_no_filesystem_layers": true,
+  "platforms": {
+    "linux/amd64": {
+      "architecture": "amd64",
+      "os": "linux",
+      "manifest_digest": "sha256:091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321",
+      "config_digest": "sha256:58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.10.22"
+      ],
+      "manifest_bytes": 3534,
+      "config_bytes": 16539
+    },
+    "linux/arm64": {
+      "architecture": "arm64",
+      "os": "linux",
+      "manifest_digest": "sha256:0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53",
+      "config_digest": "sha256:b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.10.22"
+      ],
+      "manifest_bytes": 3534,
+      "config_bytes": 16539
+    }
+  },
+  "build_digest_bound_in_log": true,
+  "original_base_bound_in_log": true,
+  "dual_arch_NativeBase_gate_bound_in_log": true,
+  "architecture_gate_proofs": {
+    "amd64": {
+      "real_pg18_archive": {
+        "line_number": 4864,
+        "log_line": "2026-10-30T12:21:41.8784300Z #22 0.119 /tmp/archive.dump: OK",
+        "vertex": "22",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 4920,
+        "log_line": "2026-10-30T12:21:52.6940088Z #31 10.05 native tool transformations passed without network",
+        "vertex": "31",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 4924,
+        "log_line": "2026-10-30T12:21:53.6726121Z #35 0.927 system and bundled Brotli checks passed",
+        "vertex": "35",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      },
+      "primary_python_identity_wheel_c_extension": {
+        "line_number": 4928,
+        "log_line": "2026-10-30T12:21:59.4854722Z #36 5.792 native primary Python 3.10.22 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+        "vertex": "36",
+        "command": "RUN --network=none if [ -x /usr/local/bin/python3 ]; then /usr/local/bin/python3 /tmp/check-primary-python.py; fi"
+      }
+    },
+    "arm64": {
+      "real_pg18_archive": {
+        "line_number": 4893,
+        "log_line": "2026-10-30T12:21:42.5779224Z #30 0.058 /tmp/archive.dump: OK",
+        "vertex": "30",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 4908,
+        "log_line": "2026-10-30T12:21:45.5750663Z #32 2.953 native tool transformations passed without network",
+        "vertex": "32",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 4912,
+        "log_line": "2026-10-30T12:21:45.7667025Z #33 0.342 system and bundled Brotli checks passed",
+        "vertex": "33",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      },
+      "primary_python_identity_wheel_c_extension": {
+        "line_number": 4916,
+        "log_line": "2026-10-30T12:21:47.7866870Z #34 1.966 native primary Python 3.10.22 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+        "vertex": "34",
+        "command": "RUN --network=none if [ -x /usr/local/bin/python3 ]; then /usr/local/bin/python3 /tmp/check-primary-python.py; fi"
+      }
+    }
+  },
+  "bullseye_companion_baseline": {
+    "applicable": false,
+    "reason": "Python primary; no legacy Node primary header/executable to backport in this supplier."
+  },
+  "steps": [
+    {
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-10-30T10:35:03Z",
+      "completed_at": "2026-10-30T12:21:21Z"
+    },
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-30T12:21:21Z",
+      "completed_at": "2026-10-30T12:21:59Z"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "number": 8,
+      "started_at": "2026-10-30T12:21:59Z",
+      "completed_at": "2026-10-30T12:26:45Z"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 9,
+      "started_at": "2026-10-30T12:26:45Z",
+      "completed_at": "2026-10-30T12:26:45Z"
+    },
+    {
+      "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 10,
+      "started_at": "2026-10-30T12:26:45Z",
+      "completed_at": "2026-10-30T12:26:45Z"
+    },
+    {
+      "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-10-30T12:26:45Z",
+      "completed_at": "2026-10-30T12:26:45Z"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12,
+      "started_at": "2026-10-30T12:26:45Z",
+      "completed_at": "2026-10-30T12:26:45Z"
+    }
+  ],
+  "termination": {
+    "kind": "intentional obsolete producer-batch cancellation after completed export and dual-architecture runtime gate",
+    "requested_at": "2026-10-30T12:26:32.229487+00:00",
+    "completed_at": "2026-10-30T12:27:21Z",
+    "requested_by": "parent root; read-only observer did not cancel any job",
+    "cancel_request_file": "/tmp/bex-m188-bfdeb-safe-cancel-request.json",
+    "cancel_request_sha256": "7115397f6bb683dba4fe8a8395503aacb6a995d66823c1fc4328abb5d723ff68",
+    "fresh_safe_review_file": "/tmp/bex-m188-bfdeb-fresh-safe-cancel-review.json",
+    "fresh_safe_review_sha256": "aa591a192b6b873d78176c393f47966ea640dc2029452a676adae7a05990cec3",
+    "log_lines": [
+      {
+        "line_number": 5861,
+        "line": "2026-10-30T12:26:44.9649315Z ##[error]The operation was canceled."
+      }
+    ],
+    "Rekor_failure_observed": false
+  },
+  "scans_interpretation": "amd64 scan CANCELLED; arm64 scan SKIPPED. Neither full scan is claimed complete. No safety claim from partial scan.",
+  "signing_interpretation": "Installer and sign/attest step SKIPPED; no initial signature, SPDX or Trivy attestation was produced by this job. No v1 signing failure claim.",
+  "reviewed_recipe_comparison": {
+    "head": "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "changed_files": [
+      "deploy/native-base/README.md"
+    ],
+    "only_markdown": true,
+    "non_markdown_blob_map": {
+      "deploy/native-base/Dockerfile": "ccf018f0f46a6f89aef03329fe52e233b56ef58e",
+      "deploy/native-base/bex-native-python-tools": "ce192a671c38144f191b506baaffc75a42c8df5a",
+      "deploy/native-base/check-brotli.py": "6ca42112ff14fed463004323b86eca8df3831faf",
+      "deploy/native-base/check-primary-python.py": "5c8251ca52cee1deeed2b753b5c2f1e55ea9b660",
+      "deploy/native-base/check-tools.py": "8140223ad18127367b27cf6c2ec4270e65227847",
+      "deploy/native-base/check.Dockerfile": "029615b06e291d50e0056ce184a9cc88a9feba13",
+      "deploy/native-base/fetch-python-tools.py": "ac37ec3da01149f2887e89cb9e308ecdb51e6a40",
+      "deploy/native-base/install-python-tools.py": "c03257ad25fdb557120ef4884fc1277905a344d0",
+      "deploy/native-base/install.sh": "73b1df4c85d66d484e5dc24f60cff58bbce227ec",
+      "deploy/native-base/matrix.py": "078188733b1a31288965f640adff0c8e9a488ae0",
+      "deploy/native-base/matrix_test.py": "4ab51f32649d75423a99c11fc0d17a339fda1169",
+      "deploy/native-base/node-brotli/check.js": "72dcf51a95baa8b8edd079d60e8d5f7da07fda8e",
+      "deploy/native-base/node-brotli/patch.sh": "d15f4eac5dcd5a1cc292afada3a04f607e71a1f0",
+      "deploy/native-base/package-lock.json": "f17be474dabb1286ccca27571f5974363ea9d6f3",
+      "deploy/native-base/package.json": "cc19d22c8c9535f3eefe35178542bfdc17654161",
+      "deploy/native-base/patch-system-brotli.sh": "c632b4958b7b1f70c343036b5d3e0b1e9240d976",
+      "deploy/native-base/python-tools.json": "1a7a71f7171d552f95e60bd5cec0dddb9a6131b2",
+      "deploy/native-base/testdata/archive.dump.b64": "69368b1cb80580276b2b551c952520bab123f845",
+      "deploy/native-base/testdata/archive.sql": "884844a99160e7b8e1b13dcb26867b831b7aee60",
+      "deploy/native-base/testdata/rows.txt": "686466b2e8036b21efa480d40b01626b7b2bd04a",
+      "deploy/native-base/tsc": "f78f6adacf6dccadd33fd5a3feec8f02011cf6c9",
+      "deploy/native-base/webpack": "4e5bf658679d6b71c69cab6483a90e82bcc24558"
+    },
+    "non_markdown_blobs_equal": true
+  },
+  "adoptable": false,
+  "requires": "Current authorized recovery must rerun both architecture gates, full scans, full registry-source SBOM/Trivy attestations and modern workflow signing before discovery/adoption.",
+  "raw_log": "/tmp/bex-m188-python310-producer-job124001233726.log",
+  "raw_log_sha256": "fd9c33f877e0184221da2e5d55e615ad778c00c8c7e430a6f0156440ade4afb7",
+  "log_gzip": "/tmp/bex-m188-python310-producer-intake/job-124001233726.log.gz",
+  "log_gzip_sha256": "39da9514f584d7789c00d39c9b4f59b3fdc884f4768e738f1399be71c1f2f9b6",
+  "anonymous_metadata_proof": "/tmp/bex-m188-python310-producer-intake/anonymous-metadata-proof.json",
+  "proposed_recovery_entry": "/tmp/bex-m188-python310-producer-intake/recovery-entry.json"
+}

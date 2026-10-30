@@ -1,0 +1,131 @@
+{
+  "checked_at": "2026-10-30T12:35:34.019486+00:00",
+  "old_run": 41038700463,
+  "old_attempt": 2,
+  "old_head": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+  "old_status": "pending",
+  "triggering_actor": "puncsky",
+  "jobs": {
+    "total_count": 2,
+    "jobs": [
+      {
+        "id": 124063542173,
+        "run_id": 41038700463,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41038700463",
+        "run_attempt": 2,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4sNrnQ",
+        "head_sha": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124063542173",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41038700463/job/124063542173",
+        "status": "pending",
+        "conclusion": null,
+        "created_at": "2026-10-30T12:31:34Z",
+        "started_at": "2026-10-30T12:31:34Z",
+        "completed_at": null,
+        "name": "build (node-20-bookworm, node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124063542173",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": null,
+        "runner_name": null,
+        "runner_group_id": null,
+        "runner_group_name": null
+      },
+      {
+        "id": 124063543494,
+        "run_id": 41038700463,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41038700463",
+        "run_attempt": 2,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4sNwxg",
+        "head_sha": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124063543494",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41038700463/job/124063543494",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T12:31:35Z",
+        "started_at": "2026-10-30T10:09:50Z",
+        "completed_at": "2026-10-30T10:10:35Z",
+        "name": "matrix",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T10:09:51Z",
+            "completed_at": "2026-10-30T10:09:52Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T10:09:52Z",
+            "completed_at": "2026-10-30T10:09:52Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T10:09:52Z",
+            "completed_at": "2026-10-30T10:10:28Z"
+          },
+          {
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T10:10:28Z",
+            "completed_at": "2026-10-30T10:10:28Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T10:10:28Z",
+            "completed_at": "2026-10-30T10:10:28Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-30T10:10:28Z",
+            "completed_at": "2026-10-30T10:10:28Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124063543494",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-ci"
+        ],
+        "runner_id": 21722,
+        "runner_name": "22a618816f59",
+        "runner_group_id": 3,
+        "runner_group_name": "bex-ci"
+      }
+    ]
+  },
+  "native_started": [],
+  "replacement": {
+    "id": 41053647412,
+    "head_sha": "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "status": "queued",
+    "conclusion": null
+  },
+  "safe": true,
+  "reason": "Prevent old automatic-source replay from replacing already queued canonical registry-source Node20 verification of same authorized exact index, before any unfinished native job starts."
+}

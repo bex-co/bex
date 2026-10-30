@@ -1,0 +1,51 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+   "config": {
+      "mediaType": "application/vnd.docker.container.image.v1+json",
+      "size": 8140,
+      "digest": "sha256:fe333f4c5697e0ed62bccfe92efc04d7417914b3eeaedc8bb3dafb51bcf83038"
+   },
+   "layers": [
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 53704892,
+         "digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 15746671,
+         "digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 54676309,
+         "digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 189778334,
+         "digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 6405066,
+         "digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 14739252,
+         "digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 244,
+         "digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 2850059,
+         "digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef"
+      }
+   ]
+}

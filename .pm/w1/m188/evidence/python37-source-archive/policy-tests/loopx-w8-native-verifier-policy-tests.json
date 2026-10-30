@@ -1,0 +1,17 @@
+{
+  "scope": "Synthetic parser guards only. Never artifact or attestation provenance evidence.",
+  "valid_spdx_binding": "pass",
+  "valid_trivy_config_layers": "pass",
+  "rejected_cases": [
+    "foreign-root-even-with-valid-purl",
+    "mixed-architectures",
+    "conflicting-root-platform",
+    "foreign-config",
+    "wrong-arch",
+    "wrong-layers",
+    "wrong-official-base-diffid",
+    "candidate-layer-diffid-count-mismatch",
+    "official-layer-diffid-count-mismatch"
+  ],
+  "verifier_source_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+}

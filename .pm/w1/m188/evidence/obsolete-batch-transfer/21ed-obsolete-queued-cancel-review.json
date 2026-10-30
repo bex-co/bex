@@ -1,0 +1,587 @@
+{
+  "checked_at": "2026-10-30T12:29:19.809650+00:00",
+  "old_run": 41030129157,
+  "old_jobs": {
+    "total_count": 6,
+    "jobs": [
+      {
+        "id": 123977625878,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc3aRxFg",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/123977625878",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/123977625878",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T08:59:12Z",
+        "started_at": "2026-10-30T09:00:44Z",
+        "completed_at": "2026-10-30T09:01:02Z",
+        "name": "matrix",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T09:00:46Z",
+            "completed_at": "2026-10-30T09:00:47Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T09:00:47Z",
+            "completed_at": "2026-10-30T09:00:47Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T09:00:47Z",
+            "completed_at": "2026-10-30T09:00:58Z"
+          },
+          {
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T09:00:58Z",
+            "completed_at": "2026-10-30T09:00:59Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T09:00:59Z",
+            "completed_at": "2026-10-30T09:00:59Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-30T09:00:59Z",
+            "completed_at": "2026-10-30T09:00:59Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/123977625878",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-ci"
+        ],
+        "runner_id": 21666,
+        "runner_name": "239d6e52dba9",
+        "runner_group_id": 3,
+        "runner_group_name": "bex-ci"
+      },
+      {
+        "id": 123978338135,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc3a9PVw",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/123978338135",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/123978338135",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T09:01:03Z",
+        "started_at": "2026-10-30T10:05:44Z",
+        "completed_at": "2026-10-30T10:20:07Z",
+        "name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T10:05:45Z",
+            "completed_at": "2026-10-30T10:05:52Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T10:05:52Z",
+            "completed_at": "2026-10-30T10:05:52Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T10:05:52Z",
+            "completed_at": "2026-10-30T10:06:11Z"
+          },
+          {
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T10:06:11Z",
+            "completed_at": "2026-10-30T10:06:31Z"
+          },
+          {
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-30T10:06:31Z",
+            "completed_at": "2026-10-30T10:06:32Z"
+          },
+          {
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-30T10:06:32Z",
+            "completed_at": "2026-10-30T10:06:32Z"
+          },
+          {
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7,
+            "started_at": "2026-10-30T10:06:32Z",
+            "completed_at": "2026-10-30T10:06:32Z"
+          },
+          {
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T10:06:32Z",
+            "completed_at": "2026-10-30T10:06:32Z"
+          },
+          {
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-30T10:06:32Z",
+            "completed_at": "2026-10-30T10:09:58Z"
+          },
+          {
+            "name": "scan amd64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-30T10:09:58Z",
+            "completed_at": "2026-10-30T10:14:37Z"
+          },
+          {
+            "name": "scan arm64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-10-30T10:14:37Z",
+            "completed_at": "2026-10-30T10:15:37Z"
+          },
+          {
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-30T10:15:37Z",
+            "completed_at": "2026-10-30T10:15:55Z"
+          },
+          {
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-30T10:15:55Z",
+            "completed_at": "2026-10-30T10:16:01Z"
+          },
+          {
+            "name": "sign and attest the immutable candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-10-30T10:16:01Z",
+            "completed_at": "2026-10-30T10:19:55Z"
+          },
+          {
+            "name": "remove GHCR credentials",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-10-30T10:19:55Z",
+            "completed_at": "2026-10-30T10:19:55Z"
+          },
+          {
+            "name": "Post scan arm64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 26,
+            "started_at": "2026-10-30T10:19:55Z",
+            "completed_at": "2026-10-30T10:19:55Z"
+          },
+          {
+            "name": "Post scan amd64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27,
+            "started_at": "2026-10-30T10:19:55Z",
+            "completed_at": "2026-10-30T10:19:55Z"
+          },
+          {
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 28,
+            "started_at": "2026-10-30T10:19:55Z",
+            "completed_at": "2026-10-30T10:19:58Z"
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29,
+            "started_at": "2026-10-30T10:19:58Z",
+            "completed_at": "2026-10-30T10:20:04Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30,
+            "started_at": "2026-10-30T10:20:04Z",
+            "completed_at": "2026-10-30T10:20:04Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31,
+            "started_at": "2026-10-30T10:20:04Z",
+            "completed_at": "2026-10-30T10:20:04Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/123978338135",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": 21730,
+        "runner_name": "9e5b2bd9ddc1",
+        "runner_group_id": 4,
+        "runner_group_name": "bex-production"
+      },
+      {
+        "id": 123978338586,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc3a9RGg",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/123978338586",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/123978338586",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T09:01:03Z",
+        "started_at": "2026-10-30T10:29:46Z",
+        "completed_at": "2026-10-30T10:52:17Z",
+        "name": "build (node-16-bookworm, node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8...",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T10:29:47Z",
+            "completed_at": "2026-10-30T10:30:04Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T10:30:04Z",
+            "completed_at": "2026-10-30T10:30:04Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T10:30:04Z",
+            "completed_at": "2026-10-30T10:30:34Z"
+          },
+          {
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T10:30:34Z",
+            "completed_at": "2026-10-30T10:31:17Z"
+          },
+          {
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-30T10:31:17Z",
+            "completed_at": "2026-10-30T10:31:18Z"
+          },
+          {
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-30T10:31:18Z",
+            "completed_at": "2026-10-30T10:31:19Z"
+          },
+          {
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7,
+            "started_at": "2026-10-30T10:31:19Z",
+            "completed_at": "2026-10-30T10:31:19Z"
+          },
+          {
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T10:31:19Z",
+            "completed_at": "2026-10-30T10:31:19Z"
+          },
+          {
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-30T10:31:19Z",
+            "completed_at": "2026-10-30T10:35:39Z"
+          },
+          {
+            "name": "scan amd64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-30T10:35:39Z",
+            "completed_at": "2026-10-30T10:39:15Z"
+          },
+          {
+            "name": "scan arm64 candidate",
+            "status": "completed",
+            "conclusion": "failure",
+            "number": 11,
+            "started_at": "2026-10-30T10:39:15Z",
+            "completed_at": "2026-10-30T10:51:55Z"
+          },
+          {
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 12,
+            "started_at": "2026-10-30T10:51:55Z",
+            "completed_at": "2026-10-30T10:51:55Z"
+          },
+          {
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 13,
+            "started_at": "2026-10-30T10:51:55Z",
+            "completed_at": "2026-10-30T10:51:55Z"
+          },
+          {
+            "name": "sign and attest the immutable candidate",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 14,
+            "started_at": "2026-10-30T10:51:55Z",
+            "completed_at": "2026-10-30T10:51:55Z"
+          },
+          {
+            "name": "remove GHCR credentials",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-10-30T10:51:55Z",
+            "completed_at": "2026-10-30T10:51:55Z"
+          },
+          {
+            "name": "Post scan arm64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 26,
+            "started_at": "2026-10-30T10:51:55Z",
+            "completed_at": "2026-10-30T10:51:56Z"
+          },
+          {
+            "name": "Post scan amd64 candidate",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27,
+            "started_at": "2026-10-30T10:51:56Z",
+            "completed_at": "2026-10-30T10:51:56Z"
+          },
+          {
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 28,
+            "started_at": "2026-10-30T10:51:56Z",
+            "completed_at": "2026-10-30T10:51:59Z"
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29,
+            "started_at": "2026-10-30T10:51:59Z",
+            "completed_at": "2026-10-30T10:52:06Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30,
+            "started_at": "2026-10-30T10:52:06Z",
+            "completed_at": "2026-10-30T10:52:06Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31,
+            "started_at": "2026-10-30T10:52:06Z",
+            "completed_at": "2026-10-30T10:52:06Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/123978338586",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": 21740,
+        "runner_name": "9e5b2bd9ddc1",
+        "runner_group_id": 4,
+        "runner_group_name": "bex-production"
+      },
+      {
+        "id": 124010099768,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc35P0OA",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124010099768",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/124010099768",
+        "status": "pending",
+        "conclusion": null,
+        "created_at": "2026-10-30T10:20:08Z",
+        "started_at": "2026-10-30T10:20:08Z",
+        "completed_at": null,
+        "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124010099768",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": null,
+        "runner_name": null,
+        "runner_group_id": null,
+        "runner_group_name": null
+      },
+      {
+        "id": 124023142123,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4Fr26w",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124023142123",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/124023142123",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-30T10:52:17Z",
+        "started_at": "2026-10-30T10:52:17Z",
+        "completed_at": "2026-10-30T12:19:06Z",
+        "name": "build (node-20-bookworm, node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124023142123",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": 0,
+        "runner_name": "",
+        "runner_group_id": 0,
+        "runner_group_name": ""
+      },
+      {
+        "id": 124058254241,
+        "run_id": 41030129157,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41030129157",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4nK7oQ",
+        "head_sha": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124058254241",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41030129157/job/124058254241",
+        "status": "pending",
+        "conclusion": null,
+        "created_at": "2026-10-30T12:19:06Z",
+        "started_at": "2026-10-30T12:19:06Z",
+        "completed_at": null,
+        "name": "build (python-3.7-bullseye, python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d62...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124058254241",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": null,
+        "runner_name": null,
+        "runner_group_id": null,
+        "runner_group_name": null
+      }
+    ]
+  },
+  "replacement_run": 41043547006,
+  "replacement": {
+    "head_sha": "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "event": "push",
+    "head_branch": "main",
+    "status": "in_progress",
+    "conclusion": null
+  },
+  "safe": true,
+  "active_started_jobs": [],
+  "reason": "Obsolete automatic-source workflow has no started unfinished work; approved canonical registry-source full-matrix push run preserves all27 inputs and existing proof custody. Prevent duplicate cold Node18 build after its prior producer export/gates."
+}

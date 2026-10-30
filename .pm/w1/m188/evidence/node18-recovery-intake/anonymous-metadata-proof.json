@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-10-30T12:30:14.817588+00:00",
+  "digest": "sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+  "anonymous_pull": true,
+  "metadata_only": true,
+  "full_filesystem_layers_pulled": false,
+  "transport": "curl IPv4 metadata-only request; anonymous token only in memory/stdin; curl default redirect strips cross-host Authorization; every raw digest checked",
+  "platforms": {
+    "linux/amd64": {
+      "architecture": "amd64",
+      "os": "linux",
+      "manifest_digest": "sha256:416ebb0a8ea3f6991e067451991a9041465d96cd0c4a109736af785840d78179",
+      "config_digest": "sha256:42a3fadaad4ff3f5480a4f7d3ff6f125a0f762b988a09bdb8d9ee7981fe14acc",
+      "revision": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "runtime_env": [
+        "NODE_VERSION=18.20.8"
+      ],
+      "manifest_bytes": 3724,
+      "config_bytes": 15511
+    },
+    "linux/arm64": {
+      "architecture": "arm64",
+      "os": "linux",
+      "manifest_digest": "sha256:49d30a96f365362c15f8568e75bf44c99b8b841fd400d2da8de090660e10746d",
+      "config_digest": "sha256:9c84d1658f4cbb2b66b7bdee381ca8f8f969fff7e5d7115c0ff3c4d1f4363d17",
+      "revision": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "runtime_env": [
+        "NODE_VERSION=18.20.8"
+      ],
+      "manifest_bytes": 3724,
+      "config_bytes": 15514
+    }
+  }
+}
