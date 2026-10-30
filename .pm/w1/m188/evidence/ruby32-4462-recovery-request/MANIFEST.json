@@ -1,0 +1,25 @@
+{
+  "schema": "bex.m188.queue-operation-custody/v1",
+  "at": "2026-10-30T18:05:07.502929+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-existing-ruby32-4462-run41101339222/inspection.json",
+      "archive": "inspection.json",
+      "bytes": 1589,
+      "sha256": "9418bb8311a95ae83114e09d5efa80fce70d76fff87690ff8460bb4424b257db"
+    },
+    {
+      "source": "/tmp/bex-m188-existing-ruby32-4462-run41101339222/jobs.json",
+      "archive": "jobs.json",
+      "bytes": 1818,
+      "sha256": "e575b4375281b457baec48004524d6b757e15555841bdc2e8d5270ae10455e30"
+    },
+    {
+      "source": "/tmp/bex-m188-existing-ruby32-4462-run41101339222/run.json",
+      "archive": "run.json",
+      "bytes": 11459,
+      "sha256": "0c6be4c358ac7f9bc5420c45ac4bff48a22730232e22ff3a753c6d97cbef0ecc"
+    }
+  ],
+  "scope": "Actual source/run/job inspection and bounded request/terminal evidence; no candidate acceptance or source adoption claim."
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "bex.m188.seven-candidate-new-source-regression/v1",
+  "at": "2026-10-30T17:50:26.919938+00:00",
+  "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+  "guard_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+  "source_admission": {
+    "file": "/tmp/bex-m188-3990-root-source-admission.json",
+    "sha256": "e445672a77507dfda792a9301f43e1425717dd4dc23818837a16031f459c1d60"
+  },
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "context_file": "/tmp/bex-m188-published-acceptance.json",
+  "context_sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4",
+  "accepted_count_unchanged": 7,
+  "all7_full_candidate_guards_passed": true,
+  "results": [
+    {
+      "candidate": "node-14-bullseye",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "actual_proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "seconds": 3.142
+    },
+    {
+      "candidate": "python-3.7-bullseye",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "actual_proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "seconds": 2.749
+    },
+    {
+      "candidate": "node-16-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "actual_proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "seconds": 2.908
+    },
+    {
+      "candidate": "python-3.8-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "c8ca76473129d092a8d74ada5e09c5c4705987cd"
+      ],
+      "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "seconds": 2.393
+    },
+    {
+      "candidate": "python-3.10-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "actual_proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "seconds": 1.49
+    },
+    {
+      "candidate": "python-3.9-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "actual_proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "seconds": 2.066
+    },
+    {
+      "candidate": "ruby-3.0-bullseye",
+      "passed": true,
+      "sources": [
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "actual_proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "seconds": 2.587
+    }
+  ],
+  "all11_adoption_copy_refusal": {
+    "passed": true,
+    "attempted_path": "/tmp/bex-m188-3990-adoption-must-not-exist",
+    "exit_code": 1,
+    "stderr": "REFUSING adoption copies: receipt is incomplete; all 11 independently verified published candidates are required",
+    "output_directory_absent": true,
+    "plan_file": "/tmp/bex-m188-adoption-plan.json",
+    "plan_sha256": "2f2782b072bef4f012ffe69c524f96846a9fe7510f24fde450bf2ac859ca6865"
+  },
+  "protected_accepted_metadata_and_old_guard_bytes_unchanged": true,
+  "scope": "Full local persistedproof/source/semantic regressions and real incomplete-copy refusal only; no candidate promotion, adoption copy, repo/board/remote or additional aggregate change."
+}

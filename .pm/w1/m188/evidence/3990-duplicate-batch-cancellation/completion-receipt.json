@@ -1,0 +1,29 @@
+{
+  "observed_at": "2026-10-30T17:40:19.550306+00:00",
+  "run": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-run-3.json",
+    "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046",
+    "requested_at": "2026-10-30T17:40:18.912035+00:00",
+    "received_at": "2026-10-30T17:40:19.550260+00:00"
+  },
+  "status": "queued",
+  "conclusion": null,
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "run_attempt": 1,
+  "jobs": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-jobs.json",
+    "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636",
+    "requested_at": "2026-10-30T17:40:19.550322+00:00",
+    "received_at": "2026-10-30T17:40:20.488339+00:00"
+  },
+  "native_jobs": [],
+  "request": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/request.json",
+    "sha256": "d071e0982fb2a188d69129704ae49455784c0ea5310d07c07c7122aa71d1bcc4"
+  },
+  "review": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/review.json",
+    "sha256": "999e5166b7c2d407a56ea833284afc5ad07b97b12aa2e7cb78dd4e513ad3cedb"
+  },
+  "no_other_runs_modified": true
+}

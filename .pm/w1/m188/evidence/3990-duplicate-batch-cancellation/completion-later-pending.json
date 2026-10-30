@@ -1,0 +1,16 @@
+{
+  "observed_at": "2026-10-30T17:41:56.309747+00:00",
+  "run": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-later-run.json",
+    "sha256": "7f3a7126e91f630328489ad3e4d8c8baee8e3783bd905d06ecd76e6b2a101046"
+  },
+  "jobs": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/completion-later-jobs.json",
+    "sha256": "78e70878265160960111b829cf5138da338abb54988d246ac19dcdbd4fbab636"
+  },
+  "status": "queued",
+  "conclusion": null,
+  "native_jobs": [],
+  "completed_cancellation_confirmed": false,
+  "no_other_runs_modified": true
+}

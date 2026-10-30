@@ -1,0 +1,50 @@
+{
+  "schema": "bex.m188.full-candidate-guard-validation/v1",
+  "at": "2026-10-30T17:51:24.436418+00:00",
+  "full_candidate_guard_passed": true,
+  "candidate": "ruby-3.1-bookworm",
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+  "candidate_sha256": "34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242",
+  "validated_candidate_snapshot": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242.json",
+    "sha256": "34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242",
+    "bytes": 5774,
+    "capture_kind": "actual_input_bytes_captured_after_successful_validation_before_any_promotion"
+  },
+  "actual_proof_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+  "producer_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "normal_build_same_producer_and_verifier": true,
+  "current_workflow_baseline": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "historical_FD_producer_verifier_and_cert_preserved": true,
+  "seven_candidate_regression_and_all11_refusal": {
+    "file": "/tmp/bex-m188-3990-seven-candidate-regressions.json",
+    "sha256": "fbb211a5f02c7c61ee7b42f1fb5e2c843b727de2676064fcfcf0b7b06662501c"
+  },
+  "guard_file": "/tmp/bex-m188-guard-snapshots/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+  "guard_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+  "seconds": 2.283,
+  "candidate_digest": "sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "all_five_original_crypto_records_and_derived_linkage_checked": true,
+  "amd64_binding": "exact_registry_manifest",
+  "arm64_binding": "exact_registry_manifest",
+  "direct_architecture_child_config_bindings_checked": true,
+  "target_CVE_findings_retained_per_architecture": 0,
+  "target_CVE_dispositions_verified_against_full_signed_reports": true,
+  "controls_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-structural-controls.json",
+  "controls_sha256": "1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d",
+  "approved_source_guard_receipt_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context-after-3990-admission.json",
+    "sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4",
+    "live_aggregate_file": "/tmp/bex-m188-published-acceptance.json",
+    "live_aggregate_sha256": "6c2fa1893a5f5f6826879b59da191281c725e6accf2c59511e5af8114ff938a4",
+    "only_live_receipt_delta": "none; exact unchanged currentaccepted7 copy after root-approved3990 source-onlyappend",
+    "source_policy_approval_file": "/tmp/bex-m188-3990-root-source-admission.json",
+    "source_policy_approval_sha256": "e445672a77507dfda792a9301f43e1425717dd4dc23818837a16031f459c1d60",
+    "source_policy_approval_scope": "Root-approved current3990 closure baseline with explicit historicalFD retained; actualproducer/verifier/certFD unchanged."
+  },
+  "receipt_count_not_modified": 7,
+  "no_adoption_copies": true,
+  "publication": "Standard guard-validation.json published atomically only once after all drafting/checks; exactFINAL hash required for parent approval.",
+  "scope": "Actual full source/crypto/semantic guard validation only. Parent owns promotion; accepted7, new candidate/proof and aggregate bytes unchanged."
+}

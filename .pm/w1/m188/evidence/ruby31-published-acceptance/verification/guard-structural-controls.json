@@ -1,0 +1,55 @@
+{
+  "schema": "bex.m188.actual-direct-candidate-controls/v1",
+  "passed": true,
+  "guard_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+  "candidate": "ruby-3.1-bookworm",
+  "actual_original_cli_negative_controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/controls.json",
+    "sha256": "cea9e744b825958a1f176960226876c42fb0037eacdcdd9bc730b9405a360cc2"
+  },
+  "scope": "Five actual strict command positives, four small structural tamper rejections. No crypto CLI rerun, fabricated signed input or candidate promotion. Original3 actualCLI negatives remain in authoritative proof.",
+  "results": [
+    {
+      "name": "image_signature/None/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "spdx/amd64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "spdx/arm64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "trivy/amd64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "trivy/arm64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "missing_successful_verification",
+      "rejected": true,
+      "reason": "raw bundle verification did not succeed"
+    },
+    {
+      "name": "wrong_verification_sha",
+      "rejected": true,
+      "reason": "bundle command verification SHA mismatch"
+    },
+    {
+      "name": "wrong_raw_index_binding",
+      "rejected": true,
+      "reason": "bundle command root index mismatch"
+    },
+    {
+      "name": "wrong_raw_bundle_binding",
+      "rejected": true,
+      "reason": "bundle command raw input mismatch"
+    }
+  ],
+  "positives": 5,
+  "negatives": 4
+}

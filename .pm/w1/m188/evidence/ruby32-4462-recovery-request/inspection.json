@@ -1,0 +1,43 @@
+{
+  "schema": "existing_native_run_input_inspection/v1",
+  "at": "2026-10-30T17:58:49.099448+00:00",
+  "source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+  "source_admission": {
+    "file": "/tmp/bex-m188-4462-source-admission.json",
+    "sha256": "0256960b3b40e68ca07da8cca27c781ef265fb79d0eb6d7429a670114544d90b"
+  },
+  "run": {
+    "file": "/tmp/bex-m188-existing-ruby32-4462-run41101339222/run.json",
+    "sha256": "0c6be4c358ac7f9bc5420c45ac4bff48a22730232e22ff3a753c6d97cbef0ecc",
+    "requested_at": "2026-10-30T17:58:47.953054+00:00",
+    "received_at": "2026-10-30T17:58:48.738806+00:00"
+  },
+  "jobs": {
+    "file": "/tmp/bex-m188-existing-ruby32-4462-run41101339222/jobs.json",
+    "sha256": "e575b4375281b457baec48004524d6b757e15555841bdc2e8d5270ae10455e30",
+    "requested_at": "2026-10-30T17:58:47.953129+00:00",
+    "received_at": "2026-10-30T17:58:49.099324+00:00"
+  },
+  "event": "workflow_dispatch",
+  "branch": "main",
+  "run_status": "queued",
+  "run_attempt": 1,
+  "native_job_count": 1,
+  "native_jobs": [
+    {
+      "id": 124219760224,
+      "name": "build (ruby-3.2-bookworm, ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473...",
+      "status": "queued",
+      "conclusion": null,
+      "runner_id": 0,
+      "run_attempt": 1,
+      "started_at": "2026-10-30T17:48:26Z",
+      "completed_at": null
+    }
+  ],
+  "runtime_conclusively_ruby32_selective": true,
+  "runtime_basis": "Only actual native matrix build job is ruby-3.2-bookworm",
+  "dispatch_performed": false,
+  "cancel_or_rerun_performed": false,
+  "aggregate_written": false
+}

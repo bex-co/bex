@@ -1,0 +1,15 @@
+{
+  "requested_at": "2026-10-30T17:40:10.841219+00:00",
+  "finished_at": "2026-10-30T17:40:11.565948+00:00",
+  "run_id": 41100487883,
+  "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "exit_code": 0,
+  "http_status": 202,
+  "response_sha256": "5e409713769caef201879b80f241d2513e70696da458a452173dc92645ecfb72",
+  "review": {
+    "file": "/tmp/bex-m188-3990-auto-cancel-41100487883/review.json",
+    "sha256": "999e5166b7c2d407a56ea833284afc5ad07b97b12aa2e7cb78dd4e513ad3cedb"
+  },
+  "stderr": "",
+  "other_runs_modified": false
+}

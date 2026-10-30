@@ -1,0 +1,155 @@
+{
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "candidate_state": "verified_pending_guard_alignment",
+  "guard_alignment_required": true,
+  "architecture_binding_verified": true,
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+    "sha256": "29149ae33ddf088cb44b441dad3f1779a05cb54a16cfa4464f2e8d7d0fce3ef7",
+    "complete": true
+  },
+  "verified_at": "2026-10-30T17:40:53.829982+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "digest": "sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "runtime": "ruby",
+  "version": "3.1.7",
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer": {
+    "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "run_id": 41063733348,
+    "job_id": 124090808291,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41063733348/job/124090808291",
+    "digest": "sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+    "original_build_passed": true,
+    "original_runtime_gates_passed": true
+  },
+  "recovered": false,
+  "recovery_authorization": null,
+  "run_id": 41063733348,
+  "job_id": 124090808291,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41063733348/job/124090808291",
+  "verification_run_id": 41063733348,
+  "verification_job_id": 124090808291,
+  "verification_job_completed_at": "2026-10-30T17:19:32Z",
+  "scans": {
+    "amd64": {
+      "attestation_verified": true,
+      "architecture": "amd64",
+      "severity_counts": {
+        "LOW": 3848,
+        "HIGH": 2344,
+        "MEDIUM": 7113,
+        "UNKNOWN": 157,
+        "CRITICAL": 228
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    },
+    "arm64": {
+      "attestation_verified": true,
+      "architecture": "arm64",
+      "severity_counts": {
+        "LOW": 3848,
+        "HIGH": 2344,
+        "MEDIUM": 7113,
+        "UNKNOWN": 157,
+        "CRITICAL": 228
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    }
+  },
+  "security": {
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    },
+    "cve": "CVE-2026-111497",
+    "behavioral_gates_verified": true,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "permanent_decoder_error": -17,
+    "healthy_round_trip_verified": true,
+    "bundled_brotli_version": null,
+    "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+  },
+  "signature": {
+    "verified": true,
+    "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "oidc_issuer": "https://token.actions.githubusercontent.com",
+    "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "proof_mode": "targeted_sigstore_bundles/v1",
+    "signed_subject": {
+      "digest": {
+        "sha256": "5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe"
+      },
+      "annotations": {}
+    },
+    "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+  },
+  "runtime_gate_steps": [
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "conclusion": "success"
+    }
+  ],
+  "platforms": {
+    "amd64": {
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.1.7"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.10&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.10&upstream=brotli"
+        }
+      ]
+    },
+    "arm64": {
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.1.7"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.10&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.10&upstream=brotli"
+        }
+      ]
+    }
+  },
+  "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "anonymous_metadata_pull": true,
+  "proof_directory": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+  "targeted_proof_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7"
+}
