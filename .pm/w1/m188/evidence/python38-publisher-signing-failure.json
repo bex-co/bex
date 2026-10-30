@@ -1,0 +1,104 @@
+{
+  "checked_at": "2026-10-30T09:15:16.015216+00:00",
+  "tag": "python-3.8-bookworm",
+  "base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "digest": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "run_id": 41000570846,
+  "job_id": 123967323852,
+  "platforms": {
+    "linux/amd64": {
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.8.20"
+      ]
+    },
+    "linux/arm64": {
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.8.20"
+      ]
+    }
+  },
+  "anonymous_metadata_pull": true,
+  "build_digest_bound_in_log": true,
+  "dual_arch_NativeBase_gate_bound_in_log": true,
+  "dual_arch_decoder_success": {
+    "arm64": "2026-10-30T09:05:26.5058771Z #33 0.409 system and bundled Brotli checks passed",
+    "amd64": "2026-10-30T09:05:35.6204039Z #35 1.174 system and bundled Brotli checks passed"
+  },
+  "dual_arch_primary_python_success": {
+    "arm64": "2026-10-30T09:05:30.7564292Z #34 4.199 native primary Python 3.8.20 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+    "amd64": "2026-10-30T09:05:47.6767539Z #36 11.83 native primary Python 3.8.20 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network"
+  },
+  "steps": [
+    {
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T08:57:13Z",
+      "completed_at": "2026-10-30T09:04:39Z"
+    },
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T09:04:39Z",
+      "completed_at": "2026-10-30T09:05:48Z"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T09:05:48Z",
+      "completed_at": "2026-10-30T09:08:23Z"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T09:08:23Z",
+      "completed_at": "2026-10-30T09:08:58Z"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-30T09:09:08Z",
+      "completed_at": "2026-10-30T09:10:42Z"
+    },
+    {
+      "name": "Post verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T09:10:42Z",
+      "completed_at": "2026-10-30T09:10:48Z"
+    },
+    {
+      "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T09:10:48Z",
+      "completed_at": "2026-10-30T09:10:51Z"
+    }
+  ],
+  "failed_command": "cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate native-amd64.spdx.json REF",
+  "initial_sign_completed_basis": "bash-e progression to payload09:10:39.673Z then freshkeys09:10:40.341Z",
+  "failure": "RekorV1 POST/api/v1/log/entries exhausted2attempts09:10:42.370Z",
+  "adoptable": false,
+  "signed_reports_complete": false,
+  "log_gzip": "/tmp/bex-m188-python38-recovery-proof/job-123967323852.log.gz",
+  "log_sha256": "0a0b7c7029488a44c8e5f1ff86eb8a0f1deceb19cf4b40ab71c04f559b39864b",
+  "evidence_file": "/tmp/bex-m188-python38-recovery-proof/evidence.txt",
+  "authorization_candidate": {
+    "base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+    "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "run_id": 41000570846,
+    "job_id": 123967323852,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
+    "reason": "Exact main producer built this index and passed both architecture runtime/Brotli/primary-Python gates and scans; FIRST amd64 SPDX attestation failed RekorV1 POST. Rerun all release gates with reviewed modern signing without repeating compilation."
+  },
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852"
+}

@@ -130,3 +130,9 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - 配置生成及五次签名/证明均有界重试；实际 shell 的五种成功/失败路径验证配置、签名或最后一份证明失败时不会移动标签。真实新版签名和双架构证明仍需 ship 后执行，不以本地 stub 结果替代。
 
 - 固定 cosign3.1.4 的实际 CLI 预检通过：TUF signing-config 连续生成/覆盖两次 exit0、内容 hash 一致，sign/attest 参数帮助与固定源码吻合；见 [实际 CLI 预检](evidence/modern-signing-config-preflight.json)。没有在本地冒充 GitHub workflow 签名或向公开 Rekor 提交。
+
+- 用同一 Syft1.51.1 对同一 Python3.7 digest/amd64 重建 SPDX 成功：24,452,589 bytes，谓词 base64 本身为 32,603,452 bytes，见 [大小证据](evidence/python37-sbom-size.json)；独立 [BuildKit descriptor](evidence/buildkit-sbom-descriptor-sizes.json) 记录两架构约 22 MB 的原始 SPDX。重建不是取回原 runner 的逐字节文件，原 HTTP 状态/请求上限仍未知；只作为大型请求推断的佐证，不替代新版实际签名验收。扫描临时文件已自行清理。
+
+- UTC 09:11 再次只读清点 [29 个 App](evidence/pre-adoption-census-20261030-0911.json)：在运行的平台 native 仍为 Node22/24 与 Go，三个旧 auto 服务镜像与既有 Dockerfile 分类证据一致；未发现本项 11 个旧版在用。Failed/Canceled 无 pod 项仍不冒充运行验收。此项用于发布优先级，采用后仍需新一轮 census 与 rollout 验收。
+
+- Python3.8 的原始双架构构建/运行检查/扫描均通过，同样在第一份 amd64 SPDX 的 Rekor v1 POST 失败；同源 base、两架构版本、不可变 index 与旧 gate 日志已绑定，见 [恢复证据](evidence/python38-publisher-signing-failure.json)。将精确 index 加入临时授权，由现代工作流定向重做全部门槛；十项实际恢复选择检查通过，未改变生产 pin。

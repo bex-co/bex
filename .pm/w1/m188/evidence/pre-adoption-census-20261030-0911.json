@@ -1,0 +1,163 @@
+{
+  "checked_at": "2026-10-30T09:11:19.761270+00:00",
+  "total_apps": 29,
+  "runtime_builder_classes": {
+    "runtime=;builder=auto;type=static_site": 1,
+    "runtime=;builder=auto;type=": 3,
+    "runtime=docker;builder=dockerfile;type=web_service": 4,
+    "runtime=node;builder=native;type=web_service": 4,
+    "runtime=go;builder=native;type=web_service": 1,
+    "runtime=image;builder=auto;type=private_service": 1,
+    "runtime=;builder=dockerfile;type=web_service": 1,
+    "runtime=image;builder=auto;type=web_service": 14
+  },
+  "candidates": [
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "runtime": "",
+      "builder": "auto",
+      "type": "",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1-bfb6d798-n9557",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"22.23.2\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "runtime": "",
+      "builder": "auto",
+      "type": "",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2-6844cc7cb5-zvft2",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"22.23.4\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-8495d76779-j2ljk",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"24.22.1\",\"brotli\":\"1.2.0\",\"modules\":\"137\"}\nlibbrotli1:amd64\t1.0.9-2+deb12u1",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1",
+      "runtime": "go",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-7f9ffb4f99-9z6tq",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"24.22.1\",\"brotli\":\"1.2.0\",\"modules\":\"137\"}\nlibbrotli1:amd64\t1.0.9-2+deb12u1",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "runtime": "",
+      "builder": "auto",
+      "type": "",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2-866f7cbb56-998p4",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-723@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"22.23.3\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Failed",
+      "suspended": false,
+      "pods": []
+    },
+    {
+      "namespace": "tea-da2isimlm39c739m4ofg",
+      "app": "tea-da2isimlm39c739m4ofg-tianpan-v4-web",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-da2isimlm39c739m4ofg-tianpan-v4-web-6bbd77c4d7-dwx8w",
+          "phase": "Running",
+          "images": [
+            "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e"
+          ],
+          "probe_exit": 0,
+          "runtime_probe": "{\"node\":\"22.23.4\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}\nlibbrotli1:amd64\t1.0.9-2+deb12u1",
+          "probe_error": ""
+        }
+      ]
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Canceled",
+      "suspended": true,
+      "pods": []
+    }
+  ],
+  "scope": "Read-only census before signed publication; actual live runtime probes. No-pod failed/suspended Apps are not classified as verified runtime versions. Final adoption census remains required."
+}

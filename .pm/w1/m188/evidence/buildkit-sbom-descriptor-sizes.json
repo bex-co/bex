@@ -1,0 +1,86 @@
+{
+  "checked_at": "2026-10-30T08:50:29.442244+00:00",
+  "images": [
+    {
+      "tag": "python-3.7-bullseye",
+      "index_digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "descriptor_digest_verified": true,
+      "attestation_layers": [
+        {
+          "architecture": "amd64",
+          "manifest_digest": "sha256:6ae3c11fac6ea252d4b1e69e914e6eed93c2aba798d81f32ee5401838e802d38",
+          "blob_digest": "sha256:a383ca05b6d3dcc3814093197cc0373ec8a51ca7eed613c0f6474e961b103549",
+          "bytes": 22002117,
+          "predicate_type": "https://spdx.dev/Document",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "amd64",
+          "manifest_digest": "sha256:6ae3c11fac6ea252d4b1e69e914e6eed93c2aba798d81f32ee5401838e802d38",
+          "blob_digest": "sha256:3ddda15a4767f4e1f2d26648970f9f7911b92748122e7b989806d9474770b70e",
+          "bytes": 29964,
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "arm64",
+          "manifest_digest": "sha256:64872e3635fbc5c142740f0d8fb50a045ef76aeadeb003d92023433d52d3e25e",
+          "blob_digest": "sha256:7216db45151d8db6b40584fe3d89df3cb82400a377d7d4fd48a49c48581b2e6c",
+          "bytes": 21987157,
+          "predicate_type": "https://spdx.dev/Document",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "arm64",
+          "manifest_digest": "sha256:64872e3635fbc5c142740f0d8fb50a045ef76aeadeb003d92023433d52d3e25e",
+          "blob_digest": "sha256:a6248f040c75946956e4690a0f361b096a9f04a5662cac34398dc037df06c895",
+          "bytes": 29964,
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "media_type": "application/vnd.in-toto+json"
+        }
+      ],
+      "basis": "BuildKit generated attestation layer size; corroboration only, not exact publisher Syft predicate size"
+    },
+    {
+      "tag": "node-14-bullseye",
+      "index_digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "descriptor_digest_verified": true,
+      "attestation_layers": [
+        {
+          "architecture": "amd64",
+          "manifest_digest": "sha256:864efbfb46a780ce371074cf7dd3f9531653d9469ba80ab0dc995488684b807c",
+          "blob_digest": "sha256:d088a7bdfdf2f3b02a04a226415a46c351fec01c8acf09cde8b3afca5a9bb934",
+          "bytes": 22727963,
+          "predicate_type": "https://spdx.dev/Document",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "amd64",
+          "manifest_digest": "sha256:864efbfb46a780ce371074cf7dd3f9531653d9469ba80ab0dc995488684b807c",
+          "blob_digest": "sha256:275684c94f667e5115d5b75538e1b75dbe9c4734f44af76cb10c7003f8b75933",
+          "bytes": 28710,
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "arm64",
+          "manifest_digest": "sha256:2d6ac7d190973941c3e776578388111b0a09058bee4639c3cd2987ada168e690",
+          "blob_digest": "sha256:6b9062b25dfc7acd6a0255dc33e29cf2323d80edee5cc3efc766bddc21d1c148",
+          "bytes": 22712995,
+          "predicate_type": "https://spdx.dev/Document",
+          "media_type": "application/vnd.in-toto+json"
+        },
+        {
+          "architecture": "arm64",
+          "manifest_digest": "sha256:2d6ac7d190973941c3e776578388111b0a09058bee4639c3cd2987ada168e690",
+          "blob_digest": "sha256:ea6a5a1a140bc9068c1da6250e3ab5d85dccbdd4e08e0d9e9b6f6f0bc94677ca",
+          "bytes": 28710,
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "media_type": "application/vnd.in-toto+json"
+        }
+      ],
+      "basis": "BuildKit generated attestation layer size; corroboration only, not exact publisher Syft predicate size"
+    }
+  ],
+  "filesystem_layers_pulled": false
+}
