@@ -47,6 +47,7 @@ import { NewProjectCard } from "@/features/projects/components/new-project-card"
 import {
   OverviewEmptySkeleton,
   OverviewPageSkeleton,
+  OverviewPopulatedSkeleton,
 } from "@/common/components/route-skeletons";
 import {
   rememberOverviewShape,
@@ -155,6 +156,7 @@ export function HomePage() {
   const {
     projects,
     loading: projectsLoading,
+    error: projectsError,
     refetch: refetchProjects,
   } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
@@ -221,12 +223,27 @@ export function HomePage() {
   const { currentWorkspaceId } = useWorkspace();
   const shape = useOverviewShape(currentWorkspaceId);
   useEffect(() => {
-    if (loading || error) return;
+    // A failed projects read would record zero project cards.
+    if (loading || error || projectsError) return;
     rememberOverviewShape(
       currentWorkspaceId,
-      showEmpty ? "empty" : "populated",
+      showEmpty
+        ? { kind: "empty" }
+        : {
+            kind: "populated",
+            projects: groups.length,
+            rows: ungrouped.length,
+          },
     );
-  }, [currentWorkspaceId, loading, error, showEmpty]);
+  }, [
+    currentWorkspaceId,
+    loading,
+    error,
+    projectsError,
+    showEmpty,
+    groups.length,
+    ungrouped.length,
+  ]);
 
   function refetchAll() {
     void refetchServices();
@@ -271,8 +288,15 @@ export function HomePage() {
               <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
               <AlertDescription>{t("projects.errorBody")}</AlertDescription>
             </Alert>
-          ) : showSkeleton && shape === "empty" ? (
-            <OverviewEmptySkeleton />
+          ) : showSkeleton ? (
+            shape.kind === "empty" ? (
+              <OverviewEmptySkeleton />
+            ) : (
+              <OverviewPopulatedSkeleton
+                projects={shape.projects}
+                rows={shape.rows}
+              />
+            )
           ) : showEmpty ? (
             <>
               <GettingStartedCard />
@@ -308,14 +332,13 @@ export function HomePage() {
                 </div>
               </section>
 
-              {(ungrouped.length > 0 || showSkeleton) && (
+              {ungrouped.length > 0 && (
                 <section className="space-y-3">
                   <h2 className="text-sm font-semibold">
                     {t("projects.ungroupedHeading")}
                   </h2>
                   <ResourceTable
                     rows={ungrouped}
-                    loading={showSkeleton}
                     servicePending={pending}
                     onRunServiceAction={run}
                     onDatabaseDeleted={refetchAll}
