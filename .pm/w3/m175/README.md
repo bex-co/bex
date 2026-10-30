@@ -1,6 +1,6 @@
 # w3 · m175 — Static sites and the activator survive a node drain
 
-**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** todo — t001–t003, t006, t007 done; 2026-10-29 unblock: t004 approved (public fixture repo), t005 drill on a rebuilt mock cluster (production replicas/PDB already verified); t008 closeout follows
+**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** todo — t001–t004, t006, t007 done (canary static leg green 2026-10-30, run `40983090469`); t005 drain drill on the mock cluster; t008 closeout
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Multi-replica safety audit for static-server and activator — **DONE** | 45m | — |
 | t002 | Two replicas, a PodDisruptionBudget and preferred anti-affinity — **DONE** | 30m | t001 |
 | t003 | Metrics, scrape jobs and per-component availability alerts — **DONE** | 1h | t001 |
-| t004 | Publish the static canary fixture and enable the canary's static leg (needs your OK) | 30m | — |
+| t004 | Publish the static canary fixture and enable the canary's static leg (needs your OK) — **DONE** | 30m | — |
 | t005 | Drain drill on the mock cluster: zero failed probes | 1h | t002, t003 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
