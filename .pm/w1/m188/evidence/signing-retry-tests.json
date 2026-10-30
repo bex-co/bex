@@ -1,0 +1,75 @@
+{
+  "checked_at": "2026-10-30T08:48:54.758083+00:00",
+  "method": "Actual complete workflow signing shell extracted and executed with recording external-command stubs; real cosign/registry not called",
+  "step_sha256": "d0e40507206308c61064cfb5dfefc479af81fdfdb62d0fc758dd4f6c43e3eb07",
+  "cases": [
+    {
+      "case": "first_success",
+      "exit_code": 0,
+      "cosign_attempts": 6,
+      "bounded_timeout_calls": 6,
+      "backoff_seconds": [],
+      "published_tags": 2,
+      "pass": true
+    },
+    {
+      "case": "third_success",
+      "exit_code": 0,
+      "cosign_attempts": 18,
+      "bounded_timeout_calls": 18,
+      "backoff_seconds": [
+        5,
+        10,
+        5,
+        10,
+        5,
+        10,
+        5,
+        10,
+        5,
+        10,
+        5,
+        10
+      ],
+      "published_tags": 2,
+      "pass": true
+    },
+    {
+      "case": "all_config_fail",
+      "exit_code": 1,
+      "cosign_attempts": 3,
+      "bounded_timeout_calls": 3,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "published_tags": 0,
+      "pass": true
+    },
+    {
+      "case": "all_signing_fail",
+      "exit_code": 1,
+      "cosign_attempts": 4,
+      "bounded_timeout_calls": 4,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "published_tags": 0,
+      "pass": true
+    },
+    {
+      "case": "last_attest_fail",
+      "exit_code": 1,
+      "cosign_attempts": 8,
+      "bounded_timeout_calls": 8,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "published_tags": 0,
+      "pass": true
+    }
+  ],
+  "assertions": "All signing args preserve keyless GitHub OIDC and immutable ref; each attempt uses5m with10s forced-termination grace; exhausted retries stop under bash-e before any tag publication; both tags require TUF configuration plus all5 signing/attestation calls"
+}

@@ -1,0 +1,76 @@
+{
+  "command": "cosign signing-config create --with-default-rekor-v2 --out /tmp/bex-m188-sbom-size/signing-config.json",
+  "version": {
+    "gitVersion": "v3.1.4",
+    "gitCommit": "0e48502cf5ef34e2e60bbd3617aa19945712f705",
+    "gitTreeState": "clean",
+    "buildDate": "2026-10-20T17:33:02Z",
+    "goVersion": "go1.27.3",
+    "compiler": "gc",
+    "platform": "darwin/arm64"
+  },
+  "returncode_first": 0,
+  "returncode_overwrite": 0,
+  "same_sha256_after_overwrite": true,
+  "sha256": "8772519b53d24ded8fafeaeadded7a3bc1d13b83ffd6d6fe89e027640aef8990",
+  "file_mode": "0o600",
+  "tuf_root": "/tmp/bex-m188-sbom-size/tuf",
+  "config": {
+    "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+    "caUrls": [
+      {
+        "url": "https://fulcio.sigstore.dev",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2022-04-13T20:06:15Z"
+        },
+        "operator": "sigstore.dev"
+      }
+    ],
+    "oidcUrls": [
+      {
+        "url": "https://oauth2.sigstore.dev/auth",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2022-04-13T20:06:15Z"
+        },
+        "operator": "sigstore.dev"
+      }
+    ],
+    "rekorTlogUrls": [
+      {
+        "url": "https://log2025-1.rekor.sigstore.dev",
+        "majorApiVersion": 2,
+        "validFor": {
+          "start": "2026-01-01T00:00:00Z"
+        },
+        "operator": "sigstore.dev"
+      },
+      {
+        "url": "https://rekor.sigstore.dev",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2021-01-12T11:53:27Z"
+        },
+        "operator": "sigstore.dev"
+      }
+    ],
+    "rekorTlogConfig": {
+      "selector": "ANY"
+    },
+    "tsaUrls": [
+      {
+        "url": "https://timestamp.sigstore.dev/api/v1/timestamp",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2025-07-04T00:00:00Z"
+        },
+        "operator": "sigstore.dev"
+      }
+    ],
+    "tsaConfig": {
+      "selector": "ANY"
+    }
+  },
+  "scope": "read-only TUF retrieval/config creation and CLI help only; no public signing/Rekor POSTs"
+}
