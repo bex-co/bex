@@ -1,0 +1,43 @@
+{
+  "source": "25b99d8a373aedd66ec485708762a59cf5eaa408",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c",
+  "identity": "https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "workflow_sha": "25b99d8a373aedd66ec485708762a59cf5eaa408",
+  "cosign_version": "v3.1.4",
+  "results": {
+    "signature": {
+      "exit_code": 0,
+      "stdout_bytes": 627,
+      "stderr_bytes": 391
+    },
+    "spdx": {
+      "exit_code": 0,
+      "stdout_bytes": 2729554,
+      "stderr_bytes": 391
+    }
+  },
+  "production_ready_claim": false,
+  "signed_spdx_summaries": [
+    {
+      "subjects": [
+        {
+          "name": "ghcr.io/bex-co/bex-operator",
+          "digest": {
+            "sha256": "a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+          }
+        }
+      ],
+      "spdxVersion": "SPDX-2.3",
+      "package_count": 844
+    }
+  ],
+  "all_signed_subjects_match_candidate_digest": true,
+  "raw_evidence_sha256": {
+    "index.json": "a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c",
+    "manifest-amd64.json": "042d1018cf0fb73783e071164d5596a7188b79c9676e89770a363df876c3f20f",
+    "config-amd64.json": "2a45c855afe4e75f93903ee89d308f87afbdb0bcada48eaf0dedcff60d7cacb9",
+    "signature.json": "372b3e0198172deef526b4d874dc0504aae95d28d10b1266a75b471e0e66bd63",
+    "spdx.json": "41c2d5ffd5382d16bfcc769566af91009c7fd089a9c203e840ff189c28be7318"
+  }
+}

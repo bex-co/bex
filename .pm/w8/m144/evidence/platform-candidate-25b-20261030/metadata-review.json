@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-30T17:05:35.110651+00:00",
+  "candidate_ref": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c",
+  "candidate_tag": "25b99d8a373aedd66ec485708762a59cf5eaa408",
+  "anonymous_raw_metadata_sha256_verified": true,
+  "amd64_child_manifest": "sha256:042d1018cf0fb73783e071164d5596a7188b79c9676e89770a363df876c3f20f",
+  "amd64_config": "sha256:2a45c855afe4e75f93903ee89d308f87afbdb0bcada48eaf0dedcff60d7cacb9",
+  "labels": {},
+  "production_ready_claim": false,
+  "qualification_scope": "candidate metadata only; actual signed Ready API/operator still requires qualified green deployment plus selected production inventory"
+}
