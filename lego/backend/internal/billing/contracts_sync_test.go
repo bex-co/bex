@@ -63,25 +63,57 @@ func stripeSubscriptionItemsJSON(t *testing.T, n int, priceOverride map[int]stri
 	return string(b)
 }
 
-func existingContractStub(t *testing.T, items string) (*StripeClient, *stripeStub) {
+// existingSubscriptionRoutes answers one workspace (tea-a) whose live
+// Subscription sub_old already exists. Each route is a func so a test can
+// change what Stripe answers between EnsureContract calls.
+type existingSubscriptionRoutes struct {
+	catalog func() string
+	items   func() (int, string)
+	add     func() (int, string)
+}
+
+func newExistingContractStub(t *testing.T, r existingSubscriptionRoutes) (*StripeClient, *stripeStub) {
 	t.Helper()
-	catalog := stripePriceCatalogJSON(t, pricing.Default.BillableMeterNames())
+	if r.add == nil {
+		r.add = func() (int, string) { return 200, `{"id":"si_new","object":"subscription_item"}` }
+	}
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
 		switch {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodGet && path == "/v1/prices":
-			return 200, catalog
+			return 200, r.catalog()
 		case method == http.MethodGet && path == "/v1/subscription_items":
-			return 200, items
+			return r.items()
 		case method == http.MethodPost && path == "/v1/subscription_items":
-			return 200, `{"id":"si_new","object":"subscription_item"}`
+			return r.add()
 		default:
 			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
 		}
 	})
 	c.storeCustomer("tea-a", "cus_1")
 	return c, stub
+}
+
+func existingContractStub(t *testing.T, items string) (*StripeClient, *stripeStub) {
+	t.Helper()
+	catalog := stripePriceCatalogJSON(t, pricing.Default.BillableMeterNames())
+	return newExistingContractStub(t, existingSubscriptionRoutes{
+		catalog: func() string { return catalog },
+		items:   func() (int, string) { return 200, items },
+	})
+}
+
+// itemAdds is the POST bodies sent to /v1/subscription_items (the GET list
+// carries no body).
+func itemAdds(stub *stripeStub) []string {
+	var posts []string
+	for _, r := range stub.requests("/v1/subscription_items") {
+		if r.body != "" {
+			posts = append(posts, r.body)
+		}
+	}
+	return posts
 }
 
 // TestStripeEnsureContractAddsCatalogDimensionsToExistingSubscription is the
@@ -165,23 +197,16 @@ func TestStripeEnsureContractSyncFailureIsRetried(t *testing.T) {
 	catalog := stripePriceCatalogJSON(t, names)
 	items := stripeSubscriptionItemsJSON(t, len(names), map[int]string{0: ""})
 	fail := true
-	c, stub := newStripeTest(t, func(method, path string) (int, string) {
-		switch {
-		case method == http.MethodGet && path == "/v1/subscriptions":
-			return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
-		case method == http.MethodGet && path == "/v1/prices":
-			return 200, catalog
-		case method == http.MethodGet && path == "/v1/subscription_items":
-			return 200, items
-		case method == http.MethodPost && path == "/v1/subscription_items" && fail:
-			return 400, `{"error":{"type":"invalid_request_error","message":"nope"}}`
-		case method == http.MethodPost && path == "/v1/subscription_items":
+	c, stub := newExistingContractStub(t, existingSubscriptionRoutes{
+		catalog: func() string { return catalog },
+		items:   func() (int, string) { return 200, items },
+		add: func() (int, string) {
+			if fail {
+				return 400, `{"error":{"type":"invalid_request_error","message":"nope"}}`
+			}
 			return 200, `{"id":"si_new","object":"subscription_item"}`
-		default:
-			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
-		}
+		},
 	})
-	c.storeCustomer("tea-a", "cus_1")
 	if err := c.EnsureContract(context.Background(), "tea-a"); err == nil {
 		t.Fatal("EnsureContract must fail when the missing item cannot be added")
 	}
@@ -189,14 +214,42 @@ func TestStripeEnsureContractSyncFailureIsRetried(t *testing.T) {
 	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
-	posts := 0
-	for _, r := range stub.requests("/v1/subscription_items") {
-		if r.body != "" {
-			posts++
-		}
+	if posts := itemAdds(stub); len(posts) != 2 {
+		t.Fatalf("item adds = %d, want the failed one and its retry", len(posts))
 	}
-	if posts != 2 {
-		t.Fatalf("item adds = %d, want the failed one and its retry", posts)
+}
+
+// TestStripeEnsureContractItemListFailureIsRetried: when Stripe cannot list
+// the Subscription's items, nothing is added blind (an add without the list
+// could double-rate a repriced meter), EnsureContract fails so the emitter
+// holds the workspace's rows, and the next call lists again rather than
+// trusting a sync that never happened.
+func TestStripeEnsureContractItemListFailureIsRetried(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	catalog := stripePriceCatalogJSON(t, names)
+	items := stripeSubscriptionItemsJSON(t, len(names), map[int]string{0: ""})
+	listFails := true
+	c, stub := newExistingContractStub(t, existingSubscriptionRoutes{
+		catalog: func() string { return catalog },
+		items: func() (int, string) {
+			if listFails {
+				return 500, `{"error":{"type":"api_error","message":"down"}}`
+			}
+			return 200, items
+		},
+	})
+	if err := c.EnsureContract(context.Background(), "tea-a"); err == nil {
+		t.Fatal("EnsureContract must fail when the Subscription's items cannot be listed")
+	}
+	if posts := itemAdds(stub); len(posts) != 0 {
+		t.Fatalf("items were added without listing the Subscription: %v", posts)
+	}
+	listFails = false
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if posts := itemAdds(stub); len(posts) != 1 || !strings.Contains(posts[0], "price=price_00") {
+		t.Fatalf("retry item adds = %v, want price_00 once", posts)
 	}
 }
 
@@ -228,19 +281,10 @@ func TestStripeEnsureContractToleratesACatalogStripeLacks(t *testing.T) {
 	}
 	catalog := stripePriceCatalogJSON(t, present)
 	items := stripeSubscriptionItemsJSON(t, len(present), nil)
-	c, stub := newStripeTest(t, func(method, path string) (int, string) {
-		switch {
-		case method == http.MethodGet && path == "/v1/subscriptions":
-			return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
-		case method == http.MethodGet && path == "/v1/prices":
-			return 200, catalog
-		case method == http.MethodGet && path == "/v1/subscription_items":
-			return 200, items
-		default:
-			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
-		}
+	c, stub := newExistingContractStub(t, existingSubscriptionRoutes{
+		catalog: func() string { return catalog },
+		items:   func() (int, string) { return 200, items },
 	})
-	c.storeCustomer("tea-a", "cus_1")
 	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
 		t.Fatalf("EnsureContract must not block usage on an incomplete live catalog: %v", err)
 	}
@@ -250,5 +294,49 @@ func TestStripeEnsureContractToleratesACatalogStripeLacks(t *testing.T) {
 		if body != "" {
 			t.Errorf("nothing may be written while the catalog is unresolved: %s %s", stub.hits[i], body)
 		}
+	}
+}
+
+// TestStripeEnsureContractSyncsOnceStripeCarriesTheCatalog: a sync skipped
+// because the live catalog lacked a Price is not remembered as done. Once
+// scripts/stripe-billing-setup.py has created the Price, the next
+// EnsureContract adds exactly that item to the existing Subscription.
+func TestStripeEnsureContractSyncsOnceStripeCarriesTheCatalog(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	withheld := slices.Index(names, "instance_seconds.postgres.1c-2g")
+	if withheld < 0 {
+		t.Fatal("catalog has no 1c-2g dimension to withhold")
+	}
+	full := stripePriceCatalogJSON(t, names)
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(full), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	data := parsed["data"].([]any)
+	parsed["data"] = slices.Delete(slices.Clone(data), withheld, withheld+1)
+	partialJSON, err := json.Marshal(parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog := string(partialJSON)
+	items := stripeSubscriptionItemsJSON(t, len(names), map[int]string{withheld: ""})
+	c, stub := newExistingContractStub(t, existingSubscriptionRoutes{
+		catalog: func() string { return catalog },
+		items:   func() (int, string) { return 200, items },
+	})
+
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("EnsureContract with the Price missing: %v", err)
+	}
+	if posts := itemAdds(stub); len(posts) != 0 {
+		t.Fatalf("items added while the catalog was unresolved: %v", posts)
+	}
+	catalog = full
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("EnsureContract after the Price exists: %v", err)
+	}
+	want := fmt.Sprintf("price=price_%02d", withheld)
+	if posts := itemAdds(stub); len(posts) != 1 || !strings.Contains(posts[0], want) {
+		t.Fatalf("item adds = %v, want exactly %s", posts, want)
 	}
 }
