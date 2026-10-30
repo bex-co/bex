@@ -1,0 +1,44 @@
+{
+  "schema": "bex.m188.approved-source-equivalence-review/v1",
+  "exact_sha": "e47a2c6157339a3a786118866f28b4ee8b619774",
+  "reviewed_baseline": "d94787bb4fb93751e485fe6d47946d82cc6da052",
+  "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+  "workflow_byte_identical": true,
+  "native_go_byte_identical": true,
+  "official_matrix_equal": true,
+  "recipe_changes": [],
+  "non_markdown_recipe_unchanged": true,
+  "security_and_portable_ancestors_verified": true,
+  "recovery_authorizations_semantically_identical": true,
+  "recovery_runtime_names": [
+    "node-16-bookworm",
+    "node-20-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm"
+  ],
+  "approved_roles": {
+    "producer": "all11",
+    "verification": "all11"
+  },
+  "approval_basis": "Root authorized exact inspection/admission only after unchanged workflow/recipe/source/input/auth semantics; no alias admitted transitively. No candidate approval/count mutation.",
+  "full_ancestor_delta": [
+    "D\t.pm/w2/056.md",
+    "A\t.pm/w2/057.md",
+    "M\t.pm/w2/README.md",
+    "A\t.pm/w2/done/056.md",
+    "M\tdocs/ADR043-tenant-namespace-isolation.md",
+    "M\tlego/backend/internal/core/quota.go",
+    "A\tlego/backend/internal/store/datastore_quota.go",
+    "A\tlego/backend/internal/store/datastore_quota_room_test.go",
+    "M\tlego/backend/internal/store/namespaces.go",
+    "M\tlego/backend/internal/store/namespaces_test.go"
+  ],
+  "ancestor_commits": [
+    "2ca9ae8cb (backend datastore quotas and ADR043)",
+    "e47a2c615 (w2 PM only)"
+  ],
+  "all_ancestor_delta_pm_w2_only": false,
+  "publisher_input_closure_unchanged": true,
+  "closure_reason": "Workflow build contexts are deploy/native-base; matrix input is native.go; shared actions/recovery auth unchanged. Backend quota/store/tests and ADR043 do not enter publisher contexts or matrix."
+}

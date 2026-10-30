@@ -142,7 +142,7 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 
 ### 发布后独立核对发现 SBOM 子镜像绑定差异 — 2026-10-30
 
-- Node14 新版发布工作流成功，五份完整 bundle 的证书、精确 workflow SHA、透明日志和可信时间戳均通过；独立内容复核发现 amd64 SPDX root `99158...` 与实际 registry 子 manifest `933c...` 不一致，见 [独立检查](evidence/node14-independent-semantic-review.json)。Trivy 的两架构 config 与原 index 子镜像均吻合；不能仅以共同 index subject 或版本相同放过 SPDX 差异。该候选继续 held，不计入验收。
+- Node14 新版发布工作流成功，五份完整 bundle 的证书、精确 workflow SHA、透明日志和可信时间戳均通过；独立内容复核发现 amd64 SPDX root `99158...` 与实际 registry 子 manifest `933c...` 不一致，见 [独立检查](evidence/node14-independent-semantic-review.json)。Trivy 的两架构 config 与原 index 子镜像均吻合；不能仅以共同 index subject 或版本相同放过 SPDX 差异。当时继续 held；Node14 后于 UTC 11:27 以实际层内容等价证明解除，见下节独立验收。
 - Syft 自动选源支持 Docker-save 合成 manifest；现有 metadata 尚未证明该临时摘要与目标子镜像等价，不添加放宽规则。发布改为明确 `syft registry:$REF`，同一已编译 index 重新走全部发布门槛。
 - [已有真实 registry 来源 Node14 预检](evidence/node14-registry-source-preflight.json) 的 amd64 root 与实际 `933c...` 一致，语言与补丁包版本正确；这份 Node14 记录使用 Syft1.55.0，不能冒充1.51.1 实测。另有同一 prefix 的真实 Syft1.51.1 Python3.7 扫描记录。正式新签名仍需实际重放后独立核对。
 
@@ -156,3 +156,7 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 ### Python3.9 定向恢复 — 2026-10-30
 
 原始双架构索引的 Python3.9.25、producer revision、实际离线工具/运行检查与两份扫描均已核实；原任务仅在首份 SPDX 向 Rekor v1 提交时失败，见 [原始证据](evidence/python39-recovery-intake/receipt.json)。已将该精确 digest 加入同源恢复授权；恢复需重做当前双架构门槛、扫描、registry 来源 SBOM 与现代签名，不提前计算为通过。Node14 授权删除及其余五个精确恢复路径的选择器检查共十二项通过。
+
+### 其余旧 SPDX 绑定与 registry 重放 — 2026-10-30
+
+Node16、Python3.7、Python3.8 的旧 amd64 SPDX 也未证明与实际子镜像内容绑定，见 [三项 held 收据](evidence/sbom-binding-holds-20261030.json)。这不是不安全内容的结论，也不添加任意 digest 别名；均保留既有精确索引授权，以明确 registry 来源重新运行完整门槛、报告及签名。Node16 由 41043547006 推进，Python3.7/3.8 分别定向重放 41051768218/41052230534，Python3.9 恢复为 41050319125。实际 [d947](evidence/publisher-source-reviews/d947.json) / [e47](evidence/publisher-source-reviews/e47.json) 源码逐一检查了发布输入范围，未把 main 的新提交默认当作已批准；当前仍为 1/11，source pin 未切换。
