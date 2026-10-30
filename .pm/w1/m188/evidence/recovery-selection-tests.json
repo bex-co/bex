@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-10-30T07:14:44.991636+00:00",
+  "method": "Actual workflow embedded selection script against isolated temporary Git commits; no Docker, signing, network, or production mutation",
+  "results": [
+    {
+      "case": "authorized Node14 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized Node16 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "unlisted runtime",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "changed upstream base",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "different package rejected",
+      "expected": "reject",
+      "observed": "reject",
+      "exit": 1
+    },
+    {
+      "case": "documentation-only delta remains eligible",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "nonMD to MD rename invalidates recovery",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "removed authorization rebuilds",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    }
+  ]
+}

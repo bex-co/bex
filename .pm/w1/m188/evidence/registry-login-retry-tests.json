@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-30T07:16:38.668921+00:00",
+  "method": "Actual workflow shell with isolated no-network Docker/clock stubs; fixture credential only via stdin; timeout stub verifies the 60s bound (Mac host lacks Linux coreutils timeout)",
+  "results": [
+    {
+      "case": "first success",
+      "attempts": 1,
+      "exit": 0,
+      "credential_in_argv": false,
+      "backoff_seconds": []
+    },
+    {
+      "case": "third success",
+      "attempts": 3,
+      "exit": 0,
+      "credential_in_argv": false,
+      "backoff_seconds": [
+        "5",
+        "10"
+      ]
+    },
+    {
+      "case": "all attempts fail",
+      "attempts": 3,
+      "exit": 1,
+      "credential_in_argv": false,
+      "backoff_seconds": [
+        "5",
+        "10"
+      ]
+    }
+  ]
+}

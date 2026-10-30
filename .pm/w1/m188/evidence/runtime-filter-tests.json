@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-30T07:19:36.364610+00:00",
+  "method": "Actual workflow matrix shell against current authoritative Go-derived matrix; no publication/network",
+  "results": [
+    {
+      "case": "all reviewed rows",
+      "exit": 0,
+      "expected_rows": 27
+    },
+    {
+      "case": "one reviewed row",
+      "exit": 0,
+      "expected_rows": 1
+    },
+    {
+      "case": "unknown target",
+      "exit": 1,
+      "expected_rows": null
+    },
+    {
+      "case": "injection is data",
+      "exit": 1,
+      "expected_rows": null
+    }
+  ]
+}

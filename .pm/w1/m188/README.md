@@ -104,3 +104,12 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - Python/Ruby 的当前完整配方与原版 check.Dockerfile 通过；Node20 组合当前最终配方，仅复用刚验证的编译产物，保留原 Bookworm 主镜像/ENV/npm，完整工具、Bullseye gate、安全检查及真实主运行时构建/HTTP（6.680s）均通过。见 [Python/Ruby](evidence/portable-python-ruby-suppliers.json)、[Node20 主镜像](evidence/portable-node20-final-native.json)。
 - [ABI/config 补充核查](evidence/node-config-compatibility.json) 未发现 Node14/20 的配置或实际 release/module paths/features/FIPS/ICU 合同变化。所有本地 overlay 已明确范围，不代替签名发布验收。
 - 修正配方已通过 `bfdeb6221` ship。正式发布 41000570846 正在构建首批 Node14/16；11 个不可变签名候选、接入和 live 验收仍未完成，t002–t008 保持开放。
+
+### 正式发布失败处置：扫描预算、登录重试与受限恢复 — 2026-10-30
+
+- Node14/16 的正式双架构构建及离线/Bullseye 检查通过，但 Trivy 默认时限在分析 GCC10/12 `lto1` 时耗尽；没有产生完整扫描报告或签名，仍不可采用。已核实的原索引分别为 `4fec31...` / `280207...`，出处与完整 digest 见 [14](evidence/node14-publisher-scan-timeout.json)、[16](evidence/node16-publisher-scan-timeout.json)。Node18 在编译前因 GHCR 等待响应超时失败，见 [登录证据](evidence/node18-publisher-login-timeout.json)。原 Node20/Python 等任务保留。
+- 逐架构扫描预算增加到有界 20m，不跳过扫描或签名；登录采用最多三次、单次 60s、5/10s 退避，并始终清除 job 的 GHCR 凭据。
+- 实测导入 Node14 inline cache 成功，但中间编译阶段未命中，已立即终止本地测试、未继续冷编译；见 [缓存证据](evidence/node14-inline-cache-miss.json)。因此不以“导入缓存”冒充省掉编译。
+- `.github/native-base-recovery.json` 仅授权已人工核实的同源 Node14/16 不可变索引：base/package/非 Markdown 配方必须保持，重命名也算变更；恢复会重做全部双架构检查、扫描、SBOM 与签名。原镜像 producer SHA 与新 verification SHA 分开记录。实际 source pin 仍未切换。验证后的 discovery tag 发布即删除对应授权；数据文件清理不会再触发全部发布。
+- 受限选择器 8 项实际隔离 Git 测试（含非 MD→MD 重命名）、登录脚本三种成功/失败路径、runtime 矩阵四种选择/注入数据路径通过，见 [恢复选择](evidence/recovery-selection-tests.json)、[登录](evidence/registry-login-retry-tests.json)、[矩阵](evidence/runtime-filter-tests.json)。Actions/image-pin/lint 守卫通过；修正还需 ship 后实际发布验收。
+- 接入的完整 build 包模拟 11 个平台 ref/55 项 inventory 通过，见 [仅单元数据预检](evidence/adoption-unit-dryrun.json)。扩大线上 census 核实三个旧 auto 配置实际为 Alpine/Node22，结合派发代码按客户 Dockerfile 路径排除；历史构建记录缺失被明确保留，不作 Brotli 安全结论，见 [来源分类](evidence/auto-runtime-classification.json)。当前仍未发现运行中的 11 个旧版平台运行时。

@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-10-30T07:06:04.285610+00:00",
+  "run_id": 41000570846,
+  "job_id": 123885951331,
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "log_gzip": "/tmp/bex-m188-node16-scan-timeout/job-123885951331.log.gz",
+  "log_sha256": "dcb864daf236186cece3fe2e92868a6a5fb7f872ef7d61e3dba9a7a9e6c6fddd",
+  "evidence": "/tmp/bex-m188-node16-scan-timeout/evidence.txt",
+  "adoptable": false,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "failure_step": "scan amd64 candidate",
+  "failure": "Trivy default timeout analyzing usr/lib/gcc/x86_64-linux-gnu/12/lto1; semaphore acquire: context deadline exceeded",
+  "build_passed": true,
+  "both_arch_runtime_portability_gate_passed": true,
+  "signed_reports_complete": false,
+  "anonymous_metadata_proof": "/tmp/bex-m188-node16-built-candidate.json"
+}

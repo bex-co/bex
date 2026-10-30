@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-10-30T06:32:19.878040+00:00",
+  "run_id": 41000570846,
+  "job_id": 123885951138,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951138",
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "failure_step": "scan amd64 candidate",
+  "failure": "Trivy default timeout; analysis of usr/lib/gcc/x86_64-linux-gnu/10/lto1 hit semaphore acquire: context deadline exceeded",
+  "build_passed": true,
+  "both_arch_runtime_portability_gate_passed": true,
+  "signed_reports_complete": false,
+  "adoptable": false,
+  "log_gzip": "/tmp/bex-m188-node14-scan-timeout/job-123885951138.log.gz",
+  "log_sha256": "58028095c29c731e317a4024f4a929cc652c26df19585716decd475947eea0a3",
+  "evidence": "/tmp/bex-m188-node14-scan-timeout/evidence.txt"
+}
