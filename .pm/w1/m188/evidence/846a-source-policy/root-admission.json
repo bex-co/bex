@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.explicit-root-source-role-admission/v1",
+  "at": "2026-10-30T20:25:40.017641+00:00",
+  "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "baseline": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "admitted": true,
+  "roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "prior_pending_review": {
+    "file": "/tmp/bex-m188-846a-source-review.json",
+    "sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5",
+    "historical_admitted_false_preserved": true
+  },
+  "independent_reviews": {
+    "root": "Complete seven-path nonPM closure/digest-only generated pins; prior three recovery entries unchanged; all113 archive/raw hashes; exact tested-proposal workflow39b2; nine retained stub controls read.",
+    "node_brotli_patch": "Followed pinned primary Trivy/GCR full staging/digest/config binding and default Java/vuln/secret coverage; no blocking semantic defect. No test reruns.",
+    "cnb_followup": "Independently followed retained and official primary staging sources; exact immutable REF/platform, fataloversize, no skippedfindings, Syft/Cosign gates unchanged; foreign entries scoped out."
+  },
+  "root_decision": "Admit this exact source for future producer/verifier role validation; full candidate crypto, source, per-architecture runtime, complete reports, signatures and fresh discovery remain required. Older admitted successful profiles remain valid; preserve all8 immutable proofs and all prior source roles.",
+  "operational_limits": [
+    "Actual28GiB capacity/peak staging unproved; failclosed checks remain required.",
+    "ColdJava DBprefetch can add945MiB/about13min; two separatebounded DBcalls perarch do not produce scan approval.",
+    "Staging uses existing20minute scan budget; free-space check is not a reservation and SIGKILL can preventcleanup.",
+    "Compressed digests are validated; no additional independentlycomputedDiffID witness is claimed."
+  ],
+  "catalog_cleanup_scope": "Retire only m188 eleven tags after their acceptance; preserve unrelated Elixir authorizations. Global emptiness is not required for w1 completion.",
+  "existing_legacy_requests_preserved": [
+    41101339222,
+    41113367877,
+    41113373387
+  ],
+  "candidate_promotion_performed": false,
+  "source_adoption_performed": false
+}

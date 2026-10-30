@@ -1,0 +1,85 @@
+{
+  "schema": "bex.m188.source-policy-transition-custody/v1",
+  "at": "2026-10-30T20:35:15.189690+00:00",
+  "files": [
+    {
+      "source": "/private/tmp/bex-m188-846a-source-review.json",
+      "archive": "pending-review.json",
+      "bytes": 2522,
+      "sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5"
+    },
+    {
+      "source": "/private/tmp/bex-m188-846a-root-source-admission.json",
+      "archive": "root-admission.json",
+      "bytes": 2390,
+      "sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1"
+    },
+    {
+      "source": "/private/tmp/bex-m188-846a-cnb-semantic-review.json",
+      "archive": "semantic-review.json",
+      "bytes": 9767,
+      "sha256": "770f74787ec460e9a0913fb9292e8a860e3a070b5daae1eb88d7a8dbb6ed1aa9"
+    },
+    {
+      "source": "/private/tmp/bex-m188-846a-observer-registration.json",
+      "archive": "observer-registration.json",
+      "bytes": 1371,
+      "sha256": "5405e047cd8ec2da485289c586f77e0cdbd7cc101a8e642c3ce1091754b41013"
+    },
+    {
+      "source": "/private/tmp/bex-m188-846a-source-policy-activation.json",
+      "archive": "policy-activation.json",
+      "bytes": 14628,
+      "sha256": "6421031f65befc7d47b062256382883a10a18adc1ae61cb8685422a2e38dfc7f"
+    },
+    {
+      "source": "/private/tmp/bex-m188-846a-eight-candidate-regressions.json",
+      "archive": "eight-candidate-regressions.json",
+      "bytes": 4494,
+      "sha256": "2dbcaca14cfb9f0fa7f62c9c93b34f7d6de4cade0597cb71b6dd6d39259dc63b"
+    },
+    {
+      "source": "/private/tmp/bex-m188-adoption-plan.json",
+      "archive": "adoption-plan.json",
+      "bytes": 17170,
+      "sha256": "9b8fdd890d2cb1cfc1eec6ee331ddd06c6cad36a6db66963f9cd4b9523c5c413"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-snapshots/fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76.py",
+      "archive": "guard-before.py",
+      "bytes": 84279,
+      "sha256": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-snapshots/7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa.py",
+      "archive": "guard-after.py",
+      "bytes": 84323,
+      "sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa"
+    },
+    {
+      "source": "/private/tmp/bex-m188-aggregate-before-846a-source-policy-21bf2809cde9587b720b850f16592285cc41eceef26ca91ab183cf8273a4eb6f.json",
+      "archive": "context-before.json",
+      "bytes": 143106,
+      "sha256": "21bf2809cde9587b720b850f16592285cc41eceef26ca91ab183cf8273a4eb6f"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-receipt-context-after-846a-source-admission.json",
+      "archive": "context-after.json",
+      "bytes": 143154,
+      "sha256": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-846a-current5.json",
+      "archive": "current5-selector-controls.json",
+      "bytes": 3773,
+      "sha256": "3819d1c8a720cc15015f22ae62fcbfd827e1dd366da24967cc8c96ae10113279"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/.github/native-base-recovery.json",
+      "archive": "catalog-at-controls.json",
+      "bytes": 5396,
+      "sha256": "713fbdec11643cf87f511cde57e68add1b44450b6da774ef686ec14f59ceeecf"
+    }
+  ],
+  "scope": "Exact source-role/canonical-guard update and persisted-eight proof regressions only. Pending-review false, explicit later admission, all8 originals and before/after states preserved. No candidate promotion, adoption or actual producer replay claim."
+}

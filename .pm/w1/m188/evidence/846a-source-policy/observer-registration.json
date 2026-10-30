@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-30T20:26:21.016862+00:00",
+  "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "root_admission": {
+    "file": "/tmp/bex-m188-846a-root-source-admission.json",
+    "sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1"
+  },
+  "source_store": {
+    "file": "/tmp/bex-m188-publisher-quarantine.json",
+    "before_sha256": "5cec3a5263ff2633989fc2bade99da7968af4123dab5b8b4f6a2f381fc07a7ff",
+    "after_sha256": "6497720a322a6fb591eb3cbfa3f569813d3ae7e3ce3d9a097a6a3a77d84cb598"
+  },
+  "known_runs": {
+    "file": "/tmp/bex-m188-known-publishers.json",
+    "run_ids": [
+      41121784740,
+      41121900239,
+      41121921308
+    ],
+    "before_sha256": "b67836dd743b038ca00b63a47c086feb54a35eef128aa645d1db2b8cff375bb0",
+    "after_sha256": "ccd60c5a351d2652983d26f4356de1ba3aa5a70164bd2563c9ee2235a2d452f4"
+  },
+  "profile": "complete Trivy remote-layer staging, DB prefetch, bounded full scans; exact workflow39b2; historical profiles remain valid",
+  "protected_unchanged": {
+    "/tmp/bex-m188-published-acceptance.json": "21bf2809cde9587b720b850f16592285cc41eceef26ca91ab183cf8273a4eb6f",
+    "/tmp/bex-m188-prepare-adoption.py": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76"
+  },
+  "remote_mutations": false,
+  "aggregate_mutation": false,
+  "guard_mutation": false,
+  "candidate_promotion": false
+}
