@@ -118,3 +118,83 @@ func TestHAUpdateGraphQLAndMCP(t *testing.T) {
 		t.Fatalf("MCP disable: %v %+v", err, out)
 	}
 }
+
+// TestHAPlanChangeRuleOnGraphQLAndMCP pins the HA plan-change rule (w2/m171,
+// t001's fallback) on the two adapters REST's tests do not reach: moving an HA
+// database below 1 CPU is refused with the remedy on GraphQL updateDatabasePlan
+// (and its dry run) and on MCP update_postgres, and writes nothing; the same
+// MCP call that also turns HA off is allowed; a move between HA-eligible plans
+// keeps HA on. GraphQL's HA dry run previews without writing.
+func TestHAPlanChangeRuleOnGraphQLAndMCP(t *testing.T) {
+	const remedy = "disable high availability first"
+	seed := func(name, plan string, ha bool) *appv1alpha1.Database {
+		return &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec:       appv1alpha1.DatabaseSpec{Name: name, Plan: plan, StorageGB: 10, HighAvailability: ha},
+		}
+	}
+	svc, cl := newService(seed("gql-ha", "1c-2g", true), seed("mcp-ha", "basic-4gb", true), seed("plain-db", "1c-2g", false))
+	spec := func(name string) appv1alpha1.DatabaseSpec {
+		t.Helper()
+		return getDatabase(t, cl, name).Spec
+	}
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := func(query string) *graphql.Result {
+		return graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+	}
+
+	for _, dry := range []bool{false, true} {
+		res := gql(fmt.Sprintf(`mutation { updateDatabasePlan(id: "gql-ha", plan: "basic-1gb", dryRun: %t) { id plan } }`, dry))
+		if len(res.Errors) == 0 || !strings.Contains(fmt.Sprint(res.Errors), remedy) {
+			t.Errorf("GraphQL updateDatabasePlan below 1 CPU under HA (dryRun %t) => want %q, got %+v", dry, remedy, res)
+		}
+	}
+	if s := spec("gql-ha"); s.Plan != "1c-2g" || !s.HighAvailability {
+		t.Fatalf("refused GraphQL plan change wrote spec: plan %q HA %v", s.Plan, s.HighAvailability)
+	}
+	if res := gql(`mutation { updateDatabasePlan(id: "gql-ha", plan: "2c-4g") { plan } }`); len(res.Errors) > 0 {
+		t.Fatalf("GraphQL move between HA-eligible plans: %v", res.Errors)
+	}
+	if s := spec("gql-ha"); s.Plan != "basic-4gb" || !s.HighAvailability {
+		t.Fatalf("HA-eligible move: plan %q HA %v, want basic-4gb with HA", s.Plan, s.HighAvailability)
+	}
+
+	res := gql(`mutation { updateDatabaseHighAvailability(id: "plain-db", enabled: true, dryRun: true) { highAvailabilityRequested } }`)
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL HA dry run: %v", res.Errors)
+	}
+	if got := res.Data.(map[string]any)["updateDatabaseHighAvailability"].(map[string]any); got["highAvailabilityRequested"] != true {
+		t.Fatalf("HA dry run previewed %+v, want highAvailabilityRequested", got)
+	}
+	if spec("plain-db").HighAvailability {
+		t.Fatal("GraphQL HA dry run wrote spec.highAvailability")
+	}
+
+	cs, cleanup := pgMCPSession(t, svc)
+	defer cleanup()
+	update := func(args map[string]any) *mcp.CallToolResult {
+		t.Helper()
+		args["postgresId"] = "mcp-ha"
+		out, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "update_postgres", Arguments: args})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	out := update(map[string]any{"plan": "basic-256mb"})
+	if text, _ := json.Marshal(out.Content); !out.IsError || !strings.Contains(string(text), remedy) {
+		t.Fatalf("MCP plan below 1 CPU under HA => want a tool error naming %q, got %s", remedy, text)
+	}
+	if s := spec("mcp-ha"); s.Plan != "basic-4gb" || !s.HighAvailability {
+		t.Fatalf("refused MCP plan change wrote spec: plan %q HA %v", s.Plan, s.HighAvailability)
+	}
+	if out := update(map[string]any{"plan": "basic-256mb", "enableHighAvailability": false}); out.IsError {
+		t.Fatalf("MCP plan below 1 CPU with HA off in the same call: %+v", out.Content)
+	}
+	if s := spec("mcp-ha"); s.Plan != "basic-256mb" || s.HighAvailability {
+		t.Fatalf("MCP downgrade + HA off: plan %q HA %v, want basic-256mb without HA", s.Plan, s.HighAvailability)
+	}
+}

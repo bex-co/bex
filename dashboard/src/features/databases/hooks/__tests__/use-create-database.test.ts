@@ -89,6 +89,27 @@ describe("useCreateDatabase", () => {
     expect(mutate.mock.calls[0][0].variables.environmentId).toBe("env-1");
   });
 
+  // w2/m171: like Render's create body, enableHighAvailability travels only
+  // when asked for; false or absent leaves it off the wire entirely.
+  it("sends enableHighAvailability only when HA is requested", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createDatabase: { id: "dpg-1" } } });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    await act(async () => {
+      await result.current.create({ ...input, highAvailability: true });
+      await result.current.create({ ...input, highAvailability: false });
+      await result.current.create(input);
+    });
+
+    const sent = mutate.mock.calls.map(
+      (call) => call[0].variables.enableHighAvailability,
+    );
+    expect(sent).toStrictEqual([true, undefined, undefined]);
+  });
+
   it("follows a workspace switch — the next create carries the new ownerId", async () => {
     const mutate = vi
       .fn()
