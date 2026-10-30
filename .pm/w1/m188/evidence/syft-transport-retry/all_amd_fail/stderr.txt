@@ -1,0 +1,3 @@
+Syft amd64 attempt 1 failed
+Syft amd64 attempt 2 failed
+Syft amd64 attempt 3 failed

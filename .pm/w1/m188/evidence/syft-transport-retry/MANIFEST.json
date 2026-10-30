@@ -1,0 +1,211 @@
+{
+  "schema": "bex.m188.syft-retry-behavior-custody/v1",
+  "at": "2026-10-30T17:34:09.442787+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/actionlint.yaml",
+      "archive": "actionlint.yaml",
+      "bytes": 55,
+      "sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/actual-proposed-signing-step.raw.sh",
+      "archive": "actual-proposed-signing-step.raw.sh",
+      "bytes": 1922,
+      "sha256": "1409a8106d40226bcd362523e21022d167cae9f1ba6323720137d30f1f488172"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_amd_fail/events.jsonl",
+      "archive": "all_amd_fail/events.jsonl",
+      "bytes": 2867,
+      "sha256": "9154ee9c418183278839e15ed0e2c0eaeea8e6305f678665ea69354c92e4ebad"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_amd_fail/stderr.txt",
+      "archive": "all_amd_fail/stderr.txt",
+      "bytes": 84,
+      "sha256": "433321197dbb443d222e4978dfd6ef9980d91ecc8901060c97145718ac8d942f"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_amd_fail/stdout.txt",
+      "archive": "all_amd_fail/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_arm_fail/events.jsonl",
+      "archive": "all_arm_fail/events.jsonl",
+      "bytes": 5045,
+      "sha256": "29328932417aef89a685a4d8e65dc4ff488d122dba0c2a7697b5fdd2279a16f4"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_arm_fail/stderr.txt",
+      "archive": "all_arm_fail/stderr.txt",
+      "bytes": 84,
+      "sha256": "24952921eb3ff4e23e4bda50717f8a07539096ec92cc6ab173477cb928c81a97"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/all_arm_fail/stdout.txt",
+      "archive": "all_arm_fail/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/behavior-receipt.json",
+      "archive": "behavior-receipt.json",
+      "bytes": 7092,
+      "sha256": "e90716285ed190a82f628916efa6b5db15c3807c5efeefc7cbb2a1d55e4fa7c0"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/config_fail/events.jsonl",
+      "archive": "config_fail/events.jsonl",
+      "bytes": 1506,
+      "sha256": "1b72b1fd325aae4a0fd241fcfc3eba56853a8bed43b307a80335f7971f3a9aa6"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/config_fail/stderr.txt",
+      "archive": "config_fail/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/config_fail/stdout.txt",
+      "archive": "config_fail/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/deadline_arm/events.jsonl",
+      "archive": "deadline_arm/events.jsonl",
+      "bytes": 4244,
+      "sha256": "5cd4e1dabcbb6e652489883406c198af49dd1bf91ca4ba3513963412785649f5"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/deadline_arm/stderr.txt",
+      "archive": "deadline_arm/stderr.txt",
+      "bytes": 84,
+      "sha256": "24952921eb3ff4e23e4bda50717f8a07539096ec92cc6ab173477cb928c81a97"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/deadline_arm/stdout.txt",
+      "archive": "deadline_arm/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/healthy/events.jsonl",
+      "archive": "healthy/events.jsonl",
+      "bytes": 5929,
+      "sha256": "5b1b00fca7841dc0894ffcf2e7bfd9381f51a0c2328cd2426ab6bf5292df32ff"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/healthy/stderr.txt",
+      "archive": "healthy/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/healthy/stdout.txt",
+      "archive": "healthy/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/last_attest_fail/events.jsonl",
+      "archive": "last_attest_fail/events.jsonl",
+      "bytes": 7473,
+      "sha256": "81eaff48eb2617fedc6ad1f541f596f76da9f4609a42f97922e511b4166606e5"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/last_attest_fail/stderr.txt",
+      "archive": "last_attest_fail/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/last_attest_fail/stdout.txt",
+      "archive": "last_attest_fail/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/native-base-image.before.yml",
+      "archive": "native-base-image.before.yml",
+      "bytes": 11989,
+      "sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/native-base-image.patch",
+      "archive": "native-base-image.patch",
+      "bytes": 1890,
+      "sha256": "1aa348c836518809bf4e46829e39833cc4a6378d54e940bd63125134b332a002"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/native-base-image.proposed.yml",
+      "archive": "native-base-image.proposed.yml",
+      "bytes": 12496,
+      "sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/rendered-signing-step.sh",
+      "archive": "rendered-signing-step.sh",
+      "bytes": 1997,
+      "sha256": "df02b5e315b7674425256d701434323b3105a56389bfa67d734a5696f9c7d1fd"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/sign_fail/events.jsonl",
+      "archive": "sign_fail/events.jsonl",
+      "bytes": 2573,
+      "sha256": "34648ef4b1904f7bee9f191e3f78f1b2d92932b09a94a5eb23b2b03fed1154f3"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/sign_fail/stderr.txt",
+      "archive": "sign_fail/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/sign_fail/stdout.txt",
+      "archive": "sign_fail/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/test-summary.json",
+      "archive": "test-summary.json",
+      "bytes": 6103,
+      "sha256": "726f045021a4d8f9bec31f972ce88700bceb301d75d6b021878e5ce1af86ed9c"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/test.py",
+      "archive": "test.py",
+      "bytes": 10561,
+      "sha256": "5ac7157d8d29fea84fdf7d58002d42a7db7cebeba4570251a1e0854519186409"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/transient_arm/events.jsonl",
+      "archive": "transient_arm/events.jsonl",
+      "bytes": 6633,
+      "sha256": "7cb31833c868d6d00a0ba5aff3beb5d33f647b0f9aacaa3e847527a0f6465871"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/transient_arm/stderr.txt",
+      "archive": "transient_arm/stderr.txt",
+      "bytes": 28,
+      "sha256": "826b7ef015e3e11e275f47187df1c02fa0223dc242ef3cfccf120037cda51d26"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/transient_arm/stdout.txt",
+      "archive": "transient_arm/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-retry-proposal/validation.json",
+      "archive": "validation.json",
+      "bytes": 4972,
+      "sha256": "de312292a872e9461118d49223b750d9a76b392d19d38e92e760d11a2dc1f1ea"
+    }
+  ],
+  "scope": "Actual proposed whole-shell controlled command behavior and static checks; source, reports and event logs retained. No real registry/Syft/Cosign run or30-minute wall clock claim."
+}

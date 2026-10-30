@@ -236,10 +236,24 @@ jobs:
               sleep "$((attempt * 5))"
             done
           }
+          generate_sbom() {
+            local arch="$1"
+            local output="native-$arch.spdx.json"
+            for attempt in 1 2 3; do
+              rm -f -- "$output"
+              if GODEBUG=http2client=0 timeout --kill-after=10s 30m syft "registry:$REF" --platform "linux/$arch" -o spdx-json > "$output"; then
+                return 0
+              fi
+              echo "Syft $arch attempt $attempt failed" >&2
+              rm -f -- "$output"
+              [ "$attempt" -lt 3 ] || return 1
+              sleep "$((attempt * 5))"
+            done
+          }
           retry_signing cosign signing-config create --with-default-rekor-v2 --out "$RUNNER_TEMP/native-signing-config.json"
           retry_signing cosign sign --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" "$REF"
           for arch in amd64 arm64; do
-            syft "registry:$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
+            generate_sbom "$arch"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
           done

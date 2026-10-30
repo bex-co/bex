@@ -1,0 +1,206 @@
+{
+  "schema": "bex.proposed-syft-bounded-retry-controls/v1",
+  "at": "2026-10-30T17:31:37.495821+00:00",
+  "method": "Actual proposed complete signing shell extracted, GitHub expression values rendered, executed underbash-e with recording Syft/Cosign/timeout/sleep/docker stubs; actual filesystem cleanup and redirected report bytes",
+  "baseline_repository_workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "proposed_workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "patch_sha256": "1aa348c836518809bf4e46829e39833cc4a6378d54e940bd63125134b332a002",
+  "raw_signing_shell_sha256": "1409a8106d40226bcd362523e21022d167cae9f1ba6323720137d30f1f488172",
+  "rendered_signing_shell_sha256": "df02b5e315b7674425256d701434323b3105a56389bfa67d734a5696f9c7d1fd",
+  "test_source_sha256": "5ac7157d8d29fea84fdf7d58002d42a7db7cebeba4570251a1e0854519186409",
+  "retry_signing_body_identical_to_baseline": true,
+  "cases": [
+    {
+      "case": "healthy",
+      "pass": true,
+      "shell_exit": 0,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 1
+      },
+      "syft_outer_deadline_attempts": 2,
+      "cosign_5m_attempts": 6,
+      "attestation_attempts": 4,
+      "discovery_tags": 2,
+      "backoff_seconds": [],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/healthy/events.jsonl"
+    },
+    {
+      "case": "transient_arm",
+      "pass": true,
+      "shell_exit": 0,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 2
+      },
+      "syft_outer_deadline_attempts": 3,
+      "cosign_5m_attempts": 6,
+      "attestation_attempts": 4,
+      "discovery_tags": 2,
+      "backoff_seconds": [
+        5
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/transient_arm/events.jsonl"
+    },
+    {
+      "case": "all_amd_fail",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 3,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 3,
+      "cosign_5m_attempts": 2,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/all_amd_fail/events.jsonl"
+    },
+    {
+      "case": "all_arm_fail",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 3
+      },
+      "syft_outer_deadline_attempts": 4,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 2,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/all_arm_fail/events.jsonl"
+    },
+    {
+      "case": "deadline_arm",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 4,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 2,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/deadline_arm/events.jsonl"
+    },
+    {
+      "case": "sign_fail",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 0,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 0,
+      "cosign_5m_attempts": 4,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/sign_fail/events.jsonl"
+    },
+    {
+      "case": "last_attest_fail",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 1,
+        "arm64": 1
+      },
+      "syft_outer_deadline_attempts": 2,
+      "cosign_5m_attempts": 8,
+      "attestation_attempts": 6,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/last_attest_fail/events.jsonl"
+    },
+    {
+      "case": "config_fail",
+      "pass": true,
+      "shell_exit": 1,
+      "syft_calls_by_architecture": {
+        "amd64": 0,
+        "arm64": 0
+      },
+      "syft_outer_deadline_attempts": 0,
+      "cosign_5m_attempts": 3,
+      "attestation_attempts": 0,
+      "discovery_tags": 0,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "localized_Syft_GODEBUG_and_unchanged_cosign_environment": true,
+      "owned_stale_sentinel_bytes_unchanged": true,
+      "removed_stale_symlink_architectures": [],
+      "full_successful_reports_and_all_Trivy_findings_unchanged": true,
+      "event_log": "/tmp/bex-m188-syft-retry-proposal/config_fail/events.jsonl"
+    }
+  ],
+  "limits": "Controlled failures/deadline exit124 verify exact forwarded30m/10sargs, counts/backoff, cleanup and failclosed ordering; no actual30minute wait/realSyft/Cosign/image/registry run claimed. Successful AMD attestations precede ARM failure; no corresponding ARM attestation or discovery occurs. Config/trust/5m signing behavior unchanged.",
+  "repository_workflow_unchanged": true,
+  "repo_board_remote_mutations": false
+}

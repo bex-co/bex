@@ -1,0 +1,267 @@
+name: native base images (build + verify)
+
+# Publishes immutable candidates. The operator adopts only reviewed digests
+# in a subsequent commit, per ADR060 D7.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/native-base/**"
+      - ".github/workflows/native-base-image.yml"
+      - "lego/operator/internal/build/native.go"
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: "Optional reviewed matrix name (for example node-14-bullseye); empty publishes all"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Reuse an existing public package so tenants can pull without registry credentials.
+env:
+  NATIVE_IMAGE: ghcr.io/bex-co/bex-cnb-run
+
+jobs:
+  matrix:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    outputs:
+      images: ${{ steps.matrix.outputs.images }}
+      publish: ${{ steps.matrix.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - id: matrix
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          TARGET_RUNTIME: ${{ inputs.runtime }}
+        run: |
+          images=$(python3 deploy/native-base/matrix.py)
+          if [ -n "$TARGET_RUNTIME" ]; then
+            images=$(IMAGES="$images" python3 - <<'PY'
+          import json, os
+          matrix = json.loads(os.environ['IMAGES'])
+          rows = [row for row in matrix['include'] if row['name'] == os.environ['TARGET_RUNTIME']]
+          if len(rows) != 1:
+              raise SystemExit('runtime must match one reviewed matrix name')
+          print(json.dumps({'include': rows}, separators=(',', ':')))
+          PY
+            )
+          fi
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          publish=true
+          if [ "$EVENT_NAME" = push ] && [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then
+            if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE"
+            fi
+            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml; then
+              git show "$BEFORE:lego/operator/internal/build/native.go" > "$RUNNER_TEMP/previous-native.go"
+              publish=$(python3 deploy/native-base/matrix.py --changed-from "$RUNNER_TEMP/previous-native.go")
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: matrix
+    if: github.ref == 'refs/heads/main' && needs.matrix.outputs.publish == 'true'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.matrix.outputs.images) }}
+    # Finish an expensive running build instead of losing its work.
+    # New recipes replace pending work, never the same runtime already running.
+    concurrency:
+      group: native-base-${{ matrix.name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: log in to GHCR with bounded transport retries
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3; do
+            if printf '%s' "$GHCR_TOKEN" | timeout 60s docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin; then
+              exit 0
+            fi
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep "$((attempt * 5))"
+          done
+      - name: select a reviewed recovery artifact when its recipe is unchanged
+        id: recovery
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
+          BASE_IMAGE: ${{ matrix.base }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          path = Path('.github/native-base-recovery.json')
+          if not path.exists():
+              raise SystemExit(0)
+          data = json.loads(path.read_text())
+          if data.get('schema') != 'bex.native-publisher-recovery/v1':
+              raise SystemExit('invalid recovery authorization schema')
+          entry = data['images'].get(os.environ['MATRIX_NAME'])
+          if entry is None or entry['base'] != os.environ['BASE_IMAGE']:
+              raise SystemExit(0)
+          ref, producer = entry['ref'], entry['producer']
+          prefix = os.environ['NATIVE_IMAGE'] + '@'
+          if not ref.startswith(prefix) or not re.fullmatch(r'sha256:[0-9a-f]{64}', ref[len(prefix):]) or not re.fullmatch(r'[0-9a-f]{40}', producer):
+              raise SystemExit('recovery requires a reviewed same-package digest and producer')
+          if subprocess.run(['git', 'cat-file', '-e', producer + '^{commit}'], capture_output=True).returncode:
+              subprocess.run(['git', 'fetch', '--no-tags', '--depth=1', 'origin', producer], check=True)
+          changed = subprocess.check_output(['git', 'diff', '--no-renames', '--name-only', producer, 'HEAD', '--', 'deploy/native-base'], text=True).splitlines()
+          if any(not name.endswith('.md') for name in changed):
+              print('Recovery recipe changed; building from source')
+              raise SystemExit(0)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('digest=' + ref[len(prefix):] + '\nproducer=' + producer + '\n')
+          print('Rechecking reviewed artifact ' + ref + '; producer ' + producer + '; original job ' + str(entry['job_id']))
+          PY
+      - id: build
+        if: steps.recovery.outputs.digest == ''
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/native-base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          cache-from: type=registry,ref=${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}
+          cache-to: type=inline
+          build-args: BASE_IMAGE=${{ matrix.base }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          tags: ${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}-${{ github.sha }}
+      - id: candidate
+        env:
+          RECOVERED: ${{ steps.recovery.outputs.digest }}
+          PRODUCER: ${{ steps.recovery.outputs.producer }}
+          BUILT: ${{ steps.build.outputs.digest }}
+        run: |
+          digest="${RECOVERED:-$BUILT}"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "producer=${PRODUCER:-$GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: verify real native tool transformations without network on both architectures
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/native-base
+          file: deploy/native-base/check.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          build-args: NATIVE_BASE=${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
+      # Runtime probes above gate the repaired system and bundled decoders.
+      # Report every known vulnerability as well, including unfixed findings;
+      # old Node versions may still match version-only CVE rules after backport.
+      # Never hide these with a global CVE ignore or treat an SBOM as a probe.
+      - name: prepare bounded full-scan retries
+        run: |
+          # The pinned action supports TRIVY_CMD. Keep its 20m scan budget;
+          # the outer deadline adds only a minute for CLI teardown.
+          cat > "$RUNNER_TEMP/native-trivy" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          : "${TRIVY_OUTPUT:?missing scan report path}"
+          for attempt in 1 2 3; do
+            rm -f -- "$TRIVY_OUTPUT"
+            if timeout --kill-after=10s 21m trivy "$@"; then
+              exit 0
+            fi
+            echo "Trivy scan attempt $attempt failed" >&2
+            rm -f -- "$TRIVY_OUTPUT"
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep "$((attempt * 5))"
+          done
+          SH
+          chmod 755 "$RUNNER_TEMP/native-trivy"
+      - name: scan amd64 candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+          # Long layer streams failed twice with peer HTTP/2 PROTOCOL_ERROR.
+          GODEBUG: http2client=0
+          TRIVY_CMD: ${{ runner.temp }}/native-trivy
+        with:
+          cache: false
+          image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
+          format: json
+          output: native-amd64.trivy.json
+          timeout: "20m"
+          exit-code: "0"
+      - name: scan arm64 candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+          GODEBUG: http2client=0
+          TRIVY_CMD: ${{ runner.temp }}/native-trivy
+        with:
+          cache: false
+          image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
+          format: json
+          output: native-arm64.trivy.json
+          timeout: "20m"
+          exit-code: "0"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.4
+      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      - name: sign and attest the immutable candidate
+        env:
+          REF: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
+          PRODUCER: ${{ steps.candidate.outputs.producer }}
+        run: |
+          # Rekor v2 logs signed PAE hashes; complete predicates remain
+          # in signed OCI bundles. Exhausted retries stop tag publication.
+          retry_signing() {
+            for attempt in 1 2 3; do
+              if timeout --kill-after=10s 5m "$@"; then
+                return 0
+              fi
+              [ "$attempt" -lt 3 ] || return 1
+              sleep "$((attempt * 5))"
+            done
+          }
+          generate_sbom() {
+            local arch="$1"
+            local output="native-$arch.spdx.json"
+            for attempt in 1 2 3; do
+              rm -f -- "$output"
+              if GODEBUG=http2client=0 timeout --kill-after=10s 30m syft "registry:$REF" --platform "linux/$arch" -o spdx-json > "$output"; then
+                return 0
+              fi
+              echo "Syft $arch attempt $attempt failed" >&2
+              rm -f -- "$output"
+              [ "$attempt" -lt 3 ] || return 1
+              sleep "$((attempt * 5))"
+            done
+          }
+          retry_signing cosign signing-config create --with-default-rekor-v2 --out "$RUNNER_TEMP/native-signing-config.json"
+          retry_signing cosign sign --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" "$REF"
+          for arch in amd64 arm64; do
+            generate_sbom "$arch"
+            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
+            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
+          done
+          # Only verified, scanned and signed candidates reach this discovery
+          # tag. Adopting its immutable digest still requires a reviewed commit.
+          docker buildx imagetools create --tag "${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}-${GITHUB_SHA}" "$REF"
+          docker buildx imagetools create --tag "${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}" "$REF"
+          echo "${{ matrix.base }} -> $REF (producer $PRODUCER; verification $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+      - name: remove GHCR credentials
+        if: always()
+        run: docker logout ghcr.io

@@ -1,0 +1,91 @@
+{
+  "schema": "native_publisher_producer_intake/v1",
+  "at": "2026-10-30T17:26:09.693027+00:00",
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "tag": "ruby-3.2-bookworm",
+  "base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "digest": "sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "run_id": 41063737101,
+  "job_id": 124091095086,
+  "run_attempt": 1,
+  "job_completed_at": "2026-10-30T17:21:43Z",
+  "producer_job": {
+    "file": "/tmp/bex-m188-ruby32-producer-intake/producer-job.json",
+    "sha256": "1b11ac5b4e00cb765679bda6e6c450b83da619ef4f096405f82a881276cd6c8d",
+    "bytes": 6776
+  },
+  "producer_log": {
+    "file": "/tmp/bex-m188-ruby32-producer-intake/producer-job.log.gz",
+    "sha256": "feda1dee7640faeaa36c3d250ecbf918cd888fca05c2eda771415165a8c92b7e",
+    "bytes": 134309
+  },
+  "producer_log_raw_sha256": "a7db83032bf97b0aba819cda58b21b82463bf8eabce73595ff4e6f6f5973eff7",
+  "root_index": {
+    "file": "/tmp/bex-m188-ruby32-producer-intake/root-index.raw.json",
+    "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+    "bytes": 1611
+  },
+  "platforms": {
+    "amd64": {
+      "child_digest": "sha256:25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+      "manifest": {
+        "file": "/tmp/bex-m188-ruby32-producer-intake/manifests/25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e.json",
+        "sha256": "25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+        "bytes": 3525
+      },
+      "config_digest": "sha256:93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871",
+      "config": {
+        "file": "/tmp/bex-m188-ruby32-producer-intake/manifests/93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871.config.json",
+        "sha256": "93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871",
+        "bytes": 17211
+      },
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.2.11"
+      ]
+    },
+    "arm64": {
+      "child_digest": "sha256:b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+      "manifest": {
+        "file": "/tmp/bex-m188-ruby32-producer-intake/manifests/b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa.json",
+        "sha256": "b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+        "bytes": 3525
+      },
+      "config_digest": "sha256:e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9",
+      "config": {
+        "file": "/tmp/bex-m188-ruby32-producer-intake/manifests/e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9.config.json",
+        "sha256": "e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9",
+        "bytes": 17218
+      },
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.2.11"
+      ]
+    }
+  },
+  "build_log_exact_index_bound": true,
+  "both_arch_runtime_log_exact_index_bound": true,
+  "build_passed": true,
+  "dual_arch_runtime_gate_passed": true,
+  "scan_amd64_passed": true,
+  "scan_arm64_passed": true,
+  "failed_step": "sign and attest the immutable candidate",
+  "actual_failing_command": "syft \"registry:$REF\" --platform \"linux/arm64\" -o spdx-json > native-arm64.spdx.json",
+  "command_platform_basis": "Source-pinned ordered amd64/arm64 loop, successful preceding AMD SPDX+Trivy payloads, then next registry-source resolver failure under bash-e.",
+  "workflow_loop": {
+    "file": "/tmp/bex-m188-ruby32-producer-intake/producer-workflow-signing-loop.txt",
+    "sha256": "6c1596cff0192073baf8d6b468bbd2c25b6925c6f94a8e61768565c6a371b43d",
+    "bytes": 856
+  },
+  "failure_lines": [
+    "2026-10-30T17:21:12.0518132Z [1020] ERROR could not determine source: errors occurred attempting to resolve 'ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827':",
+    "2026-10-30T17:21:12.0519228Z   - oci-registry: unable to populate layer cache dir=\"/tmp/stereoscope-2364667079/oci-registry-image-592579668/sha256:ad3c868a46478f5c0e046ac13bf9181745ba0be588d85c95f6647bb212a83e86\" : stream error: stream ID 33; PROTOCOL_ERROR; received from peer",
+    "2026-10-30T17:21:12.0610269Z ##[error]Process completed with exit code 1."
+  ],
+  "independent_crypto_acceptance_complete": false,
+  "candidate_accepted": false,
+  "recovery_authorization_created": false,
+  "remote_mutation": false,
+  "full_filesystem_layers_pulled": false
+}
