@@ -49,6 +49,7 @@ describe("useCreateWorkspace", () => {
     expect(workspace).toEqual({
       id: "tea-1",
       name: "acme-staging",
+      slug: "acme-staging",
       plan: "hobby",
       role: "admin",
       createdAt: "2026-07-09T00:00:00Z",

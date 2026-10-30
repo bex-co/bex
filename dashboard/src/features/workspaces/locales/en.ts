@@ -167,8 +167,13 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.fieldSlugHelp": {
     message:
-      "Used in URLs and resource names. Lowercase letters, numbers, and hyphens, 1–30 characters.",
+      "A unique key for the CLI and API. Lowercase letters, numbers, and hyphens, 1–30 characters.",
     description: "/new/workspace slug helper text",
+  },
+  "workspaces.fieldSlugError": {
+    message:
+      "Lowercase letters, numbers, and hyphens only, 1-30 characters, no leading/trailing hyphen.",
+    description: "Workspace slug validation error",
   },
   "workspaces.paymentTitle": {
     message: "Payment Method",
@@ -216,8 +221,7 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace name field placeholder",
   },
   "workspaces.fieldNameError": {
-    message:
-      "Lowercase letters, numbers, and hyphens only, 1-30 characters, no leading/trailing hyphen.",
+    message: "Enter a name of 1–100 characters without line breaks.",
     description: "Workspace name validation error",
   },
   "workspaces.fieldPlan": {

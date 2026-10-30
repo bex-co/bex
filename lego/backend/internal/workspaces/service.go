@@ -164,7 +164,7 @@ func creationAttemptView(a store.WorkspaceCreationAttempt) WorkspaceCreationAtte
 type WorkspaceStore interface {
 	CreateWorkspace(ctx context.Context, name, plan, ownerSubject string) (store.Tenant, error)
 	GetTenant(ctx context.Context, id string) (store.Tenant, error)
-	RenameTenant(ctx context.Context, id, name string) (store.Tenant, error)
+	SetTenantDisplayName(ctx context.Context, id, name string) (store.Tenant, error)
 	UpdateTenantPlan(ctx context.Context, id, plan string) (store.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
@@ -282,8 +282,13 @@ type KeyOwnerReader interface {
 // the caller's role in it. Each adapter maps this to its wire format (m2's REST
 // renders it in Render's owner shape; the GraphQL fragment renders it directly).
 type WorkspaceView struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
+	ID string `json:"id"`
+	// Name is what Render calls the workspace's name: its freeform display
+	// name, else its slug (w3/m246).
+	Name string `json:"name"`
+	// Slug is the unique DNS-label key (CLI `BEX_WORKSPACE`, `X-Bex-Workspace`,
+	// `?name=`) — a bex extension.
+	Slug      string `json:"slug"`
 	Plan      string `json:"plan"`
 	Role      string `json:"role,omitempty"`
 	CreatedAt string `json:"createdAt"`
@@ -294,7 +299,7 @@ func view(t store.Tenant, role string) WorkspaceView {
 	if !t.CreatedAt.IsZero() {
 		created = t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
-	return WorkspaceView{ID: t.ID, Name: t.Name, Plan: t.Plan, Role: role, CreatedAt: created}
+	return WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created}
 }
 
 func (s *Service) WorkspaceCreationPolicy(ctx context.Context, plan string) (WorkspaceCreationPolicy, error) {
@@ -727,13 +732,12 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 	if err != nil {
 		return nil, err
 	}
-	named := make([]WorkspaceView, 0, len(ws))
+	if len(f.Names) > 0 {
+		ws = matchNames(ws, f.Names)
+	}
+	named := ws
 	ids := make([]string, 0, len(ws))
 	for _, w := range ws {
-		if len(f.Names) > 0 && !slices.Contains(f.Names, w.Name) {
-			continue
-		}
-		named = append(named, w)
 		ids = append(ids, w.ID)
 	}
 	emails := s.ownerEmails(ctx, ids)
@@ -746,6 +750,24 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 		out = append(out, OwnerView{WorkspaceView: w, Email: email})
 	}
 	return out, nil
+}
+
+// matchNames is the owners name filter (w3/m246). Render filters by its
+// freeform name; bex also accepts the slug, and an exact slug match wins
+// outright because slugs are unique: renaming another workspace to someone's
+// slug must not redirect a typed key. Otherwise every display-name match is
+// kept, so a caller can report ambiguity.
+func matchNames(ws []WorkspaceView, names []string) []WorkspaceView {
+	out := make([]WorkspaceView, 0, len(ws))
+	for _, w := range ws {
+		for _, n := range names {
+			if w.Slug == n || (w.Name == n && !slices.ContainsFunc(ws, func(o WorkspaceView) bool { return o.Slug == n })) {
+				out = append(out, w)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // ResolveResourceOwners implements resourcemeta.OwnerResolver for the four
@@ -786,7 +808,7 @@ func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) 
 	emails := s.ownerEmails(ctx, ids)
 	out := make(map[string]resourcemeta.Owner, len(tenants))
 	for _, tenant := range tenants {
-		out[tenant.ID] = resourcemeta.Owner{ID: tenant.ID, Name: tenant.Name, Email: emails[tenant.ID], Type: "team"}
+		out[tenant.ID] = resourcemeta.Owner{ID: tenant.ID, Name: tenant.Label(), Email: emails[tenant.ID], Type: "team"}
 	}
 	return out
 }
@@ -960,8 +982,9 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	return view(t, "admin"), nil
 }
 
-// Rename changes a workspace's display name. Admin-only (can_manage on the exact
-// workspace). The id stays the key, so a rename breaks no references.
+// Rename changes a workspace's display name — freeform, as on Render (w3/m246).
+// Admin-only (can_manage on the exact workspace). The id and slug stay the
+// keys, so a rename breaks no references.
 func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, error) {
 	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
 	if err != nil {
@@ -970,10 +993,14 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 	if s.Store == nil {
 		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
-	if err := validWorkspaceName(name); err != nil {
+	name, err = core.TrimmedLabel(name)
+	if err != nil {
 		return WorkspaceView{}, err
 	}
-	t, err := s.Store.RenameTenant(ctx, id, name)
+	if name == "" {
+		return WorkspaceView{}, core.NameRequiredError()
+	}
+	t, err := s.Store.SetTenantDisplayName(ctx, id, name)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
 	}
@@ -1201,7 +1228,7 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if err != nil {
 		return mapStoreErr(err)
 	}
-	if want := DeleteConfirmation(t.Name); confirmName != want {
+	if want := DeleteConfirmation(t.Label()); confirmName != want {
 		return fmt.Errorf("%w: confirmation must be %q", core.ErrBadRequest, want)
 	}
 	return s.deleteWorkspace(ctx, id)

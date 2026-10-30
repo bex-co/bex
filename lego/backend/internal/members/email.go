@@ -36,7 +36,7 @@ func (s *Service) sendInvite(ctx context.Context, inv store.Invite, tenant store
 	if s.Mailer == nil {
 		return
 	}
-	subject := fmt.Sprintf("You've been invited to the %q workspace on bex", tenant.Name)
+	subject := fmt.Sprintf("You've been invited to the %q workspace on bex", tenant.Label())
 	msg := s.inviteMessage(inv, tenant)
 	if err := s.Mailer.Send(ctx, inv.Email, subject, msg.Text(), msg.HTML()); err != nil {
 		log.Printf("members: sending invite %s to %s: %v", inv.ID, inv.Email, err)
@@ -55,7 +55,7 @@ func (s *Service) inviteMessage(inv store.Invite, tenant store.Tenant) email.Mes
 		Title: "Workspace invitation",
 		Paragraphs: []string{
 			fmt.Sprintf("You've been invited to join the %q workspace on bex as a %s.",
-				tenant.Name, strings.ToLower(inv.Role)),
+				tenant.Label(), strings.ToLower(inv.Role)),
 		},
 		Footer: []string{
 			fmt.Sprintf("This invitation expires on %s.",

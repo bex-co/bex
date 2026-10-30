@@ -66,5 +66,5 @@ The top-left dropdown is a `listbox` labelled by the current workspace. Contents
 | Delete confirm phrase = **`sudo delete workspace <name>`** | Type the **bare workspace name** | **Real drift** — bex's guard is weaker/different copy. Reconcile in t002. |
 | Delete consequence copy names **services, datastores, environment groups** | Generic "danger zone" description | Copy drift — align wording in t002. |
 | Delete only on **Hobby/free**; hidden on paid | Delete shown for any workspace | bex has no billing/subscription gating yet ("Not in w6") — deliberate deviation. |
-| Names are **freeform** (spaces, caps, apostrophes) | DNS-label constrained (`^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$`) | Deliberate deviation, already documented (`w6/m1/t007`): bex names become App-CR names. |
+| Names are **freeform** (spaces, caps, apostrophes) | Freeform display name since **w3/m246** (2026-10-30); a DNS-label slug remains as a bex-extension key | **Closed.** The old reason ("bex names become App-CR names") was stale: CR names use the workspace id. |
 | **No** ownership transfer, **no** grace period | No transfer, immediate delete | Match. |

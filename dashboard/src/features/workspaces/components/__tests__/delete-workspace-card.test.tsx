@@ -24,6 +24,7 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 const WORKSPACE: WorkspaceView = {
   id: "tea-1",
   name: "acme-hq",
+  slug: "acme-hq",
   plan: "hobby",
   role: "admin",
   createdAt: null,
@@ -31,6 +32,7 @@ const WORKSPACE: WorkspaceView = {
 const OTHER: WorkspaceView = {
   id: "tea-2",
   name: "acme-staging",
+  slug: "acme-staging",
   plan: "pro",
   role: "admin",
   createdAt: null,
