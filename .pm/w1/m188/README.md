@@ -80,5 +80,5 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - main 的 `2de693f18` 增加精确 primary 在共享系统基座上的兼容路径与 Python 工具供应；native 发布改用已有公开包 `ghcr.io/bex-co/bex-cnb-run:native-<upstream-tag>`，不会移动 CNB 的 `latest`。验收器已更新标签、workflow 身份和匿名拉取核查，未沿用旧命名误判。
 - 旧发布 `40986883137` 的 Node14/16 在约 40 分钟后被真实的新配方取代，安全/签名门槛未执行，因此没有算作已发布候选。替代发布 `40989646534`（源码 `2de693f18`，包含全部 Brotli 修复）继续执行。
 - 实际取消显示首次编译尚未导出缓存时会丢失长时间工作。改为同运行时正在执行的任务先完成、新配方替换 pending 任务并复用完成缓存；源码仍正常 ship，不等待 main CI，也没有削弱发布或采用验证。
-- 新 m91 路径明确兼容 m188 的 `upstream` 原始来源字段（`TestSuppliedBasePreservesM188PlatformCatalogIdentity` 等回归组通过）。m188 不用不完整的全局供应映射冒充全部 27 个运行时接入，后续只采用本项已验证的 11 个 line 镜像并保留原来源。
+- 新 m91 路径明确兼容 m188 的 `upstream` 原始来源字段（`TestSuppliedBasePreservesPlatformBackportProvenance` 等回归组通过）。m188 不用不完整的全局供应映射冒充全部 27 个运行时接入，后续只采用本项已验证的 11 个 line 镜像并保留原来源。
 - 各入口/版本规则准备核查见 [parity 证据](evidence/parity-prepared.json)；正式采用和 rollout 仍未完成，任务不提前关闭。
