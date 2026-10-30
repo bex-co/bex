@@ -1,0 +1,106 @@
+{
+  "scope": "isolated localhost discovery/StorageClass HTTP mock; real kubectl v1.36.1 JSONPath, no production",
+  "requestedObjectNames": [
+    "hcloud-volumes-luks",
+    "hcloud-volumes-luks-bounded"
+  ],
+  "objectRequests": [
+    "hcloud-volumes-luks",
+    "hcloud-volumes-luks-bounded",
+    "hcloud-volumes-luks",
+    "hcloud-volumes-luks-bounded",
+    "hcloud-volumes-luks",
+    "hcloud-volumes-luks-bounded"
+  ],
+  "allObjectRequestsFixedAndReadOnly": true,
+  "privateCanaryExclusion": "PASS: unselected parameter/annotation values never enter TSV or report",
+  "cases": [
+    {
+      "presentNames": [
+        "hcloud-volumes-luks",
+        "hcloud-volumes-luks-bounded"
+      ],
+      "selectedRows": 2,
+      "report": [
+        {
+          "present": true,
+          "name": "hcloud-volumes-luks",
+          "uid": "class-0",
+          "deletingAt": "",
+          "provisioner": "csi.hetzner.cloud",
+          "allowVolumeExpansion": true,
+          "volumeBindingMode": "WaitForFirstConsumer",
+          "reclaimPolicy": "Delete",
+          "filesystemType": "",
+          "boundedFilesystem": "",
+          "publishSecretName": "${pvc.name}-luks",
+          "publishSecretNamespace": "${pvc.namespace}",
+          "expandSecretName": "",
+          "expandSecretNamespace": ""
+        },
+        {
+          "present": true,
+          "name": "hcloud-volumes-luks-bounded",
+          "uid": "class-1",
+          "deletingAt": "",
+          "provisioner": "csi.hetzner.cloud",
+          "allowVolumeExpansion": true,
+          "volumeBindingMode": "WaitForFirstConsumer",
+          "reclaimPolicy": "Delete",
+          "filesystemType": "ext4",
+          "boundedFilesystem": "ext4-v1",
+          "publishSecretName": "${pvc.name}-luks",
+          "publishSecretNamespace": "${pvc.namespace}",
+          "expandSecretName": "${pvc.name}-luks",
+          "expandSecretNamespace": "${pvc.namespace}"
+        }
+      ],
+      "result": "PASS"
+    },
+    {
+      "presentNames": [
+        "hcloud-volumes-luks"
+      ],
+      "selectedRows": 1,
+      "report": [
+        {
+          "present": true,
+          "name": "hcloud-volumes-luks",
+          "uid": "class-0",
+          "deletingAt": "",
+          "provisioner": "csi.hetzner.cloud",
+          "allowVolumeExpansion": true,
+          "volumeBindingMode": "WaitForFirstConsumer",
+          "reclaimPolicy": "Delete",
+          "filesystemType": "",
+          "boundedFilesystem": "",
+          "publishSecretName": "${pvc.name}-luks",
+          "publishSecretNamespace": "${pvc.namespace}",
+          "expandSecretName": "",
+          "expandSecretNamespace": ""
+        },
+        {
+          "name": "hcloud-volumes-luks-bounded",
+          "present": false
+        }
+      ],
+      "result": "PASS"
+    },
+    {
+      "presentNames": [],
+      "selectedRows": 0,
+      "report": [
+        {
+          "name": "hcloud-volumes-luks",
+          "present": false
+        },
+        {
+          "name": "hcloud-volumes-luks-bounded",
+          "present": false
+        }
+      ],
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS"
+}

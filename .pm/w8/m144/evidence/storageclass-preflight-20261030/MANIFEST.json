@@ -1,0 +1,12 @@
+{
+  "recorded_at": "2026-10-30T05:35:11.212479+00:00",
+  "scope": "Read-only source/preflight checks, no production observation or mutation",
+  "tests": "30 Python unit tests, disk inventory and CSI installer shell protocols, actual kubectl v1.36.1 against isolated localhost StorageClass/discovery mock",
+  "source_sha256": {
+    "scripts/service-disk-inventory.sh": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e",
+    "scripts/service_disk_inventory.py": "5b84f55a625281d4a56338e2326f45b70a4a27be5156d8e3aa2b754780abc0ac",
+    "scripts/service-disk-inventory.test.sh": "f3689a71a3bd034aab017cb2e30e193fcf35bc906469dcc7f7b514e7378fea2c",
+    "scripts/test_service_disk_inventory.py": "89bc7110e3621b6e054adf734e54503bb96177eac8627a40f1f3b719f8b81d66"
+  },
+  "proof_sha256": "6dc85d6861799e9b12df0cf921d5dad10d846d3596824f59b73ef79d9a029a3b"
+}

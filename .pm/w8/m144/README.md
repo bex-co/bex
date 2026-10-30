@@ -25,3 +25,8 @@ A real 1 GB disk refuses writes at its logical capacity on the existing minimum 
 - **Expected outcome:** applications receive a full-disk error at their purchased capacity; a provider minimum never silently increases their writable capacity.
 - **Why now:** w8/215 accepts and bills 1–9 GB but directly mounts the full 10 GB filesystem, leaving the capacity residual observable.
 - **Render parity:** included because writes, reads, grow and disk usage are tenant-facing across every authoring surface. Pricing variants are outside this milestone and are not gates.
+
+
+## StorageClass preflight checkpoint — 2026-10-30
+
+The [fixed-class inventory extension](evidence/storageclass-preflight-20261030/README.md) can now verify the actual bounded class contract before activation, including both publish/expand Secret namespace templates and explicit absence. Unit/protocol and real kubectl mock checks pass. The next read-only production inventory must supply the real class facts; this source checkpoint does not claim class adoption or complete t002/t003.
