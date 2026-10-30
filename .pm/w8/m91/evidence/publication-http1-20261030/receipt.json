@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-30T13:07:56.999411+00:00",
+  "scope": "Meaningful local Go/TLS transport proof plus exact pinned-source inspection; not an actual Trivy binary scan or new supplier approval. No TLS bypass, package/report fabrication or public transparency writes.",
+  "source_sha256": "43f276703f922978de2099d192fe831bc36b9dcbb486e91a739141ca32778679",
+  "binary_sha256": "96082bcae54109c7ee066c9d94b4db15c6e0c8fadd206b5e400cb9be342aa81e",
+  "probe_toolchain": "go1.26.4 darwin/arm64",
+  "pinned_Trivy_go_directive": "go1.25.8; exact source also gates HTTP2 initialization on http2client before transport setup",
+  "results": [
+    {
+      "GODEBUG": "",
+      "digest_tamper_rejected": true,
+      "go_version": "go1.26.4",
+      "insecure_skip_verify": false,
+      "protocol": "HTTP/2.0",
+      "scope": "Local TLS transport probe using the pinned Trivy double-clone construction; no scanner execution or supplier approval",
+      "tls_alpn": "h2",
+      "tls_version": 772,
+      "untrusted_certificate_rejected": true,
+      "valid_body_sha256": "58b149e66a7b3fb8f5bfd7c735c751b737bc5e82efa169a72003dc819ad65440"
+    },
+    {
+      "GODEBUG": "http2client=0",
+      "digest_tamper_rejected": true,
+      "go_version": "go1.26.4",
+      "insecure_skip_verify": false,
+      "protocol": "HTTP/1.1",
+      "scope": "Local TLS transport probe using the pinned Trivy double-clone construction; no scanner execution or supplier approval",
+      "tls_alpn": "",
+      "tls_version": 772,
+      "untrusted_certificate_rejected": true,
+      "valid_body_sha256": "58b149e66a7b3fb8f5bfd7c735c751b737bc5e82efa169a72003dc819ad65440"
+    }
+  ],
+  "minimal_source_recommendation": "Add GODEBUG: http2client=0 to each existing Trivy scan step env; keep every input, platform,20m timeout, scan/report, TLS and signature/probe gate unchanged. Actual factory success still required.",
+  "primary_sources": [
+    "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/x/http/transport.go#L100-L130",
+    "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/remote/remote.go#L24-L50",
+    "https://github.com/google/go-containerregistry/blob/v0.21.2/pkg/v1/remote/options.go#L119-L178",
+    "https://github.com/golang/go/blob/go1.25.8/src/net/http/transport.go#L359-L368",
+    "https://github.com/aquasecurity/trivy-action/blob/ed142fd0673e97e23eac54620cfb913e5ce36c25/entrypoint.sh#L77-L80"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "files": {
+    "probe.go.txt.gz": {
+      "bytes": 1318,
+      "sha256": "a58490dbf2d1cdb5d9c9252f771f40159dbd917de31dce434a1ac4ef3ddffd53"
+    },
+    "node14-job.log.gz": {
+      "bytes": 52955,
+      "sha256": "4a16f65c436172f72c33e0dda9bf234d5acc2da9b8f99520eae7f728c81d9ba9"
+    },
+    "node20-job.log.custody.json": {
+      "bytes": 144,
+      "sha256": "c5ab6907dfb91ae46835343c6f790531a5280c5a1829245f149e78ecc9d335e2"
+    },
+    "node20-diagnosis.json": {
+      "bytes": 3667,
+      "sha256": "4c0ff6dafc230cadba16cddd9a98faa9bbf71a4adecf04821480c19f57da2d56"
+    },
+    "active-job-log-access.json": {
+      "bytes": 330,
+      "sha256": "abb5769d15a6616e45c58484c1332a8e3dd0433ed08e3cf25e43235879dc123e"
+    },
+    "README.md": {
+      "bytes": 1170,
+      "sha256": "43a2b248f85d49751d90f38ece874b3bb2f960c2d69651e16abab41203f9fa65"
+    },
+    "node14-job.log.custody.json": {
+      "bytes": 143,
+      "sha256": "a694835895544380dfd43db1cc9c893b64efc37dcefd03e241df7f6687345162"
+    },
+    "http1.stdout.json": {
+      "bytes": 418,
+      "sha256": "1f128da723d4255798f193fcfcfd9450d095dd4ae7896f2e30f3df78b70bb74f"
+    },
+    "default.stdout.json": {
+      "bytes": 407,
+      "sha256": "81c4b4dd3556c73e1d1b9aeccbcd319c4db1b6de6be83d0d1945a42a7e25790a"
+    },
+    "node20-job.log.gz": {
+      "bytes": 120206,
+      "sha256": "613fe8b357b26cc7c50f5f0946ebdffd13365b1208b2cc7ea36fea3d6074d3e5"
+    },
+    "receipt.json": {
+      "bytes": 2389,
+      "sha256": "c8ee5fc76bd9287c591a819d2fd6229b2774062e6b8ba6299513a486ac8eeaf8"
+    }
+  }
+}
