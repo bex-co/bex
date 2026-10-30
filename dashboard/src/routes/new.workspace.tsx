@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { slugify } from "@/features/workspaces/lib/slug";
+import { suggestWorkspaceSlug } from "@/features/workspaces/lib/workspace-slug";
 import {
   MAX_LABEL_LENGTH,
   isValidLabel,
@@ -72,9 +72,13 @@ export function NewWorkspacePage() {
   );
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const creation = useWorkspaceCreationBilling(selectedPlan, resumeAttemptId);
-  const name = creation.attempt?.name ?? draftSlug ?? slugify(draftDisplayName);
+  const name =
+    creation.attempt?.name ??
+    draftSlug ??
+    suggestWorkspaceSlug(draftDisplayName);
   const displayName = creation.attempt
-    ? (readPendingDisplayName(creation.attempt.id) ?? draftDisplayName)
+    ? (readPendingDisplayName(creation.attempt.id) ??
+      (draftDisplayName || creation.attempt.name))
     : draftDisplayName;
   const plan = creation.attempt?.plan ?? selectedPlan;
   const billingEmail =
@@ -115,8 +119,7 @@ export function NewWorkspacePage() {
       pending = await creation.prepare(name, billingEmail, false);
     }
     if (!pending) return;
-    const chosen = displayName.trim();
-    const workspace = await creation.finalize(pending, chosen);
+    const workspace = await creation.finalize(pending, displayName.trim());
     if (!workspace) return;
     forgetPendingDisplayName(pending.id);
     setCurrentWorkspaceId(workspace.id);
@@ -124,12 +127,14 @@ export function NewWorkspacePage() {
   }
 
   async function handleCancel() {
+    const attemptId = creation.attempt?.id;
     try {
       await creation.cancel();
     } catch (err) {
       toast.error(mutationErrorMessage(err, t("workspaces.createCancelError")));
       return;
     }
+    if (attemptId) forgetPendingDisplayName(attemptId);
     await navigate({ to: "/" });
   }
 
@@ -253,7 +258,7 @@ export function NewWorkspacePage() {
             attempt={creation.attempt}
             required={paymentRequired}
             providerAvailable={creation.policy.providerAvailable}
-            disabled={!nameValid || !emailValid || busy}
+            disabled={!displayNameValid || !nameValid || !emailValid || busy}
             confirmed={paymentConfirmed}
             onAdd={() => void handleAddPaymentMethod()}
             onConfirmed={handlePaymentConfirmed}
@@ -301,15 +306,13 @@ function rememberPendingDisplayName(attemptId: string, name: string) {
   try {
     window.sessionStorage.setItem(pendingDisplayNameKey(attemptId), name);
   } catch {
-    // storage blocked: the workspace is named by its slug
+    // storage blocked: a resumed attempt falls back to its slug
   }
 }
 
 function readPendingDisplayName(attemptId: string): string | null {
   try {
-    return typeof window === "undefined"
-      ? null
-      : window.sessionStorage.getItem(pendingDisplayNameKey(attemptId));
+    return window.sessionStorage.getItem(pendingDisplayNameKey(attemptId));
   } catch {
     return null;
   }

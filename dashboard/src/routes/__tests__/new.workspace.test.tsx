@@ -294,7 +294,7 @@ it("keeps the slug uneditable until hydration, then focuses it (w4/m219)", async
   expect(slug().value).toBe("acme-prod-2");
 });
 
-it("hands focus to the slug only when nothing else holds it (w4/m219)", async () => {
+it("hands focus to the name only when nothing else holds it (w4/m219)", async () => {
   const router = pageRouter();
   await router.load();
   const { hydrate, getByLabelText } = serverRendered(
@@ -326,4 +326,29 @@ it("keeps a resumed attempt's slug locked after hydration (w4/m219)", async () =
   await hydrate();
   expect(slug().disabled).toBe(true);
   expect(slug().value).toBe("acme");
+});
+
+// w3/m246: an attempt resumed without its stored name (blocked storage, another
+// tab, or started before names existed) still finishes, named by its slug.
+it("finishes a resumed attempt with no stored name under its slug", async () => {
+  creationState.attempt = {
+    id: "wca-no-name",
+    name: "acme",
+    plan: "hobby",
+    billingEmail: "user@example.com",
+    paymentRequired: false,
+    state: "prepared",
+    clientSecret: "",
+    publishableKey: "",
+  };
+  const user = userEvent.setup();
+  renderPage();
+  const create = await screen.findByRole("button", {
+    name: "Create Workspace",
+  });
+  expect(screen.getByLabelText("Name")).toHaveValue("acme");
+  await waitFor(() => expect(create).toBeEnabled());
+  await user.click(create);
+  await waitFor(() => expect(finalize).toHaveBeenCalled());
+  expect(finalize.mock.calls[0][1]).toBe("acme");
 });
