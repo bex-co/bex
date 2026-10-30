@@ -1,0 +1,12 @@
+{
+  "files": {
+    "retrieval-receipt.json": {
+      "sha256": "f2160885b96fc7a56b07612bdfbb1db6534f91f891dfd3f48125a163b54d28c5",
+      "bytes": 2782
+    },
+    "README.md": {
+      "sha256": "5e8754355d34dc2e5a02c885dcff29a6cfa45ecf811db344761c4e39021953ca",
+      "bytes": 2188
+    }
+  }
+}

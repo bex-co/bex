@@ -1,0 +1,124 @@
+{
+  "files": {
+    "cancel-output.txt": {
+      "sha256": "983d786fad89809d31bdae5f8affba0ab68ea0a4d8288fc3bdbf970d612522ea",
+      "bytes": 54
+    },
+    "ARCHIVE_PATHS.json": {
+      "sha256": "d10b26ed703ec78e42b225cac631e8537e7c9e9bfbdc097b73625a19266ff799",
+      "bytes": 5219
+    },
+    "targets.json": {
+      "sha256": "9dca574b045e070e896d1f98ac12ecb9f7597d086ddfb7caee5890da8ada4406",
+      "bytes": 462
+    },
+    "dispatch-elixir-1.18.json": {
+      "sha256": "fe4de6a5ef216abbcb7fb2d39425a884f4c1e64fe439257a37d9f04fd017151a",
+      "bytes": 154
+    },
+    "after.json.gz": {
+      "sha256": "62fff4781b53c6ace1148e19f604d866db5f8e1313a2820256853ec266a385c8",
+      "bytes": 1611
+    },
+    "dispatch-python-3.13-bookworm.json": {
+      "sha256": "68f793f92f9b200a418dd442533ec574f1cb77fe08815b5e12621f6d6a257214",
+      "bytes": 163
+    },
+    "pre-cancel-run.json.gz": {
+      "sha256": "85546de225bed7a8e8bbe97a1b072165ee7ab911ef7b672fb490a3650f13f72d",
+      "bytes": 1954
+    },
+    "dispatch-golang-1.27-bookworm.json": {
+      "sha256": "eb015f845a2f52ea82fabb39dcc9f74bf2c3917a9ef8d620e431686a9e597649",
+      "bytes": 163
+    },
+    "dispatch-node-24-bookworm.json": {
+      "sha256": "f78684bc30dd924799dfdffe946d66586639582b13f7068ce3e89d7c745457e5",
+      "bytes": 159
+    },
+    "pre-cancel-jobs.json.gz": {
+      "sha256": "52be6cadde4475a74207cce93f1b2a770e71ed21fc32d2dae1ac62b5758468bc",
+      "bytes": 2156
+    },
+    "dispatch-elixir-1.19.json": {
+      "sha256": "dbb0b307b0931c14430b73422a82533727595489ef8da7df763cded6a02d58d0",
+      "bytes": 154
+    },
+    "dispatch-python-3.14-bookworm.json": {
+      "sha256": "afdb5ea681eec77ea8081de68d5b07eca8dff77b67f80a4c1ee50d039d84ebb3",
+      "bytes": 163
+    },
+    "README.md": {
+      "sha256": "a666b25d6d4a042e5ad35d69c3b6044a3ed698edfa4f68d34aa660c3cd553a04",
+      "bytes": 1204
+    },
+    "cancel-receipt.json": {
+      "sha256": "645d8c916b30d9a6c31a055bbe660ff585d28bce6204b6a05ff3a47465377b15",
+      "bytes": 346
+    },
+    "full-5e89-jobs.json.gz": {
+      "sha256": "60b7989f47ce8b5bb8d230637898051599440ab0c82868ae6e1d7c5ff31e097b",
+      "bytes": 2064
+    },
+    "dispatch-elixir-1.20.json": {
+      "sha256": "6452af369d184ce010231ba092cb5de6699c1828c0e93f6942f33d345c5d6d9f",
+      "bytes": 154
+    },
+    "dispatch-python-3.11-bookworm.json": {
+      "sha256": "6ca01a9b3be73aae1b485ffd719bad092792ab9ecd69b0e9b904e74c9a10f133",
+      "bytes": 163
+    },
+    "dispatch-python-3.12-bookworm.json": {
+      "sha256": "4b14975c990830334197bbfdc79c25f8e0f7e6c2edf0bfc3df2f944a424719b0",
+      "bytes": 163
+    },
+    "retired-jobs-final.json.gz": {
+      "sha256": "9ce2021a500fcb8343a819e94a43980d13ce07b85c9b094a412b41fb249eb537",
+      "bytes": 3471
+    },
+    "full-5e89-run.json.gz": {
+      "sha256": "d7acba6089f680b69a2a1dfc8a1e9da5271825590c3ab0eeb1a56577a3375fd4",
+      "bytes": 1854
+    },
+    "dispatch-elixir-1.17.json": {
+      "sha256": "d6a8afeb8330639b9c0b2e8a7b77e2bf3730f39ca7592a31291e7e154d78c10c",
+      "bytes": 154
+    },
+    "dispatch-node-26-bookworm.json": {
+      "sha256": "818b4df7488ad326fb1a8bf60417a6200b0aa9a90d4c463131105cce7d02676c",
+      "bytes": 159
+    },
+    "dispatch-node-22-bookworm.json": {
+      "sha256": "77991d3dcc55668fe878fb9545dd374f542a3b30f94cedd47630825bcb71431b",
+      "bytes": 159
+    },
+    "retired-run-final.json.gz": {
+      "sha256": "968b4d712e90c65231b4a7c793feb3e0975bad3a43795e435a8650f3be6926a5",
+      "bytes": 1858
+    },
+    "dispatch-ruby-3.4-bookworm.json": {
+      "sha256": "9b6c25641d20fd98d9431d1c96d09c77ff210e5993b07bbec70d9f4dde98829e",
+      "bytes": 160
+    },
+    "dispatch.py.gz": {
+      "sha256": "80b358ec5ef86b7ce01703bd549514d2945c5034a0398e959064ed823e5c675f",
+      "bytes": 1026
+    },
+    "before.json.gz": {
+      "sha256": "2583973087f2380942bd3ce8ae8ba2b9fc214324c21f1589b657deae9d1811bb",
+      "bytes": 1451
+    },
+    "dispatch-ruby-4.0-bookworm.json": {
+      "sha256": "62be6aee19c7ecdf1f513018f74e66e449ff959d1ac953631acd3cea49b78827",
+      "bytes": 160
+    },
+    "dispatch-ruby-3.3-bookworm.json": {
+      "sha256": "5ee7c546f6c76f0d137895e01e82d41f54b64716921fb45d9b630e536372dea4",
+      "bytes": 160
+    },
+    "dispatch-rust-1-bookworm.json": {
+      "sha256": "60e87e9765cd2ba6565428b7b5abf35b474d2967cb35938cdc158d6cf6802e40",
+      "bytes": 158
+    }
+  }
+}
