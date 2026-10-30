@@ -376,19 +376,34 @@ func TestStripeEnsureContractCreatesCompleteSubscription(t *testing.T) {
 }
 
 func TestStripeEnsureContractReusesExistingAfterRestart(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	catalog := stripePriceCatalogJSON(t, names)
+	items := stripeSubscriptionItemsJSON(t, len(names), nil)
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/prices":
+			return 200, catalog
+		case method == http.MethodGet && path == "/v1/subscription_items":
+			return 200, items
+		}
 		if method == http.MethodGet && strings.Contains(path, "/subscriptions") {
 			return 200, `{"object":"list","data":[{"id":"sub_existing","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		}
-		return 500, `{"error":{"type":"api_error","message":"should not create or list prices"}}`
+		return 500, `{"error":{"type":"api_error","message":"should not create a subscription or item"}}`
 	})
 	c.storeCustomer("tea-a", "cus_1")
 	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
 		t.Fatalf("EnsureContract: %v", err)
 	}
-	if got := stub.count("/prices"); got != 0 {
-		t.Fatalf("price calls = %d, want 0 for existing subscription", got)
+	// A complete existing contract is only read: its items are compared with
+	// the catalog (w2/m171) and nothing is written.
+	stub.mu.Lock()
+	for i, body := range stub.bodies {
+		if body != "" {
+			t.Errorf("unexpected write %s: %s", stub.hits[i], body)
+		}
 	}
+	stub.mu.Unlock()
 	if got := stub.count("/subscriptions"); got != 1 {
 		t.Fatalf("subscription calls = %d, want list only", got)
 	}
@@ -421,7 +436,16 @@ func TestStripeEnsureContractRejectsIncompleteCatalog(t *testing.T) {
 }
 
 func TestStripeCompCustomerAppliesCouponIdempotently(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	catalog := stripePriceCatalogJSON(t, names)
+	items := stripeSubscriptionItemsJSON(t, len(names), nil)
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/prices":
+			return 200, catalog
+		case method == http.MethodGet && path == "/v1/subscription_items":
+			return 200, items
+		}
 		if method == http.MethodGet && path == "/v1/subscriptions" {
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		}
