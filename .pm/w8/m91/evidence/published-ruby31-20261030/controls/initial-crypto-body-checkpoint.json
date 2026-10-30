@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-30T20:22:37.632466+00:00",
+  "positive_exits": [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "wrong_source_exit": 1,
+  "wrong_subject_exit": 1,
+  "cosign_invocations": 7,
+  "distinct_owned_TUF_roots": 7,
+  "complete_receipts": 21,
+  "complete_bytes": 579627684,
+  "body_attempts": [
+    {
+      "digest": "sha256:1d9d474cce081e468bc6f85727459852112ba732fbbfe3236fae66c5fa8a5ed5",
+      "expected_size": 202753988,
+      "logical_bytes_delivered": 24117248,
+      "candidate_approved": false,
+      "attempts": [
+        {
+          "body_get_attempt": 1,
+          "requested_offset": 0,
+          "range_requested": false,
+          "reason": "initial",
+          "logical_bytes_delivered": 24117248,
+          "http_status": 200,
+          "content_length": 202753988,
+          "outcome": "reading"
+        }
+      ],
+      "scope": "Body GET metadata only; no headers/tokens/URLs or bodybytes retained. Canonical whole-SHA/size gate remains required after every logical byte."
+    },
+    {
+      "digest": "sha256:6f82bd7975d1bd5a4ecd4c7e1ed98bfa443ecd4020cdac6844306ebb41fbf64b",
+      "expected_size": 237266723,
+      "logical_bytes_delivered": 25165824,
+      "candidate_approved": false,
+      "attempts": [
+        {
+          "body_get_attempt": 1,
+          "requested_offset": 0,
+          "range_requested": false,
+          "reason": "initial",
+          "logical_bytes_delivered": 25165824,
+          "http_status": 200,
+          "content_length": 237266723,
+          "outcome": "reading"
+        }
+      ],
+      "scope": "Body GET metadata only; no headers/tokens/URLs or bodybytes retained. Canonical whole-SHA/size gate remains required after every logical byte."
+    }
+  ],
+  "body_failure_diagnostics": 0,
+  "free_bytes": 3234406400
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "bex.native-published-supplier-evidence/v1",
+  "reviewed_at": "2026-10-30T20:31:06.998492+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "official_base": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+  "producer_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "verification_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "workflow_run": 41063733348,
+  "job_id": 124090808291,
+  "cosign_version": "3.1.4",
+  "verified_darwin_arm64_binary_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+  "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+  "subject_digest_algorithm": "sha256",
+  "subject_digest": "5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "source_policy": "Exact fresh-build same producer/verifier;22 immutable recipe inputs; no recovery equality claim.",
+  "crypto_policy": "Five full strict bundles, actual wrong-source/subject rejection, production TUF/Rekor-v2/RFC3161 timestamps; no weakened flags.",
+  "report_policy": "Independent exact registry architecture/config/child and DiffID bindings; every finding retained.",
+  "production_catalog_changed": false
+}

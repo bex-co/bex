@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:9981df1d883b246c27c62f8ccb9b57d3e07d14cee8092299e102b4a69c35ea61",
+    "size": 5740
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:7cd785773db44407e20a679ce5439222e505475eed5b99f1910eb2cda51729ab",
+      "size": 48467838
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:091eb8249475f42de217265c501e0186f0a3ea7490ef7f51458c30db91fb3cac",
+      "size": 24011136
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:255774e0027b72d2327719e78dbad5ad8c9cf446d055e45be7fc149418470bae",
+      "size": 64396484
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:353e14e5cc47664fba714a7da288001d90427c705494847ac773f5cc08199451",
+      "size": 211352566
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:9a4fc08d66ea4d560b68b0e268cd08415294de61a3b6030535037715629c10ea",
+      "size": 191
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:07d9ce15c7c65117a30aa9af23c67f27b1822110612bc85c01f138e18218bf21",
+      "size": 32522646
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:03ae131790c1ffa7e01f460ab8f87a253557976f6760fb62c9386fa263bcf201",
+      "size": 144
+    }
+  ],
+  "annotations": {
+    "com.docker.official-images.bashbrew.arch": "amd64",
+    "org.opencontainers.image.base.digest": "sha256:b4f1eb97247af237343568a09806facd89c9a501058afc6d841bdf783c2d967e",
+    "org.opencontainers.image.base.name": "buildpack-deps:bookworm",
+    "org.opencontainers.image.created": "2025-03-26T11:03:11Z",
+    "org.opencontainers.image.revision": "5331b92f3bb60480a551b28b325e5c312d5ee794",
+    "org.opencontainers.image.source": "https://github.com/docker-library/ruby.git#5331b92f3bb60480a551b28b325e5c312d5ee794:3.1/bookworm",
+    "org.opencontainers.image.url": "https://hub.docker.com/_/ruby",
+    "org.opencontainers.image.version": "3.1.7-bookworm"
+  }
+}

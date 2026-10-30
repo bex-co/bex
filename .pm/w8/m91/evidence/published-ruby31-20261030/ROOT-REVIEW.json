@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-30T20:36:07.938813+00:00",
+  "root_supplier_approval": true,
+  "scope": "Current immutable Ruby3.1 supplier evidence only; no catalog/hosted approval",
+  "actual_attempt": 4,
+  "actual_exit": 0,
+  "current_receipt_sha256": "9c60f86f70f7ffef89d7f08207ab946abbd5e56f0c12d4c82a50f486e172320b",
+  "frozen_manifest_sha256": "2eae27339974962a2c586b214f9efda03d1c6363e0f4610b28c7ed31d570b816",
+  "all175_frozen_payload_hashes_rechecked": true,
+  "all5_bundle_and_predicate_gzip_roundtrips_rechecked": true,
+  "new_complete_blobs": 12,
+  "new_complete_bytes": 774272703,
+  "prior_genuine_complete_blobs": 21,
+  "prior_genuine_complete_bytes": 579627684,
+  "all33_complete_bytes": 1353900387,
+  "rejected_attempts": "Attempts1\u20133 remain rejected: unclassified integrity failure, TUF/report-pair failure, two confirmed short bodies. Later correct bytes do not classify an old response or waive it.",
+  "current_acceptance_basis": "The new complete validation independently proves every current immutable config/layer descriptor and every strict signature/report/source gate. Prior complete receipts retain exact custody and fresh anonymous HEAD checks; no failed response was reused. Both failed blob IDs were read from zero and fully matched their SHA and size.",
+  "live_range_resumes": 0,
+  "custody_limit": "Three earlier derived gzip representations were overwritten; all original signed bundles remain authoritative. This loss is recorded and not concealed.",
+  "no_raw_unlink_or_old_helper_execution": true,
+  "tool_review": "Exact V11/policy reviewed and11+4+6+43 controls pass; committed native-review-ranged-streams-20261030 capsule retains source/tests/reviews."
+}
