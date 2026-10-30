@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-30T09:14:46.521515+00:00",
+  "checked_at": "2026-10-30T10:06:30.920988+00:00",
   "method": "Actual workflow embedded selection script against isolated temporary Git commits; no Docker, signing, network, or production mutation",
   "results": [
     {
@@ -10,6 +10,12 @@
     },
     {
       "case": "authorized Node16 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized Node20 same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0

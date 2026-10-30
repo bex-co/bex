@@ -1,0 +1,167 @@
+{
+  "schema": "bex.local-producer-recovery-receipt/v1",
+  "checked_at": "2026-10-30T10:03:30.812558+00:00",
+  "tag": "node-20-bookworm",
+  "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "digest": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "run_id": 41000570846,
+  "job_id": 123932798235,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+  "producer_run_identity": {
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41000570846",
+    "id": 41000570846,
+    "path": ".github/workflows/native-base-image.yml"
+  },
+  "anonymous_metadata_pull": true,
+  "metadata_only_no_filesystem_layers": true,
+  "platforms": {
+    "linux/amd64": {
+      "architecture": "amd64",
+      "os": "linux",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "NODE_VERSION=20.20.2"
+      ]
+    },
+    "linux/arm64": {
+      "architecture": "arm64",
+      "os": "linux",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "NODE_VERSION=20.20.2"
+      ]
+    }
+  },
+  "build_digest_bound_in_log": true,
+  "original_base_bound_in_log": true,
+  "dual_arch_NativeBase_gate_bound_in_log": true,
+  "architecture_gate_proofs": {
+    "amd64": {
+      "bullseye_companion": {
+        "line_number": 7234,
+        "log_line": "2026-10-30T09:49:32.7020832Z #15 0.863 Patched Node passed the Bullseye companion baseline",
+        "vertex": "15",
+        "command": "RUN --network=none --mount=type=bind,from=native,source=/,target=/candidate,readonly   if [ -f /candidate/usr/local/include/node/node_version.h ]; then     major=\"$(awk '$1 == \"#define\" && $2 == \"NODE_MAJOR_VERSION\" { print $3 }' /candidate/usr/local/include/node/node_version.h)\";     case \"$major\" in       14|16|18|20)         test -s /candidate/usr/share/bex-node-brotli/sources.txt           && /candidate/usr/local/bin/node /candidate/usr/share/bex-security/node-check.js           && echo 'Patched Node passed the Bullseye companion baseline'         ;;     esac;   fi   && printf 'verified\\n' > /tmp/bex-node-portability-verified"
+      },
+      "real_pg18_archive": {
+        "line_number": 7256,
+        "log_line": "2026-10-30T09:49:34.1982907Z #22 0.156 /tmp/archive.dump: OK",
+        "vertex": "22",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 7318,
+        "log_line": "2026-10-30T09:49:48.5972972Z #23 13.04 native tool transformations passed without network",
+        "vertex": "23",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 7322,
+        "log_line": "2026-10-30T09:49:50.7048016Z #35 1.610 system and bundled Brotli checks passed",
+        "vertex": "35",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      }
+    },
+    "arm64": {
+      "bullseye_companion": {
+        "line_number": 7266,
+        "log_line": "2026-10-30T09:49:38.2396909Z #24 0.330 Patched Node passed the Bullseye companion baseline",
+        "vertex": "24",
+        "command": "RUN --network=none --mount=type=bind,from=native,source=/,target=/candidate,readonly   if [ -f /candidate/usr/local/include/node/node_version.h ]; then     major=\"$(awk '$1 == \"#define\" && $2 == \"NODE_MAJOR_VERSION\" { print $3 }' /candidate/usr/local/include/node/node_version.h)\";     case \"$major\" in       14|16|18|20)         test -s /candidate/usr/share/bex-node-brotli/sources.txt           && /candidate/usr/local/bin/node /candidate/usr/share/bex-security/node-check.js           && echo 'Patched Node passed the Bullseye companion baseline'         ;;     esac;   fi   && printf 'verified\\n' > /tmp/bex-node-portability-verified"
+      },
+      "real_pg18_archive": {
+        "line_number": 7294,
+        "log_line": "2026-10-30T09:49:38.8491188Z #31 0.068 /tmp/archive.dump: OK",
+        "vertex": "31",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 7301,
+        "log_line": "2026-10-30T09:49:42.8994731Z #32 3.957 native tool transformations passed without network",
+        "vertex": "32",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 7308,
+        "log_line": "2026-10-30T09:49:44.4938575Z #33 0.689 system and bundled Brotli checks passed",
+        "vertex": "33",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      }
+    }
+  },
+  "steps": [
+    {
+      "completed_at": "2026-10-30T09:49:00Z",
+      "conclusion": "success",
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "number": 6,
+      "started_at": "2026-10-30T06:56:40Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T09:49:51Z",
+      "conclusion": "success",
+      "name": "verify real native tool transformations without network on both architectures",
+      "number": 7,
+      "started_at": "2026-10-30T09:49:00Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T09:54:20Z",
+      "conclusion": "success",
+      "name": "scan amd64 candidate",
+      "number": 8,
+      "started_at": "2026-10-30T09:49:51Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T09:55:16Z",
+      "conclusion": "success",
+      "name": "scan arm64 candidate",
+      "number": 9,
+      "started_at": "2026-10-30T09:54:20Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T09:57:35Z",
+      "conclusion": "failure",
+      "name": "sign and attest the immutable candidate",
+      "number": 12,
+      "started_at": "2026-10-30T09:55:32Z",
+      "status": "completed"
+    }
+  ],
+  "failure": {
+    "command": "cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate native-amd64.spdx.json \"$REF\"",
+    "initial_image_sign": "completed, as bash-e progressed to first SPDX payload",
+    "message": "Rekor v1 POST /api/v1/log/entries giving up after 2 attempt(s)",
+    "failed_at": "2026-10-30T09:57:35Z",
+    "http_status_exposed": false,
+    "payload_size_exposed": false,
+    "basis_lines": [
+      "2026-10-30T09:57:29.2607845Z Using payload from: native-amd64.spdx.json",
+      "2026-10-30T09:57:35.6924392Z Error: signing ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d: signing bundle: error signing bundle: Post \"https://rekor.sigstore.dev/api/v1/log/entries\": POST https://rekor.sigstore.dev/api/v1/log/entries giving up after 2 attempt(s)"
+    ]
+  },
+  "scans_interpretation": "Both original Trivy steps completed successfully; scanner exit-code0 reports findings and does not imply no CVEs. Fresh current scans remain required.",
+  "reviewed_recipe_comparison": {
+    "head": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "changed_files": [
+      "deploy/native-base/README.md"
+    ],
+    "only_markdown": true
+  },
+  "adoptable": false,
+  "requires": "Current authorized recovery must rerun both architecture gates, full scans, full SBOM/Trivy attestations and modern workflow signing before discovery/adoption.",
+  "raw_log": "/tmp/bex-m188-node20-producer-job123932798235.log",
+  "raw_log_sha256": "4d0c05276e78b5b7a9bdc814d9f89123cd6c5a1870e2b6f718c8e0730c680954",
+  "log_gzip": "/tmp/bex-m188-node20-producer-intake/job-123932798235.log.gz",
+  "log_gzip_sha256": "2b5429d06533b35d92f33bbd11fff799015bcd21e1ffd1c0a601872c090dcdf8",
+  "anonymous_metadata_proof": "/tmp/bex-m188-node20-producer-intake/anonymous-metadata-proof.json",
+  "proposed_recovery_entry": "/tmp/bex-m188-node20-producer-intake/recovery-entry.json"
+}

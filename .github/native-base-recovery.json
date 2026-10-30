@@ -40,6 +40,16 @@
       "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
       "reason": "Authenticated main build and both-architecture runtime checks/scans passed; first amd64 SPDX attestation failed posting to Rekor v1 after two attempts. HTTP status and server limit are not exposed. Reuse only this exact same-recipe/base index and rerun all current probes, scans, signatures and attestations.",
       "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "node-20-bookworm": {
+      "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123932798235,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
     }
   }
 }

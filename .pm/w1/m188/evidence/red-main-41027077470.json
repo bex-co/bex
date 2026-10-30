@@ -1,0 +1,85 @@
+{
+  "diagnosis": {
+    "checked_at": "2026-10-30T09:21:06.293443+00:00",
+    "failed_run": {
+      "conclusion": "failure",
+      "createdAt": "2026-10-30T08:32:00Z",
+      "event": "push",
+      "headSha": "fe2603c5e1e44caea1cff1b2d9071b2910ea2cfd",
+      "status": "completed",
+      "updatedAt": "2026-10-30T09:02:25Z",
+      "url": "https://github.com/bex-co/bex/actions/runs/41027077470",
+      "workflowName": "deploy (bex via Argo)"
+    },
+    "latest_green": {
+      "conclusion": "success",
+      "createdAt": "2026-10-30T05:19:10Z",
+      "databaseId": 41007766437,
+      "headSha": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+      "status": "completed",
+      "updatedAt": "2026-10-30T08:46:27Z",
+      "url": "https://github.com/bex-co/bex/actions/runs/41007766437"
+    },
+    "failed_job_id": 123972981307,
+    "failure": {
+      "test": "TestProbeBoundsSlowAndSilentPorts",
+      "location": "lego/operator/internal/httpport/probe_test.go:169",
+      "duration_seconds": 3.0,
+      "actual": {
+        "Port": 46387,
+        "Unanswered": 0
+      },
+      "expected": {
+        "Port": 46387,
+        "Unanswered": 37595
+      }
+    },
+    "code_diffs": {
+      "latest_green_to_failed": [],
+      "failed_to_current": [
+        "lego/operator/config/api/deployment.yaml"
+      ]
+    },
+    "cause": {
+      "classification": "Timing-sensitive test fixture defect; feasible CI-only fix, not a source regression from the dashboard change or a missing-credential gate. Shared runner scheduling can expose the equal deadline boundary.",
+      "fixture": "endpoint sets each server connection deadline to time.Now()+3s; silent handler io.Copy returns when that server deadline fires, then its defer closes the connection.",
+      "production": "portTimeout is now3s; silence classifies timeout/context cancellation as unknown, while a close/reset is notHTTP. At equal boundary the fixture can deliver EOF before the client timeout path is observed.",
+      "confidence": "High from exact3s failure, matching timeout constants and identical code in latest green/failed/current; no new local reproduction claimed."
+    },
+    "minimal_fix": "Change ONLY fixture endpoint deadline to probeTimeout+time.Second (strictly later than bounded whole scan), keeping t.Cleanup active connection closure. No production timeout/classification weakening.",
+    "validation_plan": [
+      "GOWORK=off go -C lego/operator test ./internal/httpport -run ^TestProbeBoundsSlowAndSilentPorts$ -count=10",
+      "GOWORK=off go -C lego/operator test -race ./internal/httpport -count=1",
+      "Required normal operator test/codegen gates for the isolated fix(ci) ship; do not rerun remote jobs or hold unrelated work waiting for mainCI."
+    ],
+    "proof": {
+      "log_gzip": "/tmp/bex-red-main-41027077470/operator-failed-job.log.gz",
+      "compressed_sha256": "ab12ff0bab175d9d202b3fc5864e3d84dbf6ebb989bdb7e7b3d3e81152d4e79d",
+      "selected_failure_lines": "/tmp/bex-red-main-41027077470/failure-selected.log"
+    },
+    "actions": "Read-only metadata/log/code comparison only; no repository edits, commits, push, remote rerun or cancellation."
+  },
+  "resolution": {
+    "shipped_commit": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "change": "Fixture deadline is probeTimeout+time.Second; production timeouts/classification unchanged",
+    "validation": [
+      {
+        "command": "GOWORK=off go test ./internal/httpport -run ^TestProbeBoundsSlowAndSilentPorts$ -count=10 -timeout=2m",
+        "exit": 0,
+        "seconds": 30.344
+      },
+      {
+        "command": "GOWORK=off go test -race ./internal/httpport -count=1 -timeout=2m",
+        "exit": 0,
+        "seconds": 8.175
+      },
+      {
+        "command": "GOWORK=off make test",
+        "exit": 0,
+        "controller_envtest_seconds": 211.234,
+        "log_sha256": "b9a337e5f44e80d6aff77b4153bbb5769000a6a70e03803f2597a060ff555dc8"
+      }
+    ],
+    "ship_gate": "--fixes-red-main passed; pushed, publication resumed without waiting for remote green"
+  }
+}
