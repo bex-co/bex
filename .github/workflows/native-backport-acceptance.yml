@@ -1,0 +1,66 @@
+name: native backport acceptance (build + HTTP)
+
+# Run manually after adopting the verified native supplier pins.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-backport-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    if: github.ref == 'refs/heads/main'
+    name: ${{ matrix.name }}
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: Node 14
+            test: "^TestNativeBackportsBuildAndStart$/^node14$"
+          - name: Node 16
+            test: "^TestNativeBackportsBuildAndStart$/^node16$"
+          - name: Node 18
+            test: "^TestNativeBackportsBuildAndStart$/^node18$"
+          - name: Node 20
+            test: "^TestNativeBackportsBuildAndStart$/^node20$"
+          - name: Python 3.7 with Node 20
+            test: "^TestNativePythonBackportBuildAndStart$"
+          - name: Ruby 3.0 with Node 20
+            test: "^TestNativeRubyBackportBuildAndStart$"
+    env:
+      GOWORK: "off"
+      BEX_BUILDKIT_INTEGRATION: "1"
+      DOCKER_DEFAULT_PLATFORM: linux/amd64
+      BUILDX_BUILDER: default
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache: false
+      - name: record source, existing builder and disk usage
+        run: |
+          git rev-parse HEAD
+          docker info --format 'daemon architecture={{.Architecture}} operating-system={{.OSType}} version={{.ServerVersion}}'
+          docker buildx inspect default
+          df -Pk . "$RUNNER_TEMP"
+          docker system df
+      - name: build and start the selected native fixture
+        working-directory: lego/operator
+        env:
+          TEST_PATTERN: ${{ matrix.test }}
+        run: env -u GOFLAGS go test ./internal/build -run "$TEST_PATTERN" -count=1 -timeout=30m -v
+      - name: record disk usage after fixture cleanup
+        if: always()
+        run: |
+          df -Pk . "$RUNNER_TEMP"
+          docker system df
