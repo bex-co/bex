@@ -152,3 +152,8 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Complete-layer scanner recovery — 2026-10-30
 
 [Actual Elixir failures, pinned scanner source and reviewed staging controls](evidence/publication-trivy-staging-20261030/README.md) support a coverage-preserving publication fix: complete remote layers are staged and verified before tar analysis, databases finish outside each full-scan budget, and owned temporary storage is measured and bounded. Both immutable recovery candidates repeat all current runtime, complete scan, SBOM and signing gates. Local controls and repository checks pass; actual runner capacity and successful corrected publication remain unproved. Seven suppliers remain approved; no task or original hosted DoD is closed.
+
+
+## Bounded ranged body review — 2026-10-30
+
+[Rejected short-body evidence and reviewed V11 controls](evidence/native-review-ranged-streams-20261030/README.md) retain all earlier Ruby3.1 failures and add bounded contiguous range resumption while preserving the canonical whole-SHA/size/cache and strict trust gates. Eleven new range controls plus existing concurrency/isolation/strict guards and three source reviews pass. One new complete validation is assigned; no supplier approval or original hosted DoD is claimed. Seven suppliers remain approved.
