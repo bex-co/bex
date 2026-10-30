@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004, t005, t006 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t007 (docs)
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004–t007 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t008 (Render parity)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Emit `postgres_cluster_leader_changed` when the primary changes — **DONE** | 1h | t003, w5/m138/t003 |
 | t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry — **DONE** | 45m | t003 |
 | t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event — **DONE** | 1h | t004, t005 |
-| t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist | 20m | t006 |
+| t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist — **DONE** | 20m | t006 |
 | t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
 | t008 | Render parity | 30m | t007, t012 |
 | t009 | Simplify | 15m | t008 |
