@@ -1,0 +1,20 @@
+{
+  "id": 12983305386,
+  "node_id": "MDg6QXJ0aWZhY3QxMjk4MzMwNTM4Ng==",
+  "name": "m144-observer-channel-smoke",
+  "size_in_bytes": 310,
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/12983305386",
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/12983305386/zip",
+  "expired": false,
+  "digest": "sha256:fa61262d5bbf107123214bbbda7c38c9bcc20670195161017992615364befee7",
+  "created_at": "2026-10-30T13:51:59Z",
+  "updated_at": "2026-10-30T13:51:59Z",
+  "expires_at": "2026-10-31T13:51:57Z",
+  "workflow_run": {
+    "id": 41066532463,
+    "repository_id": 793852040,
+    "head_repository_id": 793852040,
+    "head_branch": "main",
+    "head_sha": "f857566a8d7089b46126543804712a46acf58285"
+  }
+}

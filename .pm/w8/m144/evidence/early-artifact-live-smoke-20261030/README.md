@@ -1,0 +1,5 @@
+# Actual early artifact access — 2026-10-30
+
+[Resource-free run41066532463](https://github.com/bex-co/bex/actions/runs/41066532463) succeeded at exact sourcef857566a8d7089b46126543804712a46acf58285. Artifact12983305386 was downloaded13:52:03.988–13:52:05.885UTC with the observer-channel-smoke job124100094662 in progress before and after download. The original job receipts retain the actual job ID and step state; the cluster job was skipped. No production credential, Kubernetes/provider API, or paid resource was used.
+
+The182-byte marker is protocolSmokeReady with invalid fixture/service/App IDs; its SHA256 is f3bb1ac50e8bca480487e03db631b3b56e17aadc043567ab9be3f40b112112f6. The real observer readiness validator rejects these actual downloaded bytes. This proves early upload/download availability with the pinned action and current permissions; it does not establish actual fixture watches, provider baseline, or paid lifecycle acceptance. The private plan now names this artifact acquisition and refreshes its requirements hash after the already-reviewed source constant addition. The root gate remains absent.
