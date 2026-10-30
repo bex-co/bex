@@ -1,0 +1,50 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1821,
+      "sha256": "b5aeb30a82ae48f5ccae6fbcbc140ec91f43a15521df412c6a226103491e73da"
+    },
+    {
+      "path": "bounded-csi-release.json",
+      "bytes": 1011,
+      "sha256": "c0d7616bf318f8cdcc6c73682512506fa8c75b722830d84286bb9d45996a7a70"
+    },
+    {
+      "path": "csi-ready.json",
+      "bytes": 946,
+      "sha256": "64341376e2d26900a9b0dcf4029505ad6f11fde532776aef4063b34239284361"
+    },
+    {
+      "path": "platform-ready-pre-csi.json",
+      "bytes": 4484,
+      "sha256": "35ecd4d9dfa8166b19ec730f9c288053339adb757ce3c2effde5939b09bc986e"
+    },
+    {
+      "path": "root-checks.json",
+      "bytes": 518,
+      "sha256": "c8441e7600d70ca8ac2aea54e0b953c7e2973af125085ed0920e9a0c03e1f327"
+    },
+    {
+      "path": "selected-inventory-review.json",
+      "bytes": 3403,
+      "sha256": "cb972e51fe299a6c45245a2233b240d16664c23b3a2c0d510a9cd5e9a0b6027f"
+    },
+    {
+      "path": "selected-ready-proof.tar.gz",
+      "bytes": 6214,
+      "sha256": "a84c1519157c51aa18088f76512f3516421c50e561808f11186a7152c4616588"
+    },
+    {
+      "path": "source-inventory-before-upgrade.json",
+      "bytes": 7330,
+      "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+    },
+    {
+      "path": "source-selected-receipt.json",
+      "bytes": 6442,
+      "sha256": "006e5c6a214d8da5830eee45d63945aa821dd26d5fe1d264a980e7d4538f4a21"
+    }
+  ]
+}

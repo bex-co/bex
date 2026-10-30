@@ -92,3 +92,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Signed final-source platform candidate — 2026-10-30
 
 [The successful-build and strict candidate proof](evidence/platform-candidate-25b-20261030/README.md) binds published index `a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c` to source `25b99d8a373aedd66ec485708762a59cf5eaa408`, both required fix ancestors and all seventeen tested source blobs. Signing and all ten scan steps passed; deployment was queued in the actual snapshot. Live API/operator and new CSI readiness, current CI capacity and the original paid lifecycle remain open. No fixture or task is completed by this candidate proof.
+
+## Actual platform and guarded CSI Ready — 2026-10-30
+
+[The actual scoped rollout proof](evidence/live-release-ready-20261030/README.md) reports the new e951 CSI driver Ready on one controller and eleven node pods. Its pre-Helm selected inventory already shows the qualified a544 platform Ready on both API pods and the manager with exact runtime imageIDs; bounded class selection/contract and both legacy bindings/handles are preserved. The reviewed validator rejects old/terminating driver pods. Separate post-CSI inventory41107548122 is pending. Fresh queue fit and all original paid lifecycle/surface/cleanup acceptance remain open; no fixture or task closes here.

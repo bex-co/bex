@@ -1,0 +1,12 @@
+{
+  "actual_new_CSI_release_gate_subcheck": "pass",
+  "platform_API2_manager1_spec_runtimeIDs_ready_convergence": "pass",
+  "bounded_class_exact_committed_contract": "pass",
+  "all17_source_blobs_and_both_ancestors": "qualified platform-candidate-25b-20261030 evidence",
+  "legacy_scope": "pre-Helm inventory comparison; no foreign tenant filesystem read",
+  "remaining": [
+    "fresh CI queue budget fit",
+    "owned paid fixture/lifecycle/surfaces/cleanup",
+    "separate requested post-CSI inventory pending"
+  ]
+}

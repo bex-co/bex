@@ -1,0 +1,161 @@
+{
+  "recorded_at": "2026-10-30T19:05:29.774377+00:00",
+  "run_url": "https://github.com/bex-co/bex/actions/runs/41086267444",
+  "run_id": 41086267444,
+  "workflow_source": "2432e99baf5adc95da6acf2d7758cf43b4f571dd",
+  "workflow_conclusion": "success",
+  "cluster_job_id": 124171247565,
+  "cluster_conclusion": "success",
+  "upgrade_step": {
+    "name": "upgrade only CSI and verify every controller/node driver pod",
+    "api_step_metadata_available": false,
+    "api_step_count": 2,
+    "fixed_installer_command_seen": true,
+    "reviewed_driver_readiness_after_command": true,
+    "success_evidence": "literal fixed installer command followed by reviewed verify_ready JSON in successful run and job; no fabricated API step status"
+  },
+  "driver_readiness": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+    "readyControllerPods": 1,
+    "readyNodePods": 11
+  },
+  "actual_reviewed_driver_rollout_ready": true,
+  "old_driver_termination_by_reviewed_validator": true,
+  "termination_proof": "The reviewed validator rejects every terminating or other-image release pod and requires active controller/node counts equal desired counts.",
+  "legacy_binding_comparison_scope": "selected inventory before Helm upgrade compared with preflip inventory; no post-upgrade tenant re-read",
+  "baseline_bindings_and_handles_preserved": {
+    "srv-d9nqg9dcavls73fp8m2g": true,
+    "srv-dbg4lfdn83uc738uug70": true
+  },
+  "legacy_disk_metadata": {
+    "srv-d9nqg9dcavls73fp8m2g": {
+      "app_uid": "1b1cf4db-d951-46c9-bff3-521d9df618e7",
+      "claims": [
+        {
+          "pvc_uid": "bdc95c26-fdac-44a7-b29e-76e908074ca8",
+          "pvc_name": "disk-tea-d98210cbbpdc73dcrkvg-beancount-forum",
+          "storage_class": "hcloud-volumes-luks",
+          "requested": "10Gi",
+          "capacity": "10Gi",
+          "pv_name": "pvc-bdc95c26-fdac-44a7-b29e-76e908074ca8",
+          "pv_claim_ref_uid": "bdc95c26-fdac-44a7-b29e-76e908074ca8",
+          "volume_handle": "107293514",
+          "binding_matches": true
+        }
+      ]
+    },
+    "srv-dbg4lfdn83uc738uug70": {
+      "app_uid": "3e9cfcbd-064d-40b5-a7e5-4a953de7b18a",
+      "claims": [
+        {
+          "pvc_uid": "f571482d-255d-4986-8098-0e713b1bb90e",
+          "pvc_name": "disk-tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+          "storage_class": "hcloud-volumes-luks",
+          "requested": "10Gi",
+          "capacity": "10Gi",
+          "pv_name": "pvc-f571482d-255d-4986-8098-0e713b1bb90e",
+          "pv_claim_ref_uid": "f571482d-255d-4986-8098-0e713b1bb90e",
+          "volume_handle": "107282157",
+          "binding_matches": true
+        }
+      ]
+    }
+  },
+  "pv_metadata_uid_lifetime_proven": false,
+  "pv_uid_evidence_limit": "Historical generic inventories project PV name/claimRefUID/handle, not PV metadata.uid.",
+  "app_disk_count": 2,
+  "unmatched_claim_count": 0,
+  "platform_images_before_upgrade": {
+    "deployments": [
+      {
+        "namespace": "bex-system",
+        "name": "bex-controller-manager",
+        "uid": "a26e3ffc-19cd-4923-ad39-88182ec8d32e",
+        "generation": 1700,
+        "observedGeneration": 1700,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "containerImages": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "diskStorageClass": "hcloud-volumes-luks-bounded"
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-api",
+        "uid": "2e592287-82f6-4077-80e8-d956de1c8f74",
+        "generation": 2814,
+        "observedGeneration": 2814,
+        "replicas": 2,
+        "updatedReplicas": 2,
+        "readyReplicas": 2,
+        "availableReplicas": 2,
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "diskStorageClass": ""
+      }
+    ],
+    "pods": [
+      {
+        "namespace": "bex-system",
+        "name": "bex-api-6d97c75f-bczxr",
+        "uid": "42e775c9-95c2-4289-b1f7-33ca2f6f826f",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerImageIds": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerReady": {
+          "api": true
+        }
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-api-6d97c75f-mmxwr",
+        "uid": "9fead795-b74c-45a8-a70e-b1aa93e47600",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerImageIds": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerReady": {
+          "api": true
+        }
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-controller-manager-84cdb7cd58-m8pb2",
+        "uid": "7066590b-5577-4ea3-a7b3-ad8f9a300f9c",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerImageIds": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+        },
+        "containerReady": {
+          "manager": true
+        }
+      }
+    ]
+  },
+  "pre_upgrade_inventory_is_new_platform_paid_gate": false,
+  "no_child_dispatch_pin_helm_git_or_tenant_action": true,
+  "cluster_log_download_count": 1,
+  "full_log_bytes_read": 38001,
+  "full_log_sha256": "f2c17af8f10195d9d38f90d843dd9f2fe05625920aae165d30efd89d9d7e7b4d",
+  "shared_selected_log_scope": "only fixed inventory JSON and reviewed driver-readiness JSON, with original timestamps",
+  "private_full_log_path": "/private/tmp/bex-w8-csi-key-rollout-20261030/child-observation/cluster-job-body.private.log",
+  "private_full_log_mode": "0600",
+  "private_full_log_in_shared_evidence": false
+}

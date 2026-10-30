@@ -1,0 +1,127 @@
+{
+  "scope": "actual selected platform inventory before CSI Helm upgrade in successful run; driver Ready is separately proven after that upgrade",
+  "run": "https://github.com/bex-co/bex/actions/runs/41086267444",
+  "source_commit": "2432e99baf5adc95da6acf2d7758cf43b4f571dd",
+  "all_selected_platform_pods_running_ready_nonterminating": true,
+  "actual_image_ids_equal_requested_pins": true,
+  "platform_deployments": {
+    "bex-api": {
+      "desired": 2,
+      "updated": 2,
+      "ready": 2,
+      "available": 2,
+      "generation": 2814,
+      "observedGeneration": 2814,
+      "images": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "converged": true
+    },
+    "bex-controller-manager": {
+      "desired": 1,
+      "updated": 1,
+      "ready": 1,
+      "available": 1,
+      "generation": 1700,
+      "observedGeneration": 1700,
+      "images": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "converged": true
+    }
+  },
+  "platform_pods": [
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6d97c75f-bczxr",
+      "uid": "42e775c9-95c2-4289-b1f7-33ca2f6f826f",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "api": true
+      }
+    },
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6d97c75f-mmxwr",
+      "uid": "9fead795-b74c-45a8-a70e-b1aa93e47600",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "api": true
+      }
+    },
+    {
+      "namespace": "bex-system",
+      "name": "bex-controller-manager-84cdb7cd58-m8pb2",
+      "uid": "7066590b-5577-4ea3-a7b3-ad8f9a300f9c",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "manager": true
+      }
+    }
+  ],
+  "operator_disk_storage_class": "hcloud-volumes-luks-bounded",
+  "manager_selects_bounded_class": true,
+  "bounded_class_matches_reviewed_contract": true,
+  "storage_classes": [
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks",
+      "uid": "13aeb054-74c2-4ca5-9861-039a7dc9cf27",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "",
+      "boundedFilesystem": "",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "",
+      "expandSecretNamespace": ""
+    },
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks-bounded",
+      "uid": "45392ab9-1e77-477d-9a95-6a9a84670869",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "ext4",
+      "boundedFilesystem": "ext4-v1",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "${pvc.name}-luks",
+      "expandSecretNamespace": "${pvc.namespace}"
+    }
+  ],
+  "legacy_binding_scope": "selected inventory before Helm upgrade compared with preflip inventory; no post-upgrade tenant re-read",
+  "legacy_bindings_and_handles_preserved": {
+    "srv-d9nqg9dcavls73fp8m2g": true,
+    "srv-dbg4lfdn83uc738uug70": true
+  },
+  "pv_metadata_uid_lifetime_proven": false,
+  "post_new_CSI_independent_inventory_pending_run": 41107548122
+}
