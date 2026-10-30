@@ -71,7 +71,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 		out[i] = DatabaseInstanceType{
 			MonthlyUSD:                monthlyUSD,
 			ID:                        t.ID,
-			Name:                      pgTierDisplayName(id),
+			Name:                      TierDisplayName(id),
 			CPU:                       t.CPU,
 			Memory:                    t.Memory,
 			StorageGB:                 t.StorageGB,
@@ -91,11 +91,11 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 // "256MB", not "256mb").
 var sizeToken = regexp.MustCompile(`^\d+(mb|gb|tb)$`)
 
-// pgTierDisplayName turns a Postgres plan id into its display spelling, e.g.
+// TierDisplayName turns a Postgres plan id into its display spelling, e.g.
 // "basic-256mb" -> "Basic 256MB", "free" -> "Free" (Render's Postgres
 // family-size naming). The compute sibling (apps.tierDisplayName) title-cases
 // hyphen-words; this additionally upper-cases the byte-size unit.
-func pgTierDisplayName(id string) string {
+func TierDisplayName(id string) string {
 	// Render's flexible ids with no legacy family name (1c-2g) read as
 	// themselves; title-casing would only produce "1c 2g".
 	if id != "" && id[0] >= '0' && id[0] <= '9' {

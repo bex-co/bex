@@ -266,7 +266,7 @@ func TestGraphQLValidateBlueprintEstimatedPricing(t *testing.T) {
 	for _, raw := range lines {
 		l := raw.(map[string]any)
 		if l["name"] == "beancount-forum-db" {
-			if l["tier"] != "basic-1gb" || l["tierLabel"] != "Basic 1gb" || l["monthlyUsd"] != "14.35" || l["instanceUsd"] != "13.30" || l["storageUsd"] != "1.05" || l["storageGb"] != 5 {
+			if l["tier"] != "basic-1gb" || l["tierLabel"] != "Basic 1GB" || l["monthlyUsd"] != "14.35" || l["instanceUsd"] != "13.30" || l["storageUsd"] != "1.05" || l["storageGb"] != 5 {
 				t.Errorf("db line = %+v", l)
 			}
 		}
