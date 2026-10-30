@@ -1,15 +1,15 @@
 # w2 · m245 — Public Postgres URLs verify against system roots, as on Render
 
-**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo (t001 done)
+**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo — t001–t004 done (shipped `19bfc60d1`, `1d5212871`); next t005 live acceptance after the production deploy
 
 ## Tasks (in order)
 
 | id   | title                                                                                                   | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Prove on `dev-2` that CNPG serves a user-provided server certificate while its replication still verifies — **DONE** | 45m | —          |
-| t002 | Operator: a publicly trusted certificate per externally reachable database, wired into CNPG and renewed   | 1h  | t001       |
-| t003 | External connection string connects as-is from a stock client, Render-shaped                             | 40m | t002       |
-| t004 | `serverCaCertificate` semantics on REST, GraphQL, MCP and the dashboard connect panel                     | 30m | t003       |
+| t002 | Operator: a publicly trusted certificate per externally reachable database, wired into CNPG and renewed   — **DONE** | 1h  | t001       |
+| t003 | External connection string connects as-is from a stock client, Render-shaped                             — **DONE** | 40m | t002       |
+| t004 | `serverCaCertificate` semantics on REST, GraphQL, MCP and the dashboard connect panel                     — **DONE** | 30m | t003       |
 | t005 | Live acceptance on production: copy → connect, forced renewal → still connects                           | 40m | t004       |
 | t006 | Correct ADR009, ADR018 and the connection docs                                                           | 20m | t005       |
 | t007 | Render parity                                                                                           | 20m | t006       |
@@ -48,3 +48,13 @@ A two-instance CNPG `Cluster` in namespace `dev-2` used `spec.certificates.serve
 - **Replication works.** The joining replica's `pg_basebackup` verified the primary against `server-ca.crt` from the provided `serverCASecret` (`host=<cluster>-rw … sslmode=verify-ca`), so **the server certificate must also cover the in-cluster names** (`<cluster>-rw`, `-r`, `-ro` and their namespace forms). For Let's Encrypt this means a CA secret whose `ca.crt` holds the chain's root (ISRG Root X1/X2). Internal names cannot appear in a public certificate, so t002 must check whether replication verifies only the CA (`verify-ca`, as the join log shows) or also the hostname, and keep in-cluster replication working (e.g. CNPG's `serverAltDNSNames` only on a CNPG-managed cert, or a separate internal path).
 - **Served certificate:** `openssl s_client -starttls postgres` returned the issued certificate, `Verify return code: 0`. Writes replicated (`pg_stat_replication`: `streaming`; replica row count followed).
 - **Renewal needs the `cnpg.io/reload` label.** Without it, after cert-manager re-issued the secret, the old certificate stayed served for more than 85 seconds. With `spec.secretTemplate.labels: {cnpg.io/reload: ""}` on the `Certificate`, the new serial was served within about 40 seconds after renewal, with no Pod restart and replication still streaming. **t002 must set that label.**
+
+## t002–t004 — shipped 2026-10-30 (`19bfc60d1`, `1d5212871`)
+
+- **Operator:** new `BEX_DB_CLUSTER_ISSUER` (production overlay: `letsencrypt-prod`; unset everywhere else, which keeps CNPG's own certificate). Each public database gets a `<db>-public-tls` cert-manager Certificate (primary, pooler and replica SNI names; Secret labeled `cnpg.io/reload`, stamped with the DB UID). It is wired into CNPG (`serverTLSSecret` + `serverCASecret` = a root-only Secret holding the root that Go's system-pool verification anchors the chain to, which is future-proof for Let's Encrypt's Y roots) only once the Certificate is Ready for its generation and the chain verifies (trusted, right host, unexpired). CNPG refuses `serverAltDNSNames` alongside `serverTLSSecret`, so it is dropped when wired. A served certificate stays served across re-issues while valid. `status.externalCertificate` goes `Pending` → `PubliclyTrusted` only once CNPG reports serving it. Turning public access off reverts to CNPG's certificate and cleans up safely.
+- **Why internal names are not needed** (from CNPG source): replication and PgBouncer use `verify-ca`; the CNPG status client checks the chain and ignores DNS; pg-sni-proxy never terminates TLS. The NetworkPolicy needs no change, because `allow-traefik-ingress` admits the HTTP-01 solver.
+- **URL (t003):** once publicly trusted, connection-info returns Render's exact external URL shape with **no `sslmode`** (libpq's default still negotiates TLS, and the proxy accepts nothing else). `verify-full` alone would demand `root.crt`, and `sslrootcert=system` breaks libpq < 16, node-postgres, pgjdbc and Prisma. `psqlCommand` takes Render's `PGPASSWORD=… psql -h … -U … db` form. While pending, or with the feature off, the URL is unchanged (`verify-full` + CA).
+- **`serverCaCertificate` (t004):** present only while CNPG's own certificate is served, omitted (REST) or empty (GraphQL) once public. MCP has no connection-info tool. The dashboard already hides the CA block when it is empty, and a test pins that no `root.crt` / `PGSSLROOTCERT` copy appears.
+- **Let's Encrypt budget:** 50 new certificates per week for `bex.co`; renewals are exempt; a name-set change counts as a new order. Recorded in `database_public_tls.go`.
+- **Exposure checked before shipping:** the only two public databases (`dpg-db34l9bor55s73cqpq9g` in `bex`, `dpg-db9r654flioc739mcpbg` in `bex-canary`) are QA fixtures with no active client and no in-cluster config referencing their URLs, so the certificate switch breaks no pinned client.
+- **Known limit, same as Render:** a client machine with a stale `~/.postgresql/root.crt` still verifies against that file.
