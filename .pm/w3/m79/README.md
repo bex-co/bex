@@ -1,6 +1,6 @@
 # w3 · m79 — Run the full agent-session stack locally on `dev-N`
 
-**Worker:** worker3 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** in progress (audited 2026-08-31; t001–t010 done, including green component/capability checks and a real-model repo-less session; t012 still needs developer-supplied GitHub App credentials + installation to prove the draft-PR delivery leg, then t011 closes the milestone)
+**Worker:** worker3 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** todo — t001–t010 done; 2026-10-29 unblock: developer GitHub App `bex-dev3-agents-puncsky` + disposable repo `puncsky/bex-dev3-agent-sandbox` staged in `dev-3/.agent/`; t012 installs it via the bex connect flow and proves the draft PR, then t011 closes
 
 ## Tasks (in order)
 
@@ -44,3 +44,14 @@
 - The one novel local hop is in-cluster gateway → **host** bex-api `:8091` (credential/model mint), the mirror of dev-env's existing host→cluster port-forwards.
 - Real credentials are developer-supplied and never committed: a model provider key (OpenBao) and a GitHub App installation.
 - Local divergences from prod are intentional and documented: no Cilium enforcement (Calico), no gVisor (runc). A local run is **not** isolation validation.
+
+## Unblock 记录（2026-10-29，/unblock w3，origin/main `e4d9c65d6`）
+
+- **涉及：** t012、t011。
+- **用户明确决定 D6（2026-10-29）：** 由 agent 用有头浏览器自行完成 GitHub 侧操作，用户只负责登录 GitHub（puncsky）。
+- **已完成（`/unblock` 本次执行）：**
+  - 新建一次性私有仓库 `puncsky/bex-dev3-agent-sandbox`（只有 README，可随时删除）。
+  - 新建 GitHub App `bex-dev3-agents-puncsky`（App ID `5534636`，Client ID `Iv23liIxB5ivjlBUZpyR`，只能安装在本账号）。权限：contents write、pull_requests write、checks read、metadata read（`gh api /apps/bex-dev3-agents-puncsky` 已核对）。Redirect URI 为 `http://localhost:54030/v1/git/callback`（dev-3 的 `BEX_API_PORT`），已开启「Request user authorization (OAuth) during installation」，webhook 关闭（本地收不到），不设 Setup URL（符合 ADR026 §2）。
+  - 私钥 → `dev-3/.agent/github-app.pem`；`BEX_GITHUB_APP_ID/_SLUG/_CLIENT_ID/_CLIENT_SECRET` → `dev-3/.agent/github-app.env`。两个文件都是 0600、已 gitignore，值没有出现在对话或日志里。client secret 已验证有效：用假 code 调 OAuth 返回 `bad_verification_code`，而不是 `incorrect_client_credentials`。
+- **有意未做：** 没有安装 App。t012 应走 bex 的 connect 流程（`POST /v1/git/connect` → 首次安装，GitHub 会带回签名 state）来安装，并且**只选** `puncsky/bex-dev3-agent-sandbox`，这样首次安装路径也能被验证。如果已经误装，就走 ADR078 §3a 的 claim 流程。
+- **剩余阻塞：** 无。worker 下一步：重建 mock cluster（预先批准）→ `bash scripts/dev-env.sh 3 up --agents`（或 `agent-up`）→ 在 dev-3 dashboard 上连接 GitHub。Playwright 浏览器已登录 GitHub；会话失效时请用户重新登录。之后用 sandbox 仓库跑一次 session，直到打开 draft PR，记录 PR URL、session id 和 `status` 输出 → t011 closeout。完成后这个 App 和仓库可以保留给本地复用，也可以删除，由 worker 在 closeout 里记录。
