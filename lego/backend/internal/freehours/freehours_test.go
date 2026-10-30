@@ -152,3 +152,36 @@ func TestSweepResumesAtMonthEndAndOnUpgrade(t *testing.T) {
 		t.Error("resume must clear the marker")
 	}
 }
+
+func TestSweepFractionalBudgetThresholds(t *testing.T) {
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	st := &fakeStore{claimed: map[string]bool{}, seconds: map[string]int64{"tea-a": 143}}
+	sw, cl, notes := newSweeper(t, now, st,
+		app("free", "tea-a", "free", appv1alpha1.TypeWebService, false, ""))
+	sw.BudgetHours = 0.05 // 180 seconds; the warning is due at 144 seconds.
+	for _, step := range []struct {
+		seconds   int64
+		notices   int
+		suspended bool
+	}{
+		{143, 0, false},
+		{144, 1, false},
+		{179, 1, false},
+		{180, 2, true},
+	} {
+		st.seconds["tea-a"] = step.seconds
+		for range 2 {
+			if err := sw.SweepOnce(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		suspended := get(t, cl, "tea-a", "free").Spec.Suspended
+		if len(notes.stages) != step.notices || suspended != step.suspended {
+			t.Fatalf("at %ds: notices=%v suspended=%v, want %d notices and suspended=%v",
+				step.seconds, notes.stages, suspended, step.notices, step.suspended)
+		}
+	}
+	if notes.stages[0] != "tea-a/warned" || notes.stages[1] != "tea-a/exhausted" {
+		t.Fatalf("notice stages = %v", notes.stages)
+	}
+}

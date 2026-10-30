@@ -1,6 +1,6 @@
 # w8 · m139 — Free web services share 750 instance hours per workspace per month, as on Render
 
-**Worker:** worker8 **Goal:** Each workspace gets Render's 750 Free instance hours per calendar month, counted only while a Free web service is running (spun-down time is free). When they run out, the workspace's Free web services are suspended until the start of the next month, with warning and exhaustion emails and a "Monthly included usage" readout, as on Render. **Status:** todo — t001–t007 done；t008 按原 DoD 在 dev-8 验证生命周期，生产验证读取端，无需等待日历
+**Worker:** worker8 **Goal:** Each workspace gets Render's 750 Free instance hours per calendar month, counted only while a Free web service is running (spun-down time is free). When they run out, the workspace's Free web services are suspended until the start of the next month, with warning and exhaustion emails and a "Monthly included usage" readout, as on Render. **Status:** done — 2026-10-29：dev-8 全生命周期通过；生产读取端复核一致；全部自有 fixture / 邮件 / session 已清理
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 — **DONE** | Render parity: ADR030/ADR018, suspension reason and resume rules               | 20m | w8/m139/t002, w8/m139/t003, w8/m139/t004 |
 | t006 — **DONE** | Simplify the changed code                                                     | 15m | w8/m139/t005               |
 | t007 — **DONE** | Test coverage: accrual, sleep exclusion, exhaustion, month rollover, upgrade   | 40m | w8/m139/t005               |
-| t008 | Close out the milestone                                                       | 30m | w8/m139/t006, w8/m139/t007 |
+| t008 — **DONE** | Close out the milestone                                                       | 30m | w8/m139/t006, w8/m139/t007 |
 
 ## Definition of done
 
@@ -28,7 +28,7 @@ On a dev environment with a shortened budget (configurable, e.g. 0.05 h), and li
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep p8q1, 2026-10-24 UTC, `bex-canary` (Hobby), platform pin `29d63e1f7bea`. Source-level finding (a 750-hour exhaustion cannot be produced live in a QA sweep).
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); pricing ([ADR030](../../../docs/ADR030-pricing.md)). [render.com/docs/free](https://render.com/docs/free): "Render grants 750 Free instance hours to each workspace per calendar month", consumed only while running; when exhausted, "Render suspends all of your Free web services until the start of the next month"; usage appears in the Billing page's "Monthly Included Usage", with emails when approaching and exceeding. ADR030 §6 caps a Free service at one instance but sets no monthly budget, so N Free services run without bound at $0.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); pricing ([ADR030](../../../../docs/ADR030-pricing.md)). [render.com/docs/free](https://render.com/docs/free): "Render grants 750 Free instance hours to each workspace per calendar month", consumed only while running; when exhausted, "Render suspends all of your Free web services until the start of the next month"; usage appears in the Billing page's "Monthly Included Usage", with emails when approaching and exceeding. ADR030 §6 caps a Free service at one instance but sets no monthly budget, so N Free services run without bound at $0.
 - **Expected outcome:** the Free tier's cost ceiling matches Render's, closing an unbounded free-compute path, and tenants see the same monthly allowance.
 - **Why now:** major (pricing/abuse parity). The meter already exists (below), so this is accounting plus enforcement. Render parity task included: usage surfaces, dashboard and emails.
 
@@ -79,3 +79,11 @@ GraphQL `usage(ownerId:"tea-daif693dqjvc73e7as3g") { period freeInstanceHours { 
 - **处理：** 恢复 t008 待验证；保留已有生产读数/80% claim 证据。worker 在隔离 dev-8 用 `BEX_FREE_INSTANCE_HOURS=0.05`，接入测试 meter / Prometheus 并用测试时钟完成 warning、exhaustion、免费与付费区别、人工 resume 拒绝、升级恢复、月界重置与一次性通知。修复本地 harness / 使用隔离复现环境属于预批准开发环境工作，不是用户或日历门槛。不得改生产时钟或降低生产预算。
 - **验收：** 原 DoD 全部保留；SMTP claim 不等于邮件送达，应以 dev Mailpit 收件证明通知。生产自然跨界可补充观察，不能替代未做的 dev 验收，也不必以它阻塞现有验收路径。不补发公告的 D5 不变。
 - **剩余门槛：** 无用户门槛；实现/运行隔离验收后才可 done。
+
+## Completed — 2026-10-29 Pacific / 2026-10-30 UTC
+
+All original DoD bullets are observed. The real dev-8 drill passed in 422.31 seconds with actual kubelet/cAdvisor/Prometheus metering, real Postgres/Kubernetes lifecycle writes, both Mailpit deliveries, upgrade and test-clock month rollover. Fresh production REST/GraphQL/MCP readouts agree, and the prior hosted Usage-card/meter evidence is retained. The fractional-budget threshold defect found during acceptance is fixed with a failing-before/passing-after boundary regression. [Full evidence and cleanup](evidence/2026-10-29-lifecycle/README.md).
+
+## Final simplify review — 2026-10-29
+
+Three independent reuse, quality and efficiency reviewers found no further changes needed in the seconds-based threshold fix or its behavioral boundary/deduplication regression.
