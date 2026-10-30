@@ -1,6 +1,6 @@
 # w3 · m175 — Static sites and the activator survive a node drain
 
-**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** todo — t001–t004, t006, t007 done (canary static leg green 2026-10-30, run `40983090469`); t005 drain drill on the mock cluster; t008 closeout
+**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** blocked — t005 local drill needs a decision on where its infrastructure runs (see the 2026-10-30 record); everything else done
 
 ## Tasks (in order)
 
@@ -25,7 +25,7 @@
 ## Evidence (2026-10-19)
 
 - `lego/operator/config/staticserver/deployment.yaml:7` and `lego/operator/config/activator/deployment.yaml:7`: `replicas: 1`; both on the 3-node platform pool (`bex.co/pool: platform`). PDBs exist only for bex-api, ssh-gateway, OpenFGA and Traefik; the prod overlay raises only bex-api to 2 (`lego/operator/config/prod/kustomization.yaml:97-105`).
-- static-server serves **every** tenant static site ([ADR029](../../../docs/ADR029-static-sites.md):20); the activator answers wake, first-deploy, suspended, failed-first-release and maintenance responses ([ADR007](../../../docs/ADR007-restart-suspend-and-resume.md):70-84).
+- static-server serves **every** tenant static site ([ADR029](../../../../docs/ADR029-static-sites.md):20); the activator answers wake, first-deploy, suspended, failed-first-release and maintenance responses ([ADR007](../../../../docs/ADR007-restart-suspend-and-resume.md):70-84).
 - Neither binary exposes `/metrics` and neither is scraped; the fleet-wide `TraefikHigh5xxRate` 5% ratio can hide a static-only outage.
 - Readiness is a TCP probe on the serving port (`cmd/staticserver/main.go:71`, `cmd/activator/main.go:146`; no reserved paths per w4/m162). `appwatch.Start` waits for cache sync (`internal/appwatch/appwatch.go:69`), but static-server starts its resolver in a goroutine (`cmd/staticserver/main.go:168`) before `ListenAndServe` (`:183`) — whether a cold replica can answer before its index is built is unverified.
 - `scripts/deploy-canary.sh:222-232` skips the static leg every run because `BEX_CANARY_STATIC_REPO` (`deploy-canary.yml:51`) is unset — the owed ADR088 §6 step.
@@ -45,3 +45,10 @@
 - **现有规则（AGENTS.md「Local dev environments are pre-approved」）：** `scripts/mock-cluster.sh` 的完整重建（包括 reprovision）不需要用户批准，mock cluster 宕机不构成 blocked。2026-10-29 复核：`docker ps` 仍只剩 `bex-tenant-0-…` 一个容器，worker 需先重建，并在交接里报告重建了什么。
 - **本次复核证据（生产只读）：** `kubectl -n bex-system get deploy,pdb`：`bex-activator` 2/2、`bex-static-server` 2/2，PDB `minAvailable: 1`（已存在 8 天）；副本分布在 `bex-platform-qs4bv-fzhbs` 和 `bex-platform-qs4bv-zsnxg`。t005 第 5 步（生产确认）已满足。
 - **剩余阻塞：** 无。worker 做 t004（建仓库、设变量、dispatch canary，记录静态段执行且为绿的 run id，更新 ADR088 §6）→ t005（重建 mock cluster 后做 drain/roll 演练）→ t008。
+
+## Blocked again (2026-10-30, loopx w3) — the drill needs infrastructure the shared mock cluster does not have
+
+- The mock cluster was not gone (the kind clusters run in another Docker context than `desktop-linux`); it is up and dev-3 runs on it. But `scripts/mock-cluster.sh` brings up substrate only, and the shared cluster has never had what this drill needs: **a working static-hosting stack — object storage + `bex-static-read-s3` (the shared `bex-static-server` has been in CreateContainerConfigError for 4 days: `secret "bex-static-read-s3" not found`) and a Ready activator (0/1) — before a drain can be measured**.
+- Building it means installing into the shared `bex-system` / `monitoring` namespaces every `dev-N` uses, which the isolation rule (AGENTS.md, local dev environments) does not cover.
+- **Decision needed (user):** (a) a separate disposable local kind cluster for drills (`bex-drill`: operator + object storage + Prometheus/Alertmanager/KSM), created and torn down by the worker — **recommended**, no shared impact; (b) build it on the shared mock cluster; (c) accept the production evidence below plus the rule/unit tests and descope the local drill (DoD change, needs sign-off).
+- Production evidence already recorded: production `bex-activator`/`bex-static-server` 2/2 with PDBs on two platform nodes (t005 step 5), the canary's static leg green (t004).
