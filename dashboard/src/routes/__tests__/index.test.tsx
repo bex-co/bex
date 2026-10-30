@@ -9,6 +9,7 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { HomePage, Route } from "../index";
+import { OverviewPageSkeleton } from "@/common/components/route-skeletons";
 import type { ServiceView } from "@/features/services/types";
 import type {
   DatabaseView,
@@ -56,9 +57,8 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions();
 });
 
@@ -123,7 +123,9 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
 }));
 vi.mock("@/features/team/hooks/use-team", () => ({
   useTeam: () => ({
-    members: Array.from({ length: gettingStarted.members }, (_, i) => ({ id: `m${i}` })),
+    members: Array.from({ length: gettingStarted.members }, (_, i) => ({
+      id: `m${i}`,
+    })),
     invites: [],
     loading: false,
     canManage: true,
@@ -545,16 +547,66 @@ describe("HomePage", () => {
     ).not.toBeNull();
   });
 
-  it("records a workspace with resources as populated", async () => {
+  it("records a workspace with resources as populated, with its counts", async () => {
     vi.stubGlobal("localStorage", memoryStorage());
     window.localStorage.setItem("bex.overviewShape.tea-test", "empty");
     servicesState.services = [svc({ id: "hello-go", name: "hello-go" })];
     renderHomePage();
+    // No projects, one ungrouped row (w3/047).
     await waitFor(() =>
       expect(window.localStorage.getItem("bex.overviewShape.tea-test")).toBe(
-        "populated",
+        "populated:0:1",
       ),
     );
+  });
+
+  // w3/047: the preview draws the remembered number of project cards and
+  // ungrouped rows, so a small workspace does not jump on every visit.
+  it("previews the remembered project cards and rows while loading", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    window.localStorage.setItem("bex.overviewShape.tea-test", "populated:2:3");
+    const { container } = render(<OverviewPageSkeleton />);
+    const projects = container.querySelector(
+      '[data-skeleton-region="projects"]',
+    );
+    expect(
+      projects?.querySelectorAll('[data-skeleton-item="project-card"]'),
+    ).toHaveLength(2);
+    expect(
+      projects?.querySelectorAll('[data-skeleton-item="new-project-card"]'),
+    ).toHaveLength(1);
+    const resources = container.querySelector(
+      '[data-skeleton-region="resources"]',
+    );
+    expect(
+      resources?.querySelectorAll('[data-skeleton-item="resource-row"]'),
+    ).toHaveLength(3);
+  });
+
+  it("bounds the preview: an unknown or legacy value shows 2 + 2, huge counts are capped", () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    const count = (value: string, item: string) => {
+      window.localStorage.setItem("bex.overviewShape.tea-test", value);
+      const { container, unmount } = render(<OverviewPageSkeleton />);
+      const n = container.querySelectorAll(
+        `[data-skeleton-item="${item}"]`,
+      ).length;
+      unmount();
+      return n;
+    };
+    expect(count("populated", "project-card")).toBe(2);
+    expect(count("populated", "resource-row")).toBe(2);
+    expect(count("populated:999999:999999", "project-card")).toBe(6);
+    expect(count("populated:999999:999999", "resource-row")).toBe(8);
+  });
+
+  it("omits the resource table from the preview when there were no ungrouped rows", () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    window.localStorage.setItem("bex.overviewShape.tea-test", "populated:1:0");
+    const { container } = render(<OverviewPageSkeleton />);
+    expect(
+      container.querySelector('[data-skeleton-region="resources"]'),
+    ).toBeNull();
   });
 });
 
