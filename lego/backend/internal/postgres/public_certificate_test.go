@@ -178,7 +178,7 @@ func TestExternalURLFollowsTheServedCertificateBackToPrivateCA(t *testing.T) {
 	}
 
 	code, ci := read()
-	if code != http.StatusOK || ci.ExternalConnectionString != "postgresql://flip_db_user:s3cret@flip-db.db.bex.co/flip_db" || ci.ServerCACertificate != "" {
+	if code != http.StatusOK || ci.ExternalConnectionString != "postgresql://flip_db_user:s3cret@flip-db.db.bex.co:5432/flip_db" || ci.ServerCACertificate != "" {
 		t.Fatalf("publicly trusted read = %d %q ca=%q", code, ci.ExternalConnectionString, ci.ServerCACertificate)
 	}
 
