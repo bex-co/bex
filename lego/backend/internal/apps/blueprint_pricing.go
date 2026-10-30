@@ -61,10 +61,12 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 	}
 	for _, db := range st.databases {
 		resources = append(resources, pricing.MonthlyResource{
-			Name:             db.name,
-			ResourceKind:     store.ResourceKindPostgres,
-			Tier:             db.spec.Plan,
-			TierLabel:        tierDisplayName(db.spec.Plan),
+			Name:         db.name,
+			ResourceKind: store.ResourceKindPostgres,
+			Tier:         db.spec.Plan,
+			// The Postgres family's own spelling, so the Blueprint panel names a
+			// plan exactly as the Postgres plan picker does (1c-2g, Basic 256MB).
+			TierLabel:        postgres.TierDisplayName(db.spec.Plan),
 			StorageGB:        postgres.DatabaseStorageHighWater(&appv1alpha1.Database{Spec: db.spec}),
 			HighAvailability: db.spec.HighAvailability,
 			ReadReplicas:     len(db.spec.ReadReplicas),
