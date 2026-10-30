@@ -54,7 +54,9 @@ func endpoint(t *testing.T, handle func(net.Conn)) int32 {
 			mu.Unlock()
 			handlers.Go(func() {
 				defer func() { _ = conn.Close(); mu.Lock(); delete(active, conn); mu.Unlock() }()
-				_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+				// A silent fixture must outlive the scan; closing at the
+				// per-port deadline races timeout classification with EOF.
+				_ = conn.SetDeadline(time.Now().Add(probeTimeout + time.Second))
 				handle(conn)
 			})
 		}
