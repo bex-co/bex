@@ -1,0 +1,26 @@
+[
+  {
+    "critical": {
+      "identity": {
+        "docker-reference": "ghcr.io/bex-co/bex-operator@sha256:9dc621ff208e274f286b8bb8105862a1769fa40320ca2deeffc7dd12129d7374"
+      },
+      "image": {
+        "docker-manifest-digest": "sha256:9dc621ff208e274f286b8bb8105862a1769fa40320ca2deeffc7dd12129d7374"
+      },
+      "type": "https://spdx.dev/Document"
+    },
+    "optional": {}
+  },
+  {
+    "critical": {
+      "identity": {
+        "docker-reference": "ghcr.io/bex-co/bex-operator@sha256:9dc621ff208e274f286b8bb8105862a1769fa40320ca2deeffc7dd12129d7374"
+      },
+      "image": {
+        "docker-manifest-digest": "sha256:9dc621ff208e274f286b8bb8105862a1769fa40320ca2deeffc7dd12129d7374"
+      },
+      "type": "https://sigstore.dev/cosign/sign/v1"
+    },
+    "optional": {}
+  }
+]

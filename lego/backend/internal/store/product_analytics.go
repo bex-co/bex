@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -84,6 +85,19 @@ func (s *PGStore) RecordProductDomainTLS(ctx context.Context, domain string, rea
 // recent history even when its creation event has aged out of retention.
 func (s *PGStore) RollbackAppCreation(ctx context.Context, appID string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var lockedID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id=$1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		// A failed create owes nothing. Ordinary deletion retains closed disk
+		// periods, so discard only this still-present provisional App's disks
+		// before its delete trigger runs. The parent lock fences attachments.
+		if _, err := tx.Exec(ctx, `DELETE FROM service_disks WHERE app_id=$1`, appID); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM apps WHERE id=$1`, appID); err != nil {
 			return err
 		}

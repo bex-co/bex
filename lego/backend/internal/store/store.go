@@ -1161,6 +1161,8 @@ func (s *PGStore) ListApps(ctx context.Context) ([]App, error) {
 	return out, rows.Err()
 }
 
+// DeleteApp's database trigger closes and retains disk size periods so a
+// service removed before its last hourly rollup still owes that interval.
 func (s *PGStore) DeleteApp(ctx context.Context, id string) error {
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM apps WHERE id = $1`, id)
 	if err != nil {

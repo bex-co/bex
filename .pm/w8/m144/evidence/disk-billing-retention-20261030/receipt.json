@@ -1,0 +1,123 @@
+{
+  "schema": "bex-w8-m144-disk-retention-validation-v1",
+  "written_at_utc": "2026-10-30T10:20:23.536574+00:00",
+  "base_head": "495edbd2ec7a09a3bd3bb42c3ebfb6fb3838af0f",
+  "source_root": "/Users/tianpan/projects/bex7",
+  "state": "Source-only, uncommitted; no auth or production actions. Parent owns final complete-backend pre-push gate.",
+  "provenance": "Logs transcribed verbatim from already-completed tool responses in this agent session. No tests or harness were started to create this artifact. The initial failing run is explicitly an excerpt; routine logs and verbose test fixture values were omitted.",
+  "credential_policy": "Only environment variable names and nonsecret test-control assignments are recorded. No credential values, connection URLs, or production credentials are stored.",
+  "environment_variable_names": [
+    "GOWORK",
+    "BEX_TEST_REQUIRE_DEPS",
+    "BEX_TEST_DB_URI",
+    "BEX_TEST_OPENFGA_URL",
+    "BEX_TEST_OPENBAO_KV_URL",
+    "BEX_TEST_OPENBAO_KV_TOKEN",
+    "BEX_TEST_LOKI_URL",
+    "PATH"
+  ],
+  "working_directory": "lego/backend, relative to source root; baseline runs used lego/backend in a private git-archive copy of unchanged base_head (migration 0174).",
+  "harness_commands": [
+    "docker ps --format <names-and-ports-only>",
+    "bash scripts/backend-test-deps.sh up",
+    "eval \"$(bash ../../scripts/backend-test-deps.sh env)\"",
+    "bash scripts/backend-test-deps.sh down"
+  ],
+  "harness_notes": "Fresh up and environment refresh before each suite invocation. Only checkout-owned bex-test-762b7de6 containers were reset/removed; unrelated stacks remained untouched. The isolated old-guard proof and focused tests ran concurrently against disjoint schemas on the same owned stack.",
+  "commands": {
+    "initial-focused": "GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./internal/store -run 'TestPG(DeletedServiceRetainsRequestedDiskBilling|DiskRetentionParentAndCreationRollback|DiskAttachmentRacesServiceDeletion|DiskLifecycle|DiskUsage|SmallDiskBills)' -count=1 -v",
+    "full-store-usage": "GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./internal/store ./internal/usage -count=1",
+    "baseline-isolated": "GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./internal/store -run 'Test(AccountDeletionAnonymizesWorkspaceCreationAttemptsPG|PGAuditSurvivesConcurrentWorkspaceDeletion)' -count=1 -v",
+    "baseline-full": "GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./internal/store -count=1",
+    "final-focused": "GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./internal/store -run 'TestPG(DeletedServiceRetainsRequestedDiskBilling|DiskRetentionParentAndCreationRollback|DiskAttachmentRaces|DiskLifecycle|DiskUsage|SmallDiskBills)' -count=1 -v",
+    "old-guard-counterproof": "GOWORK=off go run '<private-proof-directory>/main.go'"
+  },
+  "runs": [
+    {
+      "log": "initial-focused.log",
+      "command": "initial-focused",
+      "result": "PASS, store 2.840s",
+      "source": "pre-Tenant-lock correction; earlier 0175 version"
+    },
+    {
+      "log": "initial-full.failure-excerpt.log",
+      "command": "full-store-usage",
+      "result": "store FAIL 16.412s; usage PASS 0.921s",
+      "source": "pre-Tenant-lock correction; earlier 0175 version"
+    },
+    {
+      "log": "baseline-isolated.log",
+      "command": "baseline-isolated",
+      "result": "PASS, store 2.456s",
+      "source": "unchanged base_head, migration 0174"
+    },
+    {
+      "log": "baseline-full.log",
+      "command": "baseline-full",
+      "result": "PASS, store 16.788s",
+      "source": "unchanged base_head, migration 0174"
+    },
+    {
+      "log": "pre-tenant-fix-full.log",
+      "command": "full-store-usage",
+      "result": "PASS, store 18.760s; usage 0.833s",
+      "source": "0175 before independent P2 lock-order finding"
+    },
+    {
+      "log": "old-guard-counterproof.log",
+      "command": "old-guard-counterproof",
+      "result": "CREATE returned SQLSTATE 40P01",
+      "source": "minimal private schema reproducing original App-first guard + tenant FK; public fixture schema untouched"
+    },
+    {
+      "log": "final-focused.log",
+      "command": "final-focused",
+      "result": "PASS, store 2.465s",
+      "source": "final sources matching source-sha256.txt"
+    },
+    {
+      "log": "final-full-store-usage.log",
+      "command": "full-store-usage",
+      "result": "PASS, store 19.755s; usage 0.795s",
+      "source": "final sources matching source-sha256.txt"
+    }
+  ],
+  "initial_transients": {
+    "tests": [
+      "TestAccountDeletionAnonymizesWorkspaceCreationAttemptsPG",
+      "TestPGAuditSurvivesConcurrentWorkspaceDeletion/service_name"
+    ],
+    "follow_up": "Both isolated baseline tests, full baseline store suite, later patched full store/usage suites passed.",
+    "limit": "Clock-domain timing was a hypothesis, not a confirmed diagnosis. Baseline PASS does not establish deterministic baseline failure."
+  },
+  "asserted_contracts": [
+    "1->5 GiB requested-size historical window remains exactly 10800 GB-seconds after DeleteApp and raw apps DELETE.",
+    "Deleted service/disk reads and grow return not-found; deleted allocation is absent from future usage and live disk inventory.",
+    "Sibling disks remain live; same-name service recreation receives new identities.",
+    "Creation rollback removes provisional disk periods; stale rollback cannot erase ordinary deletion history.",
+    "Absent/cross-workspace parents and revival without a live parent are rejected; tenant deletion still cascades retained rows.",
+    "Service-delete/attachment races serialize in both orders.",
+    "Workspace-delete race observes attachment waiting on tenant while App FOR UPDATE NOWAIT remains available; raw tenant DELETE commits and attachment returns existing 23503/ErrNotFound classification; App/disk/period rows are gone.",
+    "A deletion transaction begun before a grow uses a post-lock DB clock and cannot close the newly committed period before it starts.",
+    "DOWN refuses orphaned retained financial history instead of deleting it."
+  ],
+  "cleanup": {
+    "harness_prefix": "bex-test-762b7de6",
+    "shutdown_exit_code": 0,
+    "final_matching_container_names": [],
+    "temporary_baseline_and_counterproof_source_removed": true
+  },
+  "source_sha256": {
+    "lego/backend/internal/store/migrations/0175_disk_billing_retention.up.sql": "c9e674105ab1e69a8f231aad0b2f42952ebe7d30400579f662f45500c8683c7c",
+    "lego/backend/internal/store/migrations/0175_disk_billing_retention.down.sql": "644db8d2c694ad76c0067e12ac4b48b7e0ada2c1cd4185e8eed6ab73636b4e14",
+    "lego/backend/internal/store/product_analytics.go": "85bb513c57547651d428b31d283af57c83da9ba4e8f7d4b38d0b6c6e5b052439",
+    "lego/backend/internal/store/store.go": "77c12e01a9f5bc5eee989c1130e38331ec64e962e5ce9c482ac87b9e2ef70b27",
+    "lego/backend/internal/store/disk_retention_pg_test.go": "0fd07770cfae6fa408d24690bb8ee1c94739380fdef96fb684fb4a87b31bbf48"
+  },
+  "limits": [
+    "No production fixture, billing invoice, API/UI acceptance or provider cleanup is established by these local tests.",
+    "This validates focused store and usage packages, not the parent complete-backend pre-push gate.",
+    "Old-guard deadlock was demonstrated in a minimal private schema; the fixed race regression exercises the real migrated store.",
+    "No GoWorkSum staging, source edits for this report request, commit or push were performed."
+  ]
+}

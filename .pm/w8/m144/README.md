@@ -1,6 +1,6 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; verified CSI rolled out (1 controller, 12 nodes); newer operator/class adoption and owned production fixture remain
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; signed CSI and global bounded class verified live; deletion metering/snapshot cleanup fixes and owned production acceptance remain
 
 ## Tasks (in order)
 
@@ -47,3 +47,8 @@ The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-
 ## Bounded-class activation source checkpoint — 2026-10-30
 
 [Actual signed Ready preflight and activation validation](evidence/class-activation-20261030/README.md) confirm the new capacity writer, both class contracts and unchanged original bindings. The production source now selects the bounded encrypted class globally for subsequent creates, with full GitOps validation and the prior three-review patch intact. Live effective-class convergence and the owned production lifecycle walkthrough remain required; no fixture or task is closed by this source checkpoint.
+
+
+## Live bounded class and deletion billing checkpoint — 2026-10-30
+
+[Post-flip inventory 41033611414](evidence/production-inventory-20261029/receipt-41033611414.json) verifies the effective bounded manager class, Ready signed platform image, preserved class contracts and both original 10Gi bindings. No owned fixture exists. Prepaid readiness review found service deletion could erase unmetered disk periods; [the retention fix and real Postgres checks](evidence/disk-billing-retention-20261030/README.md) preserve requested-size history and correct an independently reproduced lock-order race. Snapshot-purge finalization and fixed cleanup observation are still being completed before the paid lifecycle walkthrough; no original task or milestone is closed here.
