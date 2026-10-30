@@ -790,7 +790,7 @@ WITH feed AS (
            d.id || ':` + EventPhaseStarted + `' AS key,
            d.created_at                        AS at,
            a.tenant_id                         AS tenant_id,
-           t.name || '-' || a.name             AS service_id,
+           a.tenant_id || '-' || a.name             AS service_id,
            ` + appDisplayLabel + `             AS service_name,
            '` + EventSourceDeploy + `'::text   AS source,
            '` + EventPhaseStarted + `'::text   AS phase,
@@ -802,14 +802,13 @@ WITH feed AS (
            a.id                                AS app_id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
-    JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
   UNION ALL
     SELECT d.finished_at,
            d.id || ':` + EventPhaseEnded + `',
            d.finished_at,
            a.tenant_id,
-           t.name || '-' || a.name,
+           a.tenant_id || '-' || a.name,
            ` + appDisplayLabel + `,
            '` + EventSourceDeploy + `'::text,
            '` + EventPhaseEnded + `'::text,
@@ -821,14 +820,13 @@ WITH feed AS (
            a.id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
-    JOIN tenants t ON t.id = a.tenant_id
     WHERE d.finished_at IS NOT NULL AND a.tenant_id = ANY($5)
   UNION ALL
     SELECT e.at,
            e.id || ':',
            e.at,
            a.tenant_id,
-           t.name || '-' || a.name,
+           a.tenant_id || '-' || a.name,
            ` + appDisplayLabel + `,
            '` + EventSourceAudit + `'::text,
            ''::text,
@@ -841,7 +839,6 @@ WITH feed AS (
     FROM audit_events e
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = e.id
     JOIN apps a ON a.id = i.app_id AND a.tenant_id = i.workspace_id
-    JOIN tenants t ON t.id = a.tenant_id
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4) AND a.tenant_id = ANY($5)
   UNION ALL
     SELECT e.at,
@@ -868,7 +865,7 @@ WITH feed AS (
            'fact:' || f.source_key,
            f.at,
            a.tenant_id,
-           t.name || '-' || a.name,
+           a.tenant_id || '-' || a.name,
            ` + appDisplayLabel + `,
            '` + EventSourceFact + `'::text,
            ''::text,
@@ -880,7 +877,6 @@ WITH feed AS (
            a.id
     FROM service_event_facts f
     JOIN apps a ON a.id = f.app_id
-    JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
   UNION ALL
     SELECT f.recorded_at,

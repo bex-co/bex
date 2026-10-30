@@ -364,8 +364,11 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 				core.WriteErr(w, core.NewEmailVerificationRequiredError())
 				return
 			}
+			// Onboarding reads the identity off ctx to name a signup workspace
+			// after the person (w3/m246).
+			ctx := core.WithIdentity(r.Context(), id)
 			if a.onboard != nil && id.Human {
-				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email, id.EmailVerified); err != nil {
+				if _, err := a.onboard.EnsureTenant(ctx, id.Subject, id.Email, id.EmailVerified); err != nil {
 					var coded *core.CodedError
 					if errors.As(err, &coded) {
 						core.WriteErr(w, err)
@@ -375,7 +378,6 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 					return
 				}
 			}
-			ctx := core.WithIdentity(r.Context(), id)
 			if hasBearer {
 				validatedID := id
 				validatedToken := bearer

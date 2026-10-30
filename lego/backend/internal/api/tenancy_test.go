@@ -99,6 +99,20 @@ func (f *fakeTenantStore) CreateTenantWithMember(_ context.Context, identityID, 
 	return t, nil
 }
 
+func (f *fakeTenantStore) SetTenantDisplayNameIfUnset(_ context.Context, id, displayName string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.tenants[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	if t.DisplayName == "" {
+		t.DisplayName = displayName
+		f.tenants[id] = t
+	}
+	return nil
+}
+
 func (f *fakeTenantStore) BindClient(_ context.Context, clientID, tenantID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -618,5 +632,48 @@ func TestInvalidateTenantEvictsStaleCachedResolution(t *testing.T) {
 func TestNewTenantServiceNilStoreReturnsNilResolver(t *testing.T) {
 	if ts := NewTenantService(nil, newFakeGranter()); ts != nil {
 		t.Errorf("NewTenantService(nil, ...) = %v, want nil (store off => no resolver, no mint)", ts)
+	}
+}
+
+// w3/m246: a signup workspace is named after the person, as on Render, once.
+func TestEnsureTenantNamesSignupWorkspaceAfterThePerson(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeTenantStore()
+	ts := NewTenantService(st, nil)
+	who := core.WithIdentity(ctx, core.Identity{Subject: "identity-tian", Name: " Tian Pan ", Human: true})
+
+	tid, err := ts.EnsureTenant(who, "identity-tian", "tian@example.com", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := st.tenants[tid].DisplayName; got != "Tian Pan's Workspace" {
+		t.Fatalf("display name = %q, want %q", got, "Tian Pan's Workspace")
+	}
+	if got := st.tenants[tid].Name; got != tid {
+		t.Fatalf("slug changed to %q; it must stay the id", got)
+	}
+
+	// A rename the user made later is never overwritten by a later sign-in.
+	renamed := st.tenants[tid]
+	renamed.DisplayName = "Acme"
+	st.tenants[tid] = renamed
+	ts.cache.Delete(cacheKey(methodSession, "identity-tian"))
+	if _, err := ts.EnsureTenant(who, "identity-tian", "tian@example.com", true); err != nil {
+		t.Fatal(err)
+	}
+	if got := st.tenants[tid].DisplayName; got != "Acme" {
+		t.Fatalf("display name = %q after re-login, want the user's %q", got, "Acme")
+	}
+}
+
+func TestSignupWorkspaceName(t *testing.T) {
+	for _, c := range []struct{ name, email, want string }{
+		{"Tian Pan", "tian@example.com", "Tian Pan's Workspace"},
+		{"", "first.run@dev-3.local", "first.run's Workspace"},
+		{"  ", "", ""},
+	} {
+		if got := signupWorkspaceName(c.name, c.email); got != c.want {
+			t.Errorf("signupWorkspaceName(%q, %q) = %q, want %q", c.name, c.email, got, c.want)
+		}
 	}
 }
