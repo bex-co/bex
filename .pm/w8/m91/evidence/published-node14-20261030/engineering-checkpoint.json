@@ -1,0 +1,292 @@
+{
+  "observed_at": "2026-10-30T10:03:37.634810+00:00",
+  "cache_facts": {
+    "workflow": "registry import from verified discovery tag, inline export, only move discovery tag after all probes/scans/signatures",
+    "setup_buildx": "pinned action cleanup=true and keep-state=false defaults; workflow does not override",
+    "docker_cache_limit": "inline exports final-stage/min cache; registry mode=max can also preserve intermediate stages",
+    "relevant_recipe": "expensive bounded-j2 Node/V8 backport runs in intermediate node-backport stage",
+    "inference": "Do not assume inline preserves that intermediate compilation; canceled jobs may lose local and unpublished cache. Needs actual cache-hit transcript to prove future reuse.",
+    "not_a_failure": "Current publication remains valid and must not be canceled for this cost observation. Future refresh optimization can be reviewed separately.",
+    "primary_sources": [
+      "https://docs.docker.com/build/cache/backends/inline/",
+      "https://docs.docker.com/build/cache/backends/registry/",
+      "https://github.com/docker/setup-buildx-action/blob/37fe631027851001ddb9b187196cc803df7f5f0e/action.yml"
+    ]
+  },
+  "verifier": {
+    "path": "/tmp/loopx-w8-verify-native-artifact.py",
+    "source_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+    "original_backup": "/tmp/loopx-w8-verify-native-artifact.before-review.py",
+    "changes": [
+      "actual candidate job runtime+scan+signing gates must be green",
+      "anonymous manifest/config bytes and exact official primary ancestry/env/revision verified",
+      "each SPDX independently binds a container root child/config and Debian package architecture",
+      "each Trivy report independently binds actual config, platform and filesystem diffIDs",
+      "all reported vulnerabilities retained with severity/Brotli summaries, no zero-CVE claim",
+      "anonymous unique config+layer bytes stream-hashed under descriptor bounds; trusted per-blob receipt reuse plus current anonymous HEAD across27 reviews",
+      "full raw verification outputs stay in scratch; compact receipts contain signed payload SHA256s and immutable refs",
+      "strict reviewed producer/verification split only for explicitly authorized identical-recipe/base immutable recovery; source-bound signatures stay current",
+      "OptionalactualbyteproofderivesStereoscopeDocker-exportrootmanifestaliases; no arbitraryroot/index+archacceptance andallstrictcrypto/report/blobgatesremain"
+    ],
+    "policy_test_command": "python3 /tmp/loopx-w8-native-verifier-policy-test.py",
+    "policy_rejections": "nine guards pass, including wrong base diffID and mismatched candidate/source layer cardinality",
+    "first_review_watch": {
+      "script": "/tmp/loopx-w8-watch-first-native.py",
+      "former_child_session": 85691,
+      "former_child_actual_exit": 130,
+      "current_owner": "root",
+      "root_reported_session": 89515,
+      "child_action": "no new native watch started; root watcher not altered"
+    },
+    "ancestry_method": "verified config rootfs.diff_ids prefix with coherent manifest-layer/diffID cardinality for candidate and official source",
+    "preserved_pre_diffid_backup": "/tmp/loopx-w8-verify-native-artifact.before-diffid-c8d9db87aa04.py",
+    "atomic_replacement": true,
+    "preserved_pre_recovery_backup": "/tmp/loopx-w8-verify-native-artifact.before-recovery-dd6c479f0a1f.py",
+    "recovery_policy_test_command": "python3 /tmp/loopx-w8-native-recovery-policy-test.py",
+    "preserved_pre_docker_root_backup": "/tmp/loopx-w8-verify-native-artifact.before-docker-root-6f6106973b35.py"
+  },
+  "live_checks": [
+    "/tmp/loopx-w8-native-verifier-real-public-blob-check.json",
+    "/tmp/loopx-w8-native-verifier-real-spdx-parser-check.json",
+    "/tmp/loopx-w8-native-verifier-real-ancestry-check.json"
+  ],
+  "synthetic_policy_tests": "/tmp/loopx-w8-native-verifier-policy-tests.json (parser rejection tests only, never publication evidence)",
+  "pending": [
+    "first current fully green recovered candidate",
+    "first real native signed report schema review",
+    "all27 dual-architecture reviews and anonymous blob pulls",
+    "published supplier replay of exact-default Python3.14.8 generated image and hosted no-signal acceptance remain separate"
+  ],
+  "production_catalog": "empty and unchanged",
+  "ancestry_recompression_example": {
+    "evidence": "/tmp/loopx-w8-native-verifier-real-ancestry-check.json",
+    "actual_local_supplier_ref": "localhost:32828/native-python314-amd64-qa@sha256:1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+    "observation": "First compressed base descriptor differs while all seven verified config base diffIDs match. Actual local supplier/build/runtime checks pass.",
+    "compressed_blob_sha_and_size_checks": "unchanged and still required",
+    "actual_per_arch_candidate_CI_runtime_gates": "unchanged and still required",
+    "manual_decompressed_layer_hashing_performed": false,
+    "interpretation": "Recompression-compatible descriptor variance is recorded, not mistaken for a wrong-base/product failure. This local example is not a signed published candidate review."
+  },
+  "historical_factory_observation": {
+    "first_jobs": [
+      "node-14-bullseye",
+      "node-16-bookworm"
+    ],
+    "job_concurrency": 2,
+    "current_step": "initial multiarch build-push; no runtime probes/scans/signatures yet",
+    "first_candidate_tags_anonymous_http_status": 404,
+    "scope": "job metadata proves only the active step, not its internal compiler progress"
+  },
+  "historical_workflow_run": 41000570846,
+  "historical_reviewed_source_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "superseded_recovery_verification_d956": {
+    "workflow_run": 41021297194,
+    "verification_source_sha": "d95645e9f054238ec53a4932fac51560ffedd1f8",
+    "authorized_producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "immutable_authorization_source": ".github/native-base-recovery.json at verification commit",
+    "status_at": "/tmp/loopx-w8-native-recovery-review/watch-progress.json",
+    "candidate_approved": false,
+    "real_preflight": {
+      "non_documentation_recipe_blob_mode_count": 22,
+      "producer_verification_recipe_equal": true,
+      "exact_official_matrix_bases_equal": true,
+      "producer_build_and_both_arch_runtime_steps": "actual original job API passed",
+      "approval_scope": "Authorization consistency only. Original producer overall failed; no current signature/job approval yet."
+    },
+    "policy_guards": "/tmp/loopx-w8-native-recovery-review/recovery-policy-tests.json",
+    "watch": {
+      "owner": "cli090 child",
+      "session": 71897,
+      "script": "/tmp/loopx-w8-watch-first-recovered-native.py",
+      "waiting_bound_minutes": 45,
+      "scope": "Only d956 recovered Node14 and Node16, no duplicate BF watch; root cannot poll agent-local session.",
+      "state": "finished exit2: no green recovered row"
+    },
+    "producer_job_evidence": "/tmp/loopx-w8-native-recovery-review/authorization-preflight",
+    "identity_rules": [
+      "OCI label revision and official ancestry bind original authorized producer BF",
+      "Keyless certificate workflow SHA binds verification d956",
+      "Exact immutable authorized candidate index digest and identical recipe/base are required",
+      "Actual current per-candidate completed SUCCESS with both-arch probes, two scans and signing remains required",
+      "Every signed SPDX and Trivy payload independently binds a real candidate architecture/config",
+      "Anonymous compressed blob SHA/size full reads and reusable receipts remain mandatory"
+    ],
+    "production_catalog": "empty and unchanged",
+    "anonymous_metadata_preflight": {
+      "scope": "Actual SHA-verified anonymous index/manifest/config metadata only. Signed reports, complete blob pulls and current green verification remain pending. No candidate approval.",
+      "results": {
+        "node-14-bullseye": {
+          "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+          "receipt": "/tmp/loopx-w8-native-recovery-review/anonymous-metadata-preflight/node-14-bullseye/metadata-receipt.json",
+          "candidate_approved": false,
+          "platforms": {
+            "amd64": {
+              "child_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+              "config_digest": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+              "official_base_layer_count": 9,
+              "compressed_descriptor_variance_count": 9,
+              "official_environment_preserved": true,
+              "verified_official_diff_id_prefix": true
+            },
+            "arm64": {
+              "child_digest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+              "config_digest": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+              "official_base_layer_count": 9,
+              "compressed_descriptor_variance_count": 9,
+              "official_environment_preserved": true,
+              "verified_official_diff_id_prefix": true
+            }
+          }
+        },
+        "node-16-bookworm": {
+          "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+          "receipt": "/tmp/loopx-w8-native-recovery-review/anonymous-metadata-preflight/node-16-bookworm/metadata-receipt.json",
+          "candidate_approved": false,
+          "platforms": {
+            "amd64": {
+              "child_digest": "sha256:b804a9b7989a1aa091ea2daa4107e8286a21ede331ed8d9e662f8289d934c028",
+              "config_digest": "sha256:f397a0a9bb129a0effba26312e216b5325d81036a3c22e22d975cf25a542a526",
+              "official_base_layer_count": 8,
+              "compressed_descriptor_variance_count": 8,
+              "official_environment_preserved": true,
+              "verified_official_diff_id_prefix": true
+            },
+            "arm64": {
+              "child_digest": "sha256:01ae1249d1354a381494a9b5ba49f8b607c2ae30e91ee8a498648cadd8e500e6",
+              "config_digest": "sha256:a71aa0eb8e85d50ad9720503d6a4560bfa631a8ef88756b6ab63070db24ab562",
+              "official_base_layer_count": 8,
+              "compressed_descriptor_variance_count": 8,
+              "official_environment_preserved": true,
+              "verified_official_diff_id_prefix": true
+            }
+          }
+        }
+      },
+      "command": "python3 /tmp/loopx-w8-native-recovery-metadata-preflight.py",
+      "exit_code": 0
+    },
+    "terminal_state": {
+      "observed_at": "2026-10-30T08:29:21.382126+00:00",
+      "run_conclusion": "cancelled",
+      "recovered_jobs": "both completed cancelled before steps ran",
+      "candidate_approved": false,
+      "child_watcher_actual_exit": 2,
+      "child_watcher_session": 71897,
+      "child_action": "did not cancel/retry workflows; no new watch started"
+    },
+    "terminal_classification": "Superseded before execution, not a code failure; no approved artifact"
+  },
+  "python37_recovery_proposal": {
+    "candidate_approved": false,
+    "diagnosis": "/tmp/loopx-w8-native-scan-failure/python37-diagnosis-summary.json",
+    "metadata_receipt": "/tmp/loopx-w8-native-recovery-review/proposed-python37-metadata-preflight/metadata-receipt.json",
+    "compact_proposed_entry": "/tmp/loopx-w8-native-recovery-review/proposed-python37-metadata-preflight/proposed-recovery-entry.json",
+    "actual_result": "Exact public index plus both manifest/config identities, BF labels, original ENV and base diffID ancestry passed; source recipe22files and base equal. Both runtime and scan architectures passed original BF job.",
+    "original_failure": "amd64 SPDX attestation Rekor POST giving up after2attempts; raw log does not give underlying status/timeout cause",
+    "source_mutations": "none; root owns explicit authorization and targeted full-gate dispatch after review"
+  },
+  "signing_protocol_fix_evidence": {
+    "source_patch_recommendation": "/tmp/loopx-w8-native-recovery-review/native-base-image-cosign314-recommendation.patch",
+    "actual_node14_SPDX_size_and_full_archive": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/receipt.json",
+    "actual_registry_SPDX_identity_gate": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/strict-spdx-binding-preflight.json",
+    "local_mock_v2_wire_body": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/receipt.json",
+    "local_offline_key_output_shape": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/local-registry-shape-receipt.json",
+    "local_cleanup": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/cleanup-receipt.json",
+    "candidate_approved": false,
+    "strict_verifier_changed_further": false
+  },
+  "superseded_recovery_verification_49ee": {
+    "verification_sha": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "authorized_producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "source_preflight": "/tmp/loopx-w8-native-recovery-review/verification-source-49ee-metadata.json",
+    "source_equivalence": "workflow, recovery JSON, native matrix inputs are byte-identical to d956; all22 non-documentation factory blob/mode inputs and exact base rows equal BF",
+    "producer_preflights": "/tmp/loopx-w8-native-recovery-review/authorization-preflight-49ee/",
+    "candidate_approved": false,
+    "exact_one_row_runs": {
+      "node-14-bullseye": {
+        "run_id": 41026764209,
+        "job_id": 123966807129
+      },
+      "node-16-bookworm": {
+        "run_id": 41026783847,
+        "job_id": 123966875686
+      }
+    },
+    "watch_script": "/tmp/loopx-w8-watch-recovered-native-pair.py",
+    "watch_progress": "/tmp/loopx-w8-native-recovery-review/pair-watch-progress.json",
+    "first_review_result": "/tmp/loopx-w8-native-recovery-review/pair-first-review-exit.json",
+    "root_authorized_read_only_pair_watch": true,
+    "BF_watch": "root-owned and untouched",
+    "scope": "Current fully green job plus actual strict signatures, independent per-arch SPDX/Trivy identities and anonymous complete blob hashes remain mandatory. No production catalog changed.",
+    "terminal_state": {
+      "observed_at": "2026-10-30T08:58:30.062177+00:00",
+      "both_jobs": "completed failure in signing/firstamd64SPDXattestation",
+      "candidate_approved": false,
+      "pair_watcher_actual_exit": 2,
+      "diagnosis_receipt": "/tmp/loopx-w8-native-recovery-review/old49ee-pair-diagnosis.json"
+    }
+  },
+  "current_recovery_verification": {
+    "observed_at": "2026-10-30T09:04:07.270366+00:00",
+    "mode": "actual modern-signing jobs with unchanged exact recovery artifacts",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "candidate_approved": false,
+    "verification_sources": [
+      "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314"
+    ],
+    "preflight_root": "/tmp/loopx-w8-native-modern-review",
+    "preflight_result": "Both sources pass exact22recipeblob/mode equality, exact3base/digest recovery rows and original build/bothruntimeAPI checks. Current job/signature approval remains separate.",
+    "targeted_runs": {
+      "node-14-bullseye": {
+        "run": 41029596739,
+        "job": 123976756119
+      },
+      "node-16-bookworm": {
+        "run": 41029599983,
+        "job": 123977276970
+      },
+      "python-3.7-bullseye": {
+        "run": 41029603442,
+        "job": 123977642604
+      }
+    },
+    "corrected_full_factory": {
+      "run": 41030129157,
+      "initial_jobs": {
+        "node-14-bullseye": 123978338135,
+        "node-16-bookworm": 123978338586
+      }
+    },
+    "watch": {
+      "script": "/tmp/loopx-w8-watch-modern-native.py",
+      "child_session": 81794,
+      "bound_minutes": 60,
+      "progress": "/tmp/loopx-w8-native-modern-review/watch-progress.json",
+      "first_review_state": "/tmp/loopx-w8-native-modern-review/first-review-state.json",
+      "first_review_result": "/tmp/loopx-w8-native-modern-review/first-review-exit.json"
+    },
+    "strict_verifier_sha256": "6f6106973b35e6fc8c5c8a436e842161772da44757227903150a03f67f76481a",
+    "BF_watch": "root-owned71115 untouched",
+    "actions": "read-only CI/source queries and scratch only; no workflow dispatch, retry, cancellation, source, catalog, commit or push changes"
+  },
+  "actual_modern_first_green": {
+    "run_id": 41029596739,
+    "job_id": 123976756119,
+    "verification_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "job_conclusion": "success",
+    "candidate_approved": true,
+    "initial_strict_review": "GHCR referrersGET contextdeadline; rawfailedattemptretained",
+    "exact_schema_issue": "Syft1.51.1 defaultDocker-source roots are synthesizedmanifests; actual99158amd64rootexactlyindependentlyderived, not accepted byarchitectureunion",
+    "actual_byte_proof": "/tmp/loopx-w8-native-modern-review/docker-root-proof/receipt.json",
+    "parser_guard_tests": "/tmp/loopx-w8-native-modern-review/docker-root-policy-tests.json",
+    "replay": "/tmp/loopx-w8-native-modern-review/strict-replay-http1-exit.json",
+    "replay_child_session": 11746,
+    "completed_review_receipt": "/tmp/loopx-w8-native-artifact-reviews/native-node-14-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/receipt.json",
+    "actual_reviewed_at": "2026-10-30T09:59:53.466822+00:00",
+    "method": "EveryimmutablebundledownloadedfromSHA-verifiedOCI1.1fallbackindexandverifiedwithofficialCosignverify-blob-attestation; exactimageindexdigestclaims+issuer+workflowidentity+currentSHA+tlog+explicitTSAchecked. No registrydiscoveryassumption orignoredsecuritycheck.",
+    "scope": "PublishedNode14suppliercandidateONLY. All27catalogadoption, generatedexactimages/Python3.14.8SBOM, hostedrolloutandserviceacceptanceremainseparate. No productionpin/resourcechanged.",
+    "critical_findings_retained": "250criticalfindingsperarch,includingversion-reportedCVE-2026-111497; nozero-CVEclaimorfindingwaiver"
+  }
+}

@@ -1,0 +1,9 @@
+from pathlib import Path
+import subprocess,os,json,concurrent.futures,hashlib
+r=Path('/tmp/loopx-w8-native-modern-review/direct-bundle-proof');d=json.loads((r/'download-receipt.json').read_text());tool='/private/tmp/bex7-native-acceptance-novb586u/cosign';sha='4330878c280bc9748444c8e1e50ff7388df1228a';rows=[x for x in d['bundles'] if x['predicate_type']!='https://sigstore.dev/cosign/sign/v1']
+def verify(row):
+ stem=row['bundle_digest'].split(':')[1];args=[tool,'verify-blob-attestation','--bundle',row['path'],'--type',row['predicate_type'],'--digest','4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc','--digestAlg','sha256','--certificate-identity','https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main','--certificate-oidc-issuer','https://token.actions.githubusercontent.com','--certificate-github-workflow-sha',sha,'--use-signed-timestamps','--timeout','5m']
+ with (r/(stem+'.verify.stdout.log')).open('wb') as stdout,(r/(stem+'.verify.stderr.log')).open('wb') as stderr:p=subprocess.run(args,env=dict(os.environ,GODEBUG='http2client=0'),stdout=stdout,stderr=stderr,timeout=330)
+ result={'bundle_digest':row['bundle_digest'],'predicate_type':row['predicate_type'],'exit_code':p.returncode,'expected_source_sha':sha,'explicit_tsa_required':True,'strict_issuer_identity_subject_tlog':True,'command':args};(r/(stem+'.verify-result.json')).write_text(json.dumps(result,indent=2)+'\n');print(json.dumps({k:x for k,x in result.items() if k!='command'}),flush=True);return result
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:results=list(pool.map(verify,rows))
+(r/'strict-report-crypto-results.json').write_text(json.dumps({'candidate_approved':False,'reports':results},indent=2)+'\n');assert all(x['exit_code']==0 for x in results)

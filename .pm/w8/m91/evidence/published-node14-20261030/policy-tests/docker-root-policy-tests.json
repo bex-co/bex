@@ -1,0 +1,18 @@
+{
+  "scope": "Actual complete manual layer proof and genuine signed-SPDX schema parser guard tests only. This is not final imageapproval.",
+  "derived_actual_amd64_root": "99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+  "actual_signed_spdx_binding": "pass",
+  "guard_rejections": [
+    "wrong-index",
+    "wrong-actual-config",
+    "wrong-actual-child",
+    "wrong-diffid",
+    "altered-uncompressed-size",
+    "missing-real-per-blob-proof",
+    "forged-derived-alias",
+    "foreign-root-with-valid-index-platform-and-purl",
+    "cross-architecture-derived-root"
+  ],
+  "candidate_approved": false,
+  "verifier_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+}

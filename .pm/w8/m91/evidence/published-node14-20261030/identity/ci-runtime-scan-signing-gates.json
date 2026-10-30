@@ -1,0 +1,18 @@
+{
+  "run_id": "41029596739",
+  "url": "https://github.com/bex-co/bex/actions/runs/41029596739",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "job_id": 123976756119,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41029596739/job/123976756119",
+  "job_name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "skipped",
+  "recovery_selection_conclusion": "success"
+}

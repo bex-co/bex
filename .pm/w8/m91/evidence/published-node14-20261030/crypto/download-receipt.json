@@ -1,0 +1,122 @@
+{
+  "scope": "Actual immutableSHA/sizeverifiedpublicbundlefiles only; no crypto/source approval claimeduntilofficialstrictverifierpasses",
+  "candidate_approved": false,
+  "subject": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "bundles": [
+    {
+      "manifest_digest": "sha256:509302cc420c140d5c83ab10df8a4c5e1951846c1e71c5c7b7b5456cc08b14fe",
+      "bundle_digest": "sha256:68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152",
+      "bundle_bytes": 34150313,
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "statement_sha256": "a4d13357fc489a0cc090315a8b78f7bcc1d5b6728d2ee409370c15c4d6e2e7ab"
+    },
+    {
+      "manifest_digest": "sha256:532cd499659b5af9d619f09cbd2d6c90d14381a94913913cf6262d675e6a033a",
+      "bundle_digest": "sha256:76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+      "bundle_bytes": 9803,
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "subject": [
+        {
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          },
+          "annotations": {}
+        }
+      ],
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "statement_sha256": "07ebf0dc063b2d8b5b449437ae673ea7bf6c21f1a6e33a3e9d85febfd132db48"
+    },
+    {
+      "manifest_digest": "sha256:5bcaf886dc9633a824ec0c595e7196527d4d2664943f208569a0401c2abdcc6a",
+      "bundle_digest": "sha256:dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2",
+      "bundle_bytes": 91251399,
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "statement_sha256": "4c87bf35f890cfc79141649d91b9ed33c0f97946015cbadddf2ab0fcf7d10e55"
+    },
+    {
+      "manifest_digest": "sha256:5c8b5abd043c58800c4b38126b74d2f180ee39189f9e74eac26c4cf334fdfae3",
+      "bundle_digest": "sha256:946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb",
+      "bundle_bytes": 34172403,
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "statement_sha256": "3c804e872b212c27f07e2c0b0c0fce10495c6004447ef1660476cccbdd8d13a9"
+    },
+    {
+      "manifest_digest": "sha256:d9898fb80b3f69bad5889e7a57d62825c429abb57669dd19f8bd1b6a1deb6bcf",
+      "bundle_digest": "sha256:b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3",
+      "bundle_bytes": 91249797,
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "statement_sha256": "c9408bd6c973c3b2fa34f08b71af541d58413b1b9db6745cd79eaf852acbd2fa"
+    }
+  ]
+}

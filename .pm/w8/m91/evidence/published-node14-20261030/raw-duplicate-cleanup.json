@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-30T10:35:48.375025+00:00",
+  "scope": "Only inactive owned Node14 uncompressed duplicate bundles removed after validating existing gzip bytes AND every decompressed SHA/size. All5 full signed bundles remain losslessly preserved and public by immutable OCI digest. ActiveNode16/Py37inputs, image/proofholders, verifiedtools and all layer-proof metadata untouched.",
+  "removed": [
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.bundle.json",
+      "bytes": 34150313,
+      "sha256": "68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152",
+      "lossless_archive": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.bundle.json.gz"
+    },
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.bundle.json",
+      "bytes": 9803,
+      "sha256": "76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+      "lossless_archive": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.bundle.json.gz"
+    },
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.bundle.json",
+      "bytes": 91251399,
+      "sha256": "dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2",
+      "lossless_archive": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.bundle.json.gz"
+    },
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.bundle.json",
+      "bytes": 34172403,
+      "sha256": "946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb",
+      "lossless_archive": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.bundle.json.gz"
+    },
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.bundle.json",
+      "bytes": 91249797,
+      "sha256": "b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3",
+      "lossless_archive": "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.bundle.json.gz"
+    }
+  ],
+  "reclaimed_bytes": 250833715,
+  "active_inputs_removed": false,
+  "image_layers_persisted_by_active_review": false,
+  "production_or_registry_mutation": false
+}

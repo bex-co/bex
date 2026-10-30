@@ -1,0 +1,29 @@
+{
+  "bundle_digest": "sha256:946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb",
+  "predicate_type": "https://spdx.dev/Document",
+  "exit_code": 0,
+  "expected_source_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "explicit_tsa_required": true,
+  "strict_issuer_identity_subject_tlog": true,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/tmp/loopx-w8-native-modern-review/direct-bundle-proof/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.bundle.json",
+    "--type",
+    "https://spdx.dev/Document",
+    "--digest",
+    "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ]
+}

@@ -91,3 +91,10 @@ The [preparation refresh](evidence/acceptance-preparation-refresh-20261030/READM
 ## Full-report signing recovery checkpoint — 2026-10-30
 
 [Repeated first-SPDX failure and protocol evidence](evidence/publication-rekor-v2-20261030/README.md) includes a genuine 25 MB exact-candidate report and a verified Cosign 3.1.4 local experiment producing a 415-byte v2 log request from an unchanged 23 MB predicate. The narrow workflow fix pins 3.1.4 and explicitly selects its official TUF v2 signing configuration while preserving full SPDX/Trivy reports and every identity/runtime/scan/transparency gate. Independent review, workflow validation and actionlint pass. These local protocol checks do not approve public signatures; actual CI replay, per-candidate review, full catalog adoption and original hosted acceptance remain open.
+
+
+## First published supplier review — 2026-10-30
+
+The [published Node 14 review](evidence/published-node14-20261030/README.md) verifies the actual immutable supplier on amd64 and arm64: separate producer/verification identities, unchanged recipe/base, successful current runtime and scan gates, all five full signed bundles, strict source/issuer/subject/transparency/TSA checks and anonymous image-byte proofs pass. The compact archive preserves immutable object IDs, complete-predicate retrieval and hashes, exact Docker-source root derivation and meaningful rejection guards. Full payloads stay outside Git.
+
+Critical scan findings, including the custom Brotli backport flags, remain recorded; this is no security waiver or zero-CVE claim. Only this supplier evidence is approved. The production catalog is unchanged, and other supplier reviews, complete adoption and the original generated/hosted acceptance remain open. No task is closed by this checkpoint.

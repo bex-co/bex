@@ -1,0 +1,27 @@
+{
+  "scope": "New compact retrieval helper tests. One genuine image bundle exercises real crypto; this does not claim a second full250MBreview.",
+  "cases": [
+    {
+      "case": "actual-image-bundle-roundtrip",
+      "exit_code": 0,
+      "scope": "actual immutable image-signature bundle only; full four reports were already verified in the original review",
+      "scratch": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-node14-retrieve-guard-gl29sa2h"
+    },
+    {
+      "case": "tampered-bundle-descriptor",
+      "exit_code": 1,
+      "scope": "actual immutable image-signature bundle only; full four reports were already verified in the original review",
+      "scratch": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-node14-retrieve-guard-1sj4mys6"
+    },
+    {
+      "case": "tampered-statement-hash",
+      "exit_code": 1,
+      "scope": "actual immutable image-signature bundle only; full four reports were already verified in the original review",
+      "scratch": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-node14-retrieve-guard-sqc9gwxi"
+    },
+    {
+      "case": "repository-output-rejected-before-payload-write",
+      "exit_code": 1
+    }
+  ]
+}
