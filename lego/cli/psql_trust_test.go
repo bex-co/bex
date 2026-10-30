@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-// The database's external connection string pins sslmode=verify-full against
-// the CNPG cluster's private CA (lego/backend/internal/postgres/service.go), so
+// While a public database serves CNPG's certificate, its external connection
+// string pins sslmode=verify-full against the CNPG cluster's private CA (lego/backend/internal/postgres/service.go), so
 // a stock client holds no trust root for it. These tests drive the real
 // launcher binary against a stub bex-api and a stub `psql` that reports the
 // trust material it was handed.
@@ -71,6 +71,7 @@ func stubPSQL(t *testing.T) (string, string) {
 	script := "#!/bin/sh\n" +
 		"touch " + marker + "\n" +
 		`echo "PGSSLROOTCERT=${PGSSLROOTCERT:-unset}"` + "\n" +
+		`echo "CONNINFO=$1"` + "\n" +
 		`if [ -n "${PGSSLROOTCERT:-}" ] && [ -f "${PGSSLROOTCERT}" ]; then cat "${PGSSLROOTCERT}"; fi` + "\n"
 	if err := os.WriteFile(filepath.Join(dir, "psql"), []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -170,5 +171,33 @@ func TestBexPSQLReportsAnUnavailableServerCA(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Errorf("refusal does not mention %q:\n%s", want, output)
 		}
+	}
+}
+
+// A public database serving a publicly trusted certificate (w2/m245) returns
+// Render's URL with no sslmode and no serverCaCertificate. The launcher must
+// then provision nothing and hand psql the URL exactly as Render's CLI would,
+// so libpq verifies against the system roots like any Render connection.
+func TestBexPSQLProvisionsNothingForAPubliclyTrustedDatabase(t *testing.T) {
+	const renderShaped = "postgresql://u:p@db.example.test/d"
+	body, err := json.Marshal(map[string]string{"password": "p", "externalConnectionString": renderShaped})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := psqlTrustStub(t, http.StatusOK, string(body))
+	stubDir, marker := stubPSQL(t)
+
+	output, err := runBexPSQL(t, api, stubDir, t.TempDir())
+	if err != nil {
+		t.Fatalf("bex psql: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("psql never ran: %v\n%s", err, output)
+	}
+	if !strings.Contains(output, "PGSSLROOTCERT=unset") {
+		t.Fatalf("a trust root was provisioned for a publicly trusted database:\n%s", output)
+	}
+	if !strings.Contains(output, "CONNINFO="+renderShaped+"\n") {
+		t.Fatalf("psql was not handed the Render-shaped URL verbatim:\n%s", output)
 	}
 }
