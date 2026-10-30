@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T20:04:20.650220+00:00",
+  "path": "/private/tmp/bex-w8-m144-t006-local-20261030/go-cache",
+  "scope": "Only completed root-owned CSI Linux-test Go build cache; original source, patches, test binaries and evidence retained",
+  "open_file_check": "lsof +D exit1, empty stdout/stderr; no active cache files",
+  "files": 8823,
+  "logical_bytes": 740794109,
+  "free_before": 2883387392,
+  "status": "removed_regenerable_cache_only",
+  "free_after": 3662819328
+}

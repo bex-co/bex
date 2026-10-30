@@ -96,3 +96,8 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Actual platform and guarded CSI Ready — 2026-10-30
 
 [The actual scoped rollout proof](evidence/live-release-ready-20261030/README.md) reports the new e951 CSI driver Ready on one controller and eleven node pods. Its pre-Helm selected inventory already shows the qualified a544 platform Ready on both API pods and the manager with exact runtime imageIDs; bounded class selection/contract and both legacy bindings/handles are preserved. The reviewed validator rejects old/terminating driver pods. Separate post-CSI inventory41107548122 is pending. Fresh queue fit and all original paid lifecycle/surface/cleanup acceptance remain open; no fixture or task closes here.
+
+
+## Current paid-test queue review — 2026-10-30
+
+[Actual completed-job timing and current inventory wait](evidence/production-queue-budget-20261030/README.md) do not yet establish that the unchanged two-hour owned fixture, observer/backup work and15-minute cleanup reserve fit. Real platform/CSI Ready evidence remains valid. No resource, create intent, release gate or armed watchdog exists, and no new idle-runner requirement is introduced. Original capacity, lifecycle, billing and surface DoDs remain open.

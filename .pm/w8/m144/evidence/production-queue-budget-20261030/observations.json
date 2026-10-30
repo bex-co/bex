@@ -1,0 +1,251 @@
+{
+  "scope": "Empirical retained production-job timestamps only; no new API except ordinary inventory watch; no future ETA/fleet-size/idle/reservation/safety classification. Historical failed native jobs measure occupancy, not candidate approval.",
+  "queue_definition": "job.created_at to reported started_at for assigned completed jobs; queued started_at is not execution.",
+  "metadata_lag": "Platform deploy was observed queued through17:54 despite later reported actual start17:41:40. Completed execution timestamps/logs are used; response Date and wall observation remain separate.",
+  "completed_jobs": [
+    {
+      "label": "qualified platform build",
+      "job_id": 124116403697,
+      "run_id": 41056335577,
+      "conclusion": "success",
+      "created_at": "2026-10-30T14:25:33Z",
+      "started_at": "2026-10-30T15:38:48Z",
+      "completed_at": "2026-10-30T17:11:01Z",
+      "runner_name": "49aefcdc6924",
+      "runner_id": 21879,
+      "queue_seconds": 4395.0,
+      "execution_seconds": 5533.0,
+      "queue_hms": "01:13:15",
+      "execution_hms": "01:32:13",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/platform-candidate-25b-20261030/jobs-at-build-success.json.gz"
+    },
+    {
+      "label": "qualified platform deploy",
+      "job_id": 124203731049,
+      "run_id": 41056335577,
+      "conclusion": "success",
+      "created_at": "2026-10-30T17:11:01Z",
+      "started_at": "2026-10-30T17:41:40Z",
+      "completed_at": "2026-10-30T18:01:17Z",
+      "runner_name": "9e5b2bd9ddc1",
+      "runner_id": 21904,
+      "queue_seconds": 1839.0,
+      "execution_seconds": 1177.0,
+      "queue_hms": "00:30:39",
+      "execution_hms": "00:19:37",
+      "source": "retained completed metadata probes + jobs-at-build-success.json.gz"
+    },
+    {
+      "label": "reviewed CSI rollout",
+      "job_id": 124171247565,
+      "run_id": 41086267444,
+      "conclusion": "success",
+      "created_at": "2026-10-30T16:08:36Z",
+      "started_at": "2026-10-30T18:58:03Z",
+      "completed_at": "2026-10-30T19:01:11Z",
+      "runner_name": "49aefcdc6924",
+      "runner_id": 21918,
+      "queue_seconds": 10167.0,
+      "execution_seconds": 188.0,
+      "queue_hms": "02:49:27",
+      "execution_hms": "00:03:08",
+      "source": "retained CSI cluster-job.json + csi-cluster-job-fresh.json"
+    },
+    {
+      "label": "native Node14 producer",
+      "job_id": 123885951138,
+      "run_id": 41000570846,
+      "conclusion": "failure",
+      "created_at": "2026-10-30T04:08:58Z",
+      "started_at": "2026-10-30T04:09:01Z",
+      "completed_at": "2026-10-30T06:22:47Z",
+      "runner_name": "49aefcdc6924",
+      "runner_id": 21545,
+      "queue_seconds": 3.0,
+      "execution_seconds": 8026.0,
+      "queue_hms": "00:00:03",
+      "execution_hms": "02:13:46",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/published-node14-20261030/identity/producer-job.json"
+    },
+    {
+      "label": "native Node16 producer",
+      "job_id": 123885951331,
+      "run_id": 41000570846,
+      "conclusion": "failure",
+      "created_at": "2026-10-30T04:08:58Z",
+      "started_at": "2026-10-30T04:09:01Z",
+      "completed_at": "2026-10-30T06:59:04Z",
+      "runner_name": "9e5b2bd9ddc1",
+      "runner_id": 21550,
+      "queue_seconds": 3.0,
+      "execution_seconds": 10203.0,
+      "queue_hms": "00:00:03",
+      "execution_hms": "02:50:03",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/published-node16-20261030/identity/producer-job.json"
+    },
+    {
+      "label": "native Ruby3.2",
+      "job_id": 124091095086,
+      "run_id": 41063737101,
+      "conclusion": "failure",
+      "created_at": "2026-10-30T13:32:56Z",
+      "started_at": "2026-10-30T15:27:32Z",
+      "completed_at": "2026-10-30T17:21:43Z",
+      "runner_name": "9e5b2bd9ddc1",
+      "runner_id": 21876,
+      "queue_seconds": 6876.0,
+      "execution_seconds": 6851.0,
+      "queue_hms": "01:54:36",
+      "execution_hms": "01:54:11",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/publication-syft-http1-20261030/job.json"
+    },
+    {
+      "label": "native Elixir1.18",
+      "job_id": 124104056666,
+      "run_id": 41067560420,
+      "conclusion": "failure",
+      "created_at": "2026-10-30T13:59:38Z",
+      "started_at": "2026-10-30T17:14:42Z",
+      "completed_at": "2026-10-30T18:57:46Z",
+      "runner_name": "49aefcdc6924",
+      "runner_id": 21898,
+      "queue_seconds": 11704.0,
+      "execution_seconds": 6184.0,
+      "queue_hms": "03:15:04",
+      "execution_hms": "01:43:04",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/publication-trivy-staging-20261030/recovery-intake/elixir-1.18-job.json.gz"
+    },
+    {
+      "label": "native Elixir1.19",
+      "job_id": 124104134360,
+      "run_id": 41067564282,
+      "conclusion": "failure",
+      "created_at": "2026-10-30T13:59:47Z",
+      "started_at": "2026-10-30T17:19:48Z",
+      "completed_at": "2026-10-30T19:35:59Z",
+      "runner_name": "45e29ad2967e",
+      "runner_id": 21900,
+      "queue_seconds": 12001.0,
+      "execution_seconds": 8171.0,
+      "queue_hms": "03:20:01",
+      "execution_hms": "02:16:11",
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/publication-trivy-staging-20261030/recovery-intake/elixir-1.19-job.json.gz"
+    }
+  ],
+  "observed_overlaps": [
+    {
+      "job_ids": [
+        123885951138,
+        123885951331
+      ],
+      "runner_names": [
+        "49aefcdc6924",
+        "9e5b2bd9ddc1"
+      ],
+      "overlap_started_at": "2026-10-30T04:09:01Z",
+      "overlap_completed_at": "2026-10-30T06:22:47Z",
+      "seconds": 8026.0,
+      "hms": "02:13:46"
+    },
+    {
+      "job_ids": [
+        124116403697,
+        124091095086
+      ],
+      "runner_names": [
+        "49aefcdc6924",
+        "9e5b2bd9ddc1"
+      ],
+      "overlap_started_at": "2026-10-30T15:38:48Z",
+      "overlap_completed_at": "2026-10-30T17:11:01Z",
+      "seconds": 5533.0,
+      "hms": "01:32:13"
+    },
+    {
+      "job_ids": [
+        124104056666,
+        124104134360,
+        124091095086
+      ],
+      "runner_names": [
+        "49aefcdc6924",
+        "45e29ad2967e",
+        "9e5b2bd9ddc1"
+      ],
+      "overlap_started_at": "2026-10-30T17:19:48Z",
+      "overlap_completed_at": "2026-10-30T17:21:43Z",
+      "seconds": 115.0,
+      "hms": "00:01:55"
+    },
+    {
+      "job_ids": [
+        124104056666,
+        124104134360,
+        124203731049
+      ],
+      "runner_names": [
+        "49aefcdc6924",
+        "45e29ad2967e",
+        "9e5b2bd9ddc1"
+      ],
+      "overlap_started_at": "2026-10-30T17:41:40Z",
+      "overlap_completed_at": "2026-10-30T18:01:17Z",
+      "seconds": 1177.0,
+      "hms": "00:19:37"
+    },
+    {
+      "job_ids": [
+        124171247565,
+        124104134360
+      ],
+      "runner_names": [
+        "49aefcdc6924",
+        "45e29ad2967e"
+      ],
+      "overlap_started_at": "2026-10-30T18:58:03Z",
+      "overlap_completed_at": "2026-10-30T19:01:11Z",
+      "seconds": 188.0,
+      "hms": "00:03:08"
+    }
+  ],
+  "current_inventory_lower_bound": {
+    "run_id": 41107548122,
+    "job_id": 124256013895,
+    "observed_at": "2026-10-30T20:15:20.074189+00:00",
+    "response_date": "Fri, 30 Oct 2026 20:15:20 GMT",
+    "status": "queued",
+    "runner_id": 0,
+    "production_job_created_at": "2026-10-30T19:03:01Z",
+    "dispatch_at": "2026-10-30T18:30:41Z",
+    "production_queue_so_far_seconds": 4339.074,
+    "production_queue_so_far_hms": "01:12:19",
+    "dispatch_elapsed_seconds": 6279.074,
+    "dispatch_elapsed_hms": "01:44:39",
+    "pre_production_elapsed_seconds": 1940.0,
+    "pre_production_elapsed_hms": "00:32:20",
+    "7200_minus_900_minus_production_queue_seconds": 1960.9260000000004,
+    "7200_minus_900_minus_dispatch_elapsed_seconds": 20.926000000000386,
+    "execution_not_yet_observed": true
+  },
+  "standalone_observed_queue_work_plus_cleanup_arithmetic": [
+    {
+      "label": "qualified platform build",
+      "queue_plus_execution_plus_900_seconds": 10828.0,
+      "hms": "03:00:28",
+      "7200_minus_that_seconds": -3628.0
+    },
+    {
+      "label": "qualified platform deploy",
+      "queue_plus_execution_plus_900_seconds": 3916.0,
+      "hms": "01:05:16",
+      "7200_minus_that_seconds": 3284.0
+    },
+    {
+      "label": "reviewed CSI rollout",
+      "queue_plus_execution_plus_900_seconds": 11255.0,
+      "hms": "03:07:35",
+      "7200_minus_that_seconds": -4055.0
+    }
+  ],
+  "observer_backup_scope": "No production observer+owned-backup paired execution has been performed by this child. Existing overlaps do not establish future availability or queue bounds. Current inventory was dispatched before any paid fixture; its observed elapsed time is not paid-resource cost."
+}

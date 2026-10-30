@@ -1,0 +1,17 @@
+{
+  "schema": "bex.w8.evidence-custody/v1",
+  "files": [
+    {
+      "path": "observations.json",
+      "bytes": 8721,
+      "sha256": "759ff900a596518552d2316724df0ac72cc1b640a783ba1ee92e852478c69eac",
+      "source": "/private/tmp/bex-w8-production-pool-observations-20261030/observations.json"
+    },
+    {
+      "path": "completed-owned-cache-cleanup.json",
+      "bytes": 479,
+      "sha256": "e371007989c0fca516ef6aa6104bf9b6fb28156bb9f993e998733924e1666a61",
+      "source": "/private/tmp/bex-w8-completed-csi-gocache-cleanup-20261030.json"
+    }
+  ]
+}

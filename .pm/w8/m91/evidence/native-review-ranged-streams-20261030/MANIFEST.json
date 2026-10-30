@@ -1,0 +1,234 @@
+{
+  "schema": "bex.w8.evidence-custody/v1",
+  "files": [
+    {
+      "path": "local-controls/MANIFEST.json.gz",
+      "bytes": 1254,
+      "sha256": "7b7cf12c55d22d545a4c64dcea6dc52808436efabb00619a1227ea426fde3bae",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/MANIFEST.json",
+      "original_bytes": 2958,
+      "original_sha256": "515fff9971f26b724492cf4b8b724d38a423938be22fe845f332dc47e552e5e9"
+    },
+    {
+      "path": "local-controls/actual-test-process-results.json.gz",
+      "bytes": 540,
+      "sha256": "19c12fc1b3a0bc8bfe81e2af158192fa99694aca38219d361de06b61a2f74f39",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/actual-test-process-results.json",
+      "original_bytes": 2022,
+      "original_sha256": "6d7bbf16670ac10a185d810fdedf7c217499801a3362c2eb969178e213acb780"
+    },
+    {
+      "path": "local-controls/concurrency-tests.log.gz",
+      "bytes": 257,
+      "sha256": "9b47db78be87efb67b5b974e871b45b1cf9a0d6c054bb672e6bb5498cdfe1c75",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/concurrency-tests.log",
+      "original_bytes": 728,
+      "original_sha256": "c6c5aa3716f80f299dc711500c80778a1089fe3ddfb24b8dab7e8da53a80de84"
+    },
+    {
+      "path": "local-controls/concurrency-tests.py.gz",
+      "bytes": 3201,
+      "sha256": "ecb1bdde4e3ac99ef3ff3959f0dc7b6f1e1b079ee9a8973e36f9258e2e6bf4b4",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/concurrency-tests.py",
+      "original_bytes": 9862,
+      "original_sha256": "44fb5119309d4dca21e27eb12434bfa60f3f107586b1efe63c131bf20dfaa367"
+    },
+    {
+      "path": "local-controls/driver-before-error-response-cleanup.py.gz",
+      "bytes": 13817,
+      "sha256": "f1762cc0cca65937067a41b66da600f268a70259cd5d63f8b0675a154069075f",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/driver-before-error-response-cleanup.py",
+      "original_bytes": 43373,
+      "original_sha256": "d8409441f185a95f49f3ee3a3824824c80eca2fdd37e6cd7e905e1eaeb87cdb3"
+    },
+    {
+      "path": "local-controls/initial-resource-warning.json.gz",
+      "bytes": 320,
+      "sha256": "1b2971057aa794072de62fd482d7fa16a72895937b45cd2673ce18b461ebf852",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/initial-resource-warning.json",
+      "original_bytes": 457,
+      "original_sha256": "c4cca67139d0a46d99986ff867fb7320917ff9bf07a50f530ef5092e3f1540c9"
+    },
+    {
+      "path": "local-controls/isolation-diagnostic-tests.log.gz",
+      "bytes": 519,
+      "sha256": "c53e049b4c609486e47da9e389a980603825808d3391b9356238a657c16cf8a5",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/isolation-diagnostic-tests.log",
+      "original_bytes": 1399,
+      "original_sha256": "949e5d21308db84007f94f0e741c58d82662e112742620e6c11be4d73353f8fe"
+    },
+    {
+      "path": "local-controls/isolation-diagnostic-tests.py.gz",
+      "bytes": 3129,
+      "sha256": "7d599826703cfb1c6319c98e3ba39c17bd3b0ae5bd9eeda11e9db07002b75dd3",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/isolation-diagnostic-tests.py",
+      "original_bytes": 8721,
+      "original_sha256": "b81aece6002934d0b2e5be00900f2ca8b038758af38b8de529619edbbc7414c8"
+    },
+    {
+      "path": "local-controls/policy-opener-hook.diff.gz",
+      "bytes": 475,
+      "sha256": "0a364cfb691da58d495e685b76a12e6e7f5bbd47f5378b4d3e51914278927d80",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/policy-opener-hook.diff",
+      "original_bytes": 997,
+      "original_sha256": "aa9244d9097c8a001fca093b5a4eaa31486eb08731d8fc52cc7e3c6bdf91ccb2"
+    },
+    {
+      "path": "local-controls/ranged-reader-tests.log.gz",
+      "bytes": 582,
+      "sha256": "150011e2b1c9533fbaf651f0de4efde1e8e17ffe5f12e88d5568b4140128fdcb",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/ranged-reader-tests.log",
+      "original_bytes": 2115,
+      "original_sha256": "212acbca70b11240449d3f6f83c984f419b3a5080ac8bb397a2047cd4f51af72"
+    },
+    {
+      "path": "local-controls/ranged-reader-tests.py.gz",
+      "bytes": 3991,
+      "sha256": "c553ebad43b77012f872b59a88f24bfd639ca52ed41e883f747b8df211112af8",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/ranged-reader-tests.py",
+      "original_bytes": 13238,
+      "original_sha256": "517418cc3f72a8c4be8a6cb249618b4fb0d6fd27e0cca94b5e45d0013fd75edc"
+    },
+    {
+      "path": "local-controls/receipt.json.gz",
+      "bytes": 2336,
+      "sha256": "7e2d99a52e4a9b8c57622e729bd4ad77319e77a65061faaf16c9153441c3aa9f",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/receipt.json",
+      "original_bytes": 4530,
+      "original_sha256": "e18462bee133f4f37c64c95bf456710dbbcf4780f449d0b15a65ecc6e955d3c7"
+    },
+    {
+      "path": "local-controls/root-ranged-review.log.gz",
+      "bytes": 582,
+      "sha256": "529913078c9b9fe9839edc0c5d06066c99aee2e6ea6b36780b4dbd2a4bedf822",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/root-ranged-review.log",
+      "original_bytes": 2115,
+      "original_sha256": "2b1d0488c38f4fdc8ab9b3a11e04ff9d4281568aebc6f3e34888e0243c7998f9"
+    },
+    {
+      "path": "local-controls/strict-guards-result.json.gz",
+      "bytes": 865,
+      "sha256": "82795770d99e6912369fc40697202bd4e95846d65954564aa71d911e9948433b",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/strict-guards-result.json",
+      "original_bytes": 1867,
+      "original_sha256": "ae016e8c8e0fef97da8b491000371e55ca7fa81e2a1db3b0e38343a3d4524186"
+    },
+    {
+      "path": "local-controls/strict-guards.log.gz",
+      "bytes": 845,
+      "sha256": "65d8f936ede77675b1fb2e02e32e0e22f0158892fd61c690dbb736e8c5127ccd",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/strict-guards.log",
+      "original_bytes": 1683,
+      "original_sha256": "56c287b57edf7dadc9bb49e5f7da435fb38919d548f2a5dabe681255be6d21f7"
+    },
+    {
+      "path": "local-controls/strict-guards.py.gz",
+      "bytes": 5354,
+      "sha256": "3622f66be0adc18ffd508480e62a7a37b72b9f441851ab4cce8f2be39b5a8464",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/strict-guards.py",
+      "original_bytes": 16687,
+      "original_sha256": "a1367eec153bf2a1b8c04959ace8fec8aae0f9abc27d7745d8c2b411d5d47b26"
+    },
+    {
+      "path": "local-controls/v10-to-v11.diff.gz",
+      "bytes": 5726,
+      "sha256": "642ac20f8cacb82a79e0fa1643bf63d7bf6a1d3131a637475738c5b62d80e9e3",
+      "original_path": "/private/tmp/loopx-w8-native-v11-local-validation-20261030/v10-to-v11.diff",
+      "original_bytes": 19603,
+      "original_sha256": "296f553bfc14acaf48a708357770d0d353fe74ef4b562e8220841f9f3896a14f"
+    },
+    {
+      "path": "executed-tools/loopx-w8-native-review-v11.py.gz",
+      "bytes": 13861,
+      "sha256": "9ba5f48bb4b702ad6c03499086fc0c4a1ad86aed9c020f0dc1a1221e600008da",
+      "original_path": "/tmp/loopx-w8-native-review-v11.py",
+      "original_bytes": 43608,
+      "original_sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+    },
+    {
+      "path": "executed-tools/loopx-w8-verify-native-artifact-ranged.py.gz",
+      "bytes": 12286,
+      "sha256": "4c6ff534b76c86c311be3eba49aecf2f6c4296b65fb75eac8e975eb462dcee9b",
+      "original_path": "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+      "original_bytes": 40720,
+      "original_sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+    },
+    {
+      "path": "rejected-attempt3/FROZEN-MANIFEST.json.gz",
+      "bytes": 5948,
+      "sha256": "8928bd1e9372f1a73ef0f72bdd918ec6246a9ca04255d7827d8d8f8aee603eee",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/FROZEN-MANIFEST.json",
+      "original_bytes": 54126,
+      "original_sha256": "50ce5372b146e247657f0e9d8aded9b9878bdd0d8413eeec180a56bb196c375f"
+    },
+    {
+      "path": "rejected-attempt3/completed21-full-read-receipts.json.gz",
+      "bytes": 1468,
+      "sha256": "112079c16a435b7d2b42020a80a1a29dc89e2e373cfbb3c39dbaf586a09c5e82",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/completed21-full-read-receipts.json",
+      "original_bytes": 8186,
+      "original_sha256": "d396627d5cffd9bcf29c807f74a2f74cd4ede97888721b6ff7979fef2ab707cb"
+    },
+    {
+      "path": "rejected-attempt3/crypto-and-initial-blob-checkpoint.json.gz",
+      "bytes": 265,
+      "sha256": "f120f8f8b736b07bc7728f76e82899ab2441578f06343cdf544e036d00025e07",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/crypto-and-initial-blob-checkpoint.json",
+      "original_bytes": 413,
+      "original_sha256": "ddf70ce43b203690ffb090a9af214781104e6ab94eb55a5c351ff34ca5d9f1e3"
+    },
+    {
+      "path": "rejected-attempt3/frozen-case-attempt-chain.json.gz",
+      "bytes": 1700,
+      "sha256": "13c0bf52923f9e8ed7e00d1deaf35225409e42382173e3ba340e7ba395314329",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/frozen-case-attempt-chain.json",
+      "original_bytes": 4028,
+      "original_sha256": "19b46d3e2ab4d4241590bda02625b5dba858139ab6ef60f2bc11f362f3f87b48"
+    },
+    {
+      "path": "rejected-attempt3/reuse-custody.json.gz",
+      "bytes": 2321,
+      "sha256": "9c513443ef2f262e2245bee51dbbead09c5ecf1fe9cfbc546554ca2dd0364e7c",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/reuse-custody.json",
+      "original_bytes": 10328,
+      "original_sha256": "dffc967da0632f1bd2f63031ba4a32fd55a5e28036d17d627d8b389e7684f391"
+    },
+    {
+      "path": "rejected-attempt3/seed-preflight.initial-harness-failure.json.gz",
+      "bytes": 381,
+      "sha256": "f601ac34dad8f7350c4d7863e178a9211c70dfb8bbd75fdbd76d51cac4810169",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/seed-preflight.initial-harness-failure.json",
+      "original_bytes": 538,
+      "original_sha256": "44c98772e0027f5f364ad22c7d39eac3c37bf1b3946b7782c73326348922cbd0"
+    },
+    {
+      "path": "rejected-attempt3/source-path-preflight.json.gz",
+      "bytes": 511,
+      "sha256": "eb14c2be9f5bb8abd3a68549761daff5bb9499cf29439a0537f25a56e0936069",
+      "original_path": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/source-path-preflight.json",
+      "original_bytes": 907,
+      "original_sha256": "95b2254e591aa523867d9ba48f7e3732182ad231d43b159360b0d443661f95a6"
+    },
+    {
+      "path": "rejected-attempt3/anonymous-blob-failure-eiqc5kix.json.gz",
+      "bytes": 426,
+      "sha256": "f06b7f747d842780e4ed8b11d39bfc984933a7c8276fdccd38d32060d389a1e8",
+      "original_path": "/tmp/loopx-w8-native-review-ruby31-v10-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/anonymous-blob-failure-eiqc5kix.json",
+      "original_bytes": 639,
+      "original_sha256": "7ca5a4dd56d2d89655ab2e491b6f28efb599d7614105456e04432f653ce6f673"
+    },
+    {
+      "path": "rejected-attempt3/anonymous-blob-failure-ue23jpxj.json.gz",
+      "bytes": 431,
+      "sha256": "f8e4dfa673947bbfcb534c07a5caead23ac986358e50ce79ba98598fc2a8fbba",
+      "original_path": "/tmp/loopx-w8-native-review-ruby31-v10-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/anonymous-blob-failure-ue23jpxj.json",
+      "original_bytes": 639,
+      "original_sha256": "f8a7b92bf5c72ffc92d0c7a635701839d94b2477251b49cb6e31a6675072eaa8"
+    },
+    {
+      "path": "ROOT-REVIEW.json",
+      "bytes": 1366,
+      "sha256": "93812ff0d07cce262443d39fca5b73915af3cfed009759c1c185a76394fc8d75"
+    }
+  ]
+}
