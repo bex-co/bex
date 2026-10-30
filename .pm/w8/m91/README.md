@@ -68,3 +68,7 @@ The [genuine amd64 exact-default proof](evidence/exact-python-default-amd64-2026
 ## Publication recovery checkpoint — 2026-10-30
 
 [Actual failed-job evidence](evidence/publication-recovery-20261030/README.md) separates Node 14/16 scan-analysis deadlines from Node 18's pre-build registry transport timeout. The narrow fifteen-minute scan fix shipped as `059c163b3`, retaining every scan/probe/signature and existing runner. Its new matrix is queued; no failed candidate or cache was approved, no running compile was cancelled, and no successful publication/adoption is claimed.
+
+## Complete synthetic-catalog suite checkpoint — 2026-10-30
+
+The [full operator suite with a complete synthetic catalog](evidence/complete-catalog-suite-20261030/README.md) passed in 234.906 seconds, including build/native-resolve tests and controller/envtest. A Go overlay supplied twenty-seven explicitly synthetic references; image integration gates were unset, and all 550 source/codegen/RBAC hashes remained identical. The real source and empty production catalog were unchanged. This checks broader populated-catalog assumptions; it does not establish published suppliers, actual adoption or hosted acceptance, which remain open.
