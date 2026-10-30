@@ -1,0 +1,27 @@
+{
+  "schema": "bex.local-sbom-size-proof/v1",
+  "checked_at": "2026-10-30T08:53:43.548487+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "platform": "linux/amd64",
+  "syft_version": "1.51.1",
+  "syft_binary_archive_sha256": "ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1",
+  "sbom_path": "/tmp/bex-m188-sbom-size/python37-amd64.spdx.json",
+  "sbom_sha256": "18a34c45b48c4377caaf3f06b9e02f527abeac388141b8866e3ce2e49fa6a833",
+  "spdx_bytes": 24452589,
+  "spdx_mib": 23.32,
+  "json_python_compact_bytes": 24452588,
+  "base64_compact_predicate_alone_bytes": 32603452,
+  "base64_compact_predicate_alone_mib": 31.093,
+  "package_count": 717,
+  "file_count": 30189,
+  "relationship_count": 33839,
+  "spdx_version": "SPDX-2.3",
+  "returncode": 0,
+  "source": "locally reconstructed with same pinned Syft version, immutable candidate, architecture and full SPDX output; original runner predicate was not retained, so this is not a claim of byte-identical original output",
+  "request_size_limit": "DSSE/RekorV1 adds signed-statement wrapping, base64 payload, signature and certificate beyond the predicate alone. Exact public max body size and actual HTTP status were not exposed by job logs. No public Rekor POST used.",
+  "primary_size_failure_match": [
+    "https://github.com/sigstore/rekor/issues/2808",
+    "https://github.com/sigstore/rekor/pull/2813"
+  ],
+  "remediation": "Cosign3.1.4 with TUF default RekorV2/Fulcio/TSA uses hashed DSSE PAE while retaining full signed OCI predicates."
+}
