@@ -87,7 +87,9 @@ export interface ConnectionInfoView {
   psqlCommand: string;
   /**
    * PEM certificate bundle of the database's private server CA — what an
-   * external verify-full client must trust (empty for internal-only databases).
+   * external verify-full client must trust. Empty for internal-only databases
+   * and for public ones serving a publicly trusted certificate (w2/m245),
+   * whose Render-shaped external string verifies against system roots.
    */
   serverCaCertificate: string;
   /** Per-replica full connection strings (populated when readReplicas exist). */

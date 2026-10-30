@@ -1,9 +1,12 @@
 // Package pgtrust provisions the TLS trust a bex Postgres session needs before
 // the launcher hands `psql`/`pgcli` to the upstream Render CLI.
 //
-// bex-api pins `sslmode=verify-full` on every external Postgres connection
-// string (lego/backend/internal/postgres/service.go, w4/m95), and the issuing
-// CA is the CNPG cluster's private one — no stock client holds it. The pinned
+// While a public database presents CNPG's generated certificate, bex-api pins
+// `sslmode=verify-full` on its external connection strings
+// (lego/backend/internal/postgres/service.go, w4/m95), and the issuing CA is
+// the CNPG cluster's private one — no stock client holds it. (A database
+// serving a publicly trusted certificate, w2/m245, gets Render's URL and no CA,
+// and this package provisions nothing.) The pinned
 // upstream CLI passes that connection string to a real `psql` binary verbatim
 // (pkg/tui/views/psql.go) and has no notion of a bex CA field, so a stock
 // install fails with `root certificate file "~/.postgresql/root.crt" does not
@@ -166,9 +169,10 @@ type Options struct {
 	// Arity describes the flags Args may contain.
 	Arity FlagArity
 	// Fetch reads a database's PEM server CA. It returns "" when the database
-	// has no external, verify-full endpoint (an internal-only database needs no
-	// trust provisioning), and an ErrCAUnavailable-wrapped error when the CA is
-	// missing on the server side.
+	// has no external, verify-full endpoint (an internal-only database, or one
+	// whose publicly trusted certificate verifies against system roots, needs
+	// no trust provisioning), and an ErrCAUnavailable-wrapped error when the CA
+	// is missing on the server side.
 	Fetch func(ctx context.Context, idOrName string) (string, error)
 
 	Lookup func(string) (string, bool)

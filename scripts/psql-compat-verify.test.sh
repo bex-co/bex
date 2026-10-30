@@ -58,6 +58,7 @@ from urllib.parse import parse_qs, urlsplit
 PORT_FILE, LOG_FILE, EDGE_FILE = sys.argv[1:]
 SECRET = os.environ["FAKE_SECRET"]
 MAIN_ID = "dpg-0123456789abcdefghij"
+PUBLIC_TRUST_FILE = os.environ["FAKE_PUBLIC_TRUST_FILE"]
 state = {"deleted": False, "name": "psql-test",
          "allow": [{"cidrBlock": "0.0.0.0/0", "description": "test verifier"}]}
 
@@ -166,6 +167,16 @@ class Handler(BaseHTTPRequestHandler):
                     "message": "public datastore endpoint unavailable: configure BEX_DB_DOMAIN",
                 })
                 return
+            # A publicly trusted endpoint (w2/m245) answers Render's exact URL
+            # with no sslmode and no CA.
+            if os.path.exists(PUBLIC_TRUST_FILE):
+                self.send_json(200, {
+                    "externalConnectionString": f"postgresql://planted_user:{SECRET}@db.nonprod.invalid:5432/psql_test",
+                    "internalConnectionString": "",
+                    "password": SECRET,
+                    "psqlCommand": "",
+                })
+                return
             # verify-full plus the server CA is the contract w4/m95 shipped:
             # the private CNPG root is part of the response, not something the
             # client is expected to already hold.
@@ -203,7 +214,7 @@ server.serve_forever()
 PY
 
 : >"$tmp/requests.log"
-FAKE_SECRET="$secret" python3 "$tmp/fake-api.py" "$tmp/port" "$tmp/requests.log" "$tmp/missing-edge" &
+FAKE_SECRET="$secret" FAKE_PUBLIC_TRUST_FILE="$tmp/public-trust" python3 "$tmp/fake-api.py" "$tmp/port" "$tmp/requests.log" "$tmp/missing-edge" &
 server_pid=$!
 for _ in {1..100}; do
   [[ -s "$tmp/port" ]] && break
@@ -225,10 +236,15 @@ conn="${1:-}"
 [[ "$conn" == postgresql://* || "$conn" == postgres://* ]] || { echo "bad conn" >&2; exit 71; }
 [[ "${2:-}" == "-c" ]] || { echo "missing -c" >&2; exit 72; }
 [[ "${3:-}" == 'SELECT 1 AS bex_psql_probe;' ]] || { echo "unexpected sql" >&2; exit 73; }
-# verify-full is unsatisfiable without a trust root, so the child must inherit
-# one; a real psql would fail with `root certificate file … does not exist`.
-[[ -n "${PGSSLROOTCERT:-}" && -r "$PGSSLROOTCERT" ]] || { echo "no trust root provisioned" >&2; exit 74; }
-grep -Fq 'BEGIN CERTIFICATE' "$PGSSLROOTCERT" || { echo "trust root is not a certificate" >&2; exit 75; }
+if [[ "$conn" == *sslmode=verify-full* ]]; then
+  # verify-full is unsatisfiable without a trust root, so the child must inherit
+  # one; a real psql would fail with `root certificate file … does not exist`.
+  [[ -n "${PGSSLROOTCERT:-}" && -r "$PGSSLROOTCERT" ]] || { echo "no trust root provisioned" >&2; exit 74; }
+  grep -Fq 'BEGIN CERTIFICATE' "$PGSSLROOTCERT" || { echo "trust root is not a certificate" >&2; exit 75; }
+else
+  # A Render-shaped URL must connect as copied, with no provisioned root.
+  [[ -z "${PGSSLROOTCERT:-}" ]] || { echo "trust root provisioned for a publicly trusted URL" >&2; exit 76; }
+fi
 conn=""
 printf ' bex_psql_probe \n----------------\n              1\n(1 row)\n'
 exit "${BEX_FAKE_PSQL_EXIT:-0}"
@@ -321,6 +337,22 @@ fi
 assert_safe "$tmp/full.out"
 assert_safe "$tmp/requests.log"
 assert_safe "$tmp/fake-psql-record"
+
+# 3b) publicly trusted endpoint (w2/m245): Render's URL with no sslmode and no
+#     CA connects as copied; a caller's PGSSLROOTCERT must not leak into it.
+touch "$tmp/public-trust"
+: >"$tmp/fake-psql-record"
+if ! env "${common_env[@]}" PGSSLROOTCERT="$tmp/caller-root.crt" bash "$verifier" >"$tmp/public-trust.out" 2>&1; then
+  rm -f "$tmp/public-trust"
+  grep -E '^(PASS|FAIL|INFO|SKIP)' "$tmp/public-trust.out" | sed "s/$secret/[redacted]/g" >&2 || true
+  fail "publicly trusted verifier failed"
+fi
+rm -f "$tmp/public-trust"
+grep -Fq 'PASS psql external-connection-precondition host=db.nonprod.invalid database=psql_test tls=system-roots ca=none' "$tmp/public-trust.out" ||
+  fail "publicly trusted precondition marker missing"
+[[ "$(grep -c invoked "$tmp/fake-psql-record")" == "2" ]] ||
+  fail "publicly trusted run did not probe by id and name"
+assert_safe "$tmp/public-trust.out"
 
 # 4) a non-zero psql exit is surfaced, not swallowed. The render CLI reports the
 #    underlying code as `Error: exit status 42` and itself exits 1, so the

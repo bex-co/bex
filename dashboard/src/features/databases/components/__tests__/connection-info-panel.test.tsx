@@ -162,6 +162,30 @@ describe("ConnectionInfoPanel", () => {
     }
   });
 
+  // w2/m245: a public database serving a publicly trusted certificate returns
+  // Render's URL and no CA, so nothing tells the user to download or trust one.
+  it("asks for no CA download when the public certificate is publicly trusted", () => {
+    state.info = {
+      password: "s3cretpw",
+      internalConnectionString: "postgresql://u:s3cretpw@db-rw.default:5432/db",
+      externalConnectionString:
+        "postgresql://u:s3cretpw@dpg-x.db.bex.co:5432/db",
+      psqlCommand: "PGPASSWORD=s3cretpw psql -h dpg-x.db.bex.co -U u db",
+      serverCaCertificate: "",
+      readReplicaConnectionStrings: [],
+    };
+    render(<ConnectionInfoPanel id="dpg-x" />);
+    expect(screen.getByText("External connection string")).toBeInTheDocument();
+    expect(
+      screen.getByText("postgresql://u:s3cretpw@dpg-x.db.bex.co:5432/db"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Server CA certificate")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /download ca certificate/i }),
+    ).toBeNull();
+    expect(screen.queryByText(/PGSSLROOTCERT|root\.crt|\.pem/)).toBeNull();
+  });
+
   it("keeps a coherent panel for an internal-only database (no CA section)", () => {
     state.info = {
       password: "pw",

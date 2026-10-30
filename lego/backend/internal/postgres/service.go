@@ -251,10 +251,13 @@ type PostgresConnectionInfo struct {
 	PSQLCommand                  string `json:"psqlCommand"`
 	// ServerCACertificate is the PEM CERTIFICATE bundle of the CNPG cluster's
 	// generated server CA — the trust root a verify-full external client must
-	// install (bex extension, w4/m95; Render's public hosts use a public CA and
-	// need no counterpart). Populated only for public databases: every public
+	// install (bex extension, w4/m95). Populated only for a public database
+	// whose endpoints still present CNPG's generated certificate: every public
 	// endpoint (primary, pooler, replicas) serves SANs on the same server
-	// certificate chain. Strictly certificate material — never a private key.
+	// certificate chain. Omitted once the endpoints present a publicly trusted
+	// certificate (status.externalCertificate PubliclyTrusted, w2/m245): system
+	// roots then verify it, exactly as on Render, whose connection info has no
+	// such field. Strictly certificate material — never a private key.
 	ServerCACertificate string `json:"serverCaCertificate,omitempty"`
 	// ReadReplicaConnectionStrings has one entry per spec.readReplicas, keyed by
 	// replica name. Each is the full internal (and optionally external) connection
@@ -1019,13 +1022,16 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			"%w: Postgres %q has public access enabled but no external host; configure BEX_DB_DOMAIN and wait for reconciliation",
 			core.ErrUnavailable, d.Name)
 	}
-	// A public database's external strings pin sslmode=verify-full, which no
-	// client can satisfy without the cluster's private server CA — so the CA is
-	// part of the external edge being ready, exactly like ExternalHost above.
-	// Fail actionably rather than hand out an external URL that cannot connect
-	// (w4/m95); never downgrade the TLS mode instead.
+	// While the endpoints present CNPG's generated certificate, a public
+	// database's external strings pin sslmode=verify-full, which no client can
+	// satisfy without the cluster's private server CA — so the CA is part of
+	// the external edge being ready, exactly like ExternalHost above. Fail
+	// actionably rather than hand out an external URL that cannot connect
+	// (w4/m95); never downgrade the TLS mode instead. A publicly trusted
+	// certificate needs no CA from us (externalURLQuery).
+	tlsQuery := externalURLQuery(d)
 	serverCA := ""
-	if d.Spec.Public {
+	if d.Spec.Public && tlsQuery != "" {
 		serverCA, err = s.serverCACertificate(ctx, d)
 		if err != nil {
 			return PostgresConnectionInfo{}, err
@@ -1059,14 +1065,17 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			pass, d.Name, d.Namespace, user, dbn),
 	}
 	if d.Status.ExternalHost != "" {
-		// Public clients must authenticate the proxy's certificate and hostname;
-		// encryption alone leaves a DNS/SNI interception able to harvest the
-		// password. The deployment's trusted CA must issue the configured host.
 		info.ExternalConnectionString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
-			user, pass, d.Status.ExternalHost, dbn)
-		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=verify-full'",
-			pass, d.Status.ExternalHost, dbn, user)
+			"postgresql://%s:%s@%s:5432/%s%s",
+			user, pass, d.Status.ExternalHost, dbn, tlsQuery)
+		if tlsQuery == "" {
+			// Render's psqlCommand shape for its public hosts.
+			info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql -h %s -U %s %s",
+				pass, d.Status.ExternalHost, user, dbn)
+		} else {
+			info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=verify-full'",
+				pass, d.Status.ExternalHost, dbn, user)
+		}
 		info.ServerCACertificate = serverCA
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
@@ -1079,8 +1088,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	if d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
-			user, pass, d.Status.PoolerExternalHost, dbn)
+			"postgresql://%s:%s@%s:5432/%s%s",
+			user, pass, d.Status.PoolerExternalHost, dbn, tlsQuery)
 	}
 	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
 	if len(d.Status.ReadReplicaStatuses) > 0 {
@@ -1093,14 +1102,43 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			}
 			if rs.ExternalHost != "" {
 				rc.ExternalConnectionString = fmt.Sprintf(
-					"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
-					user, pass, rs.ExternalHost, dbn)
+					"postgresql://%s:%s@%s:5432/%s%s",
+					user, pass, rs.ExternalHost, dbn, tlsQuery)
 			}
 			rcs = append(rcs, rc)
 		}
 		info.ReadReplicaConnectionStrings = rcs
 	}
 	return info, nil
+}
+
+// externalURLQuery is the query every external connection string of d ends
+// with: empty or "?sslmode=verify-full". It follows the certificate the public
+// endpoints actually present (status.externalCertificate, written by the
+// operator only once CNPG serves it).
+//
+// Publicly trusted (w2/m245): Render's exact external URL, which carries no
+// sslmode. libpq's default (prefer) negotiates TLS, and the SNI proxy accepts
+// nothing else, so the session is always encrypted. The alternatives were
+// weighed and rejected: sslmode=verify-full alone makes libpq demand
+// ~/.postgresql/root.crt even for a public chain (the 2026-10-24 production
+// failure); adding sslrootcert=system works only on libpq >= 16 — older psql
+// reads "system" as a file name and fails, and node-postgres, pgjdbc and
+// Prisma either read it as a path or reject verify-full outright. A copied URL
+// that fails on the tools teams bring from Render is the divergence this
+// milestone removes, so Render's shape wins (AGENTS.md Render parity). A
+// client that wants hostname verification adds its own verify-full against
+// its system roots, and the certificate now satisfies it.
+//
+// CNPG's generated certificate (feature off, or still issuing): keep
+// sslmode=verify-full, verified against the serverCaCertificate this read
+// serves (w4/m95). Its private CA authenticates nothing a stock client trusts,
+// so dropping verification there would only hide an interception.
+func externalURLQuery(d *appv1alpha1.Database) string {
+	if d.Status.ExternalCertificate == appv1alpha1.DBExternalCertificatePubliclyTrusted {
+		return ""
+	}
+	return "?sslmode=verify-full"
 }
 
 // serverCACertificate reads the CNPG cluster's generated server CA for this

@@ -9,12 +9,17 @@ set -euo pipefail
 # `SELECT 1 AS bex_psql_probe;` through the real local `psql` binary the CLI
 # shells out to. Sensitive API bodies (URI/password) never reach durable output.
 #
-# bex pins `sslmode=verify-full` on external Postgres strings (w4/m95) against
-# the CNPG cluster's private CA, so the run exports PGSSLROOTCERT from the
-# connection-info `serverCaCertificate` before probing. That trust step is what
-# an unmodified Render CLI requires; the `bex` launcher performs it for the user
-# (w4/m116/t001), and this script deliberately keeps testing the upstream binary
-# without it. Any caller-set PGSSLROOTCERT is replaced for the duration.
+# The external string has one of two shapes, chosen by the certificate the
+# database's public endpoint presents:
+#   - publicly trusted (w2/m245, BEX_DB_CLUSTER_ISSUER set): Render's exact
+#     URL, no sslmode and no `serverCaCertificate`. The run unsets
+#     PGSSLROOTCERT, so the probe proves the copied URL connects as-is.
+#   - CNPG's private CA (feature off, or still issuing): `sslmode=verify-full`
+#     (w4/m95) plus `serverCaCertificate`, which the run exports as
+#     PGSSLROOTCERT before probing. That trust step is what an unmodified
+#     Render CLI requires; the `bex` launcher performs it for the user
+#     (w4/m116/t001), and this script deliberately keeps testing the upstream
+#     binary without it. Any caller-set PGSSLROOTCERT is replaced.
 #
 # The `-o text` output format is what forces the CLI down its
 # ExecutePSQLNonInteractive path (outputFormat.Interactive() == false), the same
@@ -286,11 +291,12 @@ target_json=""
 # Assert the external connection contract the CLI will consume, without letting
 # the URI/password leave the parser (only host/database/TLS mode do).
 #
-# The mode is `verify-full`, not the `require` this script asserted before
-# 2026-09-17: w4/m95 deliberately moved every external string to verify-full and
-# added `serverCaCertificate` to this same response, because encryption alone
-# leaves a DNS/SNI interception able to harvest the password. The CA therefore
-# belongs to the contract and is asserted here alongside the mode.
+# Against CNPG's private CA the mode is `verify-full`, not the `require` this
+# script asserted before 2026-09-17: w4/m95 moved those strings to verify-full
+# and added `serverCaCertificate` to this same response, so the CA belongs to
+# that contract and is asserted alongside the mode. A publicly trusted endpoint
+# (w2/m245) instead gets Render's URL with no sslmode, and then a CA in the
+# response would contradict the URL, so it is refused.
 server_ca_path="$tmp/server-ca.pem"
 connection_status="$(api_status GET "/postgres/$database_id/connection-info" 2>/dev/null || true)"
 if [[ "$connection_status" == "503" ]]; then
@@ -314,11 +320,17 @@ if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
     raise SystemExit(1)
 if not parsed.username or parsed.password is None or not database:
     raise SystemExit(1)
-if query.get("sslmode") != ["verify-full"]:
+ca = body.get("serverCaCertificate", "")
+mode = query.get("sslmode")
+if mode is None:
+    if ca or query:
+        raise SystemExit(1)
+    print("\t".join((parsed.hostname, database, "system-roots")))
+    raise SystemExit(0)
+if mode != ["verify-full"]:
     raise SystemExit(1)
 # The CA is public material, but the file still belongs to this run alone:
 # 0600, so no other local user can swap the root psql verifies against.
-ca = body.get("serverCaCertificate", "")
 if "BEGIN CERTIFICATE" not in ca or "PRIVATE KEY" in ca:
     raise SystemExit(1)
 fd = os.open(ca_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -331,9 +343,14 @@ fi
 IFS=$'\t' read -r connection_host connection_database connection_tls <<<"$connection_facts"
 connection_facts=""
 [[ "$connection_host" == "$expected_host" && "$connection_database" == "$expected_database" &&
-  "$connection_tls" == "verify-full" ]] || fail "external connection contract disagrees with the resolved target"
-[[ -s "$server_ca_path" ]] || fail "connection-info carried no usable server CA"
-echo "PASS psql external-connection-precondition host=$expected_host database=$expected_database tls=verify-full ca=present"
+  ("$connection_tls" == "verify-full" || "$connection_tls" == "system-roots") ]] ||
+  fail "external connection contract disagrees with the resolved target"
+if [[ "$connection_tls" == "verify-full" ]]; then
+  [[ -s "$server_ca_path" ]] || fail "connection-info carried no usable server CA"
+  echo "PASS psql external-connection-precondition host=$expected_host database=$expected_database tls=verify-full ca=present"
+else
+  echo "PASS psql external-connection-precondition host=$expected_host database=$expected_database tls=system-roots ca=none"
+fi
 
 # This script drives the UNMODIFIED upstream Render CLI, which has no notion of
 # the bex `serverCaCertificate` field and cannot provision trust for itself, so
@@ -341,7 +358,12 @@ echo "PASS psql external-connection-precondition host=$expected_host database=$e
 # does this step on the user's behalf (lego/cli/internal/pgtrust, w4/m116/t001);
 # that behavior is covered by lego/cli's own tests, and asserting it here would
 # no longer be a test of the pinned upstream contract.
-export PGSSLROOTCERT="$server_ca_path"
+if [[ "$connection_tls" == "verify-full" ]]; then
+  export PGSSLROOTCERT="$server_ca_path"
+else
+  # The copied URL must connect as-is: no trust root from this run or the caller.
+  unset PGSSLROOTCERT
+fi
 
 # The one probe the whole row turns on: `render psql <selector> -c <sql> -o text`
 # resolves the target, crosses the client-side allow-list gate, fetches the
