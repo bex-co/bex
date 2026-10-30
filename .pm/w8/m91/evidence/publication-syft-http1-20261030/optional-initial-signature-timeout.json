@@ -1,0 +1,7 @@
+{
+  "scope": "optional independent initial image-signature fetch, not supplier approval or a prerequisite for trusted-producer exact-recipe recovery",
+  "result": "timeout_after_180_seconds",
+  "stdout_bytes": 0,
+  "stderr_bytes": 0,
+  "reason_recovery_remains_eligible": "Actual main CI producer source, successful export/index digest, matching anonymous immutable index SHA, all pre-signing gates and exact unchanged recipe/base are retained. Existing recovery reruns all current checks, full scans and complete signing before approval. No image signature is independently approved by this timed-out attempt."
+}

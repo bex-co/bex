@@ -135,3 +135,7 @@ The signed scans retain 229 critical findings per architecture, with no Brotli f
 [The before/after checks](evidence/catalog-coverage-20261030/README.md) close two review gaps before adoption: canonical freshness now covers `nativebases.go`, and the existing all-line resolver test validates and exercises the real catalog whenever populated. The old checks accepted an uncovered supplier digest and passed a deliberately partial one-entry map; the new checks reject both, while empty and complete synthetic catalogs pass. Full operator/codegen/envtest and corrected full-workspace lint/deadcode passed; the initial incorrect `GOWORK=off` lint invocation is retained in the evidence.
 
 Seven of 27 suppliers remain verified; the production catalog is empty. Twenty reviews, complete adoption and original hosted acceptance remain active worker work. No task is closed by this guard.
+
+## Full SBOM transport recovery — 2026-10-30
+
+[Independent actual Ruby 3.2 failure and primary-source transport evidence](evidence/publication-syft-http1-20261030/README.md) confirm Syft's registry HTTP2 stream fault. Concurrent peer fix `3990b9acf35f62ba1d702387bc2061a83342b2b3` already supplies HTTP1, bounded complete SBOM retries and the same exact-index recovery record; its implementation is preserved. The independently reviewed job-env proposal was superseded before push, so this checkpoint ships evidence only. Seven suppliers remain approved; Ruby 3.1 strict review is active. Corrected publication, all-27 adoption and all original hosted DoDs remain open.

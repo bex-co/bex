@@ -1,0 +1,20 @@
+{
+  "workflow_structure_identical_except_GODEBUG_relocation": true,
+  "all_three_effective_GODEBUG_values": "http2client=0",
+  "actual_recovery_script_exact_base_and_wrong_base_checks": "pass",
+  "actions_validator": "pass",
+  "actions_validator_selftest": "pass",
+  "initial_actionlint": "custom self-hosted labels needed an explicit config; raw diagnostic retained",
+  "checks": [
+    {
+      "check": "actionlint-configured",
+      "exit": 0,
+      "seconds": 0.094
+    },
+    {
+      "check": "native-matrix",
+      "exit": 0,
+      "seconds": 0.048
+    }
+  ]
+}

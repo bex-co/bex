@@ -1,0 +1,13 @@
+# Supplier SBOM HTTP/2 transport correction — 2026-10-30
+
+Ruby 3.2's actual job passed its build, both architecture runtime checks and both full Trivy scans, then Syft failed reading a registry layer with peer HTTP/2 PROTOCOL_ERROR. The direct completed-job log preserves the failure; the CLI log views returned empty bodies, also retained. The candidate remains unapproved.
+
+A concurrent peer shipped `3990b9acf35f62ba1d702387bc2061a83342b2b3`, applying HTTP1 directly to Syft with three complete attempts bounded at thirty minutes each. That landed implementation and its exact Ruby 3.2 recovery record are preserved unchanged. This archive retains the independently validated job-environment proposal, superseded before push; this commit adds evidence only. The proposal's parsed workflow objects were otherwise identical. The immutable source audit traces the observed Syft 1.51.1 through Stereoscope's cloned standard transport to Go's HTTP/2 setting, while retaining TLS, size and digest checks. The [Go HTTP documentation](https://pkg.go.dev/net/http#hdr-HTTP_2) describes the transport setting. The earlier actual TLS/double-clone/digest rejection proof is linked by hash in the source audit; this is no claim of a new Syft runtime execution.
+
+The action commit is pinned; its optional Syft version input is currently unset. This audit records the actually observed tool version, not a version pin. Raw immutable source bytes are losslessly compressed with custody hashes.
+
+The temporary Ruby 3.2 recovery entry binds the actual producer job, unchanged factory recipe/base and anonymously verified immutable index. Recovery still reruns every runtime check, full scan, signature and full attestation. It must be removed after verified discovery publication. Three reviews cleared the superseded proposal; its action safety checks/self-tests, configured actionlint, matrix tests and exact-base/wrong-base execution of the unchanged recovery script passed. The peer fix also retains independent bounded-retry behavior evidence under w1/m188. The first actionlint invocation lacked the repository's custom runner-label config; both diagnostics and the configured pass are retained.
+
+Actual corrected publication, strict complete-artifact verification, all-27 adoption and the original hosted DoDs remain open. No task closes here.
+
+An optional independent fetch of the initial image signature timed out after 180 seconds; it approves no signature. Recovery provenance uses the actual trusted main producer/export digest, matching anonymous index and unchanged recipe. Corrected CI must still complete all signatures and full attestations before independent supplier review.

@@ -1,0 +1,340 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2681,
+      "sha256": "550f33e9ae411d4e94facbce1988d1025e6c7f30887ce7d2da466fceb8b4d191"
+    },
+    {
+      "path": "SOURCE-CUSTODY.json",
+      "bytes": 9260,
+      "sha256": "588a248e6df5571218d7b58fc72313d883ce83edfafa88a9e99c579309cddb45"
+    },
+    {
+      "path": "actionlint-configured.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "path": "actionlint.log.gz",
+      "bytes": 407,
+      "sha256": "6873cacd5e0c0629dd4d943c4eb1427f62854aea4b943feb4f74f722a6eae928"
+    },
+    {
+      "path": "actionlint.yaml",
+      "bytes": 55,
+      "sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0"
+    },
+    {
+      "path": "actions-validator-selftest.log.gz",
+      "bytes": 824,
+      "sha256": "b5d68234d3d7b02615c701160833c7e8557111c518e8bce0158e128810ec86c9"
+    },
+    {
+      "path": "actions-validator.log.gz",
+      "bytes": 221,
+      "sha256": "a6dda6ad2049863b3bd52cff889de55be55061a296b0589ea29194efdfeed723"
+    },
+    {
+      "path": "direct-fetch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "direct-job.log.gz",
+      "bytes": 134309,
+      "sha256": "feda1dee7640faeaa36c3d250ecbf918cd888fca05c2eda771415165a8c92b7e"
+    },
+    {
+      "path": "failed-step.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "path": "fetch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-local-checks.json",
+      "bytes": 566,
+      "sha256": "73f0c246ceae83813c6c013ee2baab386263036c04c9c268bbdccabc7576b413"
+    },
+    {
+      "path": "index.json",
+      "bytes": 1611,
+      "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+    },
+    {
+      "path": "initial-image-signature.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "job.json",
+      "bytes": 5322,
+      "sha256": "dd3f54c36370927023ec37e8a960792042fb47b909605ca245079f64e7aa317d"
+    },
+    {
+      "path": "job.log.fetch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "job.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "path": "native-matrix.log.gz",
+      "bytes": 54,
+      "sha256": "97effd2ebbe61a3cfcf40329e17e13f516d31d2e57d4b9d61ead10a9bad8e5fd"
+    },
+    {
+      "path": "optional-initial-signature-timeout.json",
+      "bytes": 614,
+      "sha256": "d56da19d8b857fdd93cbf0cc0c50cefcfc216f31a2e7f8e7ac4934b00d06f076"
+    },
+    {
+      "path": "producer-index-binding-lines.json",
+      "bytes": 6389,
+      "sha256": "f4a263ae5ad29d362c5d39597f1e2a2d8137d0e91f96628210d3dfaf0a65d79e"
+    },
+    {
+      "path": "recovery-exact.output",
+      "bytes": 129,
+      "sha256": "53318ddaf6270ec83bbad83a03c88fcef4d09e841761803f7c68d3bbe698a651"
+    },
+    {
+      "path": "recovery-exact.txt",
+      "bytes": 206,
+      "sha256": "501287aa1dc165c13b9a2798d9304a565272fbd95cb4626711e802c6ae3943c1"
+    },
+    {
+      "path": "recovery-wrong-base.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "source-audit.json",
+      "bytes": 10689,
+      "sha256": "6f5bcd375c9d237c91ceee84bb316f8957a6258b8ef2cd7ceec63d62a719cf84"
+    },
+    {
+      "path": "sources/failure-line-evidence.json.gz",
+      "bytes": 522,
+      "sha256": "2b75c36d21a9bf8a62bebafbfe8c726231df1f477f5feaeb3e8c415da1f0e704"
+    },
+    {
+      "path": "sources/fetch-manifest.json.gz",
+      "bytes": 2114,
+      "sha256": "18948ab2e0eec64dc240579ac2c190d98d4726ba61cbf473e839592854052de7"
+    },
+    {
+      "path": "sources/gcr-tag-ref.json.gz",
+      "bytes": 230,
+      "sha256": "59091ca5994768cb036b1ca209effd038a45ab466dec416791873f5d9b18d431"
+    },
+    {
+      "path": "sources/go-tag-ref.json.gz",
+      "bytes": 209,
+      "sha256": "01a40707998ff3eca41e245c1eed64ff795858cc233692a557673b9fb0ddcfc1"
+    },
+    {
+      "path": "sources/refs.json.gz",
+      "bytes": 281,
+      "sha256": "8f0943d81d820a080a4786db7044ab5092e1766e32717a0b1b174238293fc637"
+    },
+    {
+      "path": "sources/source-line-evidence.json.gz",
+      "bytes": 6758,
+      "sha256": "869e7215965d0bd739d4c576562d76802104d21e3a0424f03568ea283b46dd77"
+    },
+    {
+      "path": "sources/sources/download-syft-action.yml.gz",
+      "bytes": 274,
+      "sha256": "7d7973c9a0ac4a29ef06e602bc4e883aae65a1de3f4cb53d2162dec05ff46feb"
+    },
+    {
+      "path": "sources/sources/gcr/internal/verify/verify.go.gz",
+      "bytes": 1566,
+      "sha256": "5281e2b4fd614bc7c544cdd783e35dcbbaae0e5dbff1818b0fab3fd86711e76c"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/descriptor.go.gz",
+      "bytes": 2293,
+      "sha256": "f09487f4e5720ffd5bec51de131c056ee1ca2ce4a47037b42de6793eadcfc13c"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/fetcher.go.gz",
+      "bytes": 3875,
+      "sha256": "6aa25fa014459a283939f0836c4272fa2b29f44101362aa027e19403c89e0f93"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/image.go.gz",
+      "bytes": 2410,
+      "sha256": "7f6996c2f1ed3a1f771ec8d23455091b556b4d98d113fc7e6cb87f76e8d0c065"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/layer.go.gz",
+      "bytes": 1072,
+      "sha256": "5fd8d53831d941dbb2aa2b366907e5c82d1793c9f9e4d38aa8f27507031eb4a9"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/options.go.gz",
+      "bytes": 4288,
+      "sha256": "bb2d67e516ceb5cb805ba98c04fc37aca025624ec1cbdca341b232c1afbae127"
+    },
+    {
+      "path": "sources/sources/gcr/pkg/v1/remote/transport/transport.go.gz",
+      "bytes": 1583,
+      "sha256": "970cb617aea2ff9e9a8870c861fce836dbad1a00fbcabb90acd21b2ebc67fe2e"
+    },
+    {
+      "path": "sources/sources/go/src/net/http/doc.go.gz",
+      "bytes": 1480,
+      "sha256": "8b6c2b23168e886bf9f797dd3413d9f7fa4885b5d7a453a85b634ec4297dd90f"
+    },
+    {
+      "path": "sources/sources/go/src/net/http/transport.go.gz",
+      "bytes": 30295,
+      "sha256": "04be4dd9be56476f46bddf9c0a3a6769b9fecf9b443080a37bcc50ae6220ac93"
+    },
+    {
+      "path": "sources/sources/stereoscope/client.go.gz",
+      "bytes": 1297,
+      "sha256": "ef22a73d4772b61c6207bdec721c42bc7bf6a0b7541e0696699e4f26f2191660"
+    },
+    {
+      "path": "sources/sources/stereoscope/go.mod.gz",
+      "bytes": 1768,
+      "sha256": "404a07246ade76dcabceafb206c9d19cad5545b8336257c50449c6f9d4e6a6b8"
+    },
+    {
+      "path": "sources/sources/stereoscope/option.go.gz",
+      "bytes": 375,
+      "sha256": "718d38a286e3c02abd3b084c53b6ab529a81131ddf12f96a35278d51f0072e6c"
+    },
+    {
+      "path": "sources/sources/stereoscope/pkg/image/image.go.gz",
+      "bytes": 3422,
+      "sha256": "af7b8dc5dab88661a0ee461110eb478cb85735a181433be7cf53ece1096b22eb"
+    },
+    {
+      "path": "sources/sources/stereoscope/pkg/image/layer.go.gz",
+      "bytes": 6151,
+      "sha256": "6bd78c68b265895e63234732449b6c76a7929e3ed435e4802c99b80044ed5ab6"
+    },
+    {
+      "path": "sources/sources/stereoscope/pkg/image/oci/registry_provider.go.gz",
+      "bytes": 2891,
+      "sha256": "2ee28c66a06f0a7b54f100683fd52060344914fb775a2bd18d0bc8c10e45f0cd"
+    },
+    {
+      "path": "sources/sources/stereoscope/pkg/image/registry_options.go.gz",
+      "bytes": 1708,
+      "sha256": "c4a9fd754bf873de54bbca46a5240eb86b0067224b8a4c183361a7db456bc6d5"
+    },
+    {
+      "path": "sources/sources/stereoscope/providers.go.gz",
+      "bytes": 655,
+      "sha256": "ed8b9ba5ed62719d03401ab80dcfa26f38f33543b47cfd2881ef8895a29adb85"
+    },
+    {
+      "path": "sources/sources/syft/.github/actions/bootstrap/action.yaml.gz",
+      "bytes": 1064,
+      "sha256": "1b04e13d4cc2732da581ea22fe718f8c6499811015eb69896dfdf72dbdfff1b4"
+    },
+    {
+      "path": "sources/sources/syft/.github/workflows/release.yaml.gz",
+      "bytes": 2588,
+      "sha256": "8f5af3c82102f257e865e9ee966b2ac51a9517471995e9d295b73d41c7a25de7"
+    },
+    {
+      "path": "sources/sources/syft/.goreleaser.yaml.gz",
+      "bytes": 1798,
+      "sha256": "515bc5972675e4c05d8d5e1e1aa6b1bc046246945cdf612a58e0fda3c259bf1b"
+    },
+    {
+      "path": "sources/sources/syft/cmd/syft/internal/options/registry.go.gz",
+      "bytes": 1594,
+      "sha256": "5989f3e7881093d3ef9845964fe6017f40eb813f1e469edd1017ed93907665ce"
+    },
+    {
+      "path": "sources/sources/syft/go.mod.gz",
+      "bytes": 4920,
+      "sha256": "9b8baa94f09b6bd683a153f6f3df838e4ebb13889ef377837979822594ab7d50"
+    },
+    {
+      "path": "sources/sources/syft/syft/get_source.go.gz",
+      "bytes": 873,
+      "sha256": "e364d6f2235f3548c101aec157c6722be3a34309717083f8e2af0eb9339ecdd4"
+    },
+    {
+      "path": "sources/sources/syft/syft/source/sourceproviders/source_providers.go.gz",
+      "bytes": 1034,
+      "sha256": "63a1190c23a4a75994ac2c2c69ed14fda83704bf13eb7127f3943644e21278b2"
+    },
+    {
+      "path": "sources/sources/syft/syft/source/stereoscopesource/image_source_provider.go.gz",
+      "bytes": 613,
+      "sha256": "b5f388764033b8b35c7a7a8044e109212d25a4b2db42fd39872076b147560ec8"
+    },
+    {
+      "path": "sources/stereoscope-tag-object.json.gz",
+      "bytes": 418,
+      "sha256": "9356f8176d597f0d5426fabc82b5e14a8c674bcaa948e6a5a03f167d1cbafbab"
+    },
+    {
+      "path": "sources/stereoscope-tag-ref.json.gz",
+      "bytes": 221,
+      "sha256": "ae9633f8c3a1c7e28cac72d2ea685c5fd5aa29dd3c2785bc83204d69ae7167c6"
+    },
+    {
+      "path": "sources/stereoscope-tree.json.gz",
+      "bytes": 14893,
+      "sha256": "f22de590569bb8519995f5990647a4b4fe1844b671950dd1b8b2e82eea9fa66a"
+    },
+    {
+      "path": "sources/syft-tag-object.json.gz",
+      "bytes": 413,
+      "sha256": "cdea4bb300d1229ff8c65eb2f03de8d68ac38dfd8bbf2eb9bed45d46bc06c965"
+    },
+    {
+      "path": "sources/syft-tag-ref.json.gz",
+      "bytes": 212,
+      "sha256": "0f06cf96fd6d14644893a325b7dc763d4413ac2d2bdfcd49d35ea7342ba093e7"
+    },
+    {
+      "path": "sources/syft-tree.json.gz",
+      "bytes": 186705,
+      "sha256": "a3c232b49b3096d3bed5021d01f3dfab402a95db1888e2211eea826304b983ac"
+    },
+    {
+      "path": "sources/workflow-after.yml.gz",
+      "bytes": 4179,
+      "sha256": "a3260bc82534a5d8ac21e43d775d0bd54c55981878a88e7188ac0656c74f4dfe"
+    },
+    {
+      "path": "sources/workflow-before.yml.gz",
+      "bytes": 4133,
+      "sha256": "e6ce988fac073141c6bb91b023decc349e0801c7a23b49a00f3d286bb99b3f2a"
+    },
+    {
+      "path": "sources/workflow-review.json.gz",
+      "bytes": 482,
+      "sha256": "a863445d5563609c66f9bce19c416204d34051d5b90faec7ecd7cb90535ea9a6"
+    },
+    {
+      "path": "sources/workflow.diff.gz",
+      "bytes": 598,
+      "sha256": "e480b25589ce0b51fad7e58416cd8c7e163fbebdfa2c9aec5bd0aadf5ba7cd8c"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 2299,
+      "sha256": "5a2e906427cf6e04f3dbb1bb8757a57ffe44ca91f11628b6b485f6c700afc26f"
+    }
+  ]
+}
