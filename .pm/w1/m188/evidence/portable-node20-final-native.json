@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-10-30T04:47:44.487462+00:00",
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "architecture": "linux/arm64",
+  "image_id": "sha256:857aa9a2f6ebe8e947fab37704ac3a3465d0de60f7a67c56f222a7c551abb80d",
+  "runtime": {
+    "versions": {
+      "node": "20.20.2",
+      "acorn": "8.16.0",
+      "ada": "2.9.2",
+      "ares": "1.34.6",
+      "brotli": "1.1.1",
+      "cjs_module_lexer": "2.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.3.1",
+      "modules": "115",
+      "napi": "9",
+      "nghttp2": "1.61.0",
+      "openssl": "3.0.19",
+      "simdutf": "6.4.2",
+      "tz": "2025c",
+      "undici": "6.24.1",
+      "unicode": "17.0",
+      "uv": "1.46.0",
+      "uvwasi": "0.0.23",
+      "v8": "11.3.244.8-node.38",
+      "zlib": "1.3.1-e00f703"
+    },
+    "nodeEnv": "20.20.2",
+    "npm": "10.8.2",
+    "os": "PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\nVERSION=\"12 (bookworm)\"\nVERSION_CODENAME=bookworm\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n"
+  },
+  "assembly": "Current final recipe on original Node20 Bookworm primary, substituting only the costly compiler stage with the exact locally verified Bullseye compiler artifact. Compiler ENV is not inherited. This is local component assembly, not signed publication.",
+  "compiler": "portable-node20-compiler.json",
+  "full_check": "Exact current check.Dockerfile passed, including actual Bullseye companion stage, real PG18 archive/invalid rejection, all tool transforms and system/primary/private Node probes without network",
+  "check_log_sha256": "8f45f4558c08f4121acb137c0281744328aec94de6f5b898a8af575fbdde6d23",
+  "native_test_output": [
+    "=== RUN   TestNativeBackportsBuildAndStart",
+    "=== RUN   TestNativeBackportsBuildAndStart/node20",
+    "    nativebackport_test.go:77: build and HTTP start preserved Node 20.20.2; system and bundled decoder probes passed (1.1.1)",
+    "--- PASS: TestNativeBackportsBuildAndStart (6.12s)",
+    "    --- PASS: TestNativeBackportsBuildAndStart/node20 (6.12s)",
+    "PASS",
+    "ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t6.680s"
+  ],
+  "native_test_log_sha256": "da546570ae262734dd2069fffe0bc58f03cbdb36045ee42d838be243c5e6595a",
+  "native_method": "Temporary Go overlay replaced only Node20 image/upstream for actual TestNativeBackportsBuildAndStart/node20 authored build and HTTP start; source production pin unchanged",
+  "remaining": [
+    "11 signed dual-architecture candidates",
+    "Direct adopted-pin fixtures and source/inventory adoption",
+    "Operator rollout, fresh live census and any affected live rebuild"
+  ]
+}

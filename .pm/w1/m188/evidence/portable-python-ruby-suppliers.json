@@ -1,0 +1,46 @@
+{
+  "checked_at": "2026-10-30T04:08:24.724471+00:00",
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "scope": "Local arm64 current complete suppliers, including non-Node compiler skip; not signed publication or authored application+Node20 companion acceptance",
+  "recipe_sha256": {
+    "deploy/native-base/Dockerfile": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+    "deploy/native-base/check.Dockerfile": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+    "deploy/native-base/node-brotli/patch.sh": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717"
+  },
+  "results": {
+    "python37": {
+      "image_id": "sha256:b732244ed8a23f9976377bb9818c9de8a64c0e9d8dcef76b04f4a5fb9a5137d7",
+      "architecture": "arm64",
+      "runtime": {
+        "python": "3.7.17",
+        "ssl": "OpenSSL 1.1.1n  15 Mar 2022"
+      },
+      "system_brotli_packages": [
+        "libbrotli-dev 1.0.9-2+deb12u1+bex11u1",
+        "libbrotli1 1.0.9-2+deb12u1+bex11u1"
+      ],
+      "full_check": "Passed exact current check.Dockerfile: all tools/real PG18 archive, system and private Node decoder probes, primary Python packaging where present; network disabled",
+      "check_log_sha256": "d3f9fc64a6b59edad2604856534bcee4dc07a35b80050592a4e4611d266b029b"
+    },
+    "ruby30": {
+      "image_id": "sha256:1cafc156cacd57fba3ccd2c9b13c1222d93ef99bb778d80e369d709cbd7152fd",
+      "architecture": "arm64",
+      "runtime": {
+        "ruby": "3.0.7",
+        "openssl": "OpenSSL 1.1.1w  11 Sep 2023",
+        "zlib": "1.2.11"
+      },
+      "system_brotli_packages": [
+        "libbrotli-dev 1.0.9-2+deb12u1+bex11u1",
+        "libbrotli1 1.0.9-2+deb12u1+bex11u1"
+      ],
+      "full_check": "Passed exact current check.Dockerfile: all tools/real PG18 archive, system and private Node decoder probes, primary Python packaging where present; network disabled",
+      "check_log_sha256": "1c499e42f2e0e94e87b6225a6159c7babba52492d9fa54fd1e9bfbae5c592ffa"
+    }
+  },
+  "remaining": [
+    "Portable Node20 compile/ELF/oldest-base probes",
+    "Updated Python/Ruby authored build and HTTP fixtures with Node20",
+    "Signed dual-architecture publication, adoption and actual rollout/census"
+  ]
+}

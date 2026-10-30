@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-30T04:42:32.772908+00:00",
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "architecture": "linux/arm64",
+  "scope": "Actual generated native authored builds and persistent HTTP startup; temporary Go overlay selects current full Python/Ruby local suppliers and copies Node20 only from verified compiler artifact. Compiler-stage ENV is not inherited. Production pins unchanged.",
+  "command": "GOWORK=off BEX_BUILDKIT_INTEGRATION=1 go -C lego/operator test -overlay=/tmp/bex-m188-companion-green-overlay.json ./internal/build -run '^TestNative(Python|Ruby)BackportBuildAndStart$' -count=1 -timeout=30m -v",
+  "results": [
+    "=== RUN   TestNativePythonBackportBuildAndStart",
+    "    nativebackport_python_test.go:80: build and HTTP start preserved Python 3.7.17, Poetry (version 1.5.1) and Node 20.20.2 with Brotli 1.1.1; system and provided Node decoder probes passed",
+    "--- PASS: TestNativePythonBackportBuildAndStart (40.56s)",
+    "=== RUN   TestNativeRubyBackportBuildAndStart",
+    "    nativebackport_ruby_test.go:88: build and HTTP start preserved Ruby 3.0.7, OpenSSL 1.1.1w  11 Sep 2023, Zlib 1.2.11 and Node 20.20.2 with Brotli 1.1.1; system and provided Node decoder probes passed",
+    "--- PASS: TestNativeRubyBackportBuildAndStart (6.12s)",
+    "PASS",
+    "ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t47.459s"
+  ],
+  "inputs": {
+    "node_compiler": "portable-node20-compiler.json",
+    "primaries": "portable-python-ruby-suppliers.json"
+  },
+  "log_sha256": "ddd7ceca19510f045512ba9849b621e48e0d53276554e5b9947d70fbc0f967f5",
+  "remaining": [
+    "Node20 final original-primary supplier and HTTP fixture",
+    "Signed both-architecture published refs, direct adopted-pin fixtures, operator rollout and fresh live census"
+  ]
+}

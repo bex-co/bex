@@ -1,0 +1,50 @@
+{
+  "python37": {
+    "canonical_probe_returncode": 0,
+    "stdout": "",
+    "stderr": "Unable to find image 'python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a' locally\ndocker.io/library/python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a: Pulling from library/python\n31f5dc1f52c8: Already exists\nbb60045eb75c: Already exists\n292737ab468e: Already exists\n0d93979d6242: Already exists\n5a9f8670f1b8: Already exists\ncd0152b2afe3: Already exists\n5770af76823a: Already exists\n023d3e7bc423: Already exists\nDigest: sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\nStatus: Downloaded newer image for python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\n",
+    "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "node": "20.20.2",
+    "brotli": "1.1.1"
+  },
+  "ruby30": {
+    "canonical_probe_returncode": 0,
+    "stdout": "",
+    "stderr": "Unable to find image 'ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72' locally\ndocker.io/library/ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72: Pulling from library/ruby\n078d9526cc72: Already exists\n691cb555e773: Already exists\n9dce35208529: Already exists\ne9dcef9945e6: Already exists\nf29f8a33d223: Already exists\ne3957eeac77d: Already exists\nf255592834a2: Already exists\nDigest: sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\nStatus: Downloaded newer image for ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\n",
+    "base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+    "node": "20.20.2",
+    "brotli": "1.1.1"
+  },
+  "ELF": {
+    "GLIBC_max": "2.29",
+    "GLIBCXX_max": "3.4.26",
+    "CXXABI_max": "1.3.9"
+  },
+  "config_differences": {
+    "node_prefix": {
+      "original": "/",
+      "portable": "/usr/local"
+    },
+    "node_release_urlbase": {
+      "original": "https://nodejs.org/download/release/",
+      "portable": ""
+    }
+  },
+  "binary_sha256": "a39dbdf9d258459eb0dd2ae14b2d1597bdd91600ae057d39fbcaeb39196e87ea",
+  "sources": "Node 20.20.2; source sha256:7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca; Brotli 1.1.1; source sha256:1a84dfaa740994d19254bf78aa7d74a4a8040d1638f3d5f2cdecb188fd520da8\nCompiler baseline: Debian bullseye; glibc 2.31\n",
+  "verified_at": "2026-10-30T04:40:40.972124+00:00",
+  "platform": "linux/arm64",
+  "compiler_stage_image": "sha256:d08dbc0035473836fc4fbf7fc06bcecd74702b064b9e1bf348665286a286bfbc",
+  "compiler_image": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "primary_image": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+  "build_log": "/tmp/bex-m188-node20-portable-build.log",
+  "compiler_checks_passed": [
+    "Original Node/modules/N-API/V8/libuv/OpenSSL/zlib/ICU identity preserved",
+    "Brotli1.1.1 source/version verified",
+    "Original npm version preserved"
+  ],
+  "scope": "Local arm64 compiler artifact, executed against both immutable Bullseye primary roots; final primary image preserves its original distribution and environment. Not signed publication.",
+  "compiler_run_seconds": 2366.6,
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "stage_image": "sha256:d08dbc0035473836fc4fbf7fc06bcecd74702b064b9e1bf348665286a286bfbc"
+}
