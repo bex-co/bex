@@ -1,0 +1,152 @@
+{
+  "schema": "bex.native-anonymous-blob-pull/v2",
+  "blobs": {
+    "sha256:66a233b175e81c68d905b31cc6d9a6054f1791575a9847bcb631411e6cea1d8c": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:66a233b175e81c68d905b31cc6d9a6054f1791575a9847bcb631411e6cea1d8c",
+      "bytes_hashed": 15906,
+      "anonymous_full_get_at": "2026-10-30T17:32:19.762274+00:00"
+    },
+    "sha256:7cd785773db44407e20a679ce5439222e505475eed5b99f1910eb2cda51729ab": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:7cd785773db44407e20a679ce5439222e505475eed5b99f1910eb2cda51729ab",
+      "bytes_hashed": 48467838,
+      "anonymous_full_get_at": "2026-10-30T17:38:03.935420+00:00"
+    },
+    "sha256:091eb8249475f42de217265c501e0186f0a3ea7490ef7f51458c30db91fb3cac": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:091eb8249475f42de217265c501e0186f0a3ea7490ef7f51458c30db91fb3cac",
+      "bytes_hashed": 24011136,
+      "anonymous_full_get_at": "2026-10-30T17:38:24.595938+00:00"
+    },
+    "sha256:255774e0027b72d2327719e78dbad5ad8c9cf446d055e45be7fc149418470bae": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:255774e0027b72d2327719e78dbad5ad8c9cf446d055e45be7fc149418470bae",
+      "bytes_hashed": 64396484,
+      "anonymous_full_get_at": "2026-10-30T17:41:04.344652+00:00"
+    },
+    "sha256:353e14e5cc47664fba714a7da288001d90427c705494847ac773f5cc08199451": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:353e14e5cc47664fba714a7da288001d90427c705494847ac773f5cc08199451",
+      "bytes_hashed": 211352566,
+      "anonymous_full_get_at": "2026-10-30T17:49:33.227106+00:00"
+    },
+    "sha256:9a4fc08d66ea4d560b68b0e268cd08415294de61a3b6030535037715629c10ea": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:9a4fc08d66ea4d560b68b0e268cd08415294de61a3b6030535037715629c10ea",
+      "bytes_hashed": 191,
+      "anonymous_full_get_at": "2026-10-30T17:49:34.452307+00:00"
+    },
+    "sha256:07d9ce15c7c65117a30aa9af23c67f27b1822110612bc85c01f138e18218bf21": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:07d9ce15c7c65117a30aa9af23c67f27b1822110612bc85c01f138e18218bf21",
+      "bytes_hashed": 32522646,
+      "anonymous_full_get_at": "2026-10-30T17:52:35.869809+00:00"
+    },
+    "sha256:03ae131790c1ffa7e01f460ab8f87a253557976f6760fb62c9386fa263bcf201": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:03ae131790c1ffa7e01f460ab8f87a253557976f6760fb62c9386fa263bcf201",
+      "bytes_hashed": 144,
+      "anonymous_full_get_at": "2026-10-30T17:52:37.672591+00:00"
+    },
+    "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+      "bytes_hashed": 32,
+      "anonymous_full_get_at": "2026-10-30T17:52:38.793630+00:00"
+    },
+    "sha256:f1e2f22f0dc308838ce005fc62b594ef000dfb485080e164e69c04684b3d4c17": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:f1e2f22f0dc308838ce005fc62b594ef000dfb485080e164e69c04684b3d4c17",
+      "bytes_hashed": 1055,
+      "anonymous_full_get_at": "2026-10-30T17:52:40.997323+00:00"
+    },
+    "sha256:f3e5d5ebf4ceb3f0a5bb11a18a72d4f5a44430615399ae7a6838df07df64cd14": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:f3e5d5ebf4ceb3f0a5bb11a18a72d4f5a44430615399ae7a6838df07df64cd14",
+      "bytes_hashed": 62632537,
+      "anonymous_full_get_at": "2026-10-30T17:57:37.786427+00:00"
+    },
+    "sha256:e76c8b34658354ae4653ddd5bb307cac630ee625fd68c16decad72a884aaed9c": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:e76c8b34658354ae4653ddd5bb307cac630ee625fd68c16decad72a884aaed9c",
+      "bytes_hashed": 262,
+      "anonymous_full_get_at": "2026-10-30T17:57:39.053053+00:00"
+    },
+    "sha256:834089d800ae0ac7bfc0b401310e7e8399a4ca42e3330467eccc5007d66cf98f": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:834089d800ae0ac7bfc0b401310e7e8399a4ca42e3330467eccc5007d66cf98f",
+      "bytes_hashed": 2894,
+      "anonymous_full_get_at": "2026-10-30T17:57:40.326881+00:00"
+    },
+    "sha256:7102dcf632a6820a7b546e8adc566380e1e6606d2ec1352f56967d9410121b74": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:7102dcf632a6820a7b546e8adc566380e1e6606d2ec1352f56967d9410121b74",
+      "bytes_hashed": 360,
+      "anonymous_full_get_at": "2026-10-30T17:57:41.713632+00:00"
+    },
+    "sha256:19b09f64d5f07786bb6ca9bc39bb2aed04a96e38fd9b9467e9590069a03afd1e": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:19b09f64d5f07786bb6ca9bc39bb2aed04a96e38fd9b9467e9590069a03afd1e",
+      "bytes_hashed": 1146,
+      "anonymous_full_get_at": "2026-10-30T17:57:42.976739+00:00"
+    },
+    "sha256:57c92b4b36554010b89838ab3f8ccc214ecd8d2e713485550b6c7a6ec8eb95a0": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:57c92b4b36554010b89838ab3f8ccc214ecd8d2e713485550b6c7a6ec8eb95a0",
+      "bytes_hashed": 1396,
+      "anonymous_full_get_at": "2026-10-30T17:57:44.344719+00:00"
+    },
+    "sha256:188173caf53e3106e33c27e95d6175e466702fe43e0c4e7f5807b1192be035ed": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:188173caf53e3106e33c27e95d6175e466702fe43e0c4e7f5807b1192be035ed",
+      "bytes_hashed": 15906,
+      "anonymous_full_get_at": "2026-10-30T19:30:43.931701+00:00"
+    },
+    "sha256:545aa82ec479fb0ff3a196141d43d14e5ab1bd1098048223bfd21e505b70581f": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:545aa82ec479fb0ff3a196141d43d14e5ab1bd1098048223bfd21e505b70581f",
+      "bytes_hashed": 48304855,
+      "anonymous_full_get_at": "2026-10-30T19:31:03.669058+00:00"
+    },
+    "sha256:4378a6c11dea5043896b9425853a850807e5845b0018fe01ddee56c16245fc3c": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:4378a6c11dea5043896b9425853a850807e5845b0018fe01ddee56c16245fc3c",
+      "bytes_hashed": 23544349,
+      "anonymous_full_get_at": "2026-10-30T19:31:34.577080+00:00"
+    },
+    "sha256:140d15be2fea6dcd21c20cadae2601a118c08a938168718b2612ad6aca91f74a": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:140d15be2fea6dcd21c20cadae2601a118c08a938168718b2612ad6aca91f74a",
+      "bytes_hashed": 64355791,
+      "anonymous_full_get_at": "2026-10-30T19:34:53.607527+00:00"
+    },
+    "sha256:657cfd5e9f0a7d40f0fa2b4ba2efb58580158a5cf671fa5f967f6a59b8ef5ccf": {
+      "schema": "bex.native-anonymous-blob-pull/v2",
+      "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+      "digest": "sha256:657cfd5e9f0a7d40f0fa2b4ba2efb58580158a5cf671fa5f967f6a59b8ef5ccf",
+      "bytes_hashed": 190,
+      "anonymous_full_get_at": "2026-10-30T19:40:09.125919+00:00"
+    }
+  }
+}

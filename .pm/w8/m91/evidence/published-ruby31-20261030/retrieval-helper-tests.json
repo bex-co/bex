@@ -1,0 +1,23 @@
+{
+  "scope": "Fresh anonymous actual image-signature bundle retrieval and strict official verification only. The original successful supplier review verified all five full bundles; this smoke does not claim to repeat all full report retrieval.",
+  "exit_code": 0,
+  "harness_sha256": "43e272f608d9a44062811772bf0a17d7804594e18d73c866637a5c0c6c2bd6d5",
+  "supplier_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "scratch": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-native-image-retrieval-fv644qcu",
+  "reader_sha256": "8a177252a784cae1e2ffa5857b330efbd50b26e54de147f3049bba0ca3d031bd",
+  "bundle_digest": "sha256:cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304",
+  "strict_verification": {
+    "scope": "Full predicate retrieval and strict bundle verification only; this does not repeat image/runtime/hosted acceptance.",
+    "supplier_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+    "tool_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+    "results": [
+      {
+        "bundle_digest": "sha256:cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304",
+        "signed_statement_sha256": "e498aee053999301eee987619cf5f8a03366caacea27caaa2bace69c8186d40b",
+        "complete_predicate_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "predicate_file": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-native-image-retrieval-fv644qcu/retrieved/image-signature-None-cbcd03c17a57.predicate.json",
+        "strict_crypto_exit": 0
+      }
+    ]
+  }
+}

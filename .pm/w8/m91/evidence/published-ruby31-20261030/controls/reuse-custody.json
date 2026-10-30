@@ -1,0 +1,207 @@
+{
+  "at": "2026-10-30T20:20:27.590480+00:00",
+  "scope": "ROOTauthorized same-artifact reuse only.21genuine prior fullhashedreceipts copied byteexact and rechecked by current anonymousHEAD against exactcurrentindex descriptors. Originalfullsignedbundle copies pass immutablemanifest descriptorSHA/size. No failedblob receipt or arbitraryseed; no artifact approval. Originalfiles unchanged.",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "source_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "run_id": 41063733348,
+  "job_id": 124090808291,
+  "seeded_receipt_sha256": "d396627d5cffd9bcf29c807f74a2f74cd4ede97888721b6ff7979fef2ab707cb",
+  "seeded_full_blob_count": 21,
+  "seeded_full_blob_bytes": 579627684,
+  "anonymous_heads": [
+    {
+      "digest": "sha256:66a233b175e81c68d905b31cc6d9a6054f1791575a9847bcb631411e6cea1d8c",
+      "expected_bytes": 15906,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:18.062315+00:00",
+      "docker_content_digest": "sha256:66a233b175e81c68d905b31cc6d9a6054f1791575a9847bcb631411e6cea1d8c",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:7cd785773db44407e20a679ce5439222e505475eed5b99f1910eb2cda51729ab",
+      "expected_bytes": 48467838,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:18.067318+00:00",
+      "docker_content_digest": "sha256:7cd785773db44407e20a679ce5439222e505475eed5b99f1910eb2cda51729ab",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:091eb8249475f42de217265c501e0186f0a3ea7490ef7f51458c30db91fb3cac",
+      "expected_bytes": 24011136,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:18.893178+00:00",
+      "docker_content_digest": "sha256:091eb8249475f42de217265c501e0186f0a3ea7490ef7f51458c30db91fb3cac",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:255774e0027b72d2327719e78dbad5ad8c9cf446d055e45be7fc149418470bae",
+      "expected_bytes": 64396484,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:18.893084+00:00",
+      "docker_content_digest": "sha256:255774e0027b72d2327719e78dbad5ad8c9cf446d055e45be7fc149418470bae",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:353e14e5cc47664fba714a7da288001d90427c705494847ac773f5cc08199451",
+      "expected_bytes": 211352566,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:19.803688+00:00",
+      "docker_content_digest": "sha256:353e14e5cc47664fba714a7da288001d90427c705494847ac773f5cc08199451",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:9a4fc08d66ea4d560b68b0e268cd08415294de61a3b6030535037715629c10ea",
+      "expected_bytes": 191,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:19.803808+00:00",
+      "docker_content_digest": "sha256:9a4fc08d66ea4d560b68b0e268cd08415294de61a3b6030535037715629c10ea",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:07d9ce15c7c65117a30aa9af23c67f27b1822110612bc85c01f138e18218bf21",
+      "expected_bytes": 32522646,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:20.691284+00:00",
+      "docker_content_digest": "sha256:07d9ce15c7c65117a30aa9af23c67f27b1822110612bc85c01f138e18218bf21",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:03ae131790c1ffa7e01f460ab8f87a253557976f6760fb62c9386fa263bcf201",
+      "expected_bytes": 144,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:20.691390+00:00",
+      "docker_content_digest": "sha256:03ae131790c1ffa7e01f460ab8f87a253557976f6760fb62c9386fa263bcf201",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+      "expected_bytes": 32,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:21.435978+00:00",
+      "docker_content_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:f1e2f22f0dc308838ce005fc62b594ef000dfb485080e164e69c04684b3d4c17",
+      "expected_bytes": 1055,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:21.385883+00:00",
+      "docker_content_digest": "sha256:f1e2f22f0dc308838ce005fc62b594ef000dfb485080e164e69c04684b3d4c17",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:f3e5d5ebf4ceb3f0a5bb11a18a72d4f5a44430615399ae7a6838df07df64cd14",
+      "expected_bytes": 62632537,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:22.284585+00:00",
+      "docker_content_digest": "sha256:f3e5d5ebf4ceb3f0a5bb11a18a72d4f5a44430615399ae7a6838df07df64cd14",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:e76c8b34658354ae4653ddd5bb307cac630ee625fd68c16decad72a884aaed9c",
+      "expected_bytes": 262,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:22.285745+00:00",
+      "docker_content_digest": "sha256:e76c8b34658354ae4653ddd5bb307cac630ee625fd68c16decad72a884aaed9c",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:834089d800ae0ac7bfc0b401310e7e8399a4ca42e3330467eccc5007d66cf98f",
+      "expected_bytes": 2894,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:23.087436+00:00",
+      "docker_content_digest": "sha256:834089d800ae0ac7bfc0b401310e7e8399a4ca42e3330467eccc5007d66cf98f",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:7102dcf632a6820a7b546e8adc566380e1e6606d2ec1352f56967d9410121b74",
+      "expected_bytes": 360,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:23.012290+00:00",
+      "docker_content_digest": "sha256:7102dcf632a6820a7b546e8adc566380e1e6606d2ec1352f56967d9410121b74",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:19b09f64d5f07786bb6ca9bc39bb2aed04a96e38fd9b9467e9590069a03afd1e",
+      "expected_bytes": 1146,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:24.077377+00:00",
+      "docker_content_digest": "sha256:19b09f64d5f07786bb6ca9bc39bb2aed04a96e38fd9b9467e9590069a03afd1e",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:57c92b4b36554010b89838ab3f8ccc214ecd8d2e713485550b6c7a6ec8eb95a0",
+      "expected_bytes": 1396,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:24.412377+00:00",
+      "docker_content_digest": "sha256:57c92b4b36554010b89838ab3f8ccc214ecd8d2e713485550b6c7a6ec8eb95a0",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:188173caf53e3106e33c27e95d6175e466702fe43e0c4e7f5807b1192be035ed",
+      "expected_bytes": 15906,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:25.116418+00:00",
+      "docker_content_digest": "sha256:188173caf53e3106e33c27e95d6175e466702fe43e0c4e7f5807b1192be035ed",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:545aa82ec479fb0ff3a196141d43d14e5ab1bd1098048223bfd21e505b70581f",
+      "expected_bytes": 48304855,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:25.439867+00:00",
+      "docker_content_digest": "sha256:545aa82ec479fb0ff3a196141d43d14e5ab1bd1098048223bfd21e505b70581f",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:4378a6c11dea5043896b9425853a850807e5845b0018fe01ddee56c16245fc3c",
+      "expected_bytes": 23544349,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:26.252002+00:00",
+      "docker_content_digest": "sha256:4378a6c11dea5043896b9425853a850807e5845b0018fe01ddee56c16245fc3c",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:140d15be2fea6dcd21c20cadae2601a118c08a938168718b2612ad6aca91f74a",
+      "expected_bytes": 64355791,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:26.517707+00:00",
+      "docker_content_digest": "sha256:140d15be2fea6dcd21c20cadae2601a118c08a938168718b2612ad6aca91f74a",
+      "content_length_captured": false
+    },
+    {
+      "digest": "sha256:657cfd5e9f0a7d40f0fa2b4ba2efb58580158a5cf671fa5f967f6a59b8ef5ccf",
+      "expected_bytes": 190,
+      "anonymous_HEAD_success_at": "2026-10-30T20:20:27.319495+00:00",
+      "docker_content_digest": "sha256:657cfd5e9f0a7d40f0fa2b4ba2efb58580158a5cf671fa5f967f6a59b8ef5ccf",
+      "content_length_captured": false
+    }
+  ],
+  "signed_bundle_copies": [
+    {
+      "source_private_path": "/private/tmp/loopx-w8-native-review-ruby31-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097.bundle.json",
+      "destination_private_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097.bundle.json",
+      "bundle_digest": "sha256:3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097",
+      "bytes": 63812387,
+      "manifest_digest": "sha256:5d01b92d839303edb9200c044e6d4cdb99475a1c962b3873b64e30891171043f",
+      "source_and_copy_sha_size_equal": true
+    },
+    {
+      "source_private_path": "/private/tmp/loopx-w8-native-review-ruby31-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac.bundle.json",
+      "destination_private_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac.bundle.json",
+      "bundle_digest": "sha256:e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac",
+      "bytes": 29934927,
+      "manifest_digest": "sha256:7bb8b1a5f26942a2eea093d6e1d9a288d9cf1bb3b5473987068d79b8f668d7be",
+      "source_and_copy_sha_size_equal": true
+    },
+    {
+      "source_private_path": "/private/tmp/loopx-w8-native-review-ruby31-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc.bundle.json",
+      "destination_private_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc.bundle.json",
+      "bundle_digest": "sha256:67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc",
+      "bytes": 63806999,
+      "manifest_digest": "sha256:86e527b5ee21a37e1efcfe7b2c6e8d4a863c5e6d161e0f79207bf519dd8b08f7",
+      "source_and_copy_sha_size_equal": true
+    },
+    {
+      "source_private_path": "/private/tmp/loopx-w8-native-review-ruby31-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627.bundle.json",
+      "destination_private_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627.bundle.json",
+      "bundle_digest": "sha256:2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627",
+      "bytes": 29947347,
+      "manifest_digest": "sha256:a39ce2b932c2d904bfe40b6b6cbbc59d0031992090cd2f131d4ddb8249a1d5c0",
+      "source_and_copy_sha_size_equal": true
+    },
+    {
+      "source_private_path": "/private/tmp/loopx-w8-native-review-ruby31-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304.bundle.json",
+      "destination_private_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304.bundle.json",
+      "bundle_digest": "sha256:cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304",
+      "bytes": 9563,
+      "manifest_digest": "sha256:b4365807f0fa287ea4632a80b9bc1dcd24a4ce618771834ca794cac6af1d7e7b",
+      "source_and_copy_sha_size_equal": true
+    }
+  ],
+  "must_reread_both_failed_blobs_from_zero": [
+    "sha256:6f82bd7975d1bd5a4ecd4c7e1ed98bfa443ecd4020cdac6844306ebb41fbf64b",
+    "sha256:1d9d474cce081e468bc6f85727459852112ba732fbbfe3236fae66c5fa8a5ed5"
+  ],
+  "free_bytes": 3433623552
+}

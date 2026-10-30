@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T20:34:16.463436+00:00",
+  "scope": "Privatefreeze helper only; actual V11validation remains exit0 and rawbundles untouched.",
+  "error": "Lexical is_relative_to compared /private/tmp actual resolved cachepaths against /tmp alias.",
+  "fix": "Resolve both paths before containment check. No custody SHA/size mismatch or verifier change."
+}

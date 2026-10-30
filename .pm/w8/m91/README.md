@@ -157,3 +157,13 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Bounded ranged body review — 2026-10-30
 
 [Rejected short-body evidence and reviewed V11 controls](evidence/native-review-ranged-streams-20261030/README.md) retain all earlier Ruby3.1 failures and add bounded contiguous range resumption while preserving the canonical whole-SHA/size/cache and strict trust gates. Eleven new range controls plus existing concurrency/isolation/strict guards and three source reviews pass. One new complete validation is assigned; no supplier approval or original hosted DoD is claimed. Seven suppliers remain approved.
+
+
+## Corrected Elixir publication targets — 2026-10-30
+
+[The exact scheduling receipts](evidence/corrected-elixir-publication-queue-20261030/README.md) confirm guarded retirement of only this session's duplicate full push request and one corrected publication each for Elixir1.18/1.19 on846a560. Actual runtime job identities are queued; old failures remain retained. No running compile was cancelled and no supplier is newly approved. All original hosted acceptance remains pending.
+
+
+## Eighth supplier independently verified — 2026-10-30
+
+[Fresh-build Ruby3.1](evidence/published-ruby31-20261030/README.md) passed a new complete V11 validation: all33 blobs/1.354GB, five strict signed bundles, independent architecture reports and actual negative controls. Twenty-one genuine prior complete reads retain custody and fresh HEAD checks; twelve new reads include both previously rejected blobs from zero. Root rechecked the full frozen chain and raw/gzip custody. Earlier failures remain rejected and the derived-gzip loss remains explicit. All13,690 findings/228critical per architecture are retained. Eight of27 suppliers are approved; the production catalog and original hosted acceptance remain pending.

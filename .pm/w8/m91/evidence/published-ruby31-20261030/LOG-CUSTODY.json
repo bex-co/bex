@@ -1,0 +1,779 @@
+{
+  "scope": "Small metadata/source/log copies only; every original full signed bundle and gzip remains private and unchanged.",
+  "files": [
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/receipt.json",
+      "path": "receipt.json",
+      "bytes": 37069,
+      "sha256": "9c60f86f70f7ffef89d7f08207ab946abbd5e56f0c12d4c82a50f486e172320b"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-config.json",
+      "path": "actual/amd64-config.json",
+      "bytes": 15906,
+      "sha256": "66a233b175e81c68d905b31cc6d9a6054f1791575a9847bcb631411e6cea1d8c"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-manifest.json",
+      "path": "actual/amd64-manifest.json",
+      "bytes": 3525,
+      "sha256": "7acc907529c2aca65ce42600e9c2f444a580d4d0ffa067fa648e095357b4374d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-official-config.json",
+      "path": "actual/amd64-official-config.json",
+      "bytes": 5740,
+      "sha256": "9981df1d883b246c27c62f8ccb9b57d3e07d14cee8092299e102b4a69c35ea61"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-official-manifest.json",
+      "path": "actual/amd64-official-manifest.json",
+      "bytes": 2314,
+      "sha256": "78004237c5b503d0b5f5a9af7d6a1afff39163d316bf02b84d7f9022a0470812"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-config.json",
+      "path": "actual/arm64-config.json",
+      "bytes": 15906,
+      "sha256": "188173caf53e3106e33c27e95d6175e466702fe43e0c4e7f5807b1192be035ed"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-manifest.json",
+      "path": "actual/arm64-manifest.json",
+      "bytes": 3525,
+      "sha256": "01a0cdb8d0130a0676e6cb9c20db3258ba3a08bb67440cde2fc0b8cf2feac206"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-official-config.json",
+      "path": "actual/arm64-official-config.json",
+      "bytes": 5755,
+      "sha256": "ab2c521d96ddac5b8aad5b1973a487c5c0bc9123b3500255d8cf562780e399f3"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-official-manifest.json",
+      "path": "actual/arm64-official-manifest.json",
+      "bytes": 2316,
+      "sha256": "32e8857f3f750f9a690309c57d0f5e438844a0db73ac9724a00056791976035d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.result.json",
+      "path": "actual/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.result.json",
+      "bytes": 1463,
+      "sha256": "f4eada02d30bd9fcaf8e227caabdfe63607f40e9361a47ba13e4183f21adebff"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.stderr.log",
+      "path": "actual/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.stdout.log",
+      "path": "actual/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive.result.json",
+      "path": "actual/bundles/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive.result.json",
+      "bytes": 3055,
+      "sha256": "34616bd8457b4ba2fac7b76ce4ed1c57b89c11e3ec16568536d71e3943538a42"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.result.json",
+      "path": "actual/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.result.json",
+      "bytes": 1494,
+      "sha256": "9a4a03f0e5e375ce4e4ff8ab078c1339458cdc3430745b689543d5030fbb8b6a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.stderr.log",
+      "path": "actual/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.stdout.log",
+      "path": "actual/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive.result.json",
+      "path": "actual/bundles/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive.result.json",
+      "bytes": 3117,
+      "sha256": "81dec577d7c36ce3b2ca1ba5793990fc6835e5bc29b4c50feee746c14a3171ee"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5d01b92d839303edb9200c044e6d4cdb99475a1c962b3873b64e30891171043f.manifest.json",
+      "path": "actual/bundles/5d01b92d839303edb9200c044e6d4cdb99475a1c962b3873b64e30891171043f.manifest.json",
+      "bytes": 1038,
+      "sha256": "5d01b92d839303edb9200c044e6d4cdb99475a1c962b3873b64e30891171043f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.result.json",
+      "path": "actual/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.result.json",
+      "bytes": 1494,
+      "sha256": "9cd90ca80cf8f959523f4adec459c1a6c5f9bca0d8977b8328ea32f5fb290665"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.stderr.log",
+      "path": "actual/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.stdout.log",
+      "path": "actual/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive.result.json",
+      "path": "actual/bundles/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive.result.json",
+      "bytes": 3117,
+      "sha256": "ef92b7dc189f2d2cd9062fd3c64c9074750595130a705d9d5a8df62767b848bc"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/7bb8b1a5f26942a2eea093d6e1d9a288d9cf1bb3b5473987068d79b8f668d7be.manifest.json",
+      "path": "actual/bundles/7bb8b1a5f26942a2eea093d6e1d9a288d9cf1bb3b5473987068d79b8f668d7be.manifest.json",
+      "bytes": 1007,
+      "sha256": "7bb8b1a5f26942a2eea093d6e1d9a288d9cf1bb3b5473987068d79b8f668d7be"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/86e527b5ee21a37e1efcfe7b2c6e8d4a863c5e6d161e0f79207bf519dd8b08f7.manifest.json",
+      "path": "actual/bundles/86e527b5ee21a37e1efcfe7b2c6e8d4a863c5e6d161e0f79207bf519dd8b08f7.manifest.json",
+      "bytes": 1038,
+      "sha256": "86e527b5ee21a37e1efcfe7b2c6e8d4a863c5e6d161e0f79207bf519dd8b08f7"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/a39ce2b932c2d904bfe40b6b6cbbc59d0031992090cd2f131d4ddb8249a1d5c0.manifest.json",
+      "path": "actual/bundles/a39ce2b932c2d904bfe40b6b6cbbc59d0031992090cd2f131d4ddb8249a1d5c0.manifest.json",
+      "bytes": 1007,
+      "sha256": "a39ce2b932c2d904bfe40b6b6cbbc59d0031992090cd2f131d4ddb8249a1d5c0"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b4365807f0fa287ea4632a80b9bc1dcd24a4ce618771834ca794cac6af1d7e7b.manifest.json",
+      "path": "actual/bundles/b4365807f0fa287ea4632a80b9bc1dcd24a4ce618771834ca794cac6af1d7e7b.manifest.json",
+      "bytes": 1013,
+      "sha256": "b4365807f0fa287ea4632a80b9bc1dcd24a4ce618771834ca794cac6af1d7e7b"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.result.json",
+      "bytes": 1473,
+      "sha256": "ccd52de82454aceee0cd4f8169adb77949c992e7635d18c19f063aa3935efeb9"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.stderr.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.stdout.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive.result.json",
+      "bytes": 3075,
+      "sha256": "75c7eb34981f270b518a9446bc16145e42bfa2bed11e7f4c6d1eeb1d9b76cbb7"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.result.json",
+      "bytes": 1481,
+      "sha256": "537aea33ae92bc10567e20b5b69dc9379e20412c4d90f6d0eb2cc6630d6fb69d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.stderr.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.stderr.txt",
+      "bytes": 467,
+      "sha256": "61150d122f6e7b7b5be05646dd2afb3f18f78161bc9088ffc020c94872186a13"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.stdout.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source.result.json",
+      "bytes": 3091,
+      "sha256": "ab9ab58d3a4290e9c637acc95d48ba0c00488fff311767ab2a9ab4150bdd48db"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.result.json",
+      "bytes": 1483,
+      "sha256": "f1e3ada7060f6a54ea5c91a86e9d4b70b2850b5de0e7943f19d95a6f67b415ab"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.stderr.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.stderr.txt",
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.stdout.log",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject.result.json",
+      "path": "actual/bundles/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject.result.json",
+      "bytes": 3095,
+      "sha256": "8eb625e3bde8118149324aac28d3d1c1054f9fa2b462b0dd3024cec8b2611518"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/2c50b61d2b9627d5b392dd2c079487e46f6e1c64aad063902bd56566b77dd627-positive-attempt1-gw6erglu/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "541125c48d101f76e5560d7ec8a465b73a6f2ca676f9ddfb80db872321d3d703"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/3f52f7ce7df610978a4750862196418bf1bf75b8bcc68ce1ce3e049909cc9097-positive-attempt1-tz5fx8n8/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "476a08e05eebbbb4e66315635775e1d56150a38d0a1ce702903482cc3ca39276"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/67661ef77247670680b104f17eac77e2df7dbcf9fa4b4aaf90a175eb6682b1cc-positive-attempt1-xhhnnrr6/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "0275f235cf5170085d3bb6d757939aff75d0e581e200f7125c75beed98e2b809"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-positive-attempt1-w59361g7/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "1619c01d711385cd413a542df74e71cfb51df9874ffbe7ddfec47fa841f7239e"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-source-attempt1-nh9ds79f/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "46a829a7ef0c01fdef4f7a20119d4930da8ecd6d4d2f32b89f060134de7315f0"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/cbcd03c17a573475e6b028dd5685688a7c7caf19bb754ebd2cfb71f7f259c304-wrong-subject-attempt1-14yx46v1/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "c316b7d3c7d7adc8d04213f48da445ab9d2656ce06fdc3e908fa50520826756d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/root.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/root.json",
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/targets.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/targets.json",
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "bytes": 449,
+      "sha256": "a8c999cf4f4c639c178a453eafd8751d795515ec28468cd8de8a36d802caeba2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev.json",
+      "path": "actual/bundles/cosign-tuf-cache/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1-h88hykmk/tuf-repo-cdn.sigstore.dev.json",
+      "bytes": 52,
+      "sha256": "62752e10440ed81a43233e64883180cd2cc4fefe64ad19b4aa00de7d26d2e0ab"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/crypto-results.json",
+      "path": "actual/bundles/crypto-results.json",
+      "bytes": 23465,
+      "sha256": "8431a993745b6882a81a46c38b9d99aaa0fa337f93a0c86652df60129691c116"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/download-receipt.json",
+      "path": "actual/bundles/download-receipt.json",
+      "bytes": 3437,
+      "sha256": "30ed6fe3cf0c9d5f8b3b80a7af563b0d995198011cfd23a3124536a59a4c9ad6"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.result.json",
+      "path": "actual/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.result.json",
+      "bytes": 1463,
+      "sha256": "5900ae0dae40caf5e34d6d001bfcb42a0718ef1172ca59617f6093c11ec4577d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.stderr.log",
+      "path": "actual/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.stdout.log",
+      "path": "actual/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive.result.json",
+      "path": "actual/bundles/e0055c0e84cc1f781353626df76bef92e2aa5b6ddffa750dbbbb67d7c6b7c3ac-positive.result.json",
+      "bytes": 3055,
+      "sha256": "2f6c283494d6a090c9cf5b57d14ad843befad503d06e5b97525046b5d8f24621"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/referrer-index.json",
+      "path": "actual/bundles/referrer-index.json",
+      "bytes": 2164,
+      "sha256": "e37365a808cb57c06d059b7349f23f8c053ba53e3447f3e61ee649702bae541d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ci-runtime-scan-signing-gates.json",
+      "path": "actual/ci-runtime-scan-signing-gates.json",
+      "bytes": 721,
+      "sha256": "1cc854965e82feb8750d496a13012d85fbc01f45443daaebd0a4121a484c72bb"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/executed-tools/loopx-w8-native-review-v11.py",
+      "path": "actual/executed-tools/loopx-w8-native-review-v11.py",
+      "bytes": 43608,
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/executed-tools/loopx-w8-verify-native-artifact-ranged.py",
+      "path": "actual/executed-tools/loopx-w8-verify-native-artifact-ranged.py",
+      "bytes": 40720,
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/index.json",
+      "path": "actual/index.json",
+      "bytes": 1611,
+      "sha256": "5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/official-index.json",
+      "path": "actual/official-index.json",
+      "bytes": 10312,
+      "sha256": "91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-verification-provenance.json",
+      "path": "actual/producer-verification-provenance.json",
+      "bytes": 156,
+      "sha256": "d8b90b84cceba1696dbcf5726531763dcd12cd52397e5070638fc784397bb59a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/progress.json",
+      "path": "actual/progress.json",
+      "bytes": 211,
+      "sha256": "d42878ad9f2c56048bd9d3c7412bdfb4ae266c11ef081d9649a9b56add39f657"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-1d9d474cce081e468bc6f85727459852112ba732fbbfe3236fae66c5fa8a5ed5.json",
+      "path": "actual/ranged-body-1d9d474cce081e468bc6f85727459852112ba732fbbfe3236fae66c5fa8a5ed5.json",
+      "bytes": 631,
+      "sha256": "8af74705bd83cb888a5905bd60d0eea0bf74c75b9c49ede437f467c72152d280"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-21ac1693dc2783ddb37b41173c1f14bad3d0f7ce921507669acb382c3ddbcc43.json",
+      "path": "actual/ranged-body-21ac1693dc2783ddb37b41173c1f14bad3d0f7ce921507669acb382c3ddbcc43.json",
+      "bytes": 627,
+      "sha256": "0a9a202c80aaa5b07d495f698a45320dc1ef769346ee999382592f22f432cd3d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-283ad5edfc9dfdc8aca1ec5ab0cfc6e779045a1b7cca40ee75b5766226811b83.json",
+      "path": "actual/ranged-body-283ad5edfc9dfdc8aca1ec5ab0cfc6e779045a1b7cca40ee75b5766226811b83.json",
+      "bytes": 631,
+      "sha256": "b52c4de2e8204375967e2562e330a5ef12363aaced2d74123505100db04333bf"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-424c8e7ad5074b7949afbd4b0435a6229f6c6c799066259c3ee98735e71745df.json",
+      "path": "actual/ranged-body-424c8e7ad5074b7949afbd4b0435a6229f6c6c799066259c3ee98735e71745df.json",
+      "bytes": 611,
+      "sha256": "c201f2a5b614d97f291058b05676cba9b3c2cfecda38c58787eb3428d8e5727e"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-6f82bd7975d1bd5a4ecd4c7e1ed98bfa443ecd4020cdac6844306ebb41fbf64b.json",
+      "path": "actual/ranged-body-6f82bd7975d1bd5a4ecd4c7e1ed98bfa443ecd4020cdac6844306ebb41fbf64b.json",
+      "bytes": 631,
+      "sha256": "61f817982666caa402054cdff210cffc89a120852e2871504c4e67851d7bb1d3"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-72b72729fa2682929803bf22ee7a78bd355c6e27b5632823619356a796707424.json",
+      "path": "actual/ranged-body-72b72729fa2682929803bf22ee7a78bd355c6e27b5632823619356a796707424.json",
+      "bytes": 611,
+      "sha256": "405a533ac6554b9b916e84ebad00aac8306079adab55cdc88d3f39af735aae77"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-971a2b984cc4998c2f5bc69d9198762ffbc92afd8aca1abcbaddf6a4d16095e7.json",
+      "path": "actual/ranged-body-971a2b984cc4998c2f5bc69d9198762ffbc92afd8aca1abcbaddf6a4d16095e7.json",
+      "bytes": 607,
+      "sha256": "056994d95784850c838aecd75f5ef94a16ce579d41cd26382abb85d3a3ddec20"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-a5516d5f2e3f0b9ed2a01e9b448b96676f5d08392ed13b94b7488bda717311b0.json",
+      "path": "actual/ranged-body-a5516d5f2e3f0b9ed2a01e9b448b96676f5d08392ed13b94b7488bda717311b0.json",
+      "bytes": 607,
+      "sha256": "c79eff5adcbd5ed7d74f1806a120e4d07730e2202ebf436a6bba226abf92102f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-bce7a222bda5820b1ccfa28c1d38cf4e3db5a5b75288c5de16883aca8e0d3957.json",
+      "path": "actual/ranged-body-bce7a222bda5820b1ccfa28c1d38cf4e3db5a5b75288c5de16883aca8e0d3957.json",
+      "bytes": 611,
+      "sha256": "9c24f60990271b826a5ffe0038d266e0766fa420450620b50797983d062612ff"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-cee8068fc3f3ba99c039cb9a9018996552595ae98e25a92340221f7ef13de26b.json",
+      "path": "actual/ranged-body-cee8068fc3f3ba99c039cb9a9018996552595ae98e25a92340221f7ef13de26b.json",
+      "bytes": 627,
+      "sha256": "a6b585bae137af1ed19ec2055aec359468f16eaaa74d28c856aeab0953da4605"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-d9351f7ff27c38674dd7b09aa6dd1ce3fe627f84b663dfca15f996b87ff71980.json",
+      "path": "actual/ranged-body-d9351f7ff27c38674dd7b09aa6dd1ce3fe627f84b663dfca15f996b87ff71980.json",
+      "bytes": 611,
+      "sha256": "cd3c7257b86ed9a0a45b45c255babe0bd446a27a6ac06d046fae01e96e0b2cdf"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-e503bc9b077f78ffaca495c72729b37a2638f90e358671b0b08d0b9301275a78.json",
+      "path": "actual/ranged-body-e503bc9b077f78ffaca495c72729b37a2638f90e358671b0b08d0b9301275a78.json",
+      "bytes": 607,
+      "sha256": "84e9298e3b742134c2ed287cc1e5fb3a17ce952ac0a1cd6639a67e8e55fa9006"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/.github/native-base-recovery.json",
+      "path": "actual/source/.github/native-base-recovery.json",
+      "bytes": 5258,
+      "sha256": "c0bddc5815ec24a8c5a23068817cc0f4fc87ce0e0adaf50a466048baff37ff9e"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/.github/workflows/native-base-image.yml",
+      "path": "actual/source/.github/workflows/native-base-image.yml",
+      "bytes": 11989,
+      "sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/deploy/native-base/matrix.py",
+      "path": "actual/source/deploy/native-base/matrix.py",
+      "bytes": 2099,
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/lego/operator/internal/build/native.go",
+      "path": "actual/source/lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/source-files.json",
+      "path": "actual/source/source-files.json",
+      "bytes": 522,
+      "sha256": "3e96618b2b12437cbb048ac6a43e5dee83e5646a74562a013378a831d444c5ac"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/FROZEN-MANIFEST.json",
+      "path": "controls/FROZEN-MANIFEST.json",
+      "bytes": 73940,
+      "sha256": "2eae27339974962a2c586b214f9efda03d1c6363e0f4610b28c7ed31d570b816"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/completed33-full-read-receipts.json",
+      "path": "controls/completed33-full-read-receipts.json",
+      "bytes": 12826,
+      "sha256": "dda604c4a2609d55e955b93e87a54697fa449e158c76dffecc3fed363f0887f8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/current-index.json",
+      "path": "controls/current-index.json",
+      "bytes": 1611,
+      "sha256": "5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/freeze-helper.initial-path-alias-error.json",
+      "path": "controls/freeze-helper.initial-path-alias-error.json",
+      "bytes": 361,
+      "sha256": "cda67e838820abd2eef6293b1adbaa994f9003bf0a53730c0c4801d13b7c0b11"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/freeze-helper.initial.py",
+      "path": "controls/freeze-helper.initial.py",
+      "bytes": 10404,
+      "sha256": "64b83fea47ee6aa623d7198b716a70f0beaedd0118495e5f3376c220e666c470"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/fresh-ci-success.json",
+      "path": "controls/fresh-ci-success.json",
+      "bytes": 8906,
+      "sha256": "2d6169b688c369b707e674ae8aaa7abe4bfedf26f31bc2ef4be0f53f2854a824"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/fresh-source-recipe-context.json",
+      "path": "controls/fresh-source-recipe-context.json",
+      "bytes": 6429,
+      "sha256": "44191654078a7ef4e6887b76be313fc826638eb81caef1707dd795b53f6a7b97"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/frozen-complete-attempt-chain.json",
+      "path": "controls/frozen-complete-attempt-chain.json",
+      "bytes": 7507,
+      "sha256": "0dedfb1d21124cb2fcbbc17ecd10f5d66128a0ed7b1e59468b29e529415c2c0d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/full-signed-bundle-custody.json",
+      "path": "controls/full-signed-bundle-custody.json",
+      "bytes": 10430,
+      "sha256": "88a26ef0a32f4e6966dc05600f5af522ba8c724734c59bf30c108f1b2f2fd6f7"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/initial-crypto-body-checkpoint.json",
+      "path": "controls/initial-crypto-body-checkpoint.json",
+      "bytes": 1775,
+      "sha256": "b89e0ec68af869a0c71d5eb9815fd1d49dd2dda44ee53ad2ef055fbf8052c2bd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/reuse-custody.json",
+      "path": "controls/reuse-custody.json",
+      "bytes": 12185,
+      "sha256": "e251151f4a47fd5cd1d9300bfdf724673852a35f81cc7cd530f22c7fc7df1bbb"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/seeded21-full-read-receipts.json",
+      "path": "controls/seeded21-full-read-receipts.json",
+      "bytes": 8186,
+      "sha256": "d396627d5cffd9bcf29c807f74a2f74cd4ede97888721b6ff7979fef2ab707cb"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/source-path-preflight.json",
+      "path": "controls/source-path-preflight.json",
+      "bytes": 888,
+      "sha256": "c78cec6c71274b8eeb558e5f0d091d9339456370f2001ecd961d48e208927c22"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/process-exit-case-attempt4.json",
+      "path": "engineering/process-exit.json",
+      "bytes": 11274,
+      "sha256": "5b958ca7cfb7d110d89da40e78e946778f3865296daaea6d6928b4487729f410"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/v11-case-attempt4.log",
+      "path": "engineering/actual-execution.txt",
+      "bytes": 11912,
+      "sha256": "e1066e73362df8b3cf7709531a6224a2ed8d8bbb28b1f9e3226f14567f93b7e7"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-run-ruby31-v11-case4.py",
+      "path": "engineering/resource-supervisor.py",
+      "bytes": 3873,
+      "sha256": "e3eede98bb10672eda274ee403d80e230423562bf263ff0525f694223be9a5a9"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/published-python39-20261030/tools/retrieve-and-verify.py",
+      "path": "tools/retrieve-and-verify.py",
+      "bytes": 5381,
+      "sha256": "8a177252a784cae1e2ffa5857b330efbd50b26e54de147f3049bba0ca3d031bd"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/published-python39-20261030/tools/test-image-bundle-retrieval.py",
+      "path": "tools/test-image-bundle-retrieval.py",
+      "bytes": 1949,
+      "sha256": "43e272f608d9a44062811772bf0a17d7804594e18d73c866637a5c0c6c2bd6d5"
+    }
+  ]
+}

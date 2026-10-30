@@ -1,0 +1,117 @@
+{
+  "at": "2026-10-30T20:34:16.983118+00:00",
+  "scope": "PRIVATE complete technicalvalidation only, ROOTsupplierdisposition PENDING. Exact verifierreceipt kept unchanged; internal approved_supplier_candidate flag doesnotrepresentROOTchainapproval. No .pm/capsule/productioncatalog/pin/Git/CI mutation or attempt5.",
+  "root_supplier_approval": false,
+  "root_disposition": "PENDING",
+  "current_attempt": 4,
+  "current_tool": "FIRSTV11",
+  "actual_exit_code": 0,
+  "started_at": "2026-10-30T20:21:02.861869+00:00",
+  "completed_at": "2026-10-30T20:31:07.683961+00:00",
+  "receipt_path": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/receipt.json",
+  "receipt_sha256": "9c60f86f70f7ffef89d7f08207ab946abbd5e56f0c12d4c82a50f486e172320b",
+  "process_receipt": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/process-exit-case-attempt4.json",
+  "log": "/tmp/loopx-w8-native-review-ruby31-v11-fd358/v11-case-attempt4.log",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+  "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "verification": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "official_base": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+  "fresh_build_source_context": {
+    "path": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/fresh-source-recipe-context.json",
+    "origin": "/tmp/loopx-w8-native-controls-ruby31-fd358/fresh-source-recipe-inputs.json",
+    "sha256": "44191654078a7ef4e6887b76be313fc826638eb81caef1707dd795b53f6a7b97",
+    "non_documentation_files": 22,
+    "scope": "Same immutable freshbuild source; not a cross-source recoveryauthorization/equality claim."
+  },
+  "all_five_full_signed_bundles_verified": true,
+  "actual_source_subject_negative_controls_rejected": true,
+  "independent_both_architecture_report_bindings": true,
+  "strict_current_TUF_Rekor_v2_and_TSA": true,
+  "Cosign_invocations": 7,
+  "unique_owned_TUF_ROOTs": 7,
+  "all_unique_blobs": 33,
+  "all_complete_compressed_bytes": 1353900387,
+  "new_complete_full_reads": {
+    "count": 12,
+    "bytes": 774272703
+  },
+  "prior_actual_full_reads_reused_with_current_HEAD": {
+    "count": 21,
+    "bytes": 579627684,
+    "custody": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/reuse-custody.json"
+  },
+  "live_range_resume_count": 0,
+  "live_range_note": "Every one of12newblobstreams completed on its initialGET1/from0. No actual resume efficacy/necessity or historicalcause is inferred. Local Range tests remain separate.",
+  "range_metadata_files": [
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-d9351f7ff27c38674dd7b09aa6dd1ce3fe627f84b663dfca15f996b87ff71980.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-72b72729fa2682929803bf22ee7a78bd355c6e27b5632823619356a796707424.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-bce7a222bda5820b1ccfa28c1d38cf4e3db5a5b75288c5de16883aca8e0d3957.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-e503bc9b077f78ffaca495c72729b37a2638f90e358671b0b08d0b9301275a78.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-971a2b984cc4998c2f5bc69d9198762ffbc92afd8aca1abcbaddf6a4d16095e7.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-283ad5edfc9dfdc8aca1ec5ab0cfc6e779045a1b7cca40ee75b5766226811b83.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-cee8068fc3f3ba99c039cb9a9018996552595ae98e25a92340221f7ef13de26b.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-21ac1693dc2783ddb37b41173c1f14bad3d0f7ce921507669acb382c3ddbcc43.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-1d9d474cce081e468bc6f85727459852112ba732fbbfe3236fae66c5fa8a5ed5.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-424c8e7ad5074b7949afbd4b0435a6229f6c6c799066259c3ee98735e71745df.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-6f82bd7975d1bd5a4ecd4c7e1ed98bfa443ecd4020cdac6844306ebb41fbf64b.json",
+    "/tmp/loopx-w8-native-review-ruby31-v11-fd358/native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ranged-body-a5516d5f2e3f0b9ed2a01e9b448b96676f5d08392ed13b94b7488bda717311b0.json"
+  ],
+  "manual_decompressed_layer_hashing_performed": false,
+  "Docker_export_aliases_needed": false,
+  "architecture_findings": {
+    "amd64": {
+      "SPDX_package_count": 755,
+      "Trivy_finding_count": 13690,
+      "critical_count": 228,
+      "brotli_findings": []
+    },
+    "arm64": {
+      "SPDX_package_count": 753,
+      "Trivy_finding_count": 13690,
+      "critical_count": 228,
+      "brotli_findings": []
+    }
+  },
+  "findings_policy": "All findings retained in fullsignedpredicates; no zeroCVEclaim/securitywaiver.",
+  "raw_bundle_custody": "/tmp/loopx-w8-native-controls-ruby31-v11-fd358/full-signed-bundle-custody.json",
+  "attempt_chain": [
+    {
+      "attempt": 1,
+      "actual_exit": 1,
+      "state": "UNCLASSIFIED response-integrity rejection; finalcounter/SHA unavailable; not retroactivelyreclassified",
+      "evidence": "/tmp/loopx-w8-native-controls-ruby31-fd358/failed-attempt1"
+    },
+    {
+      "attempt": 2,
+      "actual_exit": 1,
+      "state": "Local strictCosignTUFmetadatareadback-persistence failure; only4/5bundles verified; no newblobreads",
+      "evidence": "/tmp/loopx-w8-native-controls-ruby31-fd358/failed-attempt2"
+    },
+    {
+      "attempt": 3,
+      "actual_exit": 1,
+      "state": "Two knownshortbodies:230686720/237266723 and167772160/202753988; bothrejected, neithercreatedcache receipt",
+      "evidence": "/tmp/loopx-w8-native-controls-ruby31-v10-fd358/frozen-case-attempt-chain.json"
+    },
+    {
+      "attempt": 4,
+      "actual_exit": 0,
+      "state": "New complete V11validation with allsubgates/fullbytes; ROOTdispositionpending"
+    }
+  ],
+  "prior_derived_gzip_representation_loss": {
+    "record": "/tmp/loopx-w8-native-controls-ruby31-fd358/attempt1-custody-revalidation.json",
+    "sha256": "aa1f2fa8034c8ca5880fac84fb3a46a0ad40f2b43b7a6e67e2dd22369ffe7176",
+    "fact": "Three original attempt1derivedgzip representations overwritten by unchangedV8attempt2; alloriginalfullsignedbundle bytes authoritative and preserved. Thislossnotconcealedbycurrentproof."
+  },
+  "resource_guard": {
+    "minimum_observed_free_bytes": 3156418560,
+    "maximum_observed_owned_bytes": 219930888,
+    "stopped_reason": null
+  },
+  "tool_sha256": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "current_free_bytes": 3143421952
+}
