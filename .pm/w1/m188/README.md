@@ -82,3 +82,10 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - 实际取消显示首次编译尚未导出缓存时会丢失长时间工作。改为同运行时正在执行的任务先完成、新配方替换 pending 任务并复用完成缓存；源码仍正常 ship，不等待 main CI，也没有削弱发布或采用验证。
 - 新 m91 路径明确兼容 m188 的 `upstream` 原始来源字段（`TestSuppliedBasePreservesPlatformBackportProvenance` 等回归组通过）。m188 不用不完整的全局供应映射冒充全部 27 个运行时接入，后续只采用本项已验证的 11 个 line 镜像并保留原来源。
 - 各入口/版本规则准备核查见 [parity 证据](evidence/parity-prepared.json)；正式采用和 rollout 仍未完成，任务不提前关闭。
+
+### Python / Ruby 完整配方与真实 native 启动 — 2026-10-29（UTC 03:20Z）
+
+- Python3.7.17、Ruby3.0.7 的 arm64 候选使用当前原版 Dockerfile 和 check.Dockerfile，没有替换编译步骤；真实 PG18 archive、工具转换、系统/私有 Node 的 Brotli 探针均通过。Python 的离线 wheel/C-extension、metadata/pkg_resources/distutils 和 Ruby JSON/OpenSSL/Zlib 健康操作也通过。
+- 新增两个集成测试，复用已有 native resolver、Dockerfile、构建和 HTTP helper，在 build/start 两阶段执行安全探针，HTTP 返回必须与构建产物及所选语言版本一致。临时 overlay 使用上述本地候选，实际 Python3.7.17 和 Ruby3.0.7 均通过；生产 pin 未改变。
+- Python3.7 显式使用兼容的 Poetry1.5.1，fixture 无 uv.lock；不声称默认 Poetry2.1.3 能运行在 Python3.7。旧版本需匹配 companion tool 是既有要求（w8/done/173 与 [Render Poetry 版本文档](https://render.com/docs/poetry-version)），本项不修改用户所选版本。
+- 见 [Python 完整配方](evidence/python37-combined-proof.json)、[Ruby 完整配方](evidence/ruby30-combined-proof.json)、[真实 native 启动](evidence/local-python-ruby-native-start.json)。以上是本地兼容性证据，签名双架构发布、采用与线上验收仍待完成。
