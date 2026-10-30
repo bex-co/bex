@@ -1,6 +1,6 @@
 # m144 capacity evidence
 
-Captured 2026-10-29 local / 2026-10-30 UTC on Linux/arm64 (OrbStack kernel 7.2.9). See [design](../design.md) for chosen mechanism, exact source/archives, result boundaries and remaining acceptance. These records contain disposable local test data only; no credentials or tenant files.
+Captured 2026-10-29 local / 2026-10-30 UTC on Linux/arm64 (OrbStack kernel 7.2.9). See [design](../design.md) for chosen mechanism, exact source/archives, result boundaries and remaining acceptance. These records contain disposable local test data and selected binding/image metadata; no credentials or tenant files.
 
 - `patched-kernel-test.txt`: actual patched CSI volume implementation, real LUKS/full/grow/remount/local snapshot restore and mutation control.
 - `upstream-linux-arm64-tests.txt`: Linux arm64 targeted upstream package regressions.
@@ -17,7 +17,9 @@ Captured 2026-10-29 local / 2026-10-30 UTC on Linux/arm64 (OrbStack kernel 7.2.9
 - `actual-chart-rendered-image-pins.txt`: both images extracted from actual Helm rendering of the checksum-authenticated hcloud-csi 2.22.0 archive using `official.values.json`; both match its exact image digest with empty tags. This validates chart expansion, not derivative publication or deployment.
 - [Published image review](published-image-902630131/README.md): successful factory, exact-source workflow signature, signed index-subject SPDX, anonymous pull/execution of both Linux architectures, and actual chart rendering of the reviewed derivative digest. This prepares the committed pin; production rollout and lifecycle acceptance remain open.
 
-- `inventory-unit-tests.txt` / `inventory-protocol-tests.txt` / `inventory-workflow-validation.txt`: the prepared read-only App/PVC/PV/platform-adoption inventory, exact-lifetime joins, safe operation dispatch and credential scope checks. No real production inventory has yet run.
+- `inventory-unit-tests.txt` / `inventory-protocol-tests.txt` / `inventory-workflow-validation.txt`: the read-only App/PVC/PV/platform-adoption inventory, exact-lifetime joins, safe operation dispatch and credential scope checks.
 - `inventory-jsonpath-proof.txt`: the real Kubernetes JSONPath engine processed all five synthetic projections; a separate join check preserved binding/image facts while excluding private canary fields. These are protocol proofs, not production facts.
+- [Production inventory and operator signature](production-inventory-20261029/README.md): selected facts from successful run 40991781847; two legacy 10Gi disks and no below-floor or unmatched App claims. The [preservation plan](../existing-disk-plan.md) keeps both handles untouched. The signed operator source predates the admitted-capacity writer, so class activation and lifecycle acceptance remain pending.
+- [Fixture operation checks](fixture-operations-20261030/checks.json): 28 focused tests (15 new ownership/refusal/recovery/cleanup cases), actual absent-proof CLI refusal, existing shell protocols, workflow confinement, nine real JSONPath projections, published-image tool execution and a parser check against a disposable real LUKS/ext4 filesystem. No production fixture action is represented by these preparation checks.
 
 - [Render disk contract review](render-disk-contract-review-20261029.md): primary documentation review supplied by root; it preserves the separate migration, actual capacity, billing, metrics and cross-surface production acceptance requirements.

@@ -54,6 +54,7 @@ FIELDS = {
         ("readyReplicas", "{.status.readyReplicas}"),
         ("availableReplicas", "{.status.availableReplicas}"),
         ("containerImages", '{range .spec.template.spec.containers[*]}{.name}{"="}{.image}{";"}{end}'),
+        ("diskStorageClass", '{.spec.template.spec.containers[?(@.name=="manager")].env[?(@.name=="BEX_DISK_STORAGE_CLASS")].value}'),
     ),
     "pods": (
         ("namespace", "{.metadata.namespace}"),
@@ -121,6 +122,7 @@ def platform_images(deployments, pods):
         for key in ("generation", "observedGeneration", "replicas", "updatedReplicas", "readyReplicas", "availableReplicas"):
             deployment[key] = int(row[key]) if row[key] else None
         deployment["containerImages"] = split_containers(row["containerImages"])
+        deployment["diskStorageClass"] = row["diskStorageClass"]
         result["deployments"].append(deployment)
     for row in pods:
         pod = {key: row[key] for key in ("namespace", "name", "uid", "phase", "deletingAt")}

@@ -1,0 +1,16 @@
+{
+  "run": "https://github.com/bex-co/bex/actions/runs/40995593247",
+  "source_sha": "c6e715dd489b8217591a0e52fa8ab24b45c65a3a",
+  "job": 123878602656,
+  "operation": "rollout",
+  "conclusion": "success",
+  "completed_at": "2026-10-30T03:59:26Z",
+  "driver_readiness": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+    "readyControllerPods": 1,
+    "readyNodePods": 12
+  },
+  "all_workloads_and_driver_pods_checked": true,
+  "old_terminating_pods_refused_by_gate": true,
+  "class_activation": "not yet; require newer operator with admitted-capacity writer"
+}

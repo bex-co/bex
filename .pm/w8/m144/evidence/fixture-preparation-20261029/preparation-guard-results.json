@@ -1,0 +1,45 @@
+{
+  "create_gate": {
+    "refused": true,
+    "exit": 1
+  },
+  "cleanup_without_proof": {
+    "refused": true,
+    "exit": 1
+  },
+  "optimization_guard": {
+    "refused": true,
+    "exit": 1
+  },
+  "old_service_prefix": {
+    "refused": true
+  },
+  "old_disk_name": {
+    "refused": true
+  },
+  "foreign_workspace": {
+    "refused": true
+  },
+  "preexisting_id": {
+    "refused": true
+  },
+  "wrong_gate_service": {
+    "refused": true
+  },
+  "wrong_gate_disk": {
+    "refused": true
+  },
+  "wrong_gate_UTC_date": {
+    "refused": true
+  },
+  "expired_gate": {
+    "refused": true
+  },
+  "dated_service_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "dated_disk_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk",
+  "ledger_unchanged": true,
+  "synthetic_tests_only": true,
+  "HTTP_requests_made": 0,
+  "authentication_sessions_created": 0,
+  "hosted_resources_created": 0
+}

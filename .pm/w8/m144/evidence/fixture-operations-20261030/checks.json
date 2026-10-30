@@ -1,0 +1,105 @@
+{
+  "recorded_at": "2026-10-30T03:57:53.672742+00:00",
+  "scope": "Guarded helper/source preparation only; no real fixture proof, exec or Job action in production",
+  "unit_protocol": {
+    "command": "python3 -m unittest scripts/test_disk_fixture.py scripts/test_hcloud_csi.py scripts/test_service_disk_inventory.py -v",
+    "tests": 28,
+    "fixture_tests": 15,
+    "result": "PASS"
+  },
+  "shell_protocols": {
+    "commands": [
+      "bash scripts/install-hcloud-csi.test.sh",
+      "bash scripts/service-disk-inventory.test.sh"
+    ],
+    "result": "PASS"
+  },
+  "workflow_confinement": {
+    "command": "bash scripts/github-actions-validate.sh",
+    "result": "PASS"
+  },
+  "actual_cli_absent_proof": {
+    "command": "python3 scripts/disk_fixture.py validate",
+    "result": "PASS: expected exit1, absent-proof refusal and no stdout before Kubernetes"
+  },
+  "real_jsonpath": {
+    "engine": "k8s.io/client-go/util/jsonpath from repository Go workspace",
+    "projections": [
+      "app",
+      "pvc",
+      "pv",
+      "secret metadata only",
+      "class",
+      "attachment",
+      "workload",
+      "job_status",
+      "pod"
+    ],
+    "result": "PASS: parsing, field widths, exact selected values and private-canary exclusion; no Secret.data/tenant environment output",
+    "jobStatusCases": "Completed, Failed=True and Failed=False/in-flight list rows verified; message/reason/env canaries excluded",
+    "receipt": "current-jsonpath-recheck.json"
+  },
+  "published_arm64_tool_execution": {
+    "reference": "ghcr.io/bex-co/bex-operator@sha256:37b4e1c90972390efc6f41c032707d0fe0f0df871909d30fac396d9d44302235",
+    "results": [
+      {
+        "argv": [
+          "cryptsetup",
+          "--version"
+        ],
+        "version": "2.8.6",
+        "exit_code": 0
+      },
+      {
+        "argv": [
+          "blkid",
+          "-V"
+        ],
+        "version": "util-linux2.42.1",
+        "exit_code": 0
+      },
+      {
+        "argv": [
+          "dumpe2fs",
+          "-V"
+        ],
+        "version": "1.47.4",
+        "exit_code": 0
+      }
+    ],
+    "network": "none"
+  },
+  "real_geometry_parser": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:37b4e1c90972390efc6f41c032707d0fe0f0df871909d30fac396d9d44302235",
+    "scope": "actual published-image tools on disposable local LUKS/ext4 only; no production or tenant data",
+    "result": {
+      "activeLuks": true,
+      "luksType": "LUKS1",
+      "backingDevice": "/dev/loop0",
+      "mappedSectors": 4190208,
+      "sectorSize": 512,
+      "offsetSectors": 4096,
+      "mappedBytes": 2145386496,
+      "blockCount": 262144,
+      "blockSize": 4096,
+      "filesystemBytes": 1073741824
+    }
+  },
+  "remaining": "Root formats/reviews/ships helper. Actual committed ownership proof, newer operator adoption, CSI readiness, all-workspace class activation and original owned hard-full/grow/remount/snapshot/metrics/billing/surface/cleanup acceptance remain required.",
+  "rechecked_after_simplify_at": "2026-10-30T04:09:17.800103+00:00",
+  "raw_delete_transport": {
+    "result": "PASS",
+    "kubectl": "v1.36.1",
+    "receipt": "kubectl-delete-protocol.json",
+    "boundary": "Isolated localhost HTTP mock only. Real kubectl sends exact raw DELETE/stdin UID-preconditioned Foreground DeleteOptions; the mock models UID409 and preserves its replacement object. No real Kubernetes or production deletion."
+  },
+  "manager_storage_class_projection": {
+    "result": "PASS:5inventory unit tests, fake-kubectl read-only protocol and real client-go JSONPath",
+    "receipt": "manager-class-projection.json",
+    "scope": "Only literal manager BEX_DISK_STORAGE_CLASS; API empty. Other env values and Secret references excluded."
+  },
+  "projection_source_sha256": {
+    "scripts/disk_fixture.py": "fbea004d1f92214b3844792f92f9b27b09a6417a7b6eb2d5887e36c5afc5c13b",
+    "scripts/service_disk_inventory.py": "49e4f8d68be7f2560ab21467579c9076f1f2d7dda6b01d7e8c03971971f640a1"
+  }
+}
