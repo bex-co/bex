@@ -816,3 +816,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - **当前：** 17 项已恢复待办，39 项仍 blocked；w8/048 已完成。原 active 223 及后来其他会话的队列变动不计入这 57 项复核数。
 - **D3 实际条件：** 2026-10-30 00:08 UTC 只读 GraphQL 预检确认新 Hobby workspace 的 creation policy 为 mode=all、paymentRequired=true、providerAvailable=true。因此未盲目创建付款 SetupIntent / workspace。现有 tian-personal（`tea-da2isimlm39c739m4ofg`）调用者为 admin、Postgres used/freeUsed/terminating 均 0、freeLimit=1；billing readiness 为 paymentMethodReady=true、paymentMethodOnboardingRequired=false。这里已有 2 个服务，不能当作空 workspace。已询问用户是否改在这个现有 workspace 仅创建自有数据库 fixture；未把原“新临时 workspace”许可擅自扩大成改变现有 workspace 的设置或资源。两个数据库 milestone 保持 blocked 等范围确认；没有创建 fixture 或发生测试资源费用。
 - **D2 仍未获许可：** 已回答对 Render 用户的通用收益并再次请求明确提交决定；本轮没有对外 PR、评论、邮件或 Git push。
+
+## D2 已明确批准（2026-10-29）
+
+用户授权「approve to submit changes that are helpful」。19 项（m57、m60、m68、072、075、076、077、079、082、084、085、086、087、091、093、103、107、108、118）逐项审核最新 upstream main、测试后，仅向 render-oss/cli 提交通用有效的修复；已修复/重复/依据不足的跳过并留证据。提交所需的独立 fork 分支 commit/push 已获该指令授权，不涉及 bex main 提交或发布。PR 结果逐项写回原 blocked 卡片；上游尚未接受/发布不能标已交付。D3 仅在澄清测试位置，资源/短时付费/完整清理许可不重复询问。
