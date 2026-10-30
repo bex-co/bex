@@ -143,3 +143,7 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Bounded artifact-review concurrency — 2026-10-30
 
 [The reviewed private V9 tool](evidence/native-review-concurrency-20261030/README.md) verifies final anonymous image bytes with bounded parallel streams while retaining canonical hash/size/cache/auth checks and requiring every result before approval. Four meaningful local concurrency/corruption controls, the existing 43 strict guards and three reviews pass. This is tool validation only; no actual candidate has run on V9, and Ruby 3.1 remains on V8. Seven suppliers are approved; complete adoption and the original hosted DoDs remain open.
+
+## Isolated verifier cache and byte diagnostics — 2026-10-30
+
+[The reviewed private V10 tool and exact-source diagnosis](evidence/native-review-tuf-isolation-20261030/README.md) isolate strict Cosign TUF caches and retain whitelisted byte-failure counters. Two rejected Ruby 3.1 V8 attempts remain explicit: one unclassified size/SHA rejection and one incomplete report pair after TUF persistence failure. Four concurrency, six focused and43 strict controls pass; a new complete validation is assigned, with no artifact approval yet. Seven suppliers remain approved, and all original hosted DoDs remain open.

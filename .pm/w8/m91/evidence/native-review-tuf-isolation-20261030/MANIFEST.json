@@ -1,0 +1,145 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2011,
+      "sha256": "f6d86876ecf4de48840f6c1234474a90e8efe429e4e619bd75d7f0c609599882"
+    },
+    {
+      "path": "ROOT-REVIEW.json",
+      "bytes": 954,
+      "sha256": "e6a8d79646698e73cbdc2782f8f1257c8abf3d15be30b1bd26761e08bec4aeb6"
+    },
+    {
+      "path": "diagnosis/cache-path-permissions.json.gz",
+      "bytes": 550,
+      "sha256": "cb3dc9856a3b3ad35f0e2d66f20ade279c4ba37a6bfed7a5d7a2f07ae7ec968b"
+    },
+    {
+      "path": "diagnosis/diagnosis.json.gz",
+      "bytes": 1030,
+      "sha256": "e0194fdd752752c892fc3239ccc00685cd98875e9173d970c39e3ea460f559c7"
+    },
+    {
+      "path": "diagnosis/own-probe-go-cache-cleanup.json.gz",
+      "bytes": 381,
+      "sha256": "309b39ae8f6747b9a9f5f3b1bb238ec13e69fa4bef4f5bf0942144acde3c18aa"
+    },
+    {
+      "path": "diagnosis/persist-probe-result.json.gz",
+      "bytes": 564,
+      "sha256": "3f0fa2e278405f50da7ecf893ffc06178ca0f5e4f1e8bfc655f1254abcaa1e45"
+    },
+    {
+      "path": "diagnosis/persist-probe.go.gz",
+      "bytes": 1794,
+      "sha256": "adb9798534de356134f548953130c908fe91fd5cf1d39772f3a70b7e50b1c680"
+    },
+    {
+      "path": "diagnosis/primary-source-manifest.json.gz",
+      "bytes": 734,
+      "sha256": "a00f23124a561607515d7f5b50f0332a79241baec9c52547851777b303f7f9a2"
+    },
+    {
+      "path": "native-review-v10.py.gz",
+      "bytes": 12060,
+      "sha256": "f56a4b0a0a388cd3778c3ddc510c21e972767e261a2aa54ebb173b638894fce6"
+    },
+    {
+      "path": "primary-source/cosign-env.go.gz",
+      "bytes": 2975,
+      "sha256": "ba700826c18e22bdc765a31b7448e52db3db6d271d89d09e63203e8f7616d6be"
+    },
+    {
+      "path": "primary-source/cosign-go.mod.gz",
+      "bytes": 4273,
+      "sha256": "a7ea6f3360d95c8efe48c3367bb78f5b69cbcd89f05b224cc9c96d9caf67686d"
+    },
+    {
+      "path": "primary-source/cosign-tuf.go.gz",
+      "bytes": 1679,
+      "sha256": "37bea7b75ee93e6aac4f55f5b64cdc4f25801f160f49526e5310711f40251cc7"
+    },
+    {
+      "path": "primary-source/cosign-verify-blob-attestation.go.gz",
+      "bytes": 4370,
+      "sha256": "d81e211f6e128ff7d9fd720b339be8420b739bd393a98eaa7032d7edcdcedbc2"
+    },
+    {
+      "path": "primary-source/cosign-verify-common.go.gz",
+      "bytes": 4502,
+      "sha256": "3357de1eccb79293c0ea1837b8ce0ceb15270ae454f94a690c72608a26cec4a1"
+    },
+    {
+      "path": "primary-source/go-tuf-updater.go.gz",
+      "bytes": 6904,
+      "sha256": "2d5bc8890a50dd0ae1141b99d44b0675902fce799974f420fab6a5ae47517d11"
+    },
+    {
+      "path": "primary-source/sigstore-go-client.go.gz",
+      "bytes": 2416,
+      "sha256": "c006ce85e145fb636ac53bdd9ddfeb56ffbee8498de909e225df511f5759cac9"
+    },
+    {
+      "path": "primary-source/sigstore-go-options.go.gz",
+      "bytes": 1997,
+      "sha256": "4d3131673463eec275a9c5e57fbcc2d795a0a9f36b48c7e3eea4fee7c7895b9c"
+    },
+    {
+      "path": "validation/MANIFEST.json.gz",
+      "bytes": 949,
+      "sha256": "64e97efec997d6944d2166650b25e348b0140fcb5bb8bef7c6c453a2de607097"
+    },
+    {
+      "path": "validation/actual-test-process-results.json.gz",
+      "bytes": 442,
+      "sha256": "f3dbe11bc9caa97ff8e9fe593c298374ed57241455664d26489d0880796260c8"
+    },
+    {
+      "path": "validation/concurrency-tests.log.gz",
+      "bytes": 257,
+      "sha256": "7385ec20484a46d741af407c4143986c2b9617b20230e55de77a1ebd86c8b618"
+    },
+    {
+      "path": "validation/concurrency-tests.py.gz",
+      "bytes": 3196,
+      "sha256": "bfe4ced10f45a92756e70820288a2682c12b5c764648487a4b282025b9d26a77"
+    },
+    {
+      "path": "validation/isolation-diagnostic-tests.log.gz",
+      "bytes": 522,
+      "sha256": "f2e5ad36660c3a2f6d2aee9ce9add94e02adb57793a720eeb5341241acd430db"
+    },
+    {
+      "path": "validation/isolation-diagnostic-tests.py.gz",
+      "bytes": 3123,
+      "sha256": "932f14ca24839a140e63b2bf6bcc3ba40752378a5143e8075483664a2b5b4e4c"
+    },
+    {
+      "path": "validation/receipt.json.gz",
+      "bytes": 1998,
+      "sha256": "2ed013044dca143541fba197b83d1a427d256dc1e61f6a2121c21180582032e4"
+    },
+    {
+      "path": "validation/strict-guards-result.json.gz",
+      "bytes": 867,
+      "sha256": "da527ef7789e5d3f9e00a60ab3a831736ac8a52ef548dd01c4c624b90b96136f"
+    },
+    {
+      "path": "validation/strict-guards.log.gz",
+      "bytes": 847,
+      "sha256": "ce550627be33bfcb95349fb697210ebd3ff7e86808e2586005f955475ca325fc"
+    },
+    {
+      "path": "validation/strict-guards.py.gz",
+      "bytes": 5350,
+      "sha256": "038ddc61f9e626ea3ea0b19b290147f971960f111ed95eee99102624ea576a33"
+    },
+    {
+      "path": "validation/v9-to-v10.diff.gz",
+      "bytes": 4286,
+      "sha256": "df9ad3238c464308325a0960b0596cda4b184cb92853ae177b00eef422f456b9"
+    }
+  ]
+}
