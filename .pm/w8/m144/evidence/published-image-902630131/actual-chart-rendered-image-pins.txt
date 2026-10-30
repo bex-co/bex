@@ -1,0 +1,2 @@
+{"kind":"DaemonSet","name":"hcloud-csi-node","image":"ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7"}
+{"kind":"Deployment","name":"hcloud-csi-controller","image":"ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7"}

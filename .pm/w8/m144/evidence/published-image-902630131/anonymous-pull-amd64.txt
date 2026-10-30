@@ -1,0 +1,4 @@
+ghcr.io/bex-co/bex-operator@sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693: Pulling from bex-co/bex-operator
+Digest: sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693
+Status: Downloaded newer image for ghcr.io/bex-co/bex-operator@sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693
+ghcr.io/bex-co/bex-operator@sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693
