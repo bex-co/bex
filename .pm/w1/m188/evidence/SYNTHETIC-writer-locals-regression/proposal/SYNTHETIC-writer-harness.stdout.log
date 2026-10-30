@@ -1,0 +1,1 @@
+{"report": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-writer-regression.json", "report_sha256": "0681eb365b04b1c9e3e571a7f74b0ba7486dd47652c984ccb31257c2dae7db44", "harness_sha256": "448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4", "old_actual_main": "NameError digest", "new_actual_main": "11/55 PASS", "real8_refusal": "PASS", "protected": 61}
