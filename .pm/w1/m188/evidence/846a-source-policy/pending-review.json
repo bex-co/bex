@@ -1,0 +1,50 @@
+{
+  "schema": "bex.m188.exact-staged-scan-source-review/v1",
+  "at": "2026-10-30T20:21:12.779724+00:00",
+  "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "baseline": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "admitted": false,
+  "review_status": "Root read full nonPM diff and all113 peerarchive compressed/original hashes; independent source/guard and scanner semantics reviews pending.",
+  "non_pm_changed_paths": [
+    ".github/native-base-recovery.json",
+    ".github/workflows/native-base-image.yml",
+    "deploy/gitops/base/bex.yaml",
+    "deploy/gitops/base/dashboard.yaml",
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml",
+    "deploy/opensandbox/kustomization.yaml",
+    "lego/operator/config/api/deployment.yaml"
+  ],
+  "generated_deployment_changes_digest_only": true,
+  "recipe_runtime_matrix_versions_sharedactions_other_nonPM_bytes_unchanged": true,
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "recovery_catalog": {
+    "prior_entries_unchanged": [
+      "node-18-bookworm",
+      "node-20-bookworm",
+      "ruby-3.2-bookworm"
+    ],
+    "new_foreign_w8_entries": [
+      "elixir-1.18",
+      "elixir-1.19"
+    ],
+    "m188_retirement_scope": "11 legacy tags only; preserve unrelated open foreign authorizations; whole-catalog emptiness is not required."
+  },
+  "peer_archive": {
+    "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+    "directory": ".pm/w8/m91/evidence/publication-trivy-staging-20261030",
+    "manifest_sha256": "51101ed6c06801d51f134a2594ab005c8c2fbb3475efd1687366c4b2d4ad4767",
+    "all113_stored_and_original_hashes_verified": true,
+    "actual_workflow_equals_exact_local_controlled_proposal": true,
+    "nine_stub_behavioral_controls_read_PASS": true,
+    "root_did_not_rerun_controls": true
+  },
+  "scan_profile": "Same exactroot REF/platform/full vuln+secret+Java coverage/cosign-vuln JSON and 20m scans; two bounded DBprefetch calls and complete remote-layer staging; three attempts, parallel1,8GiBimage/filelimit,no core,min28GiB temp+cache,ownedtmpcleanup. Runtime/signature/Syft stages unchanged.",
+  "limits": [
+    "Historical EOF cause remains unknown.",
+    "Actual producer capacity/peak staging and successful replay are not proved by local controls.",
+    "Source review is not candidate approval or source adoption."
+  ],
+  "prior_aggregate_sha256": "21bf2809cde9587b720b850f16592285cc41eceef26ca91ab183cf8273a4eb6f",
+  "prior_verified_count": 8,
+  "source_adoption_performed": false
+}

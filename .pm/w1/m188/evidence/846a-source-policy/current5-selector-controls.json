@@ -1,0 +1,139 @@
+{
+  "checked_at": "2026-10-30T20:34:35.446262+00:00",
+  "method": "Actual current workflow embedded selector against isolated temporary Git commits; producer rewritten only inside fixture copy. No Docker, signing, network, production or repository mutation",
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "selector_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+  "catalog": "/Users/tianpan/projects/bex/.github/native-base-recovery.json",
+  "catalog_sha256": "713fbdec11643cf87f511cde57e68add1b44450b6da774ef686ec14f59ceeecf",
+  "actual_repository_catalog_read": true,
+  "input_authorization_count": 5,
+  "retired_tags_checked": [
+    "node-14-bullseye",
+    "node-16-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm",
+    "python-3.10-bookworm",
+    "ruby-3.0-bullseye",
+    "ruby-3.1-bookworm"
+  ],
+  "all_11_retired_in_input": false,
+  "actual_empty_catalog_all_authorizations_retired": false,
+  "active_recovery_cases_applicable": true,
+  "results": [
+    {
+      "case": "verified node-14-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-16-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.7-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.8-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.9-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.10-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.0-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.1-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "authorized node-20-bookworm same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized node-18-bookworm same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized ruby-3.2-bookworm same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized elixir-1.18 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized elixir-1.19 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "unlisted runtime",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "changed upstream base",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "different package rejected",
+      "expected": "reject",
+      "observed": "reject",
+      "exit": 1
+    },
+    {
+      "case": "documentation-only delta remains eligible",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "nonMD to MD rename invalidates recovery",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "removed authorization rebuilds",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    }
+  ]
+}

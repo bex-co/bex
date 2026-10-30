@@ -1,0 +1,142 @@
+{
+  "schema": "bex.m188.846-source-semantic-review-and-inactive-guard/v1",
+  "at": "2026-10-30T20:28:54.962748+00:00",
+  "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "publisher_closure_result": "PASS; no source-trust or scan-coverage bypass found",
+  "root_pending_review_preserved": {
+    "file": "/tmp/bex-m188-846a-source-review.json",
+    "sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5",
+    "admitted": false
+  },
+  "root_source_role_admission": {
+    "file": "/tmp/bex-m188-846a-root-source-admission.json",
+    "sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1",
+    "admitted": true,
+    "roles": [
+      "producer:all11",
+      "verification:all11"
+    ]
+  },
+  "live_guard_activation_performed": false,
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "whole_other_workflow_bytes_equal_3990_after_replacing_only_wrapper": true,
+  "recipe_shared_actions_runtime_tables_resolvers_inventory_matrix_unchanged": true,
+  "exact7_non_pm_paths": [
+    [
+      "M",
+      ".github/native-base-recovery.json"
+    ],
+    [
+      "M",
+      ".github/workflows/native-base-image.yml"
+    ],
+    [
+      "M",
+      "deploy/gitops/base/bex.yaml"
+    ],
+    [
+      "M",
+      "deploy/gitops/base/dashboard.yaml"
+    ],
+    [
+      "M",
+      "deploy/gitops/base/values/opensandbox-controller.values.yaml"
+    ],
+    [
+      "M",
+      "deploy/opensandbox/kustomization.yaml"
+    ],
+    [
+      "M",
+      "lego/operator/config/api/deployment.yaml"
+    ]
+  ],
+  "five_generated_files_digest_only": true,
+  "peer_custody": {
+    "files_verified": 113,
+    "stored_bytes": 663105,
+    "decompressed_bytes": 4134899,
+    "manifest_sha256": "51101ed6c06801d51f134a2594ab005c8c2fbb3475efd1687366c4b2d4ad4767",
+    "controls_report_sha256": "04a7832dcb3ada85ea2a146ac4b85ccfcfb15a78a7cda1b67b37ba12d6cfef0d",
+    "three_reviews_sha256": "9723aa9525dcbedc3a8755fac2ff2f3f284decd52a1f326c767a2f41de01f62c",
+    "repo_gates_sha256": "d91c2171f2a9f5c1115f137c847b5f4aa8220e03c7f1e35a6e0d32ad17004f7b"
+  },
+  "independent_primary_source_trace": [
+    {
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/8a3177aedf7ee0864920eb1852eef031cd3742b8/pkg/fanal/artifact/image/image.go",
+      "finding": "checkImageSize nonzero calls compressed size and complete uncompressed saveLayer io.Copy before analysis; aggregateoversize is UserError, not successfulskip. Later uncompressedLayer opens completed local tempfiles."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/google/go-containerregistry/9e0ccb0a7240fe7cc820f0fc78e2e2b1ef8b7e71/pkg/v1/remote/fetcher.go",
+      "finding": "Remote layer reader fetchBlob wraps response in stock verify.ReadCloser; compressed digest/available size verified atEOF; no private transfer/body-resume implementation replaces it."
+    }
+  ],
+  "scan_contract_preserved": {
+    "same_subject_and_explicit_platform": true,
+    "full_default_vulnerability_secret_Java_coverage": true,
+    "no_ignore_or_skip_added": true,
+    "three_complete_scan_attempts_20m_plus21m_outer": true,
+    "separate_vuln_and_Java_DB_21m_preparations": true,
+    "fullremote_staging_size_guard": 8589934592,
+    "per_file_kernel_limit": 8589934592,
+    "core_dump_limit": 0,
+    "minimum_free_each_temp_and_cache": 30064771072,
+    "cleanup": "Only unique mktemp workdir/attemptdirs and owned report; shared cache retained. DB/capacity/timeout/IO/failure prevents scan success and later signatures/stable publication.",
+    "Syft_Cosign_trust_5fullpredicates_and_runtime_gates_unchanged": true
+  },
+  "operational_limits_not_source_acceptance_failures": [
+    "No actualTrivy layer scan/newartifact passed by these nine localcontrols; historicEOFcause remainsUNKNOWN.",
+    "Actual28GiB runnerfit and physicalpeak remainunproved; df/kernel gates failclosed. Nohost/capacity/prune change authorized.",
+    "Cold JavaDB download can add~945MiB/~13min even for nonJavaimages; secondarchitecture may reuse samejobcache but cross-job reuse is not assumed.",
+    "8GiB compressed/uncompressed cap is publisherresource bound that errors onoversize; not permission to omit packages or findings.",
+    "Stock registry verification/staging is not a new independent signedDiffID-witness receipt; original artifact acceptance still verifies actual5 bundles, image/config/arch/source/runtime/packages/scans and behavioral gates."
+  ],
+  "foreign_recovery_entries": [
+    {
+      "tag": "elixir-1.18",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:1678ee9a3d9e61ab5598dc643d7e0cd8a6191bc90889bf41684526073e38fdd8",
+      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "run": 41067560420,
+      "job": 124104056666,
+      "original_build_and_runtime_success": true,
+      "original_scans_signatures_incomplete": true,
+      "future_all_gates_required": true,
+      "not_in_w1_targets": true
+    },
+    {
+      "tag": "elixir-1.19",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:30750c906589468572ce40aad749c065d8ca3d6d69c0740e8c2cb99886d36fa0",
+      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "run": 41067564282,
+      "job": 124104134360,
+      "original_build_and_runtime_success": true,
+      "original_scans_signatures_incomplete": true,
+      "future_all_gates_required": true,
+      "not_in_w1_targets": true
+    }
+  ],
+  "w1_retirement_scope": "ExistingownNode18/Node20/Ruby32 entries remain byte-equivalent. W1retirement is only own3 after full11acceptance; foreignElixir2 must remain underpeerownership and MUST NOT require globalcatalogempty forw1close. TARGETS11 unchanged.",
+  "inactive_future_guard": {
+    "file": "/tmp/bex-m188-guard-proposals/846a56038319f1b5c212d1fcda8291d20e49c2b0/7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa.py",
+    "sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+    "canonical_source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+    "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+    "old3990_explicit_literal_retained": true,
+    "all_old_roles_plus_only846": true,
+    "oldFD_6fd4_4462_and49eeonly18_preserved": true,
+    "diff": "--- current-fd579\n+++ INACTIVE-future-7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa\n@@ -12,9 +12,9 @@\n IDENTITY = 'https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main'\n ANCESTOR = 'a1f63153a9a5f84fbde0b9ecc29319a9f0da09d0'\n FIXED_RECIPE = 'bfdeb62211ae5c4a875f5474a51c63c036e1d4dd'\n-RECOVERY_WORKFLOW = '3990b9acf35f62ba1d702387bc2061a83342b2b3'\n-REVIEWED_WORKFLOW_SHA256 = 'a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659'\n-APPROVED_PRODUCER_SOURCES = {FIXED_RECIPE, RECOVERY_WORKFLOW, 'fd358d2010f8b5e2715250d7148a505ba12c1cb6', '5e89a6076905a91b4496fe36a476774c3f50585c', 'd95645e9f054238ec53a4932fac51560ffedd1f8', '49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11', '4330878c280bc9748444c8e1e50ff7388df1228a', '21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314', 'c8b90f83c289d5d11502c2f0c26a183630dcdec6', 'c8ca76473129d092a8d74ada5e09c5c4705987cd', 'd94787bb4fb93751e485fe6d47946d82cc6da052', 'e47a2c6157339a3a786118866f28b4ee8b619774', 'd52ebeac794ad48b38e5a42b3564943aaf50ad41', '5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e', '99f95c17afd5709365869dfff1408265e5d514ec', '4462ee030984637bb765ae560b6ffe38c71f3af4', '6fd4f45536a2574c404b05539dacb6aaafb781f8'}\n+RECOVERY_WORKFLOW = '846a56038319f1b5c212d1fcda8291d20e49c2b0'\n+REVIEWED_WORKFLOW_SHA256 = '39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f'\n+APPROVED_PRODUCER_SOURCES = {FIXED_RECIPE, RECOVERY_WORKFLOW, '3990b9acf35f62ba1d702387bc2061a83342b2b3', 'fd358d2010f8b5e2715250d7148a505ba12c1cb6', '5e89a6076905a91b4496fe36a476774c3f50585c', 'd95645e9f054238ec53a4932fac51560ffedd1f8', '49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11', '4330878c280bc9748444c8e1e50ff7388df1228a', '21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314', 'c8b90f83c289d5d11502c2f0c26a183630dcdec6', 'c8ca76473129d092a8d74ada5e09c5c4705987cd', 'd94787bb4fb93751e485fe6d47946d82cc6da052', 'e47a2c6157339a3a786118866f28b4ee8b619774', 'd52ebeac794ad48b38e5a42b3564943aaf50ad41', '5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e', '99f95c17afd5709365869dfff1408265e5d514ec', '4462ee030984637bb765ae560b6ffe38c71f3af4', '6fd4f45536a2574c404b05539dacb6aaafb781f8'}\n APPROVED_VERIFICATION_SOURCES = set(APPROVED_PRODUCER_SOURCES)\n APPROVED_SOURCES = APPROVED_PRODUCER_SOURCES | APPROVED_VERIFICATION_SOURCES\n PRODUCER_RUNTIME_RESTRICTIONS = {'49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11': {'node-18-bookworm'}}\n"
+  },
+  "current_preserved_state": {
+    "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+    "guard_sha256": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76",
+    "aggregate_file": "/tmp/bex-m188-published-acceptance.json",
+    "aggregate_sha256": "21bf2809cde9587b720b850f16592285cc41eceef26ca91ab183cf8273a4eb6f",
+    "accepted_count": 8
+  },
+  "required_before_activation": [
+    "Root reads exactinactiveguarddiff/hash and explicitly authorizesactivation; rootpull/actualworkflow39b2 bytecheck required (reportedpulled but not substituted by thisagent).",
+    "Onlyroot-authorizedsourcepolicyappend846 maychangeaccepted_sources, retainbefore/after andall8rows.",
+    "Freeze exactnewguard, runold8 source/crypto/semanticreplay once plusall11copyrefusal, then exactFINALcandidatehandoffs preservingactualverifierSHA6fd4/4462 for remaining3."
+  ],
+  "scope": "Read-only gitobject/retainedprimarysource/custody review plus inactive /tmp guardproposal and report only. No liveguard/context/aggregate/repo/API mutation, no source-role inference for a810 or otheraliases, no cancellation/dispatch/scan/candidatepromotion/adoption."
+}

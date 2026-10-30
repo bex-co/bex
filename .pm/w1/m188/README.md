@@ -249,3 +249,11 @@ Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步�
 原临时选择器检查脚本在最终空授权目录上会因取首项而退出；新 [v2检查器](evidence/recovery-selector-empty-support/check-v2.py) 支持真实空目录，覆盖全部11项退休授权，包括Ruby3.0/3.1/3.2，且所有不复用路径必须产生零输出字节。旧脚本与历史记录保持原字节，新检查器仍提取实际workflow内的选择逻辑，在隔离Git fixture中执行，不修改真实目录。
 
 当前真实三项授权的17项检查通过，明确报告尚未全部清理；显式临时空目录的13项对照通过，明确报告不是实际仓库清理。见 [启用与结果说明](evidence/recovery-selector-empty-support/root-activation.json)。每项正式验收通过后才删除对应授权；最终t008仍需用实际仓库目录重跑，确认真实输入为空、11项均不复用。本次没有删除授权、接入pin或运行应用验收，正式计数仍为8/11。
+
+### 同步完整镜像层扫描流程 — 2026-10-30（UTC 20:32Z）
+
+并行w8/m91发布的846a修复在扫描前用固定Trivy远程路径完整下载、校验镜像层，先完成两类数据库准备，再执行原有每架构20分钟、最多三次全扫描；保留Java、漏洞和secret覆盖、原始REF/platform、完整报告与签名门槛。新增并行度1、8GiB镜像/单文件限制、28GiB可用空间检查和仅清理自身临时目录。实际runner容量、完整报告与扫描成功仍需生产者重放，空间检查不是预留，也不据此宣称已修复历史EOF原因。
+
+根复核与独立复核确认配方、运行时、版本matrix和其他门槛未变；113项同伴归档的存储及原文哈希均核对通过。先前 [待准入审核](evidence/846a-source-policy/pending-review.json) 保留false，随后 [明确来源准入](evidence/846a-source-policy/root-admission.json) 与 [独立语义复核](evidence/846a-source-policy/semantic-review.json) 分开记录。守卫只改三个常量行，明确保留旧3990、FD、4462、6fd4等来源及49ee仅Node18限制；[策略切换](evidence/846a-source-policy/policy-activation.json) 只向来源集合加入实际846a SHA，八项验收原文与59项受保护哈希保持不变。[八项完整重放](evidence/846a-source-policy/eight-candidate-regressions.json) 通过，未满11项时仍实际拒绝采用；正式进度仍为8/11。
+
+共享恢复目录新增的Elixir1.18/1.19属于w8/m91，本次 [真实目录19项选择检查](evidence/846a-source-policy/current5-selector-controls.json) 保留全部五项授权。上节空目录对照是当时的收尾准备；现在关闭w1的条件明确为其11个旧版本授权均已移除，其他工作流未完成的授权继续保留，不要求整个共享目录为空。既有Node18/20、Ruby3.2定向请求继续，镜像接入、真实应用及线上验收保持开放。
