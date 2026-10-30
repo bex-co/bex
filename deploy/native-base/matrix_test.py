@@ -20,6 +20,13 @@ class PublishingInputs(unittest.TestCase):
         self.assertEqual(native_matrix.matrix(source), {
             "include": [{"name": "node-14-bullseye", "base": original}],
         })
+        before_adoption = self.source('{line: "14", image: "' + original + '"},')
+        self.assertEqual(native_matrix.matrix(source), native_matrix.matrix(before_adoption))
+
+    def test_new_upstream_digest_requires_publication(self):
+        before = self.source('{line: "14", image: "node:14-bullseye@sha256:' + 'a' * 64 + '"},')
+        after = before.replace('a' * 64, 'b' * 64)
+        self.assertNotEqual(native_matrix.matrix(before), native_matrix.matrix(after))
 
     def test_refuses_unreviewed_or_recursive_inputs(self):
         for image in ('node:14-bullseye', 'ghcr.io/bex-co/bex-native:node-14@sha256:' + 'a' * 64):

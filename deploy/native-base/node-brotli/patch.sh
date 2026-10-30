@@ -64,7 +64,10 @@ PY
 ./configure
 # Node/V8 compilation is memory hungry. Bound parallelism independently of
 # the host's (potentially large) CPU count; tenant builds never run this.
-make -s -j2 node
+if ! make -s -j2 node > "$work_dir/build.log" 2>&1; then
+  tail -n 100 "$work_dir/build.log" >&2
+  exit 1
+fi
 
 ./out/Release/node - "$work_dir/original-versions.json" "$brotli_version" <<'JS'
 const assert = require('assert');
