@@ -365,6 +365,29 @@ describe("EnvGroupEditors draft base revision (w4/m161)", () => {
     });
   });
 
+  it("shows an error when the rollout retry is lost on the network, and keeps the retry", async () => {
+    mutate
+      .mockResolvedValueOnce(accepted("egr1_saved", ["web"]))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    renderEditors({ ...GROUP, revision: "egr1_A" });
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for FOO" }),
+      "rolled",
+    );
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    const retry = await screen.findByRole("button", { name: "Retry rollout" });
+    toastError.mockClear();
+
+    await user.click(retry);
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByRole("button", { name: "Retry rollout" }),
+    ).toBeInTheDocument();
+  });
+
   it("closes an accepted draft even when the follow-up refresh fails", async () => {
     mutate.mockResolvedValueOnce(accepted("egr1_C"));
     refetch.mockRejectedValueOnce(new Error("network"));

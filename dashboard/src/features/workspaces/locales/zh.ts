@@ -228,6 +228,11 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "取消",
     description: "/new/workspace cancel button",
   },
+  "workspaces.createCancelError": {
+    message: "取消创建工作区失败，请重试。",
+    description:
+      "/new/workspace toast when cancelling the pending creation fails",
+  },
   "workspaces.createSubmit": {
     message: "创建工作区",
     description: "/new/workspace submit button",
