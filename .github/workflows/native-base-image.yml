@@ -14,28 +14,39 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: native-base-image
-  # Candidates are never adopted automatically. A newer recipe supersedes
-  # unfinished candidates instead of multiplying 27-image refreshes.
-  cancel-in-progress: true
-
 jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
     outputs:
       images: ${{ steps.matrix.outputs.images }}
+      publish: ${{ steps.matrix.outputs.publish }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
       - id: matrix
-        run: echo "images=$(python3 deploy/native-base/matrix.py)" >> "$GITHUB_OUTPUT"
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "images=$(python3 deploy/native-base/matrix.py)" >> "$GITHUB_OUTPUT"
+          publish=true
+          if [ "$EVENT_NAME" = push ] && [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then
+            if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE"
+            fi
+            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml; then
+              git show "$BEFORE:lego/operator/internal/build/native.go" > "$RUNNER_TEMP/previous-native.go"
+              publish=$(python3 deploy/native-base/matrix.py --changed-from "$RUNNER_TEMP/previous-native.go")
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
 
   build:
     needs: matrix
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.matrix.outputs.publish == 'true'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     permissions:
       contents: read
@@ -45,6 +56,11 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix: ${{ fromJSON(needs.matrix.outputs.images) }}
+    # An adoption-only commit must not cancel other candidates still building.
+    # Supersede only the same runtime when its publishing inputs really change.
+    concurrency:
+      group: native-base-${{ matrix.name }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
