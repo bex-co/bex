@@ -1,0 +1,760 @@
+[
+  {
+    "mid": 94,
+    "sweep": 409,
+    "name": "qa-20261029-02c143-m94b",
+    "nonce": "02c143",
+    "marker": "QA409_02c143_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "sql": {
+        "text": "BEGIN;\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);\nCOMMIT;\n",
+        "bytes": 185,
+        "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+      },
+      "rows": [
+        {
+          "id": 1,
+          "label": "alpha",
+          "n": 7
+        },
+        {
+          "id": 2,
+          "label": "café 雪",
+          "n": 42
+        },
+        {
+          "id": 3,
+          "label": "quote ' and comma,",
+          "n": -9
+        }
+      ]
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "sql": {
+        "text": "BEGIN;\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);\nCOMMIT;\n",
+        "bytes": 185,
+        "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+      },
+      "rows": [
+        {
+          "id": 1,
+          "label": "alpha",
+          "n": 7
+        },
+        {
+          "id": 2,
+          "label": "café 雪",
+          "n": 42
+        },
+        {
+          "id": 3,
+          "label": "quote ' and comma,",
+          "n": -9
+        }
+      ]
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa409-probe.py": {
+        "bytes": 2815,
+        "sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+      },
+      "qa409-reference.json": {
+        "bytes": 747,
+        "sha256": "e35f7adb6a4aafc6970325d461e0985a51e6814e6c2c49310bab07f8ab0fd026"
+      },
+      "qa409-marker.json": {
+        "bytes": 19,
+        "sha256": "d98cd3c3d54dd58ff58c6858e1065721f6ee5517e60e1cdfc14945a1c33d67a8"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa409-probe.py <<'QA409_QA409_PROBE_PY'\nimport json,hashlib,sqlite3,subprocess,sys,os\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\nref=json.loads(Path('qa409-reference.json').read_text());marker=json.loads(Path('qa409-marker.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest();query='SELECT id,label,n FROM qa409 ORDER BY id'\nfiles={p:{'bytes':len(Path(p).read_bytes()),'sha256':sha(Path(p).read_bytes())} for p in ref['files']}\nassert files==ref['files'];Path('qa409.sql').write_text(ref['sql']['text'],encoding='utf8');sql=Path('qa409.sql').read_bytes();assert sha(sql)==ref['sql']['sha256']\nbase={'marker':marker,'files':files,'sql':{'bytes':len(sql),'sha256':sha(sql)},'python':sys.version.split()[0],'program_sha256':sha(Path(__file__).read_bytes())}\ndef rows(c):return [dict(zip(['id','label','n'],r)) for r in c.execute(query)]\ndef tool():\n try:\n  r=subprocess.run(['sqlite3','-version'],capture_output=True,text=True,timeout=4);return {'status':r.returncode,'error':None,'stdout':r.stdout,'stderr':r.stderr}\n except FileNotFoundError:return {'status':None,'error':'ENOENT','stdout':'','stderr':''}\nif sys.argv[1]=='before':\n c=sqlite3.connect(':memory:');c.executescript(sql.decode());v={**base,'builtin_sqlite':sqlite3.sqlite_version,'builtin_rows':rows(c),'tools':{'sqlite3':tool()}};c.close();assert v['builtin_rows']==ref['rows'];Path('qa409-before.json').write_text(json.dumps(v));print('QA409_BEFORE '+json.dumps(v),flush=True);sys.exit(0)\ndef proof():\n r=subprocess.run(['sqlite3','-readonly','-json','qa409.db',query],capture_output=True,text=True,timeout=4);r.check_returncode();external=json.loads(r.stdout);c=sqlite3.connect('file:qa409.db?mode=ro',uri=True);internal=rows(c);c.close();assert external==internal==ref['rows'];b=Path('qa409.db').read_bytes();assert b[:16]==b'SQLite format 3\\x00';return {**base,'tools':{'sqlite3':tool()},'rows':external,'builtin_rows':internal,'builtin_sqlite':sqlite3.sqlite_version,'database':{'bytes':len(b),'sha256':sha(b),'SQLite3_header':True}}\nif sys.argv[1]=='build':\n v={**proof(),'before':json.loads(Path('qa409-before.json').read_text())};Path('qa409-build.json').write_text(json.dumps(v));print('QA409_AFTER '+json.dumps(v),flush=True);sys.exit(0)\nbuilt=json.loads(Path('qa409-build.json').read_text())\nclass Handler(BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  v={'build':built,'runtime':{**proof(),'request_url':self.path}};b=json.dumps(v,ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Length',str(len(b)));self.end_headers();self.wfile.write(b)\n  if 'qa409=' in self.path:print('QA409_REQUEST '+json.dumps(v),flush=True)\nHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA409_QA409_PROBE_PY\ncat > qa409-reference.json <<'QA409_QA409_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"sql\":{\"text\":\"BEGIN;\\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);\\nCOMMIT;\\n\",\"bytes\":185,\"sha256\":\"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"},\"rows\":[{\"id\":1,\"label\":\"alpha\",\"n\":7},{\"id\":2,\"label\":\"café 雪\",\"n\":42},{\"id\":3,\"label\":\"quote ' and comma,\",\"n\":-9}]}\nQA409_QA409_REFERENCE_JSON\ncat > qa409-marker.json <<'QA409_QA409_MARKER_JSON'\n\"QA409_02c143_bex\"\nQA409_QA409_MARKER_JSON\npython3 qa409-probe.py before\nsqlite3 -bail qa409.db < qa409.sql\npython3 qa409-probe.py build",
+        "start": "python3 -u qa409-probe.py serve",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+      }
+    }
+  },
+  {
+    "mid": 95,
+    "sweep": 414,
+    "name": "qa-20261029-7bce23-m95b",
+    "nonce": "7bce23",
+    "marker": "QA414_7bce23_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "base64": "UDYKOCA0CjI1NQr/AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP8=",
+        "bytes": 107,
+        "sha256": "f0c07ac4113c5586530c573852e3c51aad41d37e988eb7cad59d8282eced673e"
+      },
+      "expected_rgb_hex": "ff00000000ff"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "base64": "UDYKOCA0CjI1NQr/AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP8=",
+        "bytes": 107,
+        "sha256": "f0c07ac4113c5586530c573852e3c51aad41d37e988eb7cad59d8282eced673e"
+      },
+      "expected_rgb_hex": "ff00000000ff"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-vips-app.py": {
+        "bytes": 2787,
+        "sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"
+      },
+      "qa-vips-reference.json": {
+        "bytes": 619,
+        "sha256": "249846e6894fdcd97af0cf40c862ae8a6a4e5ea455734c0a917a6d9168d8d2d9"
+      },
+      "qa-vips-marker.json": {
+        "bytes": 19,
+        "sha256": "4aab25a70f8ab8983486bd4f824ae99be21de8982b47fb677efdede7d4e8f946"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa-vips-app.py <<'QA_VIPS_QA_VIPS_APP_PY'\nimport base64,ctypes.util,hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nreference=json.loads(Path('qa-vips-reference.json').read_text());marker=json.loads(Path('qa-vips-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()\ndef before():\n files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']};assert files==reference['files']\n return {'marker':marker,'python':platform.python_version(),'installed_pyvips':version('pyvips'),'shared_library':ctypes.util.find_library('vips'),'files':files,'program_sha256':program_sha}\nif sys.argv[1]=='build':print('QA_VIPS_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True)\nimport pyvips\n\ndef transform():\n raw=base64.b64decode(reference['input']['base64']);assert len(raw)==reference['input']['bytes'] and hashlib.sha256(raw).hexdigest()==reference['input']['sha256'];Path('qa-vips-input.ppm').write_bytes(raw)\n image=pyvips.Image.new_from_file('qa-vips-input.ppm',access='sequential').resize(0.25,kernel='nearest');pixels=bytes(image.write_to_memory());assert (image.width,image.height,image.bands,image.format)==(2,1,3,'uchar') and pixels.hex()==reference['expected_rgb_hex'];png=image.pngsave_buffer(strip=True,compression=0)\n info={**before(),'libvips':'.'.join(str(pyvips.version(i)) for i in range(3)),'input':{k:reference['input'][k] for k in ['bytes','sha256']},'image':{'width':image.width,'height':image.height,'bands':image.bands,'format':image.format,'pixels_hex':pixels.hex()},'png':{'bytes':len(png),'sha256':hashlib.sha256(png).hexdigest()}}\n return info,png\nif sys.argv[1]=='build':\n info,png=transform();Path('qa-vips-build.json').write_text(json.dumps(info));Path('qa-vips-build.png').write_bytes(png);print('QA_VIPS_AFTER '+json.dumps(info,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-vips-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   info,png=transform();info['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/render','/png']:self.send_error(404);return\n   data=png if path=='/png' else json.dumps({'build':build,'runtime':info}).encode();self.send_response(200);self.send_header('Content-Type','image/png' if path=='/png' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_VIPS_HTTP '+json.dumps({'marker':marker,'path':self.path,'png_sha256':info['png']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_VIPS_QA_VIPS_APP_PY\ncat > qa-vips-reference.json <<'QA_VIPS_QA_VIPS_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"input\":{\"base64\":\"UDYKOCA0CjI1NQr/AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP8=\",\"bytes\":107,\"sha256\":\"f0c07ac4113c5586530c573852e3c51aad41d37e988eb7cad59d8282eced673e\"},\"expected_rgb_hex\":\"ff00000000ff\"}\nQA_VIPS_QA_VIPS_REFERENCE_JSON\ncat > qa-vips-marker.json <<'QA_VIPS_QA_VIPS_MARKER_JSON'\n\"QA414_7bce23_bex\"\nQA_VIPS_QA_VIPS_MARKER_JSON\npip install --disable-pip-version-check pyvips==3.2.0\npython qa-vips-app.py build",
+        "start": "python -u qa-vips-app.py serve",
+        "program_sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"
+      }
+    }
+  },
+  {
+    "mid": 96,
+    "sweep": 416,
+    "name": "qa-20261029-b52a4f-m96b",
+    "nonce": "b52a4f",
+    "marker": "QA416_b52a4f_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "expected": {
+        "hello": "Bonjour, Zoë & 李 !",
+        "dessert": "Crème brûlée",
+        "plurals": {
+          "0": "Il y a 0 pomme.",
+          "1": "Il y a 1 pomme.",
+          "2": "Il y a 2 pommes.",
+          "5": "Il y a 5 pommes."
+        }
+      },
+      "django": "5.2.18"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "expected": {
+        "hello": "Bonjour, Zoë & 李 !",
+        "dessert": "Crème brûlée",
+        "plurals": {
+          "0": "Il y a 0 pomme.",
+          "1": "Il y a 1 pomme.",
+          "2": "Il y a 2 pommes.",
+          "5": "Il y a 5 pommes."
+        }
+      },
+      "django": "5.2.18"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-gettext-app.py": {
+        "bytes": 3478,
+        "sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+      },
+      "qa_gettext_settings.py": {
+        "bytes": 198,
+        "sha256": "0610134fb696f2716b3ffccdb6a3b557ba0e5237b3690ec9a0b8e48ad174ae5f"
+      },
+      "locale/fr/LC_MESSAGES/django.po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "qa-gettext-reference.json": {
+        "bytes": 618,
+        "sha256": "807e50740a2cf393a7ddd9656dec06f6a825ee599b8f6bcf72532a17fd7bcdf1"
+      },
+      "qa-gettext-marker.json": {
+        "bytes": 18,
+        "sha256": "f14e570090865ffff8dbc2ae96102b8a5c76e24cc3905576b353fd795209d419"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\nmkdir -p locale/fr/LC_MESSAGES\npython - <<'QA_GETTEXT_SOURCES'\nimport json,gzip,base64\nfrom pathlib import Path\nfiles=json.loads(gzip.decompress(base64.b64decode('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')))\nfor name,text in files.items(): Path(name).write_text(text)\nQA_GETTEXT_SOURCES\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+        "start": "python -u qa-gettext-app.py serve",
+        "program_sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+      }
+    }
+  },
+  {
+    "mid": 97,
+    "sweep": 418,
+    "name": "qa-20261029-2a75ec-m97b",
+    "nonce": "2a75ec",
+    "marker": "QA418_2a75ec_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "bytes": 471,
+        "sha256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+        "base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyIDFdIC9SZXNvdXJjZXMgPDwgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggNDQgPj4Kc3RyZWFtCjEgMCAwIHJnIDAgMCAxIDEgcmUgZgowIDAgMSByZyAxIDAgMSAxIHJlIGYKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyMTUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA1IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozMDgKJSVFT0YK",
+        "pages": 1,
+        "MediaBox": [
+          0,
+          0,
+          2,
+          1
+        ],
+        "authored_own_data": true,
+        "content": "two solid red/blue vector rectangles, no text or external resources",
+        "expected_PNG_dimensions": [
+          2,
+          1
+        ],
+        "expected_RGB_hex": "ff00000000ff"
+      }
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "bytes": 471,
+        "sha256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+        "base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyIDFdIC9SZXNvdXJjZXMgPDwgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggNDQgPj4Kc3RyZWFtCjEgMCAwIHJnIDAgMCAxIDEgcmUgZgowIDAgMSByZyAxIDAgMSAxIHJlIGYKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyMTUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA1IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozMDgKJSVFT0YK",
+        "pages": 1,
+        "MediaBox": [
+          0,
+          0,
+          2,
+          1
+        ],
+        "authored_own_data": true,
+        "content": "two solid red/blue vector rectangles, no text or external resources",
+        "expected_PNG_dimensions": [
+          2,
+          1
+        ],
+        "expected_RGB_hex": "ff00000000ff"
+      }
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-gs-app.py": {
+        "bytes": 2644,
+        "sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5"
+      },
+      "qa-gs-reference.json": {
+        "bytes": 1270,
+        "sha256": "683eae6448fb9b0c5763dd24a2994316162a0c5e75ab361cd5c9ba39eb6db256"
+      },
+      "qa-gs-marker.json": {
+        "bytes": 18,
+        "sha256": "43d39c079d4023cfe950677a3433cea43f72b0284f289e07106fecd2bc2e0a9e"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\npython - <<'QA_GS_SOURCE'\nimport json,gzip,base64\nfrom pathlib import Path\nfiles=json.loads(gzip.decompress(base64.b64decode('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')))\nfor name,text in files.items(): Path(name).write_text(text)\nQA_GS_SOURCE\npython qa-gs-app.py before\ngs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs-build.png qa-gs.pdf\npython qa-gs-app.py build",
+        "start": "python -u qa-gs-app.py serve",
+        "program_sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5"
+      }
+    }
+  },
+  {
+    "mid": 100,
+    "sweep": 421,
+    "name": "qa-20261029-3bec1c-m100b",
+    "nonce": "3bec1c",
+    "marker": "QA421_3bec1c_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+      "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+      "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-swig-app.py": {
+        "bytes": 2593,
+        "sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
+      },
+      "qa_swig.i": {
+        "bytes": 142,
+        "sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a"
+      },
+      "qa-swig-reference.json": {
+        "bytes": 651,
+        "sha256": "31295935f66f601b752762008037fc9a97f17d97045284e3e7cdabadfb10fa8a"
+      },
+      "qa-swig-marker.json": {
+        "bytes": 18,
+        "sha256": "a26c65d6d0c30ffb31ae496db395d6bf9e4c2c49e6a5214e5901d32ccab03a7f"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\npython - <<'QA_SWIG_SOURCES'\nimport base64,gzip,json,pathlib\nfor n,s in json.loads(gzip.decompress(base64.b64decode('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'))).items():pathlib.Path(n).write_text(s)\nQA_SWIG_SOURCES\npython qa-swig-app.py before\nswig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython qa-swig-app.py build",
+        "start": "python qa-swig-app.py serve",
+        "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
+      }
+    }
+  },
+  {
+    "mid": 102,
+    "sweep": 423,
+    "name": "qa-20261029-7a708d-m102b",
+    "nonce": "7a708d",
+    "marker": "QA423_7a708d_bex",
+    "runtime": "python",
+    "env": {
+      "PYTHON_VERSION": "3.13"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "unit": "own asset | Crème brûlée | 李 | spaced label\n",
+        "repetitions": 256,
+        "bytes": 12544,
+        "sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8"
+      },
+      "program_sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "unit": "own asset | Crème brûlée | 李 | spaced label\n",
+        "repetitions": 256,
+        "bytes": 12544,
+        "sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8"
+      },
+      "program_sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-pigz-app.py": {
+        "bytes": 2538,
+        "sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+      },
+      "qa-pigz-reference.json": {
+        "bytes": 592,
+        "sha256": "841734a6820198cb2f253be732993d7facac7d70ef83ddfaae34f80afcab8995"
+      },
+      "qa-pigz-marker.json": {
+        "bytes": 18,
+        "sha256": "5de1583eb8ed1b366aca1e7164414463a574f53e5c356fd72114617c9faff21c"
+      }
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\npython - <<'QA_PIGZ_SOURCES'\nimport base64,gzip,json,pathlib\nfor n,s in json.loads(gzip.decompress(base64.b64decode('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'))).items():pathlib.Path(n).write_text(s)\nQA_PIGZ_SOURCES\npython qa-pigz-app.py before\npigz -n -p 2 -c qa-pigz-input.txt > qa-pigz-output.gz\npython qa-pigz-app.py build",
+        "start": "python qa-pigz-app.py serve",
+        "program_sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+      }
+    }
+  },
+  {
+    "mid": 103,
+    "sweep": 424,
+    "name": "qa-20261029-dd7510-m103b",
+    "nonce": "dd7510",
+    "marker": "QA424_dd7510_bex",
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李",
+      "source_names": [
+        "setup.py",
+        "qa_native_ext.c",
+        "qapy.py",
+        "qsrv.cjs",
+        "qa_local_data-1.0-py3-none-any.whl"
+      ],
+      "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李",
+      "source_names": [
+        "setup.py",
+        "qa_native_ext.c",
+        "qapy.py",
+        "qsrv.cjs",
+        "qa_local_data-1.0-py3-none-any.whl"
+      ],
+      "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "setup.py": {
+        "bytes": 145,
+        "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496"
+      },
+      "qa_native_ext.c": {
+        "bytes": 656,
+        "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db"
+      },
+      "qapy.py": {
+        "bytes": 2420,
+        "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9"
+      },
+      "qsrv.cjs": {
+        "bytes": 673,
+        "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10"
+      },
+      "qa_local_data-1.0-py3-none-any.whl": {
+        "bytes": 1069,
+        "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc"
+      },
+      "qref.json": {
+        "bytes": 669,
+        "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a"
+      },
+      "qm.json": {
+        "bytes": 18,
+        "sha256": "4b87a06e6dbc63da7f035720e5f46889db9c578eba2a4b3b52099bd3c2fe9554"
+      }
+    },
+    "expected_module_sha": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5",
+    "commands": {
+      "initial": {
+        "build": "set -e\npython3 - <<'QPY'\nimport base64,lzma,json,pathlib,zipfile\nfor n,v in json.loads(lzma.decompress(base64.b64decode('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'))).items():\n if 'wheel' in v:\n  with zipfile.ZipFile(n,'w') as z:\n   for f,b in v['wheel'].items():\n    z.writestr(zipfile.ZipInfo(f,(2000,1,1,0,0,0)),b)\n else:pathlib.Path(n).write_text(v['text'])\nQPY\npython3 qapy.py before\npython3 setup.py egg_info\npython3 qapy.py metadata\npython3 -m pip install --no-index --no-deps --target qsite qa_local_data-1.0-py3-none-any.whl\npython3 qapy.py wheel\npython3 setup.py build_ext --inplace\npython3 qapy.py build",
+        "start": "node qsrv.cjs serve",
+        "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25",
+        "build_bytes": 3945,
+        "within_API_limit": true
+      }
+    }
+  }
+]

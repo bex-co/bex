@@ -1,0 +1,298 @@
+{
+  "at": "2026-10-30T05:13:38.562661+00:00",
+  "scope": "New maintained actual-generator test and genuine primaryPython3.13 local acceptance only. linux/arm64, generated build/runtime networknone. No production publication/adoption, amd64, hosted/nativeCLI, Kubernetes predeployJob, actual staticHTTP or native-init process claim.",
+  "supplier": {
+    "official_base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+    "unchanged_recipe_source_commit": "c60e3e95b22416bd01f5ebff5826e3e6634283b3",
+    "immutable_local_ref": "localhost:32828/native-python313-qa@sha256:333ddfd23f1aa11c20c83141432bdd93e709efcf9861e716e2d8db55cef517ef",
+    "image_config_id": "sha256:2b99c0f499d893e73d3ba624d86ab3227a2355491fe354bb5ceae87e121ae9f6",
+    "protection_container_id": "276a39ce3f06e089842cd648b0a9ee6259da8d7c9b0f912f74a73591eee34b6f",
+    "gate": "unchanged current check.Dockerfile real utility/Brotli/primaryPython3.13.18 checks pass"
+  },
+  "offline_dependency_cache": {
+    "derived_ref": "localhost:32828/native-python313-cached-qa@sha256:029990be6fd4f0d519557b6b4be5bea668a23a6dc2d89cc82ce09973a75f27d9",
+    "parent_supplier": "localhost:32828/native-python313-qa@sha256:333ddfd23f1aa11c20c83141432bdd93e709efcf9861e716e2d8db55cef517ef",
+    "wheel_count": 49,
+    "qualification": "QA-only child adds recorded public app/Poetry wheel bytes and pip no-index/find-links environment. Original pyvips3.2.0/Django5.2.18 requirements, actual3.13 validators/programs/data preserved. Existing generator Poetry2.1.3 also installs from this cache. Downloads/wheel builds happened explicitly before the offline generated builds.",
+    "protection_container_id": "7e6a6f563d6ab3bb6a620283bb1cfa31c66d2dd30b080ad1bc72aa686173da38"
+  },
+  "results": {
+    "supplier_removed": "Actual generated build fails FileNotFoundErrorpg_restore; maintained test checks this expected failure.",
+    "node_compute": "11 utility groups at build and offline runtime; originalm103 Node/Python metadata/localwheel/Cextension program plus3 independent HTTP proofs.",
+    "node_static": "Same11 utility groups in canonical native-static build; actual public ZIP/gzip files extracted. No static compute-runtime/hosting promise.",
+    "python313_original": "All6 unchanged original authored builds and18 independent localhostHTTP/artifact/source/data checks pass on genuine primary3.13.18; m94,m95,m96,m97,m100,m102. No systemPython aliases or version-validator rewrites.",
+    "populated_neighbors": "12 existing contracts run with a clearly synthetic full catalog, unit/hostshell only. This does not claim real image coverage for otherprimaries.",
+    "validation": [
+      {
+        "command": [
+          "go",
+          "test",
+          "./internal/build",
+          "-run",
+          "^TestNativeUtilityGeneratedImages$",
+          "-count=1",
+          "-timeout=25m",
+          "-v"
+        ],
+        "exit": 0,
+        "log": "maintained-all-final.log",
+        "opt_in_generated_image_gate": true
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "./internal/build",
+          "-count=1"
+        ],
+        "exit": 0,
+        "log": "build-package-test-final.log",
+        "opt_in_generated_image_gate": false
+      },
+      {
+        "command": [
+          "make",
+          "test"
+        ],
+        "exit": 0,
+        "log": "operator-make-test-final.log",
+        "opt_in_generated_image_gate": false
+      }
+    ],
+    "codegen_drift": {}
+  },
+  "original_case_identities": [
+    {
+      "milestone": 94,
+      "original_evidence": ".pm/w8/m94/evidence/cli-sweep409/complete-native-failures-controls-runtime-and-cleanup.json",
+      "original_evidence_sha256": "0b0362a4a93586a6192a5243f16a8fb97c962c144d7c4ec82e19400668a774e4",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa409-probe.py": {
+          "bytes": 2815,
+          "sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+        },
+        "qa409-reference.json": {
+          "bytes": 747,
+          "sha256": "e35f7adb6a4aafc6970325d461e0985a51e6814e6c2c49310bab07f8ab0fd026"
+        },
+        "qa409-marker.json": {
+          "bytes": 19,
+          "sha256": "d98cd3c3d54dd58ff58c6858e1065721f6ee5517e60e1cdfc14945a1c33d67a8"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 95,
+      "original_evidence": ".pm/w8/m95/evidence/cli-sweep414/complete-native-failures-controls-HTTP-and-cleanup.json",
+      "original_evidence_sha256": "2e92c5aad455b8fc3331f0ec6bb5bb86ab89d0852caf4c5d563434d3f7a9ffe8",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-vips-app.py": {
+          "bytes": 2787,
+          "sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"
+        },
+        "qa-vips-reference.json": {
+          "bytes": 619,
+          "sha256": "249846e6894fdcd97af0cf40c862ae8a6a4e5ea455734c0a917a6d9168d8d2d9"
+        },
+        "qa-vips-marker.json": {
+          "bytes": 19,
+          "sha256": "4aab25a70f8ab8983486bd4f824ae99be21de8982b47fb677efdede7d4e8f946"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 96,
+      "original_evidence": ".pm/w8/m96/evidence/cli-sweep416/complete-native-compile-failures-controls-runtime-cleanup.json",
+      "original_evidence_sha256": "26e44d49fc71586bd36bb0d9c570d6e59236a9b3722e2a18621f21f737100ccf",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-gettext-app.py": {
+          "bytes": 3478,
+          "sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+        },
+        "qa_gettext_settings.py": {
+          "bytes": 198,
+          "sha256": "0610134fb696f2716b3ffccdb6a3b557ba0e5237b3690ec9a0b8e48ad174ae5f"
+        },
+        "locale/fr/LC_MESSAGES/django.po": {
+          "bytes": 508,
+          "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+        },
+        "qa-gettext-reference.json": {
+          "bytes": 618,
+          "sha256": "807e50740a2cf393a7ddd9656dec06f6a825ee599b8f6bcf72532a17fd7bcdf1"
+        },
+        "qa-gettext-marker.json": {
+          "bytes": 18,
+          "sha256": "f14e570090865ffff8dbc2ae96102b8a5c76e24cc3905576b353fd795209d419"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 97,
+      "original_evidence": ".pm/w8/m97/evidence/cli-sweep418/complete-native-PDF-failures-controls-runtime-cleanup.json",
+      "original_evidence_sha256": "fa66e97331cd3ecaf9bd26b7fa0fb1aa9d8332f8dc20fe41b51f82412c0dd940",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-gs-app.py": {
+          "bytes": 2644,
+          "sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5"
+        },
+        "qa-gs-reference.json": {
+          "bytes": 1270,
+          "sha256": "683eae6448fb9b0c5763dd24a2994316162a0c5e75ab361cd5c9ba39eb6db256"
+        },
+        "qa-gs-marker.json": {
+          "bytes": 18,
+          "sha256": "43d39c079d4023cfe950677a3433cea43f72b0284f289e07106fecd2bc2e0a9e"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 100,
+      "original_evidence": ".pm/w8/m100/evidence/cli-sweep421/complete-native-binding-runtime-and-cleanup.json",
+      "original_evidence_sha256": "d40079625ff84e70584003149d59719e60ae9bdeab72abcd5bfc61986400f4eb",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-swig-app.py": {
+          "bytes": 2593,
+          "sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
+        },
+        "qa_swig.i": {
+          "bytes": 142,
+          "sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a"
+        },
+        "qa-swig-reference.json": {
+          "bytes": 651,
+          "sha256": "31295935f66f601b752762008037fc9a97f17d97045284e3e7cdabadfb10fa8a"
+        },
+        "qa-swig-marker.json": {
+          "bytes": 18,
+          "sha256": "a26c65d6d0c30ffb31ae496db395d6bf9e4c2c49e6a5214e5901d32ccab03a7f"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 102,
+      "original_evidence": ".pm/w8/m102/evidence/cli-sweep423/complete-native-compression-artifact-and-cleanup.json",
+      "original_evidence_sha256": "ff07b60e4cb061cf5ad36445866d5077237edfe437cf6901c135781fd56598f6",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-pigz-app.py": {
+          "bytes": 2538,
+          "sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+        },
+        "qa-pigz-reference.json": {
+          "bytes": 592,
+          "sha256": "841734a6820198cb2f253be732993d7facac7d70ef83ddfaae34f80afcab8995"
+        },
+        "qa-pigz-marker.json": {
+          "bytes": 18,
+          "sha256": "5de1583eb8ed1b366aca1e7164414463a574f53e5c356fd72114617c9faff21c"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 103,
+      "original_evidence": ".pm/w8/m103/evidence/cli-sweep424/complete-four-stage-native-Python-toolchain-and-cleanup.json",
+      "original_evidence_sha256": "203c46c80b6b82518b6fc064143c1d85a6d4f6370624db87122692bfab381936",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "setup.py": {
+          "bytes": 145,
+          "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496"
+        },
+        "qa_native_ext.c": {
+          "bytes": 656,
+          "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db"
+        },
+        "qapy.py": {
+          "bytes": 2420,
+          "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9"
+        },
+        "qsrv.cjs": {
+          "bytes": 673,
+          "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10"
+        },
+        "qa_local_data-1.0-py3-none-any.whl": {
+          "bytes": 1069,
+          "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc"
+        },
+        "qref.json": {
+          "bytes": 669,
+          "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a"
+        },
+        "qm.json": {
+          "bytes": 18,
+          "sha256": "4b87a06e6dbc63da7f035720e5f46889db9c578eba2a4b3b52099bd3c2fe9554"
+        }
+      },
+      "validation_adjustments": []
+    }
+  ],
+  "qualifications": [
+    "The first primary runtime attempt exposed only two missing independent PNG oracle files in the newtestdata; they were copied byte-for-byte and the full final gate passed. No product fix was needed.",
+    "Generated test images/containers are cleaned by exact owned local tag/CID after proof export. Actual image configIDs and recipes are retained; generic/genuine suppliers and cache-child immutable registry refs stay protected by their recorded holdercontainers.",
+    "Inherited standalone utility result labels mentioning originalPDF/Django identify their fixture family; the Node utility command actually tests the retained Helvetica/color PDF and GNUcatalog oracle. Exact original Python app behavior is separately proved by the six primaryPython cases.",
+    "No snapshot tests were rerun. No credentials/cookies/OAuth tokens/privateenv or hosted resourceIDs generated by this run are included."
+  ],
+  "remaining": [
+    "Reviewed27 publishedmultiarch supplier digests/signatures/SBOMs andproduction adoption",
+    "Original fresh two-native-client hosted lifecycle/log/API/UI/cleanup DoDs",
+    "Real Kubernetes predeploy/runtime/native-init/staticpublication integration and unexecuted architecture/base neighbors"
+  ],
+  "retained_scratch": "/private/tmp/bex-native-python313-acceptance-352wbad7",
+  "post_review_validation": {
+    "recorded_at": "2026-10-30T05:13:38.519517+00:00",
+    "reviews": [
+      "reuse",
+      "quality",
+      "efficiency"
+    ],
+    "findings_fixed": [
+      "inlined the one-use duplicate subprocess runner in original-cases.py",
+      "removed the unused callback accumulation list; returned HTTP proofs remain the oracle"
+    ],
+    "frozen_program_data_validators": "unchanged",
+    "go_test_source_sha256": "1df08cd0e1f9b3ab9c6876419ee4bbdf426ff940382a9c5b362695beb330aa3c",
+    "changed_wrapper_sha256": "930804f41c7572924f3c67de37f73153c1a5364dbdfa4d3e9266870d7266bf23",
+    "post_review_generated_gate": {
+      "command": "go test ./internal/build -run ^TestNativeUtilityGeneratedImages$ -count=1 -timeout=25m -v",
+      "exit": 0,
+      "all_four_cases_passed": true,
+      "elapsed_seconds": 17.746,
+      "log": "logs/maintained-after-review.log.gz"
+    },
+    "full_operator_suite": "Passed before the wrapper-only cleanup; Go source is byte-identical. All four actual generated-image cases reran after cleanup.",
+    "scope": "Local linux/arm64; no hosted/publication/production claim"
+  }
+}

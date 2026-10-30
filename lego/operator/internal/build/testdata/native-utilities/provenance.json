@@ -1,0 +1,298 @@
+{
+  "purpose": "Direct opt-in generated-image regressions; no production fixture authority or hosted coverage.",
+  "provenance": "Utility oracles come from the independently verified current-generator-20261029 extra_cases proof; original authored commands/data/validators/HTTP decoders come from retained functional CLI evidence. Markers are the prepared replay markers, not production resources.",
+  "original_cases": [
+    {
+      "milestone": 94,
+      "original_evidence": ".pm/w8/m94/evidence/cli-sweep409/complete-native-failures-controls-runtime-and-cleanup.json",
+      "original_evidence_sha256": "0b0362a4a93586a6192a5243f16a8fb97c962c144d7c4ec82e19400668a774e4",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa409-probe.py": {
+          "bytes": 2815,
+          "sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+        },
+        "qa409-reference.json": {
+          "bytes": 747,
+          "sha256": "e35f7adb6a4aafc6970325d461e0985a51e6814e6c2c49310bab07f8ab0fd026"
+        },
+        "qa409-marker.json": {
+          "bytes": 19,
+          "sha256": "d98cd3c3d54dd58ff58c6858e1065721f6ee5517e60e1cdfc14945a1c33d67a8"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 95,
+      "original_evidence": ".pm/w8/m95/evidence/cli-sweep414/complete-native-failures-controls-HTTP-and-cleanup.json",
+      "original_evidence_sha256": "2e92c5aad455b8fc3331f0ec6bb5bb86ab89d0852caf4c5d563434d3f7a9ffe8",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-vips-app.py": {
+          "bytes": 2787,
+          "sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"
+        },
+        "qa-vips-reference.json": {
+          "bytes": 619,
+          "sha256": "249846e6894fdcd97af0cf40c862ae8a6a4e5ea455734c0a917a6d9168d8d2d9"
+        },
+        "qa-vips-marker.json": {
+          "bytes": 19,
+          "sha256": "4aab25a70f8ab8983486bd4f824ae99be21de8982b47fb677efdede7d4e8f946"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 96,
+      "original_evidence": ".pm/w8/m96/evidence/cli-sweep416/complete-native-compile-failures-controls-runtime-cleanup.json",
+      "original_evidence_sha256": "26e44d49fc71586bd36bb0d9c570d6e59236a9b3722e2a18621f21f737100ccf",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-gettext-app.py": {
+          "bytes": 3478,
+          "sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+        },
+        "qa_gettext_settings.py": {
+          "bytes": 198,
+          "sha256": "0610134fb696f2716b3ffccdb6a3b557ba0e5237b3690ec9a0b8e48ad174ae5f"
+        },
+        "locale/fr/LC_MESSAGES/django.po": {
+          "bytes": 508,
+          "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+        },
+        "qa-gettext-reference.json": {
+          "bytes": 618,
+          "sha256": "807e50740a2cf393a7ddd9656dec06f6a825ee599b8f6bcf72532a17fd7bcdf1"
+        },
+        "qa-gettext-marker.json": {
+          "bytes": 18,
+          "sha256": "f14e570090865ffff8dbc2ae96102b8a5c76e24cc3905576b353fd795209d419"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 97,
+      "original_evidence": ".pm/w8/m97/evidence/cli-sweep418/complete-native-PDF-failures-controls-runtime-cleanup.json",
+      "original_evidence_sha256": "fa66e97331cd3ecaf9bd26b7fa0fb1aa9d8332f8dc20fe41b51f82412c0dd940",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-gs-app.py": {
+          "bytes": 2644,
+          "sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5"
+        },
+        "qa-gs-reference.json": {
+          "bytes": 1270,
+          "sha256": "683eae6448fb9b0c5763dd24a2994316162a0c5e75ab361cd5c9ba39eb6db256"
+        },
+        "qa-gs-marker.json": {
+          "bytes": 18,
+          "sha256": "43d39c079d4023cfe950677a3433cea43f72b0284f289e07106fecd2bc2e0a9e"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 100,
+      "original_evidence": ".pm/w8/m100/evidence/cli-sweep421/complete-native-binding-runtime-and-cleanup.json",
+      "original_evidence_sha256": "d40079625ff84e70584003149d59719e60ae9bdeab72abcd5bfc61986400f4eb",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-swig-app.py": {
+          "bytes": 2593,
+          "sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
+        },
+        "qa_swig.i": {
+          "bytes": 142,
+          "sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a"
+        },
+        "qa-swig-reference.json": {
+          "bytes": 651,
+          "sha256": "31295935f66f601b752762008037fc9a97f17d97045284e3e7cdabadfb10fa8a"
+        },
+        "qa-swig-marker.json": {
+          "bytes": 18,
+          "sha256": "a26c65d6d0c30ffb31ae496db395d6bf9e4c2c49e6a5214e5901d32ccab03a7f"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 102,
+      "original_evidence": ".pm/w8/m102/evidence/cli-sweep423/complete-native-compression-artifact-and-cleanup.json",
+      "original_evidence_sha256": "ff07b60e4cb061cf5ad36445866d5077237edfe437cf6901c135781fd56598f6",
+      "runtime": "python",
+      "original_env": {
+        "PYTHON_VERSION": "3.13"
+      },
+      "source_file_identities": {
+        "qa-pigz-app.py": {
+          "bytes": 2538,
+          "sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+        },
+        "qa-pigz-reference.json": {
+          "bytes": 592,
+          "sha256": "841734a6820198cb2f253be732993d7facac7d70ef83ddfaae34f80afcab8995"
+        },
+        "qa-pigz-marker.json": {
+          "bytes": 18,
+          "sha256": "5de1583eb8ed1b366aca1e7164414463a574f53e5c356fd72114617c9faff21c"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 103,
+      "original_evidence": ".pm/w8/m103/evidence/cli-sweep424/complete-four-stage-native-Python-toolchain-and-cleanup.json",
+      "original_evidence_sha256": "203c46c80b6b82518b6fc064143c1d85a6d4f6370624db87122692bfab381936",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "setup.py": {
+          "bytes": 145,
+          "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496"
+        },
+        "qa_native_ext.c": {
+          "bytes": 656,
+          "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db"
+        },
+        "qapy.py": {
+          "bytes": 2420,
+          "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9"
+        },
+        "qsrv.cjs": {
+          "bytes": 673,
+          "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10"
+        },
+        "qa_local_data-1.0-py3-none-any.whl": {
+          "bytes": 1069,
+          "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc"
+        },
+        "qref.json": {
+          "bytes": 669,
+          "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a"
+        },
+        "qm.json": {
+          "bytes": 18,
+          "sha256": "4b87a06e6dbc63da7f035720e5f46889db9c578eba2a4b3b52099bd3c2fe9554"
+        }
+      },
+      "validation_adjustments": []
+    }
+  ],
+  "hermetic_setup": "Cache pyvips==3.2.0, Django==5.2.18 and the actual resolver Poetry version into a test-only wheel cache before the network-off generated build. Preserve original commands, primary3.13 version checks and all source/data hashes; do not alias systemPython or rewrite validators. Node case103 uses the supplied Debian Python companion.",
+  "scope": "One real supplied Node24 compute/static image and optional real primaryPython3.13 image. Negative control removes supplier and must fail on actual pg_restore. Runtime has networknone; actual Kubernetes pre-deploy, native-init process, publication/staticHTTP, other primary lines/architectures and hosted clients remain separate.",
+  "inputs": {
+    "cases/m100/http.py": {
+      "bytes": 1301,
+      "sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69"
+    },
+    "cases/m100/validators.py": {
+      "bytes": 784,
+      "sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0"
+    },
+    "cases/m102/http.py": {
+      "bytes": 1782,
+      "sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe"
+    },
+    "cases/m102/validators.py": {
+      "bytes": 846,
+      "sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e"
+    },
+    "cases/m103/http.py": {
+      "bytes": 1346,
+      "sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189"
+    },
+    "cases/m103/validators.py": {
+      "bytes": 1007,
+      "sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208"
+    },
+    "cases/m94/validators.py": {
+      "bytes": 823,
+      "sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b"
+    },
+    "cases/m95/http.py": {
+      "bytes": 1513,
+      "sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878"
+    },
+    "cases/m95/sweep406-png.py": {
+      "bytes": 950,
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505"
+    },
+    "cases/m95/validators.py": {
+      "bytes": 729,
+      "sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa"
+    },
+    "cases/m96/http.py": {
+      "bytes": 1769,
+      "sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a"
+    },
+    "cases/m96/validators.py": {
+      "bytes": 951,
+      "sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b"
+    },
+    "cases/m97/http.py": {
+      "bytes": 1901,
+      "sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9"
+    },
+    "cases/m97/sweep406-png.py": {
+      "bytes": 950,
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505"
+    },
+    "cases/m97/validators.py": {
+      "bytes": 537,
+      "sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9"
+    },
+    "gettext-reference.json": {
+      "bytes": 777,
+      "sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb"
+    },
+    "messages.po": {
+      "bytes": 508,
+      "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+    },
+    "original-cases.json": {
+      "bytes": 46779,
+      "sha256": "9094c0ed309615b15e6c62e372304b6e2081f6fd8d2d642849ea97fcc4d2fa85"
+    },
+    "original-cases.py": {
+      "bytes": 4607,
+      "sha256": "b3df17d9cd01632ec54992bdb6f46e725fede640db22b08b986c3e4c3580d5bf"
+    },
+    "png-decoder.py": {
+      "bytes": 1933,
+      "sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e"
+    },
+    "source-carrier/CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    },
+    "source-carrier/LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "utility-check.py": {
+      "bytes": 11577,
+      "sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb"
+    }
+  }
+}

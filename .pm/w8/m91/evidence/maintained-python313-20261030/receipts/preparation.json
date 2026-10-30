@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T04:44:01.127917+00:00",
+  "source_head": "c60e3e95b22416bd01f5ebff5826e3e6634283b3",
+  "architecture": "linux/arm64",
+  "base_image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+  "expected_python": "3.13.18",
+  "purpose": "local genuine Python3.13 supplier and originalcase acceptance, not production/published/amd64/hosted/predeploy",
+  "repository_resources_changed": false,
+  "owned_container_prefix": "bex-native-python313-qa-",
+  "hosted_resources_created": 0
+}

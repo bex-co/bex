@@ -1,0 +1,9 @@
+{
+  "case": "node-static",
+  "container_id": "828b2a53ba5268b473b59c878fff72ff4e44a9c0d7b844447281bdc0758185ac",
+  "image_config_id": "sha256:90840faf1f7b92850f74a7171a966442c7863dd76b01ac5d2e165ddc5097d344",
+  "network": "none",
+  "runtime_command_executed": false,
+  "scope": "local generated image; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": true
+}

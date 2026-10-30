@@ -1,0 +1,30 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "po": {
+    "bytes": 508,
+    "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+  },
+  "expected": {
+    "hello": "Bonjour, Zoë & 李 !",
+    "dessert": "Crème brûlée",
+    "plurals": {
+      "0": "Il y a 0 pomme.",
+      "1": "Il y a 1 pomme.",
+      "2": "Il y a 2 pommes.",
+      "5": "Il y a 5 pommes."
+    }
+  },
+  "django": "5.2.18"
+}

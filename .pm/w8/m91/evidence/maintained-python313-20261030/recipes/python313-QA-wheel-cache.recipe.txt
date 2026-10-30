@@ -1,0 +1,3 @@
+FROM localhost:32828/native-python313-qa@sha256:333ddfd23f1aa11c20c83141432bdd93e709efcf9861e716e2d8db55cef517ef
+COPY wheels/ /opt/bex/qa-wheels/
+ENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex/qa-wheels PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONDONTWRITEBYTECODE=1

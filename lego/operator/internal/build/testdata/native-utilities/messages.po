@@ -1,0 +1,21 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bex-functional-qa\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#, python-format
+msgid "Hello, %(name)s!"
+msgstr "Bonjour, %(name)s !"
+
+#, python-format
+msgid "There is %(count)d apple."
+msgid_plural "There are %(count)d apples."
+msgstr[0] "Il y a %(count)d pomme."
+msgstr[1] "Il y a %(count)d pommes."
+
+msgid "Dessert"
+msgstr "Crème brûlée"
