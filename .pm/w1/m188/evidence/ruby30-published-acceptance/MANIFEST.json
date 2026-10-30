@@ -1,0 +1,401 @@
+{
+  "schema": "native_acceptance_archive/v1",
+  "archived_at": "2026-10-30T15:37:36.239575+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+  "accepted_count_at_promotion": 7,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "files": [
+    {
+      "source": "/tmp/bex-m188-ruby-3.0-bullseye-acceptance.json",
+      "archive": "acceptance.json",
+      "bytes": 4869,
+      "sha256": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "archive": "verification/proof.json",
+      "bytes": 17881,
+      "sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "archive": "verification/candidate.json",
+      "bytes": 10417,
+      "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "archive": "verification/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "bytes": 3255,
+      "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+      "archive": "verification/architecture-binding.json",
+      "bytes": 11074,
+      "sha256": "3c98bb4e4b050ad9f30e7dabf3e8ca62578a52e5fb5ec0eea880e8be05d86c73"
+    },
+    {
+      "source": "/tmp/bex-m188-ruby-3.0-bullseye-discovery-confirmation.json",
+      "archive": "linked/f8362ec9f9d7-bex-m188-ruby-3.0-bullseye-discovery-confirmation.json",
+      "bytes": 578,
+      "sha256": "f8362ec9f9d7de5715a59cdfa4ff17f19698165f45b604d0c2e6df896a00ec55"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/aggregate-at-promotion-7.json",
+      "archive": "verification/aggregate-at-promotion-7.json",
+      "bytes": 133162,
+      "sha256": "ca307b478249ac8a1eeedc27dfa43f3565184def93aafd206757291978e36a91"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "archive": "verification/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "bytes": 84147,
+      "sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+      "archive": "verification/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+      "bytes": 2127,
+      "sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-structural-controls.json",
+      "archive": "verification/guard-structural-controls.json",
+      "bytes": 2127,
+      "sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/publisher-job.json",
+      "archive": "verification/publisher-job.json",
+      "bytes": 6776,
+      "sha256": "6d6c3bc128c23d4130e33e2f31fa296a0725959f7abca5cc562fca7ae84a74a3"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/publisher-job-snapshot.json",
+      "archive": "verification/publisher-job-snapshot.json",
+      "bytes": 529,
+      "sha256": "525903b5296cbd23d5f40f845df9da009450ec27344121e4325ae9e5b101e6bd"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a.json",
+      "archive": "verification/candidate-validated-body-2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a.json",
+      "bytes": 8906,
+      "sha256": "2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context-input.json",
+      "archive": "verification/guard-receipt-context-input.json",
+      "bytes": 119982,
+      "sha256": "8326bf1afd2be38d8fae320d151025d5906162e890f27d1bedaf5efed1d0f797"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-source-approval-context.json",
+      "archive": "verification/guard-source-approval-context.json",
+      "bytes": 982,
+      "sha256": "b3fbab90f8c075913696f04d966ce167243393843f83742336a98a694bee6255"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+      "archive": "verification/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+      "bytes": 9749,
+      "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-draft-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "archive": "verification/guard-validation-draft-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "bytes": 3255,
+      "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verification-job.log.gz",
+      "archive": "verification/verification-job.log.gz",
+      "bytes": 145099,
+      "sha256": "2ad5a4fce6a1427d286f2a3c80bb8e5a6f3499a0e403dcdcb114aa2b2c3938de"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "archive": "verification/guard-validation.json",
+      "bytes": 3255,
+      "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/image-signature.statement.json",
+      "archive": "verification/image-signature.statement.json",
+      "bytes": 234,
+      "sha256": "3d5f8923ce7d09d74a119d3b3f9f470c582c6316185dae32345f130a0b83c6ce"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/collection-index.raw.json",
+      "archive": "verification/collection-index.raw.json",
+      "bytes": 2164,
+      "sha256": "cd5894250a4b47e11360b4a63c2d8d00d9d2f35caed3cb07628ea09e7f759e3c"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/immutable-tag-intake.json",
+      "archive": "verification/immutable-tag-intake.json",
+      "bytes": 369,
+      "sha256": "9ad77b026df44bde83081aaed8ca21dfd865d059733e19b9f68854820ec06a00"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "archive": "verification/acceptance-metadata-transition.json",
+      "bytes": 3726,
+      "sha256": "e2e3c9d006c1e11eec73e4b03e908471a05fa15d309b66f70f127a6e73052514"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-receipt-context.json",
+      "archive": "verification/guard-receipt-context.json",
+      "bytes": 119982,
+      "sha256": "8326bf1afd2be38d8fae320d151025d5906162e890f27d1bedaf5efed1d0f797"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/root-index.raw.json",
+      "archive": "verification/root-index.raw.json",
+      "bytes": 1611,
+      "sha256": "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/controls.json",
+      "archive": "verification/controls/controls.json",
+      "bytes": 1591,
+      "sha256": "3ef2f17d37ba2ade748c6ce1c7f4be31cf511c8892b19acf5894b8ef4771b1db"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_index.stderr",
+      "archive": "verification/controls/wrong_index.stderr",
+      "bytes": 215,
+      "sha256": "25a997f2deb6fa634d3152a43719691fdde5d7e5c21c888406419fe4ca8a2fec"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_predicate.stderr",
+      "archive": "verification/controls/wrong_predicate.stderr",
+      "bytes": 237,
+      "sha256": "fcee4a2f6e49050826a87a0211049dc9a25599f3910383e79ea487c85da42b36"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_predicate.command.json",
+      "archive": "verification/controls/wrong_predicate.command.json",
+      "bytes": 1941,
+      "sha256": "b6ddfe925d36afb9c0fd76ed72f5b445262b0e5c15cd91a3bdcf89ad5ea9cb73"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_predicate.stdout",
+      "archive": "verification/controls/wrong_predicate.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_index.stdout",
+      "archive": "verification/controls/wrong_index.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.stdout",
+      "archive": "verification/controls/wrong_verification_sha.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_index.command.json",
+      "archive": "verification/controls/wrong_index.command.json",
+      "bytes": 1963,
+      "sha256": "2b3fb9df65e188eef06b78785c35c4ce02526b04cd197488c10007c5554574b8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.command.json",
+      "archive": "verification/controls/wrong_verification_sha.command.json",
+      "bytes": 1965,
+      "sha256": "e7ffad72bb9e14d7a165fbde6344685ec763a67368f146730ea8517b1814e1b7"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong-index.raw.json",
+      "archive": "verification/controls/wrong-index.raw.json",
+      "bytes": 1612,
+      "sha256": "048e00676525a6cb07a7721543c9c23d576290c74c0e0b73c6e4aa0c4f4aa744"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.stderr",
+      "archive": "verification/controls/wrong_verification_sha.stderr",
+      "bytes": 467,
+      "sha256": "61150d122f6e7b7b5be05646dd2afb3f18f78161bc9088ffc020c94872186a13"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.command.json",
+      "archive": "verification/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.command.json",
+      "bytes": 2039,
+      "sha256": "6be13b36a9cbb14b0e87a2e0162bd6af8226f00c9082d21a5f5348f07dd5dfb6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.stderr",
+      "archive": "verification/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.stderr",
+      "archive": "verification/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.command.json",
+      "archive": "verification/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.command.json",
+      "bytes": 2039,
+      "sha256": "5061d4e017f9a0ade1848360945cb3a3a5c2d67cabf593b44982a733f258789f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.stdout",
+      "archive": "verification/commands/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.stdout",
+      "archive": "verification/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.command.json",
+      "archive": "verification/commands/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.command.json",
+      "bytes": 2070,
+      "sha256": "3af47c4bef47ea620ced1ed2e4174fa204be5d13cec3ca8f224d4945623a1a4d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.stderr",
+      "archive": "verification/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.stderr",
+      "archive": "verification/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.stderr",
+      "archive": "verification/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.command.json",
+      "archive": "verification/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.command.json",
+      "bytes": 2070,
+      "sha256": "cdfaf6b6a3044f8922c474ae2d40b5c3f87a7a5c34103ae024c81b9c1b971abc"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.stdout",
+      "archive": "verification/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.command.json",
+      "archive": "verification/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.command.json",
+      "bytes": 2049,
+      "sha256": "c82e22e01dbb94a3041d231b085053c7389e6d58fd1d60e94c7c6a79357a4da8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.stdout",
+      "archive": "verification/commands/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.stdout",
+      "archive": "verification/commands/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/ddb51faf287c1b60ecb4f2d3cd1ca8ff82fe6e8033bf975042302fe954e87420.json",
+      "archive": "verification/manifests/ddb51faf287c1b60ecb4f2d3cd1ca8ff82fe6e8033bf975042302fe954e87420.json",
+      "bytes": 1038,
+      "sha256": "ddb51faf287c1b60ecb4f2d3cd1ca8ff82fe6e8033bf975042302fe954e87420"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/da78cef47b7863819c17e6c50ef1ac8dc48c6d53961dfa60c0aece500a6531c9.config.json",
+      "archive": "verification/manifests/da78cef47b7863819c17e6c50ef1ac8dc48c6d53961dfa60c0aece500a6531c9.config.json",
+      "bytes": 15986,
+      "sha256": "da78cef47b7863819c17e6c50ef1ac8dc48c6d53961dfa60c0aece500a6531c9"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/d09fb8819807a1425af171eeeff0572e740fcea0007e4f5e490f49fc865319a2.registry-child.json",
+      "archive": "verification/manifests/d09fb8819807a1425af171eeeff0572e740fcea0007e4f5e490f49fc865319a2.registry-child.json",
+      "bytes": 3525,
+      "sha256": "d09fb8819807a1425af171eeeff0572e740fcea0007e4f5e490f49fc865319a2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/804c7e0aad595186e64ef278980cc6200296cd4607b05f7a1ff9b509c602bd4e.json",
+      "archive": "verification/manifests/804c7e0aad595186e64ef278980cc6200296cd4607b05f7a1ff9b509c602bd4e.json",
+      "bytes": 1013,
+      "sha256": "804c7e0aad595186e64ef278980cc6200296cd4607b05f7a1ff9b509c602bd4e"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/507a2d6822603b21465cfb16423f5db481cc1f1e0c4820a05896964319670701.json",
+      "archive": "verification/manifests/507a2d6822603b21465cfb16423f5db481cc1f1e0c4820a05896964319670701.json",
+      "bytes": 1038,
+      "sha256": "507a2d6822603b21465cfb16423f5db481cc1f1e0c4820a05896964319670701"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/79fecc7ed465a1738a6bec3693c9f0f7d80cda2c0574e214ddf0a11418757e74.json",
+      "archive": "verification/manifests/79fecc7ed465a1738a6bec3693c9f0f7d80cda2c0574e214ddf0a11418757e74.json",
+      "bytes": 1007,
+      "sha256": "79fecc7ed465a1738a6bec3693c9f0f7d80cda2c0574e214ddf0a11418757e74"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/ec5b616da9ee264dee10f4552916346753c69d340a7fbaba0d95591ec10f5f35.registry-child.json",
+      "archive": "verification/manifests/ec5b616da9ee264dee10f4552916346753c69d340a7fbaba0d95591ec10f5f35.registry-child.json",
+      "bytes": 3525,
+      "sha256": "ec5b616da9ee264dee10f4552916346753c69d340a7fbaba0d95591ec10f5f35"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/e5bbf0e7d1f8d9c02f08ee20904301780f3546a84591862fd3dcdbe112c098a6.config.json",
+      "archive": "verification/manifests/e5bbf0e7d1f8d9c02f08ee20904301780f3546a84591862fd3dcdbe112c098a6.config.json",
+      "bytes": 15987,
+      "sha256": "e5bbf0e7d1f8d9c02f08ee20904301780f3546a84591862fd3dcdbe112c098a6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/manifests/754cc365cc20b3ba3a70c75848320c58bf1367e0e084a697ba57cbdcb345f03f.json",
+      "archive": "verification/manifests/754cc365cc20b3ba3a70c75848320c58bf1367e0e084a697ba57cbdcb345f03f.json",
+      "bytes": 1007,
+      "sha256": "754cc365cc20b3ba3a70c75848320c58bf1367e0e084a697ba57cbdcb345f03f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.json.gz",
+      "archive": "verification/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.json.gz",
+      "bytes": 6190,
+      "sha256": "0966312eca989c7d4b309376fbd92235a303e5371ee68e0325cca60105d288b1"
+    },
+    {
+      "source": "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "archive": "linked/f595ccb110e3-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "bytes": 84147,
+      "sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f"
+    },
+    {
+      "source": "/tmp/bex-m188-published-acceptance.json",
+      "archive": "linked/ca307b478249-bex-m188-published-acceptance.json",
+      "bytes": 133162,
+      "sha256": "ca307b478249ac8a1eeedc27dfa43f3565184def93aafd206757291978e36a91"
+    },
+    {
+      "source": "/tmp/bex-m188-guard-receipt-context-fd358-approval.json",
+      "archive": "linked/55babc3a6dce-bex-m188-guard-receipt-context-fd358-approval.json",
+      "bytes": 1078,
+      "sha256": "55babc3a6dcef2472e9c8cd0a11799f0451734eb06f3857023d44e6e048ab368"
+    },
+    {
+      "source": "/tmp/bex-m188-publisher-job-snapshots/124090806988-6d6c3bc128c23d4130e33e2f31fa296a0725959f7abca5cc562fca7ae84a74a3.json",
+      "archive": "linked/6d6c3bc128c2-124090806988-6d6c3bc128c23d4130e33e2f31fa296a0725959f7abca5cc562fca7ae84a74a3.json",
+      "bytes": 6776,
+      "sha256": "6d6c3bc128c23d4130e33e2f31fa296a0725959f7abca5cc562fca7ae84a74a3"
+    }
+  ],
+  "large_predicates": "Full signed predicates remain in digest-addressed public OCI objects and local verified gzip caches, referenced by proof.json. Exact original paths are retained; this manifest maps archived metadata."
+}

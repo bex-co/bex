@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-30T15:18:00.159993+00:00",
+  "helper_sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084",
+  "actual_wrong_root_validation_hash_control": {
+    "argv": [
+      "python3",
+      "/tmp/bex-m188-promote-reviewed-candidate.py",
+      "python-3.9-bookworm",
+      "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "root-approved",
+      "0000000000000000000000000000000000000000000000000000000000000000"
+    ],
+    "exit_code": 1,
+    "stderr": "Traceback (most recent call last):\n  File \"/tmp/bex-m188-promote-reviewed-candidate.py\", line 8, in <module>\n    validated_candidate_bytes=(P/'candidate.json').read_bytes();validated_candidate_sha=hashlib.sha256(validated_candidate_bytes).hexdigest();candidate=json.loads(validated_candidate_bytes);proof=json.load((P/'proof.json').open());G=P/'guard-validation.json';validation_bytes=G.read_bytes();assert hashlib.sha256(validation_bytes).hexdigest()==EXPECTED_VALIDATION_SHA,'root-named validation hash differs; do not promote';validation=json.loads(validation_bytes);assert validation['candidate']==TAG and validation['full_candidate_guard_passed'] is True;assert not validation.get('candidate_sha256') or validation['candidate_sha256']==validated_candidate_sha;assert candidate['targeted_proof_sha256']==sha(P/'proof.json')==validation['actual_proof_sha256'];assert candidate['digest']==validation['candidate_digest'] and candidate['producer_source']==validation['producer_source'] and candidate['verification_source']==validation['verification_source'];assert proof['complete'] and proof['cryptographic_complete'] and candidate['architecture_binding_verified']\n                                                                                                                                                                                                                                                                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: root-named validation hash differs; do not promote\n",
+    "expected_rejection_seen": true
+  },
+  "accepted_six_and_aggregate_unchanged": true
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "bex.m188.compact-acceptance-archive-audit/v1",
+  "at": "2026-10-30T15:37:36.322505+00:00",
+  "passed": true,
+  "files": 65,
+  "bytes": 992053,
+  "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+  "receipt_sha256": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177",
+  "all_original_receipt_links_retained": true,
+  "target_CVE_findings_retained_per_architecture": 3,
+  "full_signed_report_dispositions_and_omission_controls_verified": true,
+  "exact_root_named_final_validation_sha_enforced": true,
+  "source_adoption_performed": false
+}

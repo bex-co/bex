@@ -1,0 +1,65 @@
+{
+  "schema": "bex.m188.actual-direct-candidate-controls/v1",
+  "passed": true,
+  "guard_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+  "candidate": "ruby-3.0-bullseye",
+  "actual_original_cli_negative_controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/controls.json",
+    "sha256": "3ef2f17d37ba2ade748c6ce1c7f4be31cf511c8892b19acf5894b8ef4771b1db"
+  },
+  "scope": "Five actual strict command positives, four small structural tamper rejections, and two full real-proof scan-summary tamper rejections. No crypto CLI rerun, fabricated signed input or candidate promotion. Original3 actualCLI negatives remain in authoritative proof.",
+  "results": [
+    {
+      "name": "image_signature/None/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "spdx/amd64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "spdx/arm64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "trivy/amd64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "trivy/arm64/actual_command_positive",
+      "passed": true
+    },
+    {
+      "name": "missing_successful_verification",
+      "rejected": true,
+      "reason": "raw bundle verification did not succeed"
+    },
+    {
+      "name": "wrong_verification_sha",
+      "rejected": true,
+      "reason": "bundle command verification SHA mismatch"
+    },
+    {
+      "name": "wrong_raw_index_binding",
+      "rejected": true,
+      "reason": "bundle command root index mismatch"
+    },
+    {
+      "name": "wrong_raw_bundle_binding",
+      "rejected": true,
+      "reason": "bundle command raw input mismatch"
+    },
+    {
+      "name": "omitted_signed_target_CVE_findings",
+      "rejected": true,
+      "reason": "receipt scan findings/dispositions differ from full signed report"
+    },
+    {
+      "name": "missing_target_CVE_disposition",
+      "rejected": true,
+      "reason": "receipt scan findings/dispositions differ from full signed report"
+    }
+  ],
+  "positives": 5,
+  "negatives": 6
+}

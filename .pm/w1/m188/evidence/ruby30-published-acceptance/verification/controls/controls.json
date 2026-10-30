@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "root_index_sha256": "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+  "bundle_sha256": "0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/commands/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.command.json",
+    "command_sha256": "c82e22e01dbb94a3041d231b085053c7389e6d58fd1d60e94c7c6a79357a4da8",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_verification_sha.command.json",
+      "command_sha256": "e7ffad72bb9e14d7a165fbde6344685ec763a67368f146730ea8517b1814e1b7",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_index.command.json",
+      "command_sha256": "2b3fb9df65e188eef06b78785c35c4ce02526b04cd197488c10007c5554574b8",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/controls/wrong_predicate.command.json",
+      "command_sha256": "b6ddfe925d36afb9c0fd76ed72f5b445262b0e5c15cd91a3bdcf89ad5ea9cb73",
+      "exit_code": 1
+    }
+  }
+}

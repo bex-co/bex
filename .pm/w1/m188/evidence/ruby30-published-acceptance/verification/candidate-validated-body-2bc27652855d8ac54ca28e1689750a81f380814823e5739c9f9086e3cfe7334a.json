@@ -1,0 +1,217 @@
+{
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "candidate_state": "verified_pending_guard_alignment",
+  "guard_alignment_required": true,
+  "architecture_binding_verified": true,
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+    "sha256": "3c98bb4e4b050ad9f30e7dabf3e8ca62578a52e5fb5ec0eea880e8be05d86c73",
+    "complete": true
+  },
+  "verified_at": "2026-10-30T15:31:29.466426+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+  "digest": "sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+  "runtime": "ruby",
+  "version": "3.0.7",
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "verification_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer": {
+    "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "run_id": 41063729208,
+    "job_id": 124090806988,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988",
+    "digest": "sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+    "original_build_passed": true,
+    "original_runtime_gates_passed": true
+  },
+  "recovered": false,
+  "recovery_authorization": null,
+  "run_id": 41063729208,
+  "job_id": 124090806988,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988",
+  "verification_run_id": 41063729208,
+  "verification_job_id": 124090806988,
+  "verification_job_completed_at": "2026-10-30T15:27:16Z",
+  "scans": {
+    "amd64": {
+      "attestation_verified": true,
+      "architecture": "amd64",
+      "severity_counts": {
+        "LOW": 4901,
+        "HIGH": 2741,
+        "CRITICAL": 242,
+        "MEDIUM": 8429,
+        "UNKNOWN": 190
+      },
+      "brotli_findings": [
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "brotli",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        },
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "libbrotli-dev",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        },
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "libbrotli1",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        }
+      ],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    },
+    "arm64": {
+      "attestation_verified": true,
+      "architecture": "arm64",
+      "severity_counts": {
+        "LOW": 4900,
+        "HIGH": 2741,
+        "CRITICAL": 242,
+        "MEDIUM": 8429,
+        "UNKNOWN": 190
+      },
+      "brotli_findings": [
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "brotli",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        },
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "libbrotli-dev",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        },
+        {
+          "vulnerability_id": "CVE-2026-111497",
+          "package": "libbrotli1",
+          "path": "",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "fixed_version": null,
+          "severity": "CRITICAL",
+          "result_type": "debian",
+          "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+        }
+      ],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz"
+    }
+  },
+  "security": {
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    },
+    "cve": "CVE-2026-111497",
+    "behavioral_gates_verified": true,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "permanent_decoder_error": -17,
+    "healthy_round_trip_verified": true,
+    "bundled_brotli_version": null,
+    "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+  },
+  "signature": {
+    "verified": true,
+    "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "oidc_issuer": "https://token.actions.githubusercontent.com",
+    "workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "proof_mode": "targeted_sigstore_bundles/v1",
+    "signed_subject": {
+      "digest": {
+        "sha256": "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd"
+      },
+      "annotations": {}
+    },
+    "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+  },
+  "runtime_gate_steps": [
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "conclusion": "success"
+    }
+  ],
+  "platforms": {
+    "amd64": {
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.0.7"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+        }
+      ]
+    },
+    "arm64": {
+      "revision": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "runtime_env": [
+        "RUBY_VERSION=3.0.7"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+        }
+      ]
+    }
+  },
+  "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "anonymous_metadata_pull": true,
+  "proof_directory": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+  "targeted_proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f"
+}
