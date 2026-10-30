@@ -43,7 +43,14 @@ path = "/var/lib/opensandbox/opensandbox.db"
 # opensandbox-system, plus the per-tenant `<ws>-sandbox` grants) is used.
 # namespace is the DEFAULT target; multi-tenant lookups override it per request.
 namespace = "opensandbox-system"
-informer_enabled = true
+# Informer cache OFF (2026-10-30 incident): in production every create waited
+# 300s for "Running with IP" and timed out although the BatchSandbox was Ready
+# (pod Running with an IP, PodsReady condition) — the informer kept serving the
+# object it cached at create time, so readiness was never observed and every
+# agent session failed as "sandbox capacity reached". Direct GETs (rate limited
+# by the client) are cheap at bex's sandbox volume; re-enable only with a
+# reproduction showing tenant-namespace watches deliver updates.
+informer_enabled = false
 informer_resync_seconds = 300
 informer_watch_timeout_seconds = 60
 workload_provider = "batchsandbox"
