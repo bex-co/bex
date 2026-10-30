@@ -143,6 +143,61 @@ func TestClusterLeaderChangedWithoutPromotionTime(t *testing.T) {
 	}
 }
 
+// TestClusterLeaderChangedMixedPromotionTimes walks the edges where only one
+// side of the comparison has CNPG's promotion time: an untimed read never
+// erases the latched time, an untimed change still records (fail open) but
+// keeps the old time so a later timed re-read of the old primary is still
+// recognized as stale, a latch without a time accepts the first timed change,
+// and an unparseable timestamp counts as unreported rather than as the zero
+// time.
+func TestClusterLeaderChangedMixedPromotionTimes(t *testing.T) {
+	t0 := time.Date(2026, 10, 29, 10, 0, 0, 0, time.UTC)
+	t1 := t0.Add(10 * time.Minute)
+	base := ObservedDatastoreState{DatastoreID: "dpg-x", WorkspaceID: testWorkspace, Kind: DatastoreKindPostgres, At: t1.Add(time.Hour)}
+	step := func(previous datastoreCheckpointExtras, primary string, since time.Time) ([]DatastoreEventFact, datastoreCheckpointExtras) {
+		obs := base
+		obs.CurrentPrimary, obs.CurrentPrimarySince = primary, since
+		next := previous
+		return leaderFacts(obs, previous, &next), next
+	}
+
+	latched := datastoreCheckpointExtras{CurrentPrimary: "dpg-x-1", CurrentPrimarySince: t0}
+	got, next := step(latched, "dpg-x-1", time.Time{})
+	if len(got) != 0 || next.CurrentPrimary != "dpg-x-1" || !next.CurrentPrimarySince.Equal(t0) {
+		t.Fatalf("untimed resync: facts %+v, latch %q @ %v (want -1 @ %v kept)", got, next.CurrentPrimary, next.CurrentPrimarySince, t0)
+	}
+
+	got, next = step(latched, "dpg-x-2", time.Time{})
+	if len(got) != 1 || got[0].LeaderID != "dpg-x-2" || !got[0].At.Equal(base.At) {
+		t.Fatalf("untimed change: %+v, want one change to -2 at the observation time", got)
+	}
+	if next.CurrentPrimary != "dpg-x-2" || !next.CurrentPrimarySince.Equal(t0) {
+		t.Fatalf("untimed change latched %q @ %v, want -2 keeping %v", next.CurrentPrimary, next.CurrentPrimarySince, t0)
+	}
+	if got, after := step(next, "dpg-x-1", t0); len(got) != 0 || after.CurrentPrimary != "dpg-x-2" {
+		t.Fatalf("timed stale re-read after an untimed change: facts %+v, latch %q", got, after.CurrentPrimary)
+	}
+	if got, after := step(next, "dpg-x-2", t1); len(got) != 0 || !after.CurrentPrimarySince.Equal(t1) {
+		t.Fatalf("time arriving for the latched primary: facts %+v, latch since %v (want %v)", got, after.CurrentPrimarySince, t1)
+	}
+
+	untimed := datastoreCheckpointExtras{CurrentPrimary: "dpg-x-1"}
+	got, next = step(untimed, "dpg-x-2", t1)
+	if len(got) != 1 || !got[0].At.Equal(t1) || next.CurrentPrimary != "dpg-x-2" || !next.CurrentPrimarySince.Equal(t1) {
+		t.Fatalf("first timed change over an untimed latch: facts %+v, latch %q @ %v", got, next.CurrentPrimary, next.CurrentPrimarySince)
+	}
+	if got[0].SourceKey != fmt.Sprintf("dpg-x:leader:dpg-x-2:%d", t1.UnixNano()) {
+		t.Fatalf("source key %q must name the promotion", got[0].SourceKey)
+	}
+
+	db := primaryDatabase("dpg-x", testWorkspace, t0, "dpg-x-2", time.Time{})
+	db.Status.CurrentPrimaryTimestamp = "not-a-time"
+	obs, ok := observedDatabaseStateFor(db)
+	if !ok || obs.CurrentPrimary != "dpg-x-2" || !obs.CurrentPrimarySince.IsZero() {
+		t.Fatalf("unparseable timestamp observed %q @ %v, want -2 with no time", obs.CurrentPrimary, obs.CurrentPrimarySince)
+	}
+}
+
 // TestPGClusterLeaderChangedOncePerPromotion is the same contract on real
 // Postgres through the reconciler's own path: the checkpoint columns migration
 // 0173 adds round-trip, two replicas recording the same promotion at once
@@ -257,5 +312,62 @@ func TestPGClusterLeaderChangedOncePerPromotion(t *testing.T) {
 	}
 	if hydrated != 2 {
 		t.Fatalf("feed carried %d leader changes, want 2", hydrated)
+	}
+}
+
+// TestPGClusterLeaderChangedWithoutPromotionTime: with no promotion time the
+// checkpoint's current_primary_since stays NULL through real Postgres, a
+// change still records once, a resync records nothing, and a promotion time
+// arriving later for the same primary records nothing either.
+func TestPGClusterLeaderChangedWithoutPromotionTime(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	name := "dpg-" + fmt.Sprintf("%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_event_facts WHERE datastore_id = $1`, name)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_observed_checkpoints WHERE datastore_id = $1`, name)
+	})
+	t0 := time.Now().Add(-time.Hour).UTC().Truncate(time.Microsecond)
+	at := t0
+	observe := func(primary string, since time.Time) []DatastoreEventFact {
+		t.Helper()
+		at = at.Add(time.Minute)
+		obs, ok := observedDatabaseStateFor(primaryDatabase(name, tenant.ID, t0, primary, since))
+		if !ok {
+			t.Fatal("no observation")
+		}
+		obs.At = at
+		facts, err := st.RecordObservedDatastoreState(ctx, obs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return leaderFactsOf(facts)
+	}
+
+	if got := observe(name+"-1", time.Time{}); len(got) != 0 {
+		t.Fatalf("untimed create recorded %+v", got)
+	}
+	var since *time.Time
+	if err := pool.QueryRow(ctx, `SELECT current_primary_since FROM datastore_observed_checkpoints WHERE datastore_id = $1`, name).Scan(&since); err != nil {
+		t.Fatal(err)
+	}
+	if since != nil {
+		t.Fatalf("untimed latch stored current_primary_since %v, want NULL", *since)
+	}
+	if got := observe(name+"-2", time.Time{}); len(got) != 1 || got[0].LeaderID != name+"-2" || !got[0].At.Equal(at) {
+		t.Fatalf("untimed failover recorded %+v, want one change to -2 at %v", got, at)
+	}
+	if got := observe(name+"-2", time.Time{}); len(got) != 0 {
+		t.Fatalf("untimed resync recorded %+v", got)
+	}
+	if got := observe(name+"-2", t0.Add(30*time.Minute)); len(got) != 0 {
+		t.Fatalf("promotion time arriving for the latched primary recorded %+v", got)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM datastore_event_facts WHERE datastore_id = $1 AND fact_type = 'postgres_cluster_leader_changed'`, name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("stored %d leader changes, want 1", n)
 	}
 }

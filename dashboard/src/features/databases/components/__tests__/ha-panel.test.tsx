@@ -46,6 +46,7 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
         maxReadReplicas: 5,
         readReplicaMinStorageGB: 10,
         supportsHighAvailability: true,
+        monthlyUsd: "38.50",
       },
     ],
     loading: false,
@@ -321,6 +322,59 @@ describe("HAPanel high availability switch (w2/m171)", () => {
       <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={vi.fn()} />,
     );
     expect(haSwitch()).toBeDisabled();
+  });
+
+  // Render bills the standby like the primary, so the confirmation names
+  // what enabling adds before the user commits to it.
+  it("names the standby's monthly price before enabling", async () => {
+    render(
+      <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={vi.fn()} />,
+    );
+    await userEvent.click(haSwitch());
+    expect(
+      screen.getByText(/The standby adds \$38\.50\/month\./),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the confirmation open and does not refetch when the API refuses", async () => {
+    mutate.mockRejectedValueOnce(new Error("refused"));
+    const refetch = vi.fn();
+    render(
+      <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={refetch} />,
+    );
+    await userEvent.click(haSwitch());
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable high availability" }),
+    );
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(refetch).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Enable high availability" }),
+    ).toBeInTheDocument();
+  });
+
+  // Turned off while the standby still runs: the switch shows the request
+  // (off), the badge the observed standby (on), and the line explains the gap.
+  // Re-enabling stays possible on a plan that offers HA.
+  it("shows a standby still being removed", () => {
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityRequested: false,
+          highAvailabilityEnabled: true,
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(haSwitch()).not.toBeChecked();
+    expect(haSwitch()).toBeEnabled();
+    expect(
+      screen.getByText(
+        "High availability is turning off. The standby is being removed.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 

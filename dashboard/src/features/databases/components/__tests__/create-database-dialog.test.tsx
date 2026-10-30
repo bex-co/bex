@@ -238,6 +238,43 @@ describe("CreateDatabaseDialog", () => {
     );
   });
 
+  // The switch remembers the choice across plans, but a create on a plan
+  // below 1 CPU must never carry it: bex-api would refuse the whole create.
+  it("does not send HA switched on for a 1-CPU plan when the create is on a smaller one", async () => {
+    instanceTypesState.instanceTypes = [
+      FREE,
+      BASIC,
+      {
+        ...BASIC,
+        id: "pro-4gb",
+        name: "Pro 4GB",
+        cpu: "1",
+        memory: "4Gi",
+        storageGB: 10,
+        supportsHighAvailability: true,
+      },
+    ];
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(await screen.findByRole("option", { name: /Pro 4GB/ }));
+    await user.click(
+      within(dialog).getByRole("switch", { name: "High availability" }),
+    );
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: "basic-1gb", highAvailability: false }),
+    );
+  });
+
   it("submits a free-form name trimmed, as bex-api takes it (w5/m153)", async () => {
     const user = userEvent.setup();
     render(<CreateDatabaseDialog onCreated={vi.fn()} />);
