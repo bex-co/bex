@@ -26,6 +26,10 @@ def matrix(source):
         include.append({"name": tag, "base": image})
     if not include:
         raise ValueError("native toolchain matrix is empty")
+    # Release this backport's eleven frozen lines before unrelated refreshes.
+    # Every reviewed line remains in the matrix and passes the same gates.
+    legacy = re.compile(r"^(node-(14|16|18|20)-|python-3\.(7|8|9|10)-|ruby-3\.(0|1|2)-)")
+    include.sort(key=lambda image: not bool(legacy.match(image["name"])))
     return {"include": include}
 
 
