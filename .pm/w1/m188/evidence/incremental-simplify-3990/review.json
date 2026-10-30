@@ -1,0 +1,39 @@
+{
+  "schema": "bex.m188.incremental-simplify-review/v1",
+  "at": "2026-10-30T19:34:29.590095+00:00",
+  "baseline": "74c47437c45e8c18c043f5d67762b02b2e9472b3",
+  "reviewed_head": "4fbed80aa8d569e8ebc9a65e22ca2d526e57f8a3",
+  "diff": {
+    "file": "/tmp/bex-m188-incremental-simplify.diff",
+    "sha256": "8649dd5e2c5718f7e952699ef19e2282db3fee00f01d8f98ccfa13f5b4d6c94e",
+    "lines": 51
+  },
+  "current_source_hashes": {
+    ".github/workflows/native-base-image.yml": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+    ".github/native-base-recovery.json": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39"
+  },
+  "parallel_reviews": [
+    {
+      "role": "code_reuse",
+      "reviewer": "cnb_followup",
+      "verdict": "clean",
+      "finding": "Existing retries have different deadlines, cleanup and environment scope; extracting a shared wrapper is not worthwhile. Ruby32 uses the unchanged reviewed selector."
+    },
+    {
+      "role": "code_quality",
+      "reviewer": "node_brotli_patch",
+      "verdict": "clean",
+      "finding": "Local architecture/output state keeps cleanup with generation. Explicit recovery fields follow the existing provenance schema; no redundant state or misleading new comments."
+    },
+    {
+      "role": "efficiency",
+      "reviewer": "runtime_assessment",
+      "verdict": "clean",
+      "finding": "Recovery reuses the exact compiled index. Only failed-architecture SBOM generation repeats; completed compilation/probes/scans remain retained. Bounded sequential registry I/O is appropriate."
+    }
+  ],
+  "root_verdict": "No quality changes warranted in the full 51-line incremental diff. Earlier full three-way simplify remains historical; future 11-pin data adoption still requires final review.",
+  "read_only_review": true,
+  "tests_repeated": false,
+  "final_adoption_or_live_acceptance_claimed": false
+}
