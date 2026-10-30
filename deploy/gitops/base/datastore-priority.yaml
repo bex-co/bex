@@ -1,0 +1,36 @@
+# bex-datastore — the PriorityClass every managed-datastore Pod runs under:
+# CNPG Postgres instances and PgBouncer poolers, and the Valkey StatefulSet plus
+# its internal proxy (w2/m247). The operator stamps it
+# (lego/types/v1alpha1/datastore_priority.go).
+#
+# WHY IT EXISTS: to be NAMED by the workspace's compute quota. bex-api scopes
+# `tenant-compute-quota` to `PriorityClass NotIn [bex-datastore]`, so a
+# workspace's CPU/memory budget bounds its services and not its databases.
+# Render has no per-workspace compute quota and gates high availability only on
+# a >=1-CPU plan; under the old single quota a Hobby workspace could never hold
+# a `2c-4g` HA pair (production 2026-10-30: "exceeded quota: tenant-quota" on
+# the standby). Datastores stay bounded by their count caps (tenant-quota) and
+# per-instance billing. A Pod with no class has an empty class name, which
+# NotIn matches, so services stay charged (verified on a v1.36 API server).
+#
+# WHY VALUE 0: the priority a Pod with no class already gets. Datastores and
+# services keep scheduling as equals, nothing preempts anything it could not
+# before, and both still preempt the -1 rollout headroom placeholder
+# (tenant-headroom.yaml) exactly as today. scripts/gitops-validate.sh pins it.
+#
+# The operator does not create this class (it would need cluster-wide
+# PriorityClass write). A Pod naming a missing class is refused at admission,
+# so it must exist before any datastore: GitOps applies it early, and
+# scripts/mock-cluster.sh applies this file on the local cluster.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: bex-datastore
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+value: 0
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  Managed Postgres and Key Value Pods. Same priority as a Pod with no class; it
+  exists so the workspace compute ResourceQuota can exclude datastores.

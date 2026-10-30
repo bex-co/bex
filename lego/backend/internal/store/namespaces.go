@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Per-tenant namespace isolation (ADR043). A workspace maps unconditionally to
@@ -198,8 +199,10 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	if err := r.applyObject(ctx, r.workspaceNamespaceObject(name, t, regime)); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
-	if err := r.applyObject(ctx, r.baseResourceQuota(name, t)); err != nil {
-		return fmt.Errorf("resourcequota: %w", err)
+	for _, quota := range r.baseResourceQuotas(name, t) {
+		if err := r.applyObject(ctx, quota); err != nil {
+			return fmt.Errorf("resourcequota %s: %w", quota.Name, err)
+		}
 	}
 	if err := r.applyObject(ctx, baseLimitRange(name)); err != nil {
 		return fmt.Errorf("limitrange: %w", err)
@@ -406,20 +409,69 @@ func (r *NamespaceReconciler) workspaceNamespaceObject(name string, t Tenant, re
 	}
 }
 
-// baseResourceQuota is the per-namespace aggregate ceiling. t001 ships a
-// generous plan-scaled base (the per-namespace analog of the shared
-// tenant-apps-quota); t004 replaces the numbers with the exact plan-tier
-// catalog values and adds the count/<resource> caps that retire BEX_MAX_*.
-func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
-	caps := quotaForPlan(t.Plan)
-	return &corev1.ResourceQuota{
+// baseResourceQuotas are the per-namespace aggregate ceilings, split in two
+// because a scoped quota may only carry Pod resources (w2/m247):
+//
+//   - tenant-compute-quota: requests/limits CPU and memory, scoped to Pods
+//     whose PriorityClass is NOT appv1alpha1.DatastorePriorityClassName. A Pod
+//     with no class has PriorityClassName "", which `NotIn` matches (verified
+//     on a v1.36 API server: a classless Pod is charged, a bex-datastore Pod is
+//     not, and a classless Pod past the cap is refused), so every service, job
+//     and build stays charged while Postgres/Key Value Pods are exempt.
+//   - tenant-quota: everything else, unscoped — object counts, pods, storage,
+//     PVCs, LoadBalancers and ephemeral storage still cover datastores too. It
+//     keeps the historical name because callers read its count caps
+//     (core.TenantQuotaName).
+//
+// Compute comes first so a namespace being migrated from the single-quota
+// shape is never without a CPU cap: the scoped quota exists before the update
+// that drops those keys from tenant-quota.
+func (r *NamespaceReconciler) baseResourceQuotas(namespace string, t Tenant) []*corev1.ResourceQuota {
+	compute, rest := splitComputeQuota(quotaForPlan(t.Plan))
+	return []*corev1.ResourceQuota{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      core.TenantComputeQuotaName,
+			Namespace: namespace,
+			Labels:    r.managedLabels(t.ID),
+		},
+		Spec: corev1.ResourceQuotaSpec{
+			Hard: compute,
+			ScopeSelector: &corev1.ScopeSelector{MatchExpressions: []corev1.ScopedResourceSelectorRequirement{{
+				ScopeName: corev1.ResourceQuotaScopePriorityClass,
+				Operator:  corev1.ScopeSelectorOpNotIn,
+				Values:    []string{appv1alpha1.DatastorePriorityClassName},
+			}}},
+		},
+	}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      core.TenantQuotaName,
 			Namespace: namespace,
 			Labels:    r.managedLabels(t.ID),
 		},
-		Spec: corev1.ResourceQuotaSpec{Hard: caps},
+		Spec: corev1.ResourceQuotaSpec{Hard: rest},
+	}}
+}
+
+// computeQuotaKeys are the dimensions datastores are exempt from. Pods and
+// ephemeral storage stay in the unscoped quota: Kubernetes refuses
+// ephemeral-storage under a PriorityClass scope, and the pod count is an object
+// count the decision keeps covering every Pod.
+var computeQuotaKeys = []corev1.ResourceName{
+	corev1.ResourceRequestsCPU, corev1.ResourceRequestsMemory,
+	corev1.ResourceLimitsCPU, corev1.ResourceLimitsMemory,
+}
+
+// splitComputeQuota separates the CPU/memory dimensions of a plan's caps from
+// the rest.
+func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceList) {
+	compute, rest = corev1.ResourceList{}, caps.DeepCopy()
+	for _, key := range computeQuotaKeys {
+		if q, ok := rest[key]; ok {
+			compute[key] = q
+			delete(rest, key)
+		}
 	}
+	return compute, rest
 }
 
 // quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
@@ -486,6 +538,15 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 // minimum-tier pod ≈ 30 pods < 50; paid: 58 CPU of pro-ultra pods ≈ 7 ≪ 500),
 // and the ephemeral axis likewise has surge slack once compute binds (30 × 1
 // Gi ≪ 100 Gi; 7 × 32 Gi ≪ 2 Ti).
+//
+// The compute axes are a budget for SERVICES only (w2/m247). Postgres and Key
+// Value Pods run under the datastore PriorityClass and the CPU/memory quota is
+// scoped to exclude it (baseResourceQuotas), because Render has no
+// per-workspace compute quota and gates high availability only on a ≥1-CPU
+// plan. Sizing this budget for datastores would have been a plan-based cap
+// Render does not have: a Hobby workspace's 3 CPU could never hold a `2c-4g`
+// HA pair, while the same plan allows 25 paid Postgres. Datastores are bounded
+// by their count caps (QuotaCapsForPlan) and per-instance billing instead.
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant,
 	// plus one pro-ultra surge pod of rollout headroom).
