@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-30T08:54:43.255209+00:00",
+  "scope": "Existing actual generated222image copied only to own localhost test namespace, genuine corresponding full SPDX signed with disposable offline testkey. No public TLog write or production approval; ignoretlog applies ONLY here and is not used in strict real artifactreview. GitHubOIDC/certsourcepolicy is NOT proved by offline test.",
+  "cosign_version": "3.1.4",
+  "image_ref": "localhost:32828/w8-cosign-protocol-qa@sha256:b8dffd5169bc66d13a734c5e4ea2baabcd84cd3962f0092033ac444b188769a1",
+  "predicate_bytes": 23418941,
+  "predicate_sha256": "72733154d0c6c12238e112d43bcd7b4013408fcff75ec8334bbadfb461785c62",
+  "local_signature_verified_with_public_testkey": true,
+  "verified_output_parser": "current verifier envelopes/statements succeeds unchanged",
+  "full_original_predicate_semantically_identical": true,
+  "test_source_architecture": "amd64",
+  "package_identity_gate_exercised": false,
+  "identity_scope": "The prior Docker-daemon SPDX has a synthesized root manifest digest. This test checks cryptographic output shape and complete predicate preservation only; strict real registry identity checks remain unchanged.",
+  "package_count": 1031,
+  "verified_statement_sha256": "9e5c3d946e3f45ea9d3485bc8875af4b720f16dd6ce765cbe102c3b45dfcba9b",
+  "raw_verified_output_sha256": "2c6f0bf541e0b394ab0169a252f43b3ac3ee373f181f09482c06e870f362f24c",
+  "candidate_approved": false
+}

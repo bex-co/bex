@@ -1,0 +1,69 @@
+{
+  "scope": "Actual repeated failure, independently regenerated exact-candidate SPDX size and local intentionally rejected Rekor v2 request; no public test TLog write, signature/candidate acceptance, production pin or adoption. Private test keys and credentials are excluded.",
+  "files": {
+    "independent-node14-spdx-size.json": {
+      "bytes": 821,
+      "sha256": "f5d464dad3f4be1218b80465946cd9cfdb902d6c30e5b028a1ef28a3bf0dd9fe",
+      "original_bytes": 821,
+      "original_sha256": "f5d464dad3f4be1218b80465946cd9cfdb902d6c30e5b028a1ef28a3bf0dd9fe",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/receipt.json"
+    },
+    "independent-node14-amd64.spdx.json.gz": {
+      "bytes": 3525888,
+      "sha256": "8a3e76f2c5fef023356f6d53a0441f71f9ebee279a0f13eeb694fadd7c38fd64",
+      "original_bytes": 25143815,
+      "original_sha256": "38210dfa0713b4867c7fbd63aa55f3fae9be80fc7f27721ac5dc942e7ab80bf7",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/actual-node14-amd64.spdx.json.gz",
+      "archive_note": "Byte-identical original gzip; one decompression recovers raw SPDX"
+    },
+    "local-protocol-receipt.json": {
+      "bytes": 966,
+      "sha256": "355884797980d75db2819b28aa13526d762c50946893d26ba807a650c330ac2d",
+      "original_bytes": 966,
+      "original_sha256": "355884797980d75db2819b28aa13526d762c50946893d26ba807a650c330ac2d",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/receipt.json"
+    },
+    "local-protocol-request.json": {
+      "bytes": 715,
+      "sha256": "b7c4e1cd24684c5867ade0bfb9e8869a5ea9ffc5147bca8d01cce7a88a600296",
+      "original_bytes": 715,
+      "original_sha256": "b7c4e1cd24684c5867ade0bfb9e8869a5ea9ffc5147bca8d01cce7a88a600296",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/request-1.json"
+    },
+    "tuf-derived-signing-config.json": {
+      "bytes": 885,
+      "sha256": "8772519b53d24ded8fafeaeadded7a3bc1d13b83ffd6d6fe89e027640aef8990",
+      "original_bytes": 885,
+      "original_sha256": "8772519b53d24ded8fafeaeadded7a3bc1d13b83ffd6d6fe89e027640aef8990",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/cosign314-rekor-v2-signing-config.json"
+    },
+    "reviewed-installer-action.yml.txt": {
+      "bytes": 13201,
+      "sha256": "71e926bd0fb5115735340d0e9aadf031210548b8346c70cdacb27447003528ec",
+      "original_bytes": 13201,
+      "original_sha256": "71e926bd0fb5115735340d0e9aadf031210548b8346c70cdacb27447003528ec",
+      "source_path": "/tmp/loopx-w8-cosign-installer-action.yml"
+    },
+    "node14-recovery49-job.log.gz": {
+      "bytes": 50873,
+      "sha256": "18add1f07d1ce389e55ca3271bd1c41ce33043d3a8d4a5b26cb9c78f82e8e2fb",
+      "original_bytes": 277784,
+      "original_sha256": "7c95c7f21ca379908232b059e40128b901c05739bae8fd35755f42655bff1e3b",
+      "source_path": "/tmp/loopx-w8-native-scan-failure/node14-recovery49-job.log"
+    },
+    "local-registry-shape-receipt.json": {
+      "bytes": 1443,
+      "sha256": "22b21fb66012e0d3f8f52fa452675f0770c7a1526fdf75a032ce0f5dbe047104",
+      "original_bytes": 1443,
+      "original_sha256": "22b21fb66012e0d3f8f52fa452675f0770c7a1526fdf75a032ce0f5dbe047104",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/cosign314-local-protocol/local-registry-shape-receipt.json"
+    },
+    "strict-spdx-binding-preflight.json": {
+      "bytes": 2057,
+      "sha256": "00e6d9d184ca829de66b921301b8978b852ced7397c618f46e807099842863d5",
+      "original_bytes": 2057,
+      "original_sha256": "00e6d9d184ca829de66b921301b8978b852ced7397c618f46e807099842863d5",
+      "source_path": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/strict-spdx-binding-preflight.json"
+    }
+  }
+}

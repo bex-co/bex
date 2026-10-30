@@ -1,0 +1,16 @@
+{
+  "scope": "Genuine independently regenerated SPDX for the exact candidate using verified official Syft1.55.0. Size/API diagnosis only, not CI attestation or candidate approval.",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "architecture": "amd64",
+  "syft_version": "1.55.0",
+  "spdx_bytes": 25143815,
+  "spdx_sha256": "38210dfa0713b4867c7fbd63aa55f3fae9be80fc7f27721ac5dc942e7ab80bf7",
+  "gzip_path": "/tmp/loopx-w8-native-recovery-review/node14-actual-spdx-size/actual-node14-amd64.spdx.json.gz",
+  "gzip_bytes": 3525888,
+  "gzip_sha256": "8a3e76f2c5fef023356f6d53a0441f71f9ebee279a0f13eeb694fadd7c38fd64",
+  "package_count": 1147,
+  "file_count": 29999,
+  "relationship_count": 34068,
+  "elapsed_seconds": 538.05,
+  "candidate_approved": false
+}
