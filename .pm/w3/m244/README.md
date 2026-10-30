@@ -1,18 +1,18 @@
 # w3 · m244 — Dashboard requests survive a dropped browser connection to api.bex.co
 
-**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** in progress — t001, t003, t004 done (root cause: Chrome's 29 s QUIC idle close vs the 30 s poll; poll now 25 s); t002 probes recorded; t005 parity, t006 simplify, t007 coverage, t008 closeout with a post-deploy net-log re-run
+**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** in progress — t001–t007 done; t008 closeout waits on the 25 s poll reaching production, then a 2 h net-log re-run and three clean w4 QA loop runs
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Capture a failing request at the socket level (Chrome net-log during a long dashboard session) — **DONE** | 1h | — |
-| t002 | HTTP/2 idle, GOAWAY and connection-churn probe against the edge; compare Traefik entrypoint timeouts and LB behavior | 45m | — |
+| t002 | HTTP/2 idle, GOAWAY and connection-churn probe against the edge; compare Traefik entrypoint timeouts and LB behavior — **DONE** | 45m | — |
 | t003 | Fix the edge behavior t001/t002 identify (or record why it is not edge-side) — **DONE** | 1h | t001, t002 |
 | t004 | A mutation that fails on the network shows an error the user can act on — **DONE** | 45m | — |
-| t005 | Render parity | 20m | t004 |
-| t006 | Simplify | 15m | t003, t004 |
-| t007 | Test coverage | 30m | t003, t004 |
+| t005 | Render parity — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 15m | t003, t004 |
+| t007 | Test coverage — **DONE** | 30m | t003, t004 |
 | t008 | Closeout | 10m | t005, t006, t007 |
 
 ## Definition of done
