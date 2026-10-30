@@ -30,3 +30,10 @@ A real 1 GB disk refuses writes at its logical capacity on the existing minimum 
 ## StorageClass preflight checkpoint — 2026-10-30
 
 The [fixed-class inventory extension](evidence/storageclass-preflight-20261030/README.md) can now verify the actual bounded class contract before activation, including both publish/expand Secret namespace templates and explicit absence. Unit/protocol and real kubectl mock checks pass. The next read-only production inventory must supply the real class facts; this source checkpoint does not claim class adoption or complete t002/t003.
+
+
+## Verified installed class, activation still pending — 2026-10-30
+
+[Production inventory 41009352173](evidence/production-inventory-20261029/receipt-41009352173.json) confirms the nondeleting bounded class UID and every selected field, including binding/reclaim and all four Secret templates. Both original 10Gi bindings and handles are unchanged; there are no small or unmatched claims. The actual manager/API remain Ready on the signed old `2ac6fd…` source and effective legacy class. The newer platform run failed on Rekor attestation timeouts after existing retries; its second attempt is in flight.
+
+The [strengthened activation preview](evidence/class-activation-preview-20261030/README.md) passed full GitOps validation and all three final simplify reviews. Its exact patch/log/file hashes are archived, and the detached checkout is removed. The patch is not applied to main or production: newer signed operator readiness is still required before selection changes, followed by actual class/binding convergence and owned production acceptance.

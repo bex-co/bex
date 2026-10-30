@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-30T06:52:28.942892+00:00",
+  "preview_source": "3d1d9dd3114319fa53e2b983f7a6243d70b14e99",
+  "scope": "Detached preview only. Main/prod class still legacy; newer Ready operator containing902630131 is mandatory before applying.",
+  "three_simplify_reviews": "reuse,quality,efficiency all clean for final inventory/activation delta",
+  "full_gitops_validation_exit": 0,
+  "patch_sha256": "103e4857277a2fdd6a31966743e52986e43a5993c42f409b18396576f63e4d9e",
+  "log_sha256": "cd2718ca178be6b284ff7c2e99917429b7f4dc2c4c5e9badac644c42b8ce2951",
+  "log_gzip_sha256": "13d089d8b34c2fd4cd6215a73727ff1f685a30027faa5f2c0e4db2322578f76c",
+  "patched_files_sha256": {
+    "lego/operator/config/prod/kustomization.yaml": "e053afa55e0944fa86267b36b660927321758d275cd15d9753c6f6b3ba642642",
+    "scripts/gitops-validate.sh": "573fa8b1cfa7c8bdacc340d3d40ba34b1b9f7f73fde399640243c91172b8aa19"
+  },
+  "environment": "Project-equivalent Bash5.3.15/OpenSSL3.6.4 PATH; existing local fgaCLI-not-installed warning remains, unrelated authz model unchanged."
+}

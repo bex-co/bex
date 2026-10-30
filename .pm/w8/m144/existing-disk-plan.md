@@ -19,3 +19,8 @@ The rollout sequence remains:
 4. Complete the original real 1Gi full, online 1→5Gi grow, hash retention, remount, snapshot/restore, kubelet metrics, requested-size billing, every REST/GraphQL/MCP/Blueprint/dashboard surface and owned cleanup checks. Compare the preservation inventory again at closeout. Record any case not actually verified.
 
 The same inventory observes operator/API image `ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538`: operator 1/1 and API 2/2 updated/Ready/available, with matching observed generations and running image IDs. Root's [strict workflow signature/source receipt](evidence/production-inventory-20261029/receipt.json) maps it to `2ac6fd95402e940ce906873e9c9dc77c1ce53077`, which predates the admitted-capacity writer in `902630131`. **Class activation must wait for a newer verified operator image and its actual adoption.** CSI readiness and old operator readiness cannot substitute for that condition.
+
+
+## Repeat inventory — 2026-10-30 06:14:59 UTC
+
+[Run 41009352173](evidence/production-inventory-20261029/receipt-41009352173.json) again preserves both exact App/PVC/PV lifetimes and provider handles, with zero small or unmatched claims. The bounded StorageClass is now directly observed with UID `45392ab9-1e77-477d-9a95-6a9a84670869` and the complete reviewed contract. The effective class and signed operator remain the legacy class and old `2ac6fd…` source. No disk/class changed; repeat the preservation inventory after actual activation before treating the existing-disk prerequisite as complete.
