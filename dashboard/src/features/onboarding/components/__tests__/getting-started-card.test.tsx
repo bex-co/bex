@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GettingStartedCard } from "../getting-started-card";
+import { memoryStorage } from "@/test/mocks/storage";
 
 const state = vi.hoisted(() => ({
   workspaceId: "tea-a" as string | null,
@@ -51,22 +52,6 @@ function renderCard() {
     context: { client: {} as never, session: null },
   });
   return { ...render(<RouterProvider router={router} />), router };
-}
-
-// src/test/setup.ts installs a no-op localStorage; persistence is the point
-// of these tests, so give each one a real in-memory Storage.
-function memoryStorage(): Storage {
-  const items = new Map<string, string>();
-  return {
-    get length() {
-      return items.size;
-    },
-    clear: () => items.clear(),
-    getItem: (k) => items.get(k) ?? null,
-    key: (i) => [...items.keys()][i] ?? null,
-    removeItem: (k) => void items.delete(k),
-    setItem: (k, v) => void items.set(k, String(v)),
-  };
 }
 
 beforeEach(() => {
