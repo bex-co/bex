@@ -127,6 +127,18 @@ These bit during the first real bring-up and are not obvious from the code:
   - **Durable (preferred):** upgrade the workspace's plan so the projector reprojects the generous paid quota (`limits.cpu: 100`, ~50 sandboxes) — a local data change, no billing locally. `psql "$BEX_CP_DB_URI" -c "UPDATE tenants SET plan='pro' WHERE id='<ws>'"`; the projector reconciles the quota within ~30s (it reverts any direct `kubectl patch` to the plan value, so patch the plan, not the quota).
   - **Quick:** free capacity with `kubectl -n <ws>-sandbox delete bsbx --all` (use the `bsbx` short name / `batchsandboxes.sandbox.opensandbox.io` — the singular `batchsandbox` intermittently fails API discovery here). The controller backs off exponentially, so a sandbox already stuck won't retry the instant quota frees — nudge it: `kubectl -n <ws>-sandbox annotate bsbx <id> bex.co/nudge="$(date +%s)" --overwrite`.
 
+## Draft-PR delivery smoke (w3/m79 t012, verified 2026-10-30 on dev-3)
+
+The full delivery leg — App OAuth connection, installation token, private clone, push and draft PR — runs locally without a real model:
+
+1. **Developer GitHub App** in `.pm/wN/dev-N/.agent/github-app.env` + `github-app.pem` (Redirect URI `http://localhost:<BEX_API_PORT>/v1/git/callback`, "Request user authorization (OAuth) during installation" on, webhook off, no Setup URL — ADR026 §2), installed on one disposable repository only. Re-run `agent-up`.
+2. **Connect** in the dev dashboard (Settings → Integrations → Connect GitHub). If GitHub interposes its sudo "Confirm access" step, it drops the signed `state` and the callback lands on `/settings?git_error=missing_state` (bex fails closed, ADR078 §3a); the App is installed by then, so use **Claim installed account**. `GET /v1/agent-sessions/capabilities?ownerId=<ws>` then reports `github.connected: true`, `ready: true`.
+3. `agent-stub`, seed any value as the model key (`bao kv put tenants/default/agent-sessions/<ws>/model-key BEX_AGENT_MODEL_API_KEY=-` from stdin), `agent-netpol <ws>`.
+4. `POST /v1/agent-sessions` with `repo: "<owner>/<name>"` (not a URL) and `branch: "bex-agent/<name>"` (the prefix is required). The session reaches `running` and `/workspace` holds the clone through the gateway Git proxy.
+5. The stub never edits files, so drive delivery from the sandbox the way the agent would: `kubectl -n <ws>-sandbox exec <pod> -c sandbox -- sh -c 'cd /workspace && … git commit … && git push origin HEAD:<branch> && curl -sS -X POST -H "Content-Type: application/json" -d "{\"title\":…,\"body\":…}" "$(git remote get-url origin)/pull-request"'`. The response carries the draft PR URL; on GitHub it is a **draft** authored by `app/<slug>` into the default branch.
+
+If the sandbox exits within seconds with `BEX_AGENT_COMMAND must be an installed agent adapter path`, the node runs an agent image built from other source: `agent-up` now labels images with a fingerprint of this checkout's source and rebuilds when it differs (`AGENT_REBUILD=1` still forces it).
+
 ## Known local divergences from prod
 
 - No Cilium: the `:8787` gateway-only ingress and the per-session FQDN egress are **not enforced** locally (Calico); the `CiliumNetworkPolicy` objects are created but inert. Do not treat a local run as isolation validation.

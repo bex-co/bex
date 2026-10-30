@@ -1,6 +1,6 @@
 # w3 · m79 — Run the full agent-session stack locally on `dev-N`
 
-**Worker:** worker3 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** todo — t001–t010 done; 2026-10-29 unblock: developer GitHub App `bex-dev3-agents-puncsky` + disposable repo `puncsky/bex-dev3-agent-sandbox` staged in `dev-3/.agent/`; t012 installs it via the bex connect flow and proves the draft PR, then t011 closes
+**Worker:** worker3 **Goal:** a developer can bring the entire [ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** done — 2026-10-30: draft PR https://github.com/puncsky/bex-dev3-agent-sandbox/pull/1 opened from a local dev-3 session
 
 ## Tasks (in order)
 
@@ -16,8 +16,8 @@
 | t008 | `status`/verify agent stack + end-to-end repo-less session smoke — **DONE**        | 45m | t007                  |
 | t009 | Simplify — **DONE**                                                               | 20m | t008                  |
 | t010 | Test coverage: `dev-env.test.sh` derivation for the new ports/env — **DONE**       | 30m | t008                  |
-| t012 | Real GitHub App delivery smoke: local session opens a draft PR                    | 45m | t008                  |
-| t011 | Closeout                                                                          | 10m | t009, t010, t012      |
+| t012 | Real GitHub App delivery smoke: local session opens a draft PR — **DONE**          | 45m | t008                  |
+| t011 | Closeout — **DONE**                                                               | 10m | t009, t010, t012      |
 
 ## Definition of done
 
