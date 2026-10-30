@@ -1,0 +1,20 @@
+{
+  "mode": "reviewed-immutable-recovery",
+  "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_sha": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "authorized_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "official_base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+  "producer_run_id": 41000570846,
+  "producer_job_id": 123967323852,
+  "producer_job_conclusion": "failure",
+  "producer_evidence_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
+  "producer_successful_steps": [
+    "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "recovery_authorization_sha256": "5213ff72298ed892d8275f33d315cc0239eb0ae84179d6e17da2e26d38acf19f",
+  "identical_non_documentation_recipe_file_count": 22,
+  "recipe_git_blob_mode_manifest_sha256": "edace24925e09ea935a3835fc8cc5a59b1a518787a16ac90f58ee04a87cd30d9",
+  "producer_verifier_matrix_base_equal": true,
+  "approval_rule": "Old producer overall failure does not approve this artifact. Current verification job, both-arch probes/scans/SBOM, strict current-source keyless signatures and anonymous blob hashes are still independently required."
+}

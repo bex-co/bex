@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T11:56:02.126844+00:00",
+  "candidate_approved": false,
+  "error_type": "RuntimeError",
+  "error": "Both actual signed architecture report pairs are required"
+}

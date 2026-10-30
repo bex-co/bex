@@ -5,3 +5,5 @@ Node20 and a later duplicate Node14 scan failed while reading different image la
 Both scan steps now set GODEBUG=http2client=0. The pinned Trivy/action/container-registry source uses the inherited standard Go transport; the exact primary-source chain is recorded in the receipt. The local actual TLS probe with the same double-clone pattern negotiates HTTP/2 by default and HTTP/1.1 under the setting. Both retain TLS1.3 and certificate validation, reject an untrusted CA and reject a tampered digest. All scan inputs/platforms, twenty-minute timeouts, reports, signing and existing finding policy remain unchanged.
 
 This proves transport behavior, not a new scanner run or supplier approval. Real corrected workflow runs remain required. Raw failure logs are lossless gzip with original hashes; no credentials are included.
+
+Official source snapshots retain their exact original bytes as gzip; [the custody map](SOURCE_ARCHIVE_PATHS.json) records original paths and hashes. The action environment/exit probe also confirms inherited GODEBUG/argv and unchanged success/failure exit codes.

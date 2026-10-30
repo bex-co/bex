@@ -1,0 +1,89 @@
+{"at": "2026-10-30T12:00:00.260596+00:00", "stage": "actual-CI-and-source-policy", "candidate_approved": false, "name": "python-3.8-bookworm"}
+{"at": "2026-10-30T12:02:47.889600+00:00", "stage": "anonymous-immutable-bundle-download", "candidate_approved": false, "name": "python-3.8-bookworm"}
+{"at": "2026-10-30T12:02:53.575098+00:00", "stage": "strict-keyless-bundle-verification", "candidate_approved": false, "name": "python-3.8-bookworm"}
+{"at": "2026-10-30T12:03:01.727070+00:00", "stage": "exact-Docker-root-proof-required", "candidate_approved": false, "name": "python-3.8-bookworm"}
+{"at": "2026-10-30T12:03:01.728626+00:00", "stage": "anonymous-compressed-and-decompressed-read", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "expected_compressed_bytes": 240679485}
+{"at": "2026-10-30T12:03:01.729019+00:00", "stage": "anonymous-compressed-and-decompressed-read", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "expected_compressed_bytes": 243863833}
+{"at": "2026-10-30T12:03:32.796586+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 21889034, "decompressed_bytes": 49283072}
+{"at": "2026-10-30T12:03:32.926177+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 16777226, "decompressed_bytes": 70254592}
+{"at": "2026-10-30T12:04:03.029936+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 35520522, "decompressed_bytes": 128974848}
+{"at": "2026-10-30T12:04:03.061312+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 29491210, "decompressed_bytes": 126877696}
+{"at": "2026-10-30T12:04:33.386006+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 44826634, "decompressed_bytes": 164626432}
+{"at": "2026-10-30T12:04:33.438865+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 38928394, "decompressed_bytes": 179306496}
+{"at": "2026-10-30T12:05:03.680855+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 51118090, "decompressed_bytes": 189792256}
+{"at": "2026-10-30T12:05:04.880621+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 46006282, "decompressed_bytes": 197132288}
+{"at": "2026-10-30T12:05:35.109974+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 58720266, "decompressed_bytes": 220200960}
+{"at": "2026-10-30T12:05:36.987865+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 51904522, "decompressed_bytes": 209715200}
+{"at": "2026-10-30T12:06:05.175816+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 66060298, "decompressed_bytes": 257949696}
+{"at": "2026-10-30T12:06:07.633995+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 58720266, "decompressed_bytes": 227540992}
+{"at": "2026-10-30T12:06:35.252876+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 80085002, "decompressed_bytes": 311427072}
+{"at": "2026-10-30T12:06:39.134438+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 69730314, "decompressed_bytes": 266338304}
+{"at": "2026-10-30T12:07:05.603121+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 91095050, "decompressed_bytes": 339738624}
+{"at": "2026-10-30T12:07:09.693719+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 79822858, "decompressed_bytes": 294649856}
+{"at": "2026-10-30T12:07:36.068498+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 103940106, "decompressed_bytes": 394264576}
+{"at": "2026-10-30T12:07:39.931374+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 92012554, "decompressed_bytes": 326107136}
+{"at": "2026-10-30T12:08:07.053719+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 130809866, "decompressed_bytes": 460324864}
+{"at": "2026-10-30T12:08:10.815115+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 109969418, "decompressed_bytes": 377487360}
+{"at": "2026-10-30T12:08:37.385675+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 141164554, "decompressed_bytes": 486539264}
+{"at": "2026-10-30T12:08:40.939989+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 118620170, "decompressed_bytes": 404750336}
+{"at": "2026-10-30T12:09:07.795403+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 151650314, "decompressed_bytes": 516947968}
+{"at": "2026-10-30T12:09:11.206787+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 132382730, "decompressed_bytes": 451936256}
+{"at": "2026-10-30T12:09:39.360428+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "arm64", "layer": 15, "compressed_bytes": 162398218, "decompressed_bytes": 546308096}
+{"at": "2026-10-30T12:09:42.902103+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 141426698, "decompressed_bytes": 478150656}
+{"at": "2026-10-30T12:10:02.606512+00:00", "stage": "anonymous-compressed-and-decompressed-read", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "expected_compressed_bytes": 211265642}
+{"at": "2026-10-30T12:10:12.967095+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 15, "compressed_bytes": 150732810, "decompressed_bytes": 505413632}
+{"at": "2026-10-30T12:10:34.287763+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 35651594, "decompressed_bytes": 120586240}
+{"at": "2026-10-30T12:11:04.548467+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 49676298, "decompressed_bytes": 156237824}
+{"at": "2026-10-30T12:11:34.913647+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 60293130, "decompressed_bytes": 190840832}
+{"at": "2026-10-30T12:12:05.347666+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 71696394, "decompressed_bytes": 219152384}
+{"at": "2026-10-30T12:12:35.937908+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 87162890, "decompressed_bytes": 268435456}
+{"at": "2026-10-30T12:13:06.032343+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 99745802, "decompressed_bytes": 306184192}
+{"at": "2026-10-30T12:13:37.139286+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 107216906, "decompressed_bytes": 328204288}
+{"at": "2026-10-30T12:14:09.918711+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 112721930, "decompressed_bytes": 341835776}
+{"at": "2026-10-30T12:14:41.071551+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 129630218, "decompressed_bytes": 382730240}
+{"at": "2026-10-30T12:15:12.181555+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 133431306, "decompressed_bytes": 391118848}
+{"at": "2026-10-30T12:15:42.641806+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 146931722, "decompressed_bytes": 432013312}
+{"at": "2026-10-30T12:16:12.808728+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 156499978, "decompressed_bytes": 459276288}
+{"at": "2026-10-30T12:16:45.101647+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 163184650, "decompressed_bytes": 477102080}
+{"at": "2026-10-30T12:17:16.488649+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 176160778, "decompressed_bytes": 515899392}
+{"at": "2026-10-30T12:17:47.794425+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 189792266, "decompressed_bytes": 534773760}
+{"at": "2026-10-30T12:18:18.742977+00:00", "stage": "layer-read-progress", "candidate_approved": false, "name": "python-3.8-bookworm", "architecture": "amd64", "layer": 3, "compressed_bytes": 202899466, "decompressed_bytes": 569376768}
+Traceback (most recent call last):
+  File "/tmp/loopx-w8-native-review-v7.py", line 250, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/tmp/loopx-w8-native-review-v7.py", line 246, in main
+    try:review=Review(args);review.run()
+                            ~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v7.py", line 242, in run
+    self.metadata();self.fetch_bundles();self.crypto_bundles();self.derive_docker_roots_if_needed();self.finish()
+                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v7.py", line 212, in derive_docker_roots_if_needed
+    with concurrent.futures.ThreadPoolExecutor(max_workers=self.a.layer_workers) as pool:items=list(pool.map(self.layer,tasks))
+                                                                                               ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 639, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 311, in _result_or_cancel
+    return fut.result(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 450, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 395, in __get_result
+    raise self._exception
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "/tmp/loopx-w8-native-review-v7.py", line 189, in layer
+    data=body.read(1<<20)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gzip.py", line 349, in read
+    return self._buffer.read(size)
+           ~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/compression/_common/_streams.py", line 68, in readinto
+    data = self.read(len(byte_view))
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gzip.py", line 590, in read
+    raise EOFError("Compressed file ended before the "
+                   "end-of-stream marker was reached")
+EOFError: Compressed file ended before the end-of-stream marker was reached

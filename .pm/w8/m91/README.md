@@ -110,3 +110,10 @@ All critical findings remain visible, including the Bullseye custom-backport fla
 ## Verified recovery retirement — 2026-10-30
 
 [Fresh source-specific discovery reads](evidence/recovery-retirement-20261030/README.md) match the approved Node16/Python3.7 index bytes; their temporary recovery authorizations are retired. Other recovery records remain unchanged. This cleanup adds no supplier adoption or hosted acceptance claim; all original tasks remain open.
+
+
+## Four published supplier reviews — 2026-10-30
+
+[Python 3.8 Bookworm](evidence/published-python38-20261030/README.md) now passes the same strict amd64/arm64 supplier review, bringing the total to four of twenty-seven. Its five complete signed bundles, exact producer/recovery recipe inputs, independent architecture reports, actual compressed/decompressed layer proofs and all thirty-five anonymous image blobs pass. The final pass used bounded resumable layer files after transport truncation, preserving every artifact gate; failed attempts, 43 guards and proof-linked cleanup remain recorded.
+
+The signed scans retain 229 critical findings per architecture, with no Brotli findings. This is supplier evidence approval only. The production catalog remains empty; the remaining twenty-three reviews, full adoption, exact generated-image replay and original hosted DoDs remain open. No task is closed.

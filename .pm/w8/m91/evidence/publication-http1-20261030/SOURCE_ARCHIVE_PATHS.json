@@ -1,0 +1,42 @@
+{
+  "sources/action.yml": {
+    "stored": "sources/action.yml.gz",
+    "original_bytes": 10553,
+    "original_sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73"
+  },
+  "sources/entrypoint.sh": {
+    "stored": "sources/entrypoint.sh.gz",
+    "original_bytes": 2863,
+    "original_sha256": "5d35de70292a3461e55874ca658b3d8f6a56acc4d7098c64e546d965c34a0067"
+  },
+  "sources/gcr-fetcher.go": {
+    "stored": "sources/gcr-fetcher.go.gz",
+    "original_bytes": 8921,
+    "original_sha256": "fc6d6a1f9ebb93d474663b1dccf9959fd9d0fdf42c3961dd2da9d6a2d590286a"
+  },
+  "sources/gcr-options.go": {
+    "stored": "sources/gcr-options.go.gz",
+    "original_bytes": 11130,
+    "original_sha256": "2bebb9e2356bc12af38f8bcf7940bdd12bf59bf49c758a5152bad637ffbb1b7e"
+  },
+  "sources/go1258-transport.go": {
+    "stored": "sources/go1258-transport.go.gz",
+    "original_bytes": 95988,
+    "original_sha256": "8b84f3c0774c9fcccc2973858b9a53adc8ea1d43c4f127687b0b56f215a7ba8d"
+  },
+  "sources/trivy-go.mod": {
+    "stored": "sources/trivy-go.mod.gz",
+    "original_bytes": 26601,
+    "original_sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca"
+  },
+  "sources/trivy-remote.go": {
+    "stored": "sources/trivy-remote.go.gz",
+    "original_bytes": 8666,
+    "original_sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b"
+  },
+  "sources/trivy-transport.go": {
+    "stored": "sources/trivy-transport.go.gz",
+    "original_bytes": 4292,
+    "original_sha256": "8ccd0bdde077510b46963a4f6b938d7ac6604cbb9332ca824f72c1d09f0f7637"
+  }
+}

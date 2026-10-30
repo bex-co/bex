@@ -1,0 +1,8 @@
+{
+  "immutable_baseline": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+  "baseline_workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+  "patch_sha256": "251e7cdfe775d6e6a93662afe485446acc4d00966d6b41c2d73e4c94b5911c57",
+  "added_lines": 2,
+  "removed_lines": 0,
+  "repository_source_modified": false
+}

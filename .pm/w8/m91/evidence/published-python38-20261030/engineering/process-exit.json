@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-30T12:35:26.424956+00:00",
+  "actual_exec_session": 25565,
+  "actual_exit_code": 0,
+  "tool": "/tmp/loopx-w8-native-review-v8.py",
+  "tool_sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+  "candidate_approved": true,
+  "receipt": "/tmp/loopx-w8-native-supplier-reviews-v4/native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd/receipt.json",
+  "owned_layer_directory_empty": true
+}
