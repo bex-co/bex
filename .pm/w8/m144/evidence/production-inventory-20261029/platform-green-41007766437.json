@@ -1,0 +1,145 @@
+{
+  "run": "https://github.com/bex-co/bex/actions/runs/41007766437",
+  "source": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+  "observed_at": "2026-10-30T08:49:43.706804+00:00",
+  "updated_at": "2026-10-30T08:46:27Z",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "secret-scan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "test-operator / operator",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "test-dashboard / dashboard",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "test-backend / backend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "check-supersession",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "test-opensandbox-controller / controller",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "image_build_count": 5,
+  "sign_and_sbom": {
+    "number": 14,
+    "name": "sign images + attest SBOM",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "scan_steps": [
+    {
+      "number": 15,
+      "name": "CVE scan \u2014 operator image HIGH+CRITICAL (report)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 16,
+      "name": "CVE scan \u2014 operator image CRITICAL (gate)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 17,
+      "name": "CVE scan \u2014 dashboard image HIGH+CRITICAL (report)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 18,
+      "name": "CVE scan \u2014 dashboard image CRITICAL (gate)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 19,
+      "name": "CVE scan \u2014 OpenSandbox server HIGH+CRITICAL (report)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 20,
+      "name": "CVE scan \u2014 OpenSandbox server CRITICAL (gate)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 21,
+      "name": "CVE scan \u2014 OpenSandbox controller HIGH+CRITICAL (report)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 22,
+      "name": "CVE scan \u2014 OpenSandbox controller CRITICAL (gate)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 23,
+      "name": "CVE scan \u2014 agent sandbox image HIGH+CRITICAL (report)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 24,
+      "name": "CVE scan \u2014 agent sandbox image CRITICAL (gate)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "deployment_steps": [
+    {
+      "number": 7,
+      "name": "pin image digests in GitOps (write-back)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 24,
+      "name": "wait for the bex operator",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 25,
+      "name": "roll bex onto the freshly-pushed image",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 27,
+      "name": "roll dashboard onto the freshly-pushed image",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "boundary": "Completed pipeline gates only; actual operator image/source/readiness/effective class require a separate read-only inventory."
+}

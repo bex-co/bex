@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-10-30T09:19:32.652747+00:00",
+  "source_parent": "e57d82c891d37c8b4ed6100cc4ca079a992be3d2",
+  "action": "Production manager default class legacy -> hcloud-volumes-luks-bounded for all subsequent workspace disk creates; legacy class and existing bindings preserved. Source/GitOps change only; actual convergence and owned production fixture still required.",
+  "pre_activation_receipt": ".pm/w8/m144/evidence/production-inventory-20261029/receipt-41029256969.json",
+  "pre_activation_receipt_sha256": "af294869fca50427d1dbba0188097a1b330dcca850559a407c48eb65028be711",
+  "reviewed_ready_operator": "ghcr.io/bex-co/bex-operator@sha256:9dc621ff208e274f286b8bb8105862a1769fa40320ca2deeffc7dd12129d7374",
+  "operator_source": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+  "gitops_validation_exit": 0,
+  "validation_environment": "Bash5/OpenSSL3 via explicit Homebrew PATH",
+  "source_files": {
+    "scripts/gitops-validate.sh": "573fa8b1cfa7c8bdacc340d3d40ba34b1b9f7f73fde399640243c91172b8aa19",
+    "lego/operator/config/prod/kustomization.yaml": "e053afa55e0944fa86267b36b660927321758d275cd15d9753c6f6b3ba642642"
+  },
+  "log": {
+    "stored_bytes": 5814,
+    "stored_sha256": "022aa7f102ff85166ffe5bed75e8b476537c2df4745a73c3c990d86763d826a1",
+    "raw_bytes": 23711,
+    "raw_sha256": "dcbe37ea6acdf5556017c3734a8beb4f7364a0e7677d6d0266814b52fbf17c49"
+  },
+  "owned_fixture_created": false,
+  "production_effective_class_after_push": "not yet observed"
+}

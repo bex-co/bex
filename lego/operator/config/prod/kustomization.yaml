@@ -97,7 +97,7 @@ patches:
         path: /spec/template/spec/containers/0/env/-
         value:
           name: BEX_DISK_STORAGE_CLASS
-          value: hcloud-volumes-luks
+          value: hcloud-volumes-luks-bounded
       # w2/m245: every public Database gets a Let's Encrypt certificate for
       # its <dpg-id>.db.bex.co names (HTTP-01 through Traefik on :80), served
       # by CNPG, so the copied external URL connects from a stock client with
