@@ -165,8 +165,12 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "/new/workspace slug field label",
   },
   "workspaces.fieldSlugHelp": {
-    message: "用于 URL 和资源名称。仅限小写字母、数字和连字符，1–30 个字符。",
+    message: "CLI 和 API 使用的唯一标识。仅限小写字母、数字和连字符，1–30 个字符。",
     description: "/new/workspace slug helper text",
+  },
+  "workspaces.fieldSlugError": {
+    message: "仅限小写字母、数字和连字符，1-30 个字符，首尾不能是连字符。",
+    description: "Workspace slug validation error",
   },
   "workspaces.paymentTitle": {
     message: "付款方式",
@@ -213,7 +217,7 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace name field placeholder",
   },
   "workspaces.fieldNameError": {
-    message: "仅限小写字母、数字和连字符，1-30 个字符，首尾不能是连字符。",
+    message: "请输入 1–100 个字符的名称，不能包含换行。",
     description: "Workspace name validation error",
   },
   "workspaces.fieldPlan": {

@@ -808,7 +808,7 @@ func (s *Service) PreviewInvite(ctx context.Context, token string) (InvitePrevie
 	if err != nil {
 		return InvitePreview{}, mapAcceptInviteErr(err)
 	}
-	view := InvitePreview{WorkspaceID: inv.TenantID, WorkspaceName: tenant.Name, Role: wireRole(inv.Role), AlreadyMember: alreadyMember}
+	view := InvitePreview{WorkspaceID: inv.TenantID, WorkspaceName: tenant.Label(), Role: wireRole(inv.Role), AlreadyMember: alreadyMember}
 	if alreadyMember {
 		view.Role = wireRole(member.Role)
 	}
@@ -855,7 +855,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 	s.recordAccepted(ctx, inv, id)
 	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role), AuthorizationPending: pending}
 	if tenant, err := s.Store.GetTenant(ctx, inv.TenantID); err == nil {
-		view.WorkspaceName = tenant.Name
+		view.WorkspaceName = tenant.Label()
 	}
 	return view, nil
 }

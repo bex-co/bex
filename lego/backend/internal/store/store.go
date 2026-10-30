@@ -110,10 +110,18 @@ type Tenant struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	// DisplayName is Render's freeform workspace name (w3/m246); Name is the
-	// unique DNS-label slug. Empty means "show Name".
+	// unique DNS-label slug. Empty means "show Name" (see Label).
 	DisplayName string    `json:"displayName,omitempty"`
 	Plan        string    `json:"plan"`
 	CreatedAt   time.Time `json:"createdAt"`
+}
+
+// Label is the name a person sees: the display name, else the slug.
+func (t Tenant) Label() string {
+	if t.DisplayName != "" {
+		return t.DisplayName
+	}
+	return t.Name
 }
 
 // App is a row of `apps` — the source-of-truth service definition the

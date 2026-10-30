@@ -14,6 +14,7 @@ let mockError: string | null = null;
 const WORKSPACE: WorkspaceView = {
   id: "tea-1",
   name: "acme-hq",
+  slug: "acme-hq",
   plan: "pro",
   role: "admin",
   createdAt: null,

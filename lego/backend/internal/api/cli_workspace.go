@@ -65,6 +65,13 @@ func (s *Server) cliWorkspaceID(ctx context.Context, selected string) (string, e
 	if err != nil {
 		return "", err
 	}
+	// A slug is unique, so an exact slug match wins outright (w3/m246);
+	// display names may collide.
+	for _, workspace := range visible {
+		if workspace.Slug == selected {
+			return workspace.ID, nil
+		}
+	}
 	var matched string
 	for _, workspace := range visible {
 		if workspace.Name != selected {

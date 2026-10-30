@@ -79,9 +79,12 @@ func resolveWorkspaceName(ctx context.Context, lookup lookupEnv, set setEnv, lis
 	if err != nil {
 		return nil
 	}
+	// bex's ?name= filter decides (w3/m246): an exact match on the unique slug
+	// wins outright, else every exact display-name match comes back. The
+	// owner's `name` is the display name, so it cannot be re-checked here.
 	var ids []string
 	for _, o := range owners {
-		if o != nil && o.Name == name {
+		if o != nil {
 			ids = append(ids, o.Id)
 		}
 	}
@@ -99,8 +102,7 @@ func resolveWorkspaceName(ctx context.Context, lookup lookupEnv, set setEnv, lis
 }
 
 // listOwnersByName uses the upstream client exactly as a command would,
-// including its token refresh. The name filter narrows the page; the exact
-// match above still decides.
+// including its token refresh.
 func listOwnersByName(ctx context.Context, name string) ([]*client.Owner, error) {
 	c, err := client.NewDefaultClient()
 	if err != nil {

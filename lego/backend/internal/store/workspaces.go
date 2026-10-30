@@ -154,11 +154,12 @@ func (s *PGStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
 	return t, nil
 }
 
-// RenameTenant updates a workspace's slug (ErrConflict on collision,
-// ErrNotFound when the id doesn't exist).
-func (s *PGStore) RenameTenant(ctx context.Context, id, name string) (Tenant, error) {
+// SetTenantDisplayName renames a workspace: it sets the freeform display name
+// (w3/m246, Render's rename). The slug and id are untouched, so no reference
+// breaks. ErrNotFound when the id doesn't exist.
+func (s *PGStore) SetTenantDisplayName(ctx context.Context, id, name string) (Tenant, error) {
 	t, err := scanTenant(s.Pool.QueryRow(ctx,
-		`UPDATE tenants SET name = $2, updated_at = now() WHERE id = $1
+		`UPDATE tenants SET display_name = $2, updated_at = now() WHERE id = $1
 		 RETURNING `+tenantColumns, id, name))
 	if err != nil {
 		return Tenant{}, classify("workspace", err)

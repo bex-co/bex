@@ -81,19 +81,14 @@ func (f *fakeStore) GetTenant(_ context.Context, id string) (store.Tenant, error
 	return t, nil
 }
 
-func (f *fakeStore) RenameTenant(_ context.Context, id, name string) (store.Tenant, error) {
+func (f *fakeStore) SetTenantDisplayName(_ context.Context, id, name string) (store.Tenant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tenants[id]
 	if !ok {
 		return store.Tenant{}, fmt.Errorf("workspace: %w", store.ErrNotFound)
 	}
-	for oid, other := range f.tenants {
-		if oid != id && other.Name == name {
-			return store.Tenant{}, fmt.Errorf("workspace: %w", store.ErrConflict)
-		}
-	}
-	t.Name = name
+	t.DisplayName = name
 	f.tenants[id] = t
 	return t, nil
 }
@@ -577,14 +572,22 @@ func isResourceNameInvalid(err error) bool {
 	return errors.Is(err, core.ErrBadRequest) && errors.As(err, &coded) && coded.Code == "RESOURCE_NAME_INVALID" && coded.Params["field"] == "name"
 }
 
-func TestRename_RefusesAnInvalidName(t *testing.T) {
+// w3/m246: a rename sets Render's freeform display name; the slug (the
+// typable key) stays, and only unprintable or empty names are refused.
+func TestRename_SetsAFreeformDisplayNameAndKeepsTheSlug(t *testing.T) {
 	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
 	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme_2"); !isResourceNameInvalid(err) {
-		t.Fatalf("rename to an invalid name: want 400 RESOURCE_NAME_INVALID, got %v", err)
+	renamed, err := svc.Rename(ctxAs("user-a"), w.ID, "  Acme_2 & Co.'s Workspace ")
+	if err != nil || renamed.Name != "Acme_2 & Co.'s Workspace" || renamed.Slug != "acme" {
+		t.Fatalf("rename = (%+v, %v), want the trimmed display name and slug acme", renamed, err)
+	}
+	for _, bad := range []string{"", "   ", "a\nb", strings.Repeat("x", 101)} {
+		if _, err := svc.Rename(ctxAs("user-a"), w.ID, bad); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("rename to %q: want 400, got %v", bad, err)
+		}
 	}
 }
 
@@ -640,6 +643,63 @@ func TestDelete_WrongConfirmationNoSideEffects(t *testing.T) {
 	}
 	if len(rev.revoked) != 0 || kicks != 0 {
 		t.Fatalf("side effects on bad confirmation: revoked=%v kicks=%d", rev.revoked, kicks)
+	}
+}
+
+// w3/m246: Render's guard names the workspace by its (display) name.
+func TestDelete_ConfirmationUsesTheDisplayName(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme Corp"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("slug confirmation after a rename: want bad request, got %v", err)
+	}
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace Acme Corp"); err != nil {
+		t.Fatalf("display-name confirmation: %v", err)
+	}
+}
+
+// w3/m246: Render's owner name is the display name; the ?name= filter matches
+// it or the slug, and the view carries both.
+func TestListOwners_NameIsTheDisplayNameAndTheFilterMatchesEither(t *testing.T) {
+	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme Corp"); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Acme Corp", "acme"} {
+		got, err := svc.ListOwners(ctxAs("user-a"), OwnerFilter{Names: []string{name}})
+		if err != nil || len(got) != 1 || got[0].Name != "Acme Corp" || got[0].Slug != "acme" {
+			t.Fatalf("ListOwners(name=%q) = (%+v, %v), want the one workspace named Acme Corp (slug acme)", name, got, err)
+		}
+	}
+	if got, _ := svc.ListOwners(ctxAs("user-a"), OwnerFilter{Names: []string{"acme corp"}}); len(got) != 0 {
+		t.Fatalf("the name filter is exact, as on Render; got %+v", got)
+	}
+
+	// Renaming another workspace to this one's slug must not redirect the key:
+	// slugs are unique, so the slug match wins outright.
+	other, _ := svc.Create(ctxAs("user-a"), "other", "hobby")
+	if _, err := svc.Rename(ctxAs("user-a"), other.ID, "acme"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.ListOwners(ctxAs("user-a"), OwnerFilter{Names: []string{"acme"}})
+	if err != nil || len(got) != 1 || got[0].ID != w.ID {
+		t.Fatalf("ListOwners(name=acme) = (%+v, %v), want only the workspace whose slug is acme", got, err)
+	}
+	// Two display names that collide (no slug match) both come back, so a
+	// caller can report the ambiguity.
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Shared"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Rename(ctxAs("user-a"), other.ID, "Shared"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := svc.ListOwners(ctxAs("user-a"), OwnerFilter{Names: []string{"Shared"}}); len(got) != 2 {
+		t.Fatalf("colliding display names = %+v, want both", got)
 	}
 }
 

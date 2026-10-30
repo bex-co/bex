@@ -63,6 +63,7 @@ vi.mock("@/features/team/components/leave-workspace-card", () => ({
 const primaryWorkspace: WorkspaceView = {
   id: "tea-primary",
   name: "primary",
+  slug: "primary",
   plan: "hobby",
   role: "admin",
   createdAt: null,

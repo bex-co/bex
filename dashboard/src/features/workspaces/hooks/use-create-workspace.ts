@@ -60,6 +60,7 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
         return {
           id: w.id,
           name: w.name ?? name,
+          slug: w.slug ?? name,
           plan: w.plan ?? plan,
           role: w.role ?? "admin",
           createdAt: w.createdAt,

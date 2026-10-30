@@ -26,13 +26,18 @@ func TestResolveWorkspaceName(t *testing.T) {
 		wantErr   string
 		wantCalls int
 	}{
+		// bex's ?name= filter is exact (w3/m246): the slug wins outright, else
+		// every display-name match is listed.
 		{name: "unique name maps to id", value: "bex-canary",
-			listed:    owners("bex-canary", "tea-daif693dqjvc73e7as3g", "bex-canary-2", "tea-other"),
+			listed:    owners("bex-canary", "tea-daif693dqjvc73e7as3g"),
 			wantValue: "tea-daif693dqjvc73e7as3g", wantCalls: 1},
+		{name: "a slug the server matched maps to its id", value: "acme",
+			listed:    owners("Acme Corp", "tea-acme"),
+			wantValue: "tea-acme", wantCalls: 1},
 		{name: "id makes no request", value: "tea-daif693dqjvc73e7as3g",
 			wantValue: "tea-daif693dqjvc73e7as3g"},
 		{name: "unknown name names the workspace", value: "no-such-ws",
-			listed: owners("bex-canary", "tea-a"), wantValue: "no-such-ws",
+			listed: nil, wantValue: "no-such-ws",
 			wantErr: `no workspace named "no-such-ws"`, wantCalls: 1},
 		{name: "duplicate names ask for the id", value: "shared",
 			listed: owners("shared", "tea-a", "shared", "tea-b"), wantValue: "shared",
