@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **223** — [A rollout refused by the workspace's memory quota sits "in progress" with no reason](223.md) — found by the m117 re-check 2026-10-29
 
-- [ ] **223** — [`bex login` tells the user to complete login in the "Render Dashboard"](223.md) (~45m) ← loopx w4 replay of w4/m116, 2026-10-29 UTC (released `bex-cli/v0.3.3`; minor). Upstream `pkg/tui/views/login.go` hard-codes the string; `branding.RewriteText` covers help text only, and w8/m29 t002 left runtime strings out of scope.
+- [ ] **224** — [`bex login` names the wrong dashboard](blocked/224.md) — **BLOCKED (user-authorized CLI release, then published login/logout replay):** launcher fix and full CLI suite complete; original overwritten 223 recovered from `7fd6c9c4f`.
 - [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) — **待实施（2026-10-29 复核）：** 复用 m91 的共享镜像，保持 Python 3.14.8 精确默认值并修补 Brotli；不需选择版本偏离。
 
 - [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **待实施（2026-10-29 复核）：** 保持 requested-size 计费，按原选项 4 补齐真实容量上限，验证 LUKS / 在线扩容。

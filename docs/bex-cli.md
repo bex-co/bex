@@ -1,6 +1,6 @@
 # `bex` CLI
 
-`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree, and applies a Layer-1 help-chrome branding overlay (`internal/branding`) without modifying upstream implementations.
+`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree, and applies a help-chrome branding overlay plus a fixed-prefix explicit-login prompt rewrite (`internal/branding`) without modifying upstream implementations.
 
 The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_RENDER_CLI.md`](../lego/cli/UPSTREAM_RENDER_CLI.md).
 
@@ -193,7 +193,7 @@ At the current pin (**v2.29.0**, `af9bdd180e90`; this list is unchanged from v2.
 
 **Identity, storage and copy that branding deliberately leaves alone:**
 
-- login TUI / non-interactive copy saying “Render Dashboard”
+- automatic login TUI inside other interactive commands (`views.LoginView`) saying “Render Dashboard”; explicit `bex login` rewrites only its fixed prompt prefix through Cobra stdout, preserving the device code and verification URL byte-for-byte
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
