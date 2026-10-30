@@ -37,7 +37,14 @@ func TestCLIWorkspaceServicePaths(t *testing.T) {
 	services := []string{ids.New(ids.Service), ids.New(ids.Service), ids.New(ids.Service)}
 	for i, name := range []string{"home", "other", "foreign"} {
 		ws := workspaces[i]
-		st.tenants = append(st.tenants, store.Tenant{ID: ws, Name: name, Plan: "hobby"})
+		tenant := store.Tenant{ID: ws, Name: name, Plan: "hobby"}
+		switch name {
+		case "other":
+			tenant.DisplayName = "Other Team" // w3/m246: selectable by slug or display name
+		case "home":
+			tenant.DisplayName = "other" // a display name equal to another slug never wins
+		}
+		st.tenants = append(st.tenants, tenant)
 		subject := "client-1"
 		if i == 2 {
 			subject = "someone-else"
@@ -65,6 +72,7 @@ func TestCLIWorkspaceServicePaths(t *testing.T) {
 	}{
 		{"saved workspace id", workspaces[1], "web", 200, services[1]},
 		{"environment workspace name", "other", "web", 200, services[1]},
+		{"environment workspace display name", "Other Team", "web", 200, services[1]},
 		{"home selection", "home", "web", 200, services[0]},
 		{"no selection refuses ambiguity", "", "web", 409, ""},
 		{"unknown selection fails closed", "missing", "web", 404, ""},

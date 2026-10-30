@@ -166,7 +166,7 @@ export function NewWorkspacePage() {
               </p>
               {showNameError ? (
                 <p className="text-sm text-destructive" role="alert">
-                  {t("workspaces.fieldNameError")}
+                  {t("workspaces.fieldSlugError")}
                 </p>
               ) : null}
             </div>

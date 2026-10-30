@@ -21,6 +21,7 @@ function toWorkspaceViews(
     .map((w) => ({
       id: w.id,
       name: w.name ?? "",
+      slug: w.slug ?? "",
       plan: w.plan ?? "hobby",
       role: w.role ?? "",
       createdAt: w.createdAt,

@@ -50,6 +50,7 @@ describe("useWorkspaces", () => {
       {
         id: "tea-1",
         name: "acme-hq",
+        slug: "",
         plan: "hobby",
         role: "admin",
         createdAt: "2026-06-01T00:00:00Z",

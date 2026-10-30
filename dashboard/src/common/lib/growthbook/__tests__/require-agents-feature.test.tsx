@@ -30,6 +30,7 @@ function membership(ids: string[]): WorkspacesQuery["workspaces"] {
     __typename: "Workspace",
     id,
     name: id,
+    slug: "ws",
     role: "admin",
     plan: "hobby",
     createdAt: null,

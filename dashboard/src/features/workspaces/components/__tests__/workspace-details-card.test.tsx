@@ -4,8 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
+const rename = vi.fn();
 vi.mock("@/features/workspaces/hooks/use-rename-workspace", () => ({
-  useRenameWorkspace: () => ({ rename: vi.fn(), busy: false, error: null }),
+  useRenameWorkspace: () => ({ rename, busy: false, error: null }),
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/features/workspaces/components/change-plan-dialog", () => ({
 const workspace: WorkspaceView = {
   id: "tea-1",
   name: "acme",
+  slug: "acme",
   plan: "hobby",
   role: "admin",
   createdAt: null,
@@ -101,6 +103,7 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
   const other: WorkspaceView = {
     id: "tea-2",
     name: "beta",
+    slug: "beta",
     plan: "pro",
     role: "admin",
     createdAt: null,
@@ -149,5 +152,40 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
       />,
     );
     expect(screen.getByDisplayValue("acme-renamed")).toBeInTheDocument();
+  });
+
+  // w3/m246: the name is Render's freeform display name; the slug is shown
+  // read-only next to the id.
+  it("renames to a freeform name and shows the slug", async () => {
+    rename.mockReset();
+    rename.mockResolvedValue(true);
+    render(
+      <WorkspaceDetailsCard
+        workspace={{ ...workspace, slug: "acme-key" }}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("acme-key")).toBeInTheDocument();
+    const input = screen.getByDisplayValue("acme");
+    await userEvent.clear(input);
+    await userEvent.type(input, "  Tian Pan's Workspace ");
+    expect(input).toHaveValue("  Tian Pan's Workspace ");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(rename).toHaveBeenCalledWith("tea-1", "Tian Pan's Workspace");
+  });
+
+  it("refuses a blank name", async () => {
+    render(
+      <WorkspaceDetailsCard
+        workspace={workspace}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    const input = screen.getByDisplayValue("acme");
+    await userEvent.clear(input);
+    await userEvent.type(input, "   ");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 });

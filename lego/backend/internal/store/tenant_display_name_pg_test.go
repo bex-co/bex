@@ -27,9 +27,9 @@ import (
 )
 
 // w3/m246: a workspace's freeform display name is set once for a signup
-// workspace, never overwrites a later choice, survives a slug rename, and is
-// read back by every tenant read; the webhook feed's public service id stays
-// the App's CR name (tenant id) across a slug rename.
+// workspace, a rename sets it without touching the slug, a later sign-in never
+// overwrites a rename, and every tenant read returns it; the webhook feed's
+// public service id is the App's CR name (tenant id), not the slug.
 func TestPGTenantDisplayName(t *testing.T) {
 	ctx := context.Background()
 	st, pool := webhookPGStore(t, ctx)
@@ -66,17 +66,19 @@ func TestPGTenantDisplayName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create app: %v", err)
 	}
-	renamed, err := st.RenameTenant(ctx, ws.ID, "slug-"+stamp)
-	if err != nil || renamed.Name != "slug-"+stamp || renamed.DisplayName != "Tian Pan's Workspace" {
-		t.Fatalf("slug rename = (%+v, %v), want the display name kept", renamed, err)
+	renamed, err := st.SetTenantDisplayName(ctx, ws.ID, "Acme")
+	if err != nil || renamed.DisplayName != "Acme" || renamed.Name != ws.ID {
+		t.Fatalf("rename = (%+v, %v), want the display name set and the slug kept", renamed, err)
+	}
+	if err := st.SetTenantDisplayNameIfUnset(ctx, ws.ID, "Tian Pan's Workspace"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := st.GetTenant(ctx, ws.ID); got.DisplayName != "Acme" || got.Label() != "Acme" {
+		t.Fatalf("a later sign-in overwrote the rename: %+v", got)
 	}
 
-	got, err := st.GetTenant(ctx, ws.ID)
-	if err != nil || got.DisplayName != "Tian Pan's Workspace" {
-		t.Fatalf("get = (%+v, %v)", got, err)
-	}
 	list, err := st.ListTenantsForSubject(ctx, owner)
-	if err != nil || len(list) != 1 || list[0].DisplayName != "Tian Pan's Workspace" {
+	if err != nil || len(list) != 1 || list[0].DisplayName != "Acme" {
 		t.Fatalf("list for subject = (%+v, %v)", list, err)
 	}
 
@@ -89,7 +91,7 @@ func TestPGTenantDisplayName(t *testing.T) {
 	}
 	for _, r := range rows {
 		if r.AppID == app.ID && r.ServiceID != core.CRName(ws.ID, app.Name) {
-			t.Errorf("%s row service id = %q after a slug rename, want the CR name %q", r.Source, r.ServiceID, core.CRName(ws.ID, app.Name))
+			t.Errorf("%s row service id = %q, want the CR name %q", r.Source, r.ServiceID, core.CRName(ws.ID, app.Name))
 		}
 	}
 }

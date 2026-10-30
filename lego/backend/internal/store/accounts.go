@@ -81,7 +81,7 @@ func accountDispositionWithoutMachines(ctx context.Context, q interface {
 	// `NOT (x = ANY(NULL))` is NULL — silently filtering out every member and
 	// misclassifying each workspace as blocked. nil must mean "no machines".
 	rows, err := q.Query(ctx, `
-		SELECT t.id, t.name,
+		SELECT t.id, COALESCE(NULLIF(t.display_name, ''), t.name),
 		       (SELECT count(*) FROM tenant_members all_m
 		        WHERE all_m.tenant_id = t.id
 		          AND NOT (all_m.subject = ANY(COALESCE($2::text[], '{}')))),

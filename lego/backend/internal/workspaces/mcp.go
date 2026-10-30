@@ -33,12 +33,13 @@ import (
 type mcpWorkspace struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	Slug string `json:"slug"`
 	Plan string `json:"plan,omitempty"`
 	Role string `json:"role,omitempty"`
 }
 
 func toMCPWorkspace(w WorkspaceView) mcpWorkspace {
-	return mcpWorkspace{ID: w.ID, Name: w.Name, Plan: w.Plan, Role: w.Role}
+	return mcpWorkspace{ID: w.ID, Name: w.Name, Slug: w.Slug, Plan: w.Plan, Role: w.Role}
 }
 
 type listWorkspacesResult struct {

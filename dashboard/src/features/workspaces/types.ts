@@ -4,7 +4,10 @@
 
 export interface WorkspaceView {
   id: string;
+  /** Render's freeform workspace name (w3/m246). */
   name: string;
+  /** The unique DNS-label key (`BEX_WORKSPACE`, `X-Bex-Workspace`). */
+  slug: string;
   /** Workspace plan id — one of WORKSPACE_PLAN_IDS (store.WorkspacePlans). */
   plan: string;
   /** The caller's role in this workspace ("admin" for every m1 membership). */

@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import {
+  MAX_LABEL_LENGTH,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { Loader2 } from "lucide-react";
 import {
   Card,
@@ -69,13 +72,14 @@ export function WorkspaceDetailsCard({
     setName(workspace.name);
   }
 
-  const nameValid = isValidDnsLabel(name);
+  // Render's freeform name; bex-api applies the same rule (w3/m246).
+  const nameValid = isValidLabel(name);
   const showNameError = name.length > 0 && !nameValid;
-  const canSave = nameValid && name !== workspace.name && !busy;
+  const canSave = nameValid && name.trim() !== workspace.name && !busy;
 
   async function handleSave() {
     if (!canSave) return;
-    const ok = await rename(workspace.id, name);
+    const ok = await rename(workspace.id, name.trim());
     if (ok) await refetch();
   }
 
@@ -95,7 +99,8 @@ export function WorkspaceDetailsCard({
             <Input
               id="workspace-settings-name"
               value={name}
-              onChange={(e) => setName(e.target.value.toLowerCase())}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={MAX_LABEL_LENGTH}
               autoComplete="off"
               aria-invalid={showNameError}
               className="max-w-sm"
@@ -119,7 +124,7 @@ export function WorkspaceDetailsCard({
           </Alert>
         ) : null}
 
-        <dl className="grid grid-cols-1 gap-4 border-t pt-4 text-sm sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <dt className="text-muted-foreground">
               {t("workspaces.fieldPlan")}
@@ -140,6 +145,12 @@ export function WorkspaceDetailsCard({
           <div className="space-y-1">
             <dt className="text-muted-foreground">{t("workspaces.fieldId")}</dt>
             <dd className="font-mono text-xs">{workspace.id}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-muted-foreground">
+              {t("workspaces.fieldSlug")}
+            </dt>
+            <dd className="font-mono text-xs">{workspace.slug}</dd>
           </div>
           <div className="space-y-1">
             <dt className="text-muted-foreground">

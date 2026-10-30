@@ -175,6 +175,7 @@ export function useWorkspaceCreationBilling(
         return {
           id: workspace.id,
           name: workspace.name ?? value.name,
+          slug: workspace.slug ?? value.name,
           plan: workspace.plan ?? value.plan,
           role: workspace.role ?? "admin",
           createdAt: workspace.createdAt,

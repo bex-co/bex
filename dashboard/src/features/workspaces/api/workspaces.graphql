@@ -9,6 +9,7 @@ query Workspaces {
   workspaces {
     id
     name
+    slug
     plan
     role
     createdAt
@@ -19,6 +20,7 @@ mutation CreateWorkspace($name: String!, $plan: String) {
   createWorkspace(name: $name, plan: $plan) {
     id
     name
+    slug
     plan
     role
     createdAt
@@ -75,6 +77,7 @@ mutation FinalizeWorkspaceCreation($attemptId: String!) {
   finalizeWorkspaceCreation(attemptId: $attemptId) {
     id
     name
+    slug
     plan
     role
     createdAt
@@ -89,6 +92,7 @@ mutation RenameWorkspace($id: String!, $name: String!) {
   renameWorkspace(id: $id, name: $name) {
     id
     name
+    slug
     plan
     role
     createdAt

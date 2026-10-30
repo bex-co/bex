@@ -30,13 +30,15 @@ import (
 // here. Every resolver delegates to the Service; the schema is presentation.
 
 // workspaceGQLType renders WorkspaceView. Fields follow Render's owner/workspace
-// vocabulary (id, name, plan) plus the caller's role; the REST owner shape in
-// w6/m2 maps the same view.
+// vocabulary (id, name — the freeform display name — plan) plus the caller's
+// role and bex's slug (the unique typable key, w3/m246); the REST owner shape
+// in w6/m2 maps the same view.
 var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Workspace",
 	Fields: graphql.Fields{
 		"id":        gqlutil.StrField(func(w WorkspaceView) any { return w.ID }),
 		"name":      gqlutil.StrField(func(w WorkspaceView) any { return w.Name }),
+		"slug":      gqlutil.StrField(func(w WorkspaceView) any { return w.Slug }),
 		"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
 		"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
 		"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
@@ -199,7 +201,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Type: graphql.NewNonNull(graphql.String),
 					// Render's live delete guard: "sudo delete workspace <name>"
 					// (docs/render-artifacts/workspace-lifecycle.md).
-					Description: `must equal "sudo delete workspace <name>"`,
+					Description: `must equal "sudo delete workspace <name>" (the workspace's display name)`,
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {

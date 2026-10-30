@@ -39,6 +39,7 @@ const workspaces = ["tea-first", "tea-second"].map((id) => ({
   __typename: "Workspace" as const,
   id,
   name: id,
+  slug: "ws",
   plan: "hobby",
   role: "admin",
   createdAt: null,

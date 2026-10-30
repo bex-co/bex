@@ -4049,6 +4049,7 @@ export type Workspace = {
   name: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
   role: Maybe<Scalars['String']['output']>;
+  slug: Maybe<Scalars['String']['output']>;
 };
 
 export type WorkspaceBillingReadiness = {

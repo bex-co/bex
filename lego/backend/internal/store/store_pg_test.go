@@ -1754,9 +1754,9 @@ func assertWorkspaceLifecycle(ctx context.Context, t *testing.T, s *PGStore, poo
 	if err != nil || got.Name != "workspace-a" || got.Plan != PlanHobby {
 		t.Fatalf("get tenant = %+v (err %v)", got, err)
 	}
-	renamed, err := s.RenameTenant(ctx, ws.ID, "workspace-a2")
-	if err != nil || renamed.Name != "workspace-a2" {
-		t.Fatalf("rename = %+v (err %v)", renamed, err)
+	renamed, err := s.SetTenantDisplayName(ctx, ws.ID, "Workspace A")
+	if err != nil || renamed.DisplayName != "Workspace A" || renamed.Name != "workspace-a" {
+		t.Fatalf("rename = %+v (err %v), want the display name set and the slug kept", renamed, err)
 	}
 
 	// Per-subject plan count backs the 5-Hobby cap; the subject sees only their

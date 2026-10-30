@@ -76,7 +76,7 @@ func (f *fakeWSStore) GetTenant(_ context.Context, id string) (store.Tenant, err
 	}
 	return store.Tenant{}, fmt.Errorf("workspace %s: %w", id, store.ErrNotFound)
 }
-func (f *fakeWSStore) RenameTenant(context.Context, string, string) (store.Tenant, error) {
+func (f *fakeWSStore) SetTenantDisplayName(context.Context, string, string) (store.Tenant, error) {
 	return store.Tenant{}, fmt.Errorf("unused: %w", store.ErrNotFound)
 }
 func (f *fakeWSStore) UpdateTenantPlan(context.Context, string, string) (store.Tenant, error) {

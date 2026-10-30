@@ -129,7 +129,7 @@ describe("NewWorkspacePage", () => {
     );
     expect(screen.getByLabelText("Billing Email")).toHaveAttribute("readonly");
     expect(
-      screen.getByText(/Used in URLs and resource names/),
+      screen.getByText(/A unique key for the CLI and API/),
     ).toBeInTheDocument();
   });
 
