@@ -86,7 +86,7 @@ func (s *PGStore) CreateWorkspace(ctx context.Context, name, plan, ownerSubject 
 // workspace the caller actually owns (w4/m12).
 func (s *PGStore) TenantForOwner(ctx context.Context, identityID string) (Tenant, error) {
 	t, err := scanTenant(s.Pool.QueryRow(ctx,
-		`SELECT id, name, plan, created_at FROM tenants WHERE owner_identity_id = $1`, identityID))
+		`SELECT `+tenantColumns+` FROM tenants WHERE owner_identity_id = $1`, identityID))
 	if err != nil {
 		return Tenant{}, classify("tenant", err)
 	}
@@ -146,29 +146,42 @@ func (s *PGStore) TenantContactSubjects(ctx context.Context, tenantIDs []string)
 
 // GetTenant reads one tenant by id (ErrNotFound when absent).
 func (s *PGStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
-	var t Tenant
-	err := s.Pool.QueryRow(ctx,
-		`SELECT id, name, plan, created_at FROM tenants WHERE id = $1`, id,
-	).Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+	t, err := scanTenant(s.Pool.QueryRow(ctx,
+		`SELECT `+tenantColumns+` FROM tenants WHERE id = $1`, id))
 	if err != nil {
 		return Tenant{}, classify("workspace", err)
 	}
 	return t, nil
 }
 
-// RenameTenant updates a workspace's display name (ErrConflict on collision,
+// RenameTenant updates a workspace's slug (ErrConflict on collision,
 // ErrNotFound when the id doesn't exist).
 func (s *PGStore) RenameTenant(ctx context.Context, id, name string) (Tenant, error) {
-	var t Tenant
-	err := s.Pool.QueryRow(ctx,
+	t, err := scanTenant(s.Pool.QueryRow(ctx,
 		`UPDATE tenants SET name = $2, updated_at = now() WHERE id = $1
-		 RETURNING id, name, plan, created_at`,
-		id, name,
-	).Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+		 RETURNING `+tenantColumns, id, name))
 	if err != nil {
 		return Tenant{}, classify("workspace", err)
 	}
 	return t, nil
+}
+
+// SetTenantDisplayNameIfUnset gives a workspace its first display name and
+// leaves one already set alone, so a signup workspace is named once (w3/m246)
+// and a user's later rename is never overwritten.
+func (s *PGStore) SetTenantDisplayNameIfUnset(ctx context.Context, id, displayName string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE tenants SET display_name = $2, updated_at = now()
+		 WHERE id = $1 AND display_name = ''`, id, displayName)
+	if err != nil {
+		return classify("workspace", err)
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := s.GetTenant(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // UpdateTenantPlan changes a workspace's plan (ErrNotFound when the id doesn't
@@ -176,12 +189,9 @@ func (s *PGStore) RenameTenant(ctx context.Context, id, name string) (Tenant, er
 // via store.NormalizePlan) before this write; the `tenants.plan` CHECK
 // constraint is the last-resort backstop, surfaced as ErrInvalid via classify.
 func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
-	var t Tenant
-	err := s.Pool.QueryRow(ctx,
+	t, err := scanTenant(s.Pool.QueryRow(ctx,
 		`UPDATE tenants SET plan = $2, updated_at = now() WHERE id = $1
-		 RETURNING id, name, plan, created_at`,
-		id, plan,
-	).Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+		 RETURNING `+tenantColumns, id, plan))
 	if err != nil {
 		return Tenant{}, classify("workspace", err)
 	}
@@ -207,7 +217,7 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 // first — the caller's workspace list (the dashboard switcher / owners list).
 func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]Tenant, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT t.id, t.name, t.plan, t.created_at
+		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name
 		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
 		 WHERE m.subject = $1 ORDER BY t.created_at`, subject)
 	if err != nil {
@@ -216,8 +226,8 @@ func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]
 	defer rows.Close()
 	var out []Tenant
 	for rows.Next() {
-		var t Tenant
-		if err := rows.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt); err != nil {
+		t, err := scanTenant(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, t)

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -49,6 +50,8 @@ type TenantStore interface {
 	// workspace it NAMED (w6/m14), or one an App it named belongs to?
 	IsMember(ctx context.Context, subject, tenantID string) (bool, error)
 	CreateTenantWithMember(ctx context.Context, identityID, plan string) (store.Tenant, error)
+	// SetTenantDisplayNameIfUnset names a signup workspace once (w3/m246).
+	SetTenantDisplayNameIfUnset(ctx context.Context, id, displayName string) error
 	BindClient(ctx context.Context, clientID, tenantID string) error
 	UnbindClient(ctx context.Context, clientID string) error
 	// AcceptInvitesForEmail redeems every outstanding invite addressed to email
@@ -196,6 +199,7 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 	if err := t.ensureGranted(ctx, tenant.ID, identityID); err != nil {
 		return "", err
 	}
+	t.nameSignupWorkspace(ctx, tenant, email)
 	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
 	return tenant.ID, nil
 }
@@ -508,4 +512,39 @@ func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
 		return err
 	}
 	return nil
+}
+
+// nameSignupWorkspace names a signup workspace (slug = id, no display name)
+// "<Name>'s Workspace", as Render does (w3/m246). The person's name is only
+// known here, so workspaces created before display names are named on the
+// owner's next sign-in. Best effort: a failure never blocks the caller.
+func (t *tenantService) nameSignupWorkspace(ctx context.Context, tenant store.Tenant, email string) {
+	if tenant.DisplayName != "" || tenant.Name != tenant.ID {
+		return
+	}
+	var name string
+	if id, ok := core.IdentityFrom(ctx); ok {
+		name = id.Name
+	}
+	display := signupWorkspaceName(name, email)
+	if display == "" {
+		return
+	}
+	if err := t.store.SetTenantDisplayNameIfUnset(ctx, tenant.ID, display); err != nil {
+		log.Printf("tenancy: name workspace %s: %v", tenant.ID, err)
+	}
+}
+
+// signupWorkspaceName is Render's default workspace name: the person's name,
+// else their email's local part, as "<who>'s Workspace". Empty when neither
+// is known.
+func signupWorkspaceName(name, email string) string {
+	who := strings.TrimSpace(name)
+	if who == "" {
+		who, _, _ = strings.Cut(strings.TrimSpace(email), "@")
+	}
+	if who == "" {
+		return ""
+	}
+	return who + "'s Workspace"
 }

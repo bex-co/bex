@@ -121,15 +121,16 @@ func TestPGWebhookFeedReportsDisplayNameAfterRename(t *testing.T) {
 		t.Errorf("datastore arm reported %q, want the audit row's own target name", before["datastore_audit"])
 	}
 
-	// The public service id is derived from the immutable name and must not move
-	// with the label — receivers call the API back with it.
+	// The public service id is the App's CR name — built from the tenant id
+	// (CRName, w3/m246), never the mutable workspace slug — and must not move
+	// with the label: receivers call the API back with it.
 	rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().UTC().Add(time.Hour), verbs, []string{tenant.ID}, 100)
 	if err != nil {
 		t.Fatalf("list webhook events: %v", err)
 	}
 	for _, r := range rows {
-		if r.AppID != "" && r.ServiceID != core.CRName(tenant.Name, app.Name) {
-			t.Errorf("%s row service id = %q, want the immutable %q", r.Source, r.ServiceID, core.CRName(tenant.Name, app.Name))
+		if r.AppID != "" && r.ServiceID != core.CRName(tenant.ID, app.Name) {
+			t.Errorf("%s row service id = %q, want the immutable %q", r.Source, r.ServiceID, core.CRName(tenant.ID, app.Name))
 		}
 	}
 

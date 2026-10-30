@@ -55,7 +55,7 @@ func TestEveryMemberQueryDecidesAboutKind(t *testing.T) {
 		"SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND subject = $2)": "" +
 			"invite redemption's already-a-member check: a subject already bound here must not be " +
 			"seated twice, whichever kind it is",
-		"SELECT t.id, t.name, t.plan, t.created_at FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id WHERE m.subject = $1 ORDER BY m.created_at": "" +
+		"SELECT t.id, t.name, t.plan, t.created_at, t.display_name FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id WHERE m.subject = $1 ORDER BY m.created_at": "" +
 			"TenantForIdentity: which workspace does this subject act in — the key's own binding is the answer",
 		"FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id WHERE m.subject = $1 ORDER BY t.created_at": "" +
 			"ListTenantsForSubject: the caller's own workspaces; an API key listing its workspace is correct",

@@ -609,8 +609,9 @@ var (
 )
 
 // validateName holds a name to the one resource-name rule
-// (appv1alpha1.ValidResourceName), which also keeps "<tenant>-<app>" inside
-// the 63-character object-name limit (see CRName).
+// (appv1alpha1.ValidResourceName). For an app it keeps "<tenant id>-<app>"
+// inside the 63-character object-name limit (see CRName); a workspace slug
+// is held to it as a typable unique key, not because it names any object.
 func validateName(field, v string) error {
 	if !appv1alpha1.ValidResourceName(v) {
 		return fmt.Errorf("%w: %s %s", ErrInvalid, field, core.ResourceNameRule)

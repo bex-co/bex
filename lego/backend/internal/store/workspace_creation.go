@@ -191,7 +191,7 @@ func (s *PGStore) FinalizeWorkspaceCreation(ctx context.Context, id, subject str
 		}
 		if a.State == WorkspaceCreationFinalized {
 			t, err = scanTenant(tx.QueryRow(ctx,
-				`SELECT id,name,plan,created_at FROM tenants WHERE id=$1`, a.WorkspaceID))
+				`SELECT `+tenantColumns+` FROM tenants WHERE id=$1`, a.WorkspaceID))
 			return err
 		}
 		if time.Now().After(a.ExpiresAt) {
