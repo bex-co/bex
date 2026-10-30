@@ -42,12 +42,12 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// validWorkspaceName holds a workspace name to the resource-name rule
-// (appv1alpha1.ValidResourceName). Unlike Render's freeform workspace names, a
-// bex workspace name becomes part of every App CR name ("<workspace>-<app>",
-// ≤63 chars), so it must be a DNS label — the same rule the internal tenant API
-// enforces (store/api.go). The divergence from Render's freeform names is
-// recorded as parity drift (w6/m1/t007).
+// validWorkspaceName holds a workspace slug (`tenants.name`) to the
+// resource-name rule (appv1alpha1.ValidResourceName): it is a unique, typable
+// key (`BEX_WORKSPACE`, `X-Bex-Workspace`, `?name=`), the same rule the internal
+// tenant API enforces (store/api.go). It is not part of any resource name — App
+// CR names, namespaces and labels use the tenant id (store.CRName). Render's
+// freeform workspace name is `tenants.display_name` (w3/m246).
 func validWorkspaceName(name string) error {
 	return core.CheckResourceName("name", name)
 }

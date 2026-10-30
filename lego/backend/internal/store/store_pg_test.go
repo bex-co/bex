@@ -2569,7 +2569,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		}
 		switch r.Verb {
 		case "apps.Restart":
-			if r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.Name, app.Name) || r.ServiceName != app.Name {
+			if r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.ID, app.Name) || r.ServiceName != app.Name {
 				t.Errorf("unexpected audit row in feed: %+v", r)
 			}
 			if r.AppID != app.ID {

@@ -157,7 +157,7 @@ func TestPGServiceEventsKeepAuditOwnershipAcrossNameReuse(t *testing.T) {
 					byKey[row.Key] = row
 				}
 				for i, row := range hooks {
-					if row.AppID != app.ID || row.TenantID != tenant.ID || row.ServiceName != app.Name || row.ServiceID != core.CRName(tenant.Name, app.Name) {
+					if row.AppID != app.ID || row.TenantID != tenant.ID || row.ServiceName != app.Name || row.ServiceID != core.CRName(tenant.ID, app.Name) {
 						t.Errorf("webhook attributed event to the wrong service: %+v", row)
 					}
 					expected, ok := byKey[row.Key]

@@ -61,9 +61,9 @@ Determinism is the requirement, not a nicety: a client pages with an event/run c
 An **id** and a **name** are different things and must not be conflated:
 
 - **ids** (`tea-…`/`srv-…`/`dpg-…`/`red-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
-- **names** (a workspace's name, an app's name) are **user-chosen DNS labels** (`[a-z0-9-]`, ≤30 chars) that become part of a CR name (`<workspace>-<app>`). They're human-facing and mutable.
+- **names** (a workspace's slug, an app's name) are **user-chosen DNS labels** (`[a-z0-9-]`, ≤30 chars). An app's name becomes part of its CR name (`<workspace id>-<app>`); a workspace slug is a unique, typable key (CLI `BEX_WORKSPACE`, `X-Bex-Workspace`, `?name=`) and is not part of any object name — CR names, namespaces and labels use the workspace **id**.
 
-Render's own workspace names are freeform; bex constrains them to DNS labels because they land in CR/host names. That divergence is noted where it's enforced (`internal/workspaces`, `internal/store/api.go`).
+Render's own workspace names are freeform: bex carries that as the workspace's **display name** (`tenants.display_name`, w3/m246), which Render-shaped surfaces show, while the slug keeps the DNS-label rule (enforced in `internal/workspaces`, `internal/store/api.go`).
 
 ## Enforcement (why this won't drift)
 

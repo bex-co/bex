@@ -107,10 +107,13 @@ func MapError(err error) error {
 
 // Tenant is a row of `tenants` — who owns apps; plan names the tier ladder row.
 type Tenant struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Plan      string    `json:"plan"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// DisplayName is Render's freeform workspace name (w3/m246); Name is the
+	// unique DNS-label slug. Empty means "show Name".
+	DisplayName string    `json:"displayName,omitempty"`
+	Plan        string    `json:"plan"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // App is a row of `apps` — the source-of-truth service definition the
@@ -769,7 +772,7 @@ func (s *PGStore) CreateTenant(ctx context.Context, name, plan string) (Tenant, 
 
 func (s *PGStore) ListTenants(ctx context.Context) ([]Tenant, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, name, plan, created_at FROM tenants ORDER BY created_at`)
+		`SELECT `+tenantColumns+` FROM tenants ORDER BY created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -785,12 +788,14 @@ func (s *PGStore) ListTenants(ctx context.Context) ([]Tenant, error) {
 	return out, rows.Err()
 }
 
-// scanTenant reads the four public tenant columns off a row (id/name/plan/
-// created_at — owner_identity_id is internal and never surfaced in the Tenant
-// shape the API returns).
+// tenantColumns are the public tenant columns scanTenant reads, in order
+// (owner_identity_id is internal and never surfaced in the Tenant shape).
+const tenantColumns = "id, name, plan, created_at, display_name"
+
+// scanTenant reads tenantColumns off a row.
 func scanTenant(row pgx.Row) (Tenant, error) {
 	var t Tenant
-	err := row.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+	err := row.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt, &t.DisplayName)
 	return t, err
 }
 
@@ -804,7 +809,7 @@ func scanTenant(row pgx.Row) (Tenant, error) {
 // together), so the answer is stable even then.
 func (s *PGStore) TenantForIdentity(ctx context.Context, subject string) (Tenant, error) {
 	t, err := scanTenant(s.Pool.QueryRow(ctx, `
-		SELECT t.id, t.name, t.plan, t.created_at FROM tenants t
+		SELECT t.id, t.name, t.plan, t.created_at, t.display_name FROM tenants t
 		JOIN tenant_members m ON m.tenant_id = t.id
 		WHERE m.subject = $1
 		ORDER BY m.created_at, t.id
@@ -854,7 +859,7 @@ func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan s
 		VALUES ($1, $1, $2, $3)
 		ON CONFLICT (owner_identity_id) WHERE owner_identity_id IS NOT NULL
 		DO UPDATE SET owner_identity_id = EXCLUDED.owner_identity_id
-		RETURNING id, name, plan, created_at`,
+		RETURNING `+tenantColumns,
 			id, plan, identityID))
 		if err != nil {
 			return classify("tenant", err)
