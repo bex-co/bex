@@ -243,3 +243,9 @@ Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步�
 最近Syft重试及Ruby3.2恢复授权的完整51行增量已并行完成代码复用、质量、效率三路 `/simplify` 复核，无需进一步修改；见 [复核记录](evidence/incremental-simplify-3990/review.json)。正式11项采用数据仍需最终复核，t006未提前关闭。
 
 六项真实应用验收的日志、精确源码、主/companion镜像、同次attempt与拒绝skip规则已做源码审阅；仅收紧临时收集器的三个参数值检查，防止误把10当作1等前缀匹配。新v2 helper与旧原文分开保留，当前workflow通过、本地三项错误后缀对照均拒绝；见 [未来收集器启用记录](evidence/native-fixture-collector-review/root-activation.json)。这不是Docker/HTTP执行结果；正式发布计数仍为8/11，接入、真实应用与线上验收继续保持开放。
+
+### 恢复授权清理校验准备 — 2026-10-30
+
+原临时选择器检查脚本在最终空授权目录上会因取首项而退出；新 [v2检查器](evidence/recovery-selector-empty-support/check-v2.py) 支持真实空目录，覆盖全部11项退休授权，包括Ruby3.0/3.1/3.2，且所有不复用路径必须产生零输出字节。旧脚本与历史记录保持原字节，新检查器仍提取实际workflow内的选择逻辑，在隔离Git fixture中执行，不修改真实目录。
+
+当前真实三项授权的17项检查通过，明确报告尚未全部清理；显式临时空目录的13项对照通过，明确报告不是实际仓库清理。见 [启用与结果说明](evidence/recovery-selector-empty-support/root-activation.json)。每项正式验收通过后才删除对应授权；最终t008仍需用实际仓库目录重跑，确认真实输入为空、11项均不复用。本次没有删除授权、接入pin或运行应用验收，正式计数仍为8/11。

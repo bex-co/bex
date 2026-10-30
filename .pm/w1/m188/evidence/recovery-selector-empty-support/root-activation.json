@@ -1,0 +1,44 @@
+{
+  "schema": "bex.m188.recovery-selection-v2-root-activation/v1",
+  "at": "2026-10-30T19:48:50.437214+00:00",
+  "helper": {
+    "file": "/tmp/bex-m188-recovery-selection-check-v2.py",
+    "sha256": "ff2a3dc008044f0653c0890a071436c6ae2938f624fa74adfb1c585a23506375"
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-recovery-selection-v2-proposal/check-v2.py",
+    "sha256": "470bf5159c44abd4bded5b8d5c6e68d71cde961a9661ce2d57ba340c3efa44b2"
+  },
+  "root_addition": "Build/no-recovery cases must write exactly zero GitHub output bytes, including empty-catalog cases.",
+  "controls": [
+    {
+      "file": "/tmp/bex-m188-recovery-selection-v2-current3.json",
+      "sha256": "f9345a794de878a0565f559cd1dec3724138ac1f98746d8475dd965642f79327",
+      "summary": {
+        "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+        "actual_repository_catalog_read": true,
+        "input_authorization_count": 3,
+        "all_11_retired_in_input": false,
+        "actual_empty_catalog_all_authorizations_retired": false,
+        "cases": 17,
+        "all_passed": true
+      }
+    },
+    {
+      "file": "/tmp/bex-m188-recovery-selection-v2-empty-fixture.json",
+      "sha256": "9d0c5a2e169367fe929713cc5d47b35b7e665672c0015e880e55551c2d612d82",
+      "summary": {
+        "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+        "actual_repository_catalog_read": false,
+        "input_authorization_count": 0,
+        "all_11_retired_in_input": true,
+        "actual_empty_catalog_all_authorizations_retired": false,
+        "cases": 13,
+        "all_passed": true
+      }
+    }
+  ],
+  "original_preserved_sha256": "8d904480307992409b37df3092a27b81c62648eaf5e038ca57d09d4458f540b7",
+  "actual_repository_authorizations_retired_now": false,
+  "future_use": "Run activated v2 against actual repository catalog with a NEW/tmp output after each authorized removal and final zero cleanup. Never use fixture receipt as actual retirement."
+}
