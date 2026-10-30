@@ -81,6 +81,19 @@ func TestSuppliedResolverPreservesEveryReviewedPrimary(t *testing.T) {
 			catalog[cmp.Or(line.upstream, line.image)] = "ghcr.io/bex-co/bex-native:test-" + runtime + "-" + line.line + "@" + otherDigest
 		}
 	}
+	// After adoption, exercise the real catalog for every reviewed line. An
+	// incomplete catalog must fail here before an unselected runtime reaches users.
+	if len(original) != 0 {
+		if len(original) != len(catalog) {
+			t.Fatalf("supplied catalog has %d entries; reviewed toolchains require %d", len(original), len(catalog))
+		}
+		for base := range catalog {
+			if _, ok := original[base]; !ok {
+				t.Fatalf("supplied catalog lacks reviewed base %s", base)
+			}
+		}
+		catalog = original
+	}
 	for runtime, toolchain := range nativeToolchains {
 		for _, line := range toolchain.lines {
 			t.Run(runtime+"/"+line.line, func(t *testing.T) {
