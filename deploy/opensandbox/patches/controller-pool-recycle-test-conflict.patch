@@ -1,0 +1,37 @@
+# Carried test-only patch: retry the Pool recycle test's annotation update.
+#
+# Upstream: https://github.com/alibaba/OpenSandbox
+# Base commit: e95681e791b33b3893033940cbeaa5ab192bf21b
+# Why: BatchSandbox reconciliation can update status between the test's GET
+# and Update, causing an unrelated HTTP 409 before the recycle assertions run.
+# Use the same RetryOnConflict pattern as the surrounding upstream tests.
+# Applied only by the controller test workflow; no controller image changes.
+#
+# git apply runs from the upstream repository root.
+diff --git a/kubernetes/internal/controller/pool_controller_test.go b/kubernetes/internal/controller/pool_controller_test.go
+--- a/kubernetes/internal/controller/pool_controller_test.go
++++ b/kubernetes/internal/controller/pool_controller_test.go
+@@ -1104,12 +1104,17 @@ var _ = Describe("Pool recycle", func() {
+ 			}
+ 			js, err := json.Marshal(release)
+ 			Expect(err).NotTo(HaveOccurred())
+-			Expect(k8sClient.Get(ctx, bsbxNamespaceName, batchSandbox)).To(Succeed())
+-			if batchSandbox.Annotations == nil {
+-				batchSandbox.Annotations = make(map[string]string)
+-			}
+-			batchSandbox.Annotations[AnnoAllocReleaseKey] = string(js)
+-			Expect(k8sClient.Update(ctx, batchSandbox)).To(Succeed())
++			Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
++				latest := &sandboxv1alpha1.BatchSandbox{}
++				if err := k8sClient.Get(ctx, bsbxNamespaceName, latest); err != nil {
++					return err
++				}
++				if latest.Annotations == nil {
++					latest.Annotations = make(map[string]string)
++				}
++				latest.Annotations[AnnoAllocReleaseKey] = string(js)
++				return k8sClient.Update(ctx, latest)
++			})).To(Succeed())
+ 
+ 			By("verifying the pool allocation is cleared after Delete recycle")
+ 			Eventually(func(g Gomega) {
