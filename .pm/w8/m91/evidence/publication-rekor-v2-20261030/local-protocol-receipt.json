@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-30T08:50:43.042493+00:00",
+  "scope": "Local protocol capture with generated offline key, genuine unchanged222 SPDX as large test input, local mock Rekor2 returning intentional500. Public HTTP(S) is blocked by loopbackproxy; no public TLog record, signature acceptance, GitHubOIDC acceptance, image approval or catalog mutation.",
+  "cosign_version": "3.1.4",
+  "tool_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+  "actual_large_predicate_bytes": 23418941,
+  "actual_predicate_sha256": "72733154d0c6c12238e112d43bcd7b4013408fcff75ec8334bbadfb461785c62",
+  "cosign_expected_mock_failure_exit": 1,
+  "request_count": 1,
+  "requests": [
+    {
+      "path": "/api/v2/log/entries",
+      "content_length": 415,
+      "body_sha256": "70be0218780c89f29b2dc73caed94672a33813dfdfe347e8cc3ebc08f4c81ea3",
+      "top_level_keys": [
+        "hashedRekordRequestV002"
+      ]
+    }
+  ],
+  "candidate_approved": false
+}

@@ -200,6 +200,7 @@ jobs:
           REF: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
           PRODUCER: ${{ steps.candidate.outputs.producer }}
         run: |
+<<<<<<< Updated upstream
           retry_signing() {
             for attempt in 1 2 3; do
               if timeout --kill-after=10s 5m "$@"; then
@@ -215,6 +216,16 @@ jobs:
             syft "$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
+=======
+          # Rekor v2 logs signed PAE hashes; full SPDX/Trivy predicates remain
+          # in their signed OCI bundles, including large native-tool SBOMs.
+          cosign signing-config create --with-default-rekor-v2 --out native-signing-config.json
+          cosign sign --yes --oidc-provider=github-actions --signing-config native-signing-config.json "$REF"
+          for arch in amd64 arm64; do
+            syft "$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
+            cosign attest --yes --oidc-provider=github-actions --signing-config native-signing-config.json --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
+            cosign attest --yes --oidc-provider=github-actions --signing-config native-signing-config.json --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
+>>>>>>> Stashed changes
           done
           # Only verified, scanned and signed candidates reach this discovery
           # tag. Adopting its immutable digest still requires a reviewed commit.

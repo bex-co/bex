@@ -1,0 +1,20 @@
+{
+  "path": "/api/v2/log/entries",
+  "content_length": 415,
+  "body_bytes_captured": 415,
+  "body_sha256": "70be0218780c89f29b2dc73caed94672a33813dfdfe347e8cc3ebc08f4c81ea3",
+  "json": {
+    "hashedRekordRequestV002": {
+      "digest": "/qtApcNHZaoWliB34y09fvenTwyRmBmxfHctF8W+M0A=",
+      "signature": {
+        "content": "MEUCIQD0tufxZP7WihEHHbMXjK5ppIcmV2HZlnBOlzWuNOISkgIgNgGFSrU/McafgFPowdfao6m480bywYpbRvYpbrdoiJ4=",
+        "verifier": {
+          "publicKey": {
+            "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEy3mNvfLlMPqHmYYk7syG6ZS7Gqh2DEtSZAet48oug0QB0BtrfHAmAWe2IsxxtMfA8ZH8kRHmvbrLn96gjI/kYg=="
+          },
+          "keyDetails": "PKIX_ECDSA_P256_SHA_256"
+        }
+      }
+    }
+  }
+}
