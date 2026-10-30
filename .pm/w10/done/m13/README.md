@@ -1,6 +1,6 @@
 # w10 · m13 — Agent-owned delivery: the coding agent commits, pushes and opens its draft PR
 
-**Worker:** worker10 **Goal:** A bex cloud coding-agent session delivers its work the way a human engineer (and Devin / Open SWE / Copilot cloud agent) does: the **agent** writes logically-split commits with real messages, pushes its own `bex-agent/<id>` branch through the existing Pod-bound Git proxy, and opens or updates its draft PR through a platform tool. The PR body follows the repo's `PULL_REQUEST_TEMPLATE` and carries a server-appended bex footer. A platform system-prompt overlay tells the agent where it is, what it can use and what the deliverable looks like. The driver no longer `git add -A` + commits + pushes on the agent's behalf, and the delivery/evidence/credential-scrub machinery that only existed for that driver-owned path is deleted. **Status:** blocked (t001–t010, t012–t014, t016 done; t011 needs (a) the user's go-ahead + a GitHub App-connected test repo for a real draft PR through dev-10, which also needs `chmod 600 .env` for the ADR079 guard, and (b) an authorized Anthropic key for one real-Claude run)
+**Worker:** worker10 **Goal:** A bex cloud coding-agent session delivers its work the way a human engineer (and Devin / Open SWE / Copilot cloud agent) does: the **agent** writes logically-split commits with real messages, pushes its own `bex-agent/<id>` branch through the existing Pod-bound Git proxy, and opens or updates its draft PR through a platform tool. The PR body follows the repo's `PULL_REQUEST_TEMPLATE` and carries a server-appended bex footer. A platform system-prompt overlay tells the agent where it is, what it can use and what the deliverable looks like. The driver no longer `git add -A` + commits + pushes on the agent's behalf, and the delivery/evidence/credential-scrub machinery that only existed for that driver-owned path is deleted. **Status:** done (2026-10-30; DoD amended by user decision 2026-10-29, see t011)
 
 ## Tasks (in order)
 
@@ -17,11 +17,11 @@
 | t009 | Delete credential scrub / Git-object scan / standalone real-key mode / pre-snapshot scrub — **DONE**   | 1.5h | t006             |
 | t010 | Docs + scripts + CI truth: agent-image README, backend AGENTS.md, verify scripts — **DONE**            | 45m  | t008, t009       |
 | t016 | Dev-only OpenRouter model route (Claude profile → OpenRouter, DeepSeek flash) for live legs — **DONE** | 1h   | —                |
-| t011 | Live E2E on `dev-10`: real turn → multi-commit branch → agent-opened draft PR with footer   | 1h   | t010, t016       |
+| t011 | Live E2E on `dev-10`: real turn → multi-commit branch → agent-opened draft PR with footer — **DONE**   | 1h   | t010, t016       |
 | t012 | Render parity (cross-surface consistency of the changed agent-session contract) — **DONE**             | 20m  | t011             |
 | t013 | Simplify — **DONE**                                                                                    | 20m  | t012             |
 | t014 | Test coverage — **DONE**                                                                               | 45m  | t012             |
-| t015 | Closeout                                                                                    | 10m  | t013, t014       |
+| t015 | Closeout — **DONE**                                                                                    | 10m  | t013, t014       |
 
 ## Definition of done
 
@@ -31,6 +31,8 @@
 - The gateway `pull-request` verb opens or updates a **draft** PR whose head is the session's bound branch and nothing else. It refuses when the branch is not ahead of base, always appends the bex footer, and records `prUrl`/`prNumber`/`headSha` on the session as soon as the PR exists. A real-Postgres backend test plus an agentcred test cover Pod binding, the head pin, size caps, idempotent update and footer presence.
 - `evidence` is removed from REST, GraphQL and MCP, and the column is dropped by a down-migratable migration. Dashboard generated types are regenerated; `cd lego/backend && go test ./...`, `make lint`, driver `npm test` + `npm run typecheck`, and `dashboard/yarn test` are green.
 - t011 records a live `dev-10` session (run first on the t016 OpenRouter/DeepSeek route; final acceptance also needs one run on a real Claude model, because a DeepSeek miss is ambiguous between the overlay and the model) with ≥ 1 agent-authored commit, carrying a non-template message, on `bex-agent/<id>`, plus a draft PR whose body follows the repo template and ends with the bex footer. A steering turn updates the same PR. If no authorized model key exists, t011 records the blocker and the milestone stays open; it does not close on code alone (same rule as `w10/m12` t006).
+
+**DoD amendment (2026-10-29).** **User decision 2026-10-29:** the DeepSeek (OpenRouter platform route) production evidence is sufficient; the real-Claude-model run is waived.
 
 ## Source + Goal linkage
 

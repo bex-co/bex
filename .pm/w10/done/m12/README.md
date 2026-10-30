@@ -1,6 +1,6 @@
 # w10 · m12 — Full bump of the Claude ACP agent to `@agentclientprotocol/claude-agent-acp`
 
-**Worker:** worker10 **Goal:** The Claude agent profile runs the maintained, renamed adapter `@agentclientprotocol/claude-agent-acp` at its latest exact pin (0.94.0 as of 2026-10-22) instead of the deprecated `@zed-industries/claude-code-acp@0.16.2`. The driver's own `@agentclientprotocol/sdk` client moves to the matching major, and live sessions (new, resume, cancel) keep working end to end. **Status:** blocked (t001–t005, t007, t008 done; t006 live model turn needs an authorized real Anthropic key + reprovisioned shared cluster)
+**Worker:** worker10 **Goal:** The Claude agent profile runs the maintained, renamed adapter `@agentclientprotocol/claude-agent-acp` at its latest exact pin (0.94.0 as of 2026-10-22) instead of the deprecated `@zed-industries/claude-code-acp@0.16.2`. The driver's own `@agentclientprotocol/sdk` client moves to the matching major, and live sessions (new, resume, cancel) keep working end to end. **Status:** done (2026-10-30; DoD amended by user decision 2026-10-29, see t006)
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | Bump the driver's `@agentclientprotocol/sdk` 0.14.1 → 2.x — **DONE**                     | 1h  | t001       |
 | t004 | Session continuity across the bump: transcript flush, state paths, resume — **DONE**     | 45m | t002       |
 | t005 | Docs and comments sweep for the rename — **DONE**                                        | 20m | t002       |
-| t006 | Build the agent image and run a live Claude turn on `dev-10`                  | 1h  | t003, t004 |
+| t006 | Build the agent image and run a live Claude turn on `dev-10` — **DONE**                  | 1h  | t003, t004 |
 | t007 | Simplify — **DONE**                                                                      | 20m | t005, t006 |
 | t008 | Test coverage — **DONE**                                                                 | 30m | t007       |
-| t009 | Closeout                                                                      | 10m | t008       |
+| t009 | Closeout — **DONE**                                                                      | 10m | t008       |
 
 ## Definition of done
 
@@ -23,6 +23,8 @@
 - The agent image builds, and `dist/install-profiles.js` verifies that the new executable belongs to the pinned package at that version.
 - `cd lego/backend && go test ./internal/agentsession/... ./internal/agentsessions/...` and `make lint` pass.
 - A real Claude turn on `dev-10` shows a tool call, a plan, a diff and terminal output as typed parts. Cancel stops the adapter's process group. Resume of that session (`loadSession`) restores the transcript. Results are recorded in t006. If no model key is available, t006 records the blocker and the milestone stays open (it does not close on code alone).
+
+**DoD amendment (2026-10-29).** **User decision 2026-10-29:** the DeepSeek (OpenRouter platform route) production evidence is sufficient; the real-Claude-model run is waived.
 
 ## Source + Goal linkage
 
