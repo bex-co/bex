@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-30T21:13:38.185960+00:00",
+  "exact_post_intents": 10,
+  "unique_run_heads": [
+    {
+      "tag": "node-22-bookworm",
+      "run_id": 41128855169,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:09:22.388939+00:00"
+    },
+    {
+      "tag": "node-26-bookworm",
+      "run_id": 41129008590,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:10:29.933254+00:00"
+    },
+    {
+      "tag": "python-3.11-bookworm",
+      "run_id": 41129044087,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:10:47.906102+00:00"
+    },
+    {
+      "tag": "python-3.12-bookworm",
+      "run_id": 41129082245,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:11:06.050530+00:00"
+    },
+    {
+      "tag": "python-3.13-bookworm",
+      "run_id": 41129116273,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:11:21.075527+00:00"
+    },
+    {
+      "tag": "python-3.14-bookworm",
+      "run_id": 41129176570,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:11:47.561617+00:00"
+    },
+    {
+      "tag": "ruby-3.3-bookworm",
+      "run_id": 41129224760,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:12:08.194383+00:00"
+    },
+    {
+      "tag": "ruby-3.4-bookworm",
+      "run_id": 41129277963,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:12:32.224699+00:00"
+    },
+    {
+      "tag": "ruby-4.0-bookworm",
+      "run_id": 41129321189,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:12:53.559836+00:00"
+    },
+    {
+      "tag": "rust-1-bookworm",
+      "run_id": 41129372376,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "run_attempt": 1,
+      "dispatch_finished_at": "2026-10-30T21:13:16.724169+00:00"
+    }
+  ],
+  "summary": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/execution/dispatch-summary-continued.json",
+    "sha256": "f171e96d5cbeab64289994df365e57a0c8bf0fcb3c5dfea85fbfac0ebc392532"
+  },
+  "all_old_cancellations_still_pending_actual_replacement_native_binding": true,
+  "old_cancel_posts": 0,
+  "known_publishers_before_sha256": "ccd60c5a351d2652983d26f4356de1ba3aa5a70164bd2563c9ee2235a2d452f4",
+  "known_publishers_after_sha256": "3c1341173379c361e42b035ee5a9a393f0f296ef2bc67ac3cf22d5b30d5b7539",
+  "aggregate": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "legacy_preserved": [
+    41101339222,
+    41113367877,
+    41113373387
+  ]
+}

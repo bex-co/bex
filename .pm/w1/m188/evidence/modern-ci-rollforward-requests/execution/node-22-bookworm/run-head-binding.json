@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-30T21:10:00.267464+00:00",
+  "tag": "node-22-bookworm",
+  "run_id": 41128855169,
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "run_attempt": 1,
+  "event": "workflow_dispatch",
+  "created_at": "2026-10-30T21:09:22Z",
+  "request_result": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/execution/node-22-bookworm/dispatch-result.json",
+    "sha256": "c5e17adf43fa32ad2e0d808f373ac603ebd54eb926372a08360e3b65ced82053"
+  },
+  "discovery": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/execution/node-22-bookworm/discovery-after-accepted.json",
+    "sha256": "e35a8007e4646d4bad471f7880d78ec3b5e1cff4db60c3b46414f7ac8ad17c96"
+  },
+  "inference": "Unique new workflow_dispatch run after accepted exact runtime POST; actual native job binding still required before any old cancellation."
+}

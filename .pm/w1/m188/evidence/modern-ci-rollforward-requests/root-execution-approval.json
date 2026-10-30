@@ -1,0 +1,203 @@
+{
+  "schema": "bex.m188.bounded-ci-rollforward-root-approval/v1",
+  "at": "2026-10-30T21:06:10.990365+00:00",
+  "read_only_plan": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/plan-final.json",
+    "sha256": "eaccae1ce5880226190a49b04350fdd608e15b6a632de2cfc77ecf421264f2fd"
+  },
+  "source_admission": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/root-source-admission.json",
+    "sha256": "9e108c964380c624c442d04596b066b9ed29ff91764d2aae86be1fdb3b34a809"
+  },
+  "authorized": true,
+  "basis": "RoutineCI recovery within loopx: all three completed modernElixir jobs onold99f failed (retainedpeer receipts confirm oldSyftHTTP2 and fullscanEOF). Avoid knowingly running ten unstarted jobs without already-shipped repairs. Preserve every workstream obligation and running job; no artifact approval or new product scope.",
+  "exact_targets": [
+    {
+      "tag": "node-22-bookworm",
+      "old_run_id": 41067575985,
+      "old_job_id": 124104723836,
+      "base": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "node-26-bookworm",
+      "old_run_id": 41067583832,
+      "old_job_id": 124105682346,
+      "base": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "python-3.11-bookworm",
+      "old_run_id": 41067587985,
+      "old_job_id": 124105569005,
+      "base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "python-3.12-bookworm",
+      "old_run_id": 41067592658,
+      "old_job_id": 124105703075,
+      "base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "python-3.13-bookworm",
+      "old_run_id": 41067596835,
+      "old_job_id": 124105431823,
+      "base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "python-3.14-bookworm",
+      "old_run_id": 41067601778,
+      "old_job_id": 124105472916,
+      "base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "ruby-3.3-bookworm",
+      "old_run_id": 41067606635,
+      "old_job_id": 124106001249,
+      "base": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "ruby-3.4-bookworm",
+      "old_run_id": 41067612513,
+      "old_job_id": 124106038502,
+      "base": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "ruby-4.0-bookworm",
+      "old_run_id": 41067617284,
+      "old_job_id": 124106162459,
+      "base": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    },
+    {
+      "tag": "rust-1-bookworm",
+      "old_run_id": 41067622215,
+      "old_job_id": 124106478533,
+      "base": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+      "old_source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "old_run_attempt": 1
+    }
+  ],
+  "dispatch_bounds": {
+    "maximum_posts_per_tag": 1,
+    "maximum_total_posts": 10,
+    "fresh_all_run_dedupe_and_old_zero_start_before_each_post": true,
+    "reuse_any_existing_correct_fixed_profile_selective_instead_of_duplicate": true,
+    "uncertain_post_result_requires_discovery_not_blind_retry": true
+  },
+  "execution_source_predicate": {
+    "baseline_exact": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "must_be_main_descendant": true,
+    "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+    "catalog_sha256_exact": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+    "all_other_nonPM_bytes_identical_to_baseline_except_only_sha256_replacements_in": [
+      "deploy/gitops/base/bex.yaml",
+      "deploy/gitops/base/dashboard.yaml",
+      "deploy/gitops/base/values/opensandbox-controller.values.yaml",
+      "deploy/opensandbox/kustomization.yaml",
+      "lego/operator/config/api/deployment.yaml"
+    ],
+    "PM_changes_allowed": true,
+    "record_actual_source_without_alias": true,
+    "new_actual_source_literal_must_be_reported_and_root_admitted_before_old_cancel": true,
+    "nonmatching_source_holds_remaining_mutations": true
+  },
+  "cancel_bounds": {
+    "only_exact_ten_old_requests": true,
+    "maximum_one_cancel_post_each": true,
+    "require_actual_correct_new_native_job_source_attempt_then_fresh_old_status_queued_runner0_zero_steps": true,
+    "preserve_any_old_job_that_started": true,
+    "optional_cleanup_of_our_new_replacement_only_if_old_started_and_new_fresh_zero_start": true,
+    "no_force_no_repeat_requests_no_other_cancellations": true
+  },
+  "preserve_legacy": [
+    41101339222,
+    41113367877,
+    41113373387
+  ],
+  "preserve_started": [
+    {
+      "tag": "node-24-bookworm",
+      "run_id": 41067580157,
+      "job_id": 124104417775,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21926,
+      "steps_count": 19
+    },
+    {
+      "tag": "golang-1.27-bookworm",
+      "run_id": 41067572282,
+      "job_id": 124104688590,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21941,
+      "steps_count": 18
+    },
+    {
+      "tag": "elixir-1.20",
+      "run_id": 41067568389,
+      "job_id": 124104286411,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21919,
+      "steps_count": 19
+    },
+    {
+      "tag": "elixir-1.19",
+      "run_id": 41067564282,
+      "job_id": 124104134360,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21900,
+      "steps_count": 23
+    },
+    {
+      "tag": "elixir-1.18",
+      "run_id": 41067560420,
+      "job_id": 124104056666,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21898,
+      "steps_count": 22
+    },
+    {
+      "tag": "elixir-1.17",
+      "run_id": 41067556052,
+      "job_id": 124104259906,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21909,
+      "steps_count": 23
+    }
+  ],
+  "unchanged_workstream_acceptance_owners": {
+    "legacy11": "w1/m188",
+    "modern16": "w8/m91"
+  },
+  "limits": [
+    "Per-runtime cancel-in-progress=false preserves running work, but a new pending replacement can supersede an older pending job through GitHub concurrency itself; queue position/FIFO/legacy priority is not guaranteed.",
+    "Each eligible old native job is unstarted and has no exported compile to preserve; all ten have no recovery authorization and therefore require normal builds. Same factory and exact official bases do not imply byte-identical image digests because producer revision changes.",
+    "New39b2 profile has fail-closed28GiB free-space checks and full-layer staging; actual runner headroom/peak success is not yet proved. No host/settings/runner changes are authorized.",
+    "This is foreign w8/m91 work. Preserve all target obligations and all started jobs; no claim that m188 owns modern artifact acceptance. Root approval is required for handoff; no dropping modern work.",
+    "All runtime probes, full scans, full SPDX/Trivy predicates, signatures and fresh discovery still required by each owning workstream; dispatch is not acceptance.",
+    "Foreign Elixir recovery entries must be preserved; never empty shared catalog for w1."
+  ],
+  "no_host_settings_auth_or_gates_changes": true,
+  "no_aggregate_or_candidate_promotion": true
+}

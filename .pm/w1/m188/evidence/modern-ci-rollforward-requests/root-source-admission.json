@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.explicit-equivalent-source-admission/v1",
+  "at": "2026-10-30T21:06:10.990365+00:00",
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "baseline": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "admitted": true,
+  "roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "reviewed_non_pm_paths": [
+    ".github/native-base-recovery.json",
+    "deploy/opensandbox/sandbox-cluster.toml"
+  ],
+  "root_review": "Read entire two-file diff: one foreignElixir1.17 exact-index recovery after confirmed oldSyftHTTP2 failure, and unrelated opensandbox informer config. Existingfive authorizations unchanged; nativefactory/sharedactions/native.go byte-identical99f; current39b2 gates unchanged.",
+  "recovery_catalog_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+  "canonical_profile_source_unchanged": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "artifact_approval_granted": false,
+  "source_adoption_performed": false
+}

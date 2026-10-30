@@ -1,0 +1,1749 @@
+[
+  {
+    "run_id": 41121921308,
+    "observed_at": "2026-10-30T21:00:47.857874+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41121921308-jobs.json",
+    "sha256": "6973451e9c8fa3a2c5f5d329ff2d6ff14cdf7e69e31f6f4287e85266e26b3965",
+    "jobs": [
+      {
+        "id": 124289794726,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21916,
+        "runner_name": "b4c61561483f",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124294176308,
+        "name": "build (elixir-1.19, elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41121900239,
+    "observed_at": "2026-10-30T21:00:47.858328+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41121900239-jobs.json",
+    "sha256": "d85baba1f829aebaab8ba90b639229167715a627f4303563781570db49ca7d80",
+    "jobs": [
+      {
+        "id": 124289709139,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21929,
+        "runner_name": "29a1c6052e23",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124293122936,
+        "name": "build (elixir-1.18, elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41121784740,
+    "observed_at": "2026-10-30T21:00:48.939866+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41121784740-jobs.json",
+    "sha256": "c30cd0095bf3fd552fd0e226e3ed1761343eae983985b924cd7ab98c64bebb11",
+    "jobs": [
+      {
+        "id": 124289372438,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "runner_id": 21922,
+        "runner_name": "239d6e52dba9",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124292295385,
+        "name": "build",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "runner_id": null,
+        "runner_name": null,
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067622215,
+    "observed_at": "2026-10-30T21:00:47.858240+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067622215-jobs.json",
+    "sha256": "30bafd2825e90b21f6f7ee884de2253fe3245d0cafb98b6fe816122781081f08",
+    "jobs": [
+      {
+        "id": 124103112768,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21842,
+        "runner_name": "4559c3b2ea8c",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124106478533,
+        "name": "build (rust-1-bookworm, rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067617284,
+    "observed_at": "2026-10-30T21:00:48.747308+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067617284-jobs.json",
+    "sha256": "f395b697fc3125dc285b0ebaa1ac37980d0af5b099fd6d5009e497f0955c8f89",
+    "jobs": [
+      {
+        "id": 124103095157,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21841,
+        "runner_name": "239d6e52dba9",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124106162459,
+        "name": "build (ruby-4.0-bookworm, ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fec...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067612513,
+    "observed_at": "2026-10-30T21:00:48.747183+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067612513-jobs.json",
+    "sha256": "a1ee3bf8ccfcffbc4310edf53d913430aa7021f2dbf57682a2b2ed2f12bd7889",
+    "jobs": [
+      {
+        "id": 124103077152,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21839,
+        "runner_name": "29a1c6052e23",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124106038502,
+        "name": "build (ruby-3.4-bookworm, ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb272046...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067606635,
+    "observed_at": "2026-10-30T21:00:48.685916+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067606635-jobs.json",
+    "sha256": "3f05fb58c5ea209628ee01da586c51a5edcca157dc86d899e4240f47472b9802",
+    "jobs": [
+      {
+        "id": 124103058275,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21838,
+        "runner_name": "d54551a8722a",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124106001249,
+        "name": "build (ruby-3.3-bookworm, ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a028...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067601778,
+    "observed_at": "2026-10-30T21:00:49.432135+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067601778-jobs.json",
+    "sha256": "3f2660fd79ef95967c675368ca59f607d35573f70f1ab2cd364c9ab882593e49",
+    "jobs": [
+      {
+        "id": 124103038723,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21836,
+        "runner_name": "4559c3b2ea8c",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124105472916,
+        "name": "build (python-3.14-bookworm, python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad4...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067596835,
+    "observed_at": "2026-10-30T21:00:49.466839+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067596835-jobs.json",
+    "sha256": "924a294387427dfcf032e032c5fc7d1041d05b4d68ded5056c9ac347c05afa3f",
+    "jobs": [
+      {
+        "id": 124103019553,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21835,
+        "runner_name": "239d6e52dba9",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124105431823,
+        "name": "build (python-3.13-bookworm, python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067592658,
+    "observed_at": "2026-10-30T21:00:49.607488+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067592658-jobs.json",
+    "sha256": "d9339a12da6b9783705df32a8160ca31215fb481a57d15956ad006b37e381140",
+    "jobs": [
+      {
+        "id": 124103007972,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21834,
+        "runner_name": "22a618816f59",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124105703075,
+        "name": "build (python-3.12-bookworm, python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067587985,
+    "observed_at": "2026-10-30T21:00:49.768032+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067587985-jobs.json",
+    "sha256": "b3a2543164da93c331ccdef931ca35d63ba85f8d602bf96481e61cd005a86819",
+    "jobs": [
+      {
+        "id": 124102991440,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21833,
+        "runner_name": "b4c61561483f",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124105569005,
+        "name": "build (python-3.11-bookworm, python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067583832,
+    "observed_at": "2026-10-30T21:00:50.172539+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067583832-jobs.json",
+    "sha256": "d5e6afc28ed91a67f34ea4356bbdd05625c66e3c2f825b4ecf315533da41aff3",
+    "jobs": [
+      {
+        "id": 124102973756,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21832,
+        "runner_name": "8f8245b11ab6",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124105682346,
+        "name": "build (node-26-bookworm, node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067580157,
+    "observed_at": "2026-10-30T21:00:50.488327+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067580157-jobs.json",
+    "sha256": "7d5228a09e9c4a0835b9a30c4d6a7786a8c8ff39e5c784d05ca20a16259e91bc",
+    "jobs": [
+      {
+        "id": 124102959249,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21831,
+        "runner_name": "4559c3b2ea8c",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104417775,
+        "name": "build (node-24-bookworm, node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c...",
+        "status": "in_progress",
+        "conclusion": null,
+        "runner_id": 21926,
+        "runner_name": "45e29ad2967e",
+        "steps_count": 19,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "in_progress"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "pending"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "pending"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "pending"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "pending"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "pending"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "pending"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "pending"
+          },
+          {
+            "number": 30,
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "pending"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "pending"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "pending"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": 41067575985,
+    "observed_at": "2026-10-30T21:00:50.488155+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067575985-jobs.json",
+    "sha256": "38958a58110cc3b46f833c5d3b80e25646047117ca7c11d1ab089fd3c7006b8c",
+    "jobs": [
+      {
+        "id": 124102945792,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21828,
+        "runner_name": "29a1c6052e23",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104723836,
+        "name": "build (node-22-bookworm, node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee...",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "steps_count": 0,
+        "started_steps": []
+      }
+    ]
+  },
+  {
+    "run_id": 41067572282,
+    "observed_at": "2026-10-30T21:00:50.633591+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067572282-jobs.json",
+    "sha256": "2e59450893bccf3f01c45f84b95b314a5116c02c712ba82ce52eb240da82bd56",
+    "jobs": [
+      {
+        "id": 124102930769,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21830,
+        "runner_name": "d54551a8722a",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104688590,
+        "name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+        "status": "in_progress",
+        "conclusion": null,
+        "runner_id": 21941,
+        "runner_name": "9e5b2bd9ddc1",
+        "steps_count": 18,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "in_progress"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "pending"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "pending"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "pending"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "pending"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "pending"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "pending"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "pending"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "pending"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "pending"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "pending"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "pending"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "pending"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": 41067568389,
+    "observed_at": "2026-10-30T21:00:51.001152+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067568389-jobs.json",
+    "sha256": "382c143364c20d48ff6a6b136ab296bd35190838ee2187277897e00e44dd5819",
+    "jobs": [
+      {
+        "id": 124102916551,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21827,
+        "runner_name": "239d6e52dba9",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104286411,
+        "name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+        "status": "in_progress",
+        "conclusion": null,
+        "runner_id": 21919,
+        "runner_name": "49aefcdc6924",
+        "steps_count": 19,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "in_progress"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "pending"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "pending"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "pending"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "pending"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "pending"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "pending"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "pending"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "pending"
+          },
+          {
+            "number": 30,
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "pending"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "pending"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "pending"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": 41067564282,
+    "observed_at": "2026-10-30T21:00:51.536431+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067564282-jobs.json",
+    "sha256": "c7530887a8451ea283e3bcc67564cddeae8ef4a32e5c43a00cc642a42fd79df6",
+    "jobs": [
+      {
+        "id": 124102902501,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21823,
+        "runner_name": "b4c61561483f",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104134360,
+        "name": "build (elixir-1.19, elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37...",
+        "status": "completed",
+        "conclusion": "failure",
+        "runner_id": 21900,
+        "runner_name": "45e29ad2967e",
+        "steps_count": 23,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "completed"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "completed"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "completed"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "completed"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "completed"
+          },
+          {
+            "number": 27,
+            "name": "Post scan arm64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 28,
+            "name": "Post scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 29,
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 30,
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 33,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": 41067560420,
+    "observed_at": "2026-10-30T21:00:51.536210+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067560420-jobs.json",
+    "sha256": "774d83bb85689ee9099ed1e2f7b57aceb1e48ff28fd0d38cb7041b2b87ea3572",
+    "jobs": [
+      {
+        "id": 124102886993,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21818,
+        "runner_name": "8f8245b11ab6",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104056666,
+        "name": "build (elixir-1.18, elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910...",
+        "status": "completed",
+        "conclusion": "failure",
+        "runner_id": 21898,
+        "runner_name": "49aefcdc6924",
+        "steps_count": 22,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "completed"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "completed"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "completed"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "completed"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "completed"
+          },
+          {
+            "number": 28,
+            "name": "Post scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 29,
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 30,
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 33,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": 41067556052,
+    "observed_at": "2026-10-30T21:00:51.536360+00:00",
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067556052-jobs.json",
+    "sha256": "c9d0c25eb105e428b136f6c828310e04c24e5d41933e169d4ea48ec910dcc50d",
+    "jobs": [
+      {
+        "id": 124102880899,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "runner_id": 21821,
+        "runner_name": "22a618816f59",
+        "steps_count": 6,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124104259906,
+        "name": "build (elixir-1.17, elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd3...",
+        "status": "completed",
+        "conclusion": "failure",
+        "runner_id": 21909,
+        "runner_name": "9e5b2bd9ddc1",
+        "steps_count": 23,
+        "started_steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed"
+          },
+          {
+            "number": 2,
+            "name": "Set up runner",
+            "status": "completed"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 4,
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 5,
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed"
+          },
+          {
+            "number": 6,
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed"
+          },
+          {
+            "number": 7,
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 8,
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed"
+          },
+          {
+            "number": 9,
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 10,
+            "name": "prepare bounded full-scan retries",
+            "status": "completed"
+          },
+          {
+            "number": 11,
+            "name": "scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 12,
+            "name": "scan arm64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 13,
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "completed"
+          },
+          {
+            "number": 14,
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "completed"
+          },
+          {
+            "number": 15,
+            "name": "sign and attest the immutable candidate",
+            "status": "completed"
+          },
+          {
+            "number": 16,
+            "name": "remove GHCR credentials",
+            "status": "completed"
+          },
+          {
+            "number": 27,
+            "name": "Post scan arm64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 28,
+            "name": "Post scan amd64 candidate",
+            "status": "completed"
+          },
+          {
+            "number": 29,
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "completed"
+          },
+          {
+            "number": 30,
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed"
+          },
+          {
+            "number": 31,
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed"
+          },
+          {
+            "number": 32,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed"
+          },
+          {
+            "number": 33,
+            "name": "Complete job",
+            "status": "completed"
+          }
+        ]
+      }
+    ]
+  }
+]
