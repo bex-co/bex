@@ -1,0 +1,209 @@
+{
+  "appsWithDisks": [
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "name": "tea-d98210cbbpdc73dcrkvg-beancount-forum",
+      "uid": "1b1cf4db-d951-46c9-bff3-521d9df618e7",
+      "serviceId": "srv-d9nqg9dcavls73fp8m2g",
+      "disk": {
+        "requestedSizeGB": 10,
+        "allocatedSizeGB": 10,
+        "observedSizeGB": 10,
+        "capacityGB": 10
+      },
+      "claims": [
+        {
+          "namespace": "tea-d98210cbbpdc73dcrkvg",
+          "name": "disk-tea-d98210cbbpdc73dcrkvg-beancount-forum",
+          "uid": "bdc95c26-fdac-44a7-b29e-76e908074ca8",
+          "storageClass": "hcloud-volumes-luks",
+          "requestedStorage": "10Gi",
+          "capacityStorage": "10Gi",
+          "phase": "Bound",
+          "volumeName": "pvc-bdc95c26-fdac-44a7-b29e-76e908074ca8",
+          "deletingAt": "",
+          "controller": {
+            "kind": "App",
+            "name": "tea-d98210cbbpdc73dcrkvg-beancount-forum",
+            "uid": "1b1cf4db-d951-46c9-bff3-521d9df618e7"
+          },
+          "volume": {
+            "name": "pvc-bdc95c26-fdac-44a7-b29e-76e908074ca8",
+            "storageClass": "hcloud-volumes-luks",
+            "capacityStorage": "10Gi",
+            "phase": "Bound",
+            "reclaimPolicy": "Delete",
+            "claimNamespace": "tea-d98210cbbpdc73dcrkvg",
+            "claimName": "disk-tea-d98210cbbpdc73dcrkvg-beancount-forum",
+            "claimUid": "bdc95c26-fdac-44a7-b29e-76e908074ca8",
+            "csiDriver": "csi.hetzner.cloud",
+            "volumeHandle": "107293514"
+          },
+          "bindingMatches": true
+        }
+      ]
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "name": "tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+      "uid": "3e9cfcbd-064d-40b5-a7e5-4a953de7b18a",
+      "serviceId": "srv-dbg4lfdn83uc738uug70",
+      "disk": {
+        "requestedSizeGB": 10,
+        "allocatedSizeGB": 10,
+        "observedSizeGB": 10,
+        "capacityGB": 10
+      },
+      "claims": [
+        {
+          "namespace": "tea-d98210cbbpdc73dcrkvg",
+          "name": "disk-tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+          "uid": "f571482d-255d-4986-8098-0e713b1bb90e",
+          "storageClass": "hcloud-volumes-luks",
+          "requestedStorage": "10Gi",
+          "capacityStorage": "10Gi",
+          "phase": "Bound",
+          "volumeName": "pvc-f571482d-255d-4986-8098-0e713b1bb90e",
+          "deletingAt": "",
+          "controller": {
+            "kind": "App",
+            "name": "tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+            "uid": "3e9cfcbd-064d-40b5-a7e5-4a953de7b18a"
+          },
+          "volume": {
+            "name": "pvc-f571482d-255d-4986-8098-0e713b1bb90e",
+            "storageClass": "hcloud-volumes-luks",
+            "capacityStorage": "10Gi",
+            "phase": "Bound",
+            "reclaimPolicy": "Delete",
+            "claimNamespace": "tea-d98210cbbpdc73dcrkvg",
+            "claimName": "disk-tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+            "claimUid": "f571482d-255d-4986-8098-0e713b1bb90e",
+            "csiDriver": "csi.hetzner.cloud",
+            "volumeHandle": "107282157"
+          },
+          "bindingMatches": true
+        }
+      ]
+    }
+  ],
+  "claimsWhoseOwnerIsNotInDiskInventory": [],
+  "platformImages": {
+    "deployments": [
+      {
+        "namespace": "bex-system",
+        "name": "bex-controller-manager",
+        "uid": "a26e3ffc-19cd-4923-ad39-88182ec8d32e",
+        "generation": 1695,
+        "observedGeneration": 1695,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "containerImages": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "diskStorageClass": "hcloud-volumes-luks"
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-api",
+        "uid": "2e592287-82f6-4077-80e8-d956de1c8f74",
+        "generation": 2806,
+        "observedGeneration": 2806,
+        "replicas": 2,
+        "updatedReplicas": 2,
+        "readyReplicas": 2,
+        "availableReplicas": 2,
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "diskStorageClass": ""
+      }
+    ],
+    "pods": [
+      {
+        "namespace": "bex-system",
+        "name": "bex-api-d58cf89f8-7d2zc",
+        "uid": "8c9ab3ca-bbd2-481e-a9fc-ed76aa320776",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerImageIds": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerReady": {
+          "api": true
+        }
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-api-d58cf89f8-jpgj6",
+        "uid": "a05b1331-0c42-4329-894e-fab2dbc346d8",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerImageIds": {
+          "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerReady": {
+          "api": true
+        }
+      },
+      {
+        "namespace": "bex-system",
+        "name": "bex-controller-manager-7b9b79986c-jxntz",
+        "uid": "53690f13-6ce2-4e08-945b-70f04532f01b",
+        "phase": "Running",
+        "deletingAt": "",
+        "containerImages": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerImageIds": {
+          "manager": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+        },
+        "containerReady": {
+          "manager": true
+        }
+      }
+    ]
+  },
+  "storageClasses": [
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks",
+      "uid": "13aeb054-74c2-4ca5-9861-039a7dc9cf27",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "",
+      "boundedFilesystem": "",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "",
+      "expandSecretNamespace": ""
+    },
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks-bounded",
+      "uid": "45392ab9-1e77-477d-9a95-6a9a84670869",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "ext4",
+      "boundedFilesystem": "ext4-v1",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "${pvc.name}-luks",
+      "expandSecretNamespace": "${pvc.namespace}"
+    }
+  ]
+}
