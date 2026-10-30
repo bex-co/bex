@@ -3,7 +3,17 @@ set -eu
 
 . /etc/os-release
 case "$VERSION_CODENAME" in
-  bullseye) pg_repo=https://apt-archive.postgresql.org/pub/repos/apt ;;
+  bullseye)
+    pg_repo=https://apt-archive.postgresql.org/pub/repos/apt
+    # Bullseye has left the live mirrors. Keep archive signature checking;
+    # its intentionally frozen Release files no longer have a live deadline.
+    rm -f /etc/apt/sources.list.d/debian.sources
+    cat > /etc/apt/sources.list <<'SOURCES'
+deb [check-valid-until=no] https://archive.debian.org/debian bullseye main
+deb [check-valid-until=no] https://archive.debian.org/debian bullseye-updates main
+deb [check-valid-until=no] https://archive.debian.org/debian-security bullseye-security main
+SOURCES
+    ;;
   bookworm|trixie) pg_repo=https://apt.postgresql.org/pub/repos/apt ;;
   *) echo "unsupported native distribution: $VERSION_CODENAME" >&2; exit 1 ;;
 esac
