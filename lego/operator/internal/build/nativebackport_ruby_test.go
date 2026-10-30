@@ -36,6 +36,7 @@ func TestNativeRubyBackportBuildAndStart(t *testing.T) {
 	if !ok {
 		t.Fatal("missing reviewed Node 20 companion")
 	}
+	t.Logf("selected Ruby %s image: %s; Node %s companion image: %s", line.version, line.image, node20.version, node20.image)
 	probe, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "native-base", "check-brotli.py"))
 	if err != nil {
 		t.Fatal(err)

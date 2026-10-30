@@ -44,6 +44,7 @@ func TestNativeBackportsBuildAndStart(t *testing.T) {
 			if !ok {
 				t.Fatal("missing reviewed Node line")
 			}
+			t.Logf("selected Node %s image: %s", line.version, line.image)
 			o := nativeOptions()
 			o.BuildCommand = `/usr/bin/python3 system-probe.py && node probe.js && node -e 'require("fs").writeFileSync("built.json", JSON.stringify({node:process.versions.node,brotli:process.versions.brotli}))'`
 			o.StartCommand = "/usr/bin/python3 system-probe.py && node probe.js && node app.js"
