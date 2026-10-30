@@ -88,3 +88,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## New CSI guard image qualified and pinned — 2026-10-30
 
 [The new factory and independent artifact review](evidence/published-csi-key-guard-20261030/README.md) qualify `e9516afe…` at exact key-refusal source `15ed18b94…`, with the real kernel test, strict signature/source checks and successful anonymous executions on both architectures. The signed SBOM covers amd64 only, stated explicitly. Both controller/node source pins now select the new image. Its scoped live rollout is next; the paid fixture remains gated on actual CSI adoption and the separately qualified platform release.
+
+## Signed final-source platform candidate — 2026-10-30
+
+[The successful-build and strict candidate proof](evidence/platform-candidate-25b-20261030/README.md) binds published index `a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c` to source `25b99d8a373aedd66ec485708762a59cf5eaa408`, both required fix ancestors and all seventeen tested source blobs. Signing and all ten scan steps passed; deployment was queued in the actual snapshot. Live API/operator and new CSI readiness, current CI capacity and the original paid lifecycle remain open. No fixture or task is completed by this candidate proof.
