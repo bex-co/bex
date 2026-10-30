@@ -539,6 +539,64 @@ export function OverviewEmptySkeleton() {
   );
 }
 
+/**
+ * The Overview resource list at the size this workspace last had: one card per
+ * project plus the "New project" card (98px; alone, the new-project card is
+ * 86px), then, when there were ungrouped resources, the borderless resource
+ * table (36px header, 49px rows — 63px below `sm`, where cells wrap).
+ */
+export function OverviewPopulatedSkeleton({
+  projects,
+  rows,
+}: {
+  projects: number;
+  rows: number;
+}) {
+  return (
+    <>
+      <Region name="projects" className="space-y-3">
+        <div className="flex h-5 items-center">
+          <Skeleton className="h-3.5 w-20" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: projects }, (_, index) => (
+            <Skeleton
+              key={index}
+              data-skeleton-item="project-card"
+              className="min-h-[98px] w-full rounded-xl"
+            />
+          ))}
+          <Skeleton
+            data-skeleton-item="new-project-card"
+            className="min-h-[86px] w-full rounded-xl"
+          />
+        </div>
+      </Region>
+      {rows > 0 ? (
+        <Region name="resources" className="space-y-3">
+          <div className="flex h-5 items-center">
+            <Skeleton className="h-3.5 w-36" />
+          </div>
+          <div>
+            <div className="flex h-9 items-center border-b">
+              <Skeleton className="h-3 w-24" />
+            </div>
+            {Array.from({ length: rows }, (_, index) => (
+              <div
+                key={index}
+                data-skeleton-item="resource-row"
+                className="flex h-[63px] items-center border-b sm:h-[49px]"
+              >
+                <Skeleton className="h-4 w-40" />
+              </div>
+            ))}
+          </div>
+        </Region>
+      ) : null}
+    </>
+  );
+}
+
 export function OverviewPageSkeleton() {
   const { currentWorkspaceId } = useWorkspace();
   const shape = useOverviewShape(currentWorkspaceId);
@@ -552,23 +610,13 @@ export function OverviewPageSkeleton() {
           <Skeleton className="h-6 w-36" />
           <Skeleton className="h-8 w-24" />
         </Region>
-        {shape === "empty" ? (
+        {shape.kind === "empty" ? (
           <OverviewEmptySkeleton />
         ) : (
-          <>
-            <Region name="projects" className="space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <Skeleton key={index} className="h-32 w-full rounded-xl" />
-                ))}
-              </div>
-            </Region>
-            <Region name="resources" className="space-y-3">
-              <Skeleton className="h-4 w-28" />
-              <TableRowsSkeleton rows={2} columns={4} />
-            </Region>
-          </>
+          <OverviewPopulatedSkeleton
+            projects={shape.projects}
+            rows={shape.rows}
+          />
         )}
       </div>
     </PendingFrame>
