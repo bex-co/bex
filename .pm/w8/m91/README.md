@@ -147,3 +147,8 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Isolated verifier cache and byte diagnostics — 2026-10-30
 
 [The reviewed private V10 tool and exact-source diagnosis](evidence/native-review-tuf-isolation-20261030/README.md) isolate strict Cosign TUF caches and retain whitelisted byte-failure counters. Two rejected Ruby 3.1 V8 attempts remain explicit: one unclassified size/SHA rejection and one incomplete report pair after TUF persistence failure. Four concurrency, six focused and43 strict controls pass; a new complete validation is assigned, with no artifact approval yet. Seven suppliers remain approved, and all original hosted DoDs remain open.
+
+
+## Complete-layer scanner recovery — 2026-10-30
+
+[Actual Elixir failures, pinned scanner source and reviewed staging controls](evidence/publication-trivy-staging-20261030/README.md) support a coverage-preserving publication fix: complete remote layers are staged and verified before tar analysis, databases finish outside each full-scan budget, and owned temporary storage is measured and bounded. Both immutable recovery candidates repeat all current runtime, complete scan, SBOM and signing gates. Local controls and repository checks pass; actual runner capacity and successful corrected publication remain unproved. Seven suppliers remain approved; no task or original hosted DoD is closed.

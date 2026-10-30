@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-30T20:12:52.376540+00:00",
+  "scope": "three source reviews of exact frozen proposal, not a real scan pass",
+  "wrapper_sha256": "df12dddbf1823be3eda20ac96979c20b256b303aeb694bb440b556b59e0ee08e",
+  "patch_sha256": "08ca415d9a1402a10b5bb9e7c22ec6f0192f5f85b3e1569655e207356cf99dfc",
+  "quality": {
+    "reviewer": "root",
+    "result": "PASS",
+    "basis": "full scan subjects/options unchanged; exact source chain forces verified whole staging before tar; oversize fatal; source does not establish historical cause or actual runner capacity"
+  },
+  "reuse": {
+    "reviewer": "cli090",
+    "result": "PASS",
+    "basis": "stock remote/image pipeline and original ref/platform/report bindings retained; no archive substitution or daemon ambiguity"
+  },
+  "efficiency": {
+    "reviewer": "disk221",
+    "result": "PASS with explicit cost",
+    "basis": "3 complete scans and separate two21m DB maxima per architecture; cold JavaDB can add945MiB/~13m, parallel1 and measured28GiB gate bound staging; actual runner fit unproved"
+  }
+}
