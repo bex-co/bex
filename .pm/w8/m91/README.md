@@ -105,3 +105,8 @@ Critical scan findings, including the custom Brotli backport flags, remain recor
 The same strict review now passes for [Node 16 Bookworm](evidence/published-node16-20261030/README.md) and [Python 3.7 Bullseye](evidence/published-python37-20261030/README.md), alongside the earlier Node 14 supplier. Each has five complete signed bundles, independent amd64/arm64 report and image-byte bindings, current successful runtime/scan gates, exact producer/recovery inputs and actual wrong-source/wrong-subject rejection controls. The generic native-only review driver and compact full-predicate replay records are retained; complete report bodies remain outside Git in verified gzip/public immutable OCI objects.
 
 All critical findings remain visible, including the Bullseye custom-backport flags. These are supplier identity/runtime/report reviews, not security waivers. The full 27-line catalog, production adoption, exact generated-image replay and original hosted DoDs remain open; no task or milestone is closed.
+
+
+## Verified recovery retirement — 2026-10-30
+
+[Fresh source-specific discovery reads](evidence/recovery-retirement-20261030/README.md) match the approved Node16/Python3.7 index bytes; their temporary recovery authorizations are retired. Other recovery records remain unchanged. This cleanup adds no supplier adoption or hosted acceptance claim; all original tasks remain open.

@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-30T12:20:50.915112+00:00",
+  "rows": [
+    {
+      "name": "node-16-bookworm",
+      "tag": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "manifest_bytes": 1611,
+      "manifest_sha256": "2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "existing_approved_evidence": "published-node16-20261030",
+      "http": 200
+    },
+    {
+      "name": "python-3.7-bullseye",
+      "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "manifest_bytes": 1611,
+      "manifest_sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "existing_approved_evidence": "published-python37-20261030",
+      "http": 200
+    }
+  ],
+  "public_anonymous_only": true,
+  "authorization_to_retire_only_exact_approved_rows": true
+}

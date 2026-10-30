@@ -1,0 +1,55 @@
+{
+  "schema": "bex.native-publisher-recovery/v1",
+  "images": {
+    "node-16-bookworm": {
+      "base": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123885951331,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951331",
+      "reason": "Authenticated main producer built this exact index and passed both architecture runtime/Bullseye checks; Trivy timed out analyzing GCC12 lto1. Rerun all checks, scans and signing without repeating compilation.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "python-3.7-bullseye": {
+      "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123936350542,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+      "reason": "Original authenticated main build, both-architecture runtime checks and both Trivy scans passed; amd64 SPDX attestation failed on Rekor POST after2attempts. Underlying HTTP status/timeout cause is not provided in the raw log. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "python-3.8-bookworm": {
+      "base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123967323852,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852",
+      "reason": "Authenticated main build and both-architecture runtime checks/scans passed; first amd64 SPDX attestation failed posting to Rekor v1 after two attempts. HTTP status and server limit are not exposed. Reuse only this exact same-recipe/base index and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "node-20-bookworm": {
+      "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123932798235,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "python-3.9-bookworm": {
+      "base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123982303737,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Python3.9.25 gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    }
+  }
+}

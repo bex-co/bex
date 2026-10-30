@@ -1,0 +1,28 @@
+{
+  "files": {
+    "before.json": {
+      "bytes": 4943,
+      "sha256": "46a51cb63b06e52d3a7afd133d65c3b95500a59587a24daf8759f0f6c861db00"
+    },
+    "python-3.7-bullseye.index.json": {
+      "bytes": 1611,
+      "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+    },
+    "after.json": {
+      "bytes": 3061,
+      "sha256": "1386ad2604a445d2b9fa38f8a56884ce37ff968d3269db2b9364c56b8129c6da"
+    },
+    "README.md": {
+      "bytes": 552,
+      "sha256": "1abc556a7d154ea39c33f68b0e4046b1564e5818cab6861b6fc135adf21002f2"
+    },
+    "node-16-bookworm.index.json": {
+      "bytes": 1611,
+      "sha256": "2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113"
+    },
+    "receipt.json": {
+      "bytes": 1116,
+      "sha256": "3a8f968a51f4a815240dc69feb948d998bd977b6bf41e4320fde1061c94c9129"
+    }
+  }
+}
