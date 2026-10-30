@@ -385,6 +385,42 @@ spec:
 EOF
 fi
 
+# CNPG instance managers talk to the apiserver. Production allows exactly that
+# through the Cilium allow-cnpg-apiserver-egress policy, which the local overlay
+# deletes because this cluster runs Calico. Without a replacement, the operator's
+# default-deny tenant namespaces leave every local tenant Postgres stuck in
+# "Setting up primary" (initdb: dial tcp <apiserver ClusterIP>:443 i/o timeout;
+# w2/053). Calico's equivalent: allow egress from cnpg.io/cluster pods to the
+# apiserver's ClusterIP and endpoints, resolved now (re-run after a control-plane
+# IP change). Order 100 evaluates before the k8s NetworkPolicies (order 1000).
+api_svc_ip="$(KUBECONFIG="$WL_KUBECONFIG" kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}' 2>/dev/null)"
+api_eps="$(KUBECONFIG="$WL_KUBECONFIG" kubectl get endpointslices -n default -l kubernetes.io/service-name=kubernetes \
+  -o jsonpath='{range .items[*].endpoints[*].addresses[*]}{@}{" "}{end}' 2>/dev/null)"
+api_port="$(KUBECONFIG="$WL_KUBECONFIG" kubectl get endpointslices -n default -l kubernetes.io/service-name=kubernetes \
+  -o jsonpath='{.items[0].ports[0].port}' 2>/dev/null)"
+if [ -n "$api_svc_ip" ] && [ -n "$api_eps" ] && [ -n "$api_port" ]; then
+  api_nets="\"$api_svc_ip/32\""
+  for ep in $api_eps; do api_nets="$api_nets, \"$ep/32\""; done
+  KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f - >/dev/null <<EOF
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: allow-cnpg-apiserver-egress
+spec:
+  order: 100
+  selector: has(cnpg.io/cluster)
+  types: [Egress]
+  egress:
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [$api_nets]
+        ports: [443, $api_port]
+EOF
+else
+  echo "warn: could not resolve the apiserver ClusterIP/endpoints; local tenant Postgres will not initialize (w2/053)" >&2
+fi
+
 # Storage: CAPD nodes ship no CSI, so PVCs (dev-N CNPG databases + Loki) can
 # never bind on a fresh cluster — install local-path-provisioner and mark it the
 # default StorageClass (scripts/dev-env.sh fail-fasts on exactly this; w1/043).
