@@ -1,0 +1,191 @@
+{
+  "id": 123982303737,
+  "run_id": 41000570846,
+  "workflow_name": "native base images (build + verify)",
+  "head_branch": "main",
+  "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41000570846",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOL1E4iM8AAAAc3evR-Q",
+  "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/123982303737",
+  "html_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-10-30T09:11:10Z",
+  "started_at": "2026-10-30T10:00:00Z",
+  "completed_at": "2026-10-30T10:16:56Z",
+  "name": "build (python-3.9-bookworm, python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe9...",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-10-30T10:00:00Z",
+      "completed_at": "2026-10-30T10:00:15Z"
+    },
+    {
+      "name": "Set up runner",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-10-30T10:00:15Z",
+      "completed_at": "2026-10-30T10:00:15Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-10-30T10:00:15Z",
+      "completed_at": "2026-10-30T10:00:30Z"
+    },
+    {
+      "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-10-30T10:00:30Z",
+      "completed_at": "2026-10-30T10:00:46Z"
+    },
+    {
+      "name": "Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-10-30T10:00:46Z",
+      "completed_at": "2026-10-30T10:00:46Z"
+    },
+    {
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-10-30T10:00:46Z",
+      "completed_at": "2026-10-30T10:08:44Z"
+    },
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-30T10:08:44Z",
+      "completed_at": "2026-10-30T10:09:38Z"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-10-30T10:09:38Z",
+      "completed_at": "2026-10-30T10:13:29Z"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-10-30T10:13:29Z",
+      "completed_at": "2026-10-30T10:14:39Z"
+    },
+    {
+      "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-10-30T10:14:39Z",
+      "completed_at": "2026-10-30T10:14:46Z"
+    },
+    {
+      "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-10-30T10:14:46Z",
+      "completed_at": "2026-10-30T10:14:50Z"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 12,
+      "started_at": "2026-10-30T10:14:50Z",
+      "completed_at": "2026-10-30T10:16:31Z"
+    },
+    {
+      "name": "Post scan arm64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-10-30T10:16:31Z",
+      "completed_at": "2026-10-30T10:16:31Z"
+    },
+    {
+      "name": "Post scan amd64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-10-30T10:16:31Z",
+      "completed_at": "2026-10-30T10:16:31Z"
+    },
+    {
+      "name": "Post verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 20,
+      "started_at": "2026-10-30T10:16:31Z",
+      "completed_at": "2026-10-30T10:16:35Z"
+    },
+    {
+      "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 21,
+      "started_at": "2026-10-30T10:16:35Z",
+      "completed_at": "2026-10-30T10:16:39Z"
+    },
+    {
+      "name": "Post Run docker/login-action@dbcb813823bdd20940b903addbd779551569679f",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 22,
+      "started_at": "2026-10-30T10:16:39Z",
+      "completed_at": "2026-10-30T10:16:39Z"
+    },
+    {
+      "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-10-30T10:16:39Z",
+      "completed_at": "2026-10-30T10:16:53Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-10-30T10:16:53Z",
+      "completed_at": "2026-10-30T10:16:53Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-10-30T10:16:53Z",
+      "completed_at": "2026-10-30T10:16:53Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/123982303737",
+  "labels": [
+    "self-hosted",
+    "Linux",
+    "ARM64",
+    "bex-production"
+  ],
+  "runner_id": 21727,
+  "runner_name": "45e29ad2967e",
+  "runner_group_id": 4,
+  "runner_group_name": "bex-production"
+}

@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-10-30T15:09:19.720571+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "header_digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "anonymous_access": true
+}
