@@ -571,14 +571,15 @@ func TestCnpgClusterSpecHA(t *testing.T) {
 		t.Errorf("HA off: enablePDB = %v, want false", noHA["enablePDB"])
 	}
 
-	// HA on => instances raised to 2 and anti-affinity set.
+	// HA on => instances raised to 2 and REQUIRED anti-affinity set: CNPG's
+	// default "preferred" type would let the pair share one node (w2/m171).
 	ha := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", highAvailability: true})
 	if ha["instances"] != int64(2) {
 		t.Errorf("HA on: instances = %v, want 2", ha["instances"])
 	}
 	aff := ha["affinity"].(map[string]any)
-	if aff["enablePodAntiAffinity"] != true || aff["topologyKey"] != "kubernetes.io/hostname" {
-		t.Errorf("HA on: affinity = %v, want enablePodAntiAffinity=true topologyKey=kubernetes.io/hostname", aff)
+	if aff["enablePodAntiAffinity"] != true || aff["podAntiAffinityType"] != "required" || aff["topologyKey"] != "kubernetes.io/hostname" {
+		t.Errorf("HA on: affinity = %v, want enablePodAntiAffinity=true podAntiAffinityType=required topologyKey=kubernetes.io/hostname", aff)
 	}
 	// HA keeps CNPG's default disruption protection: the key is absent so the
 	// projection withdraws a prior single-instance `false` on growth.

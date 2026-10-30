@@ -121,10 +121,11 @@ type DatabaseSpec struct {
 	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
 	DatabaseUser string `json:"databaseUser,omitempty"`
 
-	// Plan selects the resource allocation (compute + storage + availability).
-	// MVP plans are single-instance and fit one node.
+	// Plan selects the resource allocation (compute + storage + availability):
+	// one lego/types/tiers Postgres id. Plans are single-instance; the ≥1-CPU
+	// plans (1c-2g, pro-4gb, basic-4gb) can add an HA standby.
 	// +optional
-	// +kubebuilder:validation:Enum=free;basic-256mb;basic-1gb
+	// +kubebuilder:validation:Enum=free;basic-256mb;basic-1gb;"1c-2g";pro-4gb;basic-4gb
 	// +kubebuilder:default=free
 	Plan string `json:"plan,omitempty"`
 

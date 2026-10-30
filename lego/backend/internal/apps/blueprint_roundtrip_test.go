@@ -91,7 +91,7 @@ func roundTripFixture() (*Service, GenerateBlueprintRequest) {
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-rt", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
-			Name: "rt-db", Plan: "basic-1gb", StorageGB: 10, Version: "16", HighAvailability: true,
+			Name: "rt-db", Plan: "1c-2g", StorageGB: 10, Version: "16", HighAvailability: true,
 		},
 	}
 	kv := &appv1alpha1.KeyValue{
@@ -129,7 +129,6 @@ func roundTripFixture() (*Service, GenerateBlueprintRequest) {
 //     live CR reads back nil (Kubernetes drops empty slices), and
 //     reflect.DeepEqual(nil, []T{}) is false.
 func TestGeneratedBlueprintRePlansAsNoop(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc, req := roundTripFixture()
 	ctx := context.Background()
 
@@ -251,7 +250,6 @@ func TestGeneratedBlueprintPreservesDatastoreExternalAccess(t *testing.T) {
 // manifests differing in maxmemoryPolicy produced byte-identical plans — a
 // field list that does not depend on the diff is not a diff.
 func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc, req := roundTripFixture()
 	ctx := context.Background()
 	out, err := svc.GenerateBlueprint(ctx, req)
@@ -266,7 +264,7 @@ func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
 		wantField string
 	}{
 		{"key value eviction policy", "maxmemoryPolicy: allkeys-lru", "maxmemoryPolicy: noeviction", "keyvalue", "maxmemoryPolicy"},
-		{"postgres plan", "plan: basic-1gb", "plan: basic-256mb", "postgres", "plan"},
+		{"postgres plan", "plan: 1c-2g", "plan: basic-4gb", "postgres", "plan"},
 		{"service health check", "healthCheckPath: /healthz", "healthCheckPath: /live", "service", "healthCheckPath"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

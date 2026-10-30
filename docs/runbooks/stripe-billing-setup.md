@@ -26,7 +26,7 @@ python3 scripts/stripe-billing-setup.py \
 
 It reads `pricing.yaml` and creates or validates:
 
-- 14 active usage meters and 14 monthly metered Prices;
+- one active usage meter and one monthly metered Price per paid dimension (18 today);
 - a Product for each newly created Price;
 - the perpetual 100%-off coupon `bex-comp-100`;
 - deactivation of superseded kind-level shadow meters;
@@ -37,11 +37,20 @@ Run it a second time. Every active object and the coupon must report `exists`; t
 The lookup/event names are:
 
 - `instance_seconds.service.{starter,standard,pro,pro-plus,pro-max,pro-ultra}`;
-- `instance_seconds.postgres.{basic-256mb,basic-1gb}`;
+- `instance_seconds.postgres.{basic-256mb,basic-1gb,1c-2g,pro-4gb,basic-4gb}` (a high-availability database reports two instances' seconds against its plan's meter, so the standby bills like the primary, as on Render);
 - `instance_seconds.key_value.{starter,standard}`;
-- `egress_gib`, `build_seconds`, `storage_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio).
+- `egress_gib`, `build_seconds`, `storage_gb_hours`, `disk_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio).
 
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
+
+### Repricing a dimension (the 2026-10 Postgres catalog change, w2/m171)
+
+A lookup key keeps its name when its rate changes, so the script refuses the stale active Price ("does not match pricing.yaml") instead of overwriting it. The w2/m171 change creates five Prices and retires two:
+
+- **create** `instance_seconds.postgres.1c-2g` ($28.00/mo), `.pro-4gb` ($38.50/mo) and `.basic-4gb` ($52.50/mo) — new tiers, new meters;
+- **replace** `instance_seconds.postgres.basic-256mb` ($4.90 → $4.20/mo) and `.basic-1gb` ($14.00 → $13.30/mo) — Render × 0.70 against Render's current $6 / $19.
+
+With the Stripe admin, in test mode first and then live: deactivate the two stale Prices (`stripe prices update <price_id> -d active=false`; the old Price stays attached to existing Subscription items and keeps billing them), rerun the script so it creates the five Prices, and rerun it once more so every line reports `exists`. Existing Subscriptions move at their **next billing period** (user decision 2026-10-20): `EnsureContract` attaches Prices only when it creates a Subscription, so an existing Subscription neither gains the three new tier items nor leaves the two retired Prices on its own. Schedule each one onto the current catalog at its period end (swap the two retired Price items for their replacements and add the three new tier items), then confirm with a fresh `stripe subscriptions retrieve` that every live Subscription carries exactly one item per lookup key.
 
 Workspace plan fees (`pricing.yaml` `workspace.usdPerMonth`: Hobby $0, Pro $17.50, Scale $349.30) are licensed monthly SKUs, not usage meters. This script does not create Stripe Prices for them; the dashboard reads the same YAML via the Go sheet / locale lockstep. Attaching those SKUs to a Customer Subscription is a billing follow-up.
 

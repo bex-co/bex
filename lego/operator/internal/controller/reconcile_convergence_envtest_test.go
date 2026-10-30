@@ -464,7 +464,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		nn := types.NamespacedName{Name: name, Namespace: namespace}
 		db := &appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-			Spec:       appv1alpha1.DatabaseSpec{Name: "converge-ha", Plan: "basic-1gb", HighAvailability: true},
+			Spec:       appv1alpha1.DatabaseSpec{Name: "converge-ha", Plan: "1c-2g", HighAvailability: true},
 		}
 		Expect(k8sClient.Create(ctx, db)).To(Succeed())
 		run := func() (ctrl.Result, error) {
@@ -476,6 +476,10 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
 		instances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 		Expect(instances).To(BeNumerically(">=", 2))
+		// Primary and standby must never share a node (w2/m171): CNPG's default
+		// "preferred" anti-affinity would let the scheduler co-locate them.
+		antiAffinity, _, _ := unstructured.NestedString(cluster.Object, "spec", "affinity", "podAntiAffinityType")
+		Expect(antiAffinity).To(Equal("required"))
 		_, found, err := unstructured.NestedFieldNoCopy(cluster.Object, "spec", "enablePDB")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(found).To(BeFalse(), "an HA Cluster must leave enablePDB to CNPG's default so a standby survives a drain")

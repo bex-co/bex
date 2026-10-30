@@ -911,9 +911,10 @@ func TestInstanceTypesCatalog(t *testing.T) {
 	if b.SupportsHighAvailability {
 		t.Errorf("basic-1gb (500m) must not advertise high availability")
 	}
-	allowHighAvailabilityOnEveryPlan(t)
-	if tt, _ := svc.InstanceTypes(context.Background()); !tt[0].SupportsHighAvailability {
-		t.Errorf("supportsHighAvailability must follow the shared predicate")
+	for _, id := range []string{"1c-2g", "pro-4gb", "basic-4gb"} {
+		if it, ok := byID[id]; !ok || !it.SupportsHighAvailability {
+			t.Errorf("%s must be listed and advertise high availability (w2/m171): %+v", id, it)
+		}
 	}
 }
 
@@ -935,8 +936,8 @@ func TestInstanceTypesArePricedFromTheSheet(t *testing.T) {
 	for _, it := range tt {
 		byID[it.ID] = it.MonthlyUSD
 	}
-	if byID["free"] != "0.00" || byID["basic-1gb"] != "14.00" {
-		t.Errorf("free/basic-1gb = %q/%q, want 0.00/14.00 (bex.co/pricing)", byID["free"], byID["basic-1gb"])
+	if byID["free"] != "0.00" || byID["basic-1gb"] != "13.30" || byID["1c-2g"] != "28.00" {
+		t.Errorf("free/basic-1gb/1c-2g = %q/%q/%q, want 0.00/13.30/28.00 (bex.co/pricing)", byID["free"], byID["basic-1gb"], byID["1c-2g"])
 	}
 }
 
@@ -945,6 +946,9 @@ func TestPGTierDisplayName(t *testing.T) {
 		{"free", "Free"},
 		{"basic-256mb", "Basic 256MB"},
 		{"basic-1gb", "Basic 1GB"},
+		{"pro-4gb", "Pro 4GB"},
+		{"basic-4gb", "Basic 4GB"},
+		{"1c-2g", "1c-2g"}, // a flexible id with no family name reads as itself
 	} {
 		if got := pgTierDisplayName(c.id); got != c.want {
 			t.Errorf("pgTierDisplayName(%q) = %q, want %q", c.id, got, c.want)
@@ -1013,7 +1017,7 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		core.LabelProject:     "prj-platform",
 		core.LabelEnvironment: "env-production",
 	}
-	got.Spec.Plan = "basic-256mb"
+	got.Spec.Plan = "1c-2g" // a plan that offers HA, for the HA-only toggle below
 	if err := cl.Update(ctx, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -1029,12 +1033,11 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	if got.Spec.StorageGB != 20 {
 		t.Errorf("spec.storageGB = %d, want 20", got.Spec.StorageGB)
 	}
-	if got.Spec.Plan != "basic-256mb" {
+	if got.Spec.Plan != "1c-2g" {
 		t.Errorf("plan should be untouched by a disk-only update, got %q", got.Spec.Plan)
 	}
 
 	// HA toggle alone, no plan — must succeed (on a plan that offers HA).
-	allowHighAvailabilityOnEveryPlan(t)
 	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"enableHighAvailability":true}`)
 	if w.Code != 200 {
 		t.Fatalf("HA-only PATCH => 200, got %d: %s", w.Code, w.Body.String())

@@ -1636,16 +1636,22 @@
         "reason": "Render compute plan ID for the same CPU/RAM as bex's 'basic-1gb' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
       },
       "\"1c-2g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_ha_test.go:TestValidateBlueprintRefusesHAOnSubCPUPlan",
+        "reason": "Render compute plan ID that is itself a bex Postgres rung (w2/m171)"
       },
       "\"1c-4g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_ha_test.go:TestValidateBlueprintRefusesHAOnSubCPUPlan",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-4gb' rung; resolved by the tier catalog's input aliases (w8/011, w2/m171)"
       },
       "\"2c-4g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_ha_test.go:TestValidateBlueprintRefusesHAOnSubCPUPlan",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'basic-4gb' rung; resolved by the tier catalog's input aliases (w8/011, w2/m171)"
       },
       "\"2c-8g\"": {
         "state": "unsupported",

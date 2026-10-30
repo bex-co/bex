@@ -199,12 +199,16 @@ spec:
               plan:
                 default: free
                 description: |-
-                  Plan selects the resource allocation (compute + storage + availability).
-                  MVP plans are single-instance and fit one node.
+                  Plan selects the resource allocation (compute + storage + availability):
+                  one lego/types/tiers Postgres id. Plans are single-instance; the ≥1-CPU
+                  plans (1c-2g, pro-4gb, basic-4gb) can add an HA standby.
                 enum:
                 - free
                 - basic-256mb
                 - basic-1gb
+                - 1c-2g
+                - pro-4gb
+                - basic-4gb
                 type: string
               pooler:
                 description: |-

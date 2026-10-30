@@ -218,8 +218,8 @@ func TestBlueprintUnsoldPostgresPlanNamesBexLimit(t *testing.T) {
 	for _, tc := range []struct {
 		plan, want string
 	}{
-		{"pro-4gb", `plan "pro-4gb" is not available on bex; choose one of free|basic-256mb|basic-1gb`},
-		{"basic-4gb", `plan "basic-4gb" is not available on bex`},
+		{"pro-8gb", `plan "pro-8gb" is not available on bex; choose one of free|basic-256mb|basic-1gb|1c-2g|pro-4gb|basic-4gb`},
+		{"4c-16g", "plan names a Render compute plan size that bex does not offer"},
 		{"accelerated-16gb", `plan "accelerated-16gb" is not available on bex`},
 		{"pro-5gb", "value must be one of"},
 	} {

@@ -400,8 +400,13 @@ metadata:
     # from 2026-10-23 22:00 UTC; the w5/174 node roll then evicted
     # beancount-cms-v2's only pod and its replacement stayed Pending (site
     # down). Headroom costs nothing until the autoscaler uses it.
+    # max 8 (2026-10-29, user decision, w2/m171): high-availability Postgres
+    # places primary and standby on distinct nodes (required anti-affinity),
+    # and the largest pair (2c-4g, 2 CPU each) needs two nodes with 2 CPU
+    # free — at most ~1.9 CPU was free on any of the 4 running nodes, so two
+    # new nodes plus rollout surge and room for more than one HA customer.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "5"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "8"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"

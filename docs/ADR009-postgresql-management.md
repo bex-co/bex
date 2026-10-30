@@ -319,7 +319,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 ### High availability
 
-- `spec.highAvailability` (Render's `enableHighAvailability`) provisions a replicated CNPG cluster. When `true`, the operator raises `spec.instances` to `max(plan.Instances, 2)` and adds pod anti-affinity (`enablePodAntiAffinity: true, topologyKey: kubernetes.io/hostname`) so primary and standby land on different nodes. The ready-gate waits for both instances before reporting `Ready`.
+- `spec.highAvailability` (Render's `enableHighAvailability`) provisions a replicated CNPG cluster. When `true`, the operator raises `spec.instances` to `max(plan.Instances, 2)` and adds **required** pod anti-affinity (`enablePodAntiAffinity: true, podAntiAffinityType: required, topologyKey: kubernetes.io/hostname`) so primary and standby always land on different nodes; with no free node the standby stays Pending until the autoscaler adds one rather than sharing the primary's node (w2/m171). The ready-gate waits for both instances before reporting `Ready`.
 - `status.highAvailabilityEnabled` (Render's read field) is `true` only when HA is on _and_ ≥2 instances are actually ready — it reflects the operator's observed state, not just the spec intent.
 - Independent of `readReplicas`: a DB can have read replicas without HA and vice versa (Render's documented independence).
 

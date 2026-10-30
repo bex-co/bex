@@ -471,11 +471,16 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	if instances == 1 {
 		spec["enablePDB"] = false
 	}
-	// Pod anti-affinity: spread primary and standbys across nodes so a single
-	// node failure doesn't take out all instances.
+	// Pod anti-affinity: primary and standbys MUST land on distinct nodes so a
+	// single node failure never takes out every instance. CNPG's default type is
+	// "preferred", which lets the scheduler co-locate the pair when capacity is
+	// short; Render's HA puts the standby on separate hardware, so the rule is
+	// "required": a standby with no free node stays Pending (and the autoscaler
+	// adds one) instead of silently sharing the primary's node (w2/m171).
 	if p.highAvailability {
 		spec["affinity"] = map[string]any{
 			"enablePodAntiAffinity": true,
+			"podAntiAffinityType":   "required",
 			"topologyKey":           "kubernetes.io/hostname",
 		}
 	}

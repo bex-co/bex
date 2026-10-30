@@ -17,7 +17,7 @@ Every product family's tier ladder starts at an explicit `free` id, and it is th
 | Family | Free tier | Paid tiers |
 | --- | --- | --- |
 | compute (`spec.tier`) | `free` (default) | `starter` `standard` `pro` `pro-plus` `pro-max` `pro-ultra` |
-| postgres (`spec.plan`) | `free` (default, no backup) | `basic-256mb` `basic-1gb` |
+| postgres (`spec.plan`) | `free` (default, no backup) | `basic-256mb` `basic-1gb` `1c-2g` `pro-4gb` `basic-4gb` |
 | valkey (`spec.plan`) | `free` (default) | `starter` `standard` |
 
 The price sheet (`internal/pricing/pricing.yaml`) rates every free tier at $0, and the Stripe catalog (ADR040, `docs/runbooks/stripe-billing-setup.md`) provisions meters only for the non-free tiers. **Paid intent = any create or plan change that lands on a non-free tier.**

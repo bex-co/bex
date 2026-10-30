@@ -102,8 +102,11 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 		"egress_gib",
 		"instance_seconds.key_value.standard",
 		"instance_seconds.key_value.starter",
+		"instance_seconds.postgres.1c-2g",
 		"instance_seconds.postgres.basic-1gb",
 		"instance_seconds.postgres.basic-256mb",
+		"instance_seconds.postgres.basic-4gb",
+		"instance_seconds.postgres.pro-4gb",
 		"instance_seconds.service.pro",
 		"instance_seconds.service.pro-max",
 		"instance_seconds.service.pro-plus",
@@ -307,8 +310,11 @@ func TestEstimatePaidTierMonthlyPricesMatchCatalog(t *testing.T) {
 		{"service pro plus", "pro-plus", store.ResourceKindService, "122.50"},
 		{"service pro max", "pro-max", store.ResourceKindService, "157.50"},
 		{"service pro ultra", "pro-ultra", store.ResourceKindService, "315.00"},
-		{"postgres basic 256mb", "basic-256mb", store.ResourceKindPostgres, "4.90"},
-		{"postgres basic 1gb", "basic-1gb", store.ResourceKindPostgres, "14.00"},
+		{"postgres basic 256mb", "basic-256mb", store.ResourceKindPostgres, "4.20"},
+		{"postgres basic 1gb", "basic-1gb", store.ResourceKindPostgres, "13.30"},
+		{"postgres 1c-2g", "1c-2g", store.ResourceKindPostgres, "28.00"},
+		{"postgres pro 4gb", "pro-4gb", store.ResourceKindPostgres, "38.50"},
+		{"postgres basic 4gb", "basic-4gb", store.ResourceKindPostgres, "52.50"},
 		{"key value starter", "starter", store.ResourceKindKeyValue, "7.00"},
 		{"key value standard", "standard", store.ResourceKindKeyValue, "21.00"},
 	}
@@ -356,14 +362,14 @@ func TestEstimateOneBuildMinute(t *testing.T) {
 // --- Postgres and KeyValue ---
 
 func TestEstimatePostgresBasic256mb(t *testing.T) {
-	// Same per-second rate as compute starter ($4.90/mo)
+	// $4.20/mo: Render's $6 x 0.70 (w2/m171 t012)
 	rows := []store.UsageSummaryRow{
 		{Kind: store.UsageKindInstanceSeconds, Tier: "basic-256mb", ResourceKind: store.ResourceKindPostgres, Total: 2628000},
 	}
 	est := Default.Estimate(rows)
 	got := parseUSD(t, est.TotalUSD)
-	if math.Abs(got-4.90) > 0.02 {
-		t.Errorf("postgres basic-256mb 1 month: want ~$4.90, got %s", est.TotalUSD)
+	if math.Abs(got-4.20) > 0.02 {
+		t.Errorf("postgres basic-256mb 1 month: want ~$4.20, got %s", est.TotalUSD)
 	}
 	if len(est.Meters) != 1 {
 		t.Fatalf("want 1 meter, got %d", len(est.Meters))
@@ -446,17 +452,17 @@ func TestEstimateTotalIsSumOfAggregatedRows(t *testing.T) {
 }
 
 func TestEstimateMixedResourceKinds(t *testing.T) {
-	// Service compute + postgres + keyvalue — all at starter-equivalent rates
+	// Service compute + postgres + keyvalue at their entry paid rates
 	rows := []store.UsageSummaryRow{
 		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 2628000},
 		{Kind: store.UsageKindInstanceSeconds, Tier: "basic-256mb", ResourceKind: store.ResourceKindPostgres, Total: 2628000},
 		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindKeyValue, Total: 2628000},
 	}
-	// ≈ $4.90 (compute) + $4.90 (postgres) + $7.00 (kv) = $16.80
+	// ≈ $4.90 (compute) + $4.20 (postgres) + $7.00 (kv) = $16.10
 	est := Default.Estimate(rows)
 	got := parseUSD(t, est.TotalUSD)
-	if math.Abs(got-16.80) > 0.10 {
-		t.Errorf("mixed resource kinds: want ~$16.80, got %s", est.TotalUSD)
+	if math.Abs(got-16.10) > 0.10 {
+		t.Errorf("mixed resource kinds: want ~$16.10, got %s", est.TotalUSD)
 	}
 	if len(est.Meters) != 3 {
 		t.Fatalf("want 3 meters, got %d", len(est.Meters))

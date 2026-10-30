@@ -879,6 +879,30 @@ const DB_INSTANCE_TYPES = [
     memory: "1Gi",
     storageGB: 5,
   },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "1c-2g",
+    name: "1c-2g",
+    cpu: "1",
+    memory: "2Gi",
+    storageGB: 10,
+  },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "pro-4gb",
+    name: "Pro 4GB",
+    cpu: "1",
+    memory: "4Gi",
+    storageGB: 10,
+  },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "basic-4gb",
+    name: "Basic 4GB",
+    cpu: "2",
+    memory: "4Gi",
+    storageGB: 10,
+  },
 ];
 
 // In-memory managed-Postgres store (Render dashboard `database` shape) so the

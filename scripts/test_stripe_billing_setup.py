@@ -37,9 +37,11 @@ class StripeBillingSetupTest(TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(15, len(dimensions))
+        self.assertEqual(18, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
+        for tier in ("1c-2g", "pro-4gb", "basic-4gb"):  # w2/m171 HA-eligible plans
+            self.assertIn(f"instance_seconds.postgres.{tier}", names)
         self.assertIn("instance_seconds.key_value.standard", names)
         self.assertIn("egress_gib", names)
         self.assertIn("build_seconds", names)
@@ -67,7 +69,7 @@ class StripeBillingSetupTest(TestCase):
 
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(15, len(names))
+        self.assertEqual(18, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)
@@ -83,8 +85,11 @@ class StripeBillingSetupTest(TestCase):
             "instance_seconds.service.pro-plus": "122.50",
             "instance_seconds.service.pro-max": "157.50",
             "instance_seconds.service.pro-ultra": "315.00",
-            "instance_seconds.postgres.basic-256mb": "4.90",
-            "instance_seconds.postgres.basic-1gb": "14.00",
+            "instance_seconds.postgres.basic-256mb": "4.20",
+            "instance_seconds.postgres.basic-1gb": "13.30",
+            "instance_seconds.postgres.1c-2g": "28.00",
+            "instance_seconds.postgres.pro-4gb": "38.50",
+            "instance_seconds.postgres.basic-4gb": "52.50",
             "instance_seconds.key_value.starter": "7.00",
             "instance_seconds.key_value.standard": "21.00",
         }

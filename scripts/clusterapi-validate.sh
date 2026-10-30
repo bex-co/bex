@@ -234,12 +234,13 @@ burst_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-t
 burst_labels="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."capacity.cluster-autoscaler.kubernetes.io/labels"' "$OVERLAY")"
 burst_infra="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .spec.template.spec.infrastructureRef.name' "$OVERLAY")"
 burst_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$burst_infra\") | .spec.template.spec.type" "$OVERLAY")"
-# min=1 keeps one stable serving node warm; max=5 leaves room for rollout
-# surge and rescheduling once the serving nodes fill up (docs/ADR060 §
-# dedicated build pool; raised 3 -> 5 on 2026-10-24). Serving workloads still
-# cannot use the tainted build pools.
-if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "5" ]; then
-  echo "FAIL: bex-tenant-0 must retain serving rollout capacity (want min=1 max=5 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
+# min=1 keeps one stable serving node warm; max=8 leaves room for rollout
+# surge, rescheduling once the serving nodes fill up, and high-availability
+# Postgres pairs on distinct nodes (docs/ADR060 § dedicated build pool; raised
+# 3 -> 5 on 2026-10-24, 5 -> 8 on 2026-10-29 for w2/m171). Serving workloads
+# still cannot use the tainted build pools.
+if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "8" ]; then
+  echo "FAIL: bex-tenant-0 must retain serving rollout capacity (want min=1 max=8 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
   fail=1
 fi
 if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then

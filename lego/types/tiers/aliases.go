@@ -21,12 +21,16 @@ package tiers
 // that would mis-size or misprice. Spec-based names with no bex rung stay 400.
 
 // postgresInputAliases: Render's modern Nc-Ng / underscore legacy names that
-// match bex's three Postgres rungs (free is already identical).
+// match a bex Postgres rung (free and 1c-2g are already identical).
 var postgresInputAliases = map[string]string{
 	"0.1c-256mb":  "basic-256mb",
 	"0.5c-1g":     "basic-1gb",
+	"1c-4g":       "pro-4gb",
+	"2c-4g":       "basic-4gb",
 	"basic_256mb": "basic-256mb",
 	"basic_1gb":   "basic-1gb",
+	"pro_4gb":     "pro-4gb",
+	"basic_4gb":   "basic-4gb",
 }
 
 // valkeyInputAliases: Render Key Value size spellings that match bex's

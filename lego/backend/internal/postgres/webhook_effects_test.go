@@ -136,7 +136,6 @@ func TestPostgresSetPlanAuditVerbAndPlanPair(t *testing.T) {
 // postgres_disk_size_changed each have a producer instead of landing as one
 // undifferentiated postgres.UpdatePostgres row.
 func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	enabled, disabled := true, false
 	grown := int32(40)
 	cases := []struct {
@@ -181,7 +180,7 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := &appv1alpha1.Database{
 				ObjectMeta: metav1.ObjectMeta{Name: "dpg-cfg", Namespace: "default"},
-				Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "basic-1gb", StorageGB: 20},
+				Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "1c-2g", StorageGB: 20},
 			}
 			svc, _ := newService(db)
 			sink := &webhookAuditSink{}
@@ -235,7 +234,7 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 	t.Run("two fields in one patch record two effects", func(t *testing.T) {
 		db := &appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "dpg-both", Namespace: "default"},
-			Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "basic-1gb", StorageGB: 20},
+			Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "1c-2g", StorageGB: 20},
 		}
 		svc, _ := newService(db)
 		sink := &webhookAuditSink{}

@@ -25,6 +25,11 @@ func TestPostgresCanonicalIDAcceptsRenderAliases(t *testing.T) {
 		"0.5c-1g":     "basic-1gb",
 		"basic_256mb": "basic-256mb",
 		"basic_1gb":   "basic-1gb",
+		"1c-2g":       "1c-2g",
+		"1c-4g":       "pro-4gb",
+		"pro_4gb":     "pro-4gb",
+		"2c-4g":       "basic-4gb",
+		"basic_4gb":   "basic-4gb",
 		"free":        "free",
 		"2c-8g":       "2c-8g", // no bex rung — unchanged so ByID rejects
 	}
