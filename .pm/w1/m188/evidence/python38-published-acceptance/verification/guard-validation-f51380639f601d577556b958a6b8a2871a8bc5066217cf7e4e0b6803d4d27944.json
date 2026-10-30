@@ -1,0 +1,45 @@
+{
+  "schema": "bex.m188.full-candidate-guard-validation/v1",
+  "at": "2026-10-30T13:28:30.311057+00:00",
+  "passed": true,
+  "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+  "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+  "candidate_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+  "targeted_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+  "proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+  "source_review": {
+    "file": "/tmp/bex-m188-fd358-source-review.json",
+    "sha256": "73d430049f0fc970f10637dd27fdea6b37dac66d9d2a699c1da5fe5766059247"
+  },
+  "current_workflow_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "current_workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "source_binding_passed": true,
+  "full_validate_candidate_passed": true,
+  "targeted_full_persisted_proof_passed": true,
+  "actual_structural_negative_controls": {
+    "file": "/tmp/bex-m188-v8-fd358-equivalence-controls.json",
+    "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6",
+    "positives": 1,
+    "negatives": 27
+  },
+  "old_three_full_candidate_regressions": {
+    "file": "/tmp/bex-m188-fd358-full-candidate-regressions.json",
+    "sha256": "661e2d848bc6e17c7a793c299095844c1fb517083fcf5c76ca0f15e673e1c343"
+  },
+  "scope": "Local full source/crypto/semantic guard acceptance evidence only. Root controls promotion; no aggregate or repository mutation; no adoption copies before all11.",
+  "full_candidate_guard_passed": true,
+  "candidate": "python-3.8-bookworm",
+  "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "candidate_digest": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "all_five_original_crypto_records_and_derived_linkage_checked": true,
+  "amd64_binding": "verified_docker_archive_content",
+  "arm64_binding": "exact_registry_manifest",
+  "bounded_verified_file_execution_custody_checked": true,
+  "controls_file": "/tmp/bex-m188-v8-fd358-equivalence-controls.json",
+  "controls_sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6",
+  "receipt_count_not_modified": 3,
+  "no_adoption_copies": true
+}

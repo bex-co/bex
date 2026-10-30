@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-30T12:18:18.742977+00:00",
+  "stage": "layer-read-progress",
+  "candidate_approved": false,
+  "name": "python-3.8-bookworm",
+  "architecture": "amd64",
+  "layer": 3,
+  "compressed_bytes": 202899466,
+  "decompressed_bytes": 569376768
+}

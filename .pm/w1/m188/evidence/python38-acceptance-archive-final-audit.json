@@ -1,0 +1,36 @@
+{
+  "schema": "bex.m188.py38-final-archive-audit/v1",
+  "at": "2026-10-30T13:51:00.316552+00:00",
+  "result": "PASS",
+  "archive_manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+  "files_verified": 68,
+  "bytes_verified": 634700,
+  "original65_manifest_entries_reconstructed_byte_exact": true,
+  "initial_audit_preserved": {
+    "file": "/tmp/bex-m188-py38-acceptance-archive-audit.json",
+    "sha256": "1d78cc2aa63ff45a9c634bf93f59af08c11626d280b87031b249dee5476694c8"
+  },
+  "resolved_metadata_chronology": {
+    "before_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+    "before_bytes": 7405,
+    "after_sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+    "transition_file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python38-published-acceptance/metadata-transition/acceptance-metadata-transition-hash-recovery.json",
+    "transition_sha256": "a9466e004686b9f61b84afc124e12d8787f3c8ace79b67ff2e3454d1de6cb5c1",
+    "exactly_five_promotion_metadata_fields": [
+      "accepted_at",
+      "candidate_state",
+      "guard_alignment_required",
+      "guard_validation",
+      "stable_discovery_confirmation"
+    ],
+    "security_source_runtime_fields_unchanged": true,
+    "prehash_matches_original_f513_validation": true,
+    "afterhash_matches_original_b104_receipt": true,
+    "honestly_labeled_recovered_after_fact_not_original_capture": true,
+    "promotion_helper_sha256": "1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f"
+  },
+  "original_accepted_candidate_proof_validation_receipt_unchanged": true,
+  "source201_manifest_and_old_three_protected": true,
+  "adoption_plan": "4/11 incomplete; no adoption copies",
+  "scope": "Add-only chronology metadata review +all68 compact file hashes; no crypto/guard rerun, source-policy/receipt/candidate/repository edits or remote mutation."
+}

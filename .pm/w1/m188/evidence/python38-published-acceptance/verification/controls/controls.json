@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "root_index_sha256": "3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "bundle_sha256": "f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.command.json",
+    "command_sha256": "3f4ef54d51703cd79b1cbcaaed6b666304b0e94e1e1b542ade982b59e77980b7",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_verification_sha.command.json",
+      "command_sha256": "f0c2d0c8b0a2635e4aa6009295b05759683cb1497326dbbd4629ec6670a5517d",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_index.command.json",
+      "command_sha256": "ef8a436a2f90fbcb6a86cb90e3455da82e5d07047bbb69d218b0866eb4a58e24",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_predicate.command.json",
+      "command_sha256": "7001f8caad1704fc2e51d20a11b8ed45b7b3c173077206bccb995a20effc6241",
+      "exit_code": 1
+    }
+  }
+}

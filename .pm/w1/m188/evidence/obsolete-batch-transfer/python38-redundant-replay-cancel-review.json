@@ -1,0 +1,33 @@
+{
+  "reviewed_at": "2026-10-30T13:32:02.147623+00:00",
+  "run_id": 41052230534,
+  "source": "e47a2c6157339a3a786118866f28b4ee8b619774",
+  "job_id": 124054633427,
+  "status": "in_progress",
+  "conclusion": null,
+  "runner_id": 21808,
+  "active_steps": [
+    {
+      "name": "scan amd64 candidate",
+      "started_at": "2026-10-30T13:21:54Z"
+    }
+  ],
+  "source_build_steps": [
+    {
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "conclusion": "skipped"
+    }
+  ],
+  "no_unexported_compilation": true,
+  "accepted_candidate": {
+    "file": "/tmp/bex-m188-python-3.8-bookworm-acceptance.json",
+    "sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20"
+  },
+  "accepted_count": 4,
+  "remote_cancel_performed": false,
+  "decision": "Root decision required for active duplicate; preserve until explicit instruction",
+  "jobs_snapshot": {
+    "file": "/tmp/bex-m188-python38-redundant-replay-cancel-review.jobs.json",
+    "sha256": "6fcb4fae1801160b240487aba72497268798918f734d477072506f7b1ae0d89a"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "requested_at": "2026-10-30T13:29:56.130420+00:00",
+  "runtime": "ruby-3.2-bookworm",
+  "ref": "main",
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "intent": "Corrected HTTP1.1 and bounded complete-scan retry workflow; preserve any native work already started under older runs until replacement is ready."
+}

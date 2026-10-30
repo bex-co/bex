@@ -1,0 +1,147 @@
+{
+  "schema": "bex.m188.approved-source-equivalence-review/v1",
+  "at": "2026-10-30T13:27:11.789776+00:00",
+  "exact_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "reviewed_baselines": [
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+  ],
+  "workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "workflow_byte_identical": false,
+  "workflow_reviewed_delta": {
+    "b83_parent": "GODEBUG=http2client=0 on both full scans; TLS/source/options unchanged",
+    "fd358": "Pinned action TRIVY_CMD wrapper, at most3 identical full scans; per-attempt20m internal budget plus21m outer timeout/10s kill;5s/10s backoff; remove stale/failed report; any exhausted attempt sequence fails before signing",
+    "only_reviewed_scan_delta": true,
+    "all_other_steps_byte_identical": true
+  },
+  "native_go_official_matrix_and_inventory_byte_identical": true,
+  "non_md_recipe_and_shared_actions_unchanged": true,
+  "security_and_portable_ancestors_verified": true,
+  "recovery_authorization_byte_identical_to_previous_5803": true,
+  "actual_official_action_controlflow_source": {
+    "commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "entrypoint_sha256": "5d35de70292a3461e55874ca658b3d8f6a56acc4d7098c64e546d965c34a0067",
+    "action_sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73",
+    "source": "Locally retained exact primary official source at pinned commit, raw hashes checked against independent receipt"
+  },
+  "actual_behavioral_evidence": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/trivy-retry-behavior/receipt.json",
+    "sha256": "c80af776b15d40b7b20fcadcd2e1fa723d0b96824dd3ee3b47eb3434bb393035",
+    "wrapper_sha256": "8d183bcc774c07dda5dc2a7e25da4e8a434319ee2e6edbdd9ffe284be1e7ac65",
+    "manifest_files_verified_and_tracked": 33,
+    "manifest_file_bytes": 29614,
+    "cases": [
+      {
+        "case": "amd64-success",
+        "architecture": "amd64",
+        "action_entrypoint_exit": 0,
+        "scanner_calls": 1,
+        "outer_deadline_calls": 1,
+        "backoff_seconds": [],
+        "report_exists_after": true,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stderr.txt"
+      },
+      {
+        "case": "arm64-success-spaced-output",
+        "architecture": "arm64",
+        "action_entrypoint_exit": 0,
+        "scanner_calls": 1,
+        "outer_deadline_calls": 1,
+        "backoff_seconds": [],
+        "report_exists_after": true,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stderr.txt"
+      },
+      {
+        "case": "partial-failure-then-success",
+        "architecture": "amd64",
+        "action_entrypoint_exit": 0,
+        "scanner_calls": 2,
+        "outer_deadline_calls": 2,
+        "backoff_seconds": [
+          5
+        ],
+        "report_exists_after": true,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stderr.txt"
+      },
+      {
+        "case": "all-three-fail",
+        "architecture": "arm64",
+        "action_entrypoint_exit": 1,
+        "scanner_calls": 3,
+        "outer_deadline_calls": 3,
+        "backoff_seconds": [
+          5,
+          10
+        ],
+        "report_exists_after": false,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stderr.txt"
+      },
+      {
+        "case": "missing-report-path",
+        "architecture": "amd64",
+        "action_entrypoint_exit": 1,
+        "scanner_calls": 0,
+        "outer_deadline_calls": 0,
+        "backoff_seconds": [],
+        "report_exists_after": false,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stderr.txt"
+      },
+      {
+        "case": "outer-timeout-all-three",
+        "architecture": "amd64",
+        "action_entrypoint_exit": 1,
+        "scanner_calls": 0,
+        "outer_deadline_calls": 3,
+        "backoff_seconds": [
+          5,
+          10
+        ],
+        "report_exists_after": false,
+        "all_entry_scan_reports_absent": true,
+        "args_and_full_scan_environment_preserved": true,
+        "result": "PASS",
+        "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/events.jsonl",
+        "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stdout.txt",
+        "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stderr.txt"
+      }
+    ],
+    "limits": "Controlled scanner/timeout/sleep stubs verify integration, cleanup, argv/environment, retry count/backoff and exit propagation. No real scan, image pull, vulnerability engine result, actual21-minute wall clock or remote workflow execution claimed. Full20m scan behavior and unchanged findings are preserved by identical forwarded environment/arguments; only successful scanner exit permits success."
+  },
+  "ancestor_commits": [
+    "fd358d201 fix(ci): retry complete native scans after registry resets",
+    "b83bf5035 fix(ci): avoid peer HTTP2 stream failures in native scans",
+    "b406698e3 docs(pm): record three verified native backport candidates"
+  ],
+  "admitted": true,
+  "approved_roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "scope": "Source role approval only after exact inspection; no candidate promotion, source pin adoption or remote mutation. Existing historical explicitly approved source roles preserved;568 and other unreviewed aliases remain excluded."
+}

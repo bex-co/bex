@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-30T11:17:36.677093+00:00",
+  "candidate_approved": false,
+  "scope": "Read-only review transport diagnostics; no product/artifact failure inference or security waiver.",
+  "completed_attempts": [
+    {
+      "log": "/tmp/loopx-w8-python38-review-v3.log",
+      "sha256": "7be926465236aead7958313aeb75f6f6907e4fd7a008b8a0da11d217f97a8d1a",
+      "outcome": "TLS handshake timeout during anonymous registry metadata read"
+    },
+    {
+      "log": "/tmp/loopx-w8-python38-review-v3-attempt2.log",
+      "sha256": "d612f16d2a008401feb022f61e27db98050a1a4745ea43a8ec2b0a405efb42db",
+      "outcome": "TLS handshake timeout during anonymous registry metadata read"
+    }
+  ],
+  "active_driver": "/tmp/loopx-w8-native-review-v6.py",
+  "active_stage": "both architecture metadata revalidated; full immutable signed bundle bodies transferring",
+  "independent_curl_probes": {
+    "ghcr_HTTP1_default": "connect/TLS timeout after10s, HTTP000",
+    "docker_HTTP1_default": "connect/TLS timeout after10s, HTTP000",
+    "ghcr_HTTP1_ipv4": "TLS established in1.053451s, zero HTTP bytes at12.009687s; HTTP000",
+    "docker_HTTP1_ipv4": "TLS connection timeout at8.009827s; HTTP000"
+  },
+  "DNS_scope": "OS resolution observed. Independent UDP DNS probe to1.1.1.1 timed out; no system DNS setting or TLS verification changed.",
+  "remaining_gates": "all accepted exact-source keyless bundles, per-architecture signed reports, and actual config/layer blob verification",
+  "latest_checkpoint_at": "2026-10-30T11:50:49.527221+00:00",
+  "measured_public_token_lifetime_receipt": "/tmp/loopx-w8-native-modern-review/anonymous-docker-token-lifetime.json",
+  "v6_driver_sha256": "b6777bda97c724bda2ba4c5b82985d983e533fadbb5e220d17b5ac55b20d8d49"
+}

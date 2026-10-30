@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.py38-acceptance-archive-audit/v1",
+  "at": "2026-10-30T13:45:46.587111+00:00",
+  "archive_manifest_sha256": "c716200db3ad353c701c5c814332ce2e0aa2bd6ffcd94862d9914045dc4548e7",
+  "archive_files_verified": 65,
+  "archive_bytes_verified": 616236,
+  "critical_receipt_proof_candidate_guard_controls_source_discovery_aggregate_links_passed": true,
+  "owned_source_and_prior_custody_files_verified": 430,
+  "old_three_receipts_validations_and_custody_protected": true,
+  "recovery_authorization_only_exact_accepted_Py38_removed": true,
+  "board_claim_review": "Honest4/11 independent supplier acceptance; no new completed tasks, pin/inventory adoption, fullscan retry success or production rollout claimed. Historical3/11 paragraph dated prior stage is preserved.",
+  "credential_pattern_findings": [],
+  "metadata_chronology": {
+    "validated_candidate_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+    "validated_bytes": 7405,
+    "promoted_candidate_sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+    "exact_pre_promotion_snapshot_present_in_archive": false,
+    "reverse_exact_promotion_transition_reproduces_pre_hash": true,
+    "changes_only": [
+      "candidate_state: verified_pending_guard_alignment -> verified",
+      "guard_alignment_required: true -> false",
+      "add guard_validation",
+      "add accepted_at",
+      "add stable_discovery_confirmation"
+    ],
+    "required_resolution": "Retain matching pre-promotion bytes, honestly labeled hash-recovered from exact reversible metadata transition, plus explicit before/after record; do not remap the original validation or modify accepted candidate/proof/receipt."
+  },
+  "result": "PASS except missing durable candidate prehash/transition record",
+  "scope": "Read-only compact archive/source/custody/reference/claims audit; no crypto/layer/network replay, approval, source policy or repository edits."
+}

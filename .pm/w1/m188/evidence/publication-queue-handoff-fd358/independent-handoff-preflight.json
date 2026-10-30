@@ -1,0 +1,425 @@
+{
+  "schema": "bex.read-only-queue-handoff-preflight/v1",
+  "started_at": "2026-10-30T13:37:16.408904+00:00",
+  "finished_at": "2026-10-30T13:37:17.941867+00:00",
+  "required_replacement_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "read_only": true,
+  "remote_mutations": false,
+  "pairs": [
+    {
+      "runtime": "node-18-bookworm",
+      "old_run": 41057345380,
+      "replacement_run": 41063711572,
+      "expected_replacement_head": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "expected_replacement_tag": "native-node-18-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "eligible_for_parent_fresh_conditional_cancel": false,
+      "old_queued_runner0_steps0": false,
+      "replacement_same_runtime_FD_native_job_exists_noncompleted": true,
+      "old_job": {
+        "job_id": 124070023291,
+        "run_id": 41057345380,
+        "attempt": 1,
+        "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+        "head_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+        "branch": "main",
+        "status": "in_progress",
+        "conclusion": null,
+        "runner_id": 21822,
+        "runner_name": "49aefcdc6924",
+        "step_count": 18,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T13:32:58Z",
+            "completed_at": "2026-10-30T13:33:11Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T13:33:11Z",
+            "completed_at": "2026-10-30T13:33:11Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T13:33:11Z",
+            "completed_at": "2026-10-30T13:34:23Z"
+          },
+          {
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T13:34:23Z",
+            "completed_at": "2026-10-30T13:34:55Z"
+          },
+          {
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-30T13:34:55Z",
+            "completed_at": "2026-10-30T13:34:56Z"
+          },
+          {
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-30T13:34:56Z",
+            "completed_at": "2026-10-30T13:34:58Z"
+          },
+          {
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7,
+            "started_at": "2026-10-30T13:34:58Z",
+            "completed_at": "2026-10-30T13:34:58Z"
+          },
+          {
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T13:34:58Z",
+            "completed_at": "2026-10-30T13:34:58Z"
+          },
+          {
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "in_progress",
+            "conclusion": null,
+            "number": 9,
+            "started_at": "2026-10-30T13:34:58Z",
+            "completed_at": null
+          },
+          {
+            "name": "scan amd64 candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 10,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "scan arm64 candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 11,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "pending",
+            "conclusion": null,
+            "number": 12,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "pending",
+            "conclusion": null,
+            "number": 13,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "sign and attest the immutable candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 14,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "remove GHCR credentials",
+            "status": "pending",
+            "conclusion": null,
+            "number": 15,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "pending",
+            "conclusion": null,
+            "number": 28,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "pending",
+            "conclusion": null,
+            "number": 29,
+            "started_at": null,
+            "completed_at": null
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "pending",
+            "conclusion": null,
+            "number": 30,
+            "started_at": null,
+            "completed_at": null
+          }
+        ],
+        "url": "https://github.com/bex-co/bex/actions/runs/41057345380/job/124070023291"
+      },
+      "replacement_job": {
+        "job_id": 124090640172,
+        "run_id": 41063711572,
+        "attempt": 1,
+        "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+        "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "branch": "main",
+        "status": "pending",
+        "conclusion": null,
+        "runner_id": null,
+        "runner_name": null,
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41063711572/job/124090640172"
+      },
+      "old_snapshot": {
+        "request_started_at": "2026-10-30T13:37:16.410706+00:00",
+        "response_at": "2026-10-30T13:37:17.144740+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41057345380-jobs.json",
+        "sha256": "c39c4d34dfefead11e9ccd8265bfba4ce154edd45836b244d1ddfa4f97993f3b"
+      },
+      "replacement_snapshot": {
+        "request_started_at": "2026-10-30T13:37:16.410779+00:00",
+        "response_at": "2026-10-30T13:37:17.200586+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41063711572-jobs.json",
+        "sha256": "83f5e58b7dcae562b14bbe8a408bc82a727159d4db3485c8c75361c7746609bd"
+      },
+      "preserve_reason": "old job not strictly unassigned queued/zero steps"
+    },
+    {
+      "runtime": "python-3.10-bookworm",
+      "old_run": 41057349833,
+      "replacement_run": 41063724329,
+      "expected_replacement_head": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "expected_replacement_tag": "native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "eligible_for_parent_fresh_conditional_cancel": true,
+      "old_queued_runner0_steps0": true,
+      "replacement_same_runtime_FD_native_job_exists_noncompleted": true,
+      "old_job": {
+        "job_id": 124070457122,
+        "run_id": 41057349833,
+        "attempt": 1,
+        "name": "build (python-3.10-bookworm, python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a...",
+        "head_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+        "branch": "main",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41057349833/job/124070457122"
+      },
+      "replacement_job": {
+        "job_id": 124091064696,
+        "run_id": 41063724329,
+        "attempt": 1,
+        "name": "build (python-3.10-bookworm, python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a...",
+        "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "branch": "main",
+        "status": "pending",
+        "conclusion": null,
+        "runner_id": null,
+        "runner_name": null,
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41063724329/job/124091064696"
+      },
+      "old_snapshot": {
+        "request_started_at": "2026-10-30T13:37:16.410847+00:00",
+        "response_at": "2026-10-30T13:37:17.144892+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41057349833-jobs.json",
+        "sha256": "196da0def9edac47116b103679e241f0a5486ddcda8f34d8a70727f3f41a71a2"
+      },
+      "replacement_snapshot": {
+        "request_started_at": "2026-10-30T13:37:16.410896+00:00",
+        "response_at": "2026-10-30T13:37:17.144472+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41063724329-jobs.json",
+        "sha256": "951730d7c91fe1b24bbccb6404d3be9be354be49b64ea91ed6d0a091a8fd9ecc"
+      },
+      "preserve_reason": null
+    },
+    {
+      "runtime": "ruby-3.0-bullseye",
+      "old_run": 41057444551,
+      "replacement_run": 41063729208,
+      "expected_replacement_head": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "expected_replacement_tag": "native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "eligible_for_parent_fresh_conditional_cancel": true,
+      "old_queued_runner0_steps0": true,
+      "replacement_same_runtime_FD_native_job_exists_noncompleted": true,
+      "old_job": {
+        "job_id": 124071305727,
+        "run_id": 41057444551,
+        "attempt": 1,
+        "name": "build (ruby-3.0-bullseye, ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb08895...",
+        "head_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+        "branch": "main",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41057444551/job/124071305727"
+      },
+      "replacement_job": {
+        "job_id": 124090806988,
+        "run_id": 41063729208,
+        "attempt": 1,
+        "name": "build (ruby-3.0-bullseye, ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb08895...",
+        "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "branch": "main",
+        "status": "pending",
+        "conclusion": null,
+        "runner_id": null,
+        "runner_name": null,
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988"
+      },
+      "old_snapshot": {
+        "request_started_at": "2026-10-30T13:37:16.410971+00:00",
+        "response_at": "2026-10-30T13:37:17.186877+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41057444551-jobs.json",
+        "sha256": "33e8b66893b3695912af4e5a461b6ba39074e114f5dbac2845ba63316d817eeb"
+      },
+      "replacement_snapshot": {
+        "request_started_at": "2026-10-30T13:37:17.145159+00:00",
+        "response_at": "2026-10-30T13:37:17.896732+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41063729208-jobs.json",
+        "sha256": "60789fd38d97160c0c23eaa35bd3b9a169b46ba29165187e5448d419e882aa19"
+      },
+      "preserve_reason": null
+    },
+    {
+      "runtime": "ruby-3.1-bookworm",
+      "old_run": 41057449164,
+      "replacement_run": 41063733348,
+      "expected_replacement_head": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "expected_replacement_tag": "native-ruby-3.1-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "eligible_for_parent_fresh_conditional_cancel": true,
+      "old_queued_runner0_steps0": true,
+      "replacement_same_runtime_FD_native_job_exists_noncompleted": true,
+      "old_job": {
+        "job_id": 124071834605,
+        "run_id": 41057449164,
+        "attempt": 1,
+        "name": "build (ruby-3.1-bookworm, ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803d...",
+        "head_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+        "branch": "main",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41057449164/job/124071834605"
+      },
+      "replacement_job": {
+        "job_id": 124090808291,
+        "run_id": 41063733348,
+        "attempt": 1,
+        "name": "build (ruby-3.1-bookworm, ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803d...",
+        "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "branch": "main",
+        "status": "pending",
+        "conclusion": null,
+        "runner_id": null,
+        "runner_name": null,
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41063733348/job/124090808291"
+      },
+      "old_snapshot": {
+        "request_started_at": "2026-10-30T13:37:17.145226+00:00",
+        "response_at": "2026-10-30T13:37:17.896389+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41057449164-jobs.json",
+        "sha256": "8f30d8739867f620189d4457cba81e8f2ac5f0540280f8fa4b3f4ae2a1506869"
+      },
+      "replacement_snapshot": {
+        "request_started_at": "2026-10-30T13:37:17.147412+00:00",
+        "response_at": "2026-10-30T13:37:17.896538+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41063733348-jobs.json",
+        "sha256": "68cfd9de0e750721fe0c5edb8adc4dcbdc4a02b5aceef84979313bab7f45189c"
+      },
+      "preserve_reason": null
+    },
+    {
+      "runtime": "ruby-3.2-bookworm",
+      "old_run": 41057454166,
+      "replacement_run": 41063737101,
+      "expected_replacement_head": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "expected_replacement_tag": "native-ruby-3.2-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "eligible_for_parent_fresh_conditional_cancel": true,
+      "old_queued_runner0_steps0": true,
+      "replacement_same_runtime_FD_native_job_exists_noncompleted": true,
+      "old_job": {
+        "job_id": 124071566136,
+        "run_id": 41057454166,
+        "attempt": 1,
+        "name": "build (ruby-3.2-bookworm, ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473...",
+        "head_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+        "branch": "main",
+        "status": "queued",
+        "conclusion": null,
+        "runner_id": 0,
+        "runner_name": "",
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41057454166/job/124071566136"
+      },
+      "replacement_job": {
+        "job_id": 124091095086,
+        "run_id": 41063737101,
+        "attempt": 1,
+        "name": "build (ruby-3.2-bookworm, ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473...",
+        "head_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "branch": "main",
+        "status": "pending",
+        "conclusion": null,
+        "runner_id": null,
+        "runner_name": null,
+        "step_count": 0,
+        "steps": [],
+        "url": "https://github.com/bex-co/bex/actions/runs/41063737101/job/124091095086"
+      },
+      "old_snapshot": {
+        "request_started_at": "2026-10-30T13:37:17.187182+00:00",
+        "response_at": "2026-10-30T13:37:17.941236+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41057454166-jobs.json",
+        "sha256": "115cbc056fd65293067263098e44706cc463551de5e03897fdca71aeb84fae73"
+      },
+      "replacement_snapshot": {
+        "request_started_at": "2026-10-30T13:37:17.201032+00:00",
+        "response_at": "2026-10-30T13:37:17.895578+00:00",
+        "path": "/tmp/bex-m188-fd7-queue-handoff/2026-10-30T133716408904+0000/41063737101-jobs.json",
+        "sha256": "618b3afef6a00e8908a345991cd8ad2312eaccaf4a434b052253d704f74d387e"
+      },
+      "preserve_reason": null
+    }
+  ],
+  "explicit_preservation": [
+    "Actual active oldD52 Node20 run41053647412 untouched; corrected20 fallback41063715618 not altered.",
+    "Py3.9 replacement41063720126 has no old cancellation request here."
+  ],
+  "requires": "Parent must refresh the exact queued/runner0/steps0 and existing replacement native-job conditions immediately before any cancellation."
+}

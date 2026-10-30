@@ -1,0 +1,155 @@
+{
+  "checked_at": "2026-10-30T13:28:32.939571+00:00",
+  "run_id": 41061176348,
+  "source": "b83bf5035e2dfe2d3d3ecee41d58fb7064dc72a5",
+  "event": "push",
+  "status": "queued",
+  "jobs": {
+    "total_count": 3,
+    "jobs": [
+      {
+        "id": 124081007363,
+        "run_id": 41061176348,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41061176348",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc483rAw",
+        "head_sha": "b83bf5035e2dfe2d3d3ecee41d58fb7064dc72a5",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124081007363",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41061176348/job/124081007363",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T13:11:31Z",
+        "started_at": "2026-10-30T13:11:33Z",
+        "completed_at": "2026-10-30T13:14:13Z",
+        "name": "matrix",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-30T13:11:34Z",
+            "completed_at": "2026-10-30T13:11:36Z"
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-30T13:11:36Z",
+            "completed_at": "2026-10-30T13:11:36Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-30T13:11:36Z",
+            "completed_at": "2026-10-30T13:14:08Z"
+          },
+          {
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-30T13:14:08Z",
+            "completed_at": "2026-10-30T13:14:08Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-30T13:14:08Z",
+            "completed_at": "2026-10-30T13:14:08Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-30T13:14:08Z",
+            "completed_at": "2026-10-30T13:14:08Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124081007363",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-ci"
+        ],
+        "runner_id": 21801,
+        "runner_name": "239d6e52dba9",
+        "runner_group_id": 3,
+        "runner_group_name": "bex-ci"
+      },
+      {
+        "id": 124082269451,
+        "run_id": 41061176348,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41061176348",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4-EtCw",
+        "head_sha": "b83bf5035e2dfe2d3d3ecee41d58fb7064dc72a5",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124082269451",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41061176348/job/124082269451",
+        "status": "queued",
+        "conclusion": null,
+        "created_at": "2026-10-30T13:14:14Z",
+        "started_at": "2026-10-30T13:14:14Z",
+        "completed_at": null,
+        "name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124082269451",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": 0,
+        "runner_name": "",
+        "runner_group_id": 0,
+        "runner_group_name": ""
+      },
+      {
+        "id": 124082269543,
+        "run_id": 41061176348,
+        "workflow_name": "native base images (build + verify)",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41061176348",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOL1E4iM8AAAAc4-EtZw",
+        "head_sha": "b83bf5035e2dfe2d3d3ecee41d58fb7064dc72a5",
+        "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/124082269543",
+        "html_url": "https://github.com/bex-co/bex/actions/runs/41061176348/job/124082269543",
+        "status": "queued",
+        "conclusion": null,
+        "created_at": "2026-10-30T13:14:14Z",
+        "started_at": "2026-10-30T13:14:14Z",
+        "completed_at": null,
+        "name": "build (node-16-bookworm, node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8...",
+        "steps": [],
+        "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/124082269543",
+        "labels": [
+          "self-hosted",
+          "Linux",
+          "ARM64",
+          "bex-production"
+        ],
+        "runner_id": 0,
+        "runner_name": "",
+        "runner_group_id": 0,
+        "runner_group_name": ""
+      }
+    ]
+  },
+  "started_unfinished_native": [],
+  "safe": true,
+  "retained_full_matrix_run": 41043547006,
+  "reason": "Automatic duplicate full matrix would cold-recompile already accepted EOL lines; retain original full27 source-input batch and use corrected selected runs for all remaining m188 lines."
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.v8-py38-persisted-proof-validation/v1",
+  "at": "2026-10-30T13:19:21.710586+00:00",
+  "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+  "guard_sha256": "98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8",
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+  "candidate_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+  "proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+  "targeted_full_persisted_proof_passed": true,
+  "full_candidate_source_context": {
+    "refused_current_unapproved_working_tree": true,
+    "reason": "current workflow differs from the exact reviewed modern signing workflow"
+  },
+  "v8_semantic_controls": {
+    "file": "/tmp/bex-m188-v8-equivalence-controls.json",
+    "sha256": "09a46fc35b85d138467694c89434b9b6df359ca7201b9284def48327407228b4",
+    "positives": 1,
+    "negatives": 27
+  },
+  "scope": "Persisted full cryptographic/semantic evidence only; not current-code source closure approval, promotion or adoption. Exact current workflow source guard refusal remains required until root ships/reviews its workflow fix. Existing accepted3 remain unchanged."
+}

@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7 签名发布独立验收通过（3/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8 签名发布独立验收通过（4/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -185,3 +185,13 @@ Node16旧arm64扫描、Node20旧amd64扫描及当前canonical Node14 amd64扫描
 [六项实际入口行为检查](evidence/trivy-retry-behavior/receipt.json) 通过，覆盖双架构、含空格输出、失败恢复、三次失败、缺少输出路径及外部deadline；这是受控命令stub的配置/退出行为检查，不冒充真实安全扫描或21分钟计时。实际发布采用需在修复ship后继续逐项验证；当前3/11不因此增加。
 
 同步main的 `b83bf5035` 已为两架构扫描配置 `GODEBUG=http2client=0`，本次合并保留该协议设置并补充有界完整重试。合并后的六项官方入口行为检查再次通过，逐次调用均核对协议环境、架构和原扫描选项；扫描器版本、CVE报告范围与签名门槛保持。测试不宣称已在真实registry重现或证明peer根因，后续仍以实际发布结果验收。
+
+### Python3.8 完整正式验收通过，推进至 4/11 — 2026-10-30（UTC 13:30Z）
+
+[Python3.8验收收据](evidence/python38-published-acceptance/acceptance.json) 已绑定原BF producer、C8 verification、五份独立严格签名、双架构原运行/全扫描和新鲜匿名 discovery body/header。amd64 的17层真实测量精确重建签名摘要；arm64直接对应registry子镜像。31份V8有界临时文件测量、1份此前已成功的V7测量、1份已有Node14空层测量均有实际执行、哈希和清理证据；原argv缺失的边界保留，不编造执行记录，也不重复读取约1.14GB已测量数据。
+
+两份独立内容/执行复核、完整采用守卫、1个正向与27个篡改反例均通过；[fd358实际来源复核](evidence/publisher-source-reviews/fd358.json) 与旧三项完整回归均通过。原三项收据保持不变，Py3.8临时恢复授权已移除。旧E47重复重扫在再次查询时已失败结束，因此未实际取消它，亦不将该次失败视为已验收旧C8产物不安全。
+
+剩余7项为Node18/20、Python3.9/3.10、Ruby3.0/3.1/3.2，已排入使用HTTP/1.1与有界完整扫描重试的新来源队列。当前source pin、inventory采用和生产rollout仍待全部11项及实际集成验证，t002–t008继续开放。
+
+归档另保留 [批准状态元数据对应记录](evidence/python38-published-acceptance/metadata-transition/acceptance-metadata-transition-hash-recovery.json)：完整守卫验证的候选为 `ace338ee…`，计入完成后为 `4540a299…`。仅五项批准状态元数据变化；已在事后按已记录哈希精确恢复原7405字节用于复验，并如实标注非原始时间点捕获。签名证明、验证记录、验收收据和最终候选保留原始字节。

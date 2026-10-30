@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T11:34:45.909261+00:00",
+  "candidate_approved": false,
+  "error_type": "HTTPError",
+  "error": "HTTP Error 401: Unauthorized"
+}
