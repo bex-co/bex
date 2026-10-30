@@ -20,6 +20,7 @@ limitations under the License.
 package branding
 
 import (
+	"io"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -44,8 +45,8 @@ const (
 // chrome uses bexVersion, and `docs` opens DocsURL. Upstream setupCommands
 // adds more children during Execute (after this returns), so HelpFunc and
 // UsageFunc re-walk the tree before help or usage output (see Refresh for
-// completion). It does not replace
-// upstream RunE bodies except for `docs`.
+// completion). Explicit login output is wrapped; only `docs` replaces the
+// upstream command runner.
 func Apply(root *cobra.Command, bexVersion string) {
 	if root == nil {
 		return
@@ -65,6 +66,7 @@ func Apply(root *cobra.Command, bexVersion string) {
 
 	brandTree(root)
 	overrideDocs(root)
+	brandLoginOutput(root)
 
 	prevHelp := root.HelpFunc()
 	root.SetHelpFunc(func(c *cobra.Command, args []string) {
@@ -169,6 +171,42 @@ func overrideDocs(root *cobra.Command) {
 		}
 		return
 	}
+}
+
+func brandLoginOutput(root *cobra.Command) {
+	for _, c := range root.Commands() {
+		if c.Name() != "login" || c.RunE == nil {
+			continue
+		}
+		run := c.RunE
+		c.RunE = func(c *cobra.Command, args []string) error {
+			out := c.OutOrStdout()
+			c.SetOut(loginOutput{out})
+			defer c.SetOut(out)
+			return run(c, args)
+		}
+		return
+	}
+}
+
+type loginOutput struct{ io.Writer }
+
+func (w loginOutput) Write(p []byte) (int, error) {
+	const prompt = "Complete login in the Render Dashboard"
+	if !strings.HasPrefix(string(p), prompt) {
+		return w.Writer.Write(p)
+	}
+	// Upstream prints the entire prompt in one Write. Limit the rewrite to its
+	// fixed prefix so the device code and verification URL remain byte-exact.
+	branded := []byte("Complete login in the Bex dashboard" + string(p[len(prompt):]))
+	n, err := w.Writer.Write(branded)
+	if n == len(branded) {
+		return len(p), err
+	}
+	if err == nil {
+		err = io.ErrShortWrite
+	}
+	return n, err
 }
 
 func walk(c *cobra.Command, fn func(*cobra.Command)) {
