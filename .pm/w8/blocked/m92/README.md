@@ -27,3 +27,11 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 - **Expected outcome:** Applications can store/query geospatial data without installing server libraries themselves or changing authority/CLI requests.
 - **Why now:** Actual catalog absence and two matching native errors establish this separate gap while vector and ordinary extension/SQL behavior already work. No PostGIS repair is scheduled in the searched board/history.
 - **Render parity:** Included because the shared managed database image/extension change reaches REST/GraphQL/MCP/Blueprint/dashboard/native consumers. Core PostGIS activation only; no general extension catalog/API product.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m92；共用 m92/design.md 的供应与上线门槛。
+- **结论来源：** 现有 Render parity 规则和官方 postgresql-extensions 表复核。按各 major 支持范围提供扩展、普通 owner 按需 `CREATE EXTENSION` 是既定目标；不能以只提供 PostGIS 或默认全预装作为无签字的替代。
+- **工程方案：** 采用 m92/design.md 的 1(b)+2(b)：按 major 维护兼容 CNPG 的共享 operand，受限 allowlist 激活并保留现有权限边界。pg_similarity 仅 13–15、pg_duckdb 16+、pg_partman 14+ 且无后台 worker、TimescaleDB 仅 Apache 功能；每项原真实 SQL/恢复/版本验收保留。
+- **真正剩余门槛：** 新 operand / preload 会重启既有数据库，这是需要用户接受的生产影响；待单独讨论全库滚动切换及窗口。w7/m156 已把 CNPG manager 升级为 1.30.1 且原地更新，不应再声称可以顺带等待尚未发生的 m65 升级。
+- **worker 下一步：** 用户明确 rollout 后，先在隔离环境验证各 major、扩展权限/备份恢复和数据保留，再分批 rollout 并逐项验收。当前没有新 rollout 授权，继续 blocked；不把推荐写成用户决定。

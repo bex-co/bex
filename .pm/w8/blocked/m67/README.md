@@ -1,6 +1,6 @@
 # w8 · m67 — Keep native live logs running after a transient disconnect
 
-**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** todo (2026-10-29: t001, t002, t004–t006 done — pin v2.29.0 adopted and bex-api ends refused tails with close 4000; t003 live candidate check waits for this deploy, t007 for a `bex-cli/v*` release)
+**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** blocked — t001–t006 done，候选线上验收已完成；t007 等用户发起 CLI release 后验证已发布二进制
 
 ## Tasks (in order)
 
@@ -72,3 +72,10 @@ Production pin `03043c7df363` (carries the close-4000 change). Candidate `bex` b
 - **`--network-policy deny-all`:** accepted live — the sandboxes came back with `networkPolicy {type: deny-all, default: deny-all}`. (Three short-lived sandboxes were created unintentionally while trying to capture the request — a `BEX_HOST` override lost to the config's `api.host`; each ran about a minute and was stopped, `GET` → 404.) Create-nothing REST probes: a disagreeing `type`/`default` pair → `SANDBOX_NETWORK_POLICY_INVALID`; `rules` refused by name.
 
 t003 is done; t007 needs the next `bex-cli/v*` release (user-run `/release cli`) and the same three checks on the published binary.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m67。
+- **结论来源：** 2026-10-29 GitHub release / 当前源码复核。Bex 最新发布仍是 2026-10-16 的 `bex-cli/v0.3.3`，早于本项 10-28/29 完成的 launcher / pin 工作。
+- **处理：** 原本地/候选验收保留，继续 blocked 等用户明确 `$release cli`，再按本项原 published-binary DoD 验收并清理。`$unblock` 不授权发 tag / 发布；本次也未发布。与 090 不同，v0.3.3 不含这里的新变更。
+- **worker 下一步：** 发布实际完成后才恢复最终任务；不能用 main 或 candidate 的成功关闭最终交付门槛。

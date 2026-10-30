@@ -28,3 +28,10 @@
 - **Expected outcome:** an agent-first bex user's coding agent learns to operate bex, not a different platform and account.
 - **Why now:** major severity. It is the first command an AI-native user runs, the help text already promises bex skills, and the failure is silent.
 - **Render parity:** included (t004). The command surface stays Render's, and only the content and state location are bex's. The w8/m29 t004 "branding residual" is withdrawn: it was judged as copy, but its effect is functional.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m143。
+- **结论来源：** 2026-10-29 GitHub release / 当前源码复核。Bex 最新发布仍是 2026-10-16 的 `bex-cli/v0.3.3`，早于本项 10-28/29 完成的 launcher / pin 工作。
+- **处理：** 原本地/候选验收保留，继续 blocked 等用户明确 `$release cli`，再按本项原 published-binary DoD 验收并清理。`$unblock` 不授权发 tag / 发布；本次也未发布。与 090 不同，v0.3.3 不含这里的新变更。
+- **worker 下一步：** 发布实际完成后才恢复最终任务；不能用 main 或 candidate 的成功关闭最终交付门槛。
