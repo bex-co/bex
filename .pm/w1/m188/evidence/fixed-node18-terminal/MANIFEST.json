@@ -1,0 +1,25 @@
+{
+  "schema": "bex.m188.supplemental-evidence-custody/v1",
+  "at": "2026-10-30T19:34:29.590095+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/terminal-confirmation.json",
+      "archive": "terminal-confirmation.json",
+      "bytes": 1547,
+      "sha256": "01021d572cc71edf7eda97a0b0bbafe41180669d50986ca2bc60de9b306b6680"
+    },
+    {
+      "source": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/terminal-run.json",
+      "archive": "terminal-run.json",
+      "bytes": 11464,
+      "sha256": "f2724b2165d2a6315e05f4167aa1b87be54846bf13ffe0cda307e8b162ae44a3"
+    },
+    {
+      "source": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/terminal-jobs.json",
+      "archive": "terminal-jobs.json",
+      "bytes": 2903,
+      "sha256": "709c524cc9a8ffffa9209d3195541e10dc906b47bbd6d748f31ef4b5be0413b0"
+    }
+  ],
+  "scope": "Exact original supplemental records only; no candidate acceptance, adoption or runtime execution claim."
+}

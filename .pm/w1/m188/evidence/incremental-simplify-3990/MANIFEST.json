@@ -1,0 +1,19 @@
+{
+  "schema": "bex.m188.supplemental-evidence-custody/v1",
+  "at": "2026-10-30T19:34:29.590095+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-incremental-simplify.diff",
+      "archive": "reviewed.diff",
+      "bytes": 3884,
+      "sha256": "8649dd5e2c5718f7e952699ef19e2282db3fee00f01d8f98ccfa13f5b4d6c94e"
+    },
+    {
+      "source": "/tmp/bex-m188-incremental-simplify-report.json",
+      "archive": "review.json",
+      "bytes": 1889,
+      "sha256": "2ad7c1579b11d006e7215b1d90844d746aafcb4ccc78af425a9ebd7fc65660d7"
+    }
+  ],
+  "scope": "Exact original supplemental records only; no candidate acceptance, adoption or runtime execution claim."
+}

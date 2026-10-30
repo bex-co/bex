@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.supplemental-evidence-custody/v1",
+  "at": "2026-10-30T19:34:29.590095+00:00",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-native-acceptance-collector-audit/review.json",
+      "archive": "review.json",
+      "bytes": 3124,
+      "sha256": "0654876c93b7c01f650fcb89f8fd99ff3d5bded2271f40e49bfafee2fdc65918"
+    },
+    {
+      "source": "/tmp/bex-m188-native-acceptance-collector-audit/collector.patch",
+      "archive": "collector.patch",
+      "bytes": 2535,
+      "sha256": "be8a7f0195fc6dcd4ac4b3e9d40025593d4032679ab7d6c303ba41a72c7baaa0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-acceptance-collector-audit/root-activation.json",
+      "archive": "root-activation.json",
+      "bytes": 1494,
+      "sha256": "05263f183408b6f21ea381e1404a68471b9811b2190ddc196c0d98eed13b7a49"
+    },
+    {
+      "source": "/tmp/bex-m188-collect-native-acceptance.py",
+      "archive": "collector-original.py",
+      "bytes": 11328,
+      "sha256": "aa73ab00b7eaa9342f032c3f6fde3c5c1c74f99ce193ca1b9d3bdb99ecfd8242"
+    },
+    {
+      "source": "/tmp/bex-m188-collect-native-acceptance-v2.py",
+      "archive": "collector-v2.py",
+      "bytes": 11414,
+      "sha256": "2dad76e8d779bc440c647287907baadd7f24395fd85590938cf3d5988625304d"
+    }
+  ],
+  "scope": "Exact original supplemental records only; no candidate acceptance, adoption or runtime execution claim."
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "bex.native-six-fixture-collector-root-activation/v1",
+  "at": "2026-10-30T19:28:34.211518+00:00",
+  "original_preserved": {
+    "file": "/tmp/bex-m188-collect-native-acceptance.py",
+    "sha256": "aa73ab00b7eaa9342f032c3f6fde3c5c1c74f99ce193ca1b9d3bdb99ecfd8242"
+  },
+  "future_execution_helper": {
+    "file": "/tmp/bex-m188-collect-native-acceptance-v2.py",
+    "sha256": "2dad76e8d779bc440c647287907baadd7f24395fd85590938cf3d5988625304d"
+  },
+  "review": {
+    "file": "/tmp/bex-m188-native-acceptance-collector-audit/review.json",
+    "sha256": "0654876c93b7c01f650fcb89f8fd99ff3d5bded2271f40e49bfafee2fdc65918"
+  },
+  "patch": {
+    "file": "/tmp/bex-m188-native-acceptance-collector-audit/collector.patch",
+    "sha256": "be8a7f0195fc6dcd4ac4b3e9d40025593d4032679ab7d6c303ba41a72c7baaa0"
+  },
+  "local_scalar_controls_only": [
+    {
+      "case": "current shipped workflow",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "max-parallel wrong suffix",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "timeout-minutes wrong suffix",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "DOCKER_DEFAULT_PLATFORM wrong suffix",
+      "accepted": false,
+      "expected": false
+    }
+  ],
+  "actual_runtime_or_remote_acceptance_performed": false,
+  "root_decision": "Use this v2 helper only for future final six-fixture collection; preserve original helper and historical plans/records unchanged."
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "bex.native-six-fixture-collector-incremental-audit/v1",
+  "at": "2026-10-30T19:26:41.817203+00:00",
+  "read_only_original_helper_repo_remote_and_frozen_evidence": true,
+  "original_helper_sha256": "aa73ab00b7eaa9342f032c3f6fde3c5c1c74f99ce193ca1b9d3bdb99ecfd8242",
+  "shipped_workflow_sha256": "85e23a18cbf113801f2b48de48a21e087aa6dce45c1b0d4031a14965fbbd3f40",
+  "actual_publication_receipt_verified_count": 8,
+  "source_shape_review": "Current8verified rows use runtime/version/candidate_state=verified/digest/ref exactly as collector expects. Root adoption preparer produces ghcr.io/bex-co/bex-cnb-run:native-<line>@<digest>, retains officialupstream, and preserves exactversions; all11source parser expectations match that actual code. Current8of11muststillbe refused untilcomplete.",
+  "log_and_identity_review": [
+    "All3currentT.Logf strings match collector exact image/version/Node20 companion messages; Go subtest node14/16/18/20 names match sixanchored workflowpatterns and expectedPASS prefixes.",
+    "Fixture integration gate skips before any image logging; collector rejects every---SKIP and requires exactfixturePASS, successful actualjob/steps andHTTPsuccess summary. Wrongcompanion log must fail; HTTPfixture itself also checks actualNode20 version.",
+    "Exact runattempt/head/manual/main/workflow, adoption ancestry, sixnamedjobs inoneattempt, perjobrun/attempt/head and rawlogHEAD prevent accidental wrongsource or mixedattempts. No actual newrun exists/was queried.",
+    "Requestedlinux/amd64 is inherited by existingDockerhelpers. ARM64daemon classification remains crossarchitectureemulation with unknown implementation; no nativearm64 acceptanceclaim. EchoedGo template is excluded by concretearchitecture regex."
+  ],
+  "narrow_finding": {
+    "severity": "receipt guard correctness",
+    "current_code_problem": "Substring workflow checks also accept max-parallel:10/timeout-minutes:450 or linux/amd64-suffixed values. This would contradict requiredexecution bounds if workflow changed. Current shippedworkflow itself is correct.",
+    "proposed_fix": "Anchor each of the existingthree expectedYAML scalar values to a whole line, preserving optional inlinecomments. No newparser/framework/dependency.",
+    "original_collector_modified": false,
+    "proposed_copy": "/tmp/bex-m188-native-acceptance-collector-audit/collector.proposed.py",
+    "proposed_copy_sha256": "2dad76e8d779bc440c647287907baadd7f24395fd85590938cf3d5988625304d",
+    "patch": "/tmp/bex-m188-native-acceptance-collector-audit/collector.patch",
+    "patch_sha256": "be8a7f0195fc6dcd4ac4b3e9d40025593d4032679ab7d6c303ba41a72c7baaa0"
+  },
+  "other_concrete_worthwhile_changes": [],
+  "not_repeated": "No Go compilation, actionlint, priornineparsercontrols, remoteAPI/job queries, Docker/image/runtime validation or dispatch was rerun. This is sourceaudit and a proposedcopy only.",
+  "limits": "ActualfutureGHAoutputs are still uncollected; no runtimeacceptance fabricated. Collector remains an evidencebinder over trusted11-pin publicationreceipt, not a substitute for strictsuppliercrypto/adoption review."
+}

@@ -235,3 +235,11 @@ Syft保持相同registry来源、平台和完整spdx-json，只在该命令设�
 后续main的6fd4仅改变五处自动生成的部署镜像digest；发布workflow、配方、共享action、版本matrix与恢复目录均与3990逐字节相同。[精确来源准入](evidence/publisher-source-reviews/6fd4-admission.json)、[来源策略追加](evidence/publisher-source-reviews/6fd4-activation.json) 和 [八项完整回归](evidence/6fd4-eight-candidate-regressions.json) 已记录；只增加该实际SHA，不改变八项验收证据，未满11项时仍拒绝生成采用副本。
 
 已核实Node18的新run `41113367877` / job `124263227234` 与Node20的新run `41113373387` / job `124263887574`，两者均实际使用6fd4，包含Syft传输修复。原已编译索引分别保留49ee与BF producer身份。两次旧FD取消均在新原生任务存在、旧任务仍queued/runner0且没有任何已开始步骤时各提交一次；Node20已确认cancelled，Node18收据保留19:19Z时的pending观察，后续终态另行追加，不回写历史。见 [交接收据](evidence/fixed-node-verification-handoff/handoff-receipt.json) 与 [原文目录](evidence/fixed-node-verification-handoff/MANIFEST.json)。Ruby3.2继续复用既有4462请求；本次只解决排队交接，正式验收仍为8/11。
+
+### 增量质量复核与交接终态 — 2026-10-30（UTC 19:34Z）
+
+Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步骤；[最终确认](evidence/fixed-node18-terminal/terminal-confirmation.json) 单独归档，保留此前pending收据不变。三个修复任务继续排队，没有新增派发或基础设施变更。
+
+最近Syft重试及Ruby3.2恢复授权的完整51行增量已并行完成代码复用、质量、效率三路 `/simplify` 复核，无需进一步修改；见 [复核记录](evidence/incremental-simplify-3990/review.json)。正式11项采用数据仍需最终复核，t006未提前关闭。
+
+六项真实应用验收的日志、精确源码、主/companion镜像、同次attempt与拒绝skip规则已做源码审阅；仅收紧临时收集器的三个参数值检查，防止误把10当作1等前缀匹配。新v2 helper与旧原文分开保留，当前workflow通过、本地三项错误后缀对照均拒绝；见 [未来收集器启用记录](evidence/native-fixture-collector-review/root-activation.json)。这不是Docker/HTTP执行结果；正式发布计数仍为8/11，接入、真实应用与线上验收继续保持开放。

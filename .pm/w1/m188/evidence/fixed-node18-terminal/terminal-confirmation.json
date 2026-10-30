@@ -1,0 +1,40 @@
+{
+  "schema": "fixed_node_old_fd_terminal_confirmation/v1",
+  "confirmed_at": "2026-10-30T19:25:39.279292+00:00",
+  "run_id": 41063711572,
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "run_attempt": 1,
+  "status": "completed",
+  "conclusion": "cancelled",
+  "run": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/terminal-run.json",
+    "sha256": "f2724b2165d2a6315e05f4167aa1b87be54846bf13ffe0cda307e8b162ae44a3"
+  },
+  "jobs": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/terminal-jobs.json",
+    "sha256": "709c524cc9a8ffffa9209d3195541e10dc906b47bbd6d748f31ef4b5be0413b0"
+  },
+  "native_jobs": [
+    {
+      "id": 124090640172,
+      "status": "completed",
+      "conclusion": "cancelled",
+      "runner_id": 0,
+      "step_count": 0
+    }
+  ],
+  "original_request": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/cancel-request.json",
+    "sha256": "dcb16b7ebbcf95cbf862ce38eb4381ee4e783fb3b9347e95bb0586488cce2381"
+  },
+  "earlier_pending_observation": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/completion-pending.json",
+    "sha256": "35aa183b5bd9c063956c2a67d02f09e6a86a5e4176e053d5a71a8836c14e3f4f"
+  },
+  "original_handoff_receipt": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/handoff-receipt.json",
+    "sha256": "28f62133d6891d6a92a03af767fcf3266b28acb15279f201b99735ec120bab30"
+  },
+  "earlier_files_unchanged": true,
+  "additional_cancel_or_force": false
+}
