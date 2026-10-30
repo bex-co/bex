@@ -76,3 +76,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Actual early artifact smoke — 2026-10-30
 
 [The resource-free GitHub smoke](evidence/early-artifact-live-smoke-20261030/README.md) passed. Its marker downloaded successfully while the exact smoke job remained in progress before and after download; the production cluster job was skipped. The real readiness validator rejects the invalid smoke marker. Actual production release/readiness, queue fit and the owned disk watch/provider/lifecycle checks remain required; no paid fixture or root gate exists.
+
+## Missing node encryption key refused — 2026-10-30
+
+[The independently reproduced CSI request defect and final fix](evidence/csi-key-refusal-20261030/README.md) cover valid bounded capacity metadata with a missing/empty encryption passphrase. Final upstream Linux tests and separate before/after regressions pass, preserving legacy plaintext behavior. The existing deployed CSI predates this correction: a new signed factory image and verified controller/node adoption are required before creating the paid fixture. No production plaintext-storage observation or lifecycle acceptance is claimed.

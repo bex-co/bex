@@ -1,0 +1,10 @@
+{
+  "beforeSha256": "f8b98df3b24b3c84662949029160dad46ee2e394aa9ec5357271c0d88a83bf19",
+  "afterSha256": "035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec",
+  "changedUpstreamFiles": [
+    "internal/driver/bounded.go",
+    "internal/driver/bounded_test.go"
+  ],
+  "preSimplifySha256": "e2ce7f662cdcfc05dc1c154aefc390f045bdf262317a59d9659ac2bf721e5e6b",
+  "simplifyFix": "Reuse existing node.go encryptionPassphraseKey in the shared bounded Secret guard; tests retain independent wire keys."
+}
