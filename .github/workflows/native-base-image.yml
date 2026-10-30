@@ -8,6 +8,7 @@ on:
     paths:
       - "deploy/native-base/**"
       - ".github/workflows/native-base-image.yml"
+      - "lego/operator/internal/build/native.go"
   workflow_dispatch: {}
 
 permissions:
@@ -15,7 +16,9 @@ permissions:
 
 concurrency:
   group: native-base-image
-  cancel-in-progress: false
+  # Candidates are never adopted automatically. A newer recipe supersedes
+  # unfinished candidates instead of multiplying 27-image refreshes.
+  cancel-in-progress: true
 
 jobs:
   matrix:
@@ -63,7 +66,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
           tags: ghcr.io/bex-co/bex-native:${{ matrix.name }}-${{ github.sha }}
-      - name: restore a PostgreSQL 18 archive without network on both architectures
+      - name: verify real native tool transformations without network on both architectures
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: deploy/native-base
