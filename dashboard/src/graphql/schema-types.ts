@@ -499,6 +499,7 @@ export type Database = {
   expiresAt: Maybe<Scalars['String']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   highAvailabilityEnabled: Maybe<Scalars['Boolean']['output']>;
+  highAvailabilityRequested: Maybe<Scalars['Boolean']['output']>;
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
@@ -1310,6 +1311,7 @@ export type Mutation = {
   updateBlueprint: Maybe<Blueprint>;
   updateCronJob: Maybe<Service>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
+  updateDatabaseHighAvailability: Maybe<Database>;
   updateDatabasePlan: Maybe<Database>;
   updateDatabaseVersion: Maybe<Database>;
   updateDisk: Maybe<Disk>;
@@ -1471,6 +1473,7 @@ export type MutationCreateDatabaseArgs = {
   plan?: InputMaybe<Scalars['String']['input']>;
   public?: InputMaybe<Scalars['Boolean']['input']>;
   readReplicas?: InputMaybe<Array<DatabaseReadReplicaInput>>;
+  region?: InputMaybe<Scalars['String']['input']>;
   version?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -1524,6 +1527,7 @@ export type MutationCreateKeyValueArgs = {
   persistenceMode?: InputMaybe<Scalars['String']['input']>;
   plan?: InputMaybe<Scalars['String']['input']>;
   public?: InputMaybe<Scalars['Boolean']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
   storageGB?: InputMaybe<Scalars['Int']['input']>;
   version?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1594,6 +1598,7 @@ export type MutationCreateServiceArgs = {
   port?: InputMaybe<Scalars['Int']['input']>;
   preDeployCommand?: InputMaybe<Scalars['String']['input']>;
   publishPath?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
   registryCredentialId?: InputMaybe<Scalars['String']['input']>;
   replicas?: InputMaybe<Scalars['Int']['input']>;
   repo?: InputMaybe<Scalars['String']['input']>;
@@ -2471,6 +2476,13 @@ export type MutationUpdateCronJobArgs = {
 
 
 export type MutationUpdateDatabaseDiskAutoscalingArgs = {
+  enabled: Scalars['Boolean']['input'];
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateDatabaseHighAvailabilityArgs = {
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   enabled: Scalars['Boolean']['input'];
   id: Scalars['String']['input'];
 };
@@ -3697,10 +3709,12 @@ export type Sandbox = {
 export type SandboxNetworkPolicy = {
   __typename: 'SandboxNetworkPolicy';
   default: Scalars['String']['output'];
+  type: Scalars['String']['output'];
 };
 
 export type SandboxNetworkPolicyInput = {
   default?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SecretFile = {
@@ -3867,6 +3881,7 @@ export type ServiceEventDetails = {
   instanceCountFrom: Maybe<Scalars['Int']['output']>;
   instanceCountTo: Maybe<Scalars['Int']['output']>;
   instanceId: Maybe<Scalars['String']['output']>;
+  leaderId: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;
   preDeployStatus: Maybe<Scalars['String']['output']>;

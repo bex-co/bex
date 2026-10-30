@@ -232,6 +232,22 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Allow connections from outside the cluster over TLS.",
     description: "Create-database public toggle helper text",
   },
+  "databases.fieldHighAvailability": {
+    message: "High availability",
+    description: "Create-database high availability toggle label (w2/m171)",
+  },
+  "databases.fieldHighAvailabilityHint": {
+    message:
+      "Run a standby on another node that takes over if the primary fails. The standby is billed like the primary.",
+    description:
+      "Create-database HA toggle helper text on a plan that offers HA",
+  },
+  "databases.fieldHighAvailabilityPlanUnsupported": {
+    message:
+      "{name} does not offer high availability. Choose a plan with at least 1 CPU.",
+    description:
+      "Create-database HA toggle helper text when the selected plan is below 1 CPU (Render's rule)",
+  },
   "databases.createCancel": {
     message: "Cancel",
     description: "Create-database dialog cancel button",
@@ -1155,6 +1171,67 @@ const enDatabases: Record<string, TranslationEntry> = {
       "High availability requires a plan with at least 1 CPU. This database's plan does not offer it.",
     description:
       "HA panel state when HA is off and the current plan is below 1 CPU (w8/m43, Render's rule)",
+  },
+  "databases.haToggleLabel": {
+    message: "High availability",
+    description: "Accessible name of the HA panel's on/off switch (w2/m171)",
+  },
+  "databases.haStarting": {
+    message:
+      "A standby is starting on another node. Failover is available once it is ready.",
+    description:
+      "HA panel line while HA is on but the standby is not ready yet",
+  },
+  "databases.haStopping": {
+    message: "High availability is turning off. The standby is being removed.",
+    description: "HA panel line while HA is off but the standby still runs",
+  },
+  "databases.haEnableTitle": {
+    message: "Enable high availability on {name}?",
+    description: "HA enable confirmation title",
+  },
+  "databases.haEnableBody": {
+    message:
+      "A standby instance starts on another node and takes over automatically if the primary fails. It is billed like the primary.",
+    description: "HA enable confirmation body",
+  },
+  "databases.haEnablePrice": {
+    message: "The standby adds {price}.",
+    description:
+      "HA enable confirmation price note; {price} is a formatted monthly price",
+  },
+  "databases.haEnableConfirm": {
+    message: "Enable high availability",
+    description: "HA enable confirmation button",
+  },
+  "databases.haDisableTitle": {
+    message: "Disable high availability on {name}?",
+    description: "HA disable confirmation title",
+  },
+  "databases.haDisableBody": {
+    message:
+      "The standby is removed. If the primary fails, the database is unavailable until it recovers.",
+    description: "HA disable confirmation body",
+  },
+  "databases.haDisableConfirm": {
+    message: "Disable high availability",
+    description: "HA disable confirmation button",
+  },
+  "databases.haEnableSuccess": {
+    message: "High availability is being enabled on {name}.",
+    description: "Toast after HA was enabled",
+  },
+  "databases.haDisableSuccess": {
+    message: "High availability is being disabled on {name}.",
+    description: "Toast after HA was disabled",
+  },
+  "databases.haEnableError": {
+    message: "Couldn't enable high availability on {name}.",
+    description: "Fallback toast when enabling HA fails",
+  },
+  "databases.haDisableError": {
+    message: "Couldn't disable high availability on {name}.",
+    description: "Fallback toast when disabling HA fails",
   },
   "databases.planPickerHAUnsupported": {
     message:

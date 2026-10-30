@@ -25,6 +25,11 @@ export interface CreateDatabaseInput {
   version: string;
   diskSizeGB: number;
   public: boolean;
+  /**
+   * Render's enableHighAvailability: a standby on another node. Only a plan
+   * with at least 1 CPU offers it (w2/m171); the form never sends it otherwise.
+   */
+  highAvailability?: boolean;
   /** Optional Environment; the server also joins its parent Project. */
   environmentId?: string;
 }
@@ -82,6 +87,8 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
               version: input.version || undefined,
               diskSizeGB: input.diskSizeGB > 0 ? input.diskSizeGB : undefined,
               public: input.public,
+              // Omitted unless asked for, like Render's create body.
+              enableHighAvailability: input.highAvailability || undefined,
             },
           }),
         );

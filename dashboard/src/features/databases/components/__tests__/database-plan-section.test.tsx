@@ -136,6 +136,28 @@ describe("DatabasePlanSection", () => {
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
+  // w2/m171: bex-api checks the spec, so a standby still starting already
+  // blocks the move — not only one the operator reports ready.
+  it("blocks the move while requested HA is still starting", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatabasePlanSection
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityEnabled: false,
+          highAvailabilityRequested: true,
+        }}
+        onChanged={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Disable high availability first.",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("lets a database without HA move to any plan", async () => {
     const user = userEvent.setup();
     render(

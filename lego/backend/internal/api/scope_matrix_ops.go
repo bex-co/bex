@@ -186,6 +186,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.updateBlueprint":                                     core.OpClassWrite,
 	"GQL Mutation.updateCronJob":                                       core.OpClassWrite,
 	"GQL Mutation.updateDatabaseDiskAutoscaling":                       core.OpClassWrite,
+	"GQL Mutation.updateDatabaseHighAvailability":                      core.OpClassWrite,
 	"GQL Mutation.updateDatabasePlan":                                  core.OpClassWrite,
 	"GQL Mutation.updateDatabaseVersion":                               core.OpClassWrite,
 	"GQL Mutation.updateDisk":                                          core.OpClassWrite,

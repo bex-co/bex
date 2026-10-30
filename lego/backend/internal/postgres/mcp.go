@@ -319,15 +319,17 @@ type updatePostgresArgs struct {
 	// update_postgres_disk_autoscaling (w1/m74): all four are PostgresPatch
 	// fields REST already carries in this same PATCH body, and dryRun (which
 	// three of them had) is already this tool's own preview path.
-	Name                  *string                  `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
-	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
-	Version               *string                  `json:"version,omitempty" jsonschema:"the target PostgreSQL major version; must be a supported major newer than the running version and at least 16 (upgrades to 14 or 15 are refused). The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
-	DiskSizeGB            *int32                   `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
-	ConnectionPool        string                   `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`
-	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"paid plans only; automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
-	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`
-	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
-	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
+	Name                  *string `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
+	Plan                  *string `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
+	Version               *string `json:"version,omitempty" jsonschema:"the target PostgreSQL major version; must be a supported major newer than the running version and at least 16 (upgrades to 14 or 15 are refused). The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
+	DiskSizeGB            *int32  `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
+	ConnectionPool        string  `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`
+	EnableDiskAutoscaling *bool   `json:"enableDiskAutoscaling,omitempty" jsonschema:"paid plans only; automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
+	// EnableHighAvailability is REST's PATCH enableHighAvailability (w2/m171).
+	EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty" jsonschema:"true adds a standby on another node (billed like the primary) and requires a plan with at least 1 CPU; false removes it; omission leaves it unchanged. A plan change below 1 CPU while it stays on is refused"`
+	IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`
+	IPAllowListCidrs       *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
 	// Confirm is the protected-environment phrase a rename or a version upgrade
 	// needs on a member of a protected environment (w4/m127).
 	Confirm string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
@@ -373,7 +375,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
 		// the number the operator enforces (pinned by the adapter-parity test).
-		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, read replicas, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown. readReplicas replaces the named replica set: at most %d, on plans with at least %s CPU and %d GB of storage; a new name is a lowercase DNS label of at most %d characters, and each replica is a billed instance.", tiers.Postgres.DiskAutoscalingCapGB()/1024, tiers.PostgresMaxReadReplicas, tiers.PostgresReadReplicaMinCPU, tiers.PostgresReadReplicaMinStorageGB, readReplicaNameMaxLength),
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, high availability (a standby, on plans with at least 1 CPU), connection pooling, external access, IP allowlist, read replicas, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown. readReplicas replaces the named replica set: at most %d, on plans with at least %s CPU and %d GB of storage; a new name is a lowercase DNS label of at most %d characters, and each replica is a billed instance.", tiers.Postgres.DiskAutoscalingCapGB()/1024, tiers.PostgresMaxReadReplicas, tiers.PostgresReadReplicaMinCPU, tiers.PostgresReadReplicaMinStorageGB, readReplicaNameMaxLength),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
@@ -384,16 +386,17 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 			return nil, PostgresView{}, err
 		}
 		patch := PostgresPatch{
-			Name:                  in.Name,
-			Plan:                  in.Plan,
-			DiskSizeGB:            in.DiskSizeGB,
-			Pooler:                pooler,
-			Version:               in.Version,
-			EnableDiskAutoscaling: in.EnableDiskAutoscaling,
-			ParameterOverrides:    in.ParameterOverrides,
-			IPAllowList:           allowList,
-			Public:                in.Public,
-			ReadReplicas:          in.ReadReplicas,
+			Name:                   in.Name,
+			Plan:                   in.Plan,
+			DiskSizeGB:             in.DiskSizeGB,
+			Pooler:                 pooler,
+			Version:                in.Version,
+			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
+			EnableHighAvailability: in.EnableHighAvailability,
+			ParameterOverrides:     in.ParameterOverrides,
+			IPAllowList:            allowList,
+			Public:                 in.Public,
+			ReadReplicas:           in.ReadReplicas,
 		}
 		// The protected-environment phrase reaches the dry-run too: it is the
 		// real call stopped before its first write (w5/m116).

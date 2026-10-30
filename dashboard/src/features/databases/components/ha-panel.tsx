@@ -27,6 +27,7 @@ import {
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
+import { Switch } from "@/common/components/ui/switch";
 import { TextField } from "@/common/components/text-field";
 import {
   Dialog,
@@ -42,6 +43,7 @@ import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   FailoverDatabaseDocument,
   SetDatabaseReadReplicasDocument,
+  UpdateDatabaseHighAvailabilityDocument,
 } from "@/graphql/definitions";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -52,6 +54,7 @@ import {
   readReplicaNameProblem,
   type ReadReplicaAddBlock,
 } from "@/features/databases/lib/read-replicas";
+import { highAvailabilityRequested } from "@/features/databases/lib/status";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 interface HAPanelProps {
@@ -88,6 +91,25 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
   const plan = instanceTypes.find((it) => it.id === database.plan);
   // Unknown while the catalog loads: keep the neutral "not enabled" line.
   const planOffersHA = plan?.supportsHighAvailability ?? true;
+  // The HA switch (w2/m171) shows the spec intent; the badge shows the
+  // observed standby, which follows a few minutes later. Enabling needs a plan
+  // the catalog says offers HA — bex-api's rule (Render: at least 1 CPU) —
+  // and turning it off is always allowed.
+  const [setHighAvailability, { loading: savingHA }] = useMutation(
+    UpdateDatabaseHighAvailabilityDocument,
+  );
+  const [haTarget, setHaTarget] = useState<boolean | null>(null);
+  const requested = highAvailabilityRequested(database);
+  const enableBlocked = plan?.supportsHighAvailability !== true;
+  const haLine = requested
+    ? database.highAvailabilityEnabled
+      ? null
+      : t("databases.haStarting")
+    : database.highAvailabilityEnabled
+      ? t("databases.haStopping")
+      : planOffersHA
+        ? t("databases.haNotEnabled")
+        : t("databases.haPlanUnsupported");
 
   const names = database.readReplicas.map((r) => r.name);
   const addBlock = readReplicaAddBlock(database, plan);
@@ -116,6 +138,31 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
         mutationErrorMessage(
           err,
           t("databases.haFailoverError", { name: database.name }),
+        ),
+      );
+    }
+  }
+
+  async function handleSetHighAvailability(enabled: boolean) {
+    const params = { name: database.name };
+    try {
+      await setHighAvailability({ variables: { id: database.id, enabled } });
+      toast.success(
+        t(
+          enabled ? "databases.haEnableSuccess" : "databases.haDisableSuccess",
+          params,
+        ),
+      );
+      setHaTarget(null);
+      refetch();
+    } catch (err) {
+      toast.error(
+        mutationErrorMessage(
+          err,
+          t(
+            enabled ? "databases.haEnableError" : "databases.haDisableError",
+            params,
+          ),
         ),
       );
     }
@@ -188,26 +235,36 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
                   : t("databases.haDisabled")}
               </Badge>
             </div>
-            {database.highAvailabilityEnabled ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmOpen(true)}
-                disabled={loading}
-              >
-                {loading ? <Loader2 className="animate-spin" /> : null}
-                {t("databases.haFailover")}
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-3">
+              {database.highAvailabilityEnabled ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : null}
+                  {t("databases.haFailover")}
+                </Button>
+              ) : null}
+              <PermissionTooltip reason={operateReason}>
+                <Switch
+                  aria-label={t("databases.haToggleLabel")}
+                  checked={requested}
+                  disabled={
+                    operateReason != null ||
+                    savingHA ||
+                    (!requested && enableBlocked)
+                  }
+                  onCheckedChange={setHaTarget}
+                />
+              </PermissionTooltip>
+            </div>
           </div>
 
-          {database.highAvailabilityEnabled ? null : (
-            <p className="text-sm text-muted-foreground">
-              {planOffersHA
-                ? t("databases.haNotEnabled")
-                : t("databases.haPlanUnsupported")}
-            </p>
-          )}
+          {haLine ? (
+            <p className="text-sm text-muted-foreground">{haLine}</p>
+          ) : null}
 
           {/* Named read replicas */}
           <div className="space-y-3">
@@ -361,6 +418,34 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Enable / disable high availability (w2/m171) */}
+      <ConfirmDialog
+        open={haTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !savingHA) setHaTarget(null);
+        }}
+        title={t(
+          haTarget ? "databases.haEnableTitle" : "databases.haDisableTitle",
+          { name: database.name },
+        )}
+        description={
+          haTarget
+            ? plan?.monthlyUsd
+              ? `${t("databases.haEnableBody")} ${t("databases.haEnablePrice", { price: t("common.pricePerMonth", { price: plan.monthlyUsd }) })}`
+              : t("databases.haEnableBody")
+            : t("databases.haDisableBody")
+        }
+        confirmLabel={t(
+          haTarget ? "databases.haEnableConfirm" : "databases.haDisableConfirm",
+        )}
+        destructive={!haTarget}
+        pending={savingHA}
+        closeOnConfirm={false}
+        onConfirm={() => {
+          if (haTarget != null) void handleSetHighAvailability(haTarget);
+        }}
+      />
 
       {/* Remove-replica confirmation */}
       <ConfirmDialog

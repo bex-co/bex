@@ -54,7 +54,13 @@ export interface DatabaseDetailView extends DatabaseView {
   databaseName: string | null;
   /** Owner role, `<db>_user`. */
   databaseUser: string | null;
+  /** Observed: the standby is running (≥2 ready instances). */
   highAvailabilityEnabled: boolean;
+  /**
+   * Spec intent (bex-api `highAvailabilityRequested`, w2/m171): what the HA
+   * switch shows while the standby converges. Absent → the observed value.
+   */
+  highAvailabilityRequested?: boolean;
   /** Render's diskAutoscalingEnabled read field. */
   diskAutoscalingEnabled: boolean;
   poolerEnabled: boolean;

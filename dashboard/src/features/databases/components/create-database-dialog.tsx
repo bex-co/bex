@@ -67,9 +67,10 @@ export interface CreateDatabaseDialogProps {
 
 /**
  * Render's "New Postgres" create form, bex's subset: name, plan (from the shared
- * tiers catalog — never a hardcoded ladder), version, disk size, and the public
- * (external endpoint) toggle. The deferred axes (region, HA, backups) are
- * omitted, not faked. Self-contained by default: owns its trigger button and
+ * tiers catalog — never a hardcoded ladder), version, disk size, the public
+ * (external endpoint) toggle, and high availability, offered on the plans the
+ * catalog marks as supporting it (w2/m171). The deferred axes (region,
+ * backups) are omitted, not faked. Self-contained by default: owns its trigger button and
  * resets on close; pass `open`/`onOpenChange` to drive it externally instead.
  */
 export function CreateDatabaseDialog({
@@ -100,6 +101,7 @@ export function CreateDatabaseDialog({
   const [version, setVersion] = useState<string>(VERSION_DEFAULT);
   const [diskSizeGB, setDiskSizeGB] = useState<string>("");
   const [isPublic, setIsPublic] = useState(false);
+  const [highAvailability, setHighAvailability] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [environmentId, setEnvironmentId] = useState<string | null>(null);
 
@@ -108,6 +110,11 @@ export function CreateDatabaseDialog({
     () => instanceTypes.find((it) => it.id === plan),
     [instanceTypes, plan],
   );
+  // HA is offered only where the catalog says the plan supports it (bex-api's
+  // rule, Render's "at least 1 CPU"). The switch keeps the user's choice, but
+  // a plan without HA shows it off and disabled and never sends it.
+  const haSupported = selectedPlan?.supportsHighAvailability === true;
+  const enableHighAvailability = highAvailability && haSupported;
 
   // A free-form label (w5/m153), sent trimmed.
   const nameValid = isValidLabel(name);
@@ -148,6 +155,7 @@ export function CreateDatabaseDialog({
     setVersion(VERSION_DEFAULT);
     setDiskSizeGB("");
     setIsPublic(false);
+    setHighAvailability(false);
     setProjectId(null);
     setEnvironmentId(null);
   }
@@ -168,6 +176,7 @@ export function CreateDatabaseDialog({
       version: version === VERSION_DEFAULT ? "" : version,
       diskSizeGB: Number(diskSizeGB) || 0,
       public: isPublic,
+      highAvailability: enableHighAvailability,
       environmentId: environmentId ?? undefined,
     });
     if (id) {
@@ -384,6 +393,28 @@ export function CreateDatabaseDialog({
               id="db-public"
               checked={isPublic}
               onCheckedChange={setIsPublic}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div className="space-y-0.5 pr-4">
+              <Label htmlFor="db-ha">
+                {t("databases.fieldHighAvailability")}
+              </Label>
+              <p id="db-ha-hint" className="text-sm text-muted-foreground">
+                {haSupported || selectedPlan == null
+                  ? t("databases.fieldHighAvailabilityHint")
+                  : t("databases.fieldHighAvailabilityPlanUnsupported", {
+                      name: selectedPlan.name,
+                    })}
+              </p>
+            </div>
+            <Switch
+              id="db-ha"
+              checked={enableHighAvailability}
+              disabled={!haSupported}
+              aria-describedby="db-ha-hint"
+              onCheckedChange={setHighAvailability}
             />
           </div>
         </div>

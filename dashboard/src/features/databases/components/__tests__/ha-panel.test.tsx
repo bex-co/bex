@@ -228,6 +228,102 @@ describe("HAPanel read replicas (w5/m138)", () => {
   });
 });
 
+// w2/m171: the HA switch. It shows the spec intent, offers enabling only on a
+// plan the catalog marks as supporting HA (bex-api's 1-CPU rule), always
+// allows turning it off, and asks before either.
+describe("HAPanel high availability switch (w2/m171)", () => {
+  const haSwitch = () =>
+    screen.getByRole("switch", { name: "High availability" });
+
+  it("enables HA on a plan that offers it, after confirmation", async () => {
+    const refetch = vi.fn();
+    render(
+      <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={refetch} />,
+    );
+    expect(haSwitch()).toBeEnabled();
+    expect(haSwitch()).not.toBeChecked();
+    await userEvent.click(haSwitch());
+    expect(mutate).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Enable high availability on shop?"),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable high availability" }),
+    );
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "dpg-shop", enabled: true },
+    });
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("keeps the switch off and disabled on a plan below 1 CPU, and says why", () => {
+    render(<HAPanel database={DATABASE} refetch={vi.fn()} />);
+    expect(haSwitch()).toBeDisabled();
+    expect(haSwitch()).not.toBeChecked();
+    expect(
+      screen.getByText(
+        "High availability requires a plan with at least 1 CPU. This database's plan does not offer it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a requested standby still starting, and turns HA off", async () => {
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: false,
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(haSwitch()).toBeChecked();
+    expect(
+      screen.getByText(
+        "A standby is starting on another node. Failover is available once it is ready.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(haSwitch());
+    await userEvent.click(
+      screen.getByRole("button", { name: "Disable high availability" }),
+    );
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "dpg-shop", enabled: false },
+    });
+  });
+
+  it("lets HA left on a plan below 1 CPU be turned off", () => {
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(haSwitch()).toBeChecked();
+    expect(haSwitch()).toBeEnabled();
+  });
+
+  it("disables the switch for a member who cannot operate the database", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        canOperate: false,
+        reasonKey: (action) =>
+          action === "can_operate" ? "databases.haFailover" : undefined,
+      }),
+    );
+    render(
+      <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={vi.fn()} />,
+    );
+    expect(haSwitch()).toBeDisabled();
+  });
+});
+
 describe("HAPanel pending preview (w5/m138)", () => {
   function replicasHeader(card: Element): Element {
     const label = [...card.querySelectorAll("p")].find(
@@ -254,5 +350,24 @@ describe("HAPanel pending preview (w5/m138)", () => {
     ).toBe(true);
     // No replica data before it exists.
     expect(pending.textContent).not.toContain("r1");
+  });
+
+  // w2/m171: the status row carries the HA switch on the right in both
+  // states — the same row and right-hand group, a switch-sized slot pending.
+  it("previews the status row's switch group", () => {
+    const pending = render(<DatabaseHighAvailabilityPreview />).container
+      .firstElementChild!;
+    const ready = render(<HAPanel database={DATABASE} refetch={vi.fn()} />)
+      .container.firstElementChild!;
+    const statusRow = (card: Element) =>
+      card.querySelector('[data-slot="card-content"]')!.firstElementChild!;
+    expect(statusRow(pending).className).toBe(statusRow(ready).className);
+    const [, pendingGroup] = [...statusRow(pending).children];
+    const [, readyGroup] = [...statusRow(ready).children];
+    expect(pendingGroup.className).toBe(readyGroup.className);
+    expect(readyGroup.querySelector('[role="switch"]')!.className).toContain(
+      "h-5 w-9",
+    );
+    expect(pendingGroup.firstElementChild!.className).toContain("h-5 w-9");
   });
 });

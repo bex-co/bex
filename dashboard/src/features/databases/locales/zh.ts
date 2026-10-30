@@ -159,8 +159,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database name input placeholder",
   },
   "databases.fieldNameError": {
-    message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-database name validation message",
   },
   "databases.physicalNamesTitle": {
@@ -228,6 +227,21 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.fieldPublicHint": {
     message: "允许通过 TLS 从集群外部连接。",
     description: "Create-database public toggle helper text",
+  },
+  "databases.fieldHighAvailability": {
+    message: "高可用",
+    description: "Create-database high availability toggle label (w2/m171)",
+  },
+  "databases.fieldHighAvailabilityHint": {
+    message:
+      "在另一节点上运行备用实例，主实例故障时自动接管。备用实例按主实例同等价格计费。",
+    description:
+      "Create-database HA toggle helper text on a plan that offers HA",
+  },
+  "databases.fieldHighAvailabilityPlanUnsupported": {
+    message: "{name} 不支持高可用。请选择至少 1 个 CPU 的规格。",
+    description:
+      "Create-database HA toggle helper text when the selected plan is below 1 CPU (Render's rule)",
   },
   "databases.createCancel": {
     message: "取消",
@@ -1120,6 +1134,65 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "HA panel state when HA is off and the current plan is below 1 CPU (w8/m43, Render's rule)",
   },
+  "databases.haToggleLabel": {
+    message: "高可用",
+    description: "Accessible name of the HA panel's on/off switch (w2/m171)",
+  },
+  "databases.haStarting": {
+    message: "备用实例正在另一节点上启动，就绪后即可进行故障切换。",
+    description:
+      "HA panel line while HA is on but the standby is not ready yet",
+  },
+  "databases.haStopping": {
+    message: "正在关闭高可用，备用实例将被移除。",
+    description: "HA panel line while HA is off but the standby still runs",
+  },
+  "databases.haEnableTitle": {
+    message: "为 {name} 启用高可用？",
+    description: "HA enable confirmation title",
+  },
+  "databases.haEnableBody": {
+    message:
+      "将在另一节点上启动备用实例，主实例故障时自动接管。备用实例按主实例同等价格计费。",
+    description: "HA enable confirmation body",
+  },
+  "databases.haEnablePrice": {
+    message: "备用实例费用为 {price}。",
+    description:
+      "HA enable confirmation price note; {price} is a formatted monthly price",
+  },
+  "databases.haEnableConfirm": {
+    message: "启用高可用",
+    description: "HA enable confirmation button",
+  },
+  "databases.haDisableTitle": {
+    message: "为 {name} 关闭高可用？",
+    description: "HA disable confirmation title",
+  },
+  "databases.haDisableBody": {
+    message: "备用实例将被移除。主实例故障时，数据库将不可用，直到其恢复。",
+    description: "HA disable confirmation body",
+  },
+  "databases.haDisableConfirm": {
+    message: "关闭高可用",
+    description: "HA disable confirmation button",
+  },
+  "databases.haEnableSuccess": {
+    message: "正在为 {name} 启用高可用。",
+    description: "Toast after HA was enabled",
+  },
+  "databases.haDisableSuccess": {
+    message: "正在为 {name} 关闭高可用。",
+    description: "Toast after HA was disabled",
+  },
+  "databases.haEnableError": {
+    message: "无法为 {name} 启用高可用。",
+    description: "Fallback toast when enabling HA fails",
+  },
+  "databases.haDisableError": {
+    message: "无法为 {name} 关闭高可用。",
+    description: "Fallback toast when disabling HA fails",
+  },
   "databases.planPickerHAUnsupported": {
     message: "{name} 不支持高可用（需要至少 1 个 CPU）。请先关闭高可用。",
     description:
@@ -1204,8 +1277,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast when a database rename collides with another name",
   },
   "databases.nameInvalid": {
-    message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Database rename validation message",
   },
   // --- Insights panel (w2/m25) ---
