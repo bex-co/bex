@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import queue
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -48,6 +49,229 @@ IDENTITY = {**META, "owner": OWNER, "app": r"{.metadata.labels.app\.bex\.co/app}
 FIELDS["cleanup_workload"] = IDENTITY
 SNAPSHOT_LOCATION = ("BEX_DISK_SNAPSHOT_ENDPOINT", "BEX_DISK_SNAPSHOT_BUCKET", "BEX_DISK_SNAPSHOT_PREFIX", "BEX_DISK_SNAPSHOT_REGION")
 CLEANUP_SECONDS = 100 * 60
+CHANNEL_ACTIONS = ("observer-start", "observer-supervise", "observer-wait", "observer-stop")
+CHANNEL_BYTES = 2 * 1024**2
+CHANNEL_START_SECONDS = 180
+CHANNEL_FINISH_SECONDS = CLEANUP_SECONDS + 60
+
+
+def observer_directory():
+    value = os.environ.get("RUNNER_TEMP", "")
+    require(value and Path(value).is_absolute() and Path(value).is_dir(), "explicit existing RUNNER_TEMP required")
+    directory = Path(value).resolve() / "bex-fixture-observer"
+    require(not directory.is_symlink(), "observer channel must not be a symlink")
+    return directory
+
+
+def observer_scope(proof):
+    run_id, attempt = os.environ.get("GITHUB_RUN_ID", ""), os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    require(re.fullmatch(r"[1-9][0-9]*", run_id) and re.fullmatch(r"[1-9][0-9]*", attempt), "observer channel requires its exact Actions run and attempt")
+    return {"run": proof["run"], "serviceId": proof["service_id"], "namespace": proof["namespace"], "appUid": proof["app_uid"], "proofDigest": digest(proof), "workflowRunId": run_id, "workflowRunAttempt": attempt}
+
+
+def channel_write(directory, name, value):
+    temporary = directory / (name + ".tmp-" + str(os.getpid()))
+    with temporary.open("x") as output:
+        json.dump(value, output, separators=(",", ":"))
+        output.write("\n")
+    temporary.replace(directory / name)
+
+
+def channel_read(directory, name):
+    path = directory / name
+    if not path.exists():
+        return None
+    require(path.is_file() and not path.is_symlink() and path.stat().st_size <= 16384, "invalid bounded observer channel file")
+    return json.loads(path.read_text())
+
+
+def observer_session(directory, proof):
+    session = channel_read(directory, "session.json")
+    require(session and session["scope"] == observer_scope(proof), "observer channel belongs to another proof or workflow attempt")
+    return session
+
+
+def observer_ready(receipt, proof, session):
+    require(receipt["run"] == proof["run"] and receipt["serviceId"] == proof["service_id"], "observer readiness belongs to another fixture")
+    observation = receipt["cleanupObservation"]
+    expected = {"state": "observerReady", "maximumSeconds": CLEANUP_SECONDS, "fixtureExpiresAt": proof["expires_at"], "namespace": proof["namespace"], "appUid": proof["app_uid"], "purgeJobName": purge_job_name(proof)}
+    require(all(observation[key] == value for key, value in expected.items()), "observer readiness scope changed")
+    started, collected = instant(observation["startedAt"]), instant(receipt["collectedAt"])
+    require(instant(session["startedAt"]) <= started <= collected <= now() and collected < instant(proof["expires_at"]), "observer readiness timestamp is stale or expired")
+    remaining = observation["fixtureBudgetRemainingSeconds"]
+    require(type(remaining) is int and 0 < remaining <= 7200, "observer readiness has no remaining fixture budget")
+    versions = observation["watchResourceVersions"]
+    require(all(isinstance(versions[key], str) and re.fullmatch(r"[1-9][0-9]*", versions[key]) for key in ("app", "purgeJob")), "observer readiness has no established watch resourceVersions")
+    provider = observation["providerBaseline"]
+    handle = proof["binding"]["volume_handle"]
+    match = re.fullmatch(r"bounded-ext4-v1:([1-9][0-9]*)", handle)
+    require(match and provider["volumeHandle"] == handle and type(provider["volumeId"]) is int and provider["volumeId"] == int(match[1]) and provider["http"] == 200 and provider["state"] == "present", "observer readiness has no exact positive provider baseline")
+    return {"run": proof["run"], "serviceId": proof["service_id"], "collectedAt": receipt["collectedAt"], "cleanupObservation": {**expected, "startedAt": observation["startedAt"], "fixtureBudgetRemainingSeconds": remaining, "watchResourceVersions": {key: versions[key] for key in ("app", "purgeJob")}, "providerBaseline": {key: provider[key] for key in ("volumeHandle", "volumeId", "http", "state")}}}
+
+
+def stop_observer_child(process):
+    # The unreaped Popen handle owns this process group; no PID file is trusted.
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+    process.wait(timeout=5)
+
+
+def supervise_observer(directory, proof, session, phase):
+    stopped = threading.Event()
+    previous = {sig: signal.signal(sig, lambda *_: stopped.set()) for sig in (signal.SIGINT, signal.SIGTERM)}
+    process, reader = None, None
+    lines = queue.Queue(maxsize=32)
+    reason, exit_code, ready, complete = "startup-failed", None, False, False
+    deadline = time.monotonic() + CHANNEL_FINISH_SECONDS
+
+    def status(state):
+        channel_write(directory, "status.json", {"scope": session["scope"], "state": state, "updatedAt": now().isoformat(), "ready": ready, "exitCode": exit_code, "reason": reason})
+
+    def read_output():
+        try:
+            while not stopped.is_set():
+                raw = process.stdout.readline(262145)
+                if not raw:
+                    break
+                require(len(raw) <= 262144 and raw.endswith(b"\n"), "observer line exceeded its fixed bound")
+                while not stopped.is_set():
+                    try:
+                        lines.put(raw, timeout=0.1)
+                        break
+                    except queue.Full:
+                        continue
+        except (ValueError, OSError):
+            stopped.set()
+
+    try:
+        status("starting")
+        process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "cleanup-observe", "--phase", phase], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+        reader = threading.Thread(target=read_output, daemon=True)
+        reader.start()
+        reason, written, heartbeat, reported_ready = "observing", 0, 0, False
+        with (directory / "observer.jsonl").open("xb") as output:
+            while True:
+                stop = channel_read(directory, "stop.json")
+                if stop is not None:
+                    require(stop == {"scope": session["scope"]}, "observer stop request belongs to another workflow attempt")
+                    stopped.set()
+                if stopped.is_set() or time.monotonic() >= deadline:
+                    reason = "stopped-or-deadline"
+                    break
+                try:
+                    raw = lines.get(timeout=0.2)
+                except queue.Empty:
+                    raw = None
+                if raw is not None:
+                    receipt = json.loads(raw)
+                    require(receipt["run"] == proof["run"] and receipt["serviceId"] == proof["service_id"] and isinstance(receipt["cleanupObservation"], dict), "observer output has a foreign scope")
+                    state = receipt["cleanupObservation"].get("state")
+                    if state == "observerReady":
+                        require(not ready, "observer emitted duplicate readiness")
+                        receipt = observer_ready(receipt, proof, session)
+                    raw = (json.dumps({key: receipt[key] for key in ("run", "serviceId", "collectedAt", "cleanupObservation")}) + "\n").encode()
+                    written += len(raw)
+                    require(written <= CHANNEL_BYTES, "observer artifact exceeded its fixed output bound")
+                    output.write(raw)
+                    output.flush()
+                    if state == "observerReady":
+                        channel_write(directory, "ready.json", receipt)
+                        ready = True
+                    complete |= state == "complete"
+                if ready != reported_ready or time.monotonic() - heartbeat >= 1:
+                    status("running")
+                    heartbeat, reported_ready = time.monotonic(), ready
+                if process.poll() is not None and not reader.is_alive() and lines.empty():
+                    exit_code = process.wait()
+                    reason = "observer-exited" if ready and complete else "exited-without-complete-proof"
+                    break
+    except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError, json.JSONDecodeError):
+        reason = "invalid-or-failed-observer-channel"
+    finally:
+        stopped.set()
+        if process is not None:
+            try:
+                stop_observer_child(process)
+            except (OSError, subprocess.SubprocessError):
+                reason, exit_code = "child-reap-unproved", None
+            if process.stdout:
+                process.stdout.close()
+        if reader:
+            reader.join(timeout=2)
+        status("finished")
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+    return exit_code == 0 and ready and reason == "observer-exited"
+
+
+def wait_observer_channel(directory, session, readiness=False, timeout=None):
+    deadline = time.monotonic() + (timeout if timeout is not None else CHANNEL_START_SECONDS if readiness else CHANNEL_FINISH_SECONDS)
+    while time.monotonic() < deadline:
+        status = channel_read(directory, "status.json")
+        if status:
+            require(status["scope"] == session["scope"], "observer status belongs to another workflow attempt")
+            if status["state"] == "finished":
+                require(not readiness and status["ready"] is True and type(status["exitCode"]) is int and status["exitCode"] == 0 and status["reason"] == "observer-exited", "observer ended without complete approved cleanup evidence")
+                return status
+            require(status["state"] in ("starting", "running"), "unknown observer supervisor state")
+            require((now() - instant(status["updatedAt"])).total_seconds() <= 20, "observer supervisor heartbeat is stale; cleanup is unknown")
+            if readiness and status["ready"] and status["state"] == "running":
+                return channel_read(directory, "ready.json")
+        time.sleep(0.2)
+    raise ValueError("observer channel wait expired; readiness or cleanup remains unproved")
+
+
+def observer_channel(action, proof, phase):
+    directory = observer_directory()
+    process, created = None, False
+    if action == "observer-start":
+        session = {"scope": observer_scope(proof), "startedAt": now().isoformat(), "phase": phase}
+    else:
+        if action == "observer-stop" and not directory.exists():
+            return {"observerChannel": "not-started"}
+        session = observer_session(directory, proof)
+    if action == "observer-supervise":
+        require(session["phase"] == phase, "observer supervisor phase changed")
+        require(not (directory / "status.json").exists(), "observer supervisor cannot adopt an existing channel")
+        require(supervise_observer(directory, proof, session, phase), "observer cleanup remains unproved")
+        return {"observerChannel": "finished"}
+    if action == "observer-stop":
+        channel_write(directory, "stop.json", {"scope": session["scope"]})
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            status = channel_read(directory, "status.json")
+            if status and status["scope"] == session["scope"] and status["state"] == "finished":
+                require(status["reason"] != "child-reap-unproved", "observer child shutdown is unproved")
+                return {"observerChannel": "stopped", "exitCode": status["exitCode"]}
+            time.sleep(0.2)
+        raise ValueError("observer stop was not acknowledged; no foreign process was signalled")
+    try:
+        if action == "observer-start":
+            directory.mkdir(mode=0o700)
+            created = True
+            channel_write(directory, "session.json", session)
+            process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "observer-supervise", "--phase", phase], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        result = wait_observer_channel(directory, session, readiness=action == "observer-start")
+        if action == "observer-start":
+            require(process.poll() is None, "observer supervisor exited before readiness handoff")
+            return observer_ready(result, proof, session)
+        return result
+    except BaseException:
+        if action != "observer-start" or created:
+            channel_write(directory, "stop.json", {"scope": session["scope"]})
+        if process is not None:
+            try:
+                process.wait(timeout=12)
+            except subprocess.TimeoutExpired:
+                stop_observer_child(process)
+        raise
 
 
 def require(condition, message):
@@ -831,11 +1055,16 @@ def run_action(kube, proof, action, phase, image=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("validate", "validate-status", "validate-cleanup", "validate-observer", *ACTIONS))
+    parser.add_argument("action", choices=("validate", "validate-status", "validate-cleanup", "validate-observer", *CHANNEL_ACTIONS, *ACTIONS))
     parser.add_argument("--phase", choices=PHASE_GIB, default="initial-1g")
     args = parser.parse_args()
+    if args.action in (*CHANNEL_ACTIONS, "cleanup-observe") and args.action != "observer-supervise":
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     try:
-        proof = load_proof(cleanup=args.action in ("validate-status", "validate-cleanup", "backup-status", "backup-cleanup"))
+        proof = load_proof(cleanup=args.action in ("validate-status", "validate-cleanup", "backup-status", "backup-cleanup", "observer-wait", "observer-stop"))
+        if args.action in CHANNEL_ACTIONS:
+            print(json.dumps(observer_channel(args.action, proof, args.phase)))
+            return
         if args.action in ("validate-status", "validate-cleanup", "validate-observer"):
             require(proof.get("binding"), "commit the reviewed own backup binding first")
             if args.action == "validate-cleanup":
@@ -846,7 +1075,9 @@ def main():
             return
         require(os.environ.get("KUBECONFIG") and Path(os.environ["KUBECONFIG"]).is_file(), "explicit fetched KUBECONFIG required")
         kube = Kube()
-        print(json.dumps(run_action(kube, proof, args.action, args.phase, image), indent=2))
+        result = run_action(kube, proof, args.action, args.phase, image)
+        if args.action != "cleanup-observe":
+            print(json.dumps(result, indent=2))
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as error:
         parser.exit(1, f"disk-fixture: {type(error).__name__}: {error}\n")
 
