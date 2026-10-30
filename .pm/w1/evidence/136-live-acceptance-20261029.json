@@ -1,0 +1,357 @@
+{
+  "verified_at": "2026-10-30T01:37:01.279440+00:00",
+  "scope": "w1/136 platform-controlled runtime and system Brotli refresh; legacy runtime lines remain in m188",
+  "rollout_since": "2026-10-30T01:13:43Z",
+  "rebuild_apply": {
+    "applied": true,
+    "done": 0,
+    "triggered": [
+      {
+        "workspace": "tea-d98210cbbpdc73dcrkvg",
+        "service": "block-eden-mono",
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "type": "web_service",
+        "runtime": "node",
+        "builder": "native",
+        "deploy": "dep-dbhv00538vfc73e0u0b0",
+        "commit": "d2397150db948e93adcc644616b1908a731ae37a"
+      },
+      {
+        "workspace": "tea-d98210cbbpdc73dcrkvg",
+        "service": "block-eden-mono-1",
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "type": "web_service",
+        "runtime": "go",
+        "builder": "native",
+        "deploy": "dep-dbhv00d38vfc73e0u0bg",
+        "commit": "40da94bb6cc75a1a60ad38b460bc3a7fd18e07f3"
+      },
+      {
+        "workspace": "tea-da2isimlm39c739m4ofg",
+        "service": "tianpan-v4-web",
+        "namespace": "tea-da2isimlm39c739m4ofg",
+        "type": "web_service",
+        "runtime": "node",
+        "builder": "native",
+        "deploy": "dep-dbhv00l38vfc73e0u0c0",
+        "commit": "e3269ef8229ffeee48cd4f65fff56830b974cdfe"
+      }
+    ],
+    "planned": [],
+    "failed": [
+      {
+        "workspace": "tea-da1eg9gbiuuc73bd8uag",
+        "service": "market-size",
+        "namespace": "tea-da1eg9gbiuuc73bd8uag",
+        "type": "web_service",
+        "runtime": "node",
+        "builder": "native",
+        "error": "conflict: service \"market-size\" has no live deploy to restart; deploy it first"
+      }
+    ]
+  },
+  "final_plan": {
+    "applied": false,
+    "done": 3,
+    "triggered": [],
+    "planned": [
+      {
+        "workspace": "tea-da1eg9gbiuuc73bd8uag",
+        "service": "market-size",
+        "namespace": "tea-da1eg9gbiuuc73bd8uag",
+        "type": "web_service",
+        "runtime": "node",
+        "builder": "native"
+      }
+    ],
+    "failed": []
+  },
+  "live_acceptance": {
+    "block-eden-mono-1": {
+      "at": "2026-10-30T01:26:05.607608+00:00",
+      "service": "block-eden-mono-1",
+      "deploy": "dep-dbhv00d38vfc73e0u0bg",
+      "commit": "40da94bb6cc75a1a60ad38b460bc3a7fd18e07f3",
+      "spec_commit": "40da94bb6cc75a1a60ad38b460bc3a7fd18e07f3",
+      "generation": 14,
+      "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+      "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-7f9ffb4f99-9z6tq",
+      "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+      "ready": true,
+      "package": {
+        "exit": 0,
+        "stdout": "libbrotli1:amd64\t1.0.9-2+deb12u1",
+        "stderr": ""
+      },
+      "node_versions": {
+        "exit": 0,
+        "stdout": "{\"node\":\"24.22.1\",\"brotli\":\"1.2.0\"}",
+        "stderr": ""
+      },
+      "node_behavior": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "system_behavior": {
+        "exit": 0,
+        "stdout": "system Brotli malformed-stream and healthy roundtrip passed",
+        "stderr": ""
+      },
+      "go_version": {
+        "exit": 0,
+        "stdout": "go version go1.27.3 linux/amd64",
+        "stderr": ""
+      }
+    },
+    "tianpan-v4-web": {
+      "at": "2026-10-30T01:26:15.380000+00:00",
+      "service": "tianpan-v4-web",
+      "deploy": "dep-dbhv00l38vfc73e0u0c0",
+      "commit": "e3269ef8229ffeee48cd4f65fff56830b974cdfe",
+      "spec_commit": "e3269ef8229ffeee48cd4f65fff56830b974cdfe",
+      "generation": 47,
+      "image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+      "pod": "tea-da2isimlm39c739m4ofg-tianpan-v4-web-6bbd77c4d7-dwx8w",
+      "imageID": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+      "ready": true,
+      "package": {
+        "exit": 0,
+        "stdout": "libbrotli1:amd64\t1.0.9-2+deb12u1",
+        "stderr": ""
+      },
+      "node_versions": {
+        "exit": 0,
+        "stdout": "{\"node\":\"22.23.4\",\"brotli\":\"1.1.0\"}",
+        "stderr": ""
+      },
+      "node_behavior": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "system_behavior": {
+        "exit": 0,
+        "stdout": "system Brotli malformed-stream and healthy roundtrip passed",
+        "stderr": ""
+      }
+    },
+    "block-eden-mono": {
+      "at": "2026-10-30T01:34:59.564651+00:00",
+      "service": "block-eden-mono",
+      "deploy": "dep-dbhv00538vfc73e0u0b0",
+      "commit": "d2397150db948e93adcc644616b1908a731ae37a",
+      "spec_commit": "d2397150db948e93adcc644616b1908a731ae37a",
+      "generation": 125,
+      "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+      "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-8495d76779-j2ljk",
+      "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+      "ready": true,
+      "package": {
+        "exit": 0,
+        "stdout": "libbrotli1:amd64\t1.0.9-2+deb12u1",
+        "stderr": ""
+      },
+      "node_versions": {
+        "exit": 0,
+        "stdout": "{\"node\":\"24.22.1\",\"brotli\":\"1.2.0\"}",
+        "stderr": ""
+      },
+      "node_behavior": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "system_behavior": {
+        "exit": 0,
+        "stdout": "system Brotli malformed-stream and healthy roundtrip passed",
+        "stderr": ""
+      }
+    }
+  },
+  "native_build_jobs": [
+    {
+      "name": "bld-tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-gen-14",
+      "created": "2026-10-30T01:16:49Z",
+      "startTime": "2026-10-30T01:16:49Z",
+      "completionTime": "2026-10-30T01:20:06Z",
+      "active": null,
+      "succeeded": 1,
+      "failed": null,
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-30T01:20:06Z",
+          "lastTransitionTime": "2026-10-30T01:20:06Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-30T01:20:06Z",
+          "lastTransitionTime": "2026-10-30T01:20:06Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ]
+    },
+    {
+      "name": "bld-tea-d98210cbbpdc73dcrkvg-block-eden-mono-gen-125",
+      "created": "2026-10-30T01:16:48Z",
+      "startTime": "2026-10-30T01:16:48Z",
+      "completionTime": "2026-10-30T01:32:39Z",
+      "active": null,
+      "succeeded": 1,
+      "failed": null,
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-30T01:32:39Z",
+          "lastTransitionTime": "2026-10-30T01:32:39Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-30T01:32:39Z",
+          "lastTransitionTime": "2026-10-30T01:32:39Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ]
+    },
+    {
+      "name": "bld-tea-da2isimlm39c739m4ofg-tianpan-v4-web-gen-47",
+      "created": "2026-10-30T01:16:50Z",
+      "startTime": "2026-10-30T01:16:51Z",
+      "completionTime": "2026-10-30T01:24:04Z",
+      "active": null,
+      "succeeded": 1,
+      "failed": null,
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-30T01:24:04Z",
+          "lastTransitionTime": "2026-10-30T01:24:04Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-30T01:24:04Z",
+          "lastTransitionTime": "2026-10-30T01:24:04Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ]
+    }
+  ],
+  "app_ready_conditions": [
+    {
+      "service": "block-eden-mono",
+      "generation": 125,
+      "phase": "Running",
+      "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+      "ready": [
+        {
+          "lastTransitionTime": "2026-10-30T01:34:16Z",
+          "message": "1/1 replicas ready",
+          "observedGeneration": 125,
+          "reason": "Deployed",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    },
+    {
+      "service": "block-eden-mono-1",
+      "generation": 14,
+      "phase": "Running",
+      "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+      "ready": [
+        {
+          "lastTransitionTime": "2026-10-30T01:20:30Z",
+          "message": "1/1 replicas ready",
+          "observedGeneration": 14,
+          "reason": "Deployed",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    },
+    {
+      "service": "tianpan-v4-web",
+      "generation": 47,
+      "phase": "Running",
+      "image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+      "ready": [
+        {
+          "lastTransitionTime": "2026-10-30T01:24:59Z",
+          "message": "1/1 replicas ready",
+          "observedGeneration": 47,
+          "reason": "Deployed",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    }
+  ],
+  "public_health_before": {
+    "at": "2026-10-30T01:18:42.216046+00:00",
+    "checks": [
+      {
+        "service": "block-eden-mono",
+        "url": "https://block-eden-mono.onbex.co",
+        "status": 200
+      },
+      {
+        "service": "block-eden-mono-1",
+        "url": "https://block-eden-mono-1.onbex.co",
+        "status": 404
+      },
+      {
+        "service": "market-size",
+        "url": null
+      },
+      {
+        "service": "tianpan-v4-web",
+        "url": "https://tianpan-v4-web.onbex.co",
+        "status": 200
+      }
+    ]
+  },
+  "public_health_after": {
+    "at": "2026-10-30T01:36:02.130992+00:00",
+    "checks": [
+      {
+        "service": "block-eden-mono",
+        "url": "https://block-eden-mono.onbex.co",
+        "status": 200
+      },
+      {
+        "service": "block-eden-mono-1",
+        "url": "https://block-eden-mono-1.onbex.co",
+        "status": 404
+      },
+      {
+        "service": "tianpan-v4-web",
+        "url": "https://tianpan-v4-web.onbex.co",
+        "status": 200
+      }
+    ]
+  },
+  "exclusions": [
+    {
+      "service": "market-size",
+      "reason": "Already Failed since 2026-08-17, no image/pods/live deploy; platform-rebuild correctly refused live-commit restart. Not rebuilt and not counted as accepted. Future first deployment consumes current pins.",
+      "apply_error": "conflict: service \"market-size\" has no live deploy to restart; deploy it first"
+    }
+  ],
+  "verification": "All 3 services with live commits rebuilt once, all new running digests matched App status, original commits and runtime selections preserved. System and bundled Node decoder malformed-stream and healthy-roundtrip probes passed on actual new pods. Final plan skips all 3; only the explicit no-live exclusion remains."
+}
