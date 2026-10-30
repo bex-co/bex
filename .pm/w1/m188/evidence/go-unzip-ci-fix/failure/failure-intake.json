@@ -1,0 +1,124 @@
+{
+  "created_utc": "2026-10-30T23:06:49.525260+00:00",
+  "scope": "Completed producer failure diagnosis; temporary proposal only, no repo edits or test/build/rerun/API mutation",
+  "run_id": 41067572282,
+  "job_id": 124104688590,
+  "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "job_conclusion": "failure",
+  "completed_at": "2026-10-30T23:02:41Z",
+  "base": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+  "built_index_from_log": "sha256:17ea4102c49b5e0c764acbb656fa01a84fba9ffb345735a587cfed7f11e6b889",
+  "raw_log": {
+    "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw",
+    "bytes": 1127411,
+    "sha256": "358de18a031de896553c2b738554b9bb4f3f90f60947e1e84c641486b9d7b704"
+  },
+  "raw_log_gzip": {
+    "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw.gz",
+    "sha256": "0af22418264a92296e7a4bb576e5d4cfdd82babd49482d937b5adc21624e6a91"
+  },
+  "snapshot": {
+    "path": "/tmp/bex-m188-publisher-job-snapshots/124104688590-7944900d5cbdf38701ed04fd6b9db49482ce2c9783e3a7adf989166689ebe530.json",
+    "sha256": "7944900d5cbdf38701ed04fd6b9db49482ce2c9783e3a7adf989166689ebe530"
+  },
+  "failure": {
+    "actual_architecture": "linux/arm64",
+    "command": "/usr/bin/python3 /tmp/check-tools.py",
+    "failing_invocation": [
+      "unzip",
+      "-p",
+      "assets.zip",
+      "assets/one.txt"
+    ],
+    "error": "FileNotFoundError: [Errno 2] No such file or directory: 'unzip'",
+    "source": "deploy/native-base/check-tools.py:78",
+    "time": "2026-10-30T23:02:21.6612756Z",
+    "exit_code": 1,
+    "amd64_result": "CANCELED when arm64 failed; not independently completed",
+    "classification": "Recipe dependency omission, not an emulation/infra failure evidenced by this log",
+    "later_checks": "check-tools.py80\u201387 wheel/install checks and later security stages not completed; no claim those pass"
+  },
+  "root_cause": {
+    "source": "deploy/native-base/install.sh:29\u201332",
+    "behavior": "Explicit zip plus --no-install-recommends omits unzip. Log lists unzip among Recommended packages on BOTH build architectures, then runtime executable is absent on arm64. Final Dockerfile COPY/RUN45\u201348 installs this same list on primary stage; nothing copies unzip from compiler/node-tools stages.",
+    "current_head": "51c0693ed1caff5446a76915541b2c8c920a4e97",
+    "current_worktree_install_identical_to_producer": true,
+    "source_hashes": {
+      "deploy/native-base/install.sh": {
+        "producer_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+        "current_worktree_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      },
+      "deploy/native-base/Dockerfile": {
+        "producer_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+        "current_worktree_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11"
+      },
+      "deploy/native-base/check.Dockerfile": {
+        "producer_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+        "current_worktree_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e"
+      },
+      "deploy/native-base/check-tools.py": {
+        "producer_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+        "current_worktree_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932"
+      }
+    },
+    "matrix_scope": {
+      "route": "All reviewed final primary images use same installer, with no runtime-specific utility branch",
+      "rows": 27,
+      "go_lines": [
+        "golang-1.27-bookworm"
+      ],
+      "observed_failing_rows": [
+        "golang-1.27-bookworm/linux/arm64"
+      ],
+      "other_rows": "Latent dependency on upstream/transitive unzip presence; not proven failing. Existing successful candidates/proofs remain historical observations; no approval revoked by this diagnostic."
+    },
+    "other_tools": "On observed arm64 path, prior real transformations already reached/passed pandoc/sqlite/vips/gettext/gs/jq/rsync/tsc/SWIG+gcc/private Node/webpack/pigz/zip. No additional missing command evidenced; later pip/wheel section not reached."
+  },
+  "evidence": [
+    {
+      "first_line": 6386,
+      "last_line": 6390,
+      "text": "2026-10-30T22:18:46.6954998Z #38 8.314 Recommended packages:\n2026-10-30T22:18:46.6955222Z #38 8.314   bzip2-doc libcfitsio-doc dbus libexif-doc xdg-user-dirs fonts-droid-fallback\n2026-10-30T22:18:46.6955557Z #38 8.314   javascript-common libtool gsfonts libjxr-tools libpaper-utils libpng-tools\n2026-10-30T22:18:46.6955895Z #38 8.314   libvips-doc build-essential xxd unzip\n2026-10-30T22:18:46.6956140Z #38 9.221 The following NEW packages will be installed:"
+    },
+    {
+      "first_line": 8559,
+      "last_line": 8564,
+      "text": "2026-10-30T22:49:15.3690862Z #51 10.52 Recommended packages:\n2026-10-30T22:49:15.3691085Z #51 10.52   bzip2-doc libcfitsio-doc dbus libexif-doc xdg-user-dirs fonts-droid-fallback\n2026-10-30T22:49:15.3691416Z #51 10.52   javascript-common libtool gsfonts libjxr-tools libpaper-utils libpng-tools\n2026-10-30T22:49:15.3691675Z #51 10.52   libvips-doc build-essential xxd unzip\n2026-10-30T22:49:16.3365767Z #51 11.64 The following NEW packages will be installed:\n2026-10-30T22:49:16.4895832Z #51 11.64   autoconf automake autotools-dev fontconfig fontconfig-config"
+    },
+    {
+      "first_line": 11034,
+      "last_line": 11053,
+      "text": "2026-10-30T23:02:20.0786325Z #32 [linux/arm64 stage-2  8/10] RUN --network=none /usr/bin/python3 /tmp/check-tools.py\n2026-10-30T23:02:21.5731691Z #32 1.645 Traceback (most recent call last):\n2026-10-30T23:02:21.5732091Z #32 1.645   File \"/tmp/check-tools.py\", line 78, in <module>\n2026-10-30T23:02:21.5732505Z #32 1.645     assert run(\"unzip\", \"-p\", \"assets.zip\", \"assets/one.txt\") == Path(\"assets/one.txt\").read_bytes()\n2026-10-30T23:02:21.5732847Z #32 1.645            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-10-30T23:02:21.5733067Z #32 1.645   File \"/tmp/check-tools.py\", line 16, in run\n2026-10-30T23:02:21.6607501Z #32 1.645     result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n2026-10-30T23:02:21.6608180Z #32 1.645              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-10-30T23:02:21.6608858Z #32 1.645   File \"/usr/lib/python3.11/subprocess.py\", line 548, in run\n2026-10-30T23:02:21.6609459Z #32 1.645     with Popen(*popenargs, **kwargs) as process:\n2026-10-30T23:02:21.6609804Z #32 1.645          ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-10-30T23:02:21.6610161Z #32 1.645   File \"/usr/lib/python3.11/subprocess.py\", line 1024, in __init__\n2026-10-30T23:02:21.6610660Z #32 1.645     self._execute_child(args, executable, preexec_fn, close_fds,\n2026-10-30T23:02:21.6611975Z #32 1.645   File \"/usr/lib/python3.11/subprocess.py\", line 1901, in _execute_child\n2026-10-30T23:02:21.6612430Z #32 1.645     raise child_exception_type(errno_num, err_msg, err_filename)\n2026-10-30T23:02:21.6612756Z #32 1.645 FileNotFoundError: [Errno 2] No such file or directory: 'unzip'\n2026-10-30T23:02:21.6613438Z #32 ERROR: process \"/bin/sh -c /usr/bin/python3 /tmp/check-tools.py\" did not complete successfully: exit code: 1\n2026-10-30T23:02:21.6613790Z \n2026-10-30T23:02:21.6614459Z #23 [linux/amd64 stage-2  8/10] RUN --network=none /usr/bin/python3 /tmp/check-tools.py\n2026-10-30T23:02:21.6614912Z #23 CANCELED"
+    },
+    {
+      "first_line": 10101,
+      "last_line": 10101,
+      "text": "2026-10-30T22:53:56.4453251Z #54 exporting manifest list sha256:17ea4102c49b5e0c764acbb656fa01a84fba9ffb345735a587cfed7f11e6b889 done"
+    }
+  ],
+  "proposal": {
+    "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/install.proposed.sh",
+    "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+    "patch": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/install-unzip.patch",
+    "patch_sha256": "8d80b4621ec386a3fce11940135dc86ca8786f123e5d15ecfb230e8e4e9ddb93",
+    "change": "Explicit unzip after zip in existing apt-get install list; keep existing full checks unchanged",
+    "not_applied": true
+  },
+  "existing_meaningful_regression": {
+    "not_run": true,
+    "prerequisite": "Build a new exact-source Go1.27 derivative with proposed installer; old immutable17ea candidate cannot be repaired by checks or recovery selection.",
+    "argv_template": [
+      "docker",
+      "buildx",
+      "build",
+      "--platform",
+      "linux/amd64,linux/arm64",
+      "--file",
+      "deploy/native-base/check.Dockerfile",
+      "--build-arg",
+      "NATIVE_BASE=ghcr.io/bex-co/bex-cnb-run@sha256:<NEW_FIXED_INDEX>",
+      "deploy/native-base"
+    ],
+    "why": "Runs existing real zip/unzip byte round-trip at check-tools.py77\u201378 plus complete offline utility/security gates on both architectures; no check removal or version-only assertion."
+  }
+}

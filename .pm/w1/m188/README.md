@@ -273,3 +273,11 @@ Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步�
 [根复核](evidence/modern-ci-rollforward-completed/root-audit.json) 再次读取十组原始run/jobs，核对源码、attempt、runtime、旧任务检查及最终零步骤状态。请求阶段三个执行helper已在原归档中保持原哈希；之后新增的终态读取helper随完成阶段单独归档。所有365项请求记录与156项完成记录保持各自观察时间，不回写21:13时的零取消快照。
 
 w8/m91的十项现代运行时工作全部保留并继续在修复流程上执行，镜像独立验收仍归该工作流。本项Node18/20、Ruby3.2三个请求保持原样；正式验收仍为8/11，继续等待其产物、接入及真实应用/线上验证。
+
+### Go运行门槛缺包修复与旧产物精确复核 — 2026-10-30（UTC 23:14Z）
+
+旧99f的Go1.27双架构构建完成，但ARM64实际工具验证因缺少`unzip`退出，AMD64兄弟检查随即取消；不把它归为模拟器故障或完整验收。`8af93065a`已单独修复统一安装列表的显式依赖，保留真实zip/unzip转换及其余全部门槛；语法、五项matrix测试和ship gates通过，新Go双架构运行/扫描/签名尚待实际完成。见[原始失败与修复/派发收据](evidence/go-unzip-ci-fix/MANIFEST.json)。
+
+本次push自动全量请求`41142599053`在新鲜确认尚无原生构建后只取消一次，最终completed/cancelled，没有中断已开始工作。随后只派发一次Go1.27正常新建，实际绑定8af/main/attempt1的run`41142870861`、job`124361678277`；旧不完整Go索引没有恢复授权。Node18、Ruby3.2已开始各自原有完整恢复，Node20原队列保留。现代Go镜像的独立采用仍归w8/m91，不增加本项计数。
+
+当前树只增加了这一个安装token；旧八项镜像实际已通过同一真实解压门槛，签名/配方原文仍保留。采用守卫只批准完整旧、新`install.sh`哈希之间的精确兼容，限定原18个已准入历史producer，其他配方、文件集合与producer到verifier的一致性仍严格；没有向本项来源集合加入83c或8af。见[明确批准、策略与八项完整重放](evidence/unzip-exact-recipe-compatibility/MANIFEST.json)。隔离正例及四项拒绝控制、实际未满11项的采用拒绝均通过，60个原文件哈希经根复核不变；context保持8/11。最初[批准消息捕获](evidence/unzip-initial-approval-capture.json)与随后根批准的追加关联均保留，不回写先前记录。实际pin接入、六项应用验收与生产rollout继续开放。

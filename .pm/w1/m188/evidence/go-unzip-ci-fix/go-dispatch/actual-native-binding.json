@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-30T23:13:19.804416+00:00",
+  "run_id": 41142870861,
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "run_attempt": 1,
+  "tag": "golang-1.27-bookworm",
+  "job_id": 124361678277,
+  "metadata_only": true,
+  "run": {
+    "file": "/private/tmp/bex-m188-go-unzip-dispatch/first-native-run.json",
+    "sha256": "f00ba7db5aeab857bffe702f445edc42663560054637c8144119d80de450c28a",
+    "bytes": 11682
+  },
+  "jobs": {
+    "file": "/private/tmp/bex-m188-go-unzip-dispatch/first-native-jobs.json",
+    "sha256": "884c80ea0657dbeab6d6db9029483189e317c9d1fc1fc875d973940519388d33",
+    "bytes": 2885
+  }
+}

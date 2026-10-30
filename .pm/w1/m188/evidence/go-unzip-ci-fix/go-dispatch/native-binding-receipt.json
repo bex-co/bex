@@ -1,0 +1,45 @@
+{
+  "schema": "bex.modern-go.normal-build-dispatch-native-binding/v1",
+  "at": "2026-10-30T23:14:04.239888+00:00",
+  "run_id": 41142870861,
+  "job_id": 124361678277,
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "run_attempt": 1,
+  "tag": "golang-1.27-bookworm",
+  "native_status_at_first_binding": "queued",
+  "normal_build_required_no_recovery_entry": true,
+  "actual_build_gate_signing_success_not_claimed": true,
+  "source_predicate": {
+    "file": "/tmp/bex-m188-go-unzip-dispatch/source-predicate.json",
+    "sha256": "7722d5002137b603118ef9100625d1ef21f640717633f51b7a138ae4d5483e01",
+    "bytes": 1038
+  },
+  "first_native_binding": {
+    "file": "/tmp/bex-m188-go-unzip-dispatch/actual-native-binding.json",
+    "sha256": "e1b68387a51e9af92f7e92ecfcd471b46853e136033e91a794c4332d6dc1768b",
+    "bytes": 621
+  },
+  "actual_run_head": {
+    "file": "/tmp/bex-m188-go-unzip-dispatch/actual-run-head.json",
+    "sha256": "2df93f07bbad52eb34e66688f1b14c8a77b9e9ad05e97d954cef2034c024199d",
+    "bytes": 449
+  },
+  "dispatch_result": {
+    "file": "/tmp/bex-m188-go-unzip-dispatch/dispatch-result.json",
+    "sha256": "b84a589e2a91ff0e67dcdc571615e179fac5fc04c5428df35fdecd1e4d0abd00",
+    "bytes": 1851
+  },
+  "dispatch_input": {
+    "file": "/tmp/bex-m188-go-unzip-dispatch/dispatch-input.json",
+    "sha256": "5ff734d038cbc2c147a0bfd10257a5ab02a51aa3f37d0323b4dab85c025ef804",
+    "bytes": 77
+  },
+  "prior_own_auto_terminal": {
+    "file": "/tmp/bex-m188-unzip-auto-8af93065/terminal-confirmation.json",
+    "sha256": "2c6a8558b082ad09c582831d2795a89651561538f50c691228c2b8b1803542b4",
+    "bytes": 716
+  },
+  "metadata_only_no_legacy_source_policy_append": true,
+  "legacy_aggregate_sha256_at_binding": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "mutable_observer_file_excluded_from_frozen_custody": "/tmp/bex-m188-go-unzip-dispatch/modern-go-status.json"
+}

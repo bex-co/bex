@@ -1,0 +1,52 @@
+{
+  "job_id": 124104688590,
+  "run_id": 41067572282,
+  "fetched_at": "2026-10-30T23:05:20.279944+00:00",
+  "attempts": 1,
+  "exit": 0,
+  "stopped": null,
+  "elapsed_seconds": 3.612,
+  "artifacts": {
+    "out": {
+      "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw",
+      "bytes": 1127411,
+      "sha256": "358de18a031de896553c2b738554b9bb4f3f90f60947e1e84c641486b9d7b704"
+    },
+    "err": {
+      "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/download.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "gzip": {
+      "path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw.gz",
+      "bytes": 156826,
+      "sha256": "0af22418264a92296e7a4bb576e5d4cfdd82babd49482d937b5adc21624e6a91"
+    }
+  },
+  "snapshot": {
+    "path": "/tmp/bex-m188-publisher-job-snapshots/124104688590-7944900d5cbdf38701ed04fd6b9db49482ce2c9783e3a7adf989166689ebe530.json",
+    "sha256": "7944900d5cbdf38701ed04fd6b9db49482ce2c9783e3a7adf989166689ebe530"
+  },
+  "snapshot_keys": [
+    "id",
+    "run_id",
+    "workflow_name",
+    "head_branch",
+    "run_url",
+    "run_attempt",
+    "node_id",
+    "head_sha",
+    "url",
+    "html_url",
+    "status",
+    "conclusion",
+    "created_at",
+    "started_at",
+    "completed_at",
+    "name",
+    "steps",
+    "check_run_url",
+    "labels",
+    "runner_id"
+  ]
+}

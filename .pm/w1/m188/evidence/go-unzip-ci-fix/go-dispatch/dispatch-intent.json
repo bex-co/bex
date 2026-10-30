@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-30T23:10:45.314459+00:00",
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "tag": "golang-1.27-bookworm",
+  "maximum_dispatch_posts": 1,
+  "normal_build_required": true,
+  "root_approval": "One exact8af Go-only dispatch, no legacy source-policy append or promotion."
+}

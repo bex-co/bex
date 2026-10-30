@@ -1,0 +1,173 @@
+{
+  "schema": "bex.m188.exact-unzip-historical-recipe-regressions/v1",
+  "at": "2026-10-30T23:12:15.278835+00:00",
+  "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+  "guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "canonical_workflow_source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "canonical_workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "activation": {
+    "file": "/tmp/bex-m188-unzip-compatibility-activation.json",
+    "sha256": "53cba2c469de42d8c0f60f46d4046b010bd30e7b17dc461769740ed930a25d3e"
+  },
+  "context_file": "/tmp/bex-m188-published-acceptance.json",
+  "context_sha256": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "aggregate_context_unchanged": true,
+  "source_roles_unchanged": true,
+  "accepted_count_unchanged": 8,
+  "all8_full_candidate_guards_passed": true,
+  "results": [
+    {
+      "candidate": "node-14-bullseye",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "python-3.7-bullseye",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "node-16-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "python-3.8-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "c8ca76473129d092a8d74ada5e09c5c4705987cd"
+      ],
+      "proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "python-3.10-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "proof_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "python-3.9-bookworm",
+      "passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "proof_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "ruby-3.0-bullseye",
+      "passed": true,
+      "sources": [
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "proof_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    },
+    {
+      "candidate": "ruby-3.1-bookworm",
+      "passed": true,
+      "sources": [
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      ],
+      "proof_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+      "execution": "Actual FULL PASS printed by first attempt before isolated-path harness assertion; no replay in resumed control pass."
+    }
+  ],
+  "isolated_current_tree_controls": {
+    "candidate": "ruby-3.1-bookworm",
+    "positive_and4_semantic_rejections": [
+      {
+        "name": "isolated_current_tree_positive",
+        "passed": true,
+        "scope": "Full unchanged accepted Ruby3.1 candidate and exact reviewed new install in isolated copy; linked immutable repo metadata/proofs only. No shared repository mutations."
+      },
+      {
+        "name": "unrelated_current_install_change",
+        "passed": true,
+        "expected_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "actual_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "scope": "Current install whole-file hash changed beyond reviewed one-token delta."
+      },
+      {
+        "name": "wrong_historical_install_blob_mapping",
+        "passed": true,
+        "expected_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "actual_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "scope": "Policy mutation to wrong historical whole-file digest; actual git producer blob unchanged and same full validation branch rejects."
+      },
+      {
+        "name": "unapproved_historical_producer_mapping",
+        "passed": true,
+        "expected_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "actual_error": "publisher recipe differs from reviewed current file: deploy/native-base/install.sh",
+        "scope": "Policy mutation removing actual historical producer from frozen compatibility set; original candidate source and all crypto retained."
+      },
+      {
+        "name": "other_recipe_file_change",
+        "passed": true,
+        "expected_error": "publisher recipe differs from reviewed current file: deploy/native-base/Dockerfile",
+        "actual_error": "publisher recipe differs from reviewed current file: deploy/native-base/Dockerfile",
+        "scope": "An unrelated nonMD recipe file changed in isolated copy, proving no broad recipe bypass."
+      }
+    ],
+    "shared_repository_edits": false,
+    "temporary_copy_cleaned": true,
+    "historical_blob_and_producer_mapping_controls_are_explicit_policy_mutations": true
+  },
+  "all11_adoption_copy_refusal": {
+    "passed": true,
+    "attempted_path": "/tmp/bex-m188-unzip-compatibility-adoption-must-not-exist",
+    "exit_code": 1,
+    "stderr": "REFUSING adoption copies: receipt is incomplete; all 11 independently verified published candidates are required",
+    "output_directory_absent": true
+  },
+  "plan": {
+    "file": "/tmp/bex-m188-adoption-plan.json",
+    "sha256": "4c6bf718619c8da229afd566ba68f6bf16e12683a6b0d6db5c7e7a591a310088",
+    "verified_count": 8,
+    "complete_receipt_available": false,
+    "matrix_equal": true
+  },
+  "all_protected_prior59_plus7a4_guard_unchanged": true,
+  "execution_chronology": {
+    "first_attempt_script": "/tmp/bex-m188-revalidate-unzip-compatibility.py",
+    "first_attempt_script_sha256": "4588c28e4f7c4568668e4fcadb6ed26386af1db6dd124fd76d348d8df7e3c657",
+    "all8_full_checks_completed_before_harness_path_failure": true,
+    "harness_failure": "macOS /var and /private/var literal paths differed; resolved paths match. No negative control had run yet.",
+    "resumed_only_isolated_controls": true,
+    "actual_incomplete_refusal_rechecked": true
+  },
+  "root_owned_approval": {
+    "file": "/tmp/bex-m188-unzip-guard-root-approval.json",
+    "sha256": "35fbdafe9802935faf0f42fa9586cd8b8b29b79cd041a8e8eae4d9ae89f2994e"
+  },
+  "add_only_approval_activation_link": {
+    "file": "/tmp/bex-m188-unzip-compatibility-root-approval-link.json",
+    "sha256": "d8236bbcd8a18f37d7e9bcd39a042c76d525bc15a9add45d1d9e0d5899e73f90"
+  },
+  "scope": "One authorized full8 source/crypto/semantic regression, real incomplete11 refusal and isolated-tree full-branch tests. No promotion/adoption/source-role/aggregate/context/proof/shared-repository/board/remote mutations."
+}

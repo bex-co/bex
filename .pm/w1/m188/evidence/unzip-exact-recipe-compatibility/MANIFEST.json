@@ -1,0 +1,133 @@
+{
+  "schema": "bex.m188.immutable-archive/v2",
+  "created_at": "2026-10-30T23:14:05.982762+00:00",
+  "scope": "Exact approved historic install compatibility only; source roles/context/eight accepted candidates unchanged, no adoption or promotion",
+  "files": [
+    {
+      "path": "root-approval.json",
+      "source_path": "/tmp/bex-m188-unzip-guard-root-approval.json",
+      "bytes": 1715,
+      "sha256": "35fbdafe9802935faf0f42fa9586cd8b8b29b79cd041a8e8eae4d9ae89f2994e",
+      "encoding": "identity",
+      "original_bytes": 1715,
+      "original_sha256": "35fbdafe9802935faf0f42fa9586cd8b8b29b79cd041a8e8eae4d9ae89f2994e"
+    },
+    {
+      "path": "activation.json",
+      "source_path": "/tmp/bex-m188-unzip-compatibility-activation.json",
+      "bytes": 13679,
+      "sha256": "53cba2c469de42d8c0f60f46d4046b010bd30e7b17dc461769740ed930a25d3e",
+      "encoding": "identity",
+      "original_bytes": 13679,
+      "original_sha256": "53cba2c469de42d8c0f60f46d4046b010bd30e7b17dc461769740ed930a25d3e"
+    },
+    {
+      "path": "approval-activation-link.json",
+      "source_path": "/tmp/bex-m188-unzip-compatibility-root-approval-link.json",
+      "bytes": 849,
+      "sha256": "d8236bbcd8a18f37d7e9bcd39a042c76d525bc15a9add45d1d9e0d5899e73f90",
+      "encoding": "identity",
+      "original_bytes": 849,
+      "original_sha256": "d8236bbcd8a18f37d7e9bcd39a042c76d525bc15a9add45d1d9e0d5899e73f90"
+    },
+    {
+      "path": "regressions.json",
+      "source_path": "/tmp/bex-m188-unzip-compatibility-regressions.json",
+      "bytes": 8469,
+      "sha256": "674a8f85f991cc335d796f6b8087dea895e6545bc2de1705c34fd07ae0f91680",
+      "encoding": "identity",
+      "original_bytes": 8469,
+      "original_sha256": "674a8f85f991cc335d796f6b8087dea895e6545bc2de1705c34fd07ae0f91680"
+    },
+    {
+      "path": "root-audit.json",
+      "source_path": "/tmp/bex-m188-unzip-compatibility-root-audit.json",
+      "bytes": 540,
+      "sha256": "bc5ab976354ef9d6ccf78f679b3a23e9298f8f092864e362cbd7bc9462540eb9",
+      "encoding": "identity",
+      "original_bytes": 540,
+      "original_sha256": "bc5ab976354ef9d6ccf78f679b3a23e9298f8f092864e362cbd7bc9462540eb9"
+    },
+    {
+      "path": "guard-before.py.gz",
+      "source_path": "/tmp/bex-m188-guard-snapshots/7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa.py",
+      "bytes": 21941,
+      "sha256": "3e48452b5f9b827635be27c597de72ec29ba922bfd61d9d381d5f06b1dc350a4",
+      "encoding": "gzip",
+      "original_bytes": 84323,
+      "original_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa"
+    },
+    {
+      "path": "guard-after.py.gz",
+      "source_path": "/tmp/bex-m188-guard-snapshots/0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+      "bytes": 22371,
+      "sha256": "a249a9e9354fc8220070db7421112451f0c7b0ca7d3c77370dced40be21579c3",
+      "encoding": "gzip",
+      "original_bytes": 86041,
+      "original_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107"
+    },
+    {
+      "path": "context.json.gz",
+      "source_path": "/tmp/bex-m188-published-acceptance.json",
+      "bytes": 16873,
+      "sha256": "3889412ecfa42a175ae02613ecc48bfddcc41992ef4e17176dc43c8d302ac908",
+      "encoding": "gzip",
+      "original_bytes": 143154,
+      "original_sha256": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1"
+    },
+    {
+      "path": "adoption-plan.json",
+      "source_path": "/tmp/bex-m188-adoption-plan.json",
+      "bytes": 17170,
+      "sha256": "4c6bf718619c8da229afd566ba68f6bf16e12683a6b0d6db5c7e7a591a310088",
+      "encoding": "identity",
+      "original_bytes": 17170,
+      "original_sha256": "4c6bf718619c8da229afd566ba68f6bf16e12683a6b0d6db5c7e7a591a310088"
+    },
+    {
+      "path": "executed-first-harness.py",
+      "source_path": "/tmp/bex-m188-revalidate-unzip-compatibility.py",
+      "bytes": 6721,
+      "sha256": "4588c28e4f7c4568668e4fcadb6ed26386af1db6dd124fd76d348d8df7e3c657",
+      "encoding": "identity",
+      "original_bytes": 6721,
+      "original_sha256": "4588c28e4f7c4568668e4fcadb6ed26386af1db6dd124fd76d348d8df7e3c657"
+    },
+    {
+      "path": "proposal/guard.diff",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/guard.diff",
+      "bytes": 3103,
+      "sha256": "ab49e21a9af72244c5c2c5a13764167c3c0f60b3ccc4926c75a0e09eb9d62275",
+      "encoding": "identity",
+      "original_bytes": 3103,
+      "original_sha256": "ab49e21a9af72244c5c2c5a13764167c3c0f60b3ccc4926c75a0e09eb9d62275"
+    },
+    {
+      "path": "proposal/install.historical-old.sh",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/install.historical-old.sh",
+      "bytes": 1997,
+      "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "encoding": "identity",
+      "original_bytes": 1997,
+      "original_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+    },
+    {
+      "path": "proposal/install.reviewed-new.sh",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/install.reviewed-new.sh",
+      "bytes": 2003,
+      "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "encoding": "identity",
+      "original_bytes": 2003,
+      "original_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462"
+    },
+    {
+      "path": "proposal/proposal.json",
+      "source_path": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/proposal.json",
+      "bytes": 4513,
+      "sha256": "6c3b08cd7d4e2d3f4d8bd233d830ddb303bf67b965b643861031e4efcc1fa536",
+      "encoding": "identity",
+      "original_bytes": 4513,
+      "original_sha256": "6c3b08cd7d4e2d3f4d8bd233d830ddb303bf67b965b643861031e4efcc1fa536"
+    }
+  ]
+}

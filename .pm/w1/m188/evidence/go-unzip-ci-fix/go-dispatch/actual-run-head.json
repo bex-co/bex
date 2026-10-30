@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T23:11:04.510172+00:00",
+  "run_id": 41142870861,
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "run_attempt": 1,
+  "event": "workflow_dispatch",
+  "branch": "main",
+  "created_at": "2026-10-30T23:10:46Z",
+  "requested_tag": "golang-1.27-bookworm",
+  "native_binding_pending": true,
+  "discovery_sha256": "6a9192728244ec2022c1aa7b8711af5331459f17e04d4260a82ba8a66d89a0f4",
+  "no_legacy_source_policy_append": true
+}

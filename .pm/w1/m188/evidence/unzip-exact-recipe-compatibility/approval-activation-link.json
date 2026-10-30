@@ -1,0 +1,15 @@
+{
+  "schema": "bex.m188.add-only-exact-root-approval-activation-link/v1",
+  "recorded_at": "2026-10-30T23:11:21.585651+00:00",
+  "root_owned_approval": {
+    "file": "/tmp/bex-m188-unzip-guard-root-approval.json",
+    "sha256": "35fbdafe9802935faf0f42fa9586cd8b8b29b79cd041a8e8eae4d9ae89f2994e"
+  },
+  "exact_activated_guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "activation": {
+    "file": "/tmp/bex-m188-unzip-compatibility-activation.json",
+    "sha256": "53cba2c469de42d8c0f60f46d4046b010bd30e7b17dc461769740ed930a25d3e"
+  },
+  "chronology": "Activation followed explicit root instruction in session; this add-only link records the subsequently supplied root-owned approval file. Original activation bytes and earlier instruction record remain unchanged.",
+  "no_source_role_or_aggregate_change": true
+}

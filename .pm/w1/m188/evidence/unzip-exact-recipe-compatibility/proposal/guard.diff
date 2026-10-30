@@ -1,0 +1,32 @@
+--- ACTIVE-7a4a
++++ INACTIVE-0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107
+@@ -19,6 +19,12 @@
+ APPROVED_SOURCES = APPROVED_PRODUCER_SOURCES | APPROVED_VERIFICATION_SOURCES
+ PRODUCER_RUNTIME_RESTRICTIONS = {'49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11': {'node-18-bookworm'}}
+ SOURCE_MODEL = 'separate_image_producer_and_signature_verification/v2'
++
++# Exact additive tool repair permits historical signed recipes beside this current tree.
++INSTALL_RECIPE_PATH = 'deploy/native-base/install.sh'
++HISTORICAL_INSTALL_SHA256 = 'd3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8'
++REVIEWED_CURRENT_INSTALL_SHA256 = 'fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462'
++HISTORICAL_INSTALL_PRODUCERS = frozenset(['21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314', '3990b9acf35f62ba1d702387bc2061a83342b2b3', '4330878c280bc9748444c8e1e50ff7388df1228a', '4462ee030984637bb765ae560b6ffe38c71f3af4', '49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11', '5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e', '5e89a6076905a91b4496fe36a476774c3f50585c', '6fd4f45536a2574c404b05539dacb6aaafb781f8', '846a56038319f1b5c212d1fcda8291d20e49c2b0', '99f95c17afd5709365869dfff1408265e5d514ec', 'bfdeb62211ae5c4a875f5474a51c63c036e1d4dd', 'c8b90f83c289d5d11502c2f0c26a183630dcdec6', 'c8ca76473129d092a8d74ada5e09c5c4705987cd', 'd52ebeac794ad48b38e5a42b3564943aaf50ad41', 'd94787bb4fb93751e485fe6d47946d82cc6da052', 'd95645e9f054238ec53a4932fac51560ffedd1f8', 'e47a2c6157339a3a786118866f28b4ee8b619774', 'fd358d2010f8b5e2715250d7148a505ba12c1cb6'])
+ WORKFLOW = '.github/workflows/native-base-image.yml'
+ LOCAL_GREEN_PROOFS = {
+     'portable-node20-compiler': '1df61ff850304884c6aade1130fc79a6cab8c77436be306d0c7f150f42b7eeaa',
+@@ -766,7 +772,15 @@
+         mode, kind, objectid, path = entry.split(None, 3)
+         if not path.endswith('.md'):
+             local = ROOT / path
+-            check(local.is_file() and hashlib.sha1(('blob ' + str(local.stat().st_size) + '\0').encode() + local.read_bytes()).hexdigest() == objectid, 'publisher recipe differs from reviewed current file: ' + path)
++            check(local.is_file(), 'publisher recipe file is missing: ' + path)
++            current_bytes = local.read_bytes()
++            same_blob = hashlib.sha1(('blob ' + str(len(current_bytes)) + '\0').encode() + current_bytes).hexdigest() == objectid
++            compatible_install = (
++                path == INSTALL_RECIPE_PATH and sha in HISTORICAL_INSTALL_PRODUCERS
++                and hashlib.sha256(current_bytes).hexdigest() == REVIEWED_CURRENT_INSTALL_SHA256
++                and hashlib.sha256(subprocess.check_output(['git', '-C', str(ROOT), 'cat-file', 'blob', objectid])).hexdigest() == HISTORICAL_INSTALL_SHA256
++            )
++            check(same_blob or compatible_install, 'publisher recipe differs from reviewed current file: ' + path)
+     check(set(verified.get('platforms', {})) == {'amd64', 'arm64'} and set(verified.get('scans', {})) == {'amd64', 'arm64'}, 'missing architecture evidence')
+     for arch in ('amd64', 'arm64'):
+         platform = verified['platforms'][arch]

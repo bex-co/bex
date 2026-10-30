@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.source-role-admission/v1",
+  "checked_at": "2026-10-30T23:08:41.125598+00:00",
+  "source_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "compared_to_root_reviewed_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "non_pm_changed_paths": [
+    "deploy/native-base/install.sh"
+  ],
+  "install": {
+    "old_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "new_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+    "exact_change": "Only swig zip to swig zip unzip in existing --no-install-recommends apt install list"
+  },
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "all_other_non_pm_blobs_identical": true,
+  "all_27_upstream_matrix_identical": true,
+  "recovery_catalog_unchanged": true,
+  "admitted": true,
+  "scope": "Root-reviewed modern Go1.27 normal rebuild source only; no legacy artifact promotion, no change to eight accepted proofs, no legacy source-policy append",
+  "reason": "Actual completed Go1.27 ARM64 unzip FileNotFoundError; install required Render utility explicitly, keep full real validation. AMD64 sibling canceled. Old built index is not eligible recovery."
+}
