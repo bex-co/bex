@@ -1,0 +1,38 @@
+{
+  "scope": "Syft transport correction and exact temporary recovery only; no new supplier approval or hosted adoption",
+  "failed_run": 41063737101,
+  "failed_job": 124091095086,
+  "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "failure": "Syft direct-registry layer read failed with peer HTTP/2 PROTOCOL_ERROR at17:21:12UTC",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "anonymous_raw_index_sha_verified": true,
+  "all_pre_signing_steps_successful": [
+    "Set up job",
+    "Set up runner",
+    "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+    "log in to GHCR with bounded transport retries",
+    "select a reviewed recovery artifact when its recipe is unchanged",
+    "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+    "Run digest=\"${RECOVERED:-$BUILT}\"",
+    "verify real native tool transformations without network on both architectures",
+    "prepare bounded full-scan retries",
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+    "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26"
+  ],
+  "same_non_document_factory_recipe": true,
+  "reviews": {
+    "reuse": "cli090 clean",
+    "quality": "fixture_quality clean",
+    "efficiency": "disk221 clean"
+  },
+  "remaining": "actual corrected CI replay, full strict artifact review, discovery cleanup, complete27catalog/adoption and all original hosted DoDs",
+  "proposal_workflow_change": "existing two scan GODEBUG settings moved to build-job env; Trivy/Syft/Cosign inherit HTTP1 with TLS checks",
+  "proposal_workflow_sha256": "5957fb342f716f34b73aaf503ca3a3ac34e5f2448bc27ad9edfbeedec2cfcdd8",
+  "proposal_recovery_data_sha256": "479e03e822b5e1b82510960fc642bd07d95801f7b7b35d6ec514745f1d4198cd",
+  "outcome": "Concurrent peer fix already met this transport correction; job-env proposal was superseded before push. This commit retains evidence only.",
+  "landed_fix_commit": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "landed_workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659"
+}

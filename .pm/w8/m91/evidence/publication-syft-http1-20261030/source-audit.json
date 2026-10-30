@@ -1,0 +1,245 @@
+{
+  "at": "2026-10-30T17:33:47.866483+00:00",
+  "scope": "Independent primary-source transport audit and QUALITY review only; no Syft runtime rerun, candidate payload pull, auth, CI, Docker, repository or Git mutation. Metadata-only all27 watch continues separately.",
+  "finding": "CONFIRMED_FROM_SOURCE: inherited build-job GODEBUG=http2client=0 reaches observed Syft1.51.1 direct-registry transport and layer reads. TLS verification, digest/size checks, architecture selection and full SPDX command remain unchanged.",
+  "immutable_sources": {
+    "syft": {
+      "repository": "anchore/syft",
+      "tag": "v1.51.1",
+      "commit": "91a0032987d91b7411b52f6f5c185c5e7f775495"
+    },
+    "stereoscope": {
+      "repository": "anchore/stereoscope",
+      "tag": "v0.3.1",
+      "commit": "85f62fd9980730978e6ee005c065b7c10773a491"
+    },
+    "gcr": {
+      "repository": "google/go-containerregistry",
+      "tag": "v0.21.9",
+      "commit": "7b32099eb119a9fdd715d84ef18c088cbe434c7f"
+    },
+    "go": {
+      "repository": "golang/go",
+      "tag": "go1.26.3",
+      "commit": "2dc996f71b0ebafb77e64433e58333e049488a3c"
+    }
+  },
+  "source_evidence": "source-line-evidence.json",
+  "failure_evidence": "failure-line-evidence.json",
+  "workflow_quality_review": {
+    "parsed_workflow_equal_after_exact_env_relocation": true,
+    "removed_scan_env_fields": 2,
+    "new_job_env": {
+      "GODEBUG": "http2client=0"
+    },
+    "workflow_before_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+    "workflow_after_sha256": "5957fb342f716f34b73aaf503ca3a3ac34e5f2448bc27ad9edfbeedec2cfcdd8",
+    "quality_review": "Clean. Shared job-scoped transport setting removes duplicated scan settings and covers direct Syft invocation; no gate, run, with, matrix, artifact, recipe or identity changes.",
+    "execution_note": "Initial check with default python3 could not import yaml. Reused the existing private acceptance venv interpreter; no dependency installed."
+  },
+  "environment_inheritance_source": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idenv",
+  "environment_inheritance_conclusion": "Job env applies to every step unless overridden by the same step env name. Direct Syft step sets only REF and PRODUCER, so normal shell child inheritance retains GODEBUG.",
+  "existing_actual_controls_reused": {
+    ".pm/w8/m91/evidence/publication-http1-20261030/receipt.json": {
+      "bytes": 2389,
+      "sha256": "c8ee5fc76bd9287c591a819d2fd6229b2774062e6b8ba6299513a486ac8eeaf8"
+    },
+    ".pm/w8/m91/evidence/publication-http1-20261030/http1.stdout.json": {
+      "bytes": 418,
+      "sha256": "1f128da723d4255798f193fcfcfd9450d095dd4ae7896f2e30f3df78b70bb74f"
+    },
+    ".pm/w8/m91/evidence/publication-http1-20261030/default.stdout.json": {
+      "bytes": 407,
+      "sha256": "81c4b4dd3556c73e1d1b9aeccbcd319c4db1b6de6be83d0d1945a42a7e25790a"
+    },
+    ".pm/w8/m91/evidence/publication-http1-20261030/action-and-source-proof.json": {
+      "bytes": 2630,
+      "sha256": "7b9ac4995a9dc15ac7dc182407be3762ef88923f9cbda01ea974b6244bb787c8"
+    },
+    ".pm/w8/m91/evidence/publication-http1-20261030/MANIFEST.json": {
+      "bytes": 4003,
+      "sha256": "d49cdba8c2dce85478fa638a482e50d5d5ab606b0d69c046a881d63cb55dd85a"
+    }
+  },
+  "existing_control_scope": "Prior actual double-clone HTTP2/HTTP1 negotiation, TLS validation, untrusted-CA rejection and tampered-digest rejection are retained separately; no new actual Syft success inferred.",
+  "limits": [
+    "Actual installer log establishes Syft1.51.1; YAML pins the action, not optional syft-version.",
+    "Go1.26.3 is exact module minimum; release binary compiled Go patch was not attested or executable downloaded.",
+    "Corrected actual workflow/full scans/SBOM/signing/anonymous qualification still required; no gate waiver."
+  ],
+  "preparation_errors_retained": [
+    "Initial structural check used default python3 without PyYAML; existing private venv was reused, no install.",
+    "Initial source-line extraction had two out-of-range endpoints and failed before writing its receipt; corrected to actual source line bounds.",
+    "Two guessed source paths returned404; actual provider route found in retained providers.go."
+  ],
+  "artifacts": {
+    "failure-line-evidence.json": {
+      "bytes": 851,
+      "sha256": "d4390aa0c1527506ce7380ae972dab4b9c833719b8898447584041eeb1646093"
+    },
+    "fetch-manifest.json": {
+      "bytes": 9264,
+      "sha256": "083d253ecfcf9d9fa02d0aeba95882940cbe4de69cf767a5beeab1b7b159fe8f"
+    },
+    "gcr-tag-ref.json": {
+      "bytes": 365,
+      "sha256": "2cae37764189c1cad66ccd9c38d8f039f3f82a64a107e75fcbcc224bee21a1a7"
+    },
+    "go-tag-ref.json": {
+      "bytes": 331,
+      "sha256": "09b8c8ab19cfcc27c835447068ebd11a7321d1396a9dd2e8fcc00364e5087b1d"
+    },
+    "refs.json": {
+      "bytes": 546,
+      "sha256": "d0bf9ec6df33293867c038f8954306ad0b30ee2403c25fd6f13efddc4f04b696"
+    },
+    "source-line-evidence.json": {
+      "bytes": 25324,
+      "sha256": "6d86d16d48d464adae15048ab87a2c1d042e0d0b073b4e2c6be3eca56a505424"
+    },
+    "sources/download-syft-action.yml": {
+      "bytes": 502,
+      "sha256": "7713f2a7187fcda00f449002e54cbe4d20fb3282d8d12339f21f4106ce019faf"
+    },
+    "sources/gcr/internal/verify/verify.go": {
+      "bytes": 3508,
+      "sha256": "1283ba60f00badd9b5cc29374773b8efd268f3eba66737ea24ae2cd33c571368"
+    },
+    "sources/gcr/pkg/v1/remote/descriptor.go": {
+      "bytes": 6887,
+      "sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655"
+    },
+    "sources/gcr/pkg/v1/remote/fetcher.go": {
+      "bytes": 12898,
+      "sha256": "e980f142c8e6fa32c95fdfc5be5241d8fb0127ad1021563b5495beff11dbaaf9"
+    },
+    "sources/gcr/pkg/v1/remote/image.go": {
+      "bytes": 7483,
+      "sha256": "c1881c3971c4d685bc077b449088fa0837234572e34f6e8526cf2a56f37c9c70"
+    },
+    "sources/gcr/pkg/v1/remote/layer.go": {
+      "bytes": 2443,
+      "sha256": "4e1237f02c92d9257391eae0bde87732e5784441163959f84e192c55c1007cbf"
+    },
+    "sources/gcr/pkg/v1/remote/options.go": {
+      "bytes": 12282,
+      "sha256": "758a246f24b8060e198fa99ab085a587d75a94a2cf6162be08888e40f47f25ba"
+    },
+    "sources/gcr/pkg/v1/remote/transport/transport.go": {
+      "bytes": 3759,
+      "sha256": "f6506a237b5f6c9c06a42e31a243c0c057387ad2f4cdf6f4363a2581af844d45"
+    },
+    "sources/go/src/net/http/doc.go": {
+      "bytes": 3226,
+      "sha256": "5c88441de20755d855ddd90b47d7b400a0b46b5bcd18e731f27c03cd89874634"
+    },
+    "sources/go/src/net/http/transport.go": {
+      "bytes": 100272,
+      "sha256": "1c170ec3581321bd19ccd1b15863f46b16dc749ac6d54d00f5e97f7ffa2ccb5f"
+    },
+    "sources/stereoscope/client.go": {
+      "bytes": 3721,
+      "sha256": "ae13c88a52a628c7660cc44c1a52caf6d1cee63ccd6649cb4f0fe7f9af00761d"
+    },
+    "sources/stereoscope/go.mod": {
+      "bytes": 6093,
+      "sha256": "be234afbfdfa5fb7e7474fd9d265d5df168b4aa178333d5997d3cd01a586951d"
+    },
+    "sources/stereoscope/option.go": {
+      "bytes": 749,
+      "sha256": "cdc16c4f008a07a2dd98965ff3eda4981082b09e206681f44b4f3cd0c2b57e1a"
+    },
+    "sources/stereoscope/pkg/image/image.go": {
+      "bytes": 12176,
+      "sha256": "63caf77ca035b47d2796f1e7995ae16c551b311b4728e34edbe8223058f25699"
+    },
+    "sources/stereoscope/pkg/image/layer.go": {
+      "bytes": 20500,
+      "sha256": "c6b0c069fe39e22e044d1babdf89042121acefd960f83ac345a4b0d8cb498b62"
+    },
+    "sources/stereoscope/pkg/image/oci/registry_provider.go": {
+      "bytes": 8991,
+      "sha256": "94136fd5be0432ce76ab05b1714848b8467a5301ab5eaa9e97c10f2cbeec0a33"
+    },
+    "sources/stereoscope/pkg/image/registry_options.go": {
+      "bytes": 5088,
+      "sha256": "ee159cddfe0ee383e95eeb9910e2302450653fd5a29f82988814b25598079d64"
+    },
+    "sources/stereoscope/providers.go": {
+      "bytes": 2331,
+      "sha256": "e652d2f84bdf99b411a6b82391b2cf27f6fe78c4c3723d38712d7a18bf66d7fb"
+    },
+    "sources/syft/.github/actions/bootstrap/action.yaml": {
+      "bytes": 2985,
+      "sha256": "4ae62a1ec03be6debf61a2173d8b3ed6f8f41baf3b4361be3318320f402ee7ba"
+    },
+    "sources/syft/.github/workflows/release.yaml": {
+      "bytes": 6662,
+      "sha256": "671637c174ae688d21705db54d3572507b6e380e9ae96009af540cd5d2783a7a"
+    },
+    "sources/syft/.goreleaser.yaml": {
+      "bytes": 5236,
+      "sha256": "4803517aab67c6713fd6f8e33b816258947101017113f92faad9c48d875f59fb"
+    },
+    "sources/syft/cmd/syft/internal/options/registry.go": {
+      "bytes": 4483,
+      "sha256": "17d58c4288b4bcee48872964d4c4e4ea65dc7b64a157d0e824c9a6c5750fa3eb"
+    },
+    "sources/syft/go.mod": {
+      "bytes": 16488,
+      "sha256": "ab7a0d5a1894aed59113a3bb903ed05cbe5b0ad83d08049953d183770f63a226"
+    },
+    "sources/syft/syft/get_source.go": {
+      "bytes": 2285,
+      "sha256": "1d380426076d9f783c912fde8fb848f022ae5bb945387ec7d00bc37bf011caaf"
+    },
+    "sources/syft/syft/source/sourceproviders/source_providers.go": {
+      "bytes": 3130,
+      "sha256": "de72705c988ef20765234c0e702b316ce7b41ea7aea58065a0dbc99a3f3b7847"
+    },
+    "sources/syft/syft/source/stereoscopesource/image_source_provider.go": {
+      "bytes": 1822,
+      "sha256": "a4c2f71dc2978bdd6ed43db8075eac9662adec179f6b5783d4de907563f33c72"
+    },
+    "stereoscope-tag-object.json": {
+      "bytes": 700,
+      "sha256": "3c351849d5a0a0ebe03db81c6622f7deae72442a989463848bb047bcbb7a0707"
+    },
+    "stereoscope-tag-ref.json": {
+      "bytes": 341,
+      "sha256": "1e8d0b2dbb8cec501e3809679c4182ca4a108cb83688f92a3964e637da9092c6"
+    },
+    "stereoscope-tree.json": {
+      "bytes": 86672,
+      "sha256": "295d997e4755ebf3b4c05032e0becb28079d6e8d51d71427a429db6360cce3aa"
+    },
+    "syft-tag-object.json": {
+      "bytes": 688,
+      "sha256": "7a790c98e5752b27a073685355cf0f997b90c27943252ab55f7d5385e26efe1d"
+    },
+    "syft-tag-ref.json": {
+      "bytes": 329,
+      "sha256": "8901a36b2957ede70182d0567496e2599bb0ddce2320d69e2484e317656ed010"
+    },
+    "syft-tree.json": {
+      "bytes": 1277104,
+      "sha256": "325c93f26741568fe70f2b7e58ecdd34e63fd56b14b4ed32d6c8d3e34d9fb088"
+    },
+    "workflow-after.yml": {
+      "bytes": 12037,
+      "sha256": "5957fb342f716f34b73aaf503ca3a3ac34e5f2448bc27ad9edfbeedec2cfcdd8"
+    },
+    "workflow-before.yml": {
+      "bytes": 11989,
+      "sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    "workflow-review.json": {
+      "bytes": 704,
+      "sha256": "d76af7b23c260f4f5efcd5e24316ef816e6b1e9989ba7416eae20a041e4fe64b"
+    },
+    "workflow.diff": {
+      "bytes": 1338,
+      "sha256": "51daacad158dbcca79b9a279cb10f9d9903f474e5f90cc44367da5febd5c9af1"
+    }
+  }
+}
