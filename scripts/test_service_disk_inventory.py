@@ -46,11 +46,14 @@ class InventoryTests(unittest.TestCase):
             module.volume_names([claim])
 
     def test_platform_adoption_reports_image_ids_and_ready_replicas_only(self):
-        deployment = row("deployments", namespace="bex-system", name="bex-controller-manager", uid="deployment", generation="4", observedGeneration="4", replicas="2", updatedReplicas="2", readyReplicas="1", availableReplicas="1", containerImages="manager=ghcr.io/bex-co/bex-operator@sha256:abc;")
+        deployment = row("deployments", namespace="bex-system", name="bex-controller-manager", uid="deployment", generation="4", observedGeneration="4", replicas="2", updatedReplicas="2", readyReplicas="1", availableReplicas="1", containerImages="manager=ghcr.io/bex-co/bex-operator@sha256:abc;", diskStorageClass="hcloud-volumes-luks-bounded")
+        api = row("deployments", namespace="bex-system", name="bex-api", containerImages="api=ghcr.io/bex-co/bex-operator@sha256:abc;")
         pod = row("pods", namespace="bex-system", name="manager-one", uid="pod", phase="Running", containerImages="manager=ghcr.io/bex-co/bex-operator@sha256:abc;", containerImageIds="manager=containerd://sha256:child;", containerReady="manager=false;")
-        result = module.platform_images([deployment], [pod])
+        result = module.platform_images([deployment, api], [pod])
         self.assertEqual(result["deployments"][0]["updatedReplicas"], 2)
         self.assertEqual(result["deployments"][0]["readyReplicas"], 1)
+        self.assertEqual(result["deployments"][0]["diskStorageClass"], "hcloud-volumes-luks-bounded")
+        self.assertEqual(result["deployments"][1]["diskStorageClass"], "")
         self.assertEqual(result["pods"][0]["containerImageIds"]["manager"], "containerd://sha256:child")
         self.assertFalse(result["pods"][0]["containerReady"]["manager"])
 
