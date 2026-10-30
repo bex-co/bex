@@ -152,7 +152,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] **035** — [Phase 4: drop dual-read + delete legacy registry/static blobs](done/035.md) (ADR055 F2/F3 close) — **DONE 2026-10-29**: readiness fixed and `clean`; dual-read removed; the 5 remaining legacy Zot repos deleted after a digest-verified backup; no migrated App had a legacy S3 prefix; ADR055 F2/F3 closed ← from w2/m92 t005
 - [x] [051 — The beancount forum (Discourse multisite) answers 404 for every host](done/051.md) — **CLOSED 2026-10-29: false alarm** (the forum lives under `/forum`; every entry point returns 200; Redis blips are the single-replica gap owned by `w1/m186`) ← found during w2/035's health check
-- [ ] [052 — Delete bare-name Zot repos that no live App owns](052.md) ← follow-up of w2/035, 2026-10-29
+- [x] [052 — Delete bare-name Zot repos that no live App owns](done/052.md) — **DONE 2026-10-30**: 25 unreferenced bare repos deleted after a digest-verified backup; the 2 platform images kept; App deletion already purges its own repos
 - [x] [053 — Tenant Postgres cannot initialize on the local cluster: no CNPG → API-server egress under Calico](done/053.md) — **DONE 2026-10-30**: `mock-cluster.sh` applies a Calico GlobalNetworkPolicy equivalent; a fresh local tenant Postgres became healthy with no manual policy
 
 _(2026-09-15: `036` resolved — the three product-dead dashboard env components, plus a fourth their deletion exposed, deleted with their tests; moved to `done/036.md`.)_
