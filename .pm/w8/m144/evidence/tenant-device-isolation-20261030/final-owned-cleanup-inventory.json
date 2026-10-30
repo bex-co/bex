@@ -1,0 +1,30 @@
+{
+  "containers": {
+    "command": [
+      "docker",
+      "ps",
+      "-a",
+      "--filter",
+      "label=bex.local-proof",
+      "--format",
+      "{{.ID}} {{.Status}} {{.Names}}"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "volumes": {
+    "command": [
+      "docker",
+      "volume",
+      "ls",
+      "--filter",
+      "label=bex.local-proof",
+      "--format",
+      "{{.Name}}"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+}

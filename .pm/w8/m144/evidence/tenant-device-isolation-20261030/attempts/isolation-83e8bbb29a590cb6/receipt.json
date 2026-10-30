@@ -1,0 +1,51 @@
+{
+  "schema": "m144-local-isolation-v1",
+  "nonce": "83e8bbb29a590cb6",
+  "publishedRuntime": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "scope": "two own small local loop/LUKS volumes; no Kubernetes, cloud, real tenant, 1GiB or billing claim",
+  "beforeFreeBytes": 10129166336,
+  "renderCapabilities": [
+    "CHOWN",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "SETGID",
+    "SETUID",
+    "SYS_CHROOT"
+  ],
+  "policySourceSha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+  "holderId": "06ad47cae0b024fdf5349e6fd0fc64aa2ec5c70d4ae981472f1d07c8173a15bb",
+  "ownerId": "cea3e093b9b0df403f3e48c87ac7c9c97de46dedc4ccada9acbfcf5cbc4b0d70",
+  "ownedDevices": {
+    "loopA": "/dev/loop0",
+    "loopB": "/dev/loop1",
+    "mappingA": "m144t006-83e8bbb29a590cb6-a",
+    "mappingB": "m144t006-83e8bbb29a590cb6-b",
+    "majorA": 7,
+    "minorA": 0,
+    "filesystemBytes": 67108864,
+    "sourceImagesBytes": 167772160
+  },
+  "caplessPolicy": {
+    "Privileged": false,
+    "CapAdd": null,
+    "CapDrop": [
+      "ALL"
+    ],
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "SecurityOpt": [
+      "no-new-privileges=true"
+    ],
+    "NetworkMode": "none"
+  },
+  "caplessExit": 128,
+  "ownerFinalState": {
+    "Running": false,
+    "ExitCode": 0
+  },
+  "cleanup": {
+    "cleanupExit": 0,
+    "originalExit": 0
+  },
+  "afterFreeBytes": 10284527616
+}

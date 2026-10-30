@@ -1,0 +1,348 @@
+{
+  "prepared_at": "2026-10-30T03:11:33.245626+00:00",
+  "source_head": "c2d577293f9640245a4cc17a86fe7208de080382",
+  "state": "source-only prepared; no production authentication, HTTP, service/disk creation, upgrade or Stripe flow",
+  "fixture": {
+    "run": "cc62f8e3a1ee8b8c",
+    "name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+    "workspace": "tea-da2isimlm39c739m4ofg",
+    "disk_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk",
+    "mount": "/var/data",
+    "initial_gib": 1,
+    "grown_gib": 5,
+    "plan": "starter",
+    "max_runtime_seconds": 7200,
+    "max_estimated_usage_usd": 0.03,
+    "fixture_source_sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+    "source_repository": "https://github.com/git-fixtures/basic",
+    "branch": "master",
+    "expected_source_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "protected_existing_services": [
+      "srv-dbhtfte9e4qs73fgrfc0",
+      "srv-da40m1qii7bs73drbqlg"
+    ],
+    "historical_deleted_215_ids": [
+      "srv-dbhm79akl95s73b459i0",
+      "dsk-dbhm79akl95s73b459j0"
+    ],
+    "created_at": "2026-10-30T03:03:56.981505+00:00",
+    "name_date_utc": "20261030"
+  },
+  "minimum_resource_and_cost": {
+    "workspace": "existing tian-personal Hobby; no workspaceplan change",
+    "service": "one Starter webservice500mCPU512Mi RAM2Gi ephemeralstorage,singleinstance,noautoscale",
+    "disk": "one1Gi disk grow same disk to5Gi at/var/data; underlying existing provider minimum10GiLUKS; no extra cloud resource",
+    "service_usd_per_second": "0.000001864535768645",
+    "requested_disk_usd_per_gb_second": "0.000000066590563165905631659056",
+    "monthly_1gib_usd": 5.075,
+    "monthly_5gib_usd": 5.775,
+    "two_hour_final_size_usage_usd": 0.01582191780821918,
+    "build_usd_per_minute": 0.0035,
+    "example_two_hours_plus_four_build_minutes_usd": 0.029821917808219182,
+    "qualification": "Estimate from current committed Bex sheet, not actual invoice. Small snapshot payload after compaction; negligible HTTP egress. Budget/timegate prevents new mutations after2h; cleanup still allowed. Root must coordinate actual budget and billing readiness before filling gate."
+  },
+  "provenance": {
+    "215": "Only original note remains: production69f0b17d1fad, olddeletedStarter/service+disk1Gi, sentinel survivedrestart, full10Gi cap residual. No original215HTTPprogram found in retained source. Do not mutate/reuse its historical IDs.",
+    "program": "Fresh small Pythonprobe, original git-fixtures/basic sourcecarrier+commit reused from current approvedQAfixtures. Explicit distinction: program is new, not exact215replay.",
+    "original_221_decision": "Preserve requested-sizebilling and implement actuallogicalcap withoutnewcloudresources. No optionalpricingdecisiongate."
+  },
+  "protocol_contracts": {
+    "create": "POST/v1/services201{service,deployId}, inline serviceDetails.disk{name,mountPath,sizeGB:1}; Starter/singleinstance. Raw exactrequest SHA, redactedrequestbody and exact201response persisted before parsing; immutableownIDs exclude prebaseline/historicalIDs.",
+    "grow": "PATCH/v1/disks/{OWNdid} {sizeGB:5}200",
+    "restart": "POST/v1/services/{OWNsid}/restart",
+    "redeploy": "POST/v1/services/{OWNsid}/deploys {clearCache:do_not_clear}",
+    "snapshots": "GET/v1/disks/{OWNdid}/snapshots201; POST.../snapshots/restore200{disk}; existing signedkeyexpires24h, sameowninstance/disk only. No publicsnapshotcreate endpoint.",
+    "RESTmetrics": "/v1/metrics/disk-usage and/disk-capacity?resource=OWNsid&kind=service",
+    "GraphQL": "disk(id),service(id).disk;datastoreMetrics(query:{kind:service,resource:OWNsid,name:DISK|DISK_CAPACITY})",
+    "MCP": "get_disk,list_disks,get_datastore_metrics resourceId OWNsid kindservice;list_disk_snapshots. No mutation via MCP needed toprove coherent readback.",
+    "Blueprint": "POST/v1/blueprints/generate withONLYownserviceIds, thenvalidate returnedmanifest; requires exactlyoneentry/ownmount/requestedsize. Never apply/createBlueprint."
+  },
+  "root_gate": {
+    "file": "rollout-ready.json",
+    "state": "must remain absent until root has actual signed Ready evidence; this plan is not a gate",
+    "source_requirements_file": "rollout-requirements.json",
+    "source_requirements_sha256": "68aeb1e2a9df286f2522a1fb948c9e5a50cef35f11821219d5baf87706f48790",
+    "validator": "m144_guards.validate_release; hosted-disk.py gate calls it before create or fixture mutation",
+    "required_fields": [
+      "platform_release.image and source_commit (full digest/full 40-hex source SHA)",
+      "platform_release.backend_retention_commit=42e82fdbbfd48b879b9808af958915a3286e74c4",
+      "platform_release.operator_purge_commit=a59db2dd82c06427c2c64c8352a6b7b8ad3c4b02",
+      "platform_release.tested_operator_source_sha256: exact 12-file final make/lint map",
+      "platform_release.git_blob_sha256: exact merged 12 operator + 5 backend file map; validator hashes actual signed-source Git blobs",
+      "platform_release.signature_verification: actual exit_code=0, exact deploy.yml@main signer/issuer, workflow_sha=source_commit, hashed sanitized signature receipt",
+      "platform_release.ready_inventory_receipt: actual both bex-api and bex-controller-manager Ready/converged/runtime image IDs equal the exact signed image; global bounded StorageClass",
+      "bounded_csi_image exact digest; bounded_csi_signature_verified=true; bounded_class_global=true; all_old_csi_node_pods_terminated=true; bounded_class_active=true",
+      "bounded_csi_release: exact newly signed image/source 15ed18b94a75d5d7705f6ce195cb6caae80cb5fe containing key-guard ancestor; actual Git patchSHA 035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec; strict hcloud-csi-image.yml@main signer/issuer/workflowSHA and hashed actual signature receipt; hashed successful new fixed CSI rollout receipt with exact raw driver_readiness image/counts, allOldPodsTerminated and reviewed validator SHA",
+      "ci_queue_budget: actual current runner/queue review, observer_and_backup_can_overlap=true, >=900s cleanup reserve, total estimated post-create work plus reserve <=7200s",
+      "after create only: fixture_binding_reviewed=true; fixture_proof_commit+SHA256; observer_ready_receipt hashed actual marker naming the same run/service/AppUID/namespace/provider/deadline"
+    ],
+    "receipt_location": "Only sanitized repository .pm/w8/m144/evidence files are read as gate evidence. Credential directories and arbitrary external paths are refused.",
+    "defaults": "Missing fields, false booleans, old ancestors, changed Git blobs, unsigned image, old/unready runtime image, missing real observerReady, or unproved queue capacity refuse new mutations. No field is populated from synthetic tests. Old080734 CSI/source902630131/originalf8b98 patch, absent CSI receipt, wrong signing workflow/source/digest, or unproved new rollout refuse paid work even if old readiness booleans remain true."
+  },
+  "runbook": [
+    {
+      "step": "refresh UTC prepared identity",
+      "command": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/q refresh-name",
+      "note": "Preparation only, before root writes rollout-ready.json. Date ruleUTC, notlocaltimezone. Does not authorize auth/create; a livegate/priorattempt refuses refresh."
+    },
+    {
+      "step": "authenticate only after root coordinates rollout/budget",
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/auth.py",
+      "note": "Root coordinates only this prepared own authentication. Preserve existing active private credential files; source preparation does not read, refresh, overwrite or revoke them. No borrowed sessions."
+    },
+    {
+      "step": "refresh baseline immediately before create",
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py baseline",
+      "note": ""
+    },
+    {
+      "step": "create exactly one inline1Gi Starter fixture",
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py create",
+      "note": "Requires root-completed rollout-ready.json. No retries after ambiguous create; reconcile exact intent and provider/API evidence first."
+    },
+    {
+      "step": "start independent hard cleanup timer from the actual create intent",
+      "root_action": "Record actual create_intent.created_at and fixture_expires_at; DELETE the sole own service by that deadline even if any acceptance phase is incomplete. The deadline is the earlier root authorization expiry or create_intent+7200s. No new acceptance mutation may begin in the final 900s.",
+      "note": "One Starter + one inline disk only, same nonce/names/dataset; max5Gi,7200s,$0.03 unchanged. Ambiguous create is reconciled, never replayed/adopted by name."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py observe",
+      "note": "Poll boundedly until exact initial deployment Live at expected public source commit; no replacement source."
+    },
+    {
+      "step": "archive actual HTTP201 and exact initial App/PVC UID inventory",
+      "root_action": "Use existing fixed inventory if needed to obtain actual App/PVC names and UIDs, joined to the actual service/workspace and inline disk. Preserve real pre-create baselines. Commit the sanitized actual creation proof; an example or guessed name/UID supplies no authority.",
+      "note": "This metadata inventory can itself require a queued CI run; include it in the pre-create queue feasibility budget."
+    },
+    {
+      "step": "fixed initial binding",
+      "root_action": "Dispatch reviewed hcloud-csi-rollout.yml operation=fixture-bind, fixture_phase=initial-1g against committed main proof. Archive actual candidateBinding and exact images/runtime identities. No exec/mutation is granted by the initial candidate alone."
+    },
+    {
+      "step": "review and commit immutable binding",
+      "root_action": "Root reviews actual PV/class/Secret/CronJob UIDs, volume handle, helper template hashes and CSI runtime image identity; commit exact binding in fixture-proof.json. Fill private fixture_proof_commit/SHA256 from this actual committed proof; never from synthetic tests."
+    },
+    {
+      "step": "start one long read-only observer and wait for real readiness",
+      "root_action": "Dispatch operation=fixture-cleanup-observe, fixture_phase=initial-1g. Download the exact run m144-fixture-observer-ready artifact while the observer job is in progress. Verify ready.json names the actual committed proof/run/service/AppUID/namespace/provider/deadline, both server initial-bookmarks and exact provider GET200/id baseline. Archive its original sanitized bytes as evidence JSON and hash it in observer_ready_receipt. Only then permit fill/grow/restart/redeploy/restore or other fixture writes.",
+      "note": "Observer is bounded100min with job110min and a separate fixed concurrency group. It continuously watches exact App/purge Job lifetimes, samples existing fixed geometry+own-node kubelet metrics once/min and on size/pod changes, stops exec at expiry and continues cleanup reads. Inventory polls10s before DELETE and2s after. Do not queue six separate inspect jobs."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py status",
+      "note": "Require separate mounted disk, 0.9\u20131.01Gi statvfs capacity; record boot/PID/process start/device/inode."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py hashes",
+      "note": "Export owner+sentinel and two deterministic64Ki binary file hashes."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py surfaces",
+      "note": "Require disk1 across REST/GQL/MCP/Blueprint plus nonempty real used samples and1Gi configcapacity. Root separately captures own UI and kubelet raw samples."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py fill",
+      "note": "Real hard-full: <=1.25Gi payload or120seconds; must receive errno28, preserve sentinel/data. Capture raw kubelet used/capacity here."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py hashes",
+      "note": "Record actual full-file byte count and SHA256; metadata overhead means payload<1Gi."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py grow",
+      "note": "PATCH only own disk to5 once. Save immutable before DiskView and single intent before the request; retain exact response, response SHA256 and wire-start/end brackets in disk_growth_transition before parsing. Reconcile any ambiguous result; never replay it. Capture pre-grow hashes/process identity as before."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py check-growth",
+      "note": "Poll until actual fs grows4.75\u20135.01Gi (ext4 metadata overhead; exact raw5Gi target verified separately); same boot, PID, process start, device, directory inode and exact old hashes. Failure indicates downtime/loss; do not silently accept restart."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py growth",
+      "note": "Write256Mi more; original fill+newdata must exceed old1Gi, original hashes unchanged."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py surfaces",
+      "note": "API/Blueprint requested5Gi; nonempty kubeletused raw and rendered UI5Gi capacity."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py compact",
+      "note": "Only after growth/hash proof export, remove own fill/growth files to keep snapshot small; retain sentinel/data."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py restart",
+      "note": "Own RESTrestart only; root records pod UID/remount and disk/PVC/PV/handle identities."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py check-remount",
+      "note": "Poll fresh boot; exact retained hashes+5Gi cap."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py redeploy",
+      "note": "Own service source redeploy only; no source substitution. Record old/new pod UIDs and actual attachment/remount."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py check-remount",
+      "note": "Fresh boot; identical hashes and5Gi cap. Root must verify real mount lifecycle rather than infer from boot."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py snapshot-ready",
+      "note": "Record lower timestamp bound after own compaction. Coordinate own existing backupCronJob separately; no publictakeAPI."
+    },
+    {
+      "step": "commit actual compact/hash lower timestamp bound",
+      "root_action": "Commit the actual snapshot_not_before from the private driver into the same owned proof. Keep the immutable binding and expiry unchanged."
+    },
+    {
+      "step": "single reviewed own backup operation",
+      "root_action": "Dispatch exactly one operation=fixture-backup, fixture_phase=grown-5g. It copies only the committed own CronJob template and performs one POST; archive actual Job UID before validation. Commit the actual UID as backup_job_uid before any manual backup-cleanup operation.",
+      "note": "Do not replay a timeout/ambiguous POST. Use fixed backup-status for read-only exact provenance reconciliation if budget permits. The own snapshot REST read must independently show one fresh own-instance object. If a queued status/cleanup run cannot fit, DELETE the service by the deadline and let the operator quiesce its own writer chain; do not use a name-only delete or extend the budget."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py snapshots",
+      "note": "GET returns201 per current pinned Render contract. Wait for one fresh own-instance snapshot;503 notconfigured is unmetDoD."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py select-snapshot",
+      "note": "Exactly one fresh snapshot after recorded time, bound to exact ownservice/disk; capture baseline hashes."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py marker",
+      "note": "Create unique32B post-snapshot marker only in ownmount."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py restore",
+      "note": "POST exact own signed snapshotKey; HTTP200acceptance is asynchronous, not completion."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py check-restore",
+      "note": "Poll after restart until marker gone, all prior hashes unchanged, actual5Gi cap."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py surfaces",
+      "note": "Final API/Blueprint/metrics/UI consistency."
+    },
+    {
+      "step": "fixed own requested-capacity usage read after a closed hour",
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py billing",
+      "note": "Fixed own usage GET only after closed coverage contains both1Gi and5Gi intervals. Preserve only own disk_gb_seconds/coverage. Compare fresh SID TOTAL against bounded expected1-to-5 GB-seconds using actual Disk createdAt/grow updatedAt and clock brackets; reject physical10Gi or wrong timing/quantity. Requested-size-verified is separate from unproved seal/invoice status. If the5Gi interval cannot close within the budget, leave this check unproved and DELETE on time."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py cleanup",
+      "note": "Delete only own exact201-proven service; oneinline disk cascade. Works even after runtimegateexpiry."
+    },
+    {
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py cleanup-check",
+      "note": "Poll exact service+disk404, preserve every pre-create ID. Root additionally verifies exact children/provider volume deletion."
+    },
+    {
+      "step": "qualify final observer absence/purge evidence",
+      "root_action": "Archive eventual exact App/PVC/PV/LUKS Secret/CronJob/Jobs/Pods/VolumeAttachment absence plus same-token provider404 after its200baseline, and the exact AppUID/JobUID purge completion from the committed reviewed helper. A different helper digest is UNAPPROVED: perform strict offline signature/source qualification of that actual digest; its raw JobComplete observation alone grants no prefix-empty/completed-cleanup authority. Missing watch events/410 or residuals remain unproved.",
+      "note": "The operator finalizer handles service/snapshot/provider deletion. Fixed backup-cleanup can delete only its committed actual Job UID with foreground UID preconditions. It remains a separate guarded operation, not an exception to deletion ownership rules."
+    },
+    {
+      "step": "revoke only own active auth",
+      "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/cleanup-auth.py",
+      "note": "Required even on failed acceptance; leave ledger/evidence/source, remove private own OAuth/Kratos credential files after confirmed revocation."
+    }
+  ],
+  "independent_root_evidence": {
+    "UI": "Fresh own QA login via qa-login.sh. Visit https://dashboard.bex.co/services/{OWNsid}/disk only. Capture desktop+narrowmobile Disk size1/5, mount/name, realusedsample/capacitylabel and snapshot/restore status. No settingssubmit except specificallycoordinatedowndiskgrowthifusingUIinplaceofREST. Screenshots in.playwright-mcp barefilenames. Never createworkspace/upgrade/Stripeflow.",
+    "Kubelet": "Join own HTTP phase timestamps with the single long observer fixed inspected geometry and exact live-node kubelet samples. Require real refreshed initial/full/grown/remount/restored observations; caches/stale samples remain unproved. No requested-size synthetic metric substitutes for physical stats.",
+    "LUKS_provider": "Read exactApp/PVC/PV UIDs/claimUID/CSIhandle/class/nodepod image andnonsecretboundedFilesystem+filesystemSizeBytes only. Neverreadpassphrase/Secret.datawholesale. Prove physical10Gifloor,sameproviderhandlethroughgrow, encryptionmapping and logicaltrustedhighwater1\u21925. Parent CIscopedreadmetadata sourceonly; no manualkubeconfigreads. For exact1/5Gi target, capture trusted filesystem-superblock block count4096\u00d7262144/1310720 or current verifiedCSI resize evidence onONLYownmappeddevice; metadata-only, no tenantpayloadreads.",
+    "Snapshot": "Use exactly one reviewed fixture-backup POST from the committed own CronJob, archive actual JobUID before policy validation, reconcile ambiguity read-only without replay, and commit its UID before any fixed backup-cleanup. Verify one actual fresh own-instance REST snapshot and actual operator restore/hash/remount evidence. Preserve the same fixture deadline.",
+    "Cleanup": "DELETE own HTTP201-proven service by fixture_expires_at even if incomplete. Wait own RESTservice/disk404 plus the long observer exact K8s/provider absence and approved purge proof. UNAPPROVED helper completion requires strict offline actual-image qualification and never auto-passes. Revoke only own active auth after deletion/reconciliation; retain all private ledger/evidence/source."
+  },
+  "unverified_scope": [
+    "All production capacity/grow/remount/snapshot/restore/API/UI/kubelet/billing acceptance; preparation is not m144done.",
+    "Existing-customer/legacydiskmetadata inventory+explicitmigration plan remainparenttask; no tenantfiles read, no live shrink/reformat, noexistingvolumemigrationauthorized here.",
+    "Parent kernel/CSIregressions covernegativecapshrink/failure/isolation/admissionpaths separately; thisonefixturedoesnotestablishallnodes/arches/otherfilesystems.",
+    "Actualpaidbillingreadiness, rootbudgetauthorization andverifiedCSI/operatorrollout mustpreceed create. No workspaceupgradeassumed.",
+    "Realtimephysicalblockcap5Gi determinedstatvfs atgrowth/remountrestore; only1Gi filledtoENOSPC. Doesnotclaim5GiENOSPC.",
+    "Requested-size billing is verified only after the actual own TOTAL matches the bounded1-to-5 closed-window integer interval. Per-hour row display, sealing/export and invoices remain unproved by current REST; none justify keeping resources beyond two hours."
+  ],
+  "primary_Render_contract": {
+    "url": "https://render.com/docs/disks",
+    "read_at": "2026-10-30UTC",
+    "paraphrase": "Paid eligible service,singleinstance,runtimeonly;mountpreservesdata;growonlinewithoutdowntimeandneverdownsize;nightlyfullsnapshotsrestoreentirestate;laterchangeslost."
+  },
+  "reviewed_files_sha256": {
+    ".pm/w8/m144/README.md": "186c07edb849d86fd7fc8f2388af8c56956cc10e687d07031b123cdb7bc19052",
+    ".pm/w8/m144/design.md": "049847a4df86e6cea05f6972dbf68b4e71283cd45d4ddec6e7666ec952577454",
+    ".pm/w8/m144/t002.md": "6b884863455cf21b0cdcdb72161379237172efcf9a7d3545290bed1cfce1004b",
+    ".pm/w8/m144/t003.md": "431c9cf4e9872d572e861ac507813cce31500181defbf946f6ed52b769865d2b",
+    ".pm/w8/m144/t004.md": "018e37702f796a6f37d6242a39c66d4a5ca4b44e411e78c9e570e2b2c2a1cbb4",
+    ".pm/w8/m144/t005.md": "3f2ce5e4604e15dfc183b2fcd4e20774be00f4b2dfcadff4437a120cb3da3d42",
+    ".pm/w8/m144/t006.md": "9c1fb984222a6239abf7ece9789d04a13e629a2e362874ea1676cd9bb02d2c26",
+    ".pm/w8/m144/t007.md": "f150477696e81da7aa84649399c662a49d56fc6d77127034a3f520c83991ccae",
+    ".pm/w8/done/215.md": "25f5cb4b2316d19217ba357d58b71cdd82c5e236cf0265911e5c42beded77764",
+    ".pm/w8/done/221.md": "536db8b210ca852b06d9aa70aabda1d596809887c7887b7d8331c326c888d008",
+    "docs/ADR082-persistent-disks.md": "212ed8054e87de940b5aeb863604666543fd2f2cecc6f4e4207a74f0e1292b0a",
+    "lego/backend/internal/apps/rest.go": "5c50d33e2c4650f1afd8a869fd5aba22589867ed908de603e7c345d22d049cb1",
+    "lego/backend/internal/apps/disks.go": "fd8ebf9ad4ad9df3c044430b0abd19e699ccf047ace783c2598e7a4dced3c9a0",
+    "lego/backend/internal/apps/disk_snapshots.go": "503096afe57b3ce812ac112da48dbeca70060f52872114d1ab53fd088e2e26c1",
+    "lego/backend/internal/apps/blueprint_generate.go": "c68793c273511ea3352c1bbf7222fb1bfa79a47e3337df5cbb0e1846984b18c2",
+    "lego/backend/internal/metrics/rest.go": "0e948e867bdc6f9376a7a4de5a901f5f86fa475746806da7468e30e4596305c6",
+    "lego/backend/internal/metrics/graphql.go": "0f75633e90d9c42ff0eadd7f08a63ac8a54bd370531df734fa1f2dfaaad596d1",
+    "lego/backend/internal/metrics/mcp.go": "4dbfe62970213f7e87307fc64667743d010cc6c72e5527ad3bd8d1d6f20550cf",
+    "lego/backend/internal/metrics/render.go": "e7563eab875da173ec54224e7ac67d91e11893bc3e5e414a109b1e4226a60d59",
+    "lego/backend/internal/pricing/pricing.yaml": "9a816342bea314a0d9296d88cb9831a4d4b80cdc5f1304da0e11bf478bd1693a",
+    "lego/types/tiers/tiers.yaml": "4b7feb73b0504424a7471961d9196694309a96ad874b8ac83c9f12f6b66d4eb5",
+    "lego/types/v1alpha1/disknames.go": "77e3837a5b1239b9064343e47b94691887d1fbf6c875ad4e352d703102e87ea2",
+    "lego/operator/internal/controller/disk.go": "10464e83db343e74ec690fd576a85f7eb1a740bd862a13a4a26a7455bbf81199",
+    "lego/operator/internal/controller/disk_backup.go": "fadf8f3871c39c6d8f47717184c31f1a16d1429957ec5608ffb8286fd55379b3",
+    "deploy/hcloud-csi/bounded-ext4.patch": "f8b98df3b24b3c84662949029160dad46ee2e394aa9ec5357271c0d88a83bf19",
+    "lego/backend/internal/apps/service.go": "4c190e8af8495fc3c4955d0004bf3d5069950b897ae419760da95721eef61e1b",
+    "lego/backend/internal/core/base.go": "733b0c9ac4e248c18f33338cd11d518dd58494d2aa48f771d5d32c6d4199eec9"
+  },
+  "filesystem_capacity_qualification": {
+    "real_prior_kernel_proof": ".pm/w8/m144/evidence/bounded-node-prototype-proof.txt",
+    "1gib_statfs_total_blocks_4096": 249195,
+    "5gib_statfs_total_blocks_4096": 1280936,
+    "5gib_statfs_total_bytes": 5246713856,
+    "five_gib_ext4_raw_blocks_4096": 1310720,
+    "probe_tolerance": "0.9\u20131.01Gi initial,4.75\u20135.01Gi grown, excludephysical10Gi; finalrawfilesystemblocklimitmustbeverifiedbytrustedCSI/ownvolumemetadata separately",
+    "note": "API disk_capacity is the requested logical GiB. Kubelet/statvfs include filesystem overhead and should agree with each other; do not require them to equal requested-size line byte-for-byte."
+  },
+  "naming": "UTC creation day: qa-20261030-w8-m144-cc62f8e3a1ee8b8c; disk qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk; preserved nonce cc62f8e3a1ee8b8c",
+  "root_Kubernetes_workflow_contract": "Reviewed hcloud-csi-rollout.yml now supports fixed fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup and fixture-cleanup-observe. This plan supersedes stale proposed action/input/metrics text in the earlier preparation-only kubernetes-fixture-contract.json. No generic commands/manifests/devices/targets/queries are accepted.",
+  "Kubernetes_naming_contract": "See kubernetes-fixture-contract.json naming_contract. PublicsrvID differs from actualAppName. Bind bybex.co/app-id+AppUID; PVC/CronJob names derive actualAppName with63charhashtruncation. SnapshotprefixusesactualAppName; RESTinstanceId publicsrvID.",
+  "utc_naming_contract": "Run q refresh-name immediately before root writes its exact-name rollout-ready.json. Refresh refuses a live gate or ANY prior create_intent/proof/ownedresource. Create checks currentUTC before anyHTTP and again immediatelybefore recording created_at/POST; refuses final120seconds ofUTCday. Stale date requires a fresh unused rootgate; no retry/adoption/nonce replacement.",
+  "private_harness_update": {
+    "at": "2026-10-30T12:17:38.369773+00:00",
+    "status": "source-only; no authentication, HTTP, fixture creation, workflow dispatch or rollout-ready.json creation performed",
+    "required_backend_retention_commit": "42e82fdbbfd48b879b9808af958915a3286e74c4",
+    "required_operator_purge_commit": "a59db2dd82c06427c2c64c8352a6b7b8ad3c4b02",
+    "reviewed_shipped_head": "e816c5b47fb37da8485e8d77ba383b17eccd7c63",
+    "actual_signed_ready_production_evidence": "UNKNOWN until root archives and reviews actual strict public signature plus live Ready inventory for the new image"
+  },
+  "ci_queue_and_deadline_review": {
+    "unchanged_budget_seconds": 7200,
+    "minimum_cleanup_reserve_seconds": 900,
+    "potential_required_post_create_runs": [
+      "metadata inventory for actual App/PVC UIDs if not otherwise available",
+      "fixture-bind",
+      "fixture-cleanup-observe",
+      "single fixture-backup"
+    ],
+    "observed_prior_queue_caution": "Prior roughly20min queues are a planning warning, not a guaranteed SLA. Four serial waits can consume80min before phase execution/review; root must verify actual current runner capacity before spending.",
+    "concurrency": "Separate observer workflow group avoids the workflow lock, but does not create runner capacity. Confirm the long observer does not occupy the only production-cluster runner and strand the backup behind it.",
+    "stop_rule": "If actual queued work/remaining checks/closed-hour observation plus15min cleanup reserve no longer fit, stop acceptance writes and DELETE the one own service. Do not add a service/disk, recreate by nonce, increase spend/time, or postpone cleanup for a seal/invoice.",
+    "closed_hour": "The first creation hour closes within<=60min; queues may overlap that wait. Use the real q billing GET before DELETE when feasible. REST exposes monthly totals and coverage only; no per-hour seal or invoice claim is available here."
+  },
+  "billing_read_contract": {
+    "command": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py billing",
+    "implementation": "m144_guards.fixed_usage_path/project_usage/assess_usage plus request pre-persistence projection",
+    "retained": "own serviceId, disk_gb_seconds kind/tier/total, requested month, coverage state/through and calculated closed-hour endpoints only",
+    "financial_sealing": "Remains unproved; it does not block the requested-size parity check. No invoice/export claim and no resource-lifetime extension.",
+    "price_estimate_is_billing_proof": false,
+    "invoice_claim": false,
+    "comparison": "Fresh own SID only: compare REST disk_gb_seconds TOTAL through complete coverageThrough with the per-closed-hour integer sum of 1Gi before actual grow and5Gi after. Exact Disk.createdAt/updatedAt are the primary DB period timestamps. CreatedAt anchors request/response clock offsets; if grow updatedAt is not exposed, the recorded create/grow wire brackets yield a bounded allowed integer interval.",
+    "actual_growth_ledger": "Single grow intent is saved before PATCH; exact HTTP response and its SHA256 plus request_started_at/response_received_at are retained even for ambiguous responses. Never blindly replay the grow.",
+    "required_success": "state=requested-size-verified and parityRequestedMeterVerified=true, with expectedRequestedUsage minimum/maximum and actual requestedMeter total matching. Positive metric presence alone is insufficient.",
+    "physical_floor_rejection": "An actual total equal to physical10Gi GB-seconds is rejected explicitly; quantities outside the bounded 1-to-5 interval are unproved. Both1Gi and5Gi intervals must be inside a closed window."
+  },
+  "synthetic_checks": {
+    "command": "python3 /private/tmp/bex7-m144-disk-acceptance-n6d16nzf/test_m144_guards.py",
+    "scope": "pure synthetic receipt/usage dictionaries and read-only local Git ancestry/blob checks; no live driver import, HTTP, authentication, spend or actual gate creation",
+    "supersedes": "The old preparation-check.py assumes no active credentials and an obsolete capacity-only gate; do not run it against the current active private auth state."
+  }
+}

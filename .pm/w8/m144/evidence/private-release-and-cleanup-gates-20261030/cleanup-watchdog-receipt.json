@@ -1,0 +1,22 @@
+{
+  "preparedAt": "2026-10-30T14:33:10.522142+00:00",
+  "state": "private source/test only; not armed, no paid fixture, credential or HTTP action",
+  "testCommand": "python3 -W error::ResourceWarning -m unittest discover -s <own harness> -p test_cleanup_watchdog.py -v",
+  "testExit": 0,
+  "tests": 9,
+  "files": {
+    "cleanup-watchdog.py": {
+      "sha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+      "bytes": 5859
+    },
+    "test_cleanup_watchdog.py": {
+      "sha256": "d033d6a2700d04c751bd08e53e4fe0b9559806e4f9bf4f767f129a7c692906ae",
+      "bytes": 5319
+    },
+    "cleanup-watchdog-tests.log": {
+      "sha256": "1bf914182f7ee8508cd5dd04116e1d5e34ba43935c07ac7c2a552fcd11847bbc",
+      "bytes": 4358
+    }
+  },
+  "review": "cli090 independently identified pending/timeout reconciliation and cutoff-overrun bugs; fixed and rereviewed clean. Final lock file is now explicitly closed on all exits; strict ResourceWarning run passes."
+}
