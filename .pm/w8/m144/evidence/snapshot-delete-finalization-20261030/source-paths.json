@@ -1,0 +1,74 @@
+{
+  "lego/operator/cmd/disk-snapshot/main.go": {
+    "bytes": 9123,
+    "sha256": "6ef45323a6b0e35e84b3a98388b724ff1e493296952715a30dc75706b1ca6512",
+    "stored": "source/lego/operator/cmd/disk-snapshot/main.go.txt.gz",
+    "stored_sha256": "ba3eed838fd4de1fdf97ab2ada573a65d3fd18f05443da3f051d0ab5d50b8290"
+  },
+  "lego/operator/internal/controller/app_controller.go": {
+    "bytes": 367246,
+    "sha256": "0eb118a30874866e67eca8ee887452b4b8f9c55f8200c4a47e9ff271466df757",
+    "stored": "source/lego/operator/internal/controller/app_controller.go.txt.gz",
+    "stored_sha256": "08c905eb045f6a3c10c7d4573d9cacaee3277e43b28ddedf432ce6aab3834324"
+  },
+  "lego/operator/internal/controller/cleanup_job.go": {
+    "bytes": 6859,
+    "sha256": "8728aee6f4089f418ee08a269385ba7845b9c4b870867a1fa64021727776b3c8",
+    "stored": "source/lego/operator/internal/controller/cleanup_job.go.txt.gz",
+    "stored_sha256": "2c770ae660e63bbf020bd4e47510e687d3ab9991990b8f61c7b4d1df9db73cad"
+  },
+  "lego/operator/internal/controller/cleanup_job_test.go": {
+    "bytes": 5906,
+    "sha256": "c30bdf69c5cff13f0a9971b64eb97a6049f0e00ae764a693904d67efa839e940",
+    "stored": "source/lego/operator/internal/controller/cleanup_job_test.go.txt.gz",
+    "stored_sha256": "232b424614c255b07a54efb75d137b3d579225c1e17ccc22d496933265c7b41a"
+  },
+  "lego/operator/internal/controller/disk.go": {
+    "bytes": 20351,
+    "sha256": "06beeecbe8d2edae6458aafb39d601715e2ac66feed80b357ebf4330fb104fff",
+    "stored": "source/lego/operator/internal/controller/disk.go.txt.gz",
+    "stored_sha256": "8a395a30387d214619bcadc485b67557580b9f35239e94416eec923409eb6fff"
+  },
+  "lego/operator/internal/controller/disk_backup.go": {
+    "bytes": 34743,
+    "sha256": "4d203dd863592ab3ae60d41372b6de2c19aeb0666e5826a8ecf6367bf9b686c8",
+    "stored": "source/lego/operator/internal/controller/disk_backup.go.txt.gz",
+    "stored_sha256": "d04bca4593fd09a6d0d427ad0100183706519e78879fdc96cfbba280e4ee36ed"
+  },
+  "lego/operator/internal/controller/disk_deletion_envtest_test.go": {
+    "bytes": 10395,
+    "sha256": "cfa202798581e47c97ea40f6c275ff67db1de2e5da1f9b14502b4280ca3ddc1a",
+    "stored": "source/lego/operator/internal/controller/disk_deletion_envtest_test.go.txt.gz",
+    "stored_sha256": "54a673573b8795037f99770dedd13b1027327eeae3d8280aec5dd697f767f74e"
+  },
+  "lego/operator/internal/controller/disk_deletion_test.go": {
+    "bytes": 15326,
+    "sha256": "6ffdcc76f96ac4ed22fbf91cd2b0af7934aed7e39b92c01829d4d431dff9c140",
+    "stored": "source/lego/operator/internal/controller/disk_deletion_test.go.txt.gz",
+    "stored_sha256": "6683a8beedbdaf94aaa49c1b26fd3b59329d73dcbfd912b7616e52eb85fd4ca3"
+  },
+  "lego/operator/internal/controller/disk_envtest_test.go": {
+    "bytes": 43215,
+    "sha256": "b6ba5a3d4a6cda9cf543354dc44e161e6ea8d686d5292d8492b11efc2a07bdf2",
+    "stored": "source/lego/operator/internal/controller/disk_envtest_test.go.txt.gz",
+    "stored_sha256": "461d40ec59c22589f9df8ce325c859f7fbba799e5b95d3265144035b0e77f77e"
+  },
+  "lego/operator/internal/disksnapshot/store.go": {
+    "bytes": 9321,
+    "sha256": "8cbba164202b7f26f776ad5f8a1a8091bcbe3159239e53bec000490b7dfd671a",
+    "stored": "source/lego/operator/internal/disksnapshot/store.go.txt.gz",
+    "stored_sha256": "f529d6909317691975ecfb80d38425902f7266e3bfa9fd2c220616ac831bd619"
+  },
+  "lego/operator/internal/disksnapshot/store_integration_test.go": {
+    "bytes": 10859,
+    "sha256": "fee7b2e98ab4e3834f915c7067a31576bc25c8421bed45b6fee9533756223337",
+    "stored": "source/lego/operator/internal/disksnapshot/store_integration_test.go.txt.gz",
+    "stored_sha256": "7b74c6c379af481c3a87d9c279a31e1f5d8e8e3071d084ebf38de680b66f93d2"
+  },
+  "lego/operator/internal/disksnapshot/store_test.go": {
+    "bytes": 5029,
+    "sha256": "dbc7ad48f122bd81825c5f81248b5dd377a95f8249ac59bd13930b94d047551e",
+    "stored": "source/lego/operator/internal/disksnapshot/store_test.go.txt.gz",
+    "stored_sha256": "9c3f0ef821d0e87601b7545ee8b80bc4c35b09ea5c930d26004f0a30a724d33e"
+  }
+}

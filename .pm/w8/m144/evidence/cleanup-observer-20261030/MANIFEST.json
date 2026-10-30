@@ -1,0 +1,73 @@
+{
+  "scope": "Local source/protocol proof only, no production claim",
+  "files": {
+    "ARCHIVE_PATHS.json": {
+      "bytes": 3204,
+      "sha256": "23b5b91703f890a96f071e98ffba0feff5b250938d8040eb9acaedcc5115fbb1"
+    },
+    "README.md": {
+      "bytes": 1304,
+      "sha256": "ed7a9912faf0e9e6f139e1d529c69cb72e4985bd7d959088bff859cfad8a64e0"
+    },
+    "README.txt": {
+      "bytes": 869,
+      "sha256": "c6bb297240604d10724b44b0fb357fbfda0573c9b880f3a081f6fb279591f252"
+    },
+    "bundle-metadata.json": {
+      "bytes": 3260,
+      "sha256": "46c3e8b769d40d383bf7d15308fe1b02aa3b2de940e563845d724a19b8415519"
+    },
+    "kubectl-streaming-smoke.py": {
+      "bytes": 2766,
+      "sha256": "0629150ef1c14e1e16b50e7274654d5e8e7db874d8e1b988c2484c11adc8e80e"
+    },
+    "logs/actions-guard.transcribed.log.gz": {
+      "bytes": 388,
+      "sha256": "177be5de45e6b9da67893162bf205758afd0af85e1556d2841dc21c294deecd8"
+    },
+    "logs/combined-48.transcribed.log.gz": {
+      "bytes": 277,
+      "sha256": "6ef606cb5c00de06fe88f91721c950347508682886da8e1c23ce997cfe1b9b3d"
+    },
+    "logs/diff-check.transcribed.log.gz": {
+      "bytes": 300,
+      "sha256": "e9d3d86754e30fb99c10879cc5602d352ee72a4ef14110710e2454799bfea82a"
+    },
+    "logs/kubectl-streaming-smoke.transcribed.log.gz": {
+      "bytes": 429,
+      "sha256": "52a4333a894287bf6db71f933ab85ef04754d927b1e8578241487121ce643b80"
+    },
+    "logs/root-fixture-33.raw.log.gz": {
+      "bytes": 55,
+      "sha256": "d21d564db01a50db0644bb4e5651d7523ea0e784907e290cded5ed90bbd65f3f"
+    },
+    "observer-change.patch.txt.gz": {
+      "bytes": 15384,
+      "sha256": "82278b7ed59b1104c04b16cfb738fbaa5e7eaf0da51da60e52f0e1fc9981e370"
+    },
+    "source/.github/workflows/hcloud-csi-rollout.yml.txt": {
+      "bytes": 5193,
+      "sha256": "30c525cee1a69fb4317e423cc5de3ddc9669a47ba11900bc3986c0392fba68ca"
+    },
+    "source/scripts/disk_fixture.py.txt": {
+      "bytes": 60510,
+      "sha256": "a74764615a167e6a5d4312aca127fe7ae726de89d9fee05a735061e94a9d8f48"
+    },
+    "source/scripts/test_disk_fixture.py.txt": {
+      "bytes": 44235,
+      "sha256": "e992d2d7463c3ca500a642f4bc17a8f1fbfbe447ca73b6f74d96b72efea2e84d"
+    },
+    "source/scripts/test_hcloud_csi.py.txt": {
+      "bytes": 5381,
+      "sha256": "1dc1fa425326120216749cef7915c4d658a2b102dd8bbbc47214d159d9ca952a"
+    },
+    "source/scripts/test_service_disk_inventory.py.txt": {
+      "bytes": 7009,
+      "sha256": "89bc7110e3621b6e054adf734e54503bb96177eac8627a40f1f3b719f8b81d66"
+    },
+    "test-counts.json": {
+      "bytes": 223,
+      "sha256": "96bdf1f9e47e4f3f320910dc1ee00ead56c53c66dc7f9af85ffcd06f4e2a0c8b"
+    }
+  }
+}

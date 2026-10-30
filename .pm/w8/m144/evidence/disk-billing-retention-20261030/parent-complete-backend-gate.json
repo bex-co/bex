@@ -1,0 +1,28 @@
+{
+  "schema": "bex-w8-m144-parent-backend-gate-v1",
+  "at": "2026-10-30T10:45:01.042441+00:00",
+  "tested_source_commit": "42e82fdbb",
+  "base": "82f045073",
+  "command": "bash scripts/ship-gates.sh origin/main",
+  "exit_code": 0,
+  "go": "go version go1.26.4 darwin/arm64",
+  "passing_packages": 72,
+  "real_dependencies": [
+    "Postgres17",
+    "OpenFGA",
+    "OpenBao",
+    "Loki"
+  ],
+  "dependencies_removed_after_success": true,
+  "source_sha256": {
+    "lego/backend/internal/store/product_analytics.go": "85bb513c57547651d428b31d283af57c83da9ba4e8f7d4b38d0b6c6e5b052439",
+    "lego/backend/internal/store/store.go": "77c12e01a9f5bc5eee989c1130e38331ec64e962e5ce9c482ac87b9e2ef70b27",
+    "lego/backend/internal/store/disk_retention_pg_test.go": "0fd07770cfae6fa408d24690bb8ee1c94739380fdef96fb684fb4a87b31bbf48",
+    "lego/backend/internal/store/migrations/0175_disk_billing_retention.up.sql": "c9e674105ab1e69a8f231aad0b2f42952ebe7d30400579f662f45500c8683c7c",
+    "lego/backend/internal/store/migrations/0175_disk_billing_retention.down.sql": "644db8d2c694ad76c0067e12ac4b48b7e0ada2c1cd4185e8eed6ab73636b4e14"
+  },
+  "raw_log_bytes": 8714,
+  "raw_log_sha256": "5c48b9425074f4d439a30f5959cf8a7726c1740d7dd022a1d6e4987c4981a8f6",
+  "main_red": "41032613870 dashboard dependency-fetch network failure; failed jobs rerun without waiting",
+  "scope": "Complete local backend gate; no production meter, invoice, fixture or deletion acceptance claim."
+}

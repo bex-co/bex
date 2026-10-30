@@ -1,0 +1,9 @@
+{
+  "method": "AST discovery only; not a test rerun",
+  "test_methods": {
+    "scripts/test_service_disk_inventory.py": 7,
+    "scripts/test_hcloud_csi.py": 8,
+    "scripts/test_disk_fixture.py": 33
+  },
+  "combined": 48
+}

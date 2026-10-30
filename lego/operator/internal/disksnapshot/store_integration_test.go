@@ -22,6 +22,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // The store half of the pipeline, against a REAL S3-compatible server.
@@ -173,6 +176,13 @@ func TestS3PurgeAllRemovesEveryObjectForTheDisk(t *testing.T) {
 			}
 		}
 	}
+	for _, stage := range failureStages {
+		for _, prefix := range []string{mine, neighbour} {
+			if err := store.Put(ctx, prefix+FailureRecordPrefix+stage, bytes.NewReader(nil)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 
 	n, err := store.PurgeAll(ctx, mine)
 	if err != nil {
@@ -184,11 +194,23 @@ func TestS3PurgeAllRemovesEveryObjectForTheDisk(t *testing.T) {
 	if left, err := store.List(ctx, mine); err != nil || len(left) != 0 {
 		t.Fatalf("purged disk still lists %+v (%v)", left, err)
 	}
+	cl, err := store.client(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := cl.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(store.Bucket), Prefix: aws.String(store.join(mine))})
+	if err != nil || len(all.Contents) != 0 {
+		t.Fatalf("purged prefix still contains snapshot/failure objects: %+v (%v)", all, err)
+	}
 	// The neighbouring disk must be untouched — prefixes are the only thing
 	// keeping a purge from reaching another disk's data.
 	other, err := store.List(ctx, neighbour)
 	if err != nil || len(other) != 3 {
 		t.Fatalf("neighbouring disk lost snapshots: %+v (%v)", other, err)
+	}
+	neighbourObjects, err := cl.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(store.Bucket), Prefix: aws.String(store.join(neighbour))})
+	if err != nil || len(neighbourObjects.Contents) != 6 {
+		t.Fatalf("neighbouring disk lost failure markers: %+v (%v)", neighbourObjects, err)
 	}
 }
 

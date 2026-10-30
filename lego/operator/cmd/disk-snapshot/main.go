@@ -205,7 +205,7 @@ func purge(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("disk-snapshot: purged %d snapshot(s)", n)
+	log.Printf("disk-snapshot: purged %d snapshot(s); verified prefix %s is empty", n, prefix)
 	return nil
 }
 

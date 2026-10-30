@@ -1,0 +1,90 @@
+{
+  "schema": "bex-m144-observer-local-review-v1",
+  "created_at_utc": "2026-10-30T11:47:52.471322+00:00",
+  "repository": "/Users/tianpan/projects/bex7",
+  "git_head_at_bundle": "f90a754489885b75f2ff77268c08dc5a79c5a4d1",
+  "scope": [
+    "scripts/disk_fixture.py",
+    "scripts/test_disk_fixture.py",
+    ".github/workflows/hcloud-csi-rollout.yml"
+  ],
+  "source_snapshots": [
+    {
+      "repository_path": "scripts/disk_fixture.py",
+      "snapshot_path": "source/scripts/disk_fixture.py.txt",
+      "bytes": 60510,
+      "sha256": "a74764615a167e6a5d4312aca127fe7ae726de89d9fee05a735061e94a9d8f48",
+      "role": "reviewed_scope"
+    },
+    {
+      "repository_path": "scripts/test_disk_fixture.py",
+      "snapshot_path": "source/scripts/test_disk_fixture.py.txt",
+      "bytes": 44235,
+      "sha256": "e992d2d7463c3ca500a642f4bc17a8f1fbfbe447ca73b6f74d96b72efea2e84d",
+      "role": "reviewed_scope"
+    },
+    {
+      "repository_path": ".github/workflows/hcloud-csi-rollout.yml",
+      "snapshot_path": "source/.github/workflows/hcloud-csi-rollout.yml.txt",
+      "bytes": 5193,
+      "sha256": "30c525cee1a69fb4317e423cc5de3ddc9669a47ba11900bc3986c0392fba68ca",
+      "role": "reviewed_scope"
+    },
+    {
+      "repository_path": "scripts/test_service_disk_inventory.py",
+      "snapshot_path": "source/scripts/test_service_disk_inventory.py.txt",
+      "bytes": 7009,
+      "sha256": "89bc7110e3621b6e054adf734e54503bb96177eac8627a40f1f3b719f8b81d66",
+      "role": "supporting_test_source"
+    },
+    {
+      "repository_path": "scripts/test_hcloud_csi.py",
+      "snapshot_path": "source/scripts/test_hcloud_csi.py.txt",
+      "bytes": 5381,
+      "sha256": "1dc1fa425326120216749cef7915c4d658a2b102dd8bbbc47214d159d9ca952a",
+      "role": "supporting_test_source"
+    }
+  ],
+  "test_counts": {
+    "scripts/test_service_disk_inventory.py": 7,
+    "scripts/test_hcloud_csi.py": 8,
+    "scripts/test_disk_fixture.py": 33
+  },
+  "evidence": [
+    {
+      "path": "logs/root-fixture-33.raw.log",
+      "kind": "copied_existing_raw_stdout_log",
+      "original_path": "/private/tmp/loopx-w8-observer-final-tests.log",
+      "reported_result": "Ran 33 tests in 2.030s; OK",
+      "exit_code": null,
+      "note": "Root owns the original execution/exit-status receipt; no exit code invented by bundler."
+    },
+    {
+      "path": "logs/combined-48.transcribed.log",
+      "kind": "explicit_transcript_of_existing_tool_stdout",
+      "tool_result": "007494",
+      "reported_result": "Ran 48 tests in 2.037s; OK"
+    },
+    {
+      "path": "logs/actions-guard.transcribed.log",
+      "kind": "explicit_transcript_of_existing_tool_stdout",
+      "tool_result": "007494",
+      "reported_result": "PASS"
+    },
+    {
+      "path": "logs/kubectl-streaming-smoke.transcribed.log",
+      "kind": "explicit_transcript_of_existing_tool_stdout",
+      "tool_result": "7a32be",
+      "reported_result": "PASS; isolated localhost only"
+    },
+    {
+      "path": "logs/diff-check.transcribed.log",
+      "kind": "explicit_transcript_of_existing_tool_result",
+      "tool_result": "007494",
+      "reported_result": "empty stdout; combined cell exit_code 0"
+    }
+  ],
+  "live_fixture_proof": false,
+  "live_api_claim": false,
+  "bundling_reran_checks": false
+}

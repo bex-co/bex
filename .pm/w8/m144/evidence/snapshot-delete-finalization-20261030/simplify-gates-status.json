@@ -1,0 +1,20 @@
+{
+  "phases": [
+    {
+      "command": "GOWORK=off make test",
+      "elapsed_seconds": 229.84,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-test-simplify-final.log",
+      "phase": "make test"
+    },
+    {
+      "command": "make lint",
+      "elapsed_seconds": 204.058,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-lint-simplify-final.log",
+      "phase": "make lint"
+    }
+  ],
+  "receipt_sha256": "b6c2591e7d04f03daebc1ff166523c875a3433492e5b865944e5e48cfb9d6646",
+  "status": "complete"
+}

@@ -1,0 +1,113 @@
+name: hcloud CSI (manual inventory, reviewed rollout or owned fixture)
+
+# Inventory is read-only and needs no candidate image pin. Explicit rollout
+# changes only the existing CSI Helm release; it never applies CAPI/Terraform,
+# rotates provider credentials, or flips the disk class. Rollout images come
+# solely from a reviewed, committed digest values file.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read-only inventory, reviewed CSI rollout or proved own-fixture action
+        type: choice
+        required: true
+        default: inventory
+        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup, fixture-cleanup-observe]
+      fixture_phase:
+        description: Fixture evidence phase (ignored by inventory and rollout)
+        type: choice
+        default: initial-1g
+        options: [initial-1g, full-1g, grown-5g, restart-5g, redeploy-5g, restored-5g]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ inputs.operation == 'fixture-cleanup-observe' && 'hcloud-csi-fixture-observer' || 'hcloud-csi-rollout' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: validate operation and require reviewed pin for rollout
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          case "$OPERATION" in
+            inventory) ;;
+            rollout) bash scripts/install-hcloud-csi.sh validate-pin ;;
+            fixture-backup-cleanup) python3 scripts/disk_fixture.py validate-cleanup ;;
+            fixture-backup-status) python3 scripts/disk_fixture.py validate-status ;;
+            fixture-cleanup-observe) python3 scripts/disk_fixture.py validate-observer ;;
+            fixture-bind|fixture-inspect|fixture-backup)
+              python3 scripts/disk_fixture.py validate ;;
+            *) echo 'unknown scoped CSI operation' >&2; exit 1 ;;
+          esac
+
+  cluster:
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    environment: production-cluster
+    timeout-minutes: ${{ inputs.operation == 'fixture-cleanup-observe' && 110 || 40 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        if: inputs.operation == 'rollout'
+        with:
+          version: v3.19.0
+      - name: fetch production kubeconfig with authoritative SSH trust
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+      - name: scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      - name: inventory service-disk binding and capacity metadata (read-only)
+        if: inputs.operation == 'inventory' || inputs.operation == 'rollout'
+        run: bash scripts/service-disk-inventory.sh
+      - name: upgrade only CSI and verify every controller/node driver pod
+        if: inputs.operation == 'rollout'
+        run: bash scripts/install-hcloud-csi.sh rollout
+      - name: fixed owned-fixture operation with committed lifetime proof
+        if: startsWith(inputs.operation, 'fixture-')
+        env:
+          OPERATION: ${{ inputs.operation }}
+          FIXTURE_PHASE: ${{ inputs.fixture_phase }}
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          case "$OPERATION" in
+            fixture-bind|fixture-inspect|fixture-backup|fixture-backup-status|fixture-backup-cleanup)
+              python3 scripts/disk_fixture.py "${OPERATION#fixture-}" --phase "$FIXTURE_PHASE" ;;
+            fixture-cleanup-observe)
+              set -o pipefail
+              python3 scripts/disk_fixture.py cleanup-observe --phase "$FIXTURE_PHASE" | tee "$RUNNER_TEMP/fixture-cleanup.jsonl" ;;
+            *) echo 'unknown fixed fixture operation' >&2; exit 1 ;;
+          esac
+      - name: scrub kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

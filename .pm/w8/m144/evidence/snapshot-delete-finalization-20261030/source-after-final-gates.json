@@ -1,0 +1,14 @@
+{
+  "lego/operator/cmd/disk-snapshot/main.go": "6ef45323a6b0e35e84b3a98388b724ff1e493296952715a30dc75706b1ca6512",
+  "lego/operator/internal/controller/app_controller.go": "0eb118a30874866e67eca8ee887452b4b8f9c55f8200c4a47e9ff271466df757",
+  "lego/operator/internal/controller/cleanup_job.go": "8728aee6f4089f418ee08a269385ba7845b9c4b870867a1fa64021727776b3c8",
+  "lego/operator/internal/controller/cleanup_job_test.go": "c30bdf69c5cff13f0a9971b64eb97a6049f0e00ae764a693904d67efa839e940",
+  "lego/operator/internal/controller/disk.go": "06beeecbe8d2edae6458aafb39d601715e2ac66feed80b357ebf4330fb104fff",
+  "lego/operator/internal/controller/disk_backup.go": "4d203dd863592ab3ae60d41372b6de2c19aeb0666e5826a8ecf6367bf9b686c8",
+  "lego/operator/internal/controller/disk_deletion_envtest_test.go": "cfa202798581e47c97ea40f6c275ff67db1de2e5da1f9b14502b4280ca3ddc1a",
+  "lego/operator/internal/controller/disk_deletion_test.go": "6ffdcc76f96ac4ed22fbf91cd2b0af7934aed7e39b92c01829d4d431dff9c140",
+  "lego/operator/internal/controller/disk_envtest_test.go": "b6ba5a3d4a6cda9cf543354dc44e161e6ea8d686d5292d8492b11efc2a07bdf2",
+  "lego/operator/internal/disksnapshot/store.go": "8cbba164202b7f26f776ad5f8a1a8091bcbe3159239e53bec000490b7dfd671a",
+  "lego/operator/internal/disksnapshot/store_integration_test.go": "fee7b2e98ab4e3834f915c7067a31576bc25c8421bed45b6fee9533756223337",
+  "lego/operator/internal/disksnapshot/store_test.go": "dbc7ad48f122bd81825c5f81248b5dd377a95f8249ac59bd13930b94d047551e"
+}

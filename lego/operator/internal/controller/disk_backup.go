@@ -28,11 +28,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -44,9 +46,13 @@ import (
 // cadence and the same retention at the file level: one CronJob per disk that
 // streams the volume through tar → gzip → age into the platform's object store.
 const (
-	diskBackupComponent = "disk-backup"
-	diskBackupPrefix    = "dskbak-"
-	diskPurgePrefix     = "dskpurge-"
+	diskBackupComponent    = "disk-backup"
+	diskBackupPrefix       = "dskbak-"
+	diskPurgePrefix        = "dskpurge-"
+	diskPurgeComponent     = "disk-snapshot-purge"
+	annotDiskSnapshots     = "app.bex.co/disk-snapshots"
+	annotDiskPurgeComplete = "app.bex.co/disk-snapshot-purge-complete"
+	annotDiskPurgePending  = "app.bex.co/disk-snapshot-purge-pending"
 	// diskBackupRetention is Render's documented "available for at least seven
 	// days", and the same number the KeyValue backups keep.
 	diskBackupRetention = 7
@@ -116,8 +122,8 @@ func (d DiskSnapshotStore) restorable() bool {
 func diskBackupName(appName string) string {
 	return k8sname.FitCronJob(appv1alpha1.DiskChildName(diskBackupPrefix, appName))
 }
-func diskPurgeName(appName string) string {
-	return appv1alpha1.DiskChildName(diskPurgePrefix, appName)
+func diskPurgeName(app *appv1alpha1.App) string {
+	return cleanupJobName(diskPurgePrefix, app.Name, app.UID)
 }
 
 // diskBackupSchedule spreads tenant snapshots across 02:00–02:59 UTC — an hour
@@ -131,6 +137,9 @@ func diskBackupSchedule(appName string) string {
 // reconcileDiskBackup converges the nightly snapshot CronJob for a disk-bearing
 // App, and removes it once the disk is gone.
 func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha1.App) error {
+	if app.Annotations[annotDiskPurgePending] != "" {
+		return fmt.Errorf("disk snapshot cleanup must finish before scheduling snapshots")
+	}
 	name := diskBackupName(app.Name)
 	if app.Spec.Disk == nil || !r.DiskSnapshots.configured() {
 		// No disk, or no store to write to: the CronJob must not linger, or a
@@ -138,8 +147,17 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 		if app.Annotations[annotDiskProvisioned] == "" {
 			return nil
 		}
-		return r.deleteStaleChildren(ctx,
-			&batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}})
+		cron := &batchv1.CronJob{}
+		if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, cron); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+		if !metav1.IsControlledBy(cron, app) {
+			return nil
+		}
+		if err := r.markDiskSnapshots(ctx, app); err != nil {
+			return err
+		}
+		return client.IgnoreNotFound(r.Delete(ctx, cron, client.Preconditions{UID: &cron.UID}))
 	}
 	if r.BackupHelperImage == "" {
 		// The Job runs bex's own image, resolved from the operator's Pod. With
@@ -161,6 +179,9 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 			fmt.Sprintf("cannot schedule disk snapshots: %v (run scripts/disk-snapshot-secret.sh install)", err))
 		return nil
 	case err != nil:
+		return err
+	}
+	if err := r.markDiskSnapshots(ctx, app); err != nil {
 		return err
 	}
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
@@ -201,11 +222,11 @@ func (r *AppReconciler) projectDiskSnapshotSecrets(ctx context.Context, app *app
 }
 
 func diskBackupLabels(app *appv1alpha1.App) map[string]string {
-	return map[string]string{
-		labelApp:                     app.Name,
-		"app.kubernetes.io/name":     diskBackupComponent,
-		"app.kubernetes.io/instance": app.Name,
-	}
+	labels := (execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: diskSnapshotWorkspace(app), Namespace: app.Namespace}).Labels(diskBackupComponent)
+	labels["app.kubernetes.io/name"] = diskBackupComponent
+	labels["app.kubernetes.io/instance"] = app.Name
+	return labels
 }
 
 func (r *AppReconciler) diskBackupCronJobSpec(app *appv1alpha1.App) batchv1.CronJobSpec {
@@ -366,35 +387,185 @@ func diskSnapshotWorkspace(app *appv1alpha1.App) string {
 	return app.Namespace
 }
 
-// purgeDiskSnapshots runs a one-shot Job that deletes every snapshot a disk
-// had. It is fire-and-forget: the disk's own deletion must not wait on the
-// object store, and the Job is retried by its own backoff.
-func (r *AppReconciler) purgeDiskSnapshots(ctx context.Context, app *appv1alpha1.App) error {
-	if !r.DiskSnapshots.configured() || r.BackupHelperImage == "" {
+// markDiskSnapshots records cleanup authority before any snapshot writer is
+// created or removed. It survives a configuration loss or manager restart.
+func (r *AppReconciler) markDiskSnapshots(ctx context.Context, app *appv1alpha1.App) error {
+	if app.Annotations[annotDiskSnapshots] == string(app.UID) && app.Annotations[annotDiskPurgeComplete] == "" {
 		return nil
 	}
-	labels := diskBackupLabels(app)
-	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: diskPurgeName(app.Name), Namespace: app.Namespace, Labels: labels,
-	}}
-	job.Spec = r.diskSnapshotJobSpec(app, labels, "purge", nil)
-	job.Spec.TTLSecondsAfterFinished = new(int32(3600))
-	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
-		return err
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotDiskSnapshots, string(app.UID))
+		delete(meta.Annotations, annotDiskPurgeComplete)
+	})
+}
+
+func (r *AppReconciler) markDiskSnapshotCleanup(ctx context.Context, app *appv1alpha1.App) error {
+	if app.Annotations[annotDiskPurgePending] == string(app.UID) {
+		return nil
 	}
-	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotDiskSnapshots, string(app.UID))
+		metav1.SetMetaDataAnnotation(meta, annotDiskPurgePending, string(app.UID))
+	})
+}
+
+// reconcileDiskSnapshotCleanup stops every owned writer before purging, then
+// retains the App until the successful purge Job and its Pods are observed gone.
+func (r *AppReconciler) reconcileDiskSnapshotCleanup(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	hadDisk := app.Spec.Disk != nil || app.Annotations[annotDiskProvisioned] != ""
+	if !hadDisk && app.Annotations[annotDiskSnapshots] == "" {
+		return true, nil
+	}
+	if workspace, alias := app.Labels[labelWorkspace], app.Labels["bex.co/tenant"]; app.Namespace == "" ||
+		(workspace != "" && workspace != app.Namespace) || (alias != "" && alias != app.Namespace) {
+		return false, fmt.Errorf("disk snapshot cleanup scope does not match the App namespace")
+	}
+	for _, key := range []string{annotDiskSnapshots, annotDiskPurgePending, annotDiskPurgeComplete} {
+		if marker := app.Annotations[key]; marker != "" && marker != string(app.UID) {
+			return false, fmt.Errorf("disk snapshot cleanup belongs to a different App lifetime")
+		}
+	}
+	if hadDisk && r.DiskSnapshots.configured() && app.Annotations[annotDiskSnapshots] == "" {
+		if err := r.markDiskSnapshots(ctx, app); err != nil {
+			return false, err
+		}
+	}
+	if app.Annotations[annotDiskSnapshots] != "" {
+		if err := r.markDiskSnapshotCleanup(ctx, app); err != nil {
+			return false, err
+		}
+	}
+	writersGone, err := r.quiesceDiskSnapshotWriters(ctx, app)
+	if err != nil || !writersGone {
+		return false, err
+	}
+	if app.Annotations[annotDiskSnapshots] == "" {
+		return true, nil // a disk in a cluster where snapshots were never enabled
+	}
+	if app.UID == "" {
+		return false, fmt.Errorf("cannot purge disk snapshots without an App UID")
+	}
+	if app.Annotations[annotDiskPurgeComplete] != string(app.UID) {
+		if err := r.prepareDiskSnapshotPurge(ctx, app); err != nil {
+			return false, err
+		}
+	}
+	job, err := r.diskSnapshotPurgeJob(app)
+	if err != nil {
+		return false, err
+	}
+	return reconcileCleanupJob(ctx, r.Client, app, job, annotDiskPurgeComplete)
+}
+
+func (r *AppReconciler) prepareDiskSnapshotPurge(ctx context.Context, app *appv1alpha1.App) error {
+	store := r.DiskSnapshots
+	if store.Endpoint == "" || store.Bucket == "" || store.S3Secret == "" || r.BackupHelperImage == "" {
+		return fmt.Errorf("disk snapshot purge configuration is unavailable")
+	}
+	cl := r.uncachedSecretClient()
+	if src := store.SourceNamespace; src != "" && src != app.Namespace {
+		if err := projectBackupCredential(ctx, cl, src, app.Namespace, store.S3Secret); err != nil {
+			return fmt.Errorf("project disk snapshot purge credential: %w", err)
+		}
+	}
+	if err := validateAWSCredentialSecret(ctx, cl, app.Namespace, store.S3Secret); err != nil {
+		return fmt.Errorf("disk snapshot purge %w", err)
 	}
 	return nil
 }
 
-// deleteDiskSnapshotChildren removes a disk's snapshot Jobs when the disk goes
-// away, so a re-attached disk starts from a clean slate rather than inheriting
-// a CronJob pointed at the previous volume.
-func (r *AppReconciler) deleteDiskSnapshotChildren(ctx context.Context, app *appv1alpha1.App) error {
-	return r.deleteStaleChildren(ctx,
-		&batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: diskBackupName(app.Name), Namespace: app.Namespace}},
-	)
+func (r *AppReconciler) diskSnapshotPurgeJob(app *appv1alpha1.App) (*batchv1.Job, error) {
+	labels := (execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: diskSnapshotWorkspace(app), Namespace: app.Namespace}).Labels(diskPurgeComponent)
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: diskPurgeName(app), Namespace: app.Namespace, Labels: labels,
+	}}
+	job.Spec = r.diskSnapshotJobSpec(app, labels, "purge", nil)
+	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+func diskSnapshotWriterOwned(app *appv1alpha1.App, obj metav1.Object, parents map[types.UID]bool) bool {
+	owner := metav1.GetControllerOf(obj)
+	if owner != nil && owner.Kind == "App" && owner.UID != app.UID {
+		return false
+	}
+	if uid := obj.GetLabels()[execution.LabelAppUID]; uid != "" {
+		return (execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}).Owns(obj)
+	}
+	return owner != nil && ((owner.Kind == "App" && owner.UID == app.UID && app.UID != "") || parents[owner.UID])
+}
+
+func (r *AppReconciler) quiesceDiskSnapshotWriters(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	// Legacy writers lack App UID labels. Foreground deletion retains their
+	// CronJob/Job owner chain until the dependent Pods are gone.
+	parents := map[types.UID]bool{}
+	var objects []client.Object
+	cron := &batchv1.CronJob{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskBackupName(app.Name)}, cron); err == nil {
+		if diskSnapshotWriterOwned(app, cron, parents) {
+			parents[cron.UID] = true
+			objects = append(objects, cron)
+		} else if app.Annotations[annotDiskSnapshots] != "" {
+			return false, fmt.Errorf("disk snapshot schedule belongs to a different App lifetime")
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return false, err
+	}
+	selector := client.MatchingLabels{labelApp: app.Name}
+	isWriter := func(obj metav1.Object) bool {
+		return obj.GetLabels()[execution.LabelComponent] == diskBackupComponent || obj.GetLabels()["app.kubernetes.io/name"] == diskBackupComponent
+	}
+	var jobs batchv1.JobList
+	if err := r.List(ctx, &jobs, client.InNamespace(app.Namespace), selector); err != nil {
+		return false, err
+	}
+	for i := range jobs.Items {
+		if !isWriter(&jobs.Items[i]) {
+			continue
+		}
+		if !diskSnapshotWriterOwned(app, &jobs.Items[i], parents) {
+			if app.Annotations[annotDiskSnapshots] != "" {
+				return false, fmt.Errorf("disk snapshot Job %s belongs to an unverified App lifetime", jobs.Items[i].Name)
+			}
+			continue
+		}
+		parents[jobs.Items[i].UID] = true
+		objects = append(objects, &jobs.Items[i])
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), selector); err != nil {
+		return false, err
+	}
+	for i := range pods.Items {
+		if !isWriter(&pods.Items[i]) {
+			continue
+		}
+		if !diskSnapshotWriterOwned(app, &pods.Items[i], parents) {
+			if app.Annotations[annotDiskSnapshots] != "" {
+				return false, fmt.Errorf("disk snapshot Pod %s belongs to an unverified App lifetime", pods.Items[i].Name)
+			}
+			continue
+		}
+		objects = append(objects, &pods.Items[i])
+	}
+	if len(objects) == 0 {
+		return true, nil
+	}
+	if err := r.markDiskSnapshotCleanup(ctx, app); err != nil {
+		return false, err
+	}
+	for _, obj := range objects {
+		if obj.GetDeletionTimestamp().IsZero() {
+			uid := obj.GetUID()
+			if err := r.Delete(ctx, obj, client.Preconditions{UID: &uid}, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+				return false, err
+			}
+		}
+	}
+	return false, nil
 }
 
 // snapshotPrefixFor is the object-store prefix a disk's snapshots live under —

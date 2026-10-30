@@ -11,20 +11,25 @@ import copy
 import csv
 from datetime import datetime, timezone, timedelta
 import hashlib
+import http.client
 import io
 import json
 import math
 import os
 from pathlib import Path
+import queue
 import re
 import subprocess
 import sys
+import threading
+import time
+from urllib.parse import urlencode
 
 
 ROOT = Path(__file__).resolve().parent.parent
 PROOF = Path("deploy/hcloud-csi/fixture-proof.json")
 SC = "hcloud-volumes-luks-bounded"
-ACTIONS = ("bind", "inspect", "backup", "backup-status", "backup-cleanup")
+ACTIONS = ("bind", "inspect", "backup", "backup-status", "backup-cleanup", "cleanup-observe")
 PHASE_GIB = {"initial-1g": 1, "full-1g": 1, "grown-5g": 5, "restart-5g": 5, "redeploy-5g": 5, "restored-5g": 5}
 OWNER = '{range .metadata.ownerReferences[?(@.controller==true)]}{.kind}{"/"}{.name}{"/"}{.uid}{end}'
 META = {"name": "{.metadata.name}", "uid": "{.metadata.uid}", "deleting": "{.metadata.deletionTimestamp}"}
@@ -39,6 +44,13 @@ FIELDS = {
     "job_status": {"completed": "{.status.completionTime}", "failed": '{range .status.conditions[?(@.type=="Failed")]}{.status}{end}'},
     "pod": {**META, "owner": OWNER, "node": "{.spec.nodeName}", "phase": "{.status.phase}", "ready": '{range .status.conditions[?(@.type=="Ready")]}{.status}{end}', "started": "{.status.startTime}", "claims": '{range .spec.volumes[*]}{.persistentVolumeClaim.claimName}{";"}{end}', "image": '{.spec.containers[?(@.name=="hcloud-csi-driver")].image}', "containerId": '{.status.containerStatuses[?(@.name=="hcloud-csi-driver")].containerID}', "imageId": '{.status.containerStatuses[?(@.name=="hcloud-csi-driver")].imageID}', "driverReady": '{.status.containerStatuses[?(@.name=="hcloud-csi-driver")].ready}'},
 }
+IDENTITY = {**META, "owner": OWNER, "app": r"{.metadata.labels.app\.bex\.co/app}", "appUid": r"{.metadata.labels.app\.bex\.co/app-uid}", "workspace": r"{.metadata.labels.app\.bex\.co/workspace}", "namespace": "{.metadata.namespace}"}
+FIELDS["cleanup_workload"] = IDENTITY
+FIELDS["cleanup_app"] = {**FIELDS["app"], "resourceVersion": "{.metadata.resourceVersion}", "purgeComplete": r"{.metadata.annotations.app\.bex\.co/disk-snapshot-purge-complete}"}
+FIELDS["cleanup_job"] = {**IDENTITY, "resourceVersion": "{.metadata.resourceVersion}", "component": r"{.metadata.labels.app\.bex\.co/component}", "appNamespace": r"{.metadata.labels.app\.bex\.co/app-namespace}", "complete": '{range .status.conditions[?(@.type=="Complete")]}{.status}{end}', "image": '{.spec.template.spec.containers[?(@.name=="snapshot")].image}', "command": '{.spec.template.spec.containers[?(@.name=="snapshot")].command}', "args": '{.spec.template.spec.containers[?(@.name=="snapshot")].args}', "containerNames": '{range .spec.template.spec.containers[*]}{.name}{";"}{end}', "initNames": '{range .spec.template.spec.initContainers[*]}{.name}{";"}{end}', "volumes": "{.spec.template.spec.volumes}", "workspaceEnv": '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="BEX_DISK_WORKSPACE")].value}', "diskEnv": '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="BEX_DISK_ID")].value}'}
+SNAPSHOT_LOCATION = ("BEX_DISK_SNAPSHOT_ENDPOINT", "BEX_DISK_SNAPSHOT_BUCKET", "BEX_DISK_SNAPSHOT_PREFIX", "BEX_DISK_SNAPSHOT_REGION")
+FIELDS["cleanup_job"].update({key: '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="' + key + '")].value}' for key in SNAPSHOT_LOCATION})
+CLEANUP_SECONDS = 100 * 60
 
 
 def require(condition, message):
@@ -143,6 +155,122 @@ class Kube:
         # The exact owner-validated template is needed to preserve the operator
         # policy. It is parsed only in memory and never emitted or persisted.
         return json.loads(self.run(["-n", namespace, "get", "cronjob", name, "-o", "json"]))
+
+    def watch_cleanup(self, resource, kind, name, namespace):
+        fields = FIELDS[kind]
+        expression = '{.metadata.resourceVersion}{"\\n"}{range .items[*]}' + '{"\\t"}'.join(fields.values()) + '{"\\n"}{end}'
+        args = ["-n", namespace, "get", resource, "--field-selector", "metadata.name=" + name]
+        raw = self.run([*args, "-o", "jsonpath=" + expression])
+        version, _, rows = raw.partition("\n")
+        require(re.fullmatch(r"[0-9]+", version), "cleanup watch resourceVersion unavailable")
+        values = [row for row in csv.reader(io.StringIO(rows), delimiter="\t", quoting=csv.QUOTE_NONE) if row]
+        require(all(len(row) == len(fields) for row in values), "invalid initial cleanup metadata")
+        initial = [dict(zip(fields, row)) for row in values]
+        endpoint = "/apis/" + ("app.bex.co/v1alpha1" if resource == "apps.app.bex.co" else "batch/v1") + "/namespaces/" + namespace + "/" + ("apps" if resource == "apps.app.bex.co" else "jobs")
+        return CleanupWatch(endpoint, name, kind, version, initial)
+
+
+def cleanup_watch_row(obj, kind):
+    metadata = obj["metadata"]
+    labels, annotations = metadata.get("labels", {}), metadata.get("annotations", {})
+    row = {"name": metadata["name"], "uid": metadata["uid"], "deleting": metadata.get("deletionTimestamp", ""), "resourceVersion": metadata["resourceVersion"]}
+    if kind == "cleanup_app":
+        disk = obj.get("spec", {}).get("disk") or {}
+        return {**row, "service": labels.get("bex.co/app-id", ""), "workspace": labels.get("app.bex.co/workspace", ""), "size": str(disk.get("sizeGB", "")), "purgeComplete": annotations.get("app.bex.co/disk-snapshot-purge-complete", "")}
+    owners = [ref for ref in metadata.get("ownerReferences", []) if ref.get("controller")]
+    pod = obj.get("spec", {}).get("template", {}).get("spec", {})
+    containers = pod.get("containers", [])
+    container = next((item for item in containers if item.get("name") == "snapshot"), {})
+    env = {item["name"]: item.get("value", "") for item in container.get("env", [])}
+    return {**row, "namespace": metadata.get("namespace", ""), "owner": "".join(f"{ref.get('kind')}/{ref.get('name')}/{ref.get('uid')}" for ref in owners), "app": labels.get("app.bex.co/app", ""), "appUid": labels.get("app.bex.co/app-uid", ""), "workspace": labels.get("app.bex.co/workspace", ""), "appNamespace": labels.get("app.bex.co/app-namespace", ""), "component": labels.get("app.bex.co/component", ""), "complete": "".join(item.get("status", "") for item in obj.get("status", {}).get("conditions", []) if item.get("type") == "Complete"), "image": container.get("image", ""), "command": json.dumps(container.get("command")), "args": json.dumps(container.get("args")), "containerNames": "".join(item.get("name", "") + ";" for item in containers), "initNames": "".join(item.get("name", "") + ";" for item in pod.get("initContainers", [])), "volumes": json.dumps(pod.get("volumes", [])), "workspaceEnv": env.get("BEX_DISK_WORKSPACE", ""), "diskEnv": env.get("BEX_DISK_ID", ""), **{key: env.get(key, "") for key in SNAPSHOT_LOCATION}}
+
+
+class CleanupWatch:
+    """Replay from the initial list version, including short-lived delete events."""
+
+    def __init__(self, endpoint, name, kind, version, initial):
+        self.version, self.initial = version, initial
+        self.events, self.stopped, self.started = queue.Queue(maxsize=256), threading.Event(), threading.Event()
+        self.failure, self.process = None, None
+        self.process_lock = threading.Lock()
+        def collect():
+            current = version
+            event_count = 0
+            initial_sync = True
+            process = None
+            try:
+                while not self.stopped.is_set():
+                    parameters = {"fieldSelector": "metadata.name=" + name, "resourceVersion": current, "watch": "true", "allowWatchBookmarks": "true", "timeoutSeconds": "60"}
+                    if initial_sync:
+                        parameters.update(sendInitialEvents="true", resourceVersionMatch="NotOlderThan")
+                    query = urlencode(parameters)
+                    argv = ["kubectl", "--request-timeout=75s", "get", "--raw", endpoint + "?" + query]
+                    process = subprocess.Popen(argv, text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                    with self.process_lock:
+                        self.process = process
+                        cancelled = self.stopped.is_set()
+                    # Popen itself may finish after close() has already returned.
+                    # The publishing thread owns cleanup of that late child.
+                    if cancelled:
+                        break
+                    while line := process.stdout.readline(262145):
+                        require(len(line) <= 262144, "cleanup watch response exceeded its fixed size bound")
+                        event = json.loads(line)
+                        event_count += 1
+                        require(event_count <= 4096, "cleanup watch exceeded its fixed event bound")
+                        require(event.get("type") in ("ADDED", "MODIFIED", "DELETED", "BOOKMARK"), "cleanup watch failed or returned an unsupported event")
+                        current = event["object"]["metadata"]["resourceVersion"]
+                        require(re.fullmatch(r"[0-9]+", current), "cleanup watch resourceVersion unavailable")
+                        if event["type"] == "BOOKMARK" and initial_sync and event["object"]["metadata"].get("annotations", {}).get("k8s.io/initial-events-end") == "true":
+                            initial_sync = False
+                            self.version = current
+                            self.started.set()
+                        if event["type"] != "BOOKMARK":
+                            self.events.put_nowait({"event": event["type"], **cleanup_watch_row(event["object"], kind)})
+                    require(self.stopped.is_set() or process.wait() == 0, "cleanup watch interrupted; evidence is incomplete")
+                    process.stdout.close()
+            except (ValueError, KeyError, TypeError, OSError, queue.Full):
+                self.failure = "cleanup watch failed or exceeded its bounded event buffer; evidence is incomplete"
+            finally:
+                self.stop_process(process)
+                if process is not None:
+                    process.stdout.close()
+                self.started.set()
+
+        self.thread = threading.Thread(target=collect, daemon=True)
+        self.thread.start()
+        if not self.started.wait(25) or self.failure:
+            self.close()
+            raise ValueError("cleanup watch could not start")
+
+    def drain(self):
+        require(not self.failure, self.failure)
+        rows = []
+        while True:
+            try:
+                rows.append(self.events.get_nowait())
+            except queue.Empty:
+                return rows
+
+    @staticmethod
+    def stop_process(process):
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            except ProcessLookupError:
+                pass
+
+    def close(self):
+        self.stopped.set()
+        with self.process_lock:
+            process = self.process
+        self.stop_process(process)
+        self.thread.join(timeout=2)
 
 
 def exact(row, uid):
@@ -415,6 +543,266 @@ def cleanup_backup(kube, proof):
     return receipt
 
 
+def purge_job_name(proof):
+    suffix = hashlib.sha256(proof["app_uid"].encode()).hexdigest()
+    name = "dskpurge-" + proof["app_name"] + "-" + suffix[:8]
+    return name if len(name) <= 63 else "dskpurge-" + proof["app_name"][:41] + "-" + suffix[:12]
+
+
+def provider_volume(proof, token=None):
+    match = re.fullmatch(r"bounded-ext4-v1:([1-9][0-9]*)", proof["binding"]["volume_handle"])
+    require(match is not None, "exact reviewed provider handle required")
+    token = token or os.environ.get("HCLOUD_TOKEN")
+    require(token, "cleanup observation requires the existing HCLOUD_TOKEN")
+    connection = http.client.HTTPSConnection("api.hetzner.cloud", timeout=10)
+    try:
+        connection.request("GET", "/v1/volumes/" + match[1], headers={"Authorization": "Bearer " + token})
+        response = connection.getresponse()
+        status = response.status
+        volume_id = None
+        if status == 200:
+            raw = response.read(65537)
+            if len(raw) <= 65536:
+                volume_id = json.loads(raw).get("volume", {}).get("id")
+        response.close()
+        return {"volumeHandle": proof["binding"]["volume_handle"], "volumeId": volume_id, "http": status, "state": "absent" if status == 404 else "present" if status == 200 and type(volume_id) is int and volume_id == int(match[1]) else "unknown"}
+    except (ValueError, TypeError, AttributeError, OSError, http.client.HTTPException):
+        return {"volumeHandle": proof["binding"]["volume_handle"], "http": None, "state": "unknown"}
+    finally:
+        connection.close()
+
+
+def verify_purge_event(row, proof, snapshot_location):
+    require((row["name"], row["namespace"], row["app"], row["appUid"], row["workspace"], row["appNamespace"], row["component"]) == (purge_job_name(proof), proof["namespace"], proof["app_name"], proof["app_uid"], proof["namespace"], proof["namespace"], "disk-snapshot-purge"), "purge Job identity or canonical workspace changed")
+    owner(row, "App", proof["app_name"], proof["app_uid"])
+    require(re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", row["uid"]), "actual purge Job UID is unavailable")
+    require(re.fullmatch(r"ghcr\.io/bex-co/bex-operator@sha256:[0-9a-f]{64}", proof["binding"]["backup_image"]), "reviewed purge helper digest required")
+    require(re.fullmatch(r"ghcr\.io/bex-co/bex-operator@sha256:[0-9a-f]{64}", row["image"]), "purge helper must name an exact operator digest")
+    require(row["containerNames"] == "snapshot;" and not row["initNames"] and row["volumes"] in ("", "[]") and json.loads(row["command"]) == ["/disk-snapshot"] and json.loads(row["args"]) == ["purge"] and (row["workspaceEnv"], row["diskEnv"]) == (proof["namespace"], proof["app_name"]), "purge Job does not run the exact own-prefix helper policy")
+    require(all(row[key] == value for key, value in snapshot_location.items()), "purge Job snapshot location differs from the committed own backup template")
+    return row["image"] == proof["binding"]["backup_image"]
+
+
+class PurgeAttempts:
+    def __init__(self, proof, snapshot_location):
+        self.proof, self.snapshot_location = proof, snapshot_location
+        self.current, self.attempts = None, {}
+
+    def observe(self, row):
+        approved = verify_purge_event(row, self.proof, self.snapshot_location)
+        previous = self.current
+        if previous is not None and previous["uid"] != row["uid"]:
+            require(previous["deletedObserved"] and row["uid"] not in self.attempts, "purge Job replacement requires its prior UID's observed DELETED event")
+            self.current = None
+        if self.current is None:
+            require(len(self.attempts) < 128, "cleanup observer exceeded its fixed purge-attempt bound")
+            self.current = {"name": row["name"], "uid": row["uid"], "namespace": self.proof["namespace"], "ownerAppUid": self.proof["app_uid"], "image": row["image"], "trust": "APPROVED" if approved else "UNAPPROVED", "jobCompleteObserved": False, "deletedObserved": False}
+            self.attempts[row["uid"]] = self.current
+        require(self.current["image"] == row["image"], "purge helper image changed within one Job lifetime")
+        require(not self.current["deletedObserved"] or row["event"] == "DELETED", "deleted purge Job lifetime reappeared")
+        self.current["resourceVersion"] = row["resourceVersion"]
+        self.current["jobCompleteObserved"] |= row["complete"] == "True"
+        self.current["deletedObserved"] |= row["event"] == "DELETED"
+        return previous is not None and previous["uid"] != row["uid"]
+
+    def completion(self):
+        if self.current and self.current["trust"] == "APPROVED" and self.current["jobCompleteObserved"]:
+            return {**self.current, "prefixEmptyEvidence": "reviewed /disk-snapshot purge exits successfully only after its unfiltered own-prefix empty check"}
+        return None
+
+
+class AwaitPurgeWatch(ValueError):
+    pass
+
+
+def cleanup_inventory(kube, proof, known):
+    ns, app, bound = proof["namespace"], proof["app_name"], proof["binding"]
+    pending = []
+
+    def remember(resource, row):
+        key = (resource, row["name"])
+        previous = known.get(key)
+        if previous is not None and previous != row["uid"] and key == ("jobs", purge_job_name(proof)):
+            raise AwaitPurgeWatch("await policy-verified purge Job watch lifetime")
+        require(previous in (None, row["uid"]) or (resource == "volumeattachments" and row["pv"] == bound["pv_name"]), "cleanup refused a replacement resource lifetime")
+        known[key] = row["uid"]
+        identity = {"resource": resource, "name": row["name"], "uid": row["uid"]}
+        if previous is not None and previous != row["uid"]:
+            identity["priorUid"] = previous
+        pending.append(identity)
+
+    fixed = (("apps.app.bex.co", "app", app, proof["app_uid"], ns), ("persistentvolumeclaim", "pvc", proof["pvc_name"], proof["pvc_uid"], ns), ("persistentvolume", "pv", bound["pv_name"], bound["pv_uid"], None), ("secret", "secret", proof["pvc_name"] + "-luks", bound["secret_uid"], ns), ("cronjobs", "workload", bound["backup_cronjob"], bound["backup_cronjob_uid"], ns))
+    for resource, kind, name, uid, namespace in fixed:
+        row = kube.project(resource, kind, name, namespace, allow_missing=True)
+        if row is None:
+            continue
+        require(row["uid"] == uid, "cleanup refused a replacement App/PVC/PV/Secret/CronJob lifetime")
+        if kind == "app":
+            require((row["service"], row["workspace"]) == (proof["service_id"], ns), "cleanup App identity changed")
+        elif kind == "pv":
+            require((row["handle"], row["driver"], row["namespace"], row["claim"], row["claimUid"], row["class"]) == (bound["volume_handle"], "csi.hetzner.cloud", ns, proof["pvc_name"], proof["pvc_uid"], SC), "cleanup PV provider or exact claim binding changed")
+        else:
+            owner(row, "App", app, proof["app_uid"])
+        remember(resource, row)
+
+    # Keep every observed owner lifetime, even after its label or parent vanishes.
+    owners = {f"App/{app}/{proof['app_uid']}", f"CronJob/{bound['backup_cronjob']}/{bound['backup_cronjob_uid']}"}
+    kinds = {"deployments": "Deployment", "replicasets": "ReplicaSet", "cronjobs": "CronJob", "jobs": "Job"}
+    owners.update(f"{kinds[resource]}/{name}/{uid}" for (resource, name), uid in known.items() if resource in kinds)
+    observed = set()
+    for resource in ("deployments", "replicasets", "cronjobs", "jobs", "pods"):
+        # Owner UID chains must still find a newly created child whose labels
+        # drifted before its first sample. Unrelated metadata never leaves memory.
+        rows = kube.project(resource, "cleanup_workload", namespace=ns)
+        for row in rows:
+            if row["app"] != app and row["appUid"] != proof["app_uid"] and row["owner"] not in owners:
+                continue
+            require(row["namespace"] == ns and row["app"] in ("", app) and row["appUid"] in ("", proof["app_uid"]) and row["workspace"] in ("", ns) and row["owner"] in owners, "cleanup workload has a foreign lifetime or workspace")
+            if resource == "jobs" and row["name"] == job_name(proof) and proof.get("backup_job_uid"):
+                require(row["uid"] == proof["backup_job_uid"], "recorded backup Job lifetime changed")
+            remember(resource, row)
+            observed.add((resource, row["name"]))
+            if resource in kinds:
+                owners.add(f"{kinds[resource]}/{row['name']}/{row['uid']}")
+    for row in kube.project("volumeattachments", "attachment"):
+        if row["pv"] == bound["pv_name"]:
+            remember("volumeattachments", row)
+            observed.add(("volumeattachments", row["name"]))
+    fixed_names = {(resource, name) for resource, _, name, _, _ in fixed}
+    for (resource, name), uid in list(known.items()):
+        if (resource, name) in fixed_names or (resource, name) in observed:
+            continue
+        row = kube.project(resource, "attachment" if resource == "volumeattachments" else "workload", name, None if resource == "volumeattachments" else ns, allow_missing=True)
+        if row is not None:
+            if resource == "volumeattachments":
+                require(row["pv"] == bound["pv_name"], "observed attachment changed its exact PV binding")
+            require(row["uid"] == uid, "cleanup refused a replacement observed resource lifetime")
+            remember(resource, row)
+    return sorted(pending, key=lambda row: (row["resource"], row["name"]))
+
+
+def sample_inspection(kube, proof, size, image):
+    sample = run_action(kube, proof, "inspect", "initial-1g" if size == "1" else "grown-5g", image)
+    result = sample["result"]
+    return {"state": "inspection", "requestedSizeGiB": int(size), "geometry": result["geometry"], "kubeletMetrics": result["kubeletMetrics"], "servicePod": {key: result["servicePod"][key] for key in ("name", "uid", "node", "started")}, "attachment": {key: result["attachment"][key] for key in ("name", "uid", "node")}, "csiPod": {key: result["csiPod"][key] for key in ("name", "uid", "image", "imageId", "containerId")}}
+
+
+def observe_cleanup(kube, proof, phase, image):
+    require(proof.get("binding"), "commit the reviewed fixture binding before observing cleanup")
+    token = os.environ.get("HCLOUD_TOKEN")
+    require(token, "cleanup observation requires the existing HCLOUD_TOKEN")
+    require(image == proof["binding"]["csi_image"], "observer CSI image must match the committed reviewed binding")
+    deadline = time.monotonic() + CLEANUP_SECONDS
+    binding(kube, proof, PHASE_GIB[phase])
+    cron, _ = own_cronjob(kube, proof)
+    env = {item["name"]: item.get("value", "") for item in cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0].get("env", [])}
+    snapshot_location = {key: env.get(key, "") for key in SNAPSHOT_LOCATION}
+    require(snapshot_location[SNAPSHOT_LOCATION[0]] and snapshot_location[SNAPSHOT_LOCATION[1]], "own committed snapshot location is unavailable")
+    watches = []
+    known = {}
+    observed_lifetimes = set()
+    purge_attempts = PurgeAttempts(proof, snapshot_location)
+    completed_job, completed_app, deletion_started, purge_seen, last = None, False, False, False, None
+    live_size, probe_key, probe_at, emitted_bytes = str(PHASE_GIB[phase]), None, 0, 0
+
+    def emit(receipt):
+        nonlocal emitted_bytes
+        encoded = json.dumps({"cleanupObservation": receipt, "run": proof["run"], "serviceId": proof["service_id"], "collectedAt": now().isoformat()})
+        emitted_bytes += len(encoded)
+        require(emitted_bytes <= 2 * 1024**2, "cleanup observer exceeded its fixed output bound")
+        print(encoded, flush=True)
+
+    def inventory():
+        pending = cleanup_inventory(kube, proof, known)
+        for item in pending:
+            observed_lifetimes.add((item["resource"], item["name"], item["uid"]))
+            if "priorUid" in item:
+                observed_lifetimes.add((item["resource"], item["name"], item["priorUid"]))
+        require(len(observed_lifetimes) <= 1024, "cleanup observer exceeded its fixed resource-lifetime bound")
+        return pending
+
+    def capture_events():
+        nonlocal completed_app, completed_job, deletion_started, purge_seen, live_size
+        for row in job_watch.drain():
+            if purge_attempts.observe(row):
+                completed_app = False
+            purge_seen = True
+            key = ("jobs", row["name"])
+            known[key] = row["uid"]
+            observed_lifetimes.add(("jobs", row["name"], row["uid"]))
+            completed_job = purge_attempts.completion()
+            emit({"watch": "purgeJob", "event": row["event"], **purge_attempts.current})
+        for row in app_watch.drain():
+            require(row["uid"] == proof["app_uid"] and (row["service"], row["workspace"]) == (proof["service_id"], proof["namespace"]), "cleanup App watch saw a replacement or foreign workspace")
+            deletion_started = deletion_started or bool(row["deleting"]) or row["event"] == "DELETED"
+            live_size = row["size"]
+            require(row["purgeComplete"] in ("", proof["app_uid"]), "cleanup completion belongs to another App lifetime")
+            completed_app = row["purgeComplete"] == proof["app_uid"]
+            emit({"watch": "app", "event": row["event"], "uid": row["uid"], "resourceVersion": row["resourceVersion"], "purgeComplete": completed_app})
+
+    try:
+        for resource, kind, name in (("apps.app.bex.co", "cleanup_app", proof["app_name"]), ("jobs", "cleanup_job", purge_job_name(proof))):
+            watches.append(kube.watch_cleanup(resource, kind, name, proof["namespace"]))
+        app_watch, job_watch = watches
+        require(len(app_watch.initial) == 1 and not app_watch.initial[0]["deleting"] and not app_watch.initial[0]["purgeComplete"], "cleanup observer must start before DELETE and before purge completion")
+        require(app_watch.initial[0]["uid"] == proof["app_uid"] and not job_watch.initial, "cleanup observer initial App/purge lifetime changed")
+        pending = inventory()
+        baseline = provider_volume(proof, token)
+        require(baseline["state"] == "present", "cleanup provider baseline is unproved; exact bound volume must return HTTP200 with its matching numeric ID before readiness")
+        capture_events()
+        require(not deletion_started and not completed_app and not purge_seen, "cleanup observer must be ready before DELETE")
+        emit({"state": "observerReady", "startedAt": now().isoformat(), "maximumSeconds": CLEANUP_SECONDS, "fixtureExpiresAt": proof["expires_at"], "fixtureBudgetRemainingSeconds": max(0, int((instant(proof["expires_at"]) - now()).total_seconds())), "namespace": proof["namespace"], "appUid": proof["app_uid"], "purgeJobName": purge_job_name(proof), "providerBaseline": baseline, "watchResourceVersions": {"app": app_watch.version, "purgeJob": job_watch.version}})
+        while time.monotonic() < deadline:
+            capture_events()
+            try:
+                pending = inventory()
+            except AwaitPurgeWatch:
+                capture_events()
+                emit({"state": "pending", "reason": "awaiting exact purge Job lifetime verification from its continuous watch"})
+                time.sleep(min(2, max(0, deadline - time.monotonic())))
+                continue
+            current_probe_key = (live_size, tuple(item["uid"] for item in pending if item["resource"] == "pods"))
+            if not deletion_started and now() < instant(proof["expires_at"]) and (current_probe_key != probe_key or time.monotonic() - probe_at >= 60):
+                probe_key, probe_at = current_probe_key, time.monotonic()
+                try:
+                    require(live_size in ("1", "5"), "observer only inspects the fixed 1Gi/5Gi fixture")
+                    emit(sample_inspection(kube, proof, live_size, image))
+                except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
+                    emit({"state": "inspection-unproved", "requestedSizeGiB": live_size, "reason": type(error).__name__})
+            provider = provider_volume(proof, token) if not pending else {"state": "not-yet-checked"}
+            capture_events()
+            cleanup_absent = not pending and provider["state"] == "absent" and completed_app
+            unapproved_complete = purge_attempts.current and purge_attempts.current["trust"] == "UNAPPROVED" and purge_attempts.current["jobCompleteObserved"]
+            if cleanup_absent and (completed_job or unapproved_complete):
+                # Include any short-lived identities just replayed by the watches
+                # in a final exact-name absence sweep.
+                try:
+                    pending = inventory()
+                except AwaitPurgeWatch:
+                    capture_events()
+                    emit({"state": "pending", "reason": "purge lifetime changed during the final absence sweep; awaiting continuous watch verification"})
+                    time.sleep(min(2, max(0, deadline - time.monotonic())))
+                    continue
+            state = {"state": "complete" if not pending and provider["state"] == "absent" and completed_app and completed_job else "UNAPPROVED" if not pending and provider["state"] == "absent" and completed_app and unapproved_complete else "pending", "remaining": pending, "provider": provider, "purgeJob": completed_job, "purgeAttempts": list(purge_attempts.attempts.values()), "appCompletionObserved": completed_app}
+            if state["state"] in ("complete", "UNAPPROVED"):
+                state["observedLifetimes"] = [{"resource": resource, "name": name, "uid": uid} for resource, name, uid in sorted(observed_lifetimes)]
+            if state["state"] == "UNAPPROVED":
+                state["reason"] = "actual helper digest requires strict offline signature/source review; no prefix-empty or completed-cleanup authority is granted"
+            if state != last:
+                emit(state)
+                last = state
+            if state["state"] == "complete":
+                return state
+            if state["state"] == "UNAPPROVED":
+                raise ValueError("cleanup has unapproved helper evidence; strict offline image signature/source review is required")
+            time.sleep(min(2 if deletion_started else 10, max(0, deadline - time.monotonic())))
+        emit({"state": "unknown", "reason": "bounded cleanup observer expired without every required proof", "lastObservation": last})
+        raise ValueError("cleanup is unproved after the bounded observation window")
+    finally:
+        for watch in watches:
+            watch.close()
+
+
 def run_action(kube, proof, action, phase, image=None):
     require(action in ACTIONS and phase in PHASE_GIB, "unknown fixture action/phase")
     if action == "backup-cleanup":
@@ -422,6 +810,8 @@ def run_action(kube, proof, action, phase, image=None):
     if action == "backup-status":
         return {"run": proof["run"], "serviceId": proof["service_id"], "result": recorded_backup(kube, proof)}
     require(now() < instant(proof["expires_at"]), "active fixture window expired")
+    if action == "cleanup-observe":
+        return observe_cleanup(kube, proof, phase, image)
     size = PHASE_GIB[phase]
     facts = binding(kube, proof, size)
     cron, info = own_cronjob(kube, proof)
@@ -442,17 +832,17 @@ def run_action(kube, proof, action, phase, image=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("validate", "validate-status", "validate-cleanup", *ACTIONS))
+    parser.add_argument("action", choices=("validate", "validate-status", "validate-cleanup", "validate-observer", *ACTIONS))
     parser.add_argument("--phase", choices=PHASE_GIB, default="initial-1g")
     args = parser.parse_args()
     try:
         proof = load_proof(cleanup=args.action in ("validate-status", "validate-cleanup", "backup-status", "backup-cleanup"))
-        if args.action in ("validate-status", "validate-cleanup"):
+        if args.action in ("validate-status", "validate-cleanup", "validate-observer"):
             require(proof.get("binding"), "commit the reviewed own backup binding first")
             if args.action == "validate-cleanup":
                 require(proof.get("backup_job_uid"), "commit the actual owned backup Job UID before cleanup")
-        image = command(["bash", str(ROOT / "scripts/install-hcloud-csi.sh"), "validate-pin"]).strip() if args.action in ("validate", "bind", "inspect", "backup") else None
-        if args.action in ("validate", "validate-status", "validate-cleanup"):
+        image = command(["bash", str(ROOT / "scripts/install-hcloud-csi.sh"), "validate-pin"]).strip() if args.action in ("validate", "bind", "inspect", "backup", "validate-observer", "cleanup-observe") else None
+        if args.action in ("validate", "validate-status", "validate-cleanup", "validate-observer"):
             print(json.dumps({"serviceId": proof["service_id"], "run": proof["run"], "proof": str(PROOF)}))
             return
         require(os.environ.get("KUBECONFIG") and Path(os.environ["KUBECONFIG"]).is_file(), "explicit fetched KUBECONFIG required")

@@ -1,0 +1,98 @@
+{
+  "/private/tmp/bex-w8-disk-delete-compile.log": {
+    "bytes": 537,
+    "sha256": "5478cf99b4f7e9b7c02a7d1c4e9c132b3dc9ca82baf8b68801090448b433e763",
+    "stored": "logs/bex-w8-disk-delete-compile.log.gz",
+    "stored_sha256": "8b866f881a7358455d45c7dbea10ce0174b38f4959ded199eb29852be23533e8"
+  },
+  "/private/tmp/bex-w8-disk-delete-create-bucket.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stored": "logs/bex-w8-disk-delete-create-bucket.log.gz",
+    "stored_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "/private/tmp/bex-w8-disk-delete-envtest-final.log": {
+    "bytes": 68,
+    "sha256": "1d106007557003de49a6ce1e65238165917d13c8ab45c4eefd9cb327c475c6f2",
+    "stored": "logs/bex-w8-disk-delete-envtest-final.log.gz",
+    "stored_sha256": "768a1bc2fa0a5901124c7c1c6e0a79a40c651fb582b6f34d14a553ae6141da60"
+  },
+  "/private/tmp/bex-w8-disk-delete-envtest.log": {
+    "bytes": 8245,
+    "sha256": "cedccb656207b931337746f11c4452f55bf78d542c3b8f76c94f9caf544a39a6",
+    "stored": "logs/bex-w8-disk-delete-envtest.log.gz",
+    "stored_sha256": "2418cfa44729a423b4d9d7adc2f486343504128745977a72afcc1544af8a4022"
+  },
+  "/private/tmp/bex-w8-disk-delete-final-focused.log": {
+    "bytes": 204,
+    "sha256": "5daf3ac5ddb3fbce1708085d83039b59edfcfb50d08c55383f3f6e71d409e7be",
+    "stored": "logs/bex-w8-disk-delete-final-focused.log.gz",
+    "stored_sha256": "ad37cb2c3b60738a445e2d1c4e8ebd2548647f4c5359977ea23c75ace13eaee5"
+  },
+  "/private/tmp/bex-w8-disk-delete-lint-focused.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "stored": "logs/bex-w8-disk-delete-lint-focused.log.gz",
+    "stored_sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "/private/tmp/bex-w8-disk-delete-make-lint.log": {
+    "bytes": 587,
+    "sha256": "d1c53ede949436983688040e4055fbf1cb7b93d814791659ab4ab15d93127f24",
+    "stored": "logs/bex-w8-disk-delete-make-lint.log.gz",
+    "stored_sha256": "b0b6980a605b91242775d0aae4ba6107f80d091061469659c5ff57f7257f794d"
+  },
+  "/private/tmp/bex-w8-disk-delete-make-test.log": {
+    "bytes": 4692,
+    "sha256": "5767f3887d7039f213c7a8624483c2d5470f6a98e86981878605378b14d06236",
+    "stored": "logs/bex-w8-disk-delete-make-test.log.gz",
+    "stored_sha256": "e050225e47de7d2b1dd8c42d1e926b78a2dc4fd51ed62c16a8ecad1749016de2"
+  },
+  "/private/tmp/bex-w8-disk-delete-s3-tests.log": {
+    "bytes": 136,
+    "sha256": "b1bc11d721f10e25a0a1072d4caa2bc23596276c22c102c4f6565b4d57e1f680",
+    "stored": "logs/bex-w8-disk-delete-s3-tests.log.gz",
+    "stored_sha256": "05b5ca9f8066815deb56f12c2ae8001b8fb386f58d788921a90182da03b1a404"
+  },
+  "/private/tmp/bex-w8-disk-delete-scope-focused.log": {
+    "bytes": 68,
+    "sha256": "ef337d80bb1aeb4b90bc996cacf3659e0d07de5621bf8705a9e85725cd7c3a93",
+    "stored": "logs/bex-w8-disk-delete-scope-focused.log.gz",
+    "stored_sha256": "e74abb82cb2c7e440eb2e77254393e7283c0a8dcbc9e28bc1ee027265c466fe7"
+  },
+  "/private/tmp/bex-w8-disk-delete-validation/focused-final.log": {
+    "bytes": 68,
+    "sha256": "d46e21393f0c299daa3d698c19071bfd4ef28e390888b55bfd632710581332e8",
+    "stored": "logs/focused-final.log.gz",
+    "stored_sha256": "dacdafece7bcb51b8b385f233da7fb2688c90ccf0e252f3e65538be3e3ba9f17"
+  },
+  "/private/tmp/bex-w8-disk-delete-validation/make-lint-attempt1-no-space.log": {
+    "bytes": 357,
+    "sha256": "0246ca5100abb4eb8c4f16f38556334726c3aa60e1addc52d0edcab9aa3f83f5",
+    "stored": "logs/make-lint-attempt1-no-space.log.gz",
+    "stored_sha256": "26e25821096131aeed41508d174cc236598cb91add2fb209bd6ef81f99cfdedf"
+  },
+  "/private/tmp/bex-w8-disk-delete-validation/make-lint-final.log": {
+    "bytes": 40,
+    "sha256": "5f4ff97d3e607c3574b4ff46ecbc9c4baf8f6e5fa825e8dc4f4effab5ecadc21",
+    "stored": "logs/make-lint-final.log.gz",
+    "stored_sha256": "5991fc73dd9d8d30e3291ad2d35eacfa0f813e146075e09cdbaa3ff1b5998450"
+  },
+  "/private/tmp/bex-w8-disk-delete-validation/make-test-final.log": {
+    "bytes": 4694,
+    "sha256": "9475fc0f5ac0708a82bbf8bbc7c3043851db437aba2fcf09f8355fa2d1626216",
+    "stored": "logs/make-test-final.log.gz",
+    "stored_sha256": "41e76563545c3bcfa5e9ea11d6187c7e8ee279e19a390927f30f6ad55c4627cd"
+  },
+  "/private/tmp/bex-w8-disk-deletion-focused.log": {
+    "bytes": 68,
+    "sha256": "2ce10c2e385b22bf11d912ea570ea67503143e44bc7697a77356d799f97c0cd2",
+    "stored": "logs/bex-w8-disk-deletion-focused.log.gz",
+    "stored_sha256": "3665d87d215eb3341392def07e28046c35983a95ced22b9c2caca5bb8647c8da"
+  },
+  "/private/tmp/bex-w8-disk-purge-unit.log": {
+    "bytes": 70,
+    "sha256": "3d0b23aee16e086464c90c0814499706872f7191525055b9aeaea117a317627e",
+    "stored": "logs/bex-w8-disk-purge-unit.log.gz",
+    "stored_sha256": "7b5535ffd6a53a0a9b35534daf60de570c3324c392a21ff6b273f647a3c2835c"
+  }
+}

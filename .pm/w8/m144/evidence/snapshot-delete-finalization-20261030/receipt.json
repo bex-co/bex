@@ -1,0 +1,117 @@
+{
+  "cleanup": "Root reported exact task-only Minio container4e3ed72f3944 and sole anonymous volume removed; completed task-only upstream/controller binaries retired. Shared credential Secrets and caches were not deleted by this agent.",
+  "closed_logs_stable": true,
+  "codegen_before_after_identical": true,
+  "codegen_files": 91,
+  "completed_at_utc": "2026-10-30T11:29:52.308841+00:00",
+  "final_validation": [
+    {
+      "command": "GOWORK=off go test ./internal/controller -run '^Test(CleanupJob|DiskDeletion|DiskCleanup)' -count=1",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/simplify-focused.log",
+      "name": "focused post-simplify cleanup and disk tests",
+      "result": "PASS2.457s"
+    },
+    {
+      "command": "GOWORK=off make test",
+      "elapsed_seconds": 229.84,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-test-simplify-final.log",
+      "phase": "make test"
+    },
+    {
+      "command": "make lint",
+      "elapsed_seconds": 204.058,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-lint-simplify-final.log",
+      "phase": "make lint"
+    }
+  ],
+  "go_work_sum": "Preexisting dirty lego/go.work.sum excluded; agent did not stage, restore, commit or push it.",
+  "head_at_receipt": "f90a754489885b75f2ff77268c08dc5a79c5a4d1",
+  "lifecycle_metadata": {
+    "annotation_value": "exact App UID",
+    "complete": "app.bex.co/disk-snapshot-purge-complete",
+    "pending": "app.bex.co/disk-snapshot-purge-pending",
+    "purge_component": "disk-snapshot-purge",
+    "purge_name": "cleanupJobName(dskpurge-,AppName,AppUID)",
+    "state": "app.bex.co/disk-snapshots",
+    "success": "JobComplete only after helper unfiltered prefix-empty verification; completion annotation persisted, then own Job and Pods observed gone before App finalizer release. Foreign namespace/tenant alias and foreign/ambiguous same-name writer lifetimes fail closed."
+  },
+  "limits": "Real envtest uses local Kubernetes API but no controller-manager; tests explicitly simulate foreground GC/PVC-protection finalizer release only after writer Pod absence. Local Minio is not hosted object-store proof. No real CSI/provider deletion or hosted service DELETE was run here; root-owned fixed read-only observer/workflow is separate.",
+  "log_mapping": "log-paths.json",
+  "post_simplify_changes": [
+    "Reuse validateAWSCredentialSecret. Both static callers wrap static publish %w, preserving the exact existing condition text; disk purge wraps disk snapshot purge %w and retains uncached namespace client.",
+    "Use ArtifactIdentity.Owns for UID-label branch after the foreign App owner veto; legacy owner-chain fallback unchanged.",
+    "Skip repeat Delete of already-terminating cleanup Pods while retaining the absence barrier. Existing manager-restart/completion test holds a Pod across three polls and asserts exactly one Delete."
+  ],
+  "previous_validated_receipt": "pre-simplify/receipt.json",
+  "prior_failed_iterations": "Historical initial compile/Job-status fixture corrections and disk-exhausted lint attempts are retained in logs/ with explicit original path mappings. They are not final validation passes. First full lint failed source complexity34 and local disk space; source helper extraction fixed complexity. Final lint attempt1 after finalmake failed only backend temporary compiler disk space. Capacity recovered before successful final lint retry.",
+  "prior_validation": [
+    {
+      "command": "GOWORK=off go test ./internal/controller -run '^TestDisk(Deletion|Cleanup)' -count=1",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/focused-final.log",
+      "name": "final focused deletion and ownership tests",
+      "result": "PASS 1.066s; retained finalizer pending/failed; writer and purge Pod barriers; missing credentials; legacy state/restart; namespace alias and foreign/contradictory owner negatives."
+    },
+    {
+      "command": "GOWORK=off make test",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-test-final.log",
+      "name": "final complete normal operator suite",
+      "result": "PASS; complete controller suite214.061s,87.1% coverage; codegen/fmt/vet and all normal packages pass. Includes real envtest legacy writer chain, failed/successful purge and held Pod finalization, plus two actual same-AppUID detach/reattach cycles with distinct purgeJobUIDs, stale completion replay and midpurge reattach barrier. Optional S3 integration was not enabled in this final run."
+    },
+    {
+      "command": "make lint",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-lint-final.log",
+      "name": "final complete repository lint",
+      "result": "PASS; all4modules0issues plus required whole-program deadcode gate. Sequential after make test."
+    },
+    {
+      "command": "BEX_TEST_S3_ENDPOINT=http://127.0.0.1:32857 AWS_EC2_METADATA_DISABLED=true GOWORK=off go test ./internal/disksnapshot ./cmd/disk-snapshot ./internal/controller -run '^(TestS3|TestPurgeAll|TestBackupRecords|TestDiskDeletion|TestDiskCleanup)' -count=1 (synthetic local AWS credentials supplied)",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-final-focused.log",
+      "name": "earlier real local S3 integration, separately scoped",
+      "result": "PASS against dedicated local Minio: real snapshot+failure-marker purge and unfiltered prefix-empty assertion; neighboring snapshots+all failure markers preserved. The S3/command package source bytes were unchanged afterward. Later controller refinements were retested by the final focused/full suites."
+    },
+    {
+      "command": "gocyclo lego/operator/internal/controller/disk_backup.go",
+      "name": "standalone static cyclomatic complexity",
+      "result": "cleanup25, quiesce22, credential11, ownership10, all below repository threshold30; gofmt and git diff --check pass."
+    }
+  ],
+  "review_patch": "operator-change.patch.txt",
+  "scope": "Local validation of operator disk-snapshot finalization and detach cleanup. No production resources, cloud auth requests, tenant data, commit or push by this agent.",
+  "source_base_commit_at_final_make_start": "f90a754489885b75f2ff77268c08dc5a79c5a4d1",
+  "source_before_after_identical": true,
+  "source_files": 12,
+  "source_manifest": "source-after-final-gates.json",
+  "source_payload_mapping": "source-paths.json",
+  "status": "complete",
+  "stored_and_decompressed_hashes_verified": true,
+  "tests": [
+    {
+      "command": "GOWORK=off go test ./internal/controller -run '^Test(CleanupJob|DiskDeletion|DiskCleanup)' -count=1",
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/simplify-focused.log",
+      "name": "focused post-simplify cleanup and disk tests",
+      "result": "PASS2.457s"
+    },
+    {
+      "command": "GOWORK=off make test",
+      "elapsed_seconds": 229.84,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-test-simplify-final.log",
+      "phase": "make test"
+    },
+    {
+      "command": "make lint",
+      "elapsed_seconds": 204.058,
+      "exit_code": 0,
+      "log": "/private/tmp/bex-w8-disk-delete-validation/make-lint-simplify-final.log",
+      "phase": "make lint"
+    }
+  ]
+}

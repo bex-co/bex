@@ -534,11 +534,21 @@ var _ = Describe("Persistent disk snapshots", func() {
 	It("purges the snapshots when the disk is deleted", func() {
 		reconciler, app := newSnapshotApp("snap-purge")
 		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		app.Labels[labelWorkspace] = app.Namespace
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 
-		Expect(reconciler.purgeDiskSnapshots(ctx, app)).To(Succeed())
+		Expect(k8sClient.Create(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: store.S3Secret, Namespace: app.Namespace,
+		}, Data: map[string][]byte{"AWS_ACCESS_KEY_ID": []byte("test"), "AWS_SECRET_ACCESS_KEY": []byte("test-secret")}})).To(Succeed())
+		defer func() {
+			Expect(k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: store.S3Secret, Namespace: app.Namespace}})).To(Succeed())
+		}()
+		done, err := reconciler.reconcileDiskSnapshotCleanup(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(done).To(BeFalse())
 
 		job := &batchv1.Job{}
-		key := client.ObjectKey{Namespace: app.Namespace, Name: diskPurgeName(app.Name)}
+		key := client.ObjectKey{Namespace: app.Namespace, Name: diskPurgeName(app)}
 		Expect(k8sClient.Get(ctx, key, job)).To(Succeed())
 		Expect(job.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{"purge"}))
 		// Purge touches only the object store, so it must not mount the volume.

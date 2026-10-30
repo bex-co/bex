@@ -1,0 +1,353 @@
+{
+  "scope": "Exact source and local finalization validation only; source and raw log custody mappings retained",
+  "files": {
+    "ARCHIVE_PATHS.json": {
+      "bytes": 435,
+      "sha256": "c536aef708ff00282d3f800dd0bccc85fc8d4616fc10e3e3dc022cd9c8388c8d"
+    },
+    "README.md": {
+      "bytes": 1158,
+      "sha256": "17b7fc9a0d37ae9267d5ee78789358ebb14f94861920dbfb2e3a4d166897560b"
+    },
+    "README.txt": {
+      "bytes": 750,
+      "sha256": "70c243dcd94ba4eb50c5acaf54b34d2410bdd8cb7378a43cc22fbe16fbbfa767"
+    },
+    "codegen-after-final-gates.json": {
+      "bytes": 11087,
+      "sha256": "3ae4ff8a2dca90ac5fa1515f2632f8357a3770529c55d25b36caf5fff03ed3ee"
+    },
+    "codegen-before-final-gates.json": {
+      "bytes": 11087,
+      "sha256": "3ae4ff8a2dca90ac5fa1515f2632f8357a3770529c55d25b36caf5fff03ed3ee"
+    },
+    "log-paths.json": {
+      "bytes": 5874,
+      "sha256": "6767a3da354e403a831239b4dc8fa93b23bff3d102c0b4b0149f0b5a6c22e52a"
+    },
+    "logs/bex-w8-disk-delete-compile.log.gz": {
+      "bytes": 278,
+      "sha256": "8b866f881a7358455d45c7dbea10ce0174b38f4959ded199eb29852be23533e8"
+    },
+    "logs/bex-w8-disk-delete-create-bucket.log.gz": {
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    "logs/bex-w8-disk-delete-envtest-final.log.gz": {
+      "bytes": 85,
+      "sha256": "768a1bc2fa0a5901124c7c1c6e0a79a40c651fb582b6f34d14a553ae6141da60"
+    },
+    "logs/bex-w8-disk-delete-envtest.log.gz": {
+      "bytes": 1263,
+      "sha256": "2418cfa44729a423b4d9d7adc2f486343504128745977a72afcc1544af8a4022"
+    },
+    "logs/bex-w8-disk-delete-final-focused.log.gz": {
+      "bytes": 123,
+      "sha256": "ad37cb2c3b60738a445e2d1c4e8ebd2548647f4c5359977ea23c75ace13eaee5"
+    },
+    "logs/bex-w8-disk-delete-lint-focused.log.gz": {
+      "bytes": 30,
+      "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+    },
+    "logs/bex-w8-disk-delete-make-lint.log.gz": {
+      "bytes": 407,
+      "sha256": "b0b6980a605b91242775d0aae4ba6107f80d091061469659c5ff57f7257f794d"
+    },
+    "logs/bex-w8-disk-delete-make-test.log.gz": {
+      "bytes": 939,
+      "sha256": "e050225e47de7d2b1dd8c42d1e926b78a2dc4fd51ed62c16a8ecad1749016de2"
+    },
+    "logs/bex-w8-disk-delete-s3-tests.log.gz": {
+      "bytes": 106,
+      "sha256": "05b5ca9f8066815deb56f12c2ae8001b8fb386f58d788921a90182da03b1a404"
+    },
+    "logs/bex-w8-disk-delete-scope-focused.log.gz": {
+      "bytes": 85,
+      "sha256": "e74abb82cb2c7e440eb2e77254393e7283c0a8dcbc9e28bc1ee027265c466fe7"
+    },
+    "logs/bex-w8-disk-deletion-focused.log.gz": {
+      "bytes": 85,
+      "sha256": "3665d87d215eb3341392def07e28046c35983a95ced22b9c2caca5bb8647c8da"
+    },
+    "logs/bex-w8-disk-purge-unit.log.gz": {
+      "bytes": 87,
+      "sha256": "7b5535ffd6a53a0a9b35534daf60de570c3324c392a21ff6b273f647a3c2835c"
+    },
+    "logs/focused-final.log.gz": {
+      "bytes": 85,
+      "sha256": "dacdafece7bcb51b8b385f233da7fb2688c90ccf0e252f3e65538be3e3ba9f17"
+    },
+    "logs/make-lint-attempt1-no-space.log.gz": {
+      "bytes": 240,
+      "sha256": "26e25821096131aeed41508d174cc236598cb91add2fb209bd6ef81f99cfdedf"
+    },
+    "logs/make-lint-final.log.gz": {
+      "bytes": 33,
+      "sha256": "5991fc73dd9d8d30e3291ad2d35eacfa0f813e146075e09cdbaa3ff1b5998450"
+    },
+    "logs/make-lint-simplify-final.log.gz": {
+      "bytes": 76,
+      "sha256": "6b85202367252687be2369b3999dad2f265c221fadd13d2dca07b49cfca34ca2"
+    },
+    "logs/make-test-final.log.gz": {
+      "bytes": 932,
+      "sha256": "41e76563545c3bcfa5e9ea11d6187c7e8ee279e19a390927f30f6ad55c4627cd"
+    },
+    "logs/make-test-simplify-final.log.gz": {
+      "bytes": 911,
+      "sha256": "15021fa3583c8da9825c8547ce365eeabe36a0179f37d8edb29c6ec6dfe96a8c"
+    },
+    "logs/simplify-focused.log.gz": {
+      "bytes": 85,
+      "sha256": "f24c3dc0fef50da7604f8fc30265bf3494d76b800af1db7c57821056544e670b"
+    },
+    "operator-change.patch.txt.gz": {
+      "bytes": 13977,
+      "sha256": "8bb09bac829f534dd61eb3d4450c01cd28cd6b191866de5b5efb57990daeb583"
+    },
+    "pre-simplify/MANIFEST.json": {
+      "bytes": 4854,
+      "sha256": "ecf87ef919a3547d6d4bea75f616db1b92194382f532bb4a5ab10f84b58bd914"
+    },
+    "pre-simplify/README.txt": {
+      "bytes": 581,
+      "sha256": "dcb7587572710d84c7f0ba9f1eb0180440bdc1b6f3faf7b9efcf42cdea628286"
+    },
+    "pre-simplify/codegen-after-final-gates.json": {
+      "bytes": 11087,
+      "sha256": "3ae4ff8a2dca90ac5fa1515f2632f8357a3770529c55d25b36caf5fff03ed3ee"
+    },
+    "pre-simplify/codegen-before-final-gates.json": {
+      "bytes": 11087,
+      "sha256": "3ae4ff8a2dca90ac5fa1515f2632f8357a3770529c55d25b36caf5fff03ed3ee"
+    },
+    "pre-simplify/focused-final.log": {
+      "bytes": 68,
+      "sha256": "d46e21393f0c299daa3d698c19071bfd4ef28e390888b55bfd632710581332e8"
+    },
+    "pre-simplify/go-platform-version.txt": {
+      "bytes": 33,
+      "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4"
+    },
+    "pre-simplify/go-workspace-version.txt": {
+      "bytes": 33,
+      "sha256": "94e911f9fbf3c118f6a0573ab3a13fa546ad13e89ba40cf53df77e468509c92d"
+    },
+    "pre-simplify/golangci-lint-version.txt": {
+      "bytes": 156,
+      "sha256": "a7bf216428bce459b6a72d9f78fa9eb0f643141983e99ab4d1f7a79c24abbdfd"
+    },
+    "pre-simplify/log-paths.json": {
+      "bytes": 4913,
+      "sha256": "f08af8cd3a0a639c12ad76fa17c66111a63ab17e629c3d453f12286f28be19d7"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-compile.log.gz": {
+      "bytes": 278,
+      "sha256": "8b866f881a7358455d45c7dbea10ce0174b38f4959ded199eb29852be23533e8"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-create-bucket.log.gz": {
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-envtest-final.log.gz": {
+      "bytes": 85,
+      "sha256": "768a1bc2fa0a5901124c7c1c6e0a79a40c651fb582b6f34d14a553ae6141da60"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-envtest.log.gz": {
+      "bytes": 1263,
+      "sha256": "2418cfa44729a423b4d9d7adc2f486343504128745977a72afcc1544af8a4022"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-final-focused.log.gz": {
+      "bytes": 123,
+      "sha256": "ad37cb2c3b60738a445e2d1c4e8ebd2548647f4c5359977ea23c75ace13eaee5"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-lint-focused.log.gz": {
+      "bytes": 30,
+      "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-make-lint.log.gz": {
+      "bytes": 407,
+      "sha256": "b0b6980a605b91242775d0aae4ba6107f80d091061469659c5ff57f7257f794d"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-make-test.log.gz": {
+      "bytes": 939,
+      "sha256": "e050225e47de7d2b1dd8c42d1e926b78a2dc4fd51ed62c16a8ecad1749016de2"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-s3-tests.log.gz": {
+      "bytes": 106,
+      "sha256": "05b5ca9f8066815deb56f12c2ae8001b8fb386f58d788921a90182da03b1a404"
+    },
+    "pre-simplify/logs/bex-w8-disk-delete-scope-focused.log.gz": {
+      "bytes": 85,
+      "sha256": "e74abb82cb2c7e440eb2e77254393e7283c0a8dcbc9e28bc1ee027265c466fe7"
+    },
+    "pre-simplify/logs/bex-w8-disk-deletion-focused.log.gz": {
+      "bytes": 85,
+      "sha256": "3665d87d215eb3341392def07e28046c35983a95ced22b9c2caca5bb8647c8da"
+    },
+    "pre-simplify/logs/bex-w8-disk-purge-unit.log.gz": {
+      "bytes": 87,
+      "sha256": "7b5535ffd6a53a0a9b35534daf60de570c3324c392a21ff6b273f647a3c2835c"
+    },
+    "pre-simplify/logs/focused-final.log.gz": {
+      "bytes": 85,
+      "sha256": "dacdafece7bcb51b8b385f233da7fb2688c90ccf0e252f3e65538be3e3ba9f17"
+    },
+    "pre-simplify/logs/make-lint-attempt1-no-space.log.gz": {
+      "bytes": 240,
+      "sha256": "26e25821096131aeed41508d174cc236598cb91add2fb209bd6ef81f99cfdedf"
+    },
+    "pre-simplify/logs/make-lint-final.log.gz": {
+      "bytes": 33,
+      "sha256": "5991fc73dd9d8d30e3291ad2d35eacfa0f813e146075e09cdbaa3ff1b5998450"
+    },
+    "pre-simplify/logs/make-test-final.log.gz": {
+      "bytes": 932,
+      "sha256": "41e76563545c3bcfa5e9ea11d6187c7e8ee279e19a390927f30f6ad55c4627cd"
+    },
+    "pre-simplify/make-lint-attempt1-no-space.log": {
+      "bytes": 357,
+      "sha256": "0246ca5100abb4eb8c4f16f38556334726c3aa60e1addc52d0edcab9aa3f83f5"
+    },
+    "pre-simplify/make-lint-final.log": {
+      "bytes": 40,
+      "sha256": "5f4ff97d3e607c3574b4ff46ecbc9c4baf8f6e5fa825e8dc4f4effab5ecadc21"
+    },
+    "pre-simplify/make-test-final.log": {
+      "bytes": 4694,
+      "sha256": "9475fc0f5ac0708a82bbf8bbc7c3043851db437aba2fcf09f8355fa2d1626216"
+    },
+    "pre-simplify/operator-change.patch.txt.gz": {
+      "bytes": 12637,
+      "sha256": "e57d0c8f4e79822191f782fb2105ce3ce6f7cfef2d21aa74689142f021baa3a2"
+    },
+    "pre-simplify/receipt.json": {
+      "bytes": 5081,
+      "sha256": "eeb2e3959ac73e892c0ed53b8b953a0a12515254640da8c6da511f0bb512c0a0"
+    },
+    "pre-simplify/source/lego/operator/cmd/disk-snapshot/main.go.txt.gz": {
+      "bytes": 3565,
+      "sha256": "ba3eed838fd4de1fdf97ab2ada573a65d3fd18f05443da3f051d0ab5d50b8290"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/app_controller.go.txt.gz": {
+      "bytes": 107503,
+      "sha256": "d9dc157cead920a51519a4dc1db1cb7c4df4a53ce5e7c7ce0de4c789b73c195b"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/cleanup_job.go.txt.gz": {
+      "bytes": 2471,
+      "sha256": "d3c39fb43bd0c83032a74db10a0f3533c8d6b7477b0327c50ad5c16a3153c4c6"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/disk.go.txt.gz": {
+      "bytes": 6897,
+      "sha256": "8a395a30387d214619bcadc485b67557580b9f35239e94416eec923409eb6fff"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/disk_backup.go.txt.gz": {
+      "bytes": 10941,
+      "sha256": "26eaef97302475e1a6eee47bff5c5eeaed86949759c63976231171d9ee5de381"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/disk_deletion_envtest_test.go.txt.gz": {
+      "bytes": 2666,
+      "sha256": "54a673573b8795037f99770dedd13b1027327eeae3d8280aec5dd697f767f74e"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/disk_deletion_test.go.txt.gz": {
+      "bytes": 3658,
+      "sha256": "6683a8beedbdaf94aaa49c1b26fd3b59329d73dcbfd912b7616e52eb85fd4ca3"
+    },
+    "pre-simplify/source/lego/operator/internal/controller/disk_envtest_test.go.txt.gz": {
+      "bytes": 9351,
+      "sha256": "461d40ec59c22589f9df8ce325c859f7fbba799e5b95d3265144035b0e77f77e"
+    },
+    "pre-simplify/source/lego/operator/internal/disksnapshot/store.go.txt.gz": {
+      "bytes": 3434,
+      "sha256": "f529d6909317691975ecfb80d38425902f7266e3bfa9fd2c220616ac831bd619"
+    },
+    "pre-simplify/source/lego/operator/internal/disksnapshot/store_integration_test.go.txt.gz": {
+      "bytes": 3655,
+      "sha256": "7b74c6c379af481c3a87d9c279a31e1f5d8e8e3071d084ebf38de680b66f93d2"
+    },
+    "pre-simplify/source/lego/operator/internal/disksnapshot/store_test.go.txt.gz": {
+      "bytes": 2255,
+      "sha256": "9c3f0ef821d0e87601b7545ee8b80bc4c35b09ea5c930d26004f0a30a724d33e"
+    },
+    "pre-simplify/source-after-final-gates.json": {
+      "bytes": 1370,
+      "sha256": "438d50d0f6695a27ede475f48df4f746c4d5213509920897d64c8a26076ed3a0"
+    },
+    "pre-simplify/source-before-final-gates.json": {
+      "bytes": 1370,
+      "sha256": "438d50d0f6695a27ede475f48df4f746c4d5213509920897d64c8a26076ed3a0"
+    },
+    "pre-simplify/source-paths.json": {
+      "bytes": 3691,
+      "sha256": "05d1a7d8d77ab5e63397e9a3b6b5dda867e849f18af069c77c84423f0bfe4b94"
+    },
+    "receipt.json": {
+      "bytes": 7324,
+      "sha256": "b6c2591e7d04f03daebc1ff166523c875a3433492e5b865944e5e48cfb9d6646"
+    },
+    "simplify-gates-status.json": {
+      "bytes": 571,
+      "sha256": "ab2956d835c53a194e539c73a6583d87ff8efe924b92a6d7d6391229fd397b87"
+    },
+    "source/lego/operator/cmd/disk-snapshot/main.go.txt.gz": {
+      "bytes": 3565,
+      "sha256": "ba3eed838fd4de1fdf97ab2ada573a65d3fd18f05443da3f051d0ab5d50b8290"
+    },
+    "source/lego/operator/internal/controller/app_controller.go.txt.gz": {
+      "bytes": 107428,
+      "sha256": "08c905eb045f6a3c10c7d4573d9cacaee3277e43b28ddedf432ce6aab3834324"
+    },
+    "source/lego/operator/internal/controller/cleanup_job.go.txt.gz": {
+      "bytes": 2484,
+      "sha256": "2c770ae660e63bbf020bd4e47510e687d3ab9991990b8f61c7b4d1df9db73cad"
+    },
+    "source/lego/operator/internal/controller/cleanup_job_test.go.txt.gz": {
+      "bytes": 1929,
+      "sha256": "232b424614c255b07a54efb75d137b3d579225c1e17ccc22d496933265c7b41a"
+    },
+    "source/lego/operator/internal/controller/disk.go.txt.gz": {
+      "bytes": 6897,
+      "sha256": "8a395a30387d214619bcadc485b67557580b9f35239e94416eec923409eb6fff"
+    },
+    "source/lego/operator/internal/controller/disk_backup.go.txt.gz": {
+      "bytes": 10881,
+      "sha256": "d04bca4593fd09a6d0d427ad0100183706519e78879fdc96cfbba280e4ee36ed"
+    },
+    "source/lego/operator/internal/controller/disk_deletion_envtest_test.go.txt.gz": {
+      "bytes": 2666,
+      "sha256": "54a673573b8795037f99770dedd13b1027327eeae3d8280aec5dd697f767f74e"
+    },
+    "source/lego/operator/internal/controller/disk_deletion_test.go.txt.gz": {
+      "bytes": 3658,
+      "sha256": "6683a8beedbdaf94aaa49c1b26fd3b59329d73dcbfd912b7616e52eb85fd4ca3"
+    },
+    "source/lego/operator/internal/controller/disk_envtest_test.go.txt.gz": {
+      "bytes": 9351,
+      "sha256": "461d40ec59c22589f9df8ce325c859f7fbba799e5b95d3265144035b0e77f77e"
+    },
+    "source/lego/operator/internal/disksnapshot/store.go.txt.gz": {
+      "bytes": 3434,
+      "sha256": "f529d6909317691975ecfb80d38425902f7266e3bfa9fd2c220616ac831bd619"
+    },
+    "source/lego/operator/internal/disksnapshot/store_integration_test.go.txt.gz": {
+      "bytes": 3655,
+      "sha256": "7b74c6c379af481c3a87d9c279a31e1f5d8e8e3071d084ebf38de680b66f93d2"
+    },
+    "source/lego/operator/internal/disksnapshot/store_test.go.txt.gz": {
+      "bytes": 2255,
+      "sha256": "9c3f0ef821d0e87601b7545ee8b80bc4c35b09ea5c930d26004f0a30a724d33e"
+    },
+    "source-after-final-gates.json": {
+      "bytes": 1497,
+      "sha256": "ae59168b8db45cd4e7272154da96be2ed67b2589e6207630c39691e4c03bc57d"
+    },
+    "source-before-final-gates.json": {
+      "bytes": 1497,
+      "sha256": "ae59168b8db45cd4e7272154da96be2ed67b2589e6207630c39691e4c03bc57d"
+    },
+    "source-paths.json": {
+      "bytes": 4031,
+      "sha256": "751b24709ba1ae8730a767ab76dde78066c07e3f3202f2b58ad91a2baa4f4e9c"
+    }
+  }
+}
