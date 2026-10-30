@@ -55,6 +55,9 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 		return false, fmt.Errorf("read cleanup Job %s: %w", job.Name, err)
 	}
 	found := err == nil
+	if found && !cleanupJobOwnedByParent(&current, parent) {
+		return false, fmt.Errorf("cleanup Job %s belongs to a different resource lifetime", current.Name)
+	}
 	// The annotation is the persisted phase: absent means the run is still being
 	// driven to completion, present means only teardown is left.
 	if parent.GetAnnotations()[completionAnnotation] == marker {
@@ -69,7 +72,7 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 func teardownCleanupJob(ctx context.Context, cl client.Client, job *batchv1.Job, current *batchv1.Job, found bool) (bool, error) {
 	if found {
 		if current.DeletionTimestamp.IsZero() {
-			if err := cl.Delete(ctx, current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
+			if err := cl.Delete(ctx, current, client.Preconditions{UID: &current.UID}, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("delete completed cleanup Job %s: %w", current.Name, err)
 			}
 		}
@@ -80,7 +83,10 @@ func teardownCleanupJob(ctx context.Context, cl client.Client, job *batchv1.Job,
 		return false, fmt.Errorf("list cleanup Pods for %s: %w", job.Name, err)
 	}
 	for idx := range pods.Items {
-		if err := cl.Delete(ctx, &pods.Items[idx]); err != nil && !apierrors.IsNotFound(err) {
+		if !pods.Items[idx].DeletionTimestamp.IsZero() {
+			continue
+		}
+		if err := cl.Delete(ctx, &pods.Items[idx], client.Preconditions{UID: &pods.Items[idx].UID}); err != nil && !apierrors.IsNotFound(err) {
 			return false, fmt.Errorf("delete cleanup Pod %s: %w", pods.Items[idx].Name, err)
 		}
 	}
@@ -97,13 +103,10 @@ func driveCleanupJob(ctx context.Context, cl client.Client, parent client.Object
 		}
 		return false, nil
 	}
-	if !cleanupJobOwnedByParent(current, parent) {
-		return false, fmt.Errorf("cleanup Job %s belongs to a different resource lifetime", current.Name)
-	}
 	if execution.JobHasCondition(current, batchv1.JobFailed) {
 		message := execution.JobFailureMessage(current, "unknown failure")
 		if current.DeletionTimestamp.IsZero() {
-			if err := cl.Delete(ctx, current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
+			if err := cl.Delete(ctx, current, client.Preconditions{UID: &current.UID}, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("cleanup Job %s failed (%s) and could not be deleted: %w", current.Name, message, err)
 			}
 		}
@@ -129,6 +132,9 @@ func driveCleanupJob(ctx context.Context, cl client.Client, parent client.Object
 // Exactly one of the three parent-kind labels is set on any given Job; a Job
 // carrying none is never adopted.
 func cleanupJobOwnedByParent(job *batchv1.Job, parent client.Object) bool {
+	if owner := metav1.GetControllerOf(job); owner != nil && owner.UID != parent.GetUID() {
+		return false
+	}
 	uid := string(parent.GetUID())
 	for _, label := range []string{execution.LabelAppUID, execution.LabelDatabaseUID, execution.LabelKeyValueUID} {
 		if got := job.Labels[label]; got != "" {

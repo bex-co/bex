@@ -1,13 +1,13 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; signed CSI and global bounded class verified live; deletion metering/snapshot cleanup fixes and owned production acceptance remain
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001/t002 done; signed CSI and global bounded class verified live; deletion metering/snapshot cleanup fixes and owned production acceptance remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Verify a LUKS-compatible capacity mechanism](done/t001.md) — **DONE** | 45m | — |
-| t002 | [Publish bounded CSI and converge logical intent](t002.md) | 80m | t001 |
+| t002 | [Publish bounded CSI and converge logical intent](done/t002.md) — **DONE** | 80m | t001 |
 | t003 | [Handle existing disks and accept real grow/remount behavior](t003.md) | 60m | t002 |
 | t004 | [Render parity across every disk surface](t004.md) | 20m | t003 |
 | t005 | [Simplify the capacity mechanism](t005.md) | 15m | t004 |
@@ -52,3 +52,8 @@ The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-
 ## Live bounded class and deletion billing checkpoint — 2026-10-30
 
 [Post-flip inventory 41033611414](evidence/production-inventory-20261029/receipt-41033611414.json) verifies the effective bounded manager class, Ready signed platform image, preserved class contracts and both original 10Gi bindings. No owned fixture exists. Prepaid readiness review found service deletion could erase unmetered disk periods; [the retention fix and real Postgres checks](evidence/disk-billing-retention-20261030/README.md) preserve requested-size history and correct an independently reproduced lock-order race. Snapshot-purge finalization and fixed cleanup observation are still being completed before the paid lifecycle walkthrough; no original task or milestone is closed here.
+
+
+## Deletion readiness checkpoint — 2026-10-30
+
+The [final snapshot cleanup implementation](evidence/snapshot-delete-finalization-20261030/README.md) passed final full operator tests and all-module lint after three simplify reviews. The [bounded read-only cleanup observer](evidence/cleanup-observer-20261030/README.md) passed local protocol/cancellation and exact-identity tests. [The complete real-dependency backend gate](evidence/disk-billing-retention-20261030/parent-complete-backend-gate.json) also passed. Both fixes must be verified in a signed Ready production image before creating the budgeted fixture; no owned production lifecycle acceptance is claimed.

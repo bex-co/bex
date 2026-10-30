@@ -2880,6 +2880,19 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 // the restore gate: a held pass on a build's few-second poll leaves the volume
 // and its snapshot schedule to the next full pass (w1/m157).
 func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1alpha1.App, upkeep bool) (ctrl.Result, bool, error) {
+	if app.Annotations[annotDiskPurgePending] != "" && app.Spec.Disk != nil {
+		done, err := r.reconcileDiskSnapshotCleanup(ctx, app)
+		if err != nil || !done {
+			return ctrl.Result{RequeueAfter: settleRequeue}, true, err
+		}
+		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+			delete(meta.Annotations, annotDiskSnapshots)
+			delete(meta.Annotations, annotDiskPurgePending)
+			delete(meta.Annotations, annotDiskPurgeComplete)
+		}); err != nil {
+			return ctrl.Result{}, true, err
+		}
+	}
 	if upkeep {
 		// The disk converges before the Deployment that mounts it, so a pod is
 		// never rolled at a claim that does not exist yet. Suspension deliberately
@@ -2888,6 +2901,9 @@ func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1al
 		// free volume rather than waiting for a resume.
 		if err := r.reconcileDisk(ctx, app); err != nil {
 			return ctrl.Result{}, true, &stepFailure{reason: "DiskFailed", err: err}
+		}
+		if app.Spec.Disk == nil && app.Annotations[annotDiskProvisioned] != "" {
+			return ctrl.Result{RequeueAfter: settleRequeue}, true, nil
 		}
 		// The nightly snapshot rides beside the volume, not the rollout: a failure
 		// to converge the CronJob must not stop the service from deploying, so it
@@ -4152,8 +4168,8 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 // two slow tenant publishes must not occupy every App reconciler worker).
 func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alpha1.App, image, rev string) (ctrl.Result, error) {
 	publishNamespace := r.buildNamespace(app.Namespace)
-	if err := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
-		return r.fail(ctx, app, "StaticCredentialUnavailable", err)
+	if err := validateAWSCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
+		return r.fail(ctx, app, "StaticCredentialUnavailable", fmt.Errorf("static publish %w", err))
 	}
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 	opts := publish.Options{
@@ -7250,6 +7266,11 @@ func deleteOwnedObject(ctx context.Context, cl client.Client, namespace, name st
 func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
 	var errs []error
 	pending := false
+	diskDone, diskErr := r.reconcileDiskSnapshotCleanup(ctx, app)
+	pending = pending || !diskDone
+	if diskErr != nil {
+		errs = append(errs, fmt.Errorf("purge disk snapshots: %w", diskErr))
+	}
 	// Stop the Ingress/cert-manager producers before deleting their TLS Secret.
 	// Otherwise ingress-shim can recreate the Secret on every finalizer pass and
 	// make an otherwise residue-free image service wait indefinitely.
@@ -7264,8 +7285,8 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 	if app.Spec.Type == appv1alpha1.TypeStaticSite {
 		if !r.StaticStore.Configured() {
 			errs = append(errs, fmt.Errorf("static purge configuration is unavailable"))
-		} else if credentialErr := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), namespace, r.StaticStore.Secret); credentialErr != nil {
-			errs = append(errs, credentialErr)
+		} else if credentialErr := validateAWSCredentialSecret(ctx, r.buildPlaneClient(), namespace, r.StaticStore.Secret); credentialErr != nil {
+			errs = append(errs, fmt.Errorf("static publish %w", credentialErr))
 		} else {
 			purgeJob := publish.PurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace],
 				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "",
@@ -7293,19 +7314,16 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 	return pending, errors.Join(errs...)
 }
 
-// validateStaticCredentialSecret fails before a publish/purge Pod is created,
-// so a missing or malformed build-namespace credential becomes an actionable
-// App condition instead of a Job stuck in CreateContainerConfigError. The
-// operator's direct build client is RBAC-scoped to this namespace and never
-// reads the static-server's separate bex-system read credential.
-func validateStaticCredentialSecret(ctx context.Context, cl client.Client, namespace, name string) error {
+// validateAWSCredentialSecret fails before a Pod is dispatched, so a missing
+// key is actionable instead of leaving the Job in CreateContainerConfigError.
+func validateAWSCredentialSecret(ctx context.Context, cl client.Client, namespace, name string) error {
 	var secret corev1.Secret
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &secret); err != nil {
-		return fmt.Errorf("static publish credential Secret %s/%s is unavailable: %w", namespace, name, err)
+		return fmt.Errorf("credential Secret %s/%s is unavailable: %w", namespace, name, err)
 	}
 	for _, key := range []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"} {
 		if len(secret.Data[key]) == 0 {
-			return fmt.Errorf("static publish credential Secret %s/%s is missing key %s", namespace, name, key)
+			return fmt.Errorf("credential Secret %s/%s is missing key %s", namespace, name, key)
 		}
 	}
 	return nil
