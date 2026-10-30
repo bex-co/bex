@@ -1,4 +1,4 @@
-name: hcloud CSI (manual inventory or reviewed rollout)
+name: hcloud CSI (manual inventory, reviewed rollout or owned fixture)
 
 # Inventory is read-only and needs no candidate image pin. Explicit rollout
 # changes only the existing CSI Helm release; it never applies CAPI/Terraform,
@@ -8,11 +8,16 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Read-only disk inventory or explicit reviewed CSI rollout
+        description: Read-only inventory, reviewed CSI rollout or proved own-fixture action
         type: choice
         required: true
         default: inventory
-        options: [inventory, rollout]
+        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup]
+      fixture_phase:
+        description: Fixture evidence phase (ignored by inventory and rollout)
+        type: choice
+        default: initial-1g
+        options: [initial-1g, full-1g, grown-5g, restart-5g, redeploy-5g, restored-5g]
 
 permissions:
   contents: read
@@ -37,7 +42,11 @@ jobs:
           case "$OPERATION" in
             inventory) ;;
             rollout) bash scripts/install-hcloud-csi.sh validate-pin ;;
-            *) echo 'operation must be inventory or rollout' >&2; exit 1 ;;
+            fixture-backup-cleanup) python3 scripts/disk_fixture.py validate-cleanup ;;
+            fixture-backup-status) python3 scripts/disk_fixture.py validate-status ;;
+            fixture-bind|fixture-inspect|fixture-backup)
+              python3 scripts/disk_fixture.py validate ;;
+            *) echo 'unknown scoped CSI operation' >&2; exit 1 ;;
           esac
 
   cluster:
@@ -78,10 +87,22 @@ jobs:
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
       - name: inventory service-disk binding and capacity metadata (read-only)
+        if: inputs.operation == 'inventory' || inputs.operation == 'rollout'
         run: bash scripts/service-disk-inventory.sh
       - name: upgrade only CSI and verify every controller/node driver pod
         if: inputs.operation == 'rollout'
         run: bash scripts/install-hcloud-csi.sh rollout
+      - name: fixed owned-fixture operation with committed lifetime proof
+        if: startsWith(inputs.operation, 'fixture-')
+        env:
+          OPERATION: ${{ inputs.operation }}
+          FIXTURE_PHASE: ${{ inputs.fixture_phase }}
+        run: |
+          case "$OPERATION" in
+            fixture-bind|fixture-inspect|fixture-backup|fixture-backup-status|fixture-backup-cleanup)
+              python3 scripts/disk_fixture.py "${OPERATION#fixture-}" --phase "$FIXTURE_PHASE" ;;
+            *) echo 'unknown fixed fixture operation' >&2; exit 1 ;;
+          esac
       - name: scrub kubeconfig
         if: always()
         run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

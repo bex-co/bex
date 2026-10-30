@@ -1,0 +1,12 @@
+{
+  "rule": "UTCqa-YYYYMMDD-w8-m144-nonce",
+  "current_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "stale_date_refused": true,
+  "final120seconds_UTC_refused": true,
+  "isolated_next_day_refresh_consistent": true,
+  "nonce_and_cost_expiry_preserved": true,
+  "live_gate_refresh_refused": true,
+  "post_create_intent_refresh_refused": true,
+  "production_HTTP_requests": 0,
+  "resources_created": 0
+}

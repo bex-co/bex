@@ -1,0 +1,17 @@
+{
+  "inventory_run": "https://github.com/bex-co/bex/actions/runs/40991781847",
+  "inventory_job": 123856347925,
+  "inventory_source": "84dba2bab1527dc3c5c3900514c92e4e0750b8d4",
+  "app_disk_count": 2,
+  "unmatched_app_claim_count": 0,
+  "existing_below_floor_claims": 0,
+  "operator_image_digest": "sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538",
+  "operator_source_sha": "2ac6fd95402e940ce906873e9c9dc77c1ce53077",
+  "source_mapping_gitops_commit": "d6dd4852a",
+  "strict_cosign_identity": "https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main",
+  "strict_cosign_oidc_issuer": "https://token.actions.githubusercontent.com",
+  "strict_cosign_workflow_sha": "2ac6fd95402e940ce906873e9c9dc77c1ce53077",
+  "strict_cosign_exit": 0,
+  "contains_admitted_capacity_writer_902630131": false,
+  "production_changes": "none; inventory only; existing bindings and files untouched"
+}

@@ -1,0 +1,110 @@
+{
+  "qualification": "source-only harness, no production receipts/auth/resources. Explicitly excludes private generated fixture-token, any future credential/session files, pycache and executable symlink.",
+  "files": [
+    {
+      "path": "acceptance-plan.json",
+      "bytes": 20930,
+      "sha256": "0c4c13f48981a25d0b60b86e52f10a5dcf071856c465420367d38805741399cb"
+    },
+    {
+      "path": "auth.py",
+      "bytes": 5765,
+      "sha256": "634ed4f238da4dc9683d4ca5c1c1ac3b793bd5f7b1893ae4e4d1c5939e26c6e8"
+    },
+    {
+      "path": "cleanup-auth.py",
+      "bytes": 2081,
+      "sha256": "b8eca7f4a55995a5b0bb32b50bebcdc3453e967614ffe76f770aa52899fbfc0d"
+    },
+    {
+      "path": "disk-fixture.py",
+      "bytes": 7014,
+      "sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4"
+    },
+    {
+      "path": "hosted-disk.py",
+      "bytes": 19062,
+      "sha256": "2c588bae419f4740a965623ea34292daeeea55bdf9b1a520adbf4cc72015a757"
+    },
+    {
+      "path": "kubernetes-fixture-contract.json",
+      "bytes": 16658,
+      "sha256": "df223aba0611d8af5a17d3e7ff28565ec35e5d015e7d5fffb17fa8af5ed48783"
+    },
+    {
+      "path": "ledger.json",
+      "bytes": 321,
+      "sha256": "fdd5f47414dcd6d3338260db42a7f24152b82aaa5c9c0aa524587cc939743180"
+    },
+    {
+      "path": "local-check-result.json",
+      "bytes": 445,
+      "sha256": "83e59c3f80c2c255897b47b319d40ffa5951490c84f829af69290188f5287eee"
+    },
+    {
+      "path": "local-check.py",
+      "bytes": 2859,
+      "sha256": "9157dbb23c0c4c57fdfa3e88f9b446eeee47dcae586b7525a90a1935d16a1f2e"
+    },
+    {
+      "path": "naming.py",
+      "bytes": 5882,
+      "sha256": "4b83f2a03f33701a1f297040ea081c55a6a92568cf1b0e4ce46112a3cead217d"
+    },
+    {
+      "path": "operator-evidence-plan.py",
+      "bytes": 2276,
+      "sha256": "21f220a302ace1660c55abd46b05efb0711b4b70198ae6dc0594af4b7cb7a53f"
+    },
+    {
+      "path": "owned-binding.example.json",
+      "bytes": 1259,
+      "sha256": "850a2f7da600f1a526aaf9b04dd387d0fa3a30c03a301ace4489503d725d1710"
+    },
+    {
+      "path": "preparation-check.py",
+      "bytes": 3773,
+      "sha256": "b6d6edcd01c5bd90adf5894bc1d118d94c5a4371231f29cb68e29ae4efa33275"
+    },
+    {
+      "path": "preparation-guard-results.json",
+      "bytes": 876,
+      "sha256": "6babf564f6e13d51b5548768e99decd7c5f282bded29124606360b083a24495f"
+    },
+    {
+      "path": "prepare.py",
+      "bytes": 1940,
+      "sha256": "aa7c4d08efad35dd216eff48161b5d051eff4f37f84e20761e6dc2c8eed4924b"
+    },
+    {
+      "path": "q",
+      "bytes": 152,
+      "sha256": "20686321a8e898781ce7f58f293a29cc0b72b7f6c8794fa4d6534dfe1ef0a6d4"
+    },
+    {
+      "path": "rollout-ready.example.json",
+      "bytes": 879,
+      "sha256": "13dcfd2dfd0e82e022b81c77c321a06301f37d074ca83e119359f172a1663ef2"
+    },
+    {
+      "path": "spec.json",
+      "bytes": 874,
+      "sha256": "e3fd70eb725b55017cdafbba50596c78fc84b804f43fd3da25ac1f96bbd18d14"
+    },
+    {
+      "path": "start-command.txt",
+      "bytes": 3668,
+      "sha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74"
+    },
+    {
+      "path": "utc-naming-check-result.json",
+      "bytes": 404,
+      "sha256": "8c6a24361c94adfaed16c4b871469a56ecf5b4e27d5693993dfaaaaa39bce9bf"
+    },
+    {
+      "path": "utc-naming-check.py",
+      "bytes": 3008,
+      "sha256": "4ce2d2ed7fbc8e8c3a0636f8444c91410ea3b8289a3bff2e7c9667355768ed4e"
+    }
+  ]
+}

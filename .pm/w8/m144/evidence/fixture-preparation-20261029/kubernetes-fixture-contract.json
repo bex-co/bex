@@ -1,0 +1,199 @@
+{
+  "status": "Preparation only. No Kubernetes command or production operation has run.",
+  "workflow_gap": "Current hcloud-csi-rollout.yml supports only inventory and rollout. Production acceptance needs a separate fixed fixture operation; inventory cannot take a snapshot, query own-volume physical state, or prove remount/restore completion.",
+  "proposed_dispatch": {
+    "operation": "fixture",
+    "fixture_action_enum": [
+      "inspect",
+      "backup",
+      "backup-status",
+      "backup-cleanup",
+      "cleanup-status"
+    ],
+    "caller_inputs": [
+      "reviewed_receipt_artifact_run_id",
+      "reviewed_receipt_sha256",
+      "fixture_action",
+      "phase_enum"
+    ],
+    "phase_enum": [
+      "initial-1g",
+      "full-1g",
+      "grown-5g",
+      "restart-5g",
+      "redeploy-5g",
+      "restored-5g",
+      "deleted"
+    ],
+    "no_caller_inputs": [
+      "shell",
+      "argv",
+      "device_path",
+      "node_name",
+      "namespace",
+      "Kubernetes object name",
+      "label selector",
+      "PromQL",
+      "manifest",
+      "image override",
+      "backup object prefix",
+      "secret name/key",
+      "arbitrary resource IDs"
+    ],
+    "execution": "main only, production-cluster environment, existing authoritative-SSH kubeconfig fetch, no Terraform/CAPI/Helm changes; one fixture concurrency group, finite request/step/workflow deadlines, credentials removed on every exit. Archive only reviewed projected evidence."
+  },
+  "required_reviewed_own_receipt": {
+    "binding": [
+      "run nonce",
+      "dated exact service/disk names",
+      "workspace ID",
+      "REST create intent SHA256 and actual HTTP201 response",
+      "service ID",
+      "disk ID",
+      "pre-create baseline IDs",
+      "App namespace/name/UID",
+      "PVC name/UID",
+      "PV name/UID",
+      "VolumeAttachment name/UID",
+      "exact CSI volumeHandle",
+      "bounded StorageClass name/UID",
+      "LUKS Secret name/UID",
+      "backup CronJob name/UID",
+      "operator image digest",
+      "CSI image digest",
+      "expiry",
+      "single-service/disk5Gi budget"
+    ],
+    "live_validation_before_every_action": [
+      "Exact service name has this prepared dated QA prefix and nonce; both service and disk IDs absent from pre-create baseline and original215 historical IDs; actual201 body matches one Starter service and one inline1Gi disk at/var/data.",
+      "REST current service/workspace/name/disk binding remains unchanged; only requested size may become5Gi. Actual fixture program/source command hash must match preparation.",
+      "App serviceId label equals proved service ID; App UID unchanged; exact PVC controller ownerRef UID equals App UID; PVC UID unchanged; exact PV claimRef UID/namespace/name equals PVC; PV UID/CSI driver/volumeHandle unchanged.",
+      "StorageClass is the reviewed bounded encrypted ext4 class; current admitted request and nonsecret Secret fields agree with expected phase. Existing unrelated claims are untouched.",
+      "The single attached VolumeAttachment references only this PV, has attacher=csi.hetzner.cloud, attached=true and nodeName equal to the live App pod's node. Read only devicePath from its attachmentMetadata after this join.",
+      "Walk exact App Deployment/ReplicaSet/pod ownerRefs by UID. Require one Ready service pod for active phases, one attached node, and no previous service pod still running for remount/restore completion. Capture old/new pod UIDs from the preceding phase receipt.",
+      "For node exec, select only the CSI DaemonSet-owned Ready driver pod on this bound node, record/recheck its pod UID/containerID/imageID against the reviewed CSI digest immediately before and after each fixed exec. No exec in the tenant service pod."
+    ],
+    "identity_change_policy": "App/PVC/PV/CSIhandle lifetime mismatch fails closed. Pod, VolumeAttachment and node may change only across a declared restart/redeploy/restore phase after old-pod termination/old-attachment detach as appropriate; derive and record new VA/podUID from the same PV/PVC/AppUID, never caller input. Recheck any phase-bound currentVAUID. A same-name new App/PVC/PV never inherits authority. On uncertain create, do not adopt by prefix/name and do not create again.",
+    "committed_ledger_gate": "The sanitized ownership ledger must be committed on main and clean in the checked-out workflow ref before fixture exec or Job mutation. It contains exact actualHTTP201 evidence/sourcehash, dated name/workspace/service/disk, immutable App/PVC/PV lifetime binding and explicit expiry/actions. Initial metadata-only bind is separate from fixture exec/mutation; root records/commits the binding after the guarded REST create. No API response/fixture action is currently available or authorized."
+  },
+  "inspect": {
+    "mutations": "None. No diagnostic pod, Job, PVC, volume, mount, key, Helm release or setting is created or changed.",
+    "Kubernetes_metadata_reads": [
+      "GET exact App: project only UID, namespace/name, workspace/service label, disk requested size/mount, disk status, controller Deployment references and observed generation.",
+      "GET exact PVC/PV: project UIDs, exact ownership/claimRef lifetime join, storageClass, request/status capacity, CSI driver/volumeHandle, phase/deletion timestamps.",
+      "GET exact StorageClass: project UID, provisioner, boundedFilesystem and encryption-related Secret-reference templates; do not enumerate arbitrary parameter contents.",
+      "GET exact own LUKS Secret only after owner UID match; emit only metadata UID and decoded boundedFilesystem/filesystemSizeBytes. Never print/store/hash encryption-passphrase or Secret.data wholesale.",
+      "List VolumeAttachment metadata in memory, retain only exact PV+node match and its UID, attacher, attached status and attachmentMetadata.devicePath. Do not persist other attachment rows.",
+      "GET projected Deployment/ReplicaSet/pod ownership/readiness/node/image metadata only for exact App chain, and fixed reviewed CSI driver pod on the bound node. No full tenant pod spec/env/log dump."
+    ],
+    "fixed_node_exec_readonly": {
+      "target": "Only the current reviewed CSI driver container on the VolumeAttachment node, UID checked before/after. Hard-coded argv in reviewed code; no shell, stdin, tty, show-keys, or caller-controlled program/arguments.",
+      "derive_device": "The attachment devicePath comes from trusted CSI metadata, not workflow input. Require the reviewed /dev/disk/by-id/scsi-0HC_Volume_<positiveProviderID> grammar and matching exact provider ID parsed from bounded-ext4-v1:<ID> volumeHandle. Upstream GenerateLUKSDeviceName uses basename(devicePath); mapper path is /dev/mapper/<that basename>.",
+      "argv_allowlist": [
+        [
+          "cryptsetup",
+          "status",
+          "DERIVED_MAPPING_BASENAME"
+        ],
+        [
+          "blkid",
+          "-p",
+          "-o",
+          "value",
+          "-s",
+          "TYPE",
+          "DERIVED_ATTACHMENT_DEVICE_PATH"
+        ],
+        [
+          "dumpe2fs",
+          "-h",
+          "DERIVED_MAPPER_PATH"
+        ]
+      ],
+      "emit_only": [
+        "active mapping boolean",
+        "LUKS type",
+        "underlying device identity",
+        "sector size/count/offset from cryptsetup status",
+        "raw underlying type=crypto_LUKS",
+        "ext4 Block count",
+        "ext4 Block size",
+        "mapped filesystem raw bytes=block count*block size"
+      ],
+      "expected": "Initial/full1Gi raw ext4 blocks262144 at4096B; all grown/remount/restore phases blocks1310720 at4096B. Underlying LUKS physical minimum and same handle/device persist; no whole-device resize to10Gi. Mounted statvfs/kubelet totals may be smaller due filesystem overhead. Factory provides cryptsetup/blkid/e2fsprogs, but fixed executable availability must be checked in the exact published image; failure is an explicit missing-proof gate, no package installation/fallback shell.",
+      "hard_refusals": [
+        "cryptsetup open/close/resize/luksFormat/luksDump/show-keys",
+        "mount/umount/nsenter",
+        "mkfs/resize2fs/e2fsck/tune2fs setters",
+        "dd/cat/read tenant files",
+        "host-level arbitrary exec",
+        "raw Secret dump",
+        "printing key material",
+        "new privileged diagnostic pod"
+      ]
+    },
+    "metrics": {
+      "transport": "Finite localhost-only kubectl port-forward to fixed monitoring/svc/prometheus-server:80, killed on every exit. Alternatively fixed apiserver Service proxy route. Caller cannot choose endpoint or PromQL.",
+      "fixed_queries": [
+        "kubelet_volume_stats_used_bytes{namespace=DERIVED_OWN_NAMESPACE,persistentvolumeclaim=DERIVED_OWN_PVC}",
+        "kubelet_volume_stats_capacity_bytes{namespace=DERIVED_OWN_NAMESPACE,persistentvolumeclaim=DERIVED_OWN_PVC}",
+        "kubelet_volume_stats_available_bytes{namespace=DERIVED_OWN_NAMESPACE,persistentvolumeclaim=DERIVED_OWN_PVC}"
+      ],
+      "checks": "Require nonempty fresh samples at each phase, bind namespace/PVC to the current UID receipt and pod/node lifetime, preserve timestamp/job/instance attribution, reject samples older than current mount/phase or stale terminated-node series. If duplicated, retain own node's series using reviewed scrape-target attribution rather than blindly sum/max. Capture at initial, full, grown, remount, restore, and after compaction. Used bytes change as expected; actual capacity agrees with own probe statvfs within filesystem accounting granularity. Requested API capacity separately remains exactly1Gi/5Gi. No synthetic config capacity substitutes for kubelet physical stats."
+    }
+  },
+  "backup": {
+    "only_mutation_needed_before_API_restore": "Create exactly one uniquely named Kubernetes Job from the existing own backup CronJob. It reuses the same PVC; creates no cloud disk, snapshot volume or paid service.",
+    "preconditions": [
+      "Root's rollout/budget/expiry gate authorizes own backup and exactly one backup Job.",
+      "HTTP fixture compact/hash proof persisted and snapshot_not_before timestamp recorded.",
+      "Exact CronJob UID/controller ownerRef AppUID matches reviewed binding; template contains only sole own PVC disk-<serviceID>, reviewed backup image, command/disk-snapshot args[backup], trusted object-prefix env for exact workspace/actualAppName; existing security/resource/node-affinity policy preserved.",
+      "Current same-node service pod is Ready; no matching backup/restore Job in flight; exact intended Job name absent. Never replace an existing same-name Job."
+    ],
+    "create": "Construct Job metadata in code with fixed dated QA name/run label, controller ownerRef to the exact own CronJob UID, and deep-copy its verified JobTemplate spec. Do not accept YAML/JSON spec from workflow input, do not override image/env/volumes/command. POST once to the exact own namespace batch/v1/jobs; save actual201 and created Job UID before waiting. If transport is ambiguous, GET only that exact name and reconcile UID/annotations/spec hash; never blindly replay.",
+    "wait": "GET/watch exact Job UID and its ownerUID-bound pod(s) with bounded10min wait. Record completion/failure condition, start/completion timestamps, pod UID/node/imageID, own PVC mount readOnly=true and verified same-node binding. No S3 credential values or file-content logs. The tenant snapshot API must independently list a new own-instance snapshot created after snapshot_not_before.",
+    "status": "backup-status reads only exact recorded Job UID+children and own snapshot API. A successful Job alone is not restore evidence.",
+    "cleanup": "backup-cleanup DELETE only the recorded exact Job with DeleteOptions.preconditions.uid=createdJobUID, propagationPolicy=Foreground; refuse if UID differs. Never broad label deletion. Preserve receipt through App deletion."
+  },
+  "restore_and_remount": {
+    "root_Kubernetes_mutations": "None. Fixture driver already requests own REST restart, redeploy, disk grow and exact own-snapshot restore. Operator performs reconcile/scale-down/restore/restart. Do not manually edit App/PVC/Secret, restart pods or run filesystem tools.",
+    "additional_reads": "Inspect before/after App/pod/ReplicaSet/attachment ownership plus exact operator-owned restore Job UID and pod children; verify its App owner UID, own sole PVC, reviewed backup image, args[restore], successful condition, old service pod termination before restore mount and new service Ready. Project restore requested/completed/error status but no snapshot URL/S3 creds. Re-run inspect for encryption raw5Gi bound and kubelet stats after real remount/restore. If node or pod changes, rederive only from same App/PVC/PV binding."
+  },
+  "cleanup_status": {
+    "Kubernetes_mutations": "Only backup-cleanup exact UID if still present. Service/PVC/PV deletion stays on the existing REST/operator finalizer path.",
+    "reads": "Verify old exact App UID, PVC UID, PV UID, LUKS Secret UID, CronJob UID and every recorded backup/restore/purge Job UID gone. A same-name new lifetime fails closed rather than being deleted. Capture VolumeAttachment removal and exact provider volume deletion through a read-only GET of the single parsed provider ID, if current inventory lacks that fact. Provider DELETE is never part of this harness.",
+    "preservation": "Compare metadata identities of all pre-create baseline services/disks; do not modify or repair them. Report asynchronous purge/provider deletion as pending until proven."
+  },
+  "source_notes": [
+    "Kubernetes DELETE supports UID preconditions; CLI delete by name alone is insufficient for this fixture protocol.",
+    "pods/exec and port-forward do not themselves offer a UID precondition. Recheck exact pod UID/containerID before and after every bounded fixed-argv exec; discard evidence on lifetime mismatch. Reviewed CSI container is trusted, and no arbitrary text/input is executable.",
+    "Current inventory projection lacks PV UID, workspace label, VolumeAttachment, service workload pod chain, Secret nonsecret fields, CronJob/Job identities and raw metrics. Extend only the fixture operation's projections, not broad tenant-data inventory.",
+    "Backing up a file tree does not prove physical capacity/encryption. File hashes and real operator restore, fixed node block metadata, real kubelet stats, APIs and rendered UI are separate evidence sources."
+  ],
+  "prepared_fixture_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "reviewed_published_csi_image": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "naming_contract": {
+    "public_service_id": "REST service.id srv-... from actual201; App label bex.co/app-id must match it; do NOT equate with App metadata.name",
+    "actual_App_name": "Current Create uses core.CRName(workspaceID,serviceName) => workspaceID+\"-\"+serviceName; bind actualname+UID from inventory and labeljoin, not publicsrvID.",
+    "DiskChildName": "prefix+AppName if len<=63; otherwise prefix+AppName[:63-len(prefix)-9]+\"-\"+sha256(AppName)[:8]",
+    "PVC": "DiskChildName(\"disk-\",actualAppName)",
+    "LUKS_Secret": "exactPVCName+\"-luks\"",
+    "CronJob": "DiskChildName(\"dskbak-\",actualAppName)",
+    "restoreJob": "Operator derives dskrst- sibling from actualAppName; bind actualUID andownerUID ratherthanpredictinglifetime.",
+    "snapshot_prefix": "workspaceID/actualAppName/; BEX_DISK_ID=actualAppName; RESTsnapshot instanceId remains publicsrvID (storeDisk.AppID).",
+    "source_pointers": [
+      "lego/backend/internal/apps/service.go Create/provisionAppIdentity",
+      "lego/backend/internal/core/base.go CRName",
+      "lego/types/v1alpha1/disknames.go DiskChildName/DiskPVCName",
+      "lego/operator/internal/controller/disk_backup.go diskSnapshotJobSpec/diskSnapshotWorkspace",
+      "lego/backend/internal/apps/disk_snapshots.go ListDiskSnapshots/diskSnapshotPrefix"
+    ]
+  },
+  "UTC_naming_contract": {
+    "rule": "qa-YYYYMMDD-w8-m144-<nonce>, YYYYMMDD from create_intent.created_at UTC; disk appends-disk",
+    "refresh": "Preparation-only q refresh-name before unused exact-name gate; date neverchangesafteranycreateattempt",
+    "creation": "Refuse staleUTCname beforeanyHTTP and justbeforePOST; refusefinal120secondsUTCday. Actual201API/K8stimestamps independently checked against intendedUTCdate.",
+    "canonical_intent_timestamp": "create_intent.created_at, awareRFC3339UTC; existing at alias retained onlyforcompatibility",
+    "expiry_cost_safeguards": "No changes: exactoneStarterservice/disk, samepreservednonce, sameworkspace, max5Gi/7200seconds/.03estimate, actualrootrolloutgate andunchangedexpiryrequired."
+  }
+}

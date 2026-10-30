@@ -1,0 +1,45 @@
+{
+  "scope": "isolated localhost HTTP mock only; no production access, credentials or resources",
+  "kubectl": "v1.36.1 darwin/arm64 (same version pinned by workflow)",
+  "matchingUID": {
+    "clientExitCode": 0,
+    "mockHTTPStatus": 200,
+    "mockDeleteCount": 1
+  },
+  "replacementUID": {
+    "clientExitCode": 1,
+    "mockHTTPStatus": 409,
+    "mockDeleteCountUnchanged": true
+  },
+  "requests": [
+    {
+      "method": "DELETE",
+      "path": "/apis/batch/v1/namespaces/tea-owned/jobs/qa-m144-0123456789abcdef-backup?timeout=5s",
+      "contentType": null,
+      "transferEncoding": "chunked",
+      "body": {
+        "apiVersion": "v1",
+        "kind": "DeleteOptions",
+        "preconditions": {
+          "uid": "00000000-0000-0000-0000-000000000013"
+        },
+        "propagationPolicy": "Foreground"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/apis/batch/v1/namespaces/tea-owned/jobs/qa-m144-0123456789abcdef-backup?timeout=5s",
+      "contentType": null,
+      "transferEncoding": "chunked",
+      "body": {
+        "apiVersion": "v1",
+        "kind": "DeleteOptions",
+        "preconditions": {
+          "uid": "00000000-0000-0000-0000-000000000013"
+        },
+        "propagationPolicy": "Foreground"
+      }
+    }
+  ],
+  "boundary": "Real kubectl transported raw DELETE/stdin DeleteOptions exactly (chunked JSON, no explicit Content-Type); UID conflict enforcement was modeled by the local mock, not a production or real Kubernetes apiserver."
+}

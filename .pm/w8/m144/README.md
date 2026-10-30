@@ -1,6 +1,6 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; bounded CSI derivative/publication/rollout in progress
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; verified CSI rolled out (1 controller, 12 nodes); newer operator/class adoption and owned production fixture remain
 
 ## Tasks (in order)
 

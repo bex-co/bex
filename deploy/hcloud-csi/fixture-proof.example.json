@@ -1,0 +1,36 @@
+{
+  "schema": "bex-m144-fixture-v1",
+  "run": "REPLACE_16_HEX_RUN_NONCE",
+  "service_name": "qa-YYYYMMDD-w8-m144-RUN_NONCE",
+  "disk_name": "qa-YYYYMMDD-w8-m144-RUN_NONCE-disk",
+  "workspace": "tea-REPLACE",
+  "namespace": "tea-REPLACE",
+  "service_id": "srv-REPLACE_FROM_ACTUAL_HTTP201",
+  "disk_id": "dsk-REPLACE_FROM_ACTUAL_INLINE_DISK",
+  "app_name": "REPLACE_ACTUAL_INVENTORY_APP_NAME",
+  "app_uid": "REPLACE_ACTUAL_APP_UID",
+  "pvc_name": "REPLACE_ACTUAL_OWNED_PVC_NAME",
+  "pvc_uid": "REPLACE_ACTUAL_PVC_UID",
+  "created_at": "REPLACE_ACTUAL_CREATE_INTENT_UTC_TIMESTAMP",
+  "expires_at": "REPLACE_END_OF_SAME_MAX_TWO_HOUR_WINDOW",
+  "baseline_ids": [],
+  "baseline_disks": [],
+  "budget": {
+    "max_services": 1,
+    "max_disks": 1,
+    "max_size_gib": 5,
+    "max_runtime_seconds": 7200,
+    "max_estimated_usage_usd": 0.03
+  },
+  "create_proof": {
+    "HTTP": 201,
+    "request_body_sha256": "REPLACE_ACTUAL_UNREDACTED_REQUEST_BODY_HASH_FROM_GUARDED_RECEIPT",
+    "service_id": "srv-REPLACE_FROM_ACTUAL_HTTP201",
+    "workspace": "tea-REPLACE",
+    "service_name": "qa-YYYYMMDD-w8-m144-RUN_NONCE",
+    "disk_name": "qa-YYYYMMDD-w8-m144-RUN_NONCE-disk",
+    "initial_size_gib": 1,
+    "mount_path": "/var/data",
+    "plan": "starter"
+  }
+}

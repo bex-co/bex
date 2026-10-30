@@ -1,0 +1,23 @@
+{
+  "service_id": "ONLY actualRESTcreatedpublicsrvID",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "app_name": "tea-da2isimlm39c739m4ofg-qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "namespace": "actualinventorynamespace",
+  "pvc_name": "disk-tea-da2isimlm39c739m4ofg-qa-20261030-w8-m144-cc62-05c83d32",
+  "pvc_uid": "actualuid",
+  "pv_name": "actualboundpv",
+  "pv_uid": "actualimmutablePVUID",
+  "volume_handle": "actualexactCSIhandle",
+  "luks_secret_name": "disk-tea-da2isimlm39c739m4ofg-qa-20261030-w8-m144-cc62-05c83d32-luks",
+  "backup_cronjob": "dskbak-tea-da2isimlm39c739m4ofg-qa-20261030-w8-m144-cc-05c83d32",
+  "app_uid": "actualimmutableAppUID",
+  "volume_attachment_uid": "currentphaseonly",
+  "backup_cronjob_uid": "actualownerAppUIDboundCronJobUID",
+  "secret_uid": "actualownerAppUIDboundLUKSSecretUID",
+  "service_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "disk_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk",
+  "committed_clean_ownership_ledger": "root-created sanitized reviewedledger on main, exactcommit/path/sha256",
+  "expires_at": "rootauthorizedUTCwindow",
+  "naming_qualification": "Expected names from current committed source, not evidence: validate actualname/UID/ownerRefs beforebinding.",
+  "name_date_utc": "20261030"
+}

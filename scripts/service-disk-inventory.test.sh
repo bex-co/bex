@@ -24,8 +24,8 @@ case "$*" in
   'get persistentvolume pvc-owned --ignore-not-found -o jsonpath='*)
     printf 'pvc-owned\thcloud-volumes-luks\t10Gi\tBound\tDelete\ttea-one\tdisk-hash\tclaim-one\tcsi.hetzner.cloud\t123456\n' ;;
   '-n bex-system get deployment bex-controller-manager bex-api -o jsonpath='*)
-    printf 'bex-system\tbex-controller-manager\tmanager-id\t2\t2\t1\t1\t1\t1\tmanager=operator@sha256:one;\n'
-    printf 'bex-system\tbex-api\tapi-id\t2\t2\t1\t1\t1\t1\tapi=operator@sha256:one;\n' ;;
+    printf 'bex-system\tbex-controller-manager\tmanager-id\t2\t2\t1\t1\t1\t1\tmanager=operator@sha256:one;\thcloud-volumes-luks-bounded\n'
+    printf 'bex-system\tbex-api\tapi-id\t2\t2\t1\t1\t1\t1\tapi=operator@sha256:one;\t\n' ;;
   '-n bex-system get pods -l app.kubernetes.io/name in (control-plane,bex-api) -o jsonpath='*)
     printf 'bex-system\tmanager-one\tpod-id\tRunning\t\tmanager=operator@sha256:one;\tmanager=containerd://sha256:one;\tmanager=true;\n' ;;
   *) echo 'unexpected inventory operation' >&2; exit 98 ;;
@@ -42,6 +42,8 @@ assert app['disk']['requestedSizeGB']==1 and app['disk']['capacityGB']==10
 assert app['claims'][0]['bindingMatches'] is True
 assert app['claims'][0]['volume']['volumeHandle']=='123456'
 assert len(report['platformImages']['deployments'])==2
+assert report['platformImages']['deployments'][0]['diskStorageClass']=='hcloud-volumes-luks-bounded'
+assert report['platformImages']['deployments'][1]['diskStorageClass']==''
 assert report['platformImages']['pods'][0]['containerImageIds']['manager']=='containerd://sha256:one'
 assert 'pvc-database' not in (Path(os.environ['FIXTURE'])/'calls').read_text()
 PY

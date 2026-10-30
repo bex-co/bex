@@ -70,6 +70,7 @@ jobs:
           python3 -m unittest scripts/test_hcloud_csi.py -v
           bash scripts/service-disk-inventory.test.sh
           python3 -m unittest scripts/test_service_disk_inventory.py -v
+          python3 -m unittest scripts/test_disk_fixture.py -v
           if [ -e deploy/hcloud-csi/reviewed.values.json ] || [ -L deploy/hcloud-csi/reviewed.values.json ]; then
             bash scripts/install-hcloud-csi.sh validate-pin
           fi

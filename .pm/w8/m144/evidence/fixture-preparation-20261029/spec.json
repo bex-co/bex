@@ -1,0 +1,26 @@
+{
+  "run": "cc62f8e3a1ee8b8c",
+  "name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "disk_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk",
+  "mount": "/var/data",
+  "initial_gib": 1,
+  "grown_gib": 5,
+  "plan": "starter",
+  "max_runtime_seconds": 7200,
+  "max_estimated_usage_usd": 0.03,
+  "fixture_source_sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+  "source_repository": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "expected_source_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "protected_existing_services": [
+    "srv-dbhtfte9e4qs73fgrfc0",
+    "srv-da40m1qii7bs73drbqlg"
+  ],
+  "historical_deleted_215_ids": [
+    "srv-dbhm79akl95s73b459i0",
+    "dsk-dbhm79akl95s73b459j0"
+  ],
+  "created_at": "2026-10-30T03:03:56.981505+00:00",
+  "name_date_utc": "20261030"
+}

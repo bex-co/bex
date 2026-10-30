@@ -1,0 +1,7 @@
+{
+  "scope": "synthetic deployments through actual repository client-go JSONPath engine",
+  "managerDiskStorageClass": "hcloud-volumes-luks-bounded",
+  "apiDiskStorageClass": "",
+  "excluded": "unrelated manager env values, sidecar/API BEX_DISK_STORAGE_CLASS canaries and Secret references",
+  "result": "PASS"
+}

@@ -1,0 +1,30 @@
+{
+  "coordinated_by_root": false,
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "fixture_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c",
+  "bounded_csi_image": "ghcr.io/REPLACE@sha256:REPLACE",
+  "operator_image": "REPLACE actual deployed image digest",
+  "all_old_csi_node_pods_terminated": false,
+  "bounded_class_active": false,
+  "reviewed_inventory_receipt": "REPLACE actual readonly production inventory path/receipt",
+  "service_plan": "starter",
+  "max_disks": 1,
+  "max_services": 1,
+  "max_size_gib": 5,
+  "max_runtime_seconds": 7200,
+  "max_estimated_usage_usd": 0.03,
+  "expires_at": "REPLACE actual UTC window",
+  "authorized_actions": [
+    "create",
+    "fill",
+    "grow",
+    "growth",
+    "compact",
+    "restart",
+    "redeploy",
+    "after-snapshot",
+    "restore"
+  ],
+  "disk_name": "qa-20261030-w8-m144-cc62f8e3a1ee8b8c-disk",
+  "name_date_utc": "20261030"
+}
