@@ -1,0 +1,1 @@
+Running Trivy with options: /tmp/loopx-w8-trivy-http1-proof/mock-trivy image local-protocol-probe

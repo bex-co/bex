@@ -1,0 +1,58 @@
+{
+  "scope": "Earlier read attempts were unapproved transport failures; every full successful final policy gate is separately recorded. No failed payload or prefix was accepted.",
+  "historical_executed_sources": [
+    {
+      "driver_version": 3,
+      "archived_source": "executed-tools/history/loopx-w8-native-review-v3.py",
+      "source_sha256": "a26dca6d3a4939aa9a9e34e92d126be851e1fac476f065b1d62c635988bffb38"
+    },
+    {
+      "driver_version": 4,
+      "archived_source": "executed-tools/history/loopx-w8-native-review-v4.py",
+      "source_sha256": "47a34cf8bddd03846bfd9ba332688b022c766fa4e0075446405583ce233a6ce0"
+    },
+    {
+      "driver_version": 5,
+      "archived_source": "executed-tools/history/loopx-w8-native-review-v5.py",
+      "source_sha256": "45eae2904afec63be15352b8a44858e54db0f94467765ad719430c953f456918"
+    },
+    {
+      "driver_version": 6,
+      "archived_source": "executed-tools/history/loopx-w8-native-review-v6.py",
+      "source_sha256": "b6777bda97c724bda2ba4c5b82985d983e533fadbb5e220d17b5ac55b20d8d49"
+    },
+    {
+      "driver_version": 7,
+      "archived_source": "executed-tools/history/loopx-w8-native-review-v7.py",
+      "source_sha256": "cc0fd80a6923f7717f5a63abee59c556cb531a2bea60b626161c51f62122c09f"
+    }
+  ],
+  "failures": [
+    {
+      "attempt": "v3.1",
+      "finding": "GHCR metadata TLS handshake timeout"
+    },
+    {
+      "attempt": "v3.2",
+      "finding": "Docker Hub official-index TLS handshake timeout"
+    },
+    {
+      "attempt": "v4",
+      "finding": "read timeout in immutable full-bundle body; no complete-coverage approval"
+    },
+    {
+      "attempt": "v5",
+      "finding": "Docker Hub official arm64 manifest HTTP401 after slow reads; fresh public token lifetime300s measured, consistent with expiration"
+    },
+    {
+      "attempt": "v6",
+      "finding": "three strict positive commands stopped on Sigstore TUF15.root.json TLS handshake timeout; coverage guard refused approval"
+    },
+    {
+      "attempt": "v7",
+      "finding": "gzip EOF before end-of-stream in stream-only layer proof; no approval, two completed layer receipts preserved"
+    }
+  ],
+  "final": "v8 passed every strict gate; bounded own compressed files allowed full SHA/size before decompression, then proof-linked cleanup.43 guards pass.",
+  "no_CI_job_cancel_dispatch_or_source_adoption": true
+}

@@ -1,0 +1,26 @@
+{
+  "bundle_digest": "sha256:f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-supplier-reviews-v4/native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd/bundles/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.bundle.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--digest",
+    "3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-supplier-reviews-v4/native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd/bundles/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa-positive.stderr.log"
+}

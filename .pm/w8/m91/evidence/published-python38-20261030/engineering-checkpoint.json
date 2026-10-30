@@ -1,0 +1,65 @@
+{
+  "schema": "bex.native-supplier-engineering-evidence/v1",
+  "scope": "Actual supplier review with the generic native-only driver. Compact metadata only; complete signed payloads remain in verified gzip and immutable public OCI blobs.",
+  "source_recipe_equality_files": 22,
+  "bundle_discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:19fb15e9b894cf818d5e032ab89311df886fbd7950b8ab765fcccf5987d91f4f",
+    "native_API_404": true,
+    "unselected_descriptor_count": 1
+  },
+  "generic_driver_sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+  "canonical_policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "source_and_subject_negative_controls": "Actual same bundle rejected for wrong GithubWorkflowSHA and wrong artifact digest; stderr retained in crypto/.",
+  "anonymous_pull": {
+    "all_unique_config_and_layer_bytes_fully_hashed": true,
+    "unique_blob_count": 35,
+    "bytes_hashed_this_finalization": 32276,
+    "bytes_reused_from_prior_verified_full_read": 1354936763,
+    "prior_receipts_also_rechecked_by_anonymous_head": true
+  },
+  "new_manual_layer_reads": 31,
+  "layer_storage": "Own compressed layer files used stable bounded ranges (2GiB case cap,2GiB free reserve). Whole compressed SHA/size passed before local gzip/diffID proof, then31 files/1,143,671,089B were removed after proof receipts. Two earlier genuine layer receipts were reused; all image blobs received current anonymous checks. No layer files remain.",
+  "full_report_storage": "Raw duplicate bundles removed only after validating existing gzip and decompressed hashes/sizes. No complete report copied to Git.",
+  "spdx_root_bindings": [
+    {
+      "architecture": "amd64",
+      "spdx_root_digest": "sha256:1d75f0b9a6efc990cc7f2f8dcaf2ecfaf7123ca6ea64d7f2e4d078bc603e6902",
+      "actual_registry_child_digest": "sha256:76773cddb8509af00ac4ef02c0b5b21bb9ac6c5ac5a0cf4db80db99a067c9592",
+      "actual_registry_config_digest": "sha256:28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 17,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "ee8b0c6b02213eb74d1b39a4fd6364b13e048c7d2e6ad52de6e834be1667d38b",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews-v4/native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd/actual-layer-proof"
+    },
+    {
+      "architecture": "arm64",
+      "spdx_root_digest": "sha256:75a8910bb09b37d32ed04b6d465574f6ee6905cbb8128fe741d74fb37cb980cf",
+      "actual_registry_child_digest": "sha256:c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d",
+      "actual_registry_config_digest": "sha256:d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 17,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "ee8b0c6b02213eb74d1b39a4fd6364b13e048c7d2e6ad52de6e834be1667d38b",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews-v4/native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd/actual-layer-proof"
+    }
+  ],
+  "production_catalog_changed": false,
+  "guard_cases": 43,
+  "guard_source_sha256": "3d58992e22f784eb6d3bf4f251b87d27401038b48a3fdf39a49abbe55a2e4b56",
+  "actual_exit_code": 0,
+  "actual_final_log": "execution-logs/loopx-w8-python38-review-v8.txt",
+  "own_layer_file_cleanup": "engineering/own-layer-file-cleanup.json",
+  "layer_file_resource_policy": "engineering/layer-file-resource-policy.json",
+  "own_layer_area_empty": true,
+  "layer_file_cleanup_count": 31,
+  "layer_file_cleanup_bytes": 1143671089,
+  "raw_duplicate_cleanup_bytes": 205079459,
+  "full_bundle_gzip_bytes": 38178213,
+  "failed_attempt_provenance": "failed-attempts/provenance.json",
+  "final_receipt_sha256": "ccfeaf895ed89d9db5b63b3918cba25440aae1781f5ca92c9d297e13a9a40c35",
+  "actual_nonzero_prefix_resume_events": 0,
+  "range_resume_scope": "Capability and rejection behavior exercised by transport guards; this final live pass did not need a nonzero-prefix continuation.",
+  "image_helper_smoke": "Fresh actual image-signature bundle only; all-five full-report proof is the original successful review, not a new full replay."
+}

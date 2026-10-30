@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T11:19:25.588769+00:00",
+  "candidate_approved": false,
+  "error_type": "TimeoutError",
+  "error": "The read operation timed out"
+}

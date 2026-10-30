@@ -1,0 +1,44 @@
+{"at": "2026-10-30T11:07:18.570824+00:00", "stage": "actual-CI-and-source-policy", "candidate_approved": false, "name": "python-3.8-bookworm"}
+{"at": "2026-10-30T11:10:34.442778+00:00", "stage": "anonymous-immutable-bundle-download", "candidate_approved": false, "name": "python-3.8-bookworm"}
+Traceback (most recent call last):
+  File "/tmp/loopx-w8-native-review-v4.py", line 197, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/tmp/loopx-w8-native-review-v4.py", line 193, in main
+    try:review=Review(args);review.run()
+                            ~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v4.py", line 189, in run
+    self.metadata();self.fetch_bundles();self.crypto_bundles();self.derive_docker_roots_if_needed();self.finish()
+                    ~~~~~~~~~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v4.py", line 103, in fetch_bundles
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:self.bundle_rows=list(pool.map(self.fetch_bundle,entries))
+                                                                                       ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 639, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 311, in _result_or_cancel
+    return fut.result(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 450, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 395, in __get_result
+    raise self._exception
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "/tmp/loopx-w8-native-review-v4.py", line 87, in fetch_bundle
+    chunk=response.read(1<<20)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 484, in read
+    s = self.fp.read(amt)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socket.py", line 725, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: The read operation timed out

@@ -1,0 +1,10 @@
+{
+  "maximum_case_bytes": 2147483648,
+  "minimum_remaining_free_bytes": 2147483648,
+  "planned_unique_compressed_bytes": 1354936763,
+  "existing_actual_bytes": 0,
+  "full_compressed_SHA_size_before_decompression": true,
+  "stable_bounded_partials": true,
+  "atomic_verified_rename": true,
+  "remove_completed_own_files_only_after_proof": true
+}

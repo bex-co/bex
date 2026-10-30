@@ -1,0 +1,45 @@
+{"at": "2026-10-30T11:25:41.100348+00:00", "stage": "actual-CI-and-source-policy", "candidate_approved": false, "name": "python-3.8-bookworm"}
+Traceback (most recent call last):
+  File "/tmp/loopx-w8-native-review-v5.py", line 228, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 224, in main
+    try:review=Review(args);review.run()
+                            ~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 220, in run
+    self.metadata();self.fetch_bundles();self.crypto_bundles();self.derive_docker_roots_if_needed();self.finish()
+    ~~~~~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 110, in metadata
+    m,mraw,_=v.manifest_document(self.url,self.headers,child);original,oraw,_=v.manifest_document(su,sh,originals[arch]);c,craw=v.config_document(self.url,self.headers,m['config']);oc,ocraw=v.config_document(su,sh,original['config'])
+                                                                              ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/loopx-w8-verify-native-artifact.py", line 74, in manifest_document
+    raw, observed = small_get(url + '/manifests/' + reference, headers, MAX_DOCUMENT)
+                    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 85, in <lambda>
+    raw_small_get=self.v.small_get;self.v.small_get=lambda *a,**kw:retry_read(lambda:raw_small_get(*a,**kw))
+                                                                   ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 25, in retry_read
+    try:return operation()
+               ~~~~~~~~~^^
+  File "/tmp/loopx-w8-native-review-v5.py", line 85, in <lambda>
+    raw_small_get=self.v.small_get;self.v.small_get=lambda *a,**kw:retry_read(lambda:raw_small_get(*a,**kw))
+                                                                                     ~~~~~~~~~~~~~^^^^^^^^^
+  File "/tmp/loopx-w8-verify-native-artifact.py", line 55, in small_get
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers, method=method), timeout=60) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 401: Unauthorized

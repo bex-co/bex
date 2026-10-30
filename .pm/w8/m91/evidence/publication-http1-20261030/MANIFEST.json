@@ -8,6 +8,10 @@
       "bytes": 52955,
       "sha256": "4a16f65c436172f72c33e0dda9bf234d5acc2da9b8f99520eae7f728c81d9ba9"
     },
+    "action-env-0.stdout.txt": {
+      "bytes": 98,
+      "sha256": "eadcdc2dedb69ad1588d1ff1f7a124da8aa19b05b7d5f100e88086164d53b096"
+    },
     "node20-job.log.custody.json": {
       "bytes": 144,
       "sha256": "c5ab6907dfb91ae46835343c6f790531a5280c5a1829245f149e78ecc9d335e2"
@@ -20,21 +24,53 @@
       "bytes": 330,
       "sha256": "abb5769d15a6616e45c58484c1332a8e3dd0433ed08e3cf25e43235879dc123e"
     },
+    "SOURCE_ARCHIVE_PATHS.json": {
+      "bytes": 1581,
+      "sha256": "2d0eff71c32b6d93f48cc108f4420eb29979749f1ac9f7151453850f1aed0551"
+    },
+    "action-env-17.stdout.txt": {
+      "bytes": 98,
+      "sha256": "eadcdc2dedb69ad1588d1ff1f7a124da8aa19b05b7d5f100e88086164d53b096"
+    },
     "README.md": {
-      "bytes": 1170,
-      "sha256": "43a2b248f85d49751d90f38ece874b3bb2f960c2d69651e16abab41203f9fa65"
+      "bytes": 1433,
+      "sha256": "8bba30aef1c8ae8d3f84422de2966fff353962814dbd40f69a3a4b1fa7caad55"
     },
     "node14-job.log.custody.json": {
       "bytes": 143,
       "sha256": "a694835895544380dfd43db1cc9c893b64efc37dcefd03e241df7f6687345162"
     },
+    "action-env-17.json": {
+      "bytes": 71,
+      "sha256": "48c9143e1464b9ee044dceacac96fbdf1127fd2b16a08b3743fb2c5921677482"
+    },
+    "action-env-0.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
     "http1.stdout.json": {
       "bytes": 418,
       "sha256": "1f128da723d4255798f193fcfcfd9450d095dd4ae7896f2e30f3df78b70bb74f"
     },
+    "recommendation.json": {
+      "bytes": 336,
+      "sha256": "70954dc28c4a4b230c0ee91af546f2021c2104debe878e88b0c932c3df4da13e"
+    },
+    "action-env-0.json": {
+      "bytes": 71,
+      "sha256": "48c9143e1464b9ee044dceacac96fbdf1127fd2b16a08b3743fb2c5921677482"
+    },
+    "action-and-source-proof.json": {
+      "bytes": 2630,
+      "sha256": "7b9ac4995a9dc15ac7dc182407be3762ef88923f9cbda01ea974b6244bb787c8"
+    },
     "default.stdout.json": {
       "bytes": 407,
       "sha256": "81c4b4dd3556c73e1d1b9aeccbcd319c4db1b6de6be83d0d1945a42a7e25790a"
+    },
+    "action-env-17.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "node20-job.log.gz": {
       "bytes": 120206,
@@ -43,6 +79,38 @@
     "receipt.json": {
       "bytes": 2389,
       "sha256": "c8ee5fc76bd9287c591a819d2fd6229b2774062e6b8ba6299513a486ac8eeaf8"
+    },
+    "sources/trivy-remote.go.gz": {
+      "bytes": 2456,
+      "sha256": "51d690fb1257dcf3da1994f8fc4c53fe6c519672b846319806efb9cbcc256aa0"
+    },
+    "sources/gcr-fetcher.go.gz": {
+      "bytes": 2652,
+      "sha256": "8fb3e35619a987049f245976167ed2b7ca72bd42af9af61b1176ca0254d5826c"
+    },
+    "sources/go1258-transport.go.gz": {
+      "bytes": 29129,
+      "sha256": "1611b94f32741ea706a40d3a4671a00494211ec8876a31391d6133276a308751"
+    },
+    "sources/trivy-transport.go.gz": {
+      "bytes": 1611,
+      "sha256": "95ccf2fda4853cde792c5ec4ed66f47a54bb319bc5ba064d858ffeaf5cb51052"
+    },
+    "sources/gcr-options.go.gz": {
+      "bytes": 3931,
+      "sha256": "2b893109214802737ebc349dee25579cd6caaa20a496b6e70cfda26ba8c32e0f"
+    },
+    "sources/trivy-go.mod.gz": {
+      "bytes": 7370,
+      "sha256": "92fbf358c6469bf7c9207396df2e2cbfa2c31c957772b2dced6ff200e4e9acd9"
+    },
+    "sources/entrypoint.sh.gz": {
+      "bytes": 1305,
+      "sha256": "743dd327672532b53d9e299de35ad841b615d89acb3e0d4b75a395e16154256d"
+    },
+    "sources/action.yml.gz": {
+      "bytes": 3410,
+      "sha256": "8d2e67ea3ced582f85d5ef30a8def0401e7a7fe0c74ad935ab52301d8f027eb1"
     }
   }
 }

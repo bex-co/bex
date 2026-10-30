@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T12:01:51.521300+00:00",
+  "candidate_approved": false,
+  "scope": "Existing completed byte-receipt coverage only; fresh anonymous HEAD checks and any missing actual full reads still required.",
+  "unique_blobs": 35,
+  "total_compressed_blob_bytes": 1354969039,
+  "prior_verified_full_read_blobs": 1,
+  "prior_verified_compressed_bytes": 32,
+  "remaining_full_read_blobs": 34,
+  "remaining_compressed_bytes": 1354969007
+}

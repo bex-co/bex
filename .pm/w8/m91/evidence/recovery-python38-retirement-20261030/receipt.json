@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T12:51:02.290757+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm-c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "http": 200,
+  "manifest_bytes": 1611,
+  "manifest_sha256": "3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "approved_evidence": "../published-python38-20261030/receipt.json",
+  "removed_only": "python-3.8-bookworm",
+  "production_catalog_changed": false
+}

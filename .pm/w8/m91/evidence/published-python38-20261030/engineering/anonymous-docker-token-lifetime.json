@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-30T11:39:35.651962+00:00",
+  "scope": "Anonymous public Docker Hub pull-token timing only; token not persisted or printed.",
+  "issued_at": "2026-10-30T11:39:35.793038608Z",
+  "expires_in_seconds": 300,
+  "jwt_lifetime_seconds": 300,
+  "token_saved": false,
+  "prior_v5_elapsed_to401_seconds": 544.808913
+}
