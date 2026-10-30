@@ -18,3 +18,13 @@ docker build --build-arg NATIVE_BASE=bex-native-check \
 ```
 
 Candidates use `ghcr.io/bex-co/bex-native:<upstream-tag>-<commit>` and are published for `linux/amd64,linux/arm64`. Review the workflow's per-line digest and SBOM before a separate pin commit under ADR060 D7. Never substitute a mutable tag into tenant builds. A successful candidate build alone does not establish native-generator, exact-patch, companion, hosted-service or other-tool acceptance; w8/m91 and the individual tool milestones retain those checks.
+
+## Security maintenance for frozen runtimes
+
+User decision D1=A (2026-10-29, w1/m188) permits platform-maintained security backports while retaining the selected language version. Bookworm and Trixie use signed Debian security packages. Frozen Bullseye images rebuild the checksum-locked Debian `1.0.9-2+deb12u1` source on Bullseye, with the transparent package suffix `+bex11u1`, replacing shared **and static** libraries. The Debian source record remains under `/usr/share/bex-security/`. This avoids linking newer-distribution binaries against an older libc.
+
+The four reviewed EOL Node releases separately rebuild their original Node source with the matching Google Brotli security release; see [node-brotli](node-brotli/README.md). Updating Debian alone cannot repair a statically bundled decoder. No patch download or compilation is added to tenant builds.
+
+Before a discovery tag moves, both architectures must pass real utility transformations and network-free malformed-stream and healthy-round-trip probes against system and bundled decoders. The published index has build provenance, per-architecture SBOM and vulnerability-report attestations, and a keyless signature from this workflow. Trivy reports include unfixed vulnerabilities; these backports address this Brotli defect, not every vulnerability in EOL runtimes. Version-only scanner findings on backported Node require source and runtime evidence, never blanket CVE ignores.
+
+The stable discovery tag `ghcr.io/bex-co/bex-native:<upstream-tag>` moves only after these gates. Builds and failures never edit the operator's committed pins. The build-plane maintainer reviews both official upstream drift (the existing freshness inventory) and the latest verified platform candidate, then adopts only an immutable, verified digest in a separate commit. A failed build, scan, signature or behavioral probe keeps the previous discovery tag and adopted pin. A new upstream fix is a review request: verify equivalent library/runtime behavior on both architectures before returning to the official image. These recipes support the eleven reviewed legacy line images; arbitrary dynamically resolved exact patches and tenant-installed dependencies need their own evidence.

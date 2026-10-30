@@ -39,7 +39,8 @@ type NativeChoice struct {
 	// Exact is the fully qualified version the service pinned within this line
 	// when it differs from the line's reviewed patch (w8/175); the resolve phase
 	// swaps in that version's official image, or says why it could not.
-	Exact string
+	Exact    string
+	upstream string
 	// erlang is the Erlang/OTP release an Elixir service pinned more exactly
 	// than its major (ERLANG_VERSION=28.3, w8/197); the resolve phase builds on
 	// an image carrying it, or fails by name.
@@ -345,7 +346,7 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("no %s line %q", r.t.label, line)
 	}
-	return NativeChoice{Label: r.t.label, Line: l.line, Image: l.image, Source: source}, nil
+	return NativeChoice{Label: r.t.label, Line: l.line, Image: l.image, Source: source, upstream: l.upstream}, nil
 }
 
 // unsupported names the request the way the tenant wrote it: what is the env
@@ -700,7 +701,11 @@ func exactRequest(runtime string, choice NativeChoice, readFile func(string) ([]
 // exactImage names the official tag for an exact version: the line's tag with
 // its line replaced by the version (python:3.11-bookworm → python:3.11.9-bookworm).
 func exactImage(choice NativeChoice) (repo, tag string, ok bool) {
-	ref, _, _ := strings.Cut(choice.Image, "@")
+	image := choice.Image
+	if choice.upstream != "" {
+		image = choice.upstream
+	}
+	ref, _, _ := strings.Cut(image, "@")
 	repo, lineTag, found := strings.Cut(ref, ":")
 	if !found || choice.Exact == "" || !strings.HasPrefix(lineTag, choice.Line) {
 		return "", "", false
