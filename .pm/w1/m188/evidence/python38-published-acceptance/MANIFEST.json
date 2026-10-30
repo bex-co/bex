@@ -1,0 +1,420 @@
+{
+  "schema": "native_acceptance_archive/v1",
+  "archived_at": "2026-10-30T13:39:59.612369+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "accepted_count_at_promotion": 4,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "files": [
+    {
+      "source": "/tmp/bex-m188-python-3.8-bookworm-acceptance.json",
+      "archive": "acceptance.json",
+      "bytes": 3635,
+      "sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "archive": "verification/proof.json",
+      "bytes": 19657,
+      "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+      "archive": "verification/candidate.json",
+      "bytes": 8912,
+      "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+      "archive": "verification/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+      "bytes": 2673,
+      "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/architecture-binding.json",
+      "archive": "verification/architecture-binding.json",
+      "bytes": 11461,
+      "sha256": "9c33da49c59249ce9999872e15ca1b8acdb02ca697aba1a76d9885b03ba09d82"
+    },
+    {
+      "source": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+      "archive": "linked/1a8917af537f-bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+      "bytes": 582,
+      "sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/aggregate-at-promotion-4.json",
+      "archive": "verification/aggregate-at-promotion-4.json",
+      "bytes": 96966,
+      "sha256": "1cf6d46e46c432719a495ea847dfb8cfe6cb6c0eb6191a2bd14c670e0214b31d"
+    },
+    {
+      "source": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+      "archive": "linked/c739a4fc5053-c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+      "bytes": 84103,
+      "sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "archive": "verification/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "bytes": 4437,
+      "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-targeted-validation.json",
+      "archive": "verification/guard-targeted-validation.json",
+      "bytes": 1300,
+      "sha256": "8093612e28b3edde1a682376158e3606a8c2b44d2960ebb91a13f8362bf0dbf0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/publisher-job.json",
+      "archive": "verification/publisher-job.json",
+      "bytes": 6269,
+      "sha256": "a77cf7673c38b214a3b60c4c9f2886f5facc6e94c2ea758e723b81d1ec053069"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/publisher-job-snapshot.json",
+      "archive": "verification/publisher-job-snapshot.json",
+      "bytes": 332,
+      "sha256": "615f7f5c0db565932b77cfa8a5fb15370193b2a58d6013dc0bb81163d56d2c20"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/verification-job.log.gz",
+      "archive": "verification/verification-job.log.gz",
+      "bytes": 53259,
+      "sha256": "fb9b3e0b1af4207f76f2641d8d5e68efc33e9139ef6526d0f62ae77670440a35"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+      "archive": "verification/guard-validation.json",
+      "bytes": 2673,
+      "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/image-signature.statement.json",
+      "archive": "verification/image-signature.statement.json",
+      "bytes": 234,
+      "sha256": "245ac425b58c955ef26494581604d6e15f4c6a4798edb900a82038359cdf94ee"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/producer-job.json",
+      "archive": "verification/producer-job.json",
+      "bytes": 6109,
+      "sha256": "452667136f1bd10f9be94081080473c99c9a36787369bc881c0078772ea91447"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/collection-index.raw.json",
+      "archive": "verification/collection-index.raw.json",
+      "bytes": 2368,
+      "sha256": "19fb15e9b894cf818d5e032ab89311df886fbd7950b8ab765fcccf5987d91f4f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/immutable-tag-intake.json",
+      "archive": "verification/immutable-tag-intake.json",
+      "bytes": 371,
+      "sha256": "bea12efea9f768d9bbcc9b0f21f8835f4c3081a76e63bb189529bab031aa37b1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/local-reuse-receipt.json",
+      "archive": "verification/local-reuse-receipt.json",
+      "bytes": 3189,
+      "sha256": "232f7a262156e1b7570c6489026a36b79eb7c2c844a34f1b9d24456075659c34"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/amd64-content-equivalence.json",
+      "archive": "verification/amd64-content-equivalence.json",
+      "bytes": 19783,
+      "sha256": "9f70edac115cfc9db18f67764167a3ff029ecfb039a5e52bf31ca0aebe5b26a0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/producer-job.log.gz",
+      "archive": "verification/producer-job.log.gz",
+      "bytes": 104959,
+      "sha256": "0a0b7c7029488a44c8e5f1ff86eb8a0f1deceb19cf4b40ab71c04f559b39864b"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/controls.json",
+      "archive": "verification/controls/controls.json",
+      "bytes": 1691,
+      "sha256": "8db04a246b7739b3c1765a539c613e9ea84cf995ebd4fac1266555f99dd92b5b"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_index.stderr",
+      "archive": "verification/controls/wrong_index.stderr",
+      "bytes": 215,
+      "sha256": "25a997f2deb6fa634d3152a43719691fdde5d7e5c21c888406419fe4ca8a2fec"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_predicate.stderr",
+      "archive": "verification/controls/wrong_predicate.stderr",
+      "bytes": 237,
+      "sha256": "fcee4a2f6e49050826a87a0211049dc9a25599f3910383e79ea487c85da42b36"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_predicate.command.json",
+      "archive": "verification/controls/wrong_predicate.command.json",
+      "bytes": 2045,
+      "sha256": "7001f8caad1704fc2e51d20a11b8ed45b7b3c173077206bccb995a20effc6241"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_predicate.stdout",
+      "archive": "verification/controls/wrong_predicate.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_index.stdout",
+      "archive": "verification/controls/wrong_index.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_verification_sha.stdout",
+      "archive": "verification/controls/wrong_verification_sha.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_index.command.json",
+      "archive": "verification/controls/wrong_index.command.json",
+      "bytes": 2113,
+      "sha256": "ef8a436a2f90fbcb6a86cb90e3455da82e5d07047bbb69d218b0866eb4a58e24"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_verification_sha.command.json",
+      "archive": "verification/controls/wrong_verification_sha.command.json",
+      "bytes": 2069,
+      "sha256": "f0c2d0c8b0a2635e4aa6009295b05759683cb1497326dbbd4629ec6670a5517d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong-index.raw.json",
+      "archive": "verification/controls/wrong-index.raw.json",
+      "bytes": 1612,
+      "sha256": "74eef382ed3e8506e70e12dfcc4e59bd01d8de62504d946511b2742b74c5c7b1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/controls/wrong_verification_sha.stderr",
+      "archive": "verification/controls/wrong_verification_sha.stderr",
+      "bytes": 467,
+      "sha256": "cf98652da7d61fc28c50b58eee8f5f51abdfc6005a02749ac66468d21fb717ad"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.stdout",
+      "archive": "verification/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.stderr",
+      "archive": "verification/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.command.json",
+      "archive": "verification/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.command.json",
+      "bytes": 2174,
+      "sha256": "ae6d759ae18d768cc662b05cef975c0471b14412b74f8164a2d76d63b8f5f506"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.stdout",
+      "archive": "verification/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.command.json",
+      "archive": "verification/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.command.json",
+      "bytes": 2153,
+      "sha256": "3f4ef54d51703cd79b1cbcaaed6b666304b0e94e1e1b542ade982b59e77980b7"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.command.json",
+      "archive": "verification/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.command.json",
+      "bytes": 2143,
+      "sha256": "851ebeb861192e47b780b79af1dd755019b0d9d9c727c3e3511902555b657d3b"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.stderr",
+      "archive": "verification/commands/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.stderr",
+      "archive": "verification/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.stderr",
+      "archive": "verification/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.command.json",
+      "archive": "verification/commands/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.command.json",
+      "bytes": 2174,
+      "sha256": "69274522e362f60da384784a44a2627e91a6ec141f2e26da72b260bdfa352d68"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.stdout",
+      "archive": "verification/commands/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.stdout",
+      "archive": "verification/commands/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/85d4133c90108e653edb65502cdbe97c2bae46a10015d7873c318261b5ea0539.json",
+      "archive": "verification/manifests/85d4133c90108e653edb65502cdbe97c2bae46a10015d7873c318261b5ea0539.json",
+      "bytes": 1007,
+      "sha256": "85d4133c90108e653edb65502cdbe97c2bae46a10015d7873c318261b5ea0539"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/0a3f83e1480e49649df1ff00eb6b72d991a6fd9a9a7a6e0ff11d081ef297c334.json",
+      "archive": "verification/manifests/0a3f83e1480e49649df1ff00eb6b72d991a6fd9a9a7a6e0ff11d081ef297c334.json",
+      "bytes": 1038,
+      "sha256": "0a3f83e1480e49649df1ff00eb6b72d991a6fd9a9a7a6e0ff11d081ef297c334"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459.config.json",
+      "archive": "verification/manifests/28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459.config.json",
+      "bytes": 16139,
+      "sha256": "28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad.config.json",
+      "archive": "verification/manifests/d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad.config.json",
+      "bytes": 16137,
+      "sha256": "d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199.json",
+      "archive": "verification/manifests/5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199.json",
+      "bytes": 1007,
+      "sha256": "5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/f8cf3ea6e543213fc37487857be1d7d005711066ef6b06263315f3d224d5483f.json",
+      "archive": "verification/manifests/f8cf3ea6e543213fc37487857be1d7d005711066ef6b06263315f3d224d5483f.json",
+      "bytes": 1013,
+      "sha256": "f8cf3ea6e543213fc37487857be1d7d005711066ef6b06263315f3d224d5483f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/76773cddb8509af00ac4ef02c0b5b21bb9ac6c5ac5a0cf4db80db99a067c9592.registry-child.json",
+      "archive": "verification/manifests/76773cddb8509af00ac4ef02c0b5b21bb9ac6c5ac5a0cf4db80db99a067c9592.registry-child.json",
+      "bytes": 3534,
+      "sha256": "76773cddb8509af00ac4ef02c0b5b21bb9ac6c5ac5a0cf4db80db99a067c9592"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d.registry-child.json",
+      "archive": "verification/manifests/c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d.registry-child.json",
+      "bytes": 3534,
+      "sha256": "c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/manifests/4b246c3fee9c908fb50cb7c54a35b3b358c32b200fbae06ddb74172b96c0c4cf.json",
+      "archive": "verification/manifests/4b246c3fee9c908fb50cb7c54a35b3b358c32b200fbae06ddb74172b96c0c4cf.json",
+      "bytes": 1038,
+      "sha256": "4b246c3fee9c908fb50cb7c54a35b3b358c32b200fbae06ddb74172b96c0c4cf"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/bundles/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.json.gz",
+      "archive": "verification/bundles/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.json.gz",
+      "bytes": 6152,
+      "sha256": "0f08b0d207eb4bfe62e93be35b45815b2611781db074ce696cff08706040869f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/root-index.raw.json",
+      "archive": "linked/3dd6306d5fc4-root-index.raw.json",
+      "bytes": 1611,
+      "sha256": "3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/manifests/5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199.json",
+      "archive": "linked/5107623c4e39-5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199.json",
+      "bytes": 1007,
+      "sha256": "5107623c4e394311d0c11b12109116c4fc09daa438cf641c0ed0ce3e7bcb1199"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/commands/5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.command.json",
+      "archive": "linked/1a6d8b9d3a87-5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.command.json",
+      "bytes": 2051,
+      "sha256": "1a6d8b9d3a87f67eaf0197c728e5acb4b8c0e5cbfa6d2556c84595ab790e9e5a"
+    },
+    {
+      "source": "/tmp/bex-m188-fd358-source-review.json",
+      "archive": "linked/73d430049f0f-bex-m188-fd358-source-review.json",
+      "bytes": 7168,
+      "sha256": "73d430049f0fc970f10637dd27fdea6b37dac66d9d2a699c1da5fe5766059247"
+    },
+    {
+      "source": "/tmp/bex-m188-v8-fd358-equivalence-controls.json",
+      "archive": "linked/258b2edd111d-bex-m188-v8-fd358-equivalence-controls.json",
+      "bytes": 4437,
+      "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+    },
+    {
+      "source": "/tmp/bex-m188-fd358-full-candidate-regressions.json",
+      "archive": "linked/661e2d848bc6-bex-m188-fd358-full-candidate-regressions.json",
+      "bytes": 2129,
+      "sha256": "661e2d848bc6e17c7a793c299095844c1fb517083fcf5c76ca0f15e673e1c343"
+    },
+    {
+      "source": "/tmp/bex-m188-prepare-adoption.py",
+      "archive": "linked/c739a4fc5053-bex-m188-prepare-adoption.py",
+      "bytes": 84103,
+      "sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f"
+    },
+    {
+      "source": "/tmp/bex-m188-v8-equivalence-controls.json",
+      "archive": "linked/09a46fc35b85-bex-m188-v8-equivalence-controls.json",
+      "bytes": 4437,
+      "sha256": "09a46fc35b85d138467694c89434b9b6df359ca7201b9284def48327407228b4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/publisher-job.json",
+      "archive": "linked/a77cf7673c38-publisher-job.json",
+      "bytes": 6269,
+      "sha256": "a77cf7673c38b214a3b60c4c9f2886f5facc6e94c2ea758e723b81d1ec053069"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/commands/5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.stdout",
+      "archive": "linked/e3b0c44298fc-5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/commands/5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.stderr",
+      "archive": "linked/80a53f76c7ed-5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+      "archive": "metadata-transition/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+      "bytes": 7405,
+      "sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/acceptance-metadata-transition-hash-recovery.json",
+      "archive": "metadata-transition/acceptance-metadata-transition-hash-recovery.json",
+      "bytes": 5017,
+      "sha256": "a9466e004686b9f61b84afc124e12d8787f3c8ace79b67ff2e3454d1de6cb5c1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/promotion-helper-1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f.py",
+      "archive": "metadata-transition/promotion-helper-1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f.py",
+      "bytes": 6042,
+      "sha256": "1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f"
+    }
+  ],
+  "large_predicates": "Full signed predicates remain in digest-addressed public OCI objects and local verified gzip caches, referenced by proof.json. Exact original paths are retained; this manifest maps archived metadata.",
+  "metadata_chronology": "The exact validated7405-byte candidate was hash-recovered AFTER promotion. See metadata-transition record: only five promotion metadata fields differ; accepted candidate/proof/validation/receipt bytes remain original. This is not an original capture."
+}

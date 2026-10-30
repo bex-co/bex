@@ -1,0 +1,10 @@
+{
+  "run": 41052230534,
+  "job": 124054633427,
+  "cancel_performed": false,
+  "actual_state_on_fresh_check": "completed/failure",
+  "accepted_supplier_unchanged": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "note": "Earlier active duplicate review was stale by action time; root made no cancellation request.",
+  "recorded_at": "2026-10-30T13:45:51.030451+00:00",
+  "earlier_action_check_timestamp_not_captured": true
+}

@@ -1,0 +1,11 @@
+{
+  "rechecked_at": "2026-10-30T13:29:02.181066+00:00",
+  "requested_at": "2026-10-30T13:29:03.362904+00:00",
+  "run": 41062847017,
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "zero_started_native": true,
+  "exit": 0,
+  "stdout": "\u2713 Request to cancel workflow 41062847017 submitted.\n",
+  "stderr": "",
+  "retained_full_matrix_run": 41043547006
+}

@@ -1,0 +1,97 @@
+{
+  "schema": "native_acceptance_metadata_transition/v1",
+  "recorded_at": "2026-10-30T13:46:16.532548+00:00",
+  "tag": "python-3.8-bookworm",
+  "record_kind": "hash_recovered_after_promotion_not_original_pre_promotion_snapshot",
+  "chronology": "The original validated body was not separately snapshotted before promotion. These bytes were recovered after the fact by reversing only the exact known acceptance metadata changes; their SHA256 exactly matches the independently recorded prepromotion validation hash.",
+  "before": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+    "sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+    "bytes": 7405
+  },
+  "after": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+    "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+    "bytes": 8912
+  },
+  "changed_fields": [
+    {
+      "field": "candidate_state",
+      "before_present": true,
+      "after_present": true,
+      "before": "verified_pending_guard_alignment",
+      "after": "verified"
+    },
+    {
+      "field": "guard_alignment_required",
+      "before_present": true,
+      "after_present": true,
+      "before": true,
+      "after": false
+    },
+    {
+      "field": "guard_validation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+        "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+        "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+        "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+          "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-30T13:30:48.784936+00:00"
+      }
+    },
+    {
+      "field": "accepted_at",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": "2026-10-30T13:30:48.785080+00:00"
+    },
+    {
+      "field": "stable_discovery_confirmation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+        "sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5"
+      }
+    }
+  ],
+  "all_other_fields_unchanged": true,
+  "runtime_source_security_fields_changed": false,
+  "full_validation": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+    "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+    "bytes": 2673
+  },
+  "accepted_receipt": {
+    "file": "/tmp/bex-m188-python-3.8-bookworm-acceptance.json",
+    "sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20",
+    "bytes": 3635
+  },
+  "promotion_helper": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/promotion-helper-1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f.py",
+    "sha256": "1fe5729e019dbd127b33399280169c2b9c6ffe4495e87376c179a69ef71fee7f",
+    "bytes": 6042
+  },
+  "original_promotion_helper_file": "/tmp/bex-m188-promote-reviewed-candidate.py",
+  "accepted_at": "2026-10-30T13:30:48.785080+00:00",
+  "accepted_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+    "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+    "bytes": 19657
+  },
+  "aggregate_mutated": false,
+  "independent_prior_reproduction": "Cnb independently reconstructed the same ace338... /7405-byte body before this recovery; root explicitly authorized add-only preservation."
+}

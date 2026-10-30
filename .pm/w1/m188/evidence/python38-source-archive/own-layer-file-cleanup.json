@@ -1,0 +1,191 @@
+{
+  "removed": [
+    {
+      "digest": "sha256:195161aa1a329ebe69ee3ced487c2ee6eec964d9caf89070c72b2613567e3fe9",
+      "bytes": 243863833,
+      "proof_sha256": "6a654a5ec900709dd44e9d49296270b4d9901d5565229c3aeedb64f72e6795fb",
+      "removed_at": "2026-10-30T12:27:41.563087+00:00"
+    },
+    {
+      "digest": "sha256:3cc679900b32acc62f7bd3d7798cfc5252c3dbedb7d6f927864d2f9e6e3a33bf",
+      "bytes": 240679485,
+      "proof_sha256": "39776612eac16fd997d38506130249e2f697101ebb1c2d3ad8236ecf59b9249a",
+      "removed_at": "2026-10-30T12:27:42.072334+00:00"
+    },
+    {
+      "digest": "sha256:a173f2aee8e962ea19db1e418ae84a0c9f71480b51f768a19332dfa83d7722a5",
+      "bytes": 64392323,
+      "proof_sha256": "1ceed0490ef7690f12a6496748b0b8eafcd08699f42f60c7d3cb124ce38f2762",
+      "removed_at": "2026-10-30T12:28:36.662107+00:00"
+    },
+    {
+      "digest": "sha256:41b754d079e82fafdf15447cfc188868092eaf1cf4a3f96c9d90ab1b7db91230",
+      "bytes": 64349696,
+      "proof_sha256": "935613a244459e71024182d01054d3d11f5c5cea04b4b72f4f80d534d396352f",
+      "removed_at": "2026-10-30T12:30:05.622842+00:00"
+    },
+    {
+      "digest": "sha256:638d65d1c3ce5ec51107b4e1f959a837b57380ba2469b39760febc74c2b55640",
+      "bytes": 62633159,
+      "proof_sha256": "6a2d5927a9d0225423f2317288ca53dd615be63ceb2aac6d6946234548c5d3be",
+      "removed_at": "2026-10-30T12:31:41.010299+00:00"
+    },
+    {
+      "digest": "sha256:d71ace0e8bbdcfcf795b836e24a37a6ed0054100e14d6aa6e5a63f7e162ba729",
+      "bytes": 202651718,
+      "proof_sha256": "b1ae9a58185ea43dc55bd746d6a8d894c0759b44998363de3eb8eeeaef35d9b4",
+      "removed_at": "2026-10-30T12:32:00.414764+00:00"
+    },
+    {
+      "digest": "sha256:6d11c181ebb38ef30f2681a42f02030bc6fdcfbe9d5248270ee065eb7302b500",
+      "bytes": 49584886,
+      "proof_sha256": "a42381fcde977f8d92ae660630fbc7cd007861e2e5505ea6d4101647f5eb3834",
+      "removed_at": "2026-10-30T12:32:41.002424+00:00"
+    },
+    {
+      "digest": "sha256:caf020e500bedfa8a5fb11fef09962e0cd74e706ece8a2949df6ada80c0d5081",
+      "bytes": 61850292,
+      "proof_sha256": "3c1c994078b2180f53a67bcff01ca95d44a0fe8dae2dd4544e46ec3e499d455d",
+      "removed_at": "2026-10-30T12:33:06.531621+00:00"
+    },
+    {
+      "digest": "sha256:cdd62bf39133c498a16f7a7b1b6555ba43d02b2511c508fa4c0a9b1975ffe20e",
+      "bytes": 49555051,
+      "proof_sha256": "5c5ea72842e8b6264008b6f17e7a541f8545c70c8ede55efd5f833d59039049b",
+      "removed_at": "2026-10-30T12:33:28.565670+00:00"
+    },
+    {
+      "digest": "sha256:a47cff7f31e941e78bf63ca19f0811b675283e2c00ddea10c57f78d93b2bc343",
+      "bytes": 24053049,
+      "proof_sha256": "6c3d6b1c356114a2dcdb89fed0beeca5494ca0eb3fc7345c168bb12a1b45d910",
+      "removed_at": "2026-10-30T12:33:36.702723+00:00"
+    },
+    {
+      "digest": "sha256:cc48f13b5f0f44b2e298de83a94a99fe7abdfb3335fe9b7811b8f764abb1a4ac",
+      "bytes": 18061289,
+      "proof_sha256": "165cdd769ce24bb7395302532f108b086842b4ee57e0b45f3a1488c464aff001",
+      "removed_at": "2026-10-30T12:33:43.197085+00:00"
+    },
+    {
+      "digest": "sha256:b5ab5cf667cdf79c78f3d26b9d47ea4f5c6b73ed4095c4a012a3ddc8fc0b2f71",
+      "bytes": 17828766,
+      "proof_sha256": "0252696fbfc28987fdc7dd707c1c8e5a12425dae78bb88b7231296668cecae86",
+      "removed_at": "2026-10-30T12:33:51.013961+00:00"
+    },
+    {
+      "digest": "sha256:66d992156d02900e3e9b3a86877cba5b4e759b6c14a78da7bf223a2588bb4474",
+      "bytes": 6239190,
+      "proof_sha256": "ed14bcf591c9aaeea8db77bb5e83844d02d43d7cd4b319ef06b89f0ae4278e3d",
+      "removed_at": "2026-10-30T12:33:54.029865+00:00"
+    },
+    {
+      "digest": "sha256:cddc73e4e6c704bfa2325e53c32ddb3553c8fc3a91dab6c092bb353f82098b09",
+      "bytes": 6161662,
+      "proof_sha256": "d42ae0ddeabe4451729c2c09b61988e9313be2d6c67bf591b4f607d95a4bc392",
+      "removed_at": "2026-10-30T12:33:56.471623+00:00"
+    },
+    {
+      "digest": "sha256:23281c617f9305fb079aeb31c33ad0ae766fc040bdf93a53d9cddfc82bde978e",
+      "bytes": 4079044,
+      "proof_sha256": "16ba9c60358bb741271be709e7a114fa64a05d800bcc4accdba98563046a92b1",
+      "removed_at": "2026-10-30T12:33:58.955731+00:00"
+    },
+    {
+      "digest": "sha256:2b238499ec52e0d6be479f948c76ba0bc3cc282f612d5a6a4b5ef52ff45f6b2c",
+      "bytes": 23594043,
+      "proof_sha256": "5cf277dc7aa4848fa33fff17b6ca6716d21699340f54f05edf29f7ed52578863",
+      "removed_at": "2026-10-30T12:34:03.583919+00:00"
+    },
+    {
+      "digest": "sha256:04564eed8838596ffd32f90315d8d7b33c082d5855d40f1900945d375660a842",
+      "bytes": 2893,
+      "proof_sha256": "602b46f8886d420aea69ced0317796f3b03984ef3310ecc509bf4fd21b8a8134",
+      "removed_at": "2026-10-30T12:34:04.715148+00:00"
+    },
+    {
+      "digest": "sha256:c784bcfa0b13a4d3d48a5562af76ab5a4a47c70246657e9e7552514dee42497e",
+      "bytes": 2893,
+      "proof_sha256": "f2d5610e7f139e5309c6fb6a104fc9dc51f8f228a1d48f7c357aa089ff812ca9",
+      "removed_at": "2026-10-30T12:34:05.583080+00:00"
+    },
+    {
+      "digest": "sha256:3edd4f5d8c7a3c39198f5da5f5f75f07aca2347e069c8efd03bcb7b89b29d562",
+      "bytes": 4078882,
+      "proof_sha256": "36f5e0d4810bfd29df6b2306d59f22e491000c4fa58d3bba9ac108a00af25bb0",
+      "removed_at": "2026-10-30T12:34:05.680258+00:00"
+    },
+    {
+      "digest": "sha256:d03b9eb524e02bd4a28d104104b3afc4c9bf84d99edacf2ace3a563bfcdd6ba2",
+      "bytes": 1395,
+      "proof_sha256": "95a44ebdefcbe014d2cb8203da2427a1984e0f6e22b91c8029ea786458fde340",
+      "removed_at": "2026-10-30T12:34:06.541948+00:00"
+    },
+    {
+      "digest": "sha256:baa2046fedeef29315b7c8656cc06ed45c0b46e2cf140ba001080d8046a8e6bb",
+      "bytes": 1395,
+      "proof_sha256": "3587d9270cebcf01a2e765c39207b5002bb560f71df978937da273b2fab515b2",
+      "removed_at": "2026-10-30T12:34:06.699372+00:00"
+    },
+    {
+      "digest": "sha256:b618c9ec9cc1bfbe2d266d8b6de90ed100e29a93c887801bd87a302a2ed00977",
+      "bytes": 1147,
+      "proof_sha256": "82d4432781caa2bb0cd39552a870ac63833d6cf90e44e22378c83f2d389f0f8c",
+      "removed_at": "2026-10-30T12:34:07.616064+00:00"
+    },
+    {
+      "digest": "sha256:58968523a3ec26c5cda3d22dac3b2900e4f5e431f7d61f5712a4f1adde08389a",
+      "bytes": 1146,
+      "proof_sha256": "662578fc22a60d7710d6c11cd4589fa66cf13a97449820d485490047e82bff6e",
+      "removed_at": "2026-10-30T12:34:07.748793+00:00"
+    },
+    {
+      "digest": "sha256:e4b03597a10473fb78eaab09bd2005ff6a1c3ab579ecf7e4e0d59cf96b92c1fd",
+      "bytes": 1054,
+      "proof_sha256": "d446b772ab2c3870150633a49e42af0db64be4f645bb7d7ce48153032904b3f7",
+      "removed_at": "2026-10-30T12:34:08.692006+00:00"
+    },
+    {
+      "digest": "sha256:6ab08333b8dc941d6564a0c177e88c953f5603bbb1cd0e11e2269caf97500ee5",
+      "bytes": 1054,
+      "proof_sha256": "1035b5c3b2abde831c75a87f814a9ece6366ef27a50682ff0ffbdfd3ffbe7577",
+      "removed_at": "2026-10-30T12:34:08.877627+00:00"
+    },
+    {
+      "digest": "sha256:84cf3bb98bcf849c13e0e8721c726715cc530f4ccb93ef45b26208c0a4927bef",
+      "bytes": 361,
+      "proof_sha256": "ab8fd02ab2bba2cfcea860347c276f97a00da0558a359d4f50308d33929f7ea1",
+      "removed_at": "2026-10-30T12:34:09.790575+00:00"
+    },
+    {
+      "digest": "sha256:8ee8d9bfdb2f05ff94c3efed9355880da82b1575cf1fd3e78b52480594b89836",
+      "bytes": 360,
+      "proof_sha256": "92cb53207f6663ba2753004e67cb4bffc9003d31a833d26be2cf2668514562d6",
+      "removed_at": "2026-10-30T12:34:10.015049+00:00"
+    },
+    {
+      "digest": "sha256:22c8b613262dde23cd50e5e4b678d0e8a83ac0f66f12eebba0209678caecf7d2",
+      "bytes": 263,
+      "proof_sha256": "a2974a6cdff63e7b1ccf581a8f5a786cd898bf3001e59510e0c2ca673cd31ed2",
+      "removed_at": "2026-10-30T12:34:10.876657+00:00"
+    },
+    {
+      "digest": "sha256:f68bf667cf09b1dc1ec00ee352866b57992cb72e27edd27d3be665a94bd36d8f",
+      "bytes": 262,
+      "proof_sha256": "c00393f9bb9143ba68690e28433738c818d59782c7c6050892a0a032b8cc7afd",
+      "removed_at": "2026-10-30T12:34:11.366237+00:00"
+    },
+    {
+      "digest": "sha256:5a98c896c047f960c5fd29d44fa778899a68e7ebfb6a6a4f2a3fbf7baa902f6a",
+      "bytes": 249,
+      "proof_sha256": "b1617ecb3c6604c858a2a2839f3af9f7d7b061fd2ba284b1086864865d2e7a2a",
+      "removed_at": "2026-10-30T12:34:12.049790+00:00"
+    },
+    {
+      "digest": "sha256:7564b53997996f1a4a69792090b694e9e7d3ea38f8970756b6e8c761c98b8d73",
+      "bytes": 249,
+      "proof_sha256": "76d12064f56b2f517c1dad8a5d60fcc2dcaecd35363f7320b62734e75ed6bd01",
+      "removed_at": "2026-10-30T12:34:12.551985+00:00"
+    }
+  ],
+  "reclaimed_bytes": 1143671089
+}

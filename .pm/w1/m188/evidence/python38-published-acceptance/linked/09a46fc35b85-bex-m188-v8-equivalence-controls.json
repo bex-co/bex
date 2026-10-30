@@ -1,0 +1,151 @@
+{
+  "schema": "bex.m188.v8-equivalence-controls/v1",
+  "at": "2026-10-30T13:16:49.144240+00:00",
+  "guard_sha256": "98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8",
+  "actual_sidecar_sha256": "9f70edac115cfc9db18f67764167a3ff029ecfb039a5e52bf31ca0aebe5b26a0",
+  "scope": "One real root-approved V8 sidecar; every mutation recomputes outer hash. Durable witnesses/source/crypto inputs untouched. No approval/adoption.",
+  "passed": true,
+  "positives": 1,
+  "negatives": 27,
+  "results": [
+    {
+      "name": "actual_approved_v8_sidecar",
+      "passed": true
+    },
+    {
+      "name": "wrong_root_index",
+      "rejected": true,
+      "reason": "bounded-file target/config/signed root mismatch"
+    },
+    {
+      "name": "wrong_signed_root",
+      "rejected": true,
+      "reason": "bounded-file target/config/signed root mismatch"
+    },
+    {
+      "name": "wrong_architecture",
+      "rejected": true,
+      "reason": "bounded-file target/config/signed root mismatch"
+    },
+    {
+      "name": "wrong_config_custody",
+      "rejected": true,
+      "reason": "bounded-file input lacks root-approved durable custody"
+    },
+    {
+      "name": "wrong_diffID",
+      "rejected": true,
+      "reason": "bounded-file witness DiffID/size mismatch"
+    },
+    {
+      "name": "wrong_layer_order",
+      "rejected": true,
+      "reason": "bounded-file descriptor/order/direct witness mismatch"
+    },
+    {
+      "name": "wrong_uncompressed_size",
+      "rejected": true,
+      "reason": "bounded-file witness DiffID/size mismatch"
+    },
+    {
+      "name": "wrong_compressed_descriptor_size",
+      "rejected": true,
+      "reason": "bounded-file descriptor/order/direct witness mismatch"
+    },
+    {
+      "name": "wrong_compressed_descriptor_digest",
+      "rejected": true,
+      "reason": "bounded-file descriptor/order/direct witness mismatch"
+    },
+    {
+      "name": "missing_ordered_witness",
+      "rejected": true,
+      "reason": "bounded-file content witness count mismatch"
+    },
+    {
+      "name": "missing_completion_proof",
+      "rejected": true,
+      "reason": "bounded-file execution role set is incomplete or duplicated"
+    },
+    {
+      "name": "duplicate_execution_role",
+      "rejected": true,
+      "reason": "bounded-file execution role set is incomplete or duplicated"
+    },
+    {
+      "name": "unapproved_execution_mode",
+      "rejected": true,
+      "reason": "unapproved content execution mode"
+    },
+    {
+      "name": "missing_V7_provenance",
+      "rejected": true,
+      "reason": "bounded-file prior V7 witness provenance missing"
+    },
+    {
+      "name": "wrong_V7_ordinal",
+      "rejected": true,
+      "reason": "bounded-file prior V7 source/transcript mismatch"
+    },
+    {
+      "name": "wrong_V7_digest",
+      "rejected": true,
+      "reason": "bounded-file prior V7 source/transcript mismatch"
+    },
+    {
+      "name": "wrong_V7_witness",
+      "rejected": true,
+      "reason": "bounded-file prior V7 witness identity mismatch"
+    },
+    {
+      "name": "wrong_V7_collector",
+      "rejected": true,
+      "reason": "bounded-file prior V7 source/transcript mismatch"
+    },
+    {
+      "name": "wrong_V7_transcript",
+      "rejected": true,
+      "reason": "bounded-file prior V7 source/transcript mismatch"
+    },
+    {
+      "name": "missing_accepted_reuse",
+      "rejected": true,
+      "reason": "bounded-file accepted reused witness missing"
+    },
+    {
+      "name": "wrong_accepted_root",
+      "rejected": true,
+      "reason": "bounded-file accepted Node14 custody mismatch"
+    },
+    {
+      "name": "wrong_accepted_ordinal",
+      "rejected": true,
+      "reason": "bounded-file accepted Node14 witness custody mismatch"
+    },
+    {
+      "name": "wrong_accepted_custody_size",
+      "rejected": true,
+      "reason": "bounded-file accepted custody size mismatch"
+    },
+    {
+      "name": "wrong_actual_exit_hash",
+      "rejected": true,
+      "reason": "bounded-file input lacks root-approved durable custody"
+    },
+    {
+      "name": "cleanup_policy_substitution",
+      "rejected": true,
+      "reason": "bounded-file execution role substituted"
+    },
+    {
+      "name": "V8_V7_helper_substitution",
+      "rejected": true,
+      "reason": "bounded-file execution role substituted"
+    },
+    {
+      "name": "stdout_V7_substitution",
+      "rejected": true,
+      "reason": "bounded-file execution role substituted"
+    }
+  ]
+}

@@ -1,0 +1,403 @@
+{
+  "schema": "bex.independent-python38-content-witness-review/v1",
+  "checked_at": "2026-10-30T12:57:30.794272+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "result": "PASS: exact measured-layer equivalence reproduces signed AMD synthetic1d75; signed ARM retains exact actual childc72c. No arbitrary alias.",
+  "candidate_approved": false,
+  "guard_or_aggregate_changed": false,
+  "network_layer_or_crypto_calls_performed_by_this_review": false,
+  "receipt_sha256": "ccfeaf895ed89d9db5b63b3918cba25440aae1781f5ca92c9d297e13a9a40c35",
+  "actual_layer_receipt_sha256": "ee8b0c6b02213eb74d1b39a4fd6364b13e048c7d2e6ad52de6e834be1667d38b",
+  "unique_layers": 33,
+  "measured_unique_compressed_bytes": 1354936763,
+  "new_v8_bounded_file_witnesses": 31,
+  "reused_actual_witnesses": {
+    "sha256:01272fe8adbacc44afd2b92994b31c40a151f4324ca392050d9e8d580927dd32": {
+      "basis": "successful stream in v7 before another stream failed; full compressed SHA/size and diffID checked before witness write",
+      "start_event": {
+        "at": "2026-10-30T12:10:02.606512+00:00",
+        "stage": "anonymous-compressed-and-decompressed-read",
+        "candidate_approved": false,
+        "name": "python-3.8-bookworm",
+        "architecture": "amd64",
+        "layer": 3,
+        "expected_compressed_bytes": 211265642
+      },
+      "witness_at": "2026-10-30T12:18:45.747861+00:00"
+    },
+    "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1": {
+      "basis": "exact previously reviewed Node14 actual empty-layer witness",
+      "receipt_path": "/Users/tianpan/projects/bex/.pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/verified-layers/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json",
+      "sha256": "6cfd0ade0bf13579f8aa6ef06faacc34b65502fbc5eaa9fdfb450382f805cf64"
+    }
+  },
+  "actual_download_and_decompression_log": {
+    "path": "/tmp/loopx-w8-python38-review-v8.log",
+    "bytes": 28090,
+    "sha256": "7bb82c5a9403e8cd5b2c784091993e9ebf44fe3caf4c6435f5314793c5682e1c",
+    "correlated_download_starts": 31,
+    "correlated_actual_decompression_starts": 31,
+    "process_exit_sha256": "75dd7bcf3b679e17f66aee1e90fb4b52fb906673b469a813043002ca9842790a",
+    "actual_exit_code": 0,
+    "owned_layer_files_now_empty": true,
+    "deleted_completed_body_bytes": 1143671089
+  },
+  "prior_v7_stream_log": {
+    "path": "/tmp/loopx-w8-python38-review-v7.log",
+    "sha256": "e33a8c0849cc855a03a326e549fe0d51646ca1542775c85965f84b727518caa9",
+    "successful_prior_witness_count": 1,
+    "failed_other_streams_not_counted_as_witnesses": true
+  },
+  "executed_tools": {
+    "/tmp/loopx-w8-native-review-v8.py": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "architectures": {
+    "amd64": {
+      "actual_registry_child_digest": "sha256:76773cddb8509af00ac4ef02c0b5b21bb9ac6c5ac5a0cf4db80db99a067c9592",
+      "actual_config_digest": "sha256:28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459",
+      "config_bytes": 16139,
+      "ordered_layers": 17,
+      "compressed_bytes": 680888097,
+      "uncompressed_bytes": 1977569792,
+      "derived_synthetic_digest": "sha256:1d75f0b9a6efc990cc7f2f8dcaf2ecfaf7123ca6ea64d7f2e4d078bc603e6902",
+      "derived_bytes": 3044,
+      "signed_spdx_roots": [
+        "sha256:1d75f0b9a6efc990cc7f2f8dcaf2ecfaf7123ca6ea64d7f2e4d078bc603e6902"
+      ]
+    },
+    "arm64": {
+      "actual_registry_child_digest": "sha256:c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d",
+      "actual_config_digest": "sha256:d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad",
+      "config_bytes": 16137,
+      "ordered_layers": 17,
+      "compressed_bytes": 674048698,
+      "uncompressed_bytes": 1983398912,
+      "derived_synthetic_digest": "sha256:75a8910bb09b37d32ed04b6d465574f6ee6905cbb8128fe741d74fb37cb980cf",
+      "derived_bytes": 3044,
+      "signed_spdx_roots": [
+        "sha256:c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d"
+      ]
+    }
+  },
+  "cached_signed_report_bindings": [
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "bundle_digest": "sha256:dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab",
+      "signed_statement_sha256": "7e8249bba4c834b3b239cf6ccc4bd6dad2b002d4b7b4e0f79a5ce26712fdc72d",
+      "gzip_sha256": "55a97a29a486fd580c75fd384a8da37535a479234f465c4d5b3530f7e9f04c89",
+      "summary": {
+        "architecture": "amd64",
+        "config_digest": "sha256:28936e12dcce2266ec9976b069bf28b4bb7946d4606100c319ef757fe27b0459",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-30T10:24:42.032689046Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.7"
+        },
+        "result_count": 4,
+        "vulnerability_count": 14792,
+        "severity_counts": {
+          "LOW": 3900,
+          "HIGH": 2657,
+          "MEDIUM": 7849,
+          "UNKNOWN": 157,
+          "CRITICAL": 229
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "bundle_digest": "sha256:4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311",
+      "signed_statement_sha256": "ee18726206f30af35203654c618e6b35e9c4762c8b12bd2cf379aece59c988fc",
+      "gzip_sha256": "b792d42c8d581432cf28a4f5baa84641a29875bfff86164a202a916e346ecc35",
+      "summary": {
+        "architecture": "arm64",
+        "config_digest": "sha256:d896c08e82db8045fff94870a46fc36c22c08d7943fc9ac13f1f095e74a149ad",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-30T10:25:06.437572794Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.7"
+        },
+        "result_count": 4,
+        "vulnerability_count": 14792,
+        "severity_counts": {
+          "LOW": 3900,
+          "HIGH": 2657,
+          "MEDIUM": 7849,
+          "UNKNOWN": 157,
+          "CRITICAL": 229
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "bundle_digest": "sha256:5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7",
+      "signed_statement_sha256": "e07fa04f21704a28ac4da5e30e9c2825d23aba870ae2bde5ae1679c587e57bd9",
+      "gzip_sha256": "b34ea72dd0da06a9a6f30a1a5cf211150eb19097a5c051e3c5d0a987093ca66e",
+      "summary": {
+        "architecture": "amd64",
+        "root_identities": [
+          "sha256:1d75f0b9a6efc990cc7f2f8dcaf2ecfaf7123ca6ea64d7f2e4d078bc603e6902"
+        ],
+        "package_count": 719,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-12"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "10.0.0~dfsg-11+deb12u8"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb12u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.14.1-3+deb12u3"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.17.1.1-2~deb12u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg12+2"
+          },
+          {
+            "name": "python",
+            "version": "3.8.20"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.11.2-1+b1"
+          },
+          {
+            "name": "python3-pip",
+            "version": "23.0.1+dfsg-1"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "66.1.1-1+deb12u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.7-1+deb12u6"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.40.1-2+deb12u2"
+          },
+          {
+            "name": "swig",
+            "version": "4.1.0-0.2"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-13+deb12u1"
+          }
+        ]
+      },
+      "runtime_and_brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:amd64.md5sums"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:amd64.md5sums"
+        },
+        {
+          "name": "node",
+          "version": "24.22.1",
+          "sourceInfo": "acquired package info from the following paths: /opt/bex/native-node-tools/node"
+        },
+        {
+          "name": "python",
+          "version": "3.8.20",
+          "sourceInfo": "acquired package info from the following paths: /usr/local/bin/python3.8, /usr/local/lib/libpython3.8.so.1.0"
+        }
+      ]
+    },
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "bundle_digest": "sha256:61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84",
+      "signed_statement_sha256": "8d2e6c49428259ab9383c294d0e9bba399105af9b09480df2afad16ce099f55d",
+      "gzip_sha256": "d68a27499acfd0d3b8ced155aa0199227e788be78143c89f8c799dd303367706",
+      "summary": {
+        "architecture": "arm64",
+        "root_identities": [
+          "sha256:c72c78f440d7a916f055039959a3ca57c838b1e97e77e4039ce560d18fd0878d"
+        ],
+        "package_count": 717,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-12"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "10.0.0~dfsg-11+deb12u8"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb12u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.14.1-3+deb12u3"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.17.1.1-2~deb12u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg12+2"
+          },
+          {
+            "name": "python",
+            "version": "3.8.20"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.11.2-1+b1"
+          },
+          {
+            "name": "python3-pip",
+            "version": "23.0.1+dfsg-1"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "66.1.1-1+deb12u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.7-1+deb12u6"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.40.1-2+deb12u2"
+          },
+          {
+            "name": "swig",
+            "version": "4.1.0-0.2"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-13+deb12u1"
+          }
+        ]
+      },
+      "runtime_and_brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:arm64.md5sums"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:arm64.md5sums"
+        },
+        {
+          "name": "node",
+          "version": "24.22.1",
+          "sourceInfo": "acquired package info from the following paths: /opt/bex/native-node-tools/node"
+        },
+        {
+          "name": "python",
+          "version": "3.8.20",
+          "sourceInfo": "acquired package info from the following paths: /usr/local/bin/python3.8, /usr/local/lib/libpython3.8.so.1.0"
+        }
+      ]
+    },
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "bundle_digest": "sha256:f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa",
+      "signed_statement_sha256": "245ac425b58c955ef26494581604d6e15f4c6a4798edb900a82038359cdf94ee",
+      "gzip_sha256": "0f08b0d207eb4bfe62e93be35b45815b2611781db074ce696cff08706040869f"
+    }
+  ],
+  "custody_limitations": [
+    "Existing review writes complete compressed bodies into an isolated bounded2GiB scratch area before decompression; all31 newly completed files were deleted only after matching full compressed SHA/size and actual decompressed DiffID/size proof. This is not a new pure-stream run by me.",
+    "Final process exit record captures tool/hash/session/exit0, but does not retain exact driver argv. I have not invented or retroactively claimed an invocation. Preserve the existing v7/v8 helpers/logs/exit/cleanup/witnesses and obtain original launcher argv from the owner if required.",
+    "No durable archive MANIFEST is yet present in this scratch directory. Root owns archival, independent crypto replay and candidate/adoption decisions."
+  ]
+}

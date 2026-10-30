@@ -1,0 +1,64 @@
+{
+  "schema": "native_candidate_acceptance/v1",
+  "accepted_at": "2026-10-30T13:30:48.785080+00:00",
+  "tag": "python-3.8-bookworm",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "digest": "sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+  "run_id": 41033903530,
+  "job_id": 123990866360,
+  "job_completed_at": "2026-10-30T10:29:27Z",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "targeted_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+    "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+  },
+  "candidate": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+    "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8"
+  },
+  "guard_validation": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+    "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+    "original_validation_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+    "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+    "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+    "actual_proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+    "controls": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6"
+    },
+    "full_candidate_guard_passed": true,
+    "root_promotion_approved": true,
+    "rechecked_at": "2026-10-30T13:30:48.784936+00:00"
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/architecture-binding.json",
+    "sha256": "9c33da49c59249ce9999872e15ca1b8acdb02ca697aba1a76d9885b03ba09d82",
+    "complete": true
+  },
+  "stable_discovery_confirmation": {
+    "file": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+    "sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5"
+  },
+  "stable_discovery_checked_at": "2026-10-30T13:30:46.278579+00:00",
+  "aggregate_snapshot": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/aggregate-at-promotion-4.json",
+    "sha256": "1cf6d46e46c432719a495ea847dfb8cfe6cb6c0eb6191a2bd14c670e0214b31d"
+  },
+  "live_aggregate_file": "/tmp/bex-m188-published-acceptance.json",
+  "accepted_count": 4,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "existing_accepted_files_preserved": true,
+  "remaining": [
+    "node-18-bookworm",
+    "node-20-bookworm",
+    "python-3.10-bookworm",
+    "python-3.9-bookworm",
+    "ruby-3.0-bullseye",
+    "ruby-3.1-bookworm",
+    "ruby-3.2-bookworm"
+  ]
+}

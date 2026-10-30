@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-30T12:36:43.635690+00:00",
+  "checked_at": "2026-10-30T13:54:38.733041+00:00",
   "method": "Actual workflow embedded selection script against isolated temporary Git commits; no Docker, signing, network, or production mutation",
   "results": [
     {
@@ -21,9 +21,9 @@
       "exit": 0
     },
     {
-      "case": "authorized python-3.8-bookworm same recipe",
-      "expected": "recover",
-      "observed": "recover",
+      "case": "verified python-3.8-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
       "exit": 0
     },
     {

@@ -1,0 +1,51 @@
+{
+  "schema": "bex.m188.fd358-four-full-candidate-validations/v1",
+  "at": "2026-10-30T13:28:30.311057+00:00",
+  "guard_file": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+  "guard_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+  "reviewed_current_workflow_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "reviewed_current_workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "source_review": {
+    "file": "/tmp/bex-m188-fd358-source-review.json",
+    "sha256": "73d430049f0fc970f10637dd27fdea6b37dac66d9d2a699c1da5fe5766059247"
+  },
+  "scope": "Four real published candidates through full persisted cryptographic/semantic AND current-source closure guard. No promotion or source pin changes; accepted3 snapshots unchanged.",
+  "results": [
+    {
+      "tag": "node-14-bullseye",
+      "full_validate_candidate_passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a"
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "full_validate_candidate_passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f"
+    },
+    {
+      "tag": "node-16-bookworm",
+      "full_validate_candidate_passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "4330878c280bc9748444c8e1e50ff7388df1228a"
+      ],
+      "proof_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d"
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "full_validate_candidate_passed": true,
+      "sources": [
+        "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "c8ca76473129d092a8d74ada5e09c5c4705987cd"
+      ],
+      "proof_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+    }
+  ]
+}

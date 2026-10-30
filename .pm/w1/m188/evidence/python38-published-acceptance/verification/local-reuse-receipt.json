@@ -1,0 +1,56 @@
+{
+  "schema": "native_local_signed_bundle_reuse/v1",
+  "checked_at": "2026-10-30T12:58:48.083390+00:00",
+  "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+  "proof_sha256": "d73c503ae059ee6fa9da16e9ce801df53ba3436fb501acd413fc7c4911d5b953",
+  "all_five_crypto_verified": true,
+  "local_source_files": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "blob": "sha256:f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/bundles/f87fd37eb1921856d9dc5781efaff8c24f7d9396bc47495903acba6f082613aa.json.gz",
+      "gzip_sha256": "0f08b0d207eb4bfe62e93be35b45815b2611781db074ce696cff08706040869f",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "blob": "sha256:5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/bundles/5d1566b25ee09e4b6b691004c9556c45d5bfc22b9523ade59795879f70dd9cc7.json.gz",
+      "gzip_sha256": "209c4a84eb68933b2af451b9152fb7c020f71b310ecbae939170896f2cccf812",
+      "own_prior_cli_reused": true
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "blob": "sha256:61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/bundles/61b26665e964b823346c493bc940cf2edd96059f5301f09c32e2b3eba244ea84.json.gz",
+      "gzip_sha256": "d68a27499acfd0d3b8ced155aa0199227e788be78143c89f8c799dd303367706",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "blob": "sha256:dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/bundles/dfc6142737ab2bdc07271a24b737f2faea95dd63a820c442d9df589bfe6e00ab.json.gz",
+      "gzip_sha256": "55a97a29a486fd580c75fd384a8da37535a479234f465c4d5b3530f7e9f04c89",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "blob": "sha256:4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/bundles/4cee73caa151676021daa1eb234e88de4e0ea9940ab5cd88c7a6ef1fa9758311.json.gz",
+      "gzip_sha256": "b792d42c8d581432cf28a4f5baa84641a29875bfff86164a202a916e346ecc35",
+      "own_prior_cli_reused": false
+    }
+  ],
+  "new_large_downloads": false,
+  "content_binding_approved": false,
+  "accepted": false,
+  "owned_source_archive_manifest": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python38-source-archive/MANIFEST.json",
+    "sha256": "4a4e2d9fc663b5cf627f0365671c2f335cb007fceff1f5acec986be73c054c9a"
+  }
+}
