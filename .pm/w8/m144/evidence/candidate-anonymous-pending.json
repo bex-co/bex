@@ -1,0 +1,5 @@
+{
+  "reference": "ghcr.io/bex-co/bex-operator:hcloud-csi-9026301316233effaaee71e5ba49730c093bd446",
+  "published": false,
+  "registryResult": "https://ghcr.io/v2/bex-co/bex-operator/manifests/hcloud-csi-9026301316233effaaee71e5ba49730c093bd446: HTTP Error 404: Not Found"
+}

@@ -1,0 +1,1 @@
+PASS: service-disk/platform image inventory uses only read-only selected projections and excludes datastore volumes
