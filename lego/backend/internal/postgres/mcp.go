@@ -58,7 +58,7 @@ type createPostgresArgs struct {
 	Name          string `json:"name" jsonschema:"the database name"`
 	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
 	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
-	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
+	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb (high availability needs at least 1 CPU: 1c-2g, pro-4gb or basic-4gb)"`
 	Region        string `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
 	// Version is a number on Render's MCP server (w5/m145); bex also keeps
 	// accepting the string form.
@@ -320,7 +320,7 @@ type updatePostgresArgs struct {
 	// fields REST already carries in this same PATCH body, and dryRun (which
 	// three of them had) is already this tool's own preview path.
 	Name                  *string                  `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
-	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
+	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	Version               *string                  `json:"version,omitempty" jsonschema:"the target PostgreSQL major version; must be a supported major newer than the running version and at least 16 (upgrades to 14 or 15 are refused). The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
 	DiskSizeGB            *int32                   `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
 	ConnectionPool        string                   `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`

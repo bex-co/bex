@@ -101,6 +101,32 @@ postgres:
       storageGB: 5
       instances: 1
       backup: true
+    # The ≥1-CPU rungs (w2/m171): the first plans that can run high
+    # availability (Render: "at least 1 CPU"). ids follow the catalog's
+    # legacy-name convention where Render has one (pro-4gb, basic-4gb); 1c-2g
+    # has no legacy name and keeps Render's flexible id. Render's flexible
+    # aliases (1c-4g, 2c-4g) live in aliases.go. instances stays 1 — HA raises
+    # the CNPG cluster to a primary + standby. storageGB 10 is the default
+    # volume (Render sells storage separately; 10 GB is Hetzner's smallest
+    # volume and the read-replica minimum), and like every paid plan it grows.
+    - id: 1c-2g
+      cpu: "1"
+      memory: 2Gi
+      storageGB: 10
+      instances: 1
+      backup: true
+    - id: pro-4gb
+      cpu: "1"
+      memory: 4Gi
+      storageGB: 10
+      instances: 1
+      backup: true
+    - id: basic-4gb
+      cpu: "2"
+      memory: 4Gi
+      storageGB: 10
+      instances: 1
+      backup: true
 
 valkey:
   # Managed key-value (Valkey) instance types — the KeyValue CRD's spec.plan.

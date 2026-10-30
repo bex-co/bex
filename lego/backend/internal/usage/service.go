@@ -1192,11 +1192,18 @@ func (s *Service) queryInstanceSeconds(ctx context.Context, crName, namespace st
 // workload (CNPG Cluster pods <dbName>-1, <dbName>-2 or Valkey StatefulSet pods
 // <kvName>-0). The pod pattern is <name>-[0-9]+ (ordinal suffix), distinct from
 // App ReplicaSet pods which use two random-char segments.
+//
+// Every instance pod counts, so a high-availability Postgres (primary +
+// standby, <name>-1 and <name>-2) meters two instances — Render bills the
+// standby like the primary ("billed accordingly", w2/m171).
 func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namespace string, start, end time.Time) (int64, bool) {
-	matchers := fmt.Sprintf(
+	return s.queryInstanceSecondsByMatcher(ctx, statefulInstanceMatchers(namespace, name), start, end, name)
+}
+
+func statefulInstanceMatchers(namespace, name string) string {
+	return fmt.Sprintf(
 		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
 		namespace, egressquery.RegexEscape(name))
-	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
 }
 
 const bytesPerDecimalGB = 1_000_000_000

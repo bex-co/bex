@@ -44,10 +44,12 @@ Source: render.com/docs/postgresql
 | Plan        | USD/month | CPU | Memory | Storage |
 | ----------- | --------- | --- | ------ | ------- |
 | Free        | $0        | 0.1 | 256 MB | 1 GB    |
-| Basic-256MB | $7        | 0.1 | 256 MB | 1 GB    |
-| Basic-1GB   | $20       | 0.5 | 1 GB   | 5 GB    |
+| Basic-256MB | $6        | 0.1 | 256 MB | 1 GB    |
+| Basic-1GB   | $19       | 0.5 | 1 GB   | 5 GB    |
 
 Free tier is ephemeral (expires after 90 days, no backups).
+
+Re-fetched 2026-10-19 (render.com/pricing page data, w2/m171): Basic-256MB / `0.1c-256mb` is $6 and Basic-1GB / `0.5c-1g` is $19 (previously recorded here as $7 / $20). The ≥1-CPU plans bex adds, by Render's flexible id (legacy name): `1c-2g` (none) 1 CPU / 2 GB $40; `1c-4g` (`pro-4gb`) 1 CPU / 4 GB $55; `2c-4g` (`basic-4gb`) 2 CPU / 4 GB $75. On flexible plans storage is sold separately (below). [High availability](https://render.com/docs/postgresql-high-availability) needs "a compute plan with at least 1 CPU", and the standby "is billed accordingly", the same as the primary.
 
 ### Flexible-plan storage (re-verified 2026-07-14)
 

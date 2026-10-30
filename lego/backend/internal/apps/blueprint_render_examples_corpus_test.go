@@ -37,7 +37,7 @@ var deliberateBlueprintDivergences = []string{
 	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)
 	"a private_service requires a paid plan",        // Render has no free private service
 	"'dockerFilePath' not allowed",                  // Render's key is dockerfilePath
-	"is not available on bex; choose one of",        // Render Postgres plans bex does not sell (e.g. pro-4gb)
+	"is not available on bex; choose one of",        // Render Postgres plans bex does not sell (e.g. pro-8gb)
 }
 
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned

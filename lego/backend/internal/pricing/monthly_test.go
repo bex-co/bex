@@ -54,7 +54,7 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 	}
 	wantLines := []struct{ name, monthly, instance, storage string }{
 		{"web", "17.50", "17.50", ""},
-		{"db", "15.05", "14.00", "1.05"},
+		{"db", "14.35", "13.30", "1.05"},
 		{"cache", "22.05", "21.00", "1.05"},
 	}
 	for i, w := range wantLines {
@@ -63,8 +63,8 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 			t.Errorf("line %d = %+v, want %+v", i, l, w)
 		}
 	}
-	if got.TotalUSD != "54.60" {
-		t.Errorf("TotalUSD = %s, want 54.60", got.TotalUSD)
+	if got.TotalUSD != "53.90" {
+		t.Errorf("TotalUSD = %s, want 53.90", got.TotalUSD)
 	}
 	if len(got.Variable) != 0 {
 		t.Errorf("Variable = %+v, want empty", got.Variable)
@@ -88,20 +88,21 @@ func TestMonthlyEstimateFreeAndUnknownTiersProduceNothing(t *testing.T) {
 
 func TestMonthlyEstimateHighAvailabilityDoublesAndReplicasAdd(t *testing.T) {
 	got := Default.MonthlyEstimate([]MonthlyResource{
-		{Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "basic-1gb", StorageGB: 5, HighAvailability: true, ReadReplicas: 2},
+		{Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "1c-2g", StorageGB: 10, HighAvailability: true, ReadReplicas: 2},
 	})
-	// primary + standby + 2 replicas, each $15.05
+	// primary + standby + 2 replicas, each $30.10 ($28.00 instance + 10 GB at
+	// $0.21): the standby bills like the primary, as on Render (w2/m171).
 	if len(got.Lines) != 4 {
 		t.Fatalf("lines = %d, want 4: %+v", len(got.Lines), got.Lines)
 	}
 	wantNames := []string{"db", "db (standby)", "db (replica)", "db (replica)"}
 	for i, name := range wantNames {
-		if got.Lines[i].Name != name || got.Lines[i].MonthlyUSD != "15.05" {
-			t.Errorf("line %d = %+v, want name %q at 15.05", i, got.Lines[i], name)
+		if got.Lines[i].Name != name || got.Lines[i].MonthlyUSD != "30.10" {
+			t.Errorf("line %d = %+v, want name %q at 30.10", i, got.Lines[i], name)
 		}
 	}
-	if got.TotalUSD != "60.20" {
-		t.Errorf("TotalUSD = %s, want 60.20", got.TotalUSD)
+	if got.TotalUSD != "120.40" {
+		t.Errorf("TotalUSD = %s, want 120.40", got.TotalUSD)
 	}
 }
 

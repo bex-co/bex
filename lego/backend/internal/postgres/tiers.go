@@ -47,7 +47,7 @@ type DatabaseInstanceType struct {
 	SupportsConnectionPooling bool
 	MaxReadReplicas           int
 	ReadReplicaMinStorageGB   int32
-	// SupportsHighAvailability is PlanSupportsHighAvailability for this plan.
+	// SupportsHighAvailability is the catalog's HA predicate for this plan.
 	SupportsHighAvailability bool
 	// MonthlyUSD is the always-on monthly price from the one price sheet
 	// (pricing.yaml, which bex.co/pricing and billing also read), "" for an
@@ -75,7 +75,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 			CPU:                       t.CPU,
 			Memory:                    t.Memory,
 			StorageGB:                 t.StorageGB,
-			SupportsHighAvailability:  PlanSupportsHighAvailability(t),
+			SupportsHighAvailability:  t.SupportsHighAvailability(),
 			MaxStorageGB:              tiers.Postgres.MaxStorageGB(t.ID),
 			SupportsDiskAutoscaling:   t.SupportsDiskAutoscaling(),
 			SupportsConnectionPooling: t.SupportsConnectionPooling(),
@@ -96,6 +96,11 @@ var sizeToken = regexp.MustCompile(`^\d+(mb|gb|tb)$`)
 // family-size naming). The compute sibling (apps.tierDisplayName) title-cases
 // hyphen-words; this additionally upper-cases the byte-size unit.
 func pgTierDisplayName(id string) string {
+	// Render's flexible ids with no legacy family name (1c-2g) read as
+	// themselves; title-casing would only produce "1c 2g".
+	if id != "" && id[0] >= '0' && id[0] <= '9' {
+		return id
+	}
 	words := strings.Split(id, "-")
 	for i, w := range words {
 		switch {
@@ -124,7 +129,7 @@ func CheckHighAvailabilityPlan(plan string) error {
 		}
 		tier = tiers.Postgres.Default()
 	}
-	if PlanSupportsHighAvailability(tier) {
+	if tier.SupportsHighAvailability() {
 		return nil
 	}
 	return core.NewBadRequestError(
@@ -133,11 +138,6 @@ func CheckHighAvailabilityPlan(plan string) error {
 		map[string]any{"plan": tier.ID, "cpu": tier.CPU},
 	)
 }
-
-// PlanSupportsHighAvailability is the catalog predicate. It is a variable only
-// so tests of the HA-enable path (here and in the Blueprint package) can run
-// while the shipped catalog has no ≥1-CPU Postgres plan; nothing else assigns it.
-var PlanSupportsHighAvailability = tiers.PostgresTier.SupportsHighAvailability
 
 // checkHighAvailabilityPatch applies CheckHighAvailabilityPlan to a PATCH or
 // plan change against d. Enabling HA checks the resulting plan; a plan change
