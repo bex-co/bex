@@ -1,0 +1,228 @@
+{
+  "checked_at": "2026-10-30T02:22:53.021146+00:00",
+  "checked_revision": "b24ac4b4248451beab5f933622dbf70b1eeccbc9",
+  "scope": "w1/m188 t005 prepared parity evidence only; no board completion, image adoption or production rollout claimed",
+  "finding": "No new version-selection, API/UI surface or workspace divergence found in inspected m188 changes; final acceptance still requires actual verified image pin adoption and rollout.",
+  "render_primary_sources": [
+    {
+      "url": "https://render.com/docs/node-version",
+      "facts": "Precedence is NODE_VERSION, .node-version, .nvmrc, engines.node; explicit semver and aliases are supported; current new-service default is24.22.1 and earlier services have dated defaults."
+    },
+    {
+      "url": "https://render.com/docs/native-runtimes",
+      "facts": "Native build/start commands consume preconfigured language environments, with regular functionality, security and performance updates."
+    }
+  ],
+  "m188_commits_reviewed": [
+    "a1f63153a",
+    "3d29a10af",
+    "b24ac4b42"
+  ],
+  "api_ui_or_crd_files_changed_by_m188": [],
+  "common_configuration_trace": [
+    {
+      "surface": "REST",
+      "maps_runtime_builder_commands": {
+        "file": "lego/backend/internal/apps/rest.go",
+        "line": 644
+      },
+      "shared_create_call": {
+        "file": "lego/backend/internal/apps/rest.go",
+        "line": 1158
+      }
+    },
+    {
+      "surface": "GraphQL",
+      "maps_runtime_builder_commands": {
+        "file": "lego/backend/internal/apps/graphql.go",
+        "line": 752
+      },
+      "shared_create_call": {
+        "file": "lego/backend/internal/apps/graphql.go",
+        "line": 1477
+      }
+    },
+    {
+      "surface": "MCP",
+      "maps_runtime_builder_commands": {
+        "file": "lego/backend/internal/apps/mcp.go",
+        "line": 270
+      },
+      "shared_create_call": {
+        "file": "lego/backend/internal/apps/mcp.go",
+        "line": 716
+      }
+    },
+    {
+      "surface": "dashboard",
+      "mutation": {
+        "file": "dashboard/src/features/services/api/services.graphql",
+        "line": 117
+      },
+      "workspace_and_input_forwarding": {
+        "file": "dashboard/src/features/services/hooks/use-create-service.ts",
+        "line": 106
+      }
+    },
+    {
+      "surface": "shared apps core",
+      "workspace_authorization": {
+        "file": "lego/backend/internal/apps/service.go",
+        "line": 2021
+      },
+      "spec_mapping": {
+        "file": "lego/backend/internal/apps/service.go",
+        "line": 3085
+      },
+      "cr_write": {
+        "file": "lego/backend/internal/apps/service.go",
+        "line": 2882
+      }
+    },
+    {
+      "surface": "operator common path",
+      "appspec_to_build_options": {
+        "file": "lego/operator/internal/controller/app_controller.go",
+        "line": 1131
+      },
+      "resolver_dispatch": {
+        "file": "lego/operator/internal/build/build.go",
+        "line": 1219
+      },
+      "resolver_inputs": {
+        "file": "lego/operator/internal/build/nativeresolve.go",
+        "line": 352
+      },
+      "selection": {
+        "file": "lego/operator/internal/build/nativeresolve.go",
+        "line": 73
+      }
+    }
+  ],
+  "version_contract": {
+    "baseline_before_m188_equals_current": true,
+    "metadata": {
+      "Node": {
+        "default": "24",
+        "lines": {
+          "14": "14.21.3",
+          "16": "16.20.2",
+          "18": "18.20.8",
+          "20": "20.20.2",
+          "22": "22.23.4",
+          "24": "24.22.1",
+          "26": "26.12.1"
+        }
+      },
+      "Python": {
+        "default": "3.13",
+        "lines": {
+          "3.7": "3.7.17",
+          "3.8": "3.8.20",
+          "3.9": "3.9.25",
+          "3.10": "3.10.22",
+          "3.11": "3.11.18",
+          "3.12": "3.12.16",
+          "3.13": "3.13.18",
+          "3.14": "3.14.10"
+        }
+      },
+      "Ruby": {
+        "default": "3.4",
+        "lines": {
+          "3.0": "3.0.7",
+          "3.1": "3.1.7",
+          "3.2": "3.2.11",
+          "3.3": "3.3.13",
+          "3.4": "3.4.12",
+          "4.0": "4.0.9"
+        }
+      }
+    },
+    "node_precedence": {
+      "file": "lego/operator/internal/build/nativeversion.go",
+      "line": 198
+    },
+    "reviewed_exact_patch_keeps_reviewed_image": {
+      "file": "lego/operator/internal/build/nativeversion.go",
+      "line": 701
+    },
+    "exact_lookup_uses_preserved_official_upstream": {
+      "file": "lego/operator/internal/build/nativeversion.go",
+      "line": 709
+    },
+    "missing_tag_or_registry_error_keeps_reviewed_fallback": {
+      "file": "lego/operator/internal/build/nativeresolve.go",
+      "line": 397
+    },
+    "no_workspace_selection_input": {
+      "ref": {
+        "file": "lego/operator/internal/build/nativeversion.go",
+        "line": 106
+      },
+      "explanation": "Runtime selection accepts creation time, runtime, effective env and source files, with one global reviewed table. Workspace only supplies existing authorization, placement and build ownership; no m188 workspace allowlist or canary was introduced."
+    }
+  },
+  "focused_unit_verification": {
+    "command": "env -u BEX_BUILDKIT_INTEGRATION GOWORK=off go test ./internal/build -run '^(TestPlatformBackportPreservesExactLookupAndVerifiedFallback|TestExactVersionPinsTheRequestedPatch|TestExactVersionLeavesLineRequestsAlone|TestExactVersionFallsBackToTheReviewedPatch|TestResolveNativeVersion|TestSuppliedBasePreservesPlatformBackportProvenance|TestSuppliedResolverEnvironmentLookupFailureKeepsVersionFallbackRules)$' -count=1",
+    "workdir": "lego/operator",
+    "result": "PASS",
+    "package_elapsed_seconds": 0.828,
+    "new_backport_test": {
+      "file": "lego/operator/internal/build/nativeexact_test.go",
+      "line": 64
+    }
+  },
+  "local_candidate_generator_proof": {
+    "kind": "Read existing root-run local candidate evidence; Go overlay changed only candidate image/upstream references, not committed production pins.",
+    "node14": "Actual generator, authored build, network-free system and bundled decoder probes and HTTP startup preserved14.21.3.",
+    "node20": "Same real build/start checks preserved20.20.2.",
+    "logs": {
+      "bex-m188-native-start-final.log": {
+        "sha256": "afac769c5425ca74df1336a8f46cb9bd495383920f2d804dc0289f912ce1e2b3",
+        "passed": true
+      },
+      "bex-m188-node14-native-start.log": {
+        "sha256": "cff1171d992d9142e4be557148cb2fa7685443bbb2df234da243e4d35580739e",
+        "passed": true
+      },
+      "bex-m188-node20-native-start.log": {
+        "sha256": "8c8f28d92813589d41831aa270c2ca5e7830b5922fd305ed8d2e7f614f7d064e",
+        "passed": true
+      }
+    },
+    "current_test": {
+      "file": "lego/operator/internal/build/nativebackport_test.go",
+      "line": 29
+    }
+  },
+  "concurrent_main_change_considered": {
+    "commit": "2de693f18",
+    "owner": "w8/m91",
+    "state": "nativeSuppliedBases empty at checked revision; no effect until separately reviewed adoption",
+    "refs": [
+      {
+        "file": "lego/operator/internal/build/nativebases.go",
+        "line": 31
+      },
+      {
+        "file": "lego/operator/internal/build/nativebases.go",
+        "line": 113
+      },
+      {
+        "file": "lego/operator/internal/build/nativebases_test.go",
+        "line": 365
+      }
+    ],
+    "result": "Focused combined-path regression passed: supplied-base adoption continues official exact lookup and preserves the reviewed platform fallback."
+  },
+  "preexisting_limits_unchanged": [
+    "Render service-creation-date Node defaults and arbitrary semver coverage are broader than the existing reviewed-line model; m188 does not change defaults or version-support ranges.",
+    "Registry failure/missing exact tag fallback is existing Bex behavior, not newly established full Render equivalence.",
+    "Security coverage concerns the eleven reviewed line images; other exact patches and tenant-installed dependencies are not automatically repaired by a line-image verdict."
+  ],
+  "remaining_before_t005_done": [
+    "Adopt only actual signed multi-architecture published digests with matching metadata/inventory.",
+    "Verify resulting rollout and any in-use legacy-service acceptance; local overlays and passing fake-registry tests are preparation evidence, not production acceptance."
+  ]
+}
