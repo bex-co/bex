@@ -1,0 +1,47 @@
+{
+  "main.go": {
+    "stored": "main.go.txt",
+    "bytes": 1997,
+    "sha256": "2c2f35058c46ce4c564fd59892ed63dd2a6f9f34f784c724e64037452a1fd599"
+  },
+  "watch.py": {
+    "stored": "watch.py",
+    "bytes": 592,
+    "sha256": "7f3ccfa94cbfe044e57d4b54ec2ab5b9893aeedcc014a9a4434d646bfdfafe12"
+  },
+  "run.log": {
+    "stored": "run.log.gz",
+    "bytes": 672,
+    "sha256": "451adf7c32f959127b307fe44200e28b93e7589065859e8eb2a1ab7dfcb017a0"
+  },
+  "run-fixed-final.log": {
+    "stored": "run-fixed-final.log.gz",
+    "bytes": 359,
+    "sha256": "7fb1cb9c111a73bc75d762e38a25ea9502fba6730ca97991a124d0a745855716"
+  },
+  "fixture-35-final.log": {
+    "stored": "fixture-35-final.log.gz",
+    "bytes": 134,
+    "sha256": "bc654e1c09f5cdb1239bfe36ef33dd197364df26f3a97517fc9fd14963debc15"
+  },
+  "fixture-35.log": {
+    "stored": "fixture-35.log.gz",
+    "bytes": 17239,
+    "sha256": "c46afa612fe7e87013c739c5182a62f60745ca8c0b0ed1fac03941c4f74ec61d"
+  },
+  "receipt.json": {
+    "stored": "receipt.json",
+    "bytes": 182,
+    "sha256": "1471f4a882a029d77b1a7d1d74eb482908b575fe9d9f668ac03a356e23c9ae1a"
+  },
+  "scripts/disk_fixture.py": {
+    "stored": "disk_fixture.py.txt.gz",
+    "bytes": 59447,
+    "sha256": "b8e4991b2306b7845ce814bdd565f56788f6224782bc916dacccdd489d3b5a1d"
+  },
+  "scripts/test_disk_fixture.py": {
+    "stored": "test_disk_fixture.py.txt.gz",
+    "bytes": 46092,
+    "sha256": "d6b9e7955ea7531f1ba78151e1f34cb405e6861cc5477d4bf4e6717a22e68a27"
+  }
+}

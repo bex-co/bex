@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-30T12:16:07.264106+00:00",
+  "initial_real_api_result": "FAIL: kubectl aggregated empty JSONPath list lost collection resourceVersion",
+  "fix": "Use fixed raw API collection list and exact name field selector; project private fields in memory and retain actual collection resourceVersion. Streaming bookmark/replay policy unchanged.",
+  "final_unit_result": "35 tests PASS2.036s",
+  "transitional_unit_failure": "Removing obsolete production JSONPath schema exposed an implementation-coupled fake row builder in nine cases; the fake now declares its own selected Job defaults. Final35 pass.",
+  "final_real_api_result": {
+    "bothFixedWatchInitialBookmarks": true,
+    "childrenAndThreadsReaped": true,
+    "scope": "Real isolated envtest API; no production connection or resource",
+    "server": "v1.34.1"
+  },
+  "kubeconfig_removed": true,
+  "product_go_sources_changed": false,
+  "production_calls": 0,
+  "paid_resources_created": 0
+}
