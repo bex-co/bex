@@ -133,7 +133,7 @@ describe("DeployDetailPage — a Live deploy replaced by a newer one (w4/262)", 
 
     server.status = "deactivated";
     server.updatedAt = REPLACED_AT;
-    await advance(29_000);
+    await advance(24_000);
     expectShown("Live");
 
     await advance(1_500);

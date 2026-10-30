@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { skipPollWhenHidden } from "@/common/lib/polling";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { isThrottledError } from "@/common/lib/graphql-error";
 import { MetricsDocument } from "@/graphql/definitions";
 import {
@@ -73,7 +76,7 @@ export interface UseMetricsOptions {
    */
   host?: string;
   path?: string;
-  /** Polling cadence; 0 disables polling. Defaults to 30s. */
+  /** Polling cadence; 0 disables polling. Defaults to the resource baseline (RESOURCE_POLL_INTERVAL_MS). */
   pollIntervalMs?: number;
   /** Skip the network request entirely (inactive tab series, etc.). */
   skip?: boolean;
@@ -123,7 +126,7 @@ export function useMetrics(
   opts: UseMetricsOptions = {},
 ): UseMetricsResult {
   const {
-    pollIntervalMs = 30_000,
+    pollIntervalMs = RESOURCE_POLL_INTERVAL_MS,
     startTime,
     endTime,
     resolutionSeconds,

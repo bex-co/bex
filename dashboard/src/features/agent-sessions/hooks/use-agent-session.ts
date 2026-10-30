@@ -21,7 +21,7 @@ export interface UseAgentSessionResult {
  * Reads bex-api's `agentSession(id)` query for the detail page (ADR047 D9).
  * Metadata only — phase/PR/turns; the conversation column is the m43
  * stream, never polled here. Polls at 5s while the session is non-terminal (or
- * not yet loaded) so the header converges on its own, then drops to 30s once
+ * not yet loaded) so the header converges on its own, then drops to the baseline once
  * terminal so an out-of-band change (a teammate cancel) still surfaces.
  */
 export function useAgentSession(id: string): UseAgentSessionResult {

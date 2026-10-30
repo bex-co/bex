@@ -32,7 +32,7 @@ export type CapabilitySnapshot = {
   grants: Partial<Record<CapabilityAction, CapabilityOutcome>>;
 };
 
-/** Client freshness bound — matches RESOURCE_POLL_INTERVAL_MS. */
+/** Client freshness bound — outlives one RESOURCE_POLL_INTERVAL_MS, so the next poll lands before the snapshot expires. */
 export const CAPABILITY_FRESHNESS_MS = 30_000;
 
 export function snapshotIsFresh(

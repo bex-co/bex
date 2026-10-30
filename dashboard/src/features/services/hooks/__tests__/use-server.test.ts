@@ -93,7 +93,7 @@ describe("useServer", () => {
       stopPolling,
     });
     renderHook(() => useServer("app"));
-    expect(startPolling).toHaveBeenCalledWith(30_000);
+    expect(startPolling).toHaveBeenCalledWith(25_000);
   });
 
   // w6/m46 t005. A deploy that closes server-side fires no mutation in the
@@ -137,7 +137,7 @@ describe("useServer", () => {
       data: { server: { ...wireService, phase: "Failed" } },
     });
     rerender();
-    expect(startPolling).toHaveBeenLastCalledWith(30_000);
+    expect(startPolling).toHaveBeenLastCalledWith(25_000);
   });
 
   it("does not restart the poll timer when nothing changed", () => {

@@ -42,7 +42,7 @@ describe("useMetrics", () => {
             aggregateAllMethod: undefined,
           },
         },
-        pollInterval: 30_000,
+        pollInterval: 25_000,
       }),
     );
   });
@@ -168,7 +168,7 @@ describe("useMetrics", () => {
     );
   });
 
-  it("defaults to a 30s poll interval and honors an override", () => {
+  it("defaults to a 25s poll interval and honors an override", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,

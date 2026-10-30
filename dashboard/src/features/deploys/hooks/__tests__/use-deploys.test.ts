@@ -148,7 +148,7 @@ describe("useDeploys", () => {
     (status) => {
       mockDeploys([{ id: "dep-done", status }]);
       renderHook(() => useDeploys("srv-1", []));
-      expect(startPolling).toHaveBeenCalledWith(30_000);
+      expect(startPolling).toHaveBeenCalledWith(25_000);
     },
   );
 

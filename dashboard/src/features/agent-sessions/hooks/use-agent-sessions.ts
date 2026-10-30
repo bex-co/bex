@@ -8,7 +8,10 @@ import {
 } from "react";
 import { useQuery } from "@apollo/client/react";
 import { AgentSessionsDocument } from "@/graphql/definitions";
-import { skipPollWhenHidden } from "@/common/lib/polling";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { toAgentSessionViews } from "@/features/agent-sessions/lib/mapper";
 import {
   agentSessionArchivedQueryValue,
@@ -19,7 +22,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 /** Fast cadence while any session is still converging (a live transcript moves). */
 export const AGENT_SESSION_ACTIVE_POLL_MS = 5_000;
 /** Baseline cadence once every session has settled (out-of-band changes only). */
-export const AGENT_SESSION_IDLE_POLL_MS = 30_000;
+export const AGENT_SESSION_IDLE_POLL_MS = RESOURCE_POLL_INTERVAL_MS;
 
 export interface UseAgentSessionsOptions {
   /**
@@ -69,7 +72,7 @@ export const AGENT_SESSION_PAGE_SIZE = 50;
  * conversation is NOT polled; it rides the same-origin stream endpoint (t002).
  *
  * Polls at 5s while any session is non-terminal so a running transcript's
- * metadata (phase/turns/PR) converges on its own, then falls back to 30s once
+ * metadata (phase/turns/PR) converges on its own, then falls back to the baseline once
  * every row is terminal. Scoped to the switcher's selected workspace (mirrors
  * `useDatabases`/`useServices`); `skip` until the workspace resolves, which is
  * also the `!authenticated` guard — the workspace context only resolves for a

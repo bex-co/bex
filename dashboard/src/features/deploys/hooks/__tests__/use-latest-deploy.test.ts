@@ -68,7 +68,7 @@ describe("useLatestDeploy", () => {
     (status) => {
       mockDeploys([{ id: "dep-done", status }]);
       renderHook(() => useLatestDeploy("web"));
-      expect(startPolling).toHaveBeenCalledWith(30_000);
+      expect(startPolling).toHaveBeenCalledWith(25_000);
     },
   );
 
@@ -80,7 +80,7 @@ describe("useLatestDeploy", () => {
     // The next poll response IS the server-driven closure.
     mockDeploys([{ id: "dep-open", status: "canceled" }]);
     rerender();
-    expect(startPolling).toHaveBeenLastCalledWith(30_000);
+    expect(startPolling).toHaveBeenLastCalledWith(25_000);
   });
 
   it("does not restart the poll timer when nothing changed", () => {

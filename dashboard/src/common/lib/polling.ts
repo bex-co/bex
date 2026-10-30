@@ -8,7 +8,16 @@ import { useEffect } from "react";
  * deploy) still poll faster while converging and fall back to this baseline
  * once settled.
  */
-export const RESOURCE_POLL_INTERVAL_MS = 30_000;
+export const RESOURCE_POLL_INTERVAL_MS = 25_000;
+
+/**
+ * Chrome closes an idle QUIC (HTTP/3) session after 29s; a recurring request
+ * near that boundary races the close and fails with ERR_CONNECTION_CLOSED
+ * (Chrome does not retry the POST; w3/m244). Keep recurring intervals out of
+ * that band: below it keeps the session alive, well above it (60s) opens a
+ * fresh one. Guarded by `poll-cadence-invariant.test.ts`.
+ */
+export const QUIC_IDLE_TIMEOUT_MS = 29_000;
 
 /**
  * Fast cadence for a resource that is still converging (a provisioning

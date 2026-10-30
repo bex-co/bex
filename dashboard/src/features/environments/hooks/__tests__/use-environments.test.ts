@@ -199,7 +199,7 @@ describe("useEnvironments", () => {
     renderHook(() => useEnvironments("prj-1"));
     expect(mockUseQuery).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ pollInterval: 30_000 }),
+      expect.objectContaining({ pollInterval: 25_000 }),
     );
 
     renderHook(() => useEnvironments("prj-1", { poll: false }));

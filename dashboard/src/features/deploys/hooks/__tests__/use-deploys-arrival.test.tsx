@@ -90,7 +90,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Advance past one settled (30s) poll interval. */
+/** Advance past one settled (baseline) poll interval. */
 async function tickSettledPoll() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(31_000);

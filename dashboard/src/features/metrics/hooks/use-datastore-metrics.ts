@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { skipPollWhenHidden } from "@/common/lib/polling";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { isThrottledError } from "@/common/lib/graphql-error";
 import { DatastoreMetricsDocument } from "@/graphql/definitions";
 import {
@@ -37,7 +40,7 @@ export function useDatastoreMetrics(
   } = {},
 ): UseMetricsResult {
   const {
-    pollIntervalMs = 30_000,
+    pollIntervalMs = RESOURCE_POLL_INTERVAL_MS,
     startTime,
     endTime,
     resolutionSeconds,
