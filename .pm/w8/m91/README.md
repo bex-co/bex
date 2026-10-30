@@ -125,3 +125,7 @@ The signed scans retain 229 critical findings per architecture, with no Brotli f
 ## Six suppliers independently verified — 2026-10-30
 
 [Python 3.9](evidence/published-python39-20261030/README.md) and [Python 3.10](evidence/published-python310-20261030/README.md) passed complete strict review on the corrected fd358 workflow, including all five signed bundles, independent architecture reports and fresh complete public blob reads. Their 12,638/7,477 findings per architecture remain retained. These join Node 14/16 and Python 3.7/3.8 for six of 27 approved suppliers. [Fresh discovery checks](evidence/recovery-python39-python310-retirement-20261030/README.md) confirm the already-shipped temporary recovery retirement. The catalog remains empty; 21 suppliers, complete adoption and all original hosted acceptance remain pending.
+
+## Seventh supplier independently verified — 2026-10-30
+
+[Fresh-build Ruby 3.0](evidence/published-ruby30-20261030/README.md) passed the unchanged strict review, all five full signed bundles and 33 fresh public blob reads totaling 1.159 GB. Its reports retain all findings, including reported Brotli CVEs; runtime backport probes passed independently. Seven of 27 suppliers are verified. The remaining 20, complete catalog/adoption and all original hosted acceptance remain pending.
