@@ -136,3 +136,6 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - UTC 09:11 再次只读清点 [29 个 App](evidence/pre-adoption-census-20261030-0911.json)：在运行的平台 native 仍为 Node22/24 与 Go，三个旧 auto 服务镜像与既有 Dockerfile 分类证据一致；未发现本项 11 个旧版在用。Failed/Canceled 无 pod 项仍不冒充运行验收。此项用于发布优先级，采用后仍需新一轮 census 与 rollout 验收。
 
 - Python3.8 的原始双架构构建/运行检查/扫描均通过，同样在第一份 amd64 SPDX 的 Rekor v1 POST 失败；同源 base、两架构版本、不可变 index 与旧 gate 日志已绑定，见 [恢复证据](evidence/python38-publisher-signing-failure.json)。将精确 index 加入临时授权，由现代工作流定向重做全部门槛；十项实际恢复选择检查通过，未改变生产 pin。
+
+- Node20 的正式双架构编译完成，原版本20.20.2、Bullseye companion、系统/自带 Brotli、离线工具及两架构扫描均通过；第一份 SPDX 仍由旧 Rekor v1 流程上传失败。已核实精确 `2c69d3...` index 与 producer/base/gate 日志，加入同一受限恢复，见 [证据](evidence/node20-publisher-signing-failure.json)。生产 pin 继续等待完整验收。
+- Ship gate 指出的 main 失败41027077470 已以 `c8ca76473` 单独修复测试 fixture 的相等截止时间竞争：测试服务端保持到完整 scan 预算之后。十次重复、race 包检查和 operator/codegen/envtest 全套通过，见 [诊断与实际验证](evidence/red-main-41027077470.json)。修复已推送后恢复发布工作，未等待远程绿灯。
