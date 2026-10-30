@@ -32,6 +32,10 @@ func TestNativeRubyBackportBuildAndStart(t *testing.T) {
 	if !ok {
 		t.Fatal("missing reviewed Ruby 3.0 line")
 	}
+	node20, ok := nativeToolchains[nativeNodeRuntime].find("20")
+	if !ok {
+		t.Fatal("missing reviewed Node 20 companion")
+	}
 	probe, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "native-base", "check-brotli.py"))
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +51,8 @@ func TestNativeRubyBackportBuildAndStart(t *testing.T) {
 require "openssl"
 require "zlib"
 def current_runtime
-  {"ruby" => RUBY_VERSION, "openssl" => OpenSSL::OPENSSL_VERSION, "zlib" => Zlib.zlib_version}
+  node = JSON.parse(IO.popen(["node", "-p", "JSON.stringify({node:process.versions.node,brotli:process.versions.brotli})"], &:read))
+  {"ruby" => RUBY_VERSION, "openssl" => OpenSSL::OPENSSL_VERSION, "zlib" => Zlib.zlib_version}.merge(node)
 end
 puts JSON.generate(current_runtime) if $PROGRAM_NAME == __FILE__
 `,
@@ -71,14 +76,14 @@ TCPServer.open("127.0.0.1", 10000) do |server|
 end
 `,
 	}
-	tag := buildResolvedImage(t, o, nil, files, fmt.Sprintf("bex-m188-ruby30-start:%d", os.Getpid()))
+	tag := buildResolvedImage(t, o, map[string]string{"NODE_VERSION": node20.version}, files, fmt.Sprintf("bex-m188-ruby30-start:%d", os.Getpid()))
 	body, _ := runServing(t, tag, fmt.Sprintf("bex-m188-ruby30-http-%d", os.Getpid()), "http://127.0.0.1:10000/", "--network", "none")
-	var got struct{ Ruby, OpenSSL, Zlib string }
+	var got struct{ Ruby, OpenSSL, Zlib, Node, Brotli string }
 	if err := json.Unmarshal([]byte(body), &got); err != nil {
 		t.Fatalf("runtime response: %v: %s", err, body)
 	}
-	if got.Ruby != line.version || got.OpenSSL == "" || got.Zlib == "" {
-		t.Fatalf("runtime = %+v; want Ruby %s with working OpenSSL and Zlib", got, line.version)
+	if got.Ruby != line.version || got.OpenSSL == "" || got.Zlib == "" || got.Node != node20.version || got.Brotli == "" {
+		t.Fatalf("runtime = %+v; want Ruby %s with working OpenSSL, Zlib and Node %s with Brotli", got, line.version, node20.version)
 	}
-	t.Logf("build and HTTP start preserved Ruby %s, %s and Zlib %s; system and provided Node decoder probes passed", got.Ruby, got.OpenSSL, got.Zlib)
+	t.Logf("build and HTTP start preserved Ruby %s, %s, Zlib %s and Node %s with Brotli %s; system and provided Node decoder probes passed", got.Ruby, got.OpenSSL, got.Zlib, got.Node, got.Brotli)
 }

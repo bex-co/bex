@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-10-30T03:57:35.364680+00:00",
+  "architecture": "linux/arm64",
+  "scope": "Expected failing regression control using old Bookworm-compiled patched Node20 copied beside fixed Bullseye primary; not repaired-candidate acceptance",
+  "fixtures": [
+    "TestNativePythonBackportBuildAndStart",
+    "TestNativeRubyBackportBuildAndStart"
+  ],
+  "result": "Both fixtures failed during actual authored build because copied Node20 cannot link on Bullseye; expected regression detected",
+  "log_sha256": "a2f01f36503b49adb2915d4b7be9a0416fbfb97d8aec14c61cac0289dea2878b",
+  "evidence_lines": [
+    "#30 0.208 /usr/local/bin/node: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /usr/local/bin/node)",
+    "#30 0.208 /usr/local/bin/node: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /usr/local/bin/node)",
+    "0.208 /usr/local/bin/node: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /usr/local/bin/node)",
+    "--- FAIL: TestNativePythonBackportBuildAndStart (34.94s)",
+    "#28 0.210 /usr/local/bin/node: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /usr/local/bin/node)",
+    "#28 0.210 /usr/local/bin/node: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /usr/local/bin/node)",
+    "0.210 /usr/local/bin/node: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /usr/local/bin/node)",
+    "--- FAIL: TestNativeRubyBackportBuildAndStart (3.31s)"
+  ],
+  "inputs": {
+    "node": "bex-m188-abi-node20:arm64",
+    "python": "bex-m188-python37-old-recipe-control:arm64",
+    "ruby": "bex-m188-ruby30-old-recipe-control:arm64"
+  },
+  "remaining": "Repaired Bullseye compilation, updated generated-native fixtures green, signed dual-architecture publication and adoption"
+}
