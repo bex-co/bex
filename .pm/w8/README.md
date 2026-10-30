@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m144** — [Enforce persistent disk capacity below the provider floor](m144/README.md) (7 tasks) ← 221; requested-size billing, LUKS-compatible hard cap and safe growth.
+
 - [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED（2026-10-29 复核）：** t001–t006 / local acceptance done；等用户发起 `$release cli`，再验安装技能引导真实 deploy 并清理。
 
 - [x] **m142** — [Clear image-network choices when PORT intent changes](done/m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）** — **DONE 2026-10-29** (PORT removal and rollback with zero errors, on production)
@@ -403,12 +405,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **223** — [A rollout refused by the workspace's memory quota sits "in progress" with no reason](223.md) — found by the m117 re-check 2026-10-29
+- [x] **223** — [A rollout refused by workspace memory quota shows its reason](done/223.md) — **DONE 2026-10-29:** already fixed by `885d61317`; newest-ReplicaSet quota regressions pass. Prior live-check limits retained.
 
 - [ ] **224** — [`bex login` names the wrong dashboard](blocked/224.md) — **BLOCKED (user-authorized CLI release, then published login/logout replay):** launcher fix and full CLI suite complete; original overwritten 223 recovered from `7fd6c9c4f`.
 - [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) — **待实施（2026-10-29 复核）：** 复用 m91 的共享镜像，保持 Python 3.14.8 精确默认值并修补 Brotli；不需选择版本偏离。
 
-- [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **待实施（2026-10-29 复核）：** 保持 requested-size 计费，按原选项 4 补齐真实容量上限，验证 LUKS / 在线扩容。
+- [x] **221** — [Small disks: preserve requested-size billing and enforce actual capacity](done/221.md) — promoted to **m144** 2026-10-29; implementation remains open.
 
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
@@ -655,7 +657,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **090** — [CLI Dashboard opens a relative path from a fresh config](090.md) — **待验收（2026-10-29 复核）：** v0.3.3 已含 Dashboard 默认 origin / 等价 host 修复；重放已发布二进制及真实浏览器到达。
+- [x] **090** — [CLI Dashboard opens a relative path from a fresh config](done/090.md) — **DONE 2026-10-29:** signature-verified published v0.3.3 passes 12 native menu/config cases, 12 shared links, and authenticated browser arrival; own sessions/configs cleaned.
 
 - [x] **089** — [CLI dashboard actions open the OAuth host and return 404](done/089.md) — **DONE 2026-10-29** (CLI dashboard links land on the dashboard, on production)
 

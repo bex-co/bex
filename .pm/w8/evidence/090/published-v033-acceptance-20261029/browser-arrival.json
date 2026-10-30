@@ -1,0 +1,30 @@
+[
+  {
+    "case": "missing",
+    "requested": "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg",
+    "final_url": "https://dashboard.bex.co/databases/dpg-db9r654flioc739mcpbg",
+    "http_status": 200,
+    "title": "qa-20261017-64552e-pg14 ・ Database ・ bex Dashboard",
+    "headings": [
+      "qa-20261017-64552e-pg14"
+    ],
+    "expected_resource_visible": true,
+    "signed_in": true,
+    "error_page": false,
+    "deploy_live_visible": null
+  },
+  {
+    "case": "deploy-missing",
+    "requested": "https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg/deploys/dep-dbbacgabpdss73ci0od0",
+    "final_url": "https://dashboard.bex.co/services/srv-daif6dsmg29s73d1umvg/deploys/dep-dbbacgabpdss73ci0od0",
+    "http_status": 200,
+    "title": "hello-go ・ Web Service ・ bex Dashboard",
+    "headings": [
+      "hello-go"
+    ],
+    "expected_resource_visible": true,
+    "signed_in": true,
+    "error_page": false,
+    "deploy_live_visible": true
+  }
+]

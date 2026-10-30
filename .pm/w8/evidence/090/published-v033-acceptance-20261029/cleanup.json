@@ -1,0 +1,40 @@
+{
+  "baseline_ids_present": [
+    "dpg-db9r654flioc739mcpbg",
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-dbalgb8eir4c73eq4fr0",
+    "srv-dbeqqeho11ns7394188g",
+    "srv-dbeqshiirk6c739cd9lg",
+    "srv-dbeqshiirk6c739cd9ng",
+    "srv-dbeqshqirk6c739cd9q0",
+    "srv-dbff93rl76bs73djutp0",
+    "srv-dbffafrl76bs73djuu1g",
+    "srv-dbffe0povisc73fhqndg"
+  ],
+  "baseline_preserved": true,
+  "hosting_mutations": 0,
+  "created_resources": 0,
+  "browser_contexts_closed": true,
+  "native_ptys_reaped": true,
+  "case_configs_removed": true,
+  "own_cli_logout": {
+    "exit": 0,
+    "confirmed": true,
+    "config_removed": true
+  },
+  "own_browser_logouts": [
+    {
+      "exit": 0,
+      "result": "ok logged-out"
+    },
+    {
+      "exit": 0,
+      "result": "ok already-signed-out"
+    }
+  ],
+  "published_binary_sha256": "8c1eaa38e0ce3de0c9cae814ec432bcc1648737fd06d11a6950e910c7ede4081",
+  "temporary_credential_files_removed": true,
+  "idle_arrival_node_harness": "Chrome closed; idle Node process explicitly terminated and reaped"
+}

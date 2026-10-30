@@ -1,0 +1,25 @@
+{
+  "date_utc": "2026-10-30",
+  "local_date": "2026-10-29",
+  "release": "bex-cli/v0.3.3",
+  "release_published_at": "2026-10-16T10:18:21Z",
+  "render_release": "v2.27.0",
+  "upstream_module": "v1.1.3-0.20260909214233-a764810a7682",
+  "binary_vcs_revision": "7079d02b69a27026ab0b3dce618567182179fcc7",
+  "binary_vcs_modified": true,
+  "binary_sha256": "8c1eaa38e0ce3de0c9cae814ec432bcc1648737fd06d11a6950e910c7ede4081",
+  "platform": "darwin/arm64",
+  "installer": "PATH=<private-cosign-bin>:$PATH BEX_VERSION=0.3.3 BEX_INSTALL_DIR=<private-dir>/release bash scripts/install-bex.sh",
+  "signature_result": "Verified OK",
+  "signer_identity_regexp": "^https://github\\.com/bex-co/bex/\\.github/workflows/cli-release\\.yml@refs/tags/bex-cli/v",
+  "oidc_issuer": "https://token.actions.githubusercontent.com",
+  "cosign_version": "v3.1.4",
+  "qa_workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+  "auth": "Fresh isolated human device flow; QA password handled only by scripts/qa-login.sh; environment grant injected privately for each fresh config",
+  "checkout_tests": [
+    "cd lego/cli && go test ./internal/bridge -run TestEnsureDashboardURL -count=1",
+    "cd lego/cli && go test . -run TestOpensDashboard -count=1"
+  ],
+  "checkout_tests_result": "both pass at edeb1870583cba94d8ba02b05b0a78020b774d60; they are current-source controls, not substitutes for release binary testing",
+  "deployed_server_revision": "unobserved"
+}

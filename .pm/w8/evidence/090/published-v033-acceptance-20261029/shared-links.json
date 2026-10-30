@@ -1,0 +1,66 @@
+{
+  "cases": [
+    {
+      "kind": "resource",
+      "type": "Web Service",
+      "url": "https://dashboard.bex.co/web/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Web Service",
+      "url": "https://dashboard.bex.co/web/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Background Worker",
+      "url": "https://dashboard.bex.co/worker/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Background Worker",
+      "url": "https://dashboard.bex.co/worker/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Private Service",
+      "url": "https://dashboard.bex.co/pserv/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Private Service",
+      "url": "https://dashboard.bex.co/pserv/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Static Site",
+      "url": "https://dashboard.bex.co/static/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Static Site",
+      "url": "https://dashboard.bex.co/static/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Cron Job",
+      "url": "https://dashboard.bex.co/cron/srv-local-fixture"
+    },
+    {
+      "kind": "deploy",
+      "type": "Cron Job",
+      "url": "https://dashboard.bex.co/cron/srv-local-fixture/deploys/dep-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Postgres",
+      "url": "https://dashboard.bex.co/d/srv-local-fixture"
+    },
+    {
+      "kind": "resource",
+      "type": "Key Value",
+      "url": "https://dashboard.bex.co/r/srv-local-fixture"
+    }
+  ],
+  "qualification": "Actual v0.3.3-pin OpenResource/OpenDeploy using initialized Bex dashboard origin; all synthetic local IDs; no production mutation or authentication request",
+  "saved_origin": "https://dashboard.bex.co"
+}
