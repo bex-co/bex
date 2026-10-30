@@ -548,6 +548,12 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		// controller-runtime's replacement uses the incompatible events API.
 		Recorder: mgr.GetEventRecorderFor("database-controller"), //nolint:staticcheck
 		DBDomain: envOr("BEX_DB_DOMAIN", ""),
+		// Publicly trusted server certificates for public databases (w2/m245).
+		// Deliberately not BEX_CLUSTER_ISSUER: that one is set on every
+		// cluster, and a local/dev cluster ordering Let's Encrypt certificates
+		// for production *.db.bex.co names would only fail validation and
+		// spend the shared rate limit.
+		PublicCertIssuer: envOr("BEX_DB_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{
 			DestinationPath: envOr("BEX_DB_BACKUP_DESTINATION", ""),
 			EndpointURL:     envOr("BEX_DB_BACKUP_ENDPOINT", ""),

@@ -150,7 +150,10 @@ type DatabaseSpec struct {
 	// Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
 	// database at "<name>.<BEX_DB_DOMAIN>" through the shared Postgres-aware SNI
 	// proxy (TLS passthrough — Postgres terminates its own TLS). Default: in-cluster only.
-	// External connections use sslmode=verify-full. See docs/ADR009-postgresql-management.md.
+	// With the controller's BEX_DB_CLUSTER_ISSUER set, the endpoints serve a
+	// publicly trusted certificate (status.externalCertificate); otherwise
+	// external connections use sslmode=verify-full against CNPG's own CA.
+	// See docs/ADR009-postgresql-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
 
@@ -389,6 +392,25 @@ const (
 	DBPhaseFailed       DatabasePhase = "Failed"
 )
 
+// DatabaseExternalCertificate names which server certificate a public
+// Database's external endpoints present (status.externalCertificate).
+// +kubebuilder:validation:Enum=Pending;PubliclyTrusted
+type DatabaseExternalCertificate string
+
+const (
+	// DBExternalCertificatePending: the operator manages a publicly trusted
+	// certificate for this Database, but CNPG does not serve it (yet, or any
+	// more): it is still being issued, or is being withdrawn after external
+	// access was turned off. The endpoints present CNPG's generated
+	// certificate, which only the cluster's own CA verifies.
+	DBExternalCertificatePending DatabaseExternalCertificate = "Pending"
+	// DBExternalCertificatePubliclyTrusted: CNPG serves the operator-managed
+	// publicly trusted (Let's Encrypt) certificate on every external endpoint,
+	// so clients verify against their system trust store and need no
+	// downloaded CA (w2/m245, Render parity).
+	DBExternalCertificatePubliclyTrusted DatabaseExternalCertificate = "PubliclyTrusted"
+)
+
 // Ready-condition reasons the operator sets on a Database. A failed one is
 // what bex-api publishes as an unavailable database's statusReasonCode, which
 // clients translate (w5/079), so renaming one is an API change. A Key Value
@@ -463,10 +485,21 @@ type DatabaseStatus struct {
 	SecretName string `json:"secretName,omitempty"`
 
 	// ExternalHost is the public SNI hostname when Public is set (empty otherwise).
-	// The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=verify-full
-	// (credentials from SecretName). DNS for the host must point at the edge.
+	// The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>
+	// (credentials from SecretName); bex-api adds ?sslmode=verify-full only while
+	// the endpoint presents CNPG's private CA (see ExternalCertificate). DNS for
+	// the host must point at the edge.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
+
+	// ExternalCertificate reports which certificate the external endpoints
+	// present. Empty: CNPG's generated certificate (or no external endpoint);
+	// clients verify it only against the cluster's own CA. PubliclyTrusted: a
+	// publicly trusted certificate that verifies against system roots. Pending:
+	// a publicly trusted certificate is managed but not served (issuing, or
+	// being withdrawn).
+	// +optional
+	ExternalCertificate DatabaseExternalCertificate `json:"externalCertificate,omitempty"`
 
 	// PoolerHost is the in-cluster PgBouncer service host ("<name>-pooler.<ns>.svc")
 	// when Pooler is enabled (empty otherwise). The pooled internal URL routes

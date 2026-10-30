@@ -98,6 +98,18 @@ patches:
         value:
           name: BEX_DISK_STORAGE_CLASS
           value: hcloud-volumes-luks
+      # w2/m245: every public Database gets a Let's Encrypt certificate for
+      # its <dpg-id>.db.bex.co names (HTTP-01 through Traefik on :80), served
+      # by CNPG, so the copied external URL connects from a stock client with
+      # no downloaded CA, as on Render. Prod-only: a local/dev cluster cannot
+      # answer HTTP-01 for production names and would only burn the shared
+      # bex.co rate limit (50 new certificates/week). Unset => CNPG's own
+      # certificate + sslmode=verify-full against serverCaCertificate.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DB_CLUSTER_ISSUER
+          value: letsencrypt-prod
   - target:
       group: apps
       version: v1

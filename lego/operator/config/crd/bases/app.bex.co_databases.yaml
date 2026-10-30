@@ -221,7 +221,10 @@ spec:
                   Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
                   database at "<name>.<BEX_DB_DOMAIN>" through the shared Postgres-aware SNI
                   proxy (TLS passthrough — Postgres terminates its own TLS). Default: in-cluster only.
-                  External connections use sslmode=verify-full. See docs/ADR009-postgresql-management.md.
+                  With the controller's BEX_DB_CLUSTER_ISSUER set, the endpoints serve a
+                  publicly trusted certificate (status.externalCertificate); otherwise
+                  external connections use sslmode=verify-full against CNPG's own CA.
+                  See docs/ADR009-postgresql-management.md.
                 type: boolean
               readReplicas:
                 description: |-
@@ -568,11 +571,25 @@ spec:
                 x-kubernetes-list-map-keys:
                 - id
                 x-kubernetes-list-type: map
+              externalCertificate:
+                description: |-
+                  ExternalCertificate reports which certificate the external endpoints
+                  present. Empty: CNPG's generated certificate (or no external endpoint);
+                  clients verify it only against the cluster's own CA. PubliclyTrusted: a
+                  publicly trusted certificate that verifies against system roots. Pending:
+                  a publicly trusted certificate is managed but not served (issuing, or
+                  being withdrawn).
+                enum:
+                - Pending
+                - PubliclyTrusted
+                type: string
               externalHost:
                 description: |-
                   ExternalHost is the public SNI hostname when Public is set (empty otherwise).
-                  The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=verify-full
-                  (credentials from SecretName). DNS for the host must point at the edge.
+                  The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>
+                  (credentials from SecretName); bex-api adds ?sslmode=verify-full only while
+                  the endpoint presents CNPG's private CA (see ExternalCertificate). DNS for
+                  the host must point at the edge.
                 type: string
               highAvailabilityEnabled:
                 description: |-
