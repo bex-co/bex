@@ -1,0 +1,60 @@
+{
+  "files": [
+    {
+      "file": "32b08787c082a8130de01c7d1b6d7cc6df03cdaeae8b7b37be7897743dc41d96.raw.json",
+      "bytes": 16434,
+      "sha256": "32b08787c082a8130de01c7d1b6d7cc6df03cdaeae8b7b37be7897743dc41d96"
+    },
+    {
+      "file": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b.raw.json",
+      "bytes": 1611,
+      "sha256": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b"
+    },
+    {
+      "file": "7b94b56be88c99b46191719151964006582c0af9ad6ccce0f72d73144d36dc87.raw.json",
+      "bytes": 3534,
+      "sha256": "7b94b56be88c99b46191719151964006582c0af9ad6ccce0f72d73144d36dc87"
+    },
+    {
+      "file": "82299fd378d1f808fc7dee83ba80900587529d23d7db00df624fed7b1b4eea8a.raw.json",
+      "bytes": 3534,
+      "sha256": "82299fd378d1f808fc7dee83ba80900587529d23d7db00df624fed7b1b4eea8a"
+    },
+    {
+      "file": "amd64-config.json",
+      "bytes": 17538,
+      "sha256": "1ed3329037561365a9f1720543f0bd8d029b0377f4ffec50f1509abd78d44f1f"
+    },
+    {
+      "file": "anonymous-metadata-proof.json",
+      "bytes": 1802,
+      "sha256": "1909aa79c1196e94fe908167770fe876b4d7f61f967491af088258297822ce15"
+    },
+    {
+      "file": "arm64-config.json",
+      "bytes": 17543,
+      "sha256": "5b4744cd8fdf772c55ee89b13d3f690562bdca3944e204455abde3bf58120a61"
+    },
+    {
+      "file": "e7ed9ee7b9fdd1846f0f8bfba953c5ba9ed44b909cb81f5ed73825bb6ac7dd6a.raw.json",
+      "bytes": 16429,
+      "sha256": "e7ed9ee7b9fdd1846f0f8bfba953c5ba9ed44b909cb81f5ed73825bb6ac7dd6a"
+    },
+    {
+      "file": "job-123982303737.log.gz",
+      "bytes": 110644,
+      "sha256": "4f324240226544a785b363acd0c8a2aa365402017185e416f778617bfdea4d24"
+    },
+    {
+      "file": "receipt.json",
+      "bytes": 8860,
+      "sha256": "4034c63a0c83efa1c54f1874872ed299674ec0662107d7f28ade096c453bdce8"
+    },
+    {
+      "file": "recovery-entry.json",
+      "bytes": 1000,
+      "sha256": "f5c260e9f9cf4009016ab50b97b35f6c1e814e60df836481d417b9d76b3a6599"
+    }
+  ],
+  "scope": "Read-only original producer intake; not published acceptance"
+}

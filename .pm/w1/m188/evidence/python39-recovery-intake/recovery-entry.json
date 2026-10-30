@@ -1,0 +1,12 @@
+{
+  "python-3.9-bookworm": {
+    "base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+    "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "run_id": 41000570846,
+    "job_id": 123982303737,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Python3.9.25 gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  }
+}

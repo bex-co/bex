@@ -1,0 +1,2 @@
+Error: invalid predicate type, expected https://spdx.dev/Document got https://sigstore.dev/cosign/sign/v1
+error during command execution: invalid predicate type, expected https://spdx.dev/Document got https://sigstore.dev/cosign/sign/v1

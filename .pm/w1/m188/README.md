@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；修正后的本地构建/启动验收完成，推进双架构签名发布与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14 签名发布独立验收通过（1/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -8,7 +8,7 @@
 - **边界：** 保留用户选定的语言版本；补丁在平台镜像发布时制作，租户构建直接使用固定镜像，不在每次租户 build 临时 apt 升级。
 - **修复责任：** 同时核实系统库和运行时自带库，不能只升级系统 libbrotli1 就宣布所有运行时已修复。
 - **当前用户动作：** 这项维护范围决定已完成，无需重复确认。实现、验证及后续具体执行条件由 worker 按既有规则处理。
-- **状态：** 不再以“等官方镜像更新”为阻塞条件；修复尚未实施或验收，不标记 done。本次仅记录决定并准备交接，不自动启动实现或发布。
+- **状态：** 不再以“等官方镜像更新”为阻塞条件；用户随后执行 `$loopx w1`，已授权并开始实现和发布。当前逐版本验收进度见下文，全部完成前不标记 done。
 
 ## Tasks (in order)
 
@@ -48,7 +48,7 @@
 
 ## 实施进展 — 2026-10-29
 
-用户已执行 `$loopx w1`，开始实现；上文“本次仅记录决定”保留的是决策阶段历史。t001 核查完成，见 [assessment.md](assessment.md)。main 已有统一 native 基础镜像发布流程，t002 复用该流程增加系统及 Node 自带 Brotli 修复，不新增平行框架。尚未完成发布、接入和验收。
+用户已执行 `$loopx w1`，开始实现。t001 核查完成，见 [assessment.md](assessment.md)。main 已有统一 native 基础镜像发布流程，t002 复用该流程增加系统及 Node 自带 Brotli 修复，不新增平行框架。尚未完成发布、接入和验收。
 
 ### 补丁验证进展
 
@@ -145,3 +145,14 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - Node14 新版发布工作流成功，五份完整 bundle 的证书、精确 workflow SHA、透明日志和可信时间戳均通过；独立内容复核发现 amd64 SPDX root `99158...` 与实际 registry 子 manifest `933c...` 不一致，见 [独立检查](evidence/node14-independent-semantic-review.json)。Trivy 的两架构 config 与原 index 子镜像均吻合；不能仅以共同 index subject 或版本相同放过 SPDX 差异。该候选继续 held，不计入验收。
 - Syft 自动选源支持 Docker-save 合成 manifest；现有 metadata 尚未证明该临时摘要与目标子镜像等价，不添加放宽规则。发布改为明确 `syft registry:$REF`，同一已编译 index 重新走全部发布门槛。
 - [已有真实 registry 来源 Node14 预检](evidence/node14-registry-source-preflight.json) 的 amd64 root 与实际 `933c...` 一致，语言与补丁包版本正确；这份 Node14 记录使用 Syft1.55.0，不能冒充1.51.1 实测。另有同一 prefix 的真实 Syft1.51.1 Python3.7 扫描记录。正式新签名仍需实际重放后独立核对。
+
+### 首个签名候选独立验收 — 2026-10-30（UTC 11:27Z）
+
+- **1/11：Node14.21.3 通过。** [验收收据](evidence/node14-published-acceptance/acceptance.json) 记录原 producer、独立 verification SHA、双架构运行/Bullseye gate、五份严格签名证明与匿名 discovery digest。完整 SPDX 与 Trivy 仍以公开 OCI digest 保留，不把报告存在当作零漏洞。
+- 旧自动来源 SPDX 的 amd64 synthetic manifest 已由实际压缩层 digest、解压 DiffID/大小、原配置及顺序逐项重建，精确得到签名中的 digest；[内容等价证据](evidence/node14-layer-equivalence/MANIFEST.json) 与独立复核/正负守卫通过。不是添加任意 digest 别名。
+- 每个架构仍报告三条 CVE-2026-111497（brotli/libbrotli-dev/libbrotli1）；处置依据是明确的 Debian 源码回移、补丁版本和实际 decoder 探针，不隐藏扫描发现，也不声称旧运行时所有 CVE 已清零。
+- 验证 discovery 后已删除 Node14 的一次性恢复授权；其余授权保留。当前 source pin 尚未采用，剩余十项、正式接入、rollout 与新 census 继续执行，t002–t008 保持开放。
+
+### Python3.9 定向恢复 — 2026-10-30
+
+原始双架构索引的 Python3.9.25、producer revision、实际离线工具/运行检查与两份扫描均已核实；原任务仅在首份 SPDX 向 Rekor v1 提交时失败，见 [原始证据](evidence/python39-recovery-intake/receipt.json)。已将该精确 digest 加入同源恢复授权；恢复需重做当前双架构门槛、扫描、registry 来源 SBOM 与现代签名，不提前计算为通过。Node14 授权删除及其余五个精确恢复路径的选择器检查共十二项通过。

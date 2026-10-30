@@ -1,0 +1,42 @@
+{
+  "index_digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "architectures": {
+    "amd64": {
+      "root_child_hash_verified": true,
+      "config_hash_size_verified": true,
+      "ordered_compressed_witnesses_match": 19,
+      "ordered_diff_ids_sizes_match": 19,
+      "derived_manifest_exact_bytes_recomputed": true,
+      "derived_manifest_digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+      "registry_child_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+      "config_digest": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+      "compressed_bytes_witnessed": 621675644,
+      "uncompressed_bytes_witnessed": 1776681472
+    },
+    "arm64": {
+      "root_child_hash_verified": true,
+      "config_hash_size_verified": true,
+      "ordered_compressed_witnesses_match": 19,
+      "ordered_diff_ids_sizes_match": 19,
+      "derived_manifest_exact_bytes_recomputed": true,
+      "derived_manifest_digest": "sha256:13ad925104c9445b3821ae469fefbc3e469c4a40f65f5e244a7700d8ddfeff41",
+      "registry_child_digest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+      "config_digest": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+      "compressed_bytes_witnessed": 616225141,
+      "uncompressed_bytes_witnessed": 1718268416
+    }
+  },
+  "scope": "Independent local hash/reconstruction of retained metadata and witness linkage. Did not independently re-download/decompress 1.24GB layer bytes; witness execution provenance remains external evidence.",
+  "assessment": "Exact raw config identity plus ordered actual compressed-to-uncompressed layer witnesses, expected DiffIDs and sizes producing the exact signed synthetic manifest digest establish strict runtime content equivalence. This does not make two manifest digests equal or authorize an arbitrary alias.",
+  "requirements_before_any_guard_extension": [
+    "Require authenticated raw root-index/architecture-child/config hashes and sizes.",
+    "Require all layer witnesses in original order: compressed digest+size, actual decompressed digest+size, and exact agreement with config.rootfs.diff_ids.",
+    "Require exact pinned Stereoscope0.3.1 reconstruction and resultant bytes hashing to the signed SPDX checksum AND purl digest; no guessed serialization or fallback aliases.",
+    "Retain original signed parent subject/repository/architecture, source/workflow/certificate/Sigstore proofs, per-architecture Trivy config binding, fixed packages and behavioral gate evidence.",
+    "Root must explicitly approve the new content-equivalence proof mode after reviewing actual hashing execution provenance/independent evidence. No existing guard change made by this review."
+  ],
+  "source": "https://raw.githubusercontent.com/anchore/stereoscope/v0.3.1/pkg/image/docker/manifest.go",
+  "candidate_approved": false,
+  "guard_changed": false,
+  "aggregate_count_changed": false
+}

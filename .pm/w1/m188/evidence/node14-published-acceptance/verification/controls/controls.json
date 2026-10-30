@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "root_index_sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "bundle_sha256": "76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.command.json",
+    "command_sha256": "3ff423aa3725b639bce63a2d30cf00154eb616fd4f4df1c6385355ae0890ef47",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_verification_sha.command.json",
+      "command_sha256": "974404ab1f400e9637b028dc39fdb27c975d5f4b4e336b30e92991ed78695a5a",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_index.command.json",
+      "command_sha256": "f55a9310d0f82c5479e5c7981ce99ce47e04b7039a09cad1e703048f5b7abaff",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_predicate.command.json",
+      "command_sha256": "43f05ab0ed5e32505544e520f6dc45fb7938d7d9c75d63265e4329ff2083c7d8",
+      "exit_code": 1
+    }
+  }
+}

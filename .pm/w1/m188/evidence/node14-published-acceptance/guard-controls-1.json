@@ -1,0 +1,45 @@
+{
+  "schema": "bex.m188.guard-structural-controls/v1",
+  "scope": "Small local parser/linkage tests only; not Sigstore verification, not fabricated candidate receipts. Actual cosign negative proofs remain in original manifest.",
+  "passed": true,
+  "results": [
+    {
+      "name": "actual_signature_command_structural_positive",
+      "passed": true
+    },
+    {
+      "name": "missing_successful_raw_bundle_verification",
+      "rejected": true,
+      "reason": "raw bundle verification did not succeed"
+    },
+    {
+      "name": "wrong_verification_sha",
+      "rejected": true,
+      "reason": "bundle verification command differs from exact strict invocation"
+    },
+    {
+      "name": "wrong_raw_index_binding",
+      "rejected": true,
+      "reason": "bundle command root index mismatch"
+    },
+    {
+      "name": "missing_command_receipt",
+      "rejected": true,
+      "reason": "[Errno 2] No such file or directory: '/tmp/bex-m188-control-no-such-command.json'"
+    },
+    {
+      "name": "missing_original_gzip_bundle",
+      "rejected": true,
+      "reason": "[Errno 2] No such file or directory: '/tmp/bex-m188-control-no-such-bundle.gz'"
+    },
+    {
+      "name": "tiny_derived_linkage_positive_not_crypto",
+      "passed": true
+    },
+    {
+      "name": "decoded_dsse_tamper_even_with_updated_derived_hash",
+      "rejected": true,
+      "reason": "derived DSSE differs from the actually verified original bundle"
+    }
+  ]
+}

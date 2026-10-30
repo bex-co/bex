@@ -1,11 +1,11 @@
 {
-  "checked_at": "2026-10-30T10:06:30.920988+00:00",
+  "checked_at": "2026-10-30T11:42:10.622220+00:00",
   "method": "Actual workflow embedded selection script against isolated temporary Git commits; no Docker, signing, network, or production mutation",
   "results": [
     {
-      "case": "authorized Node14 same recipe",
-      "expected": "recover",
-      "observed": "recover",
+      "case": "accepted Node14 authorization removed",
+      "expected": "build",
+      "observed": "build",
       "exit": 0
     },
     {
@@ -28,6 +28,12 @@
     },
     {
       "case": "authorized Python3.8 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized Python3.9 same recipe",
       "expected": "recover",
       "observed": "recover",
       "exit": 0

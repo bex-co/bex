@@ -1,0 +1,51 @@
+{
+  "checked_at": "2026-10-30T11:36:29.548505+00:00",
+  "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "anonymous_pull": true,
+  "metadata_only": true,
+  "full_filesystem_layers_pulled": false,
+  "transport": "curl read-only fallback after urllib CDN connection resets; anonymous token only in memory/stdin; curl default redirect strips cross-host Authorization; every raw digest checked",
+  "platforms": {
+    "linux/amd64": {
+      "architecture": "amd64",
+      "os": "linux",
+      "manifest_digest": "sha256:7b94b56be88c99b46191719151964006582c0af9ad6ccce0f72d73144d36dc87",
+      "config_digest": "sha256:e7ed9ee7b9fdd1846f0f8bfba953c5ba9ed44b909cb81f5ed73825bb6ac7dd6a",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.9.25"
+      ]
+    },
+    "linux/arm64": {
+      "architecture": "arm64",
+      "os": "linux",
+      "manifest_digest": "sha256:82299fd378d1f808fc7dee83ba80900587529d23d7db00df624fed7b1b4eea8a",
+      "config_digest": "sha256:32b08787c082a8130de01c7d1b6d7cc6df03cdaeae8b7b37be7897743dc41d96",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.9.25"
+      ]
+    }
+  },
+  "raw_metadata_sizes_verified": true,
+  "raw_metadata_sizes": [
+    {
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "child_bytes": 3534,
+      "config_bytes": 16429
+    },
+    {
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      },
+      "child_bytes": 3534,
+      "config_bytes": 16434
+    }
+  ],
+  "curl_ipv4_transport_only": true,
+  "prior_transport_failures": "urllib config-blob CDN connection reset; curl default resolver/SSL timeout; no image content mismatch"
+}
