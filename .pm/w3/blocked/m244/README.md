@@ -1,6 +1,6 @@
 # w3 · m244 — Dashboard requests survive a dropped browser connection to api.bex.co
 
-**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** in progress — t001–t007 done; t008 closeout waits on the 25 s poll reaching production, then a 2 h net-log re-run and three clean w4 QA loop runs
+**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** blocked — t001–t007 done; the 25 s poll is live and a 2 h net-log re-run shows the idle race gone; t008 closeout waits for three consecutive clean w4 QA loop runs
 
 ## Tasks (in order)
 
@@ -32,8 +32,16 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from `w3/044` (2026-10-29, step 4: the correlation found neither an edge 502 nor an origin gap for the sightings) ← [FUTURE-MAYBE](../../FUTURE-MAYBE.md) "Intermittent `ERR_CONNECTION_CLOSED` on api.bex.co mutations" (first seen `w1/071`).
+- **Source:** promoted from `w3/044` (2026-10-29, step 4: the correlation found neither an edge 502 nor an origin gap for the sightings) ← [FUTURE-MAYBE](../../../FUTURE-MAYBE.md) "Intermittent `ERR_CONNECTION_CLOSED` on api.bex.co mutations" (first seen `w1/071`).
 - **Goal linkage:** V0 roadmap 2 (operability) and the dashboard's reliability as the primary Render-parity surface.
 - **Expected outcome:** QA and users stop seeing dropped GraphQL requests; any that still drop are visible and retryable, never a silent "did nothing".
 - **Why now:** sightings continued on 2026-10-29 after the origin-side fix; a silent dropped mutation reads as a broken product.
 - **Render parity included:** t004 changes dashboard error UX — compare with how Render's dashboard reports a failed action.
+
+## Verification (2026-10-30, loopx w3) — net-log re-run after `be13a54a6` reached production
+
+Same harness as t001 (headless Chrome, QA user, `dashboard.bex.co`, 08:58–11:02Z):
+
+- **08:58–10:55Z (1 h 57 m): 0 `ERR_CONNECTION_CLOSED`** — before the fix the same run saw 13 in 2 h, every one a request placed on a session at ~28.9 s idle that Chrome closed 0.02–1.8 s later.
+- 10:55Z and 11:00Z: 6 failures, all on sessions only 22–33 s idle where **nothing came back** and Chrome's idle timer fired 4–9 s after the send (lost packets), followed at 11:01Z by `ERR_NETWORK_CHANGED` — this host's network switching, not the poll race.
+- The idle-race signature is gone. **Remaining DoD:** three consecutive w4 QA loop runs on `api.bex.co/graphql` with no `ERR_CONNECTION_CLOSED`/CORS console errors.
