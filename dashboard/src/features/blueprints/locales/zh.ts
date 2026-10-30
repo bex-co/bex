@@ -37,7 +37,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   // --- Create action ---
   "blueprints.createButton": {
-    message: "新建蓝图",
+    message: "新建蓝图实例",
     description: "Button label that opens the New Blueprint dialog",
   },
   "blueprints.createTitle": {
@@ -471,7 +471,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   // --- Empty state ---
   "blueprints.emptyTitle": {
-    message: "暂无蓝图",
+    message: "你还没有创建任何蓝图实例。",
     description: "Blueprints list empty-state heading",
   },
   "blueprints.emptyBody": {
