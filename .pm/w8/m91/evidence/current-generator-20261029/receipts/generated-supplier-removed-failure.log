@@ -1,0 +1,92 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from native-node24-before.Dockerfile
+#1 transferring dockerfile: 2.03kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#4 DONE 0.1s
+
+#5 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#5 DONE 0.1s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#7 CACHED
+
+#8 [stage-0  4/11] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#8 CACHED
+
+#9 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#9 CACHED
+
+#10 [internal] load build context
+#10 transferring context: 6.48kB done
+#10 DONE 0.0s
+
+#11 [internal] preparing inline document
+#11 CACHED
+
+#12 [stage-0  2/11] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#12 DONE 0.4s
+
+#13 [stage-0  3/11] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#13 DONE 0.2s
+
+#14 [stage-0  4/11] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#14 DONE 0.1s
+
+#15 [stage-0  5/11] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#15 DONE 0.4s
+
+#16 [stage-0  6/11] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#16 DONE 0.2s
+
+#17 [stage-0  7/11] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#17 DONE 0.2s
+
+#18 [stage-0  8/11] WORKDIR /opt/render/project/src
+#18 DONE 0.1s
+
+#19 [stage-0  9/11] COPY . .
+#19 DONE 0.1s
+
+#20 [stage-0 10/11] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#20 DONE 0.1s
+
+#21 [stage-0 11/11] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build"]
+#21 0.159 Traceback (most recent call last):
+#21 0.159   File "/opt/render/project/src/extended-checks.py", line 147, in <module>
+#21 0.159     original=original_cases();extra=extra_cases();summary={'phase':PHASE,'network':'Docker build/run --network=none; localhost HTTP only; app wheels cached beforehand','primary_node':run(['node','--version']).decode().strip(),'system_python':sys.version.split()[0],'original_program_cases':original,'extra_behavior_checks':extra,'scope':'Node24/Bookworm arm64 current generator with actual local immutable supplied derivative; Python cases run system companion3.11 with explicit local alias/target import path. No hosted acceptance, no primaryPython3.13, no other architectures/bases or operator predeploy Job claim.'};(OUTPUT/(PHASE+'-summary.json')).write_text(json.dumps(summary,indent=2,ensure_ascii=False));
+#21 0.159              ^^^^^^^^^^^^^^^^
+#21 0.159   File "/opt/render/project/src/extended-checks.py", line 42, in original_cases
+#21 0.159     stdout=run(['/bin/bash','-c',x['commands']['initial']['build']],cwd=work,env=env)
+#21 0.159            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#21 0.159   File "/opt/render/project/src/extended-checks.py", line 23, in run
+#21 0.159     if (r.returncode!=0)!=fails:raise RuntimeError((args,r.returncode,r.stdout.decode(errors='replace')[-1500:],r.stderr.decode(errors='replace')[-1500:]))
+#21 0.159                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#21 0.159 RuntimeError: (['/bin/bash', '-c', 'set -e\nnode -e "const f=require(\'fs\');f.writeFileSync(\'qa402.dump\',Buffer.from(f.readFileSync(\'/etc/secrets/qa402.dump.b64\',\'utf8\'),\'base64\'))"\ncat > qa402-probe.cjs <<\'QA402_QA402_PROBE_CJS\'\nconst fs=require(\'node:fs\'),cp=require(\'node:child_process\'),crypto=require(\'node:crypto\'),http=require(\'node:http\'),ref=require(\'./qa402-reference.json\'),marker=require(\'./qa402-marker.json\'),phase=process.argv[2],sha=b=>crypto.createHash(\'sha256\').update(b).digest(\'hex\');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error(\'source differs\');const b=fs.readFileSync(\'qa402.dump\');if(b.length!==ref.backup.bytes||sha(b)!==ref.backup.sha256)throw Error(\'backup differs\');\nconst tools=Object.fromEntries([\'psql\',\'pg_dump\',\'pg_restore\'].map(p=>{const r=cp.spawnSync(p,[\'--version\'],{encoding:\'utf8\'});return[p,{status:r.status,error:r.error?.code??null,stdout:r.stdout??\'\',stderr:r.stderr??\'\'}]}));const before={marker,node:process.version,files,backup:ref.backup,tools};\nif(phase===\'before\'){fs.writeFileSync(\'qa402-before.json\',JSON.stringify(before));console.log(\'QA402_BEFORE \'+JSON.stringify(before));process.exit(0)}\nfunction restore(){const r=cp.spawnSync(\'pg_restore\',[\'--data-only\',\'--no-owner\',\'--no-privileges\',\'--file=-\',\'qa402.dump\'],{encoding:\'utf8\'});if(r.error||r.status!==0)throw Error(\'pg_restore failed: \'+(r.error?.code??r.stderr));const rows=r.stdout.split(\'\\n\').filter(s=>s.startsWith(\'INSERT INTO public.qa402_backup VALUES\'));if(JSON.stringify(rows)!==JSON.stringify(ref.rows)||sha(rows.join(\'\\n\')+\'\\n\')!==ref.rows_sha256)throw Error(\'restored rows differ\');return{marker,node:process.version,files,backup:ref.backup,tools,rows,rows_sha256:ref.rows_sha256,restored_from_archive:true,before:JSON.parse(fs.readFileSync(\'qa402-before.json\'))}}\nif(phase===\'build\'){const v=restore();fs.writeFileSync(\'qa402-build.json\',JSON.stringify(v));console.log(\'QA402_AFTER \'+JSON.stringify(v))}else{http.createServer((req,res)=>{if(req.url.split(\'?\')[0]!==\'/\'&&req.url.split(\'?\')[0]!==\'/restore\'){res.writeHead(404);return res.end()}try{const runtime={...restore(),request_url:req.url};res.setHeader(\'Content-Type\',\'application/json\');res.end(JSON.stringify({build:require(\'./qa402-build.json\'),runtime}));console.log(\'QA402_RUNTIME \'+JSON.stringify(runtime))}catch(e){res.writeHead(500);res.end(String(e))}}).listen(Number(process.env.PORT),\'0.0.0.0\')}\nQA402_QA402_PROBE_CJS\ncat > qa402-reference.json <<\'QA402_QA402_REFERENCE_JSON\'\n{"repo":"https://github.com/git-fixtures/basic","branch":"master","commit":"6ecf0ef2c2dffb796033e5a02219af86ec6584e5","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"backup":{"bytes":1721,"sha256":"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"},"rows":["INSERT INTO public.qa402_backup VALUES (1, \'QA402 alpha\');","INSERT INTO public.qa402_backup VALUES (2, \'QA402 caf\\u00e9 \\u96ea\');","INSERT INTO public.qa402_backup VALUES (3, \'QA402 quote \'\' and comma,\');"],"rows_sha256":"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"}\nQA402_QA402_REFERENCE_JSON\ncat > qa402-marker.json <<\'QA402_QA402_MARKER_JSON\'\n"QA402_6456de_bex"\nQA402_QA402_MARKER_JSON\nnode qa402-probe.cjs before\npg_restore --data-only --no-owner --no-privileges --file=qa402.sql qa402.dump\nnode qa402-probe.cjs build'], 127, 'QA402_BEFORE {"marker":"QA402_6456de_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"backup":{"bytes":1721,"sha256":"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"},"tools":{"psql":{"status":null,"error":"ENOENT","stdout":"","stderr":""},"pg_dump":{"status":null,"error":"ENOENT","stdout":"","stderr":""},"pg_restore":{"status":null,"error":"ENOENT","stdout":"","stderr":""}}}\n', '/bin/bash: line 18: pg_restore: command not found\n')
+#21 ERROR: process "/bin/bash -c . /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build" did not complete successfully: exit code: 1
+------
+ > [stage-0 11/11] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build"]:
+0.159   File "/opt/render/project/src/extended-checks.py", line 147, in <module>
+0.159     original=original_cases();extra=extra_cases();summary={'phase':PHASE,'network':'Docker build/run --network=none; localhost HTTP only; app wheels cached beforehand','primary_node':run(['node','--version']).decode().strip(),'system_python':sys.version.split()[0],'original_program_cases':original,'extra_behavior_checks':extra,'scope':'Node24/Bookworm arm64 current generator with actual local immutable supplied derivative; Python cases run system companion3.11 with explicit local alias/target import path. No hosted acceptance, no primaryPython3.13, no other architectures/bases or operator predeploy Job claim.'};(OUTPUT/(PHASE+'-summary.json')).write_text(json.dumps(summary,indent=2,ensure_ascii=False));
+0.159              ^^^^^^^^^^^^^^^^
+0.159   File "/opt/render/project/src/extended-checks.py", line 42, in original_cases
+0.159     stdout=run(['/bin/bash','-c',x['commands']['initial']['build']],cwd=work,env=env)
+0.159            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+0.159   File "/opt/render/project/src/extended-checks.py", line 23, in run
+0.159     if (r.returncode!=0)!=fails:raise RuntimeError((args,r.returncode,r.stdout.decode(errors='replace')[-1500:],r.stderr.decode(errors='replace')[-1500:]))
+0.159                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+0.159 RuntimeError: (['/bin/bash', '-c', 'set -e\nnode -e "const f=require(\'fs\');f.writeFileSync(\'qa402.dump\',Buffer.from(f.readFileSync(\'/etc/secrets/qa402.dump.b64\',\'utf8\'),\'base64\'))"\ncat > qa402-probe.cjs <<\'QA402_QA402_PROBE_CJS\'\nconst fs=require(\'node:fs\'),cp=require(\'node:child_process\'),crypto=require(\'node:crypto\'),http=require(\'node:http\'),ref=require(\'./qa402-reference.json\'),marker=require(\'./qa402-marker.json\'),phase=process.argv[2],sha=b=>crypto.createHash(\'sha256\').update(b).digest(\'hex\');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error(\'source differs\');const b=fs.readFileSync(\'qa402.dump\');if(b.length!==ref.backup.bytes||sha(b)!==ref.backup.sha256)throw Error(\'backup differs\');\nconst tools=Object.fromEntries([\'psql\',\'pg_dump\',\'pg_restore\'].map(p=>{const r=cp.spawnSync(p,[\'--version\'],{encoding:\'utf8\'});return[p,{status:r.status,error:r.error?.code??null,stdout:r.stdout??\'\',stderr:r.stderr??\'\'}]}));const before={marker,node:process.version,files,backup:ref.backup,tools};\nif(phase===\'before\'){fs.writeFileSync(\'qa402-before.json\',JSON.stringify(before));console.log(\'QA402_BEFORE \'+JSON.stringify(before));process.exit(0)}\nfunction restore(){const r=cp.spawnSync(\'pg_restore\',[\'--data-only\',\'--no-owner\',\'--no-privileges\',\'--file=-\',\'qa402.dump\'],{encoding:\'utf8\'});if(r.error||r.status!==0)throw Error(\'pg_restore failed: \'+(r.error?.code??r.stderr));const rows=r.stdout.split(\'\\n\').filter(s=>s.startsWith(\'INSERT INTO public.qa402_backup VALUES\'));if(JSON.stringify(rows)!==JSON.stringify(ref.rows)||sha(rows.join(\'\\n\')+\'\\n\')!==ref.rows_sha256)throw Error(\'restored rows differ\');return{marker,node:process.version,files,backup:ref.backup,tools,rows,rows_sha256:ref.rows_sha256,restored_from_archive:true,before:JSON.parse(fs.readFileSync(\'qa402-before.json\'))}}\nif(phase===\'build\'){const v=restore();fs.writeFileSync(\'qa402-build.json\',JSON.stringify(v));console.log(\'QA402_AFTER \'+JSON.stringify(v))}else{http.createServer((req,res)=>{if(req.url.split(\'?\')[0]!==\'/\'&&req.url.split(\'?\')[0]!==\'/restore\'){res.writeHead(404);return res.end()}try{const runtime={...restore(),request_url:req.url};res.setHeader(\'Content-Type\',\'application/json\');res.end(JSON.stringify({build:require(\'./qa402-build.json\'),runtime}));console.log(\'QA402_RUNTIME \'+JSON.stringify(runtime))}catch(e){res.writeHead(500);res.end(String(e))}}).listen(Number(process.env.PORT),\'0.0.0.0\')}\nQA402_QA402_PROBE_CJS\ncat > qa402-reference.json <<\'QA402_QA402_REFERENCE_JSON\'\n{"repo":"https://github.com/git-fixtures/basic","branch":"master","commit":"6ecf0ef2c2dffb796033e5a02219af86ec6584e5","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"backup":{"bytes":1721,"sha256":"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"},"rows":["INSERT INTO public.qa402_backup VALUES (1, \'QA402 alpha\');","INSERT INTO public.qa402_backup VALUES (2, \'QA402 caf\\u00e9 \\u96ea\');","INSERT INTO public.qa402_backup VALUES (3, \'QA402 quote \'\' and comma,\');"],"rows_sha256":"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"}\nQA402_QA402_REFERENCE_JSON\ncat > qa402-marker.json <<\'QA402_QA402_MARKER_JSON\'\n"QA402_6456de_bex"\nQA402_QA402_MARKER_JSON\nnode qa402-probe.cjs before\npg_restore --data-only --no-owner --no-privileges --file=qa402.sql qa402.dump\nnode qa402-probe.cjs build'], 127, 'QA402_BEFORE {"marker":"QA402_6456de_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"backup":{"bytes":1721,"sha256":"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"},"tools":{"psql":{"status":null,"error":"ENOENT","stdout":"","stderr":""},"pg_dump":{"status":null,"error":"ENOENT","stdout":"","stderr":""},"pg_restore":{"status":null,"error":"ENOENT","stdout":"","stderr":""}}}\n', '/bin/bash: line 18: pg_restore: command not found\n')
+------
+ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build" did not complete successfully: exit code: 1

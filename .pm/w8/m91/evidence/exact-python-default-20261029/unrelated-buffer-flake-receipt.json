@@ -1,0 +1,9 @@
+{
+  "test": "TestClassifyBufferIsBounded",
+  "first_run": "scoped populated catalog packages concurrently with standard package test and offline runtime check",
+  "observed_failure": "build_test.go:1625: classification over a large log = exit status 90, want exit 91 from the retained tail",
+  "first_result": "build package failed, registry and cmd passed",
+  "complete_repeat_result": "all three packages passed; build3.763s, registry/cmd cached",
+  "test_source_modified": false,
+  "separation": "not an adoption-map or Python/Brotli evidence finding; no threshold/assertion changes"
+}

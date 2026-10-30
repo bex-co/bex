@@ -1,0 +1,35 @@
+{
+  "purpose": "Local QA application dependencies cached before network-off tool behavior; not a platform supplier change",
+  "files": [
+    {
+      "filename": "asgiref-3.13.0-py3-none-any.whl",
+      "bytes": 27593,
+      "sha256": "f9596a2434512686473d50f96ff6207fbba49ae1a785dfac614df4aeb085674d"
+    },
+    {
+      "filename": "cffi-2.1.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "bytes": 218716,
+      "sha256": "3311ed60d36f83378794e1009ac6258bafbf81f7888b4caa7b35a521e3f95813"
+    },
+    {
+      "filename": "django-5.2.18-py3-none-any.whl",
+      "bytes": 8316071,
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c"
+    },
+    {
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "bytes": 62600,
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+    },
+    {
+      "filename": "pyvips-3.2.0-cp311-cp311-linux_aarch64.whl",
+      "bytes": 168382,
+      "sha256": "0786239767511b48c21474dc84831846e45a903a8f431710d64ecf81b25f57da"
+    },
+    {
+      "filename": "sqlparse-0.6.0-py3-none-any.whl",
+      "bytes": 50070,
+      "sha256": "b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f"
+    }
+  ]
+}

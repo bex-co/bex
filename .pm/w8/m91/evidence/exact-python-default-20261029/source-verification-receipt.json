@@ -1,0 +1,12 @@
+{
+  "scope": "independent post-cutoff/no-version Python3.14.8 native image local acceptance",
+  "source_fix": "network-disabled absolute /sbin/ldconfig after exact /usr/local copy; before Python helper and companions",
+  "scoped_checks_observed": {
+    "standard": "GOWORK=off go test ./internal/build ./internal/registry ./cmd/native-resolve: PASS",
+    "populated_catalog": "GOWORK=off go test -overlay /tmp/loopx-w8-catalog-test-overlay.json ./internal/build ./internal/registry ./cmd/native-resolve: PASS on complete repeat",
+    "lint": "GOWORK=off bin/golangci-lint run ./internal/build/... ./internal/registry/... ./cmd/native-resolve/...: 0 issues",
+    "diff_check": "git diff --check: PASS"
+  },
+  "note": "Summarizes observed tool outputs; not a generated test log. Root owns full combined suite and shipping.",
+  "repository_edits": "nativebases.go and build/cmd test adaptations only; now held for root review; no commits/pushes/pins by child"
+}

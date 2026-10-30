@@ -1,0 +1,66 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 325B 0.0s done
+#1 DONE 0.1s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 ...
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.4s
+
+#4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#4 CACHED
+
+#5 [internal] load metadata for docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#5 ...
+
+#6 [auth] library/python:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#5 DONE 1.0s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.1s
+
+#8 [1/4] FROM docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#8 CACHED
+
+#9 [internal] load build context
+#9 transferring context: 4.07kB done
+#9 DONE 0.0s
+
+#10 [2/4] COPY check-brotli.py /check-brotli.py
+#10 DONE 0.1s
+
+#11 [3/4] RUN --network=none dpkg-query -W libbrotli1 libbrotli-dev
+#11 0.110 libbrotli-dev:arm64	1.0.9-2+b6
+#11 0.110 libbrotli1:arm64	1.0.9-2+b6
+#11 DONE 0.1s
+
+#12 [4/4] RUN --network=none /usr/local/bin/python3 /check-brotli.py
+#12 0.262 Traceback (most recent call last):
+#12 0.264   File "/check-brotli.py", line 75, in <module>
+#12 0.264     check_system_decoder()
+#12 0.264     ~~~~~~~~~~~~~~~~~~~~^^
+#12 0.264   File "/check-brotli.py", line 51, in check_system_decoder
+#12 0.264     raise RuntimeError("system Brotli did not reject invalid block switch: %s" % code)
+#12 0.264 RuntimeError: system Brotli did not reject invalid block switch: -9
+#12 ERROR: process "/bin/sh -c /usr/local/bin/python3 /check-brotli.py" did not complete successfully: exit code: 1
+------
+ > [4/4] RUN --network=none /usr/local/bin/python3 /check-brotli.py:
+0.262 Traceback (most recent call last):
+0.264   File "/check-brotli.py", line 75, in <module>
+0.264     check_system_decoder()
+0.264     ~~~~~~~~~~~~~~~~~~~~^^
+0.264   File "/check-brotli.py", line 51, in check_system_decoder
+0.264     raise RuntimeError("system Brotli did not reject invalid block switch: %s" % code)
+0.264 RuntimeError: system Brotli did not reject invalid block switch: -9
+------
+ERROR: failed to build: failed to solve: process "/bin/sh -c /usr/local/bin/python3 /check-brotli.py" did not complete successfully: exit code: 1

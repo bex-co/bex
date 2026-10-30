@@ -128,7 +128,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 			t.Fatalf("python %s choices = %+v, %v; want Python, Poetry, uv, Node", line.line, choices, err)
 		}
 		df, _ := os.ReadFile(dockerfile)
-		from := strings.Index(string(df), "\nFROM "+line.image+"\n")
+		from := strings.Index(string(df), "\nFROM "+expectedNativeBase(line.image)+"\n")
 		uv := strings.Index(string(df), "\n"+install)
 		source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
 		if from < 0 || uv < from || source < uv || build < source || !strings.Contains(string(df), "poetry==") {

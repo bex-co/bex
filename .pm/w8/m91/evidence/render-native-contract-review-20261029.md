@@ -1,0 +1,5 @@
+# Render native contract review — 2026-10-29
+
+Re-read the current [Render native runtimes documentation](https://render.com/docs/native-runtimes) during this drain. Its general tools list covers the thirteen active supplier findings: PostgreSQL clients, Pandoc, SQLite, libvips development/CLI support, gettext, Ghostscript, jq, rsync, TypeScript, SWIG, Webpack, Python development/packaging, pigz and ZIP. It distinguishes pigz as build-only and the other named tools as retained at runtime. This supports supplying these tools through the common native assembly path, without tenant installation commands.
+
+The review is bounded to these findings. It does not establish version-identical packages, every other entry in Render's table, hosted execution, or the supplier's architecture/phase coverage. Those remain governed by each original task and its evidence. The selected PostgreSQL 18 client contract additionally requires the managed-PG18 archive checks; the original archived PG15 fixture alone is insufficient.

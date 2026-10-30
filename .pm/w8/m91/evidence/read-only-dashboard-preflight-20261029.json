@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-30T02:15:53.975Z",
+  "url": "https://dashboard.bex.co/services/new",
+  "workspace": "tian-personal",
+  "overview": "- link \"Go home\":\n  - /url: /\n  - img \"bex\"\n- list:\n  - listitem:\n    - button \"tian-personal\"\n- button \"Toggle Sidebar\"\n- list:\n  - listitem:\n    - link \"Projects\":\n      - /url: /\n  - listitem:\n    - link \"Blueprints\":\n      - /url: /blueprints\n  - listitem:\n    - link \"Environment Groups\":\n      - /url: /env-groups\n- text: Integrations\n- list:\n  - listitem:\n    - link \"Webhooks\":\n      - /url: /webhooks\n  - listitem:\n    - link \"Notifications\":\n      - /url: /notifications\n- text: Workspace\n- list:\n  - listitem:\n    - link \"Billing\":\n      - /url: /billing\n  - listitem:\n    - link \"Settings\":\n      - /url: /workspace/settings\n- separator \"Resize sidebar\"\n- main:\n  - navigation \"Breadcrumbs\": Projects\n  - button \"Search\": Search \u2318 K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"Account menu for puncsky@gmail.com\"\n  - heading \"Overview\" [level=1]\n  - button \"New\"\n  - heading \"Projects\" [level=2]\n  - button \"Create new project\"\n  - heading \"Ungrouped Resources\" [level=2]\n  - table:\n    - rowgroup:\n      - row \"Name Type Status Created Actions\":\n        - columnheader \"Name\"\n        - columnheader \"Type\"\n        - columnheader \"Status\"\n        - columnheader \"Created\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"qa-20261029-m162-a Web Service Sleeping 2h Open actions menu\":\n        - cell \"qa-20261029-m162-a\":\n          - link \"qa-20261029-m162-a\":\n            - /url: /services/srv-dbhtfte9e4qs73fgrfc0\n        - cell \"Web Service\"\n        - cell \"Sleeping\"\n        - cell \"2h\":\n          - time: 2h\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"tianpan-v4-web Web Service Running 2mo Open actions menu\":\n        - cell \"tianpan-v4-web\":\n          - link \"tianpan-v4-web\":\n            - /url: /services/srv-da40m1qii7bs73drbqlg\n        - cell \"Web Service\"\n        - cell \"Running\"\n        - cell \"2mo\":\n          - time: 2mo\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n- region \"Notifications alt+T\"",
+  "runtimeOptions": "Node\nPython 3\nGo\nRuby\nRust\nElixir\nDocker",
+  "defaults": {
+    "build": "npm install",
+    "start": "npm start"
+  },
+  "submitted": false,
+  "created_resources": 0,
+  "scope": "Read-only authoring preflight before supplier adoption; not hosted tool or production native-image evidence.",
+  "credential_cleanup": "Own root Kratos session revoked by qa-login.sh --logout; own state and jar removed after browser closed."
+}

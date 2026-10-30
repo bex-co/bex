@@ -1,0 +1,407 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.71kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.5s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [auth] library/python:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#5 DONE 0.1s
+
+#6 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#6 DONE 0.1s
+
+#7 [internal] load metadata for localhost:32828/native-python-default-qa@sha256:417c269b79f4d8623d13784765acf9807f99acf5afdc4bd96853dd35e4624035
+#7 DONE 0.1s
+
+#8 [internal] load metadata for docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#8 DONE 1.7s
+
+#9 [internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [stage-0 11/19] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#10 DONE 0.0s
+
+#11 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#11 DONE 0.0s
+
+#12 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#12 DONE 0.0s
+
+#13 [internal] load build context
+#13 transferring context: 15.53kB done
+#13 DONE 0.0s
+
+#14 [internal] preparing inline document
+#14 CACHED
+
+#15 [stage-0  1/19] FROM localhost:32828/native-python-default-qa@sha256:417c269b79f4d8623d13784765acf9807f99acf5afdc4bd96853dd35e4624035
+#15 resolve localhost:32828/native-python-default-qa@sha256:417c269b79f4d8623d13784765acf9807f99acf5afdc4bd96853dd35e4624035 0.0s done
+#15 sha256:417c269b79f4d8623d13784765acf9807f99acf5afdc4bd96853dd35e4624035 4.10kB / 4.10kB done
+#15 sha256:0eb278e2e2d63db386ce9f25cdbd78d23431e2d2bf2fcce24eee2d38bc54a49e 10.38kB / 10.38kB done
+#15 DONE 0.4s
+
+#16 FROM docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#16 resolve docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 0.1s done
+#16 sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 6.51kB / 6.51kB done
+#16 sha256:bfd31faa3063b9850ab9c00b718cb5700846c6e003efae6340f2890a81f30e74 2.33kB / 2.33kB done
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 0B / 48.40MB 0.2s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 0B / 64.52MB 0.2s
+#16 sha256:343c1ab0f027d2a9bd829e5521e81ea76222130396137e4bd2f1bd46e10afa52 6.53kB / 6.53kB done
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 0B / 23.44MB 0.2s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 3.15MB / 48.40MB 3.4s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 2.10MB / 23.44MB 3.4s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 4.19MB / 64.52MB 4.2s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 6.29MB / 48.40MB 4.8s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 4.19MB / 23.44MB 5.5s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 9.44MB / 48.40MB 7.0s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 6.29MB / 23.44MB 9.1s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 7.34MB / 64.52MB 9.3s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 12.58MB / 48.40MB 9.9s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 15.73MB / 48.40MB 13.2s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 7.34MB / 23.44MB 14.1s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 9.44MB / 64.52MB 14.4s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 16.78MB / 48.40MB 18.4s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 9.44MB / 23.44MB 18.6s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 11.53MB / 64.52MB 19.5s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 19.92MB / 48.40MB 21.3s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 11.53MB / 23.44MB 22.6s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 12.58MB / 64.52MB 24.5s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 23.07MB / 48.40MB 24.8s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 13.63MB / 23.44MB 25.5s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 26.21MB / 48.40MB 27.7s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 15.73MB / 23.44MB 27.8s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 14.68MB / 64.52MB 29.7s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 17.83MB / 23.44MB 30.8s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 29.36MB / 48.40MB 30.9s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 19.92MB / 23.44MB 32.9s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 32.51MB / 48.40MB 33.8s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 22.02MB / 23.44MB 34.4s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 17.83MB / 64.52MB 34.8s
+#16 sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 23.44MB / 23.44MB 35.2s done
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 0B / 203.31MB 35.4s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 35.65MB / 48.40MB 36.1s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 38.80MB / 48.40MB 39.2s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 20.97MB / 64.52MB 39.9s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 3.15MB / 203.31MB 40.6s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 40.89MB / 48.40MB 44.3s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 22.02MB / 64.52MB 44.9s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 9.44MB / 203.31MB 45.7s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 44.04MB / 48.40MB 47.9s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 26.21MB / 64.52MB 50.1s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 16.78MB / 203.31MB 50.8s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 47.19MB / 48.40MB 51.0s
+#16 sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 48.40MB / 48.40MB 52.3s done
+#16 extracting sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 0B / 6.24MB 52.3s
+#16 extracting sha256:a97cb698362f4b23d085b953f3106766a2137816fe5e17a99fdc3e48bd37e810 1.0s done
+#16 extracting sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 0.1s
+#16 extracting sha256:aaeb1b620bf2b62e66c0d3dc56c355947e95ede0e1f00fd7c3c9d37e3db15a29 0.2s done
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 1.05MB / 6.24MB 53.8s
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 2.10MB / 6.24MB 55.0s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 29.36MB / 64.52MB 55.3s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 23.07MB / 203.31MB 56.0s
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 3.15MB / 6.24MB 56.7s
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 4.19MB / 6.24MB 58.5s
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 5.24MB / 6.24MB 59.7s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 32.51MB / 64.52MB 60.4s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 26.21MB / 203.31MB 61.0s
+#16 sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 6.24MB / 6.24MB 61.1s done
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 0B / 28.96MB 61.2s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 36.70MB / 64.52MB 64.7s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 2.10MB / 28.96MB 64.7s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 30.41MB / 203.31MB 66.1s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 4.19MB / 28.96MB 68.2s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 39.85MB / 64.52MB 69.8s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 34.60MB / 203.31MB 71.3s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 6.29MB / 28.96MB 72.6s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 42.99MB / 64.52MB 74.8s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 39.85MB / 203.31MB 76.4s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 8.39MB / 28.96MB 76.4s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 47.19MB / 64.52MB 78.3s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 10.49MB / 28.96MB 79.5s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 44.04MB / 203.31MB 81.4s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 51.38MB / 64.52MB 82.5s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 12.58MB / 28.96MB 82.5s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 48.23MB / 203.31MB 86.6s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 54.53MB / 64.52MB 87.7s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 14.68MB / 28.96MB 87.7s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 16.78MB / 28.96MB 89.9s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 53.48MB / 203.31MB 91.6s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 18.87MB / 28.96MB 91.9s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 58.72MB / 64.52MB 92.4s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 20.97MB / 28.96MB 94.0s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 23.07MB / 28.96MB 95.2s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 62.91MB / 64.52MB 96.2s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 25.17MB / 28.96MB 96.2s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 60.82MB / 203.31MB 96.7s
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 27.26MB / 28.96MB 98.1s
+#16 sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 64.52MB / 64.52MB 98.2s done
+#16 extracting sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0
+#16 sha256:3559cf8c9192771b22773c5842dd90531a0694f5011d8211c7131a3aeadcda7e 0B / 248B 98.3s
+#16 extracting sha256:6a3f500343e7e2dfb125dab0e3da0151614ed4139d23d4e7b5b214a9b5bfccc0 1.1s done
+#16 sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 28.96MB / 28.96MB 100.0s done
+#16 sha256:3559cf8c9192771b22773c5842dd90531a0694f5011d8211c7131a3aeadcda7e 248B / 248B 100.0s done
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 66.06MB / 203.31MB 101.8s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 76.55MB / 203.31MB 107.0s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 87.03MB / 203.31MB 110.6s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 97.52MB / 203.31MB 113.3s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 108.00MB / 203.31MB 116.2s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 118.49MB / 203.31MB 118.6s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 128.97MB / 203.31MB 121.5s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 139.46MB / 203.31MB 125.7s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 149.95MB / 203.31MB 128.8s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 160.43MB / 203.31MB 132.2s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 171.97MB / 203.31MB 135.1s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 182.45MB / 203.31MB 137.8s
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 192.94MB / 203.31MB 140.0s
+#16 extracting sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01
+#16 sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 203.31MB / 203.31MB 142.1s done
+#16 extracting sha256:87ebb0f22f550af55cd886e807e33cd81227072a86f3f23e19a87e689b0f4e01 3.1s done
+#16 extracting sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d
+#16 extracting sha256:933b509ff7ad1aca967d1e985bb59cdc4d9f41bed675f50c5c397667643f4d7d 0.2s done
+#16 extracting sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 0.1s
+#16 extracting sha256:c3621e734765e9066c7e3414ad207ed8275a941019db128341e7472988cea9ce 0.4s done
+#16 extracting sha256:3559cf8c9192771b22773c5842dd90531a0694f5011d8211c7131a3aeadcda7e
+#16 extracting sha256:3559cf8c9192771b22773c5842dd90531a0694f5011d8211c7131a3aeadcda7e done
+#16 DONE 147.0s
+
+#17 [stage-0  2/19] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/lib/os-release /opt/bex-primary-os-release
+#17 DONE 0.1s
+
+#11 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#11 CACHED
+
+#18 [stage-0  3/19] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#18 DONE 0.3s
+
+#10 [stage-0 11/19] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#10 CACHED
+
+#12 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#12 CACHED
+
+#19 [stage-0  4/19] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/local/ /usr/local/
+#19 DONE 0.2s
+
+#20 [stage-0  5/19] RUN --network=none /usr/bin/bex-native-python-tools
+#20 0.768 Processing ./opt/bex/python-tools/wheels/setuptools-80.9.0-py3-none-any.whl
+#20 0.776 Processing ./opt/bex/python-tools/wheels/wheel-0.48.0-py3-none-any.whl
+#20 0.777 Processing ./opt/bex/python-tools/wheels/packaging-25.0-py3-none-any.whl
+#20 0.815 Installing collected packages: wheel, setuptools, packaging
+#20 0.870 
+#20 0.870 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#20 0.871 Successfully installed packaging-25.0 setuptools-80.9.0 wheel-0.48.0
+#20 1.053 <string>:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+#20 1.076 native primary Python packaging ready: setuptools-80.9.0, wheel-0.48.0, packaging-25.0
+#20 DONE 1.5s
+
+#21 [stage-0  6/19] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/bin/node /usr/local/bin/node
+#21 DONE 0.1s
+
+#22 [stage-0  7/19] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/lib/node_modules /usr/local/lib/node_modules
+#22 DONE 0.3s
+
+#23 [stage-0  8/19] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+#23 DONE 0.2s
+
+#24 [stage-0  9/19] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#24 DONE 0.1s
+
+#25 [stage-0 10/19] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#25 DONE 0.2s
+
+#26 [stage-0 11/19] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#26 DONE 0.1s
+
+#27 [stage-0 12/19] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#27 DONE 0.5s
+
+#28 [stage-0 13/19] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+#28 1.828 Collecting poetry==2.1.3
+#28 2.066   Downloading poetry-2.1.3-py3-none-any.whl.metadata (7.1 kB)
+#28 2.178 Collecting build<2.0.0,>=1.2.1 (from poetry==2.1.3)
+#28 2.236   Downloading build-1.6.1-py3-none-any.whl.metadata (5.6 kB)
+#28 2.293 Collecting cachecontrol<0.15.0,>=0.14.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#28 2.339   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+#28 2.397 Collecting cleo<3.0.0,>=2.1.0 (from poetry==2.1.3)
+#28 2.484   Downloading cleo-2.1.0-py3-none-any.whl.metadata (12 kB)
+#28 2.740 Collecting dulwich<0.23.0,>=0.22.6 (from poetry==2.1.3)
+#28 2.804   Downloading dulwich-0.22.8-py3-none-any.whl.metadata (4.9 kB)
+#28 2.885 Collecting fastjsonschema<3.0.0,>=2.18.0 (from poetry==2.1.3)
+#28 2.951   Downloading fastjsonschema-2.22.2-py3-none-any.whl.metadata (2.1 kB)
+#28 3.052 Collecting findpython<0.7.0,>=0.6.2 (from poetry==2.1.3)
+#28 3.109   Downloading findpython-0.6.3-py3-none-any.whl.metadata (5.3 kB)
+#28 3.193 Collecting installer<0.8.0,>=0.7.0 (from poetry==2.1.3)
+#28 3.256   Downloading installer-0.7.0-py3-none-any.whl.metadata (936 bytes)
+#28 3.411 Collecting keyring<26.0.0,>=25.1.0 (from poetry==2.1.3)
+#28 3.476   Downloading keyring-25.7.0-py3-none-any.whl.metadata (21 kB)
+#28 3.605 Collecting packaging>=24.0 (from poetry==2.1.3)
+#28 3.654   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#28 3.808 Collecting pbs-installer<2026.0.0,>=2025.1.6 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 3.860   Downloading pbs_installer-2025.12.17-py3-none-any.whl.metadata (992 bytes)
+#28 3.914 Collecting pkginfo<2.0,>=1.12 (from poetry==2.1.3)
+#28 4.015   Downloading pkginfo-1.13.3-py3-none-any.whl.metadata (14 kB)
+#28 4.077 Collecting platformdirs<5,>=3.0.0 (from poetry==2.1.3)
+#28 4.122   Downloading platformdirs-4.14.0-py3-none-any.whl.metadata (5.4 kB)
+#28 4.196 Collecting poetry-core==2.1.3 (from poetry==2.1.3)
+#28 4.254   Downloading poetry_core-2.1.3-py3-none-any.whl.metadata (3.5 kB)
+#28 4.343 Collecting pyproject-hooks<2.0.0,>=1.0.0 (from poetry==2.1.3)
+#28 4.421   Downloading pyproject_hooks-1.3.3-py3-none-any.whl.metadata (1.3 kB)
+#28 4.787 Collecting requests<3.0,>=2.26 (from poetry==2.1.3)
+#28 5.046   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+#28 5.097 Collecting requests-toolbelt<2.0.0,>=1.0.0 (from poetry==2.1.3)
+#28 5.131   Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata (14 kB)
+#28 5.192 Collecting shellingham<2.0,>=1.5 (from poetry==2.1.3)
+#28 5.247   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+#28 5.340 Collecting tomlkit<1.0.0,>=0.11.4 (from poetry==2.1.3)
+#28 5.371   Downloading tomlkit-0.15.2-py3-none-any.whl.metadata (3.4 kB)
+#28 5.433 Collecting trove-classifiers>=2022.5.19 (from poetry==2.1.3)
+#28 5.509   Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl.metadata (2.4 kB)
+#28 5.612 Collecting virtualenv<21.0.0,>=20.26.6 (from poetry==2.1.3)
+#28 5.665   Downloading virtualenv-20.39.1-py3-none-any.whl.metadata (3.5 kB)
+#28 5.798 Collecting msgpack<2.0.0,>=0.5.2 (from cachecontrol<0.15.0,>=0.14.0->cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#28 5.850   Downloading msgpack-1.2.4-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (8.3 kB)
+#28 5.922 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#28 6.018   Downloading filelock-4.2.4-py3-none-any.whl.metadata (2.0 kB)
+#28 6.066 Collecting crashtest<0.5.0,>=0.4.1 (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#28 6.116   Downloading crashtest-0.4.1-py3-none-any.whl.metadata (1.1 kB)
+#28 6.685 Collecting rapidfuzz<4.0.0,>=3.0.0 (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#28 6.740   Downloading rapidfuzz-3.14.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl.metadata (12 kB)
+#28 6.835 Collecting urllib3>=1.25 (from dulwich<0.23.0,>=0.22.6->poetry==2.1.3)
+#28 6.899   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+#28 6.973 Collecting SecretStorage>=3.2 (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 7.023   Downloading secretstorage-3.5.0-py3-none-any.whl.metadata (4.0 kB)
+#28 7.095 Collecting jeepney>=0.4.2 (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 7.197   Downloading jeepney-0.9.0-py3-none-any.whl.metadata (1.2 kB)
+#28 7.243 Collecting jaraco.classes (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 7.305   Downloading jaraco.classes-3.4.0-py3-none-any.whl.metadata (2.6 kB)
+#28 7.401 Collecting jaraco.functools (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 7.446   Downloading jaraco_functools-4.6.0-py3-none-any.whl.metadata (2.9 kB)
+#28 7.519 Collecting jaraco.context (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 7.591   Downloading jaraco_context-6.1.2-py3-none-any.whl.metadata (4.2 kB)
+#28 7.652 Collecting httpx<1,>=0.27.0 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 7.760   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+#28 7.858 Collecting zstandard>=0.21.0 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 7.922   Downloading zstandard-0.25.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (3.3 kB)
+#28 8.000 Collecting anyio (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 8.072   Downloading anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+#28 8.151 Collecting certifi (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 8.202   Downloading certifi-2026.10.23-py3-none-any.whl.metadata (2.5 kB)
+#28 8.293 Collecting httpcore==1.* (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 8.344   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+#28 8.477 Collecting idna (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 8.529   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+#28 8.586 Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 8.687   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+#28 9.016 Collecting charset_normalizer<4,>=2 (from requests<3.0,>=2.26->poetry==2.1.3)
+#28 9.083   Downloading charset_normalizer-3.5.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (46 kB)
+#28 9.304 Collecting distlib<1,>=0.3.7 (from virtualenv<21.0.0,>=20.26.6->poetry==2.1.3)
+#28 9.391   Downloading distlib-0.4.4-py2.py3-none-any.whl.metadata (5.3 kB)
+#28 9.393 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#28 9.462   Downloading filelock-3.32.7-py3-none-any.whl.metadata (2.0 kB)
+#28 9.827 Collecting cryptography>=2.0 (from SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 9.867   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl.metadata (4.4 kB)
+#28 10.04 Collecting cffi>=2.0.0 (from cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 10.09   Downloading cffi-2.1.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (2.5 kB)
+#28 10.18 Collecting pycparser (from cffi>=2.0.0->cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 10.25   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+#28 10.29 Collecting typing_extensions>=4.16.0 (from anyio->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#28 10.36   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+#28 10.43 Collecting more-itertools (from jaraco.classes->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#28 10.50   Downloading more_itertools-11.2.1-py3-none-any.whl.metadata (42 kB)
+#28 10.55 Downloading poetry-2.1.3-py3-none-any.whl (278 kB)
+#28 10.77 Downloading poetry_core-2.1.3-py3-none-any.whl (332 kB)
+#28 10.90 Downloading build-1.6.1-py3-none-any.whl (31 kB)
+#28 10.95 Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+#28 11.04 Downloading cleo-2.1.0-py3-none-any.whl (78 kB)
+#28 11.12 Downloading crashtest-0.4.1-py3-none-any.whl (7.6 kB)
+#28 11.20 Downloading dulwich-0.22.8-py3-none-any.whl (273 kB)
+#28 11.32 Downloading fastjsonschema-2.22.2-py3-none-any.whl (27 kB)
+#28 11.42 Downloading findpython-0.6.3-py3-none-any.whl (20 kB)
+#28 11.54 Downloading installer-0.7.0-py3-none-any.whl (453 kB)
+#28 11.62 Downloading keyring-25.7.0-py3-none-any.whl (39 kB)
+#28 11.66 Downloading msgpack-1.2.4-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (455 kB)
+#28 11.78 Downloading pbs_installer-2025.12.17-py3-none-any.whl (68 kB)
+#28 11.84 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#28 11.89 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#28 11.96 Downloading pkginfo-1.13.3-py3-none-any.whl (35 kB)
+#28 12.06 Downloading platformdirs-4.14.0-py3-none-any.whl (35 kB)
+#28 12.17 Downloading pyproject_hooks-1.3.3-py3-none-any.whl (10 kB)
+#28 12.27 Downloading rapidfuzz-3.14.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl (1.4 MB)
+#28 12.51    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 5.0 MB/s  0:00:00
+#28 12.58 Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+#28 12.69 Downloading charset_normalizer-3.5.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (247 kB)
+#28 12.83 Downloading idna-3.20-py3-none-any.whl (69 kB)
+#28 12.93 Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl (54 kB)
+#28 12.99 Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+#28 13.04 Downloading tomlkit-0.15.2-py3-none-any.whl (52 kB)
+#28 13.12 Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+#28 13.24 Downloading virtualenv-20.39.1-py3-none-any.whl (5.8 MB)
+#28 15.31    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.8/5.8 MB 2.9 MB/s  0:00:02
+#28 15.44 Downloading distlib-0.4.4-py2.py3-none-any.whl (472 kB)
+#28 15.70 Downloading filelock-3.32.7-py3-none-any.whl (100 kB)
+#28 16.00 Downloading certifi-2026.10.23-py3-none-any.whl (135 kB)
+#28 16.68 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#28 17.06 Downloading jeepney-0.9.0-py3-none-any.whl (49 kB)
+#28 17.12 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#28 17.51 Downloading secretstorage-3.5.0-py3-none-any.whl (15 kB)
+#28 17.64 Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl (4.7 MB)
+#28 21.15    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 1.3 MB/s  0:00:03
+#28 21.21 Downloading cffi-2.1.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (222 kB)
+#28 21.51 Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl (14 kB)
+#28 21.66 Downloading zstandard-0.25.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (5.1 MB)
+#28 26.11    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 1.1 MB/s  0:00:04
+#28 26.16 Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+#28 26.38 Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#28 26.47 Downloading jaraco.classes-3.4.0-py3-none-any.whl (6.8 kB)
+#28 26.60 Downloading jaraco_context-6.1.2-py3-none-any.whl (7.9 kB)
+#28 26.68 Downloading jaraco_functools-4.6.0-py3-none-any.whl (11 kB)
+#28 26.73 Downloading more_itertools-11.2.1-py3-none-any.whl (74 kB)
+#28 26.96 Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+#28 27.04 Installing collected packages: trove-classifiers, distlib, zstandard, urllib3, typing_extensions, tomlkit, shellingham, rapidfuzz, pyproject-hooks, pycparser, poetry-core, platformdirs, pkginfo, pbs-installer, packaging, msgpack, more-itertools, jeepney, jaraco.context, installer, idna, h11, filelock, fastjsonschema, crashtest, charset_normalizer, certifi, virtualenv, requests, jaraco.functools, jaraco.classes, httpcore, findpython, dulwich, cleo, cffi, build, anyio, requests-toolbelt, httpx, cryptography, cachecontrol, SecretStorage, keyring, poetry
+#28 28.51 
+#28 28.51 Successfully installed SecretStorage-3.5.0 anyio-4.15.1 build-1.6.1 cachecontrol-0.14.4 certifi-2026.10.23 cffi-2.1.1 charset_normalizer-3.5.2 cleo-2.1.0 crashtest-0.4.1 cryptography-50.0.2 distlib-0.4.4 dulwich-0.22.8 fastjsonschema-2.22.2 filelock-3.32.7 findpython-0.6.3 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.20 installer-0.7.0 jaraco.classes-3.4.0 jaraco.context-6.1.2 jaraco.functools-4.6.0 jeepney-0.9.0 keyring-25.7.0 more-itertools-11.2.1 msgpack-1.2.4 packaging-26.3 pbs-installer-2025.12.17 pkginfo-1.13.3 platformdirs-4.14.0 poetry-2.1.3 poetry-core-2.1.3 pycparser-3.12 pyproject-hooks-1.3.3 rapidfuzz-3.14.6 requests-2.34.2 requests-toolbelt-1.0.0 shellingham-1.5.4 tomlkit-0.15.2 trove-classifiers-2026.9.21.13 typing_extensions-4.16.0 urllib3-2.8.0 virtualenv-20.39.1 zstandard-0.25.0
+#28 DONE 29.6s
+
+#29 [stage-0 14/19] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#29 DONE 0.2s
+
+#30 [stage-0 15/19] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#30 DONE 0.2s
+
+#31 [stage-0 16/19] WORKDIR /opt/render/project/src
+#31 DONE 0.1s
+
+#32 [stage-0 17/19] COPY . .
+#32 DONE 0.1s
+
+#33 [stage-0 18/19] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#33 DONE 0.1s
+
+#34 [stage-0 19/19] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build"]
+#34 0.208 Traceback (most recent call last):
+#34 0.208   File "/opt/render/project/src/check-runtime.py", line 20, in <module>
+#34 0.208     assert 'not found' not in p.stdout,(str(path),p.stdout)
+#34 0.208            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#34 0.208 AssertionError: ('/usr/local/lib/libpython3.so', '\tlinux-vdso.so.1 (0x0000ffff882fc000)\n\tlibpython3.14.so.1.0 => not found\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff880e0000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff882c0000)\n')
+#34 ERROR: process "/bin/bash -c . /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build" did not complete successfully: exit code: 1
+------
+ > [stage-0 19/19] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build"]:
+0.208 Traceback (most recent call last):
+0.208   File "/opt/render/project/src/check-runtime.py", line 20, in <module>
+0.208     assert 'not found' not in p.stdout,(str(path),p.stdout)
+0.208            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+0.208 AssertionError: ('/usr/local/lib/libpython3.so', '\tlinux-vdso.so.1 (0x0000ffff882fc000)\n\tlibpython3.14.so.1.0 => not found\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff880e0000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff882c0000)\n')
+------
+ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build" did not complete successfully: exit code: 1

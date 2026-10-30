@@ -1,0 +1,34 @@
+Collecting pyvips==3.2.0
+  Downloading pyvips-3.2.0.tar.gz (72 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 72.1/72.1 kB 440.3 kB/s eta 0:00:00
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting Django==5.2.18
+  Downloading django-5.2.18-py3-none-any.whl (8.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 2.3 MB/s eta 0:00:00
+Collecting cffi>=1.0.0
+  Downloading cffi-2.1.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (218 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 218.7/218.7 kB 3.5 MB/s eta 0:00:00
+Collecting asgiref>=3.8.1
+  Downloading asgiref-3.13.0-py3-none-any.whl (27 kB)
+Collecting sqlparse>=0.3.1
+  Downloading sqlparse-0.6.0-py3-none-any.whl (50 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 50.1/50.1 kB 14.9 MB/s eta 0:00:00
+Collecting pycparser
+  Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 62.6/62.6 kB 2.5 MB/s eta 0:00:00
+Saved /wheels/django-5.2.18-py3-none-any.whl
+Saved /wheels/asgiref-3.13.0-py3-none-any.whl
+Saved /wheels/cffi-2.1.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+Saved /wheels/sqlparse-0.6.0-py3-none-any.whl
+Saved /wheels/pycparser-3.12-py3-none-any.whl
+Building wheels for collected packages: pyvips
+  Building wheel for pyvips (pyproject.toml): started
+  Building wheel for pyvips (pyproject.toml): finished with status 'done'
+  Created wheel for pyvips: filename=pyvips-3.2.0-cp311-cp311-linux_aarch64.whl size=168382 sha256=0786239767511b48c21474dc84831846e45a903a8f431710d64ecf81b25f57da
+  Stored in directory: /tmp/pip-ephem-wheel-cache-35jqq1qt/wheels/a7/fe/c1/3aaa384150598c6e39c09f334cd46bb95f5c423e579570ec9a
+Successfully built pyvips

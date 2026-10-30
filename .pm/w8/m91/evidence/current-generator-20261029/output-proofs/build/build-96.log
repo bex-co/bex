@@ -1,0 +1,22 @@
+Looking in links: /opt/render/project/src/qa-wheels
+Processing /opt/render/project/src/qa-wheels/django-5.2.18-py3-none-any.whl
+Processing /opt/render/project/src/qa-wheels/asgiref-3.13.0-py3-none-any.whl
+Processing /opt/render/project/src/qa-wheels/sqlparse-0.6.0-py3-none-any.whl
+Installing collected packages: sqlparse, asgiref, Django
+Successfully installed Django-5.2.18 asgiref-3.13.0 sqlparse-0.6.0
+QA_GETTEXT_BEFORE {"marker":"QA416_b52a4f_bex","python":"3.11.2","django":"5.2.18","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"po":{"bytes":508,"sha256":"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"},"program_sha256":"5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0","tools":{"msgfmt":"/usr/bin/msgfmt","msgmerge":"/usr/bin/msgmerge","msguniq":"/usr/bin/msguniq","xgettext":"/usr/bin/xgettext"}}
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/admindocs/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/gis/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/humanize/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/postgres/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/sites/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/admin/locale/fr/LC_MESSAGES
+processing file djangojs.po in /opt/render/project/src/qa-output/m96/site/django/contrib/admin/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/contenttypes/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/redirects/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/conf/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/auth/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/sessions/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/site/django/contrib/flatpages/locale/fr/LC_MESSAGES
+processing file django.po in /opt/render/project/src/qa-output/m96/locale/fr/LC_MESSAGES
+QA_GETTEXT_AFTER {"marker":"QA416_b52a4f_bex","python":"3.11.2","django":"5.2.18","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"po":{"bytes":508,"sha256":"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"},"program_sha256":"5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0","tools":{"msgfmt":"/usr/bin/msgfmt","msgmerge":"/usr/bin/msgmerge","msguniq":"/usr/bin/msguniq","xgettext":"/usr/bin/xgettext"},"translations":{"hello":"Bonjour, Zo\u00eb & \u674e !","dessert":"Cr\u00e8me br\u00fbl\u00e9e","plurals":{"0":"Il y a 0 pomme.","1":"Il y a 1 pomme.","2":"Il y a 2 pommes.","5":"Il y a 5 pommes."}},"independent_stdlib_translations":{"hello":"Bonjour, Zo\u00eb & \u674e !","dessert":"Cr\u00e8me br\u00fbl\u00e9e","plurals":{"0":"Il y a 0 pomme.","1":"Il y a 1 pomme.","2":"Il y a 2 pommes.","5":"Il y a 5 pommes."}},"catalog":{"bytes":461,"sha256":"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce","GNU_MO_magic":true},"fresh_msgfmt_compilation":{"exit":0,"bytes":461,"sha256":"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce"},"msgfmt_version":"msgfmt (GNU gettext-tools) 0.21"}

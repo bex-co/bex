@@ -1,0 +1,8 @@
+Looking in links: /opt/render/project/src/qa-wheels
+Processing /opt/render/project/src/qa-wheels/pyvips-3.2.0-cp311-cp311-linux_aarch64.whl
+Processing /opt/render/project/src/qa-wheels/cffi-2.1.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+Processing /opt/render/project/src/qa-wheels/pycparser-3.12-py3-none-any.whl
+Installing collected packages: pycparser, cffi, pyvips
+Successfully installed cffi-2.1.1 pycparser-3.12 pyvips-3.2.0
+QA_VIPS_BEFORE {"marker":"QA414_7bce23_bex","python":"3.11.2","installed_pyvips":"3.2.0","shared_library":"libvips.so.42","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"}
+QA_VIPS_AFTER {"marker":"QA414_7bce23_bex","python":"3.11.2","installed_pyvips":"3.2.0","shared_library":"libvips.so.42","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395","libvips":"8.14.1","input":{"bytes":107,"sha256":"f0c07ac4113c5586530c573852e3c51aad41d37e988eb7cad59d8282eced673e"},"image":{"width":2,"height":1,"bands":3,"format":"uchar","pixels_hex":"ff00000000ff"},"png":{"bytes":96,"sha256":"08cc96288fb21c6362db84c13f280e3af579794f41ae86192bceba67c52e0ff1"}}

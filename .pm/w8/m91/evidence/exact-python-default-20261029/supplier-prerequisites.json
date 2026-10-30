@@ -1,0 +1,10 @@
+{
+  "reason": "retained Elixir supplier did not contain Python Tk runtime libraries; matching Python suppliers already inherit these from official Python base",
+  "added_binary_packages": [
+    "libtcl8.6",
+    "libtk8.6"
+  ],
+  "location": "local supplier factory overlay only, never generated tenant Dockerfile",
+  "discovered_by": "real _tkinter shared-object ldd failure after loader-cache refresh",
+  "artifact_scope": "local implementation acceptance, not published production supplier"
+}

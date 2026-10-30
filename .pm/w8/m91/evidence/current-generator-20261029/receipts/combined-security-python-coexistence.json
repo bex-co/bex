@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-30T02:20:40.395757+00:00",
+  "source_edits_this_followup": false,
+  "coexistence": [
+    {
+      "image": "m188 Node14combined arm64 configa57849d49537",
+      "checks": "current check-tools.py + check-brotli.py + no-primary helper branch",
+      "network": "none",
+      "exit": 0,
+      "log": "combined-node14-coexist.log"
+    },
+    {
+      "image": "Node24protected actualmanifest3275930ed100",
+      "checks": "current toolchecks + latest mountedBrotliprobe system/bundled +no-primary helper branch",
+      "network": "none",
+      "exit": 0,
+      "logs": [
+        "combined-node24-coexist.log (oldfixture lackednewprobe file; toolchecks passed)",
+        "combined-node24-security-coexist.log (newprobe mounted; security passed)"
+      ]
+    },
+    {
+      "image": "actualNode24Bookworm utilitysupplier + officialPython3.14.10 /usr/local reset+copy",
+      "checks": "helper offline and fullprimarybehavior then current system/bundledBrotli probes",
+      "network": "none forhelper/behavior/security; wheelartifact fetch precedingCI step",
+      "exit": 0,
+      "log": "combined-primary-security.log"
+    }
+  ],
+  "current_combined_recipe_static_findings": [
+    "Nodelegacysecurityrebuild replaces only/usr/local/bin/node beforeprivateNodehelpercopy; leavesnpm andPythonpackagingpaths alone.",
+    "SystemBrotli patches/usr/lib shared/static archives; nopython profile excludesinterpreter/module replacement.",
+    "Pythonwheelstore remainsoutside/usr/local; offline helper runsaftersecuritypackageinstall/defaultfactory and afterexactprimarytree+ENVrestoration.",
+    "check.Dockerfile retains commontools/system+Brotli/optionalprimary-Python checks independently."
+  ],
+  "no_product_edits_or_git_mutations": true
+}

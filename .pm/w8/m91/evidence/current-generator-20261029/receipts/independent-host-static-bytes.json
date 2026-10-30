@@ -1,0 +1,52 @@
+{
+  "qualification": "Actual canonical native-static image published directory extracted from own container; local host independent decode. No object-store upload/HTTP/static compute-runtime claim.",
+  "checks": [
+    {
+      "path": "empty.gz",
+      "bytes": 20,
+      "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2",
+      "CRC32": 0,
+      "ISIZE": 0,
+      "independent_host_decode": true
+    },
+    {
+      "path": "binary.gz",
+      "bytes": 420,
+      "sha256": "8fd723d303b04be6eb4751498852ad84cda1b14754efec466c3bf238f4ecc21c",
+      "CRC32": 3893830384,
+      "ISIZE": 16384,
+      "independent_host_decode": true
+    },
+    {
+      "path": "unicode.gz",
+      "bytes": 42,
+      "sha256": "cce971373d80f5bc1043a33ab541633921d0be41bfe69355b4c2a3e815aacae2",
+      "CRC32": 4167435196,
+      "ISIZE": 1100,
+      "independent_host_decode": true
+    },
+    {
+      "path": "stored.zip",
+      "bytes": 19058,
+      "sha256": "63804973431f0e302e5d12ed054377fb8bd2c3747b5ad4cd07075bd5c299a504",
+      "methods": [
+        0,
+        0,
+        0
+      ],
+      "independent_host_decode": true
+    },
+    {
+      "path": "deflated.zip",
+      "bytes": 920,
+      "sha256": "e7b3c483caac8b59dc366da50a4a031307083513eba4e86f2eb14ac5331b3e63",
+      "methods": [
+        0,
+        8,
+        8
+      ],
+      "independent_host_decode": true
+    }
+  ],
+  "pass": true
+}

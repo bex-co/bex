@@ -1,0 +1,81 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from combined-primary.Dockerfile
+#1 transferring dockerfile: 884B done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.5s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd
+#5 DONE 0.5s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [primary 1/1] FROM docker.io/library/python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd
+#7 CACHED
+
+#8 [internal] load build context
+#8 transferring context: 20.09kB done
+#8 DONE 0.0s
+
+#9 [stage-1 1/9] FROM localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1
+#9 DONE 0.2s
+
+#10 [stage-1 2/9] RUN rm -rf /usr/local
+#10 DONE 0.4s
+
+#11 [stage-1 3/9] COPY --link --from=primary /usr/local/ /usr/local/
+#11 DONE 0.5s
+
+#12 [stage-1 4/9] COPY python-tools.json fetch-python-tools.py install-python-tools.py /opt/bex/python-tools/
+#12 DONE 0.1s
+
+#13 [stage-1 5/9] COPY bex-native-python-tools /usr/bin/
+#13 DONE 0.1s
+
+#14 [stage-1 6/9] RUN chmod 755 /usr/bin/bex-native-python-tools && /usr/bin/python3 /opt/bex/python-tools/fetch-python-tools.py
+#14 4.360 11e52c67415a381d10d6b462ced9cfb97066179f0e871399e006c4ab101fc85f  setuptools-68.0.0-py3-none-any.whl
+#14 4.360 2dd50a7f42dddfa1d02a36f275dbe716f38ed250224f609d35fb60a09593d93e  setuptools-75.3.4-py3-none-any.whl
+#14 4.360 062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922  setuptools-80.9.0-py3-none-any.whl
+#14 4.360 177f9c9b0d45c47873b619f5b650346d632cdc35fb5e4d25058e09c9e581433d  wheel-0.42.0-py3-none-any.whl
+#14 4.360 708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248  wheel-0.45.1-py3-none-any.whl
+#14 4.360 3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab  wheel-0.48.0-py3-none-any.whl
+#14 4.360 29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484  packaging-25.0-py3-none-any.whl
+#14 DONE 4.4s
+
+#15 [stage-1 7/9] COPY check-primary-python.py check-brotli.py /tmp/
+#15 DONE 0.1s
+
+#16 [stage-1 8/9] COPY node-brotli/check.js /usr/share/bex-security/node-check.js
+#16 DONE 0.1s
+
+#17 [stage-1 9/9] RUN --network=none /usr/bin/bex-native-python-tools && /usr/local/bin/python3 /tmp/check-primary-python.py && /usr/bin/python3 /tmp/check-brotli.py
+#17 0.786 Processing ./opt/bex/python-tools/wheels/setuptools-80.9.0-py3-none-any.whl
+#17 0.794 Processing ./opt/bex/python-tools/wheels/wheel-0.48.0-py3-none-any.whl
+#17 0.795 Processing ./opt/bex/python-tools/wheels/packaging-25.0-py3-none-any.whl
+#17 0.833 Installing collected packages: wheel, setuptools, packaging
+#17 0.885 
+#17 0.885 Successfully installed packaging-25.0 setuptools-80.9.0 wheel-0.48.0
+#17 0.886 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#17 1.074 <string>:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+#17 1.101 native primary Python packaging ready: setuptools-80.9.0, wheel-0.48.0, packaging-25.0
+#17 2.628 native primary Python 3.14.10 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#17 2.872 system and bundled Brotli checks passed
+#17 DONE 3.0s
+
+#18 exporting to image
+#18 exporting layers
+#18 exporting layers 0.3s done
+#18 writing image sha256:6e39b4fc1eb590dce853653576aaa6d89c22362cae2821cf910d34b8c88189bc done
+#18 naming to docker.io/library/bex-native-qa-primary-security:20261029
+#18 naming to docker.io/library/bex-native-qa-primary-security:20261029 done
+#18 DONE 0.3s

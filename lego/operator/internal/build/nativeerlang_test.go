@@ -60,6 +60,8 @@ func erlangFake(erlangTags ...string) *fakeExact {
 
 func TestExactErlangFullReleaseLimitsTheTagSearch(t *testing.T) {
 	fake := erlangFake("28.5.0.6")
+	fake.env = []string{"OTP_VERSION=28.5.0.6", "PATH=/usr/local/bin:/usr/bin"}
+	fake.history = []string{"# debian.sh --arch 'amd64' out/ 'trixie' '@1749513600'"}
 	resolveExact(t, fake, nativeElixirRuntime, map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.5.0.6"}, nil)
 	if len(fake.asked) == 0 || fake.asked[0] != "list hexpm/elixir:1.19.5-erlang-28.5.0.6-debian-" {
 		t.Fatalf("a fully specified release searched unrelated image families: %v", fake.asked)
@@ -99,9 +101,17 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := erlangFake(tc.erlangTags...)
+			_, release, _ := strings.Cut(tc.hexpm, "-erlang-")
+			release, _, _ = strings.Cut(release, "-debian-")
+			fake.env = []string{"OTP_VERSION=" + release, "PATH=/usr/local/bin:/usr/bin"}
+			fake.history = []string{"# debian.sh --arch 'amd64' out/ 'trixie' '@1749513600'"}
 			choices, dockerfile := resolveExact(t, fake, "elixir", tc.env, nil)
+			reviewed, err := ResolveNativeVersion(nativeElixirRuntime, tc.env, files(nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertExactNativePrimary(t, dockerfile, reviewed.Image, "erlang:"+tc.erlang+"@"+exactDigest, fake.env)
 			for _, want := range []string{
-				"\nFROM erlang:" + tc.erlang + "@" + exactDigest + "\n",
 				"COPY --link --from=hexpm/elixir:" + tc.hexpm + "@" + otherDigest + " /usr/local/lib/elixir /usr/local/lib/elixir\n",
 				"/usr/local/bin/\nENV LANG=C.UTF-8 ELIXIR_VERSION=v" + choices[0].Line + "\n",
 			} {
@@ -111,6 +121,9 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 			}
 			if strings.Contains(dockerfile, "FROM elixir:") {
 				t.Errorf("Dockerfile still builds on an official elixir image:\n%s", dockerfile)
+			}
+			if choices[0].Image != "erlang:"+tc.erlang+"@"+exactDigest {
+				t.Errorf("exact OTP identity changed: %+v", choices[0])
 			}
 			if got := choices[0].Narration(); got != tc.narration {
 				t.Errorf("narration %q, want %q", got, tc.narration)

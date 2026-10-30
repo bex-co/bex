@@ -1,0 +1,781 @@
+[
+  {
+    "milestone": "w8/m91",
+    "origin": "original sweep402 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "backup": {
+        "bytes": 1721,
+        "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+      },
+      "rows": [
+        "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+        "INSERT INTO public.qa402_backup VALUES (2, 'QA402 café 雪');",
+        "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+      ],
+      "rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"
+    },
+    "authored_file_identities": {
+      "qa402-probe.cjs": {
+        "bytes": 2309,
+        "sha256": "bc158b30e4dfbf41a9d94a5d17e35b9f78e6a6fb3fbf61856fd6f63be8907d77"
+      },
+      "qa402-reference.json": {
+        "bytes": 729,
+        "sha256": "5baa2e8cef680d416743fa5d4c0b4bc969e5b342f5c8c38e7c797e40124c20de"
+      },
+      "qa402-marker.json": {
+        "bytes": 19,
+        "sha256": "5d8b17376264fafe5ddfb6767bef03ccd9757b5069b7eebb884a559b4e3fa8b3"
+      }
+    },
+    "build_command_sha256": "d20de02d836226239713a3f41b7b39f5c8ac902ba6b38920341e06eff87ce697",
+    "start_command": "node qa402-probe.cjs serve",
+    "validation_adjustments": [
+      {
+        "check": "PostgreSQL client version",
+        "historical_control": "15.x",
+        "reviewed_supplier": "18.x",
+        "archive": "Original PG15 custom archive and all exact source/three-row proofs unchanged; PG18-archive boundary separately tested by supplier check."
+      }
+    ]
+  },
+  {
+    "milestone": "w8/m93",
+    "origin": "original sweep407 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "document": {
+        "text": "# Café 雪\n\nThis is **bold** and *emphasis*, with `x < 7`.\n\n- alpha\n- beta\n\n[Guide](https://example.invalid/guide?q=qa407)\n",
+        "bytes": 124,
+        "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865",
+        "required_html": [
+          "Café 雪</h1>",
+          "<strong>bold</strong>",
+          "<em>emphasis</em>",
+          "<code>x &lt; 7</code>",
+          "<li>alpha</li>",
+          "<li>beta</li>",
+          "href=\"https://example.invalid/guide?q=qa407\""
+        ]
+      }
+    },
+    "authored_file_identities": {
+      "qa407-probe.cjs": {
+        "bytes": 2281,
+        "sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+      },
+      "qa407-reference.json": {
+        "bytes": 759,
+        "sha256": "5979ab330a943477995d1eb7e9648d1f73d8abdbf8c241b6fd7e999bed05655c"
+      },
+      "qa407-marker.json": {
+        "bytes": 19,
+        "sha256": "96f6f175e60087d972566eb209b6811846747e7618659f7ff2540223cbcdaad6"
+      }
+    },
+    "build_command_sha256": "4a31bbfa2e85c62836612dd1249138db8d42a0fe3208a496fcd9b5c6c26db0b9",
+    "start_command": "node qa407-probe.cjs serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m94",
+    "origin": "original sweep409 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "sql": {
+        "text": "BEGIN;\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);\nCOMMIT;\n",
+        "bytes": 185,
+        "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+      },
+      "rows": [
+        {
+          "id": 1,
+          "label": "alpha",
+          "n": 7
+        },
+        {
+          "id": 2,
+          "label": "café 雪",
+          "n": 42
+        },
+        {
+          "id": 3,
+          "label": "quote ' and comma,",
+          "n": -9
+        }
+      ]
+    },
+    "authored_file_identities": {
+      "qa409-probe.py": {
+        "bytes": 2815,
+        "sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+      },
+      "qa409-reference.json": {
+        "bytes": 747,
+        "sha256": "e35f7adb6a4aafc6970325d461e0985a51e6814e6c2c49310bab07f8ab0fd026"
+      },
+      "qa409-marker.json": {
+        "bytes": 19,
+        "sha256": "d98cd3c3d54dd58ff58c6858e1065721f6ee5517e60e1cdfc14945a1c33d67a8"
+      }
+    },
+    "build_command_sha256": "ef8b5dafa6bd738e6f6c2262fbf952d6a0d291cd06c062ce2b062d464f60aed9",
+    "start_command": "python3 -u qa409-probe.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m95",
+    "origin": "original sweep414 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "base64": "UDYKOCA0CjI1NQr/AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP//AAD/AAD/AAD/AAAAAP8AAP8AAP8AAP8=",
+        "bytes": 107,
+        "sha256": "f0c07ac4113c5586530c573852e3c51aad41d37e988eb7cad59d8282eced673e"
+      },
+      "expected_rgb_hex": "ff00000000ff"
+    },
+    "authored_file_identities": {
+      "qa-vips-app.py": {
+        "bytes": 2787,
+        "sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395"
+      },
+      "qa-vips-reference.json": {
+        "bytes": 619,
+        "sha256": "249846e6894fdcd97af0cf40c862ae8a6a4e5ea455734c0a917a6d9168d8d2d9"
+      },
+      "qa-vips-marker.json": {
+        "bytes": 19,
+        "sha256": "4aab25a70f8ab8983486bd4f824ae99be21de8982b47fb677efdede7d4e8f946"
+      }
+    },
+    "build_command_sha256": "eeab73a1954ef0e5fdafa82c9e7356cfcf7908fa0a78f05db2bb33ef7aac489e",
+    "start_command": "python -u qa-vips-app.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m96",
+    "origin": "original sweep416 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "expected": {
+        "hello": "Bonjour, Zoë & 李 !",
+        "dessert": "Crème brûlée",
+        "plurals": {
+          "0": "Il y a 0 pomme.",
+          "1": "Il y a 1 pomme.",
+          "2": "Il y a 2 pommes.",
+          "5": "Il y a 5 pommes."
+        }
+      },
+      "django": "5.2.18"
+    },
+    "authored_file_identities": {
+      "qa-gettext-app.py": {
+        "bytes": 3478,
+        "sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+      },
+      "qa_gettext_settings.py": {
+        "bytes": 198,
+        "sha256": "0610134fb696f2716b3ffccdb6a3b557ba0e5237b3690ec9a0b8e48ad174ae5f"
+      },
+      "locale/fr/LC_MESSAGES/django.po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "qa-gettext-reference.json": {
+        "bytes": 618,
+        "sha256": "807e50740a2cf393a7ddd9656dec06f6a825ee599b8f6bcf72532a17fd7bcdf1"
+      },
+      "qa-gettext-marker.json": {
+        "bytes": 18,
+        "sha256": "f14e570090865ffff8dbc2ae96102b8a5c76e24cc3905576b353fd795209d419"
+      }
+    },
+    "build_command_sha256": "3d7dca20382922735303400b14ab25d45634ac5a2d202b7116d165f2db4831a1",
+    "start_command": "python -u qa-gettext-app.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m97",
+    "origin": "original sweep418 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "bytes": 471,
+        "sha256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+        "base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyIDFdIC9SZXNvdXJjZXMgPDwgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggNDQgPj4Kc3RyZWFtCjEgMCAwIHJnIDAgMCAxIDEgcmUgZgowIDAgMSByZyAxIDAgMSAxIHJlIGYKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyMTUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA1IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozMDgKJSVFT0YK",
+        "pages": 1,
+        "MediaBox": [
+          0,
+          0,
+          2,
+          1
+        ],
+        "authored_own_data": true,
+        "content": "two solid red/blue vector rectangles, no text or external resources",
+        "expected_PNG_dimensions": [
+          2,
+          1
+        ],
+        "expected_RGB_hex": "ff00000000ff"
+      }
+    },
+    "authored_file_identities": {
+      "qa-gs-app.py": {
+        "bytes": 2644,
+        "sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5"
+      },
+      "qa-gs-reference.json": {
+        "bytes": 1270,
+        "sha256": "683eae6448fb9b0c5763dd24a2994316162a0c5e75ab361cd5c9ba39eb6db256"
+      },
+      "qa-gs-marker.json": {
+        "bytes": 18,
+        "sha256": "43d39c079d4023cfe950677a3433cea43f72b0284f289e07106fecd2bc2e0a9e"
+      }
+    },
+    "build_command_sha256": "ee5d4bb94677f93cb111b5e378b926a663c5cbf3eb64a5ae9f001204b80c270d",
+    "start_command": "python -u qa-gs-app.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m98",
+    "origin": "original sweep419 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "assets": {
+        "index.html": "<!doctype html><title>QA assets</title><p>Zoë & 李</p>\n",
+        "assets/écho.txt": "Crème brûlée — own Unicode asset\n",
+        "assets/a file.txt": "own asset with a space in its name\n",
+        "assets/draft.tmp": "excluded own draft\n"
+      },
+      "manifest": {
+        "release": "qa-1.2.3",
+        "assets": [
+          {
+            "path": "index.html",
+            "publish": true
+          },
+          {
+            "path": "assets/écho.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/a file.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/draft.tmp",
+            "publish": false
+          }
+        ]
+      }
+    },
+    "authored_file_identities": {
+      "qa-assets-app.cjs": {
+        "bytes": 4070,
+        "sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d"
+      },
+      "qa-assets-reference.json": {
+        "bytes": 790,
+        "sha256": "6b1717b288125d80f68cad718d15da844dad7021f205c921b8513d421954f3b1"
+      },
+      "qa-assets-marker.json": {
+        "bytes": 18,
+        "sha256": "01c7c88d7f60d277612192cde2a83c0286ec8bdb557e961fe2885af04565a58f"
+      }
+    },
+    "build_command_sha256": "bec712f920626e24933c196c85fb8462c30abfaf7d290e640027afbb7ef27889",
+    "start_command": "node qa-assets-app.cjs serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m99",
+    "origin": "original sweep420 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "typescript": "7.0.2",
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "tones": [
+          "warm",
+          "cool",
+          "warm"
+        ]
+      },
+      "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+    },
+    "authored_file_identities": {
+      "qa-ts-app.cts": {
+        "bytes": 2303,
+        "sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+      },
+      "qa-ts-before.cjs": {
+        "bytes": 780,
+        "sha256": "d2ed2b2b0ac0b25988485b04e0137b579261b7a8e5ec08cd0a461e1bc2b90eb1"
+      },
+      "qa-ts-reference.json": {
+        "bytes": 657,
+        "sha256": "8fe3607920171f99336d38ccae682ff6075bb67108ca21c57ef27e5866933b04"
+      },
+      "qa-ts-marker.json": {
+        "bytes": 18,
+        "sha256": "32422efaf5ee09fa932280a0ef2bc537d6fb4fda9f8d936f49cdc7e927066a98"
+      }
+    },
+    "build_command_sha256": "44b20d2d6f72a59a7ebe94e4359a3e3d8b6bb7715f8e244a35f67215d8e5bc35",
+    "start_command": "node dist/qa-ts-app.cjs runtime",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m100",
+    "origin": "original sweep421 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+      "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李"
+    },
+    "authored_file_identities": {
+      "qa-swig-app.py": {
+        "bytes": 2593,
+        "sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
+      },
+      "qa_swig.i": {
+        "bytes": 142,
+        "sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a"
+      },
+      "qa-swig-reference.json": {
+        "bytes": 651,
+        "sha256": "31295935f66f601b752762008037fc9a97f17d97045284e3e7cdabadfb10fa8a"
+      },
+      "qa-swig-marker.json": {
+        "bytes": 18,
+        "sha256": "a26c65d6d0c30ffb31ae496db395d6bf9e4c2c49e6a5214e5901d32ccab03a7f"
+      }
+    },
+    "build_command_sha256": "1e64bf6086f37c9e8d857d3781409f5477f6e2a6a81224904b5cf412337d8499",
+    "start_command": "python qa-swig-app.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m101",
+    "origin": "original sweep422 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "sorted": [
+          2,
+          3,
+          5
+        ]
+      },
+      "sources": {
+        "qa-webpack-entry.mjs": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+        "qa-webpack-domain.mjs": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+      },
+      "control_compiler": "5.112.0",
+      "control_cli": "7.2.3"
+    },
+    "authored_file_identities": {
+      "qa-webpack-entry.mjs": {
+        "bytes": 2287,
+        "sha256": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427"
+      },
+      "qa-webpack-domain.mjs": {
+        "bytes": 177,
+        "sha256": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+      },
+      "qa-webpack-before.cjs": {
+        "bytes": 970,
+        "sha256": "de1c52f4fa6a468b9a98c6c9e22ededc8711365837f86d3bbe07f34753f3502b"
+      },
+      "qa-webpack-reference.json": {
+        "bytes": 780,
+        "sha256": "8c88fb15ef701ff29a18280f0f12ad3d2a038560a75fccce0acc84597a928b5a"
+      },
+      "qa-webpack-marker.json": {
+        "bytes": 18,
+        "sha256": "dfa44f30e0b451dec892054eb72f2c994812c853f85ab20da13dc2380c8e69c8"
+      }
+    },
+    "build_command_sha256": "5b0195974e2fb45af92f42711d1d0993ea5fb157c7bf196af47907759a07216f",
+    "start_command": "node dist/bundle.cjs serve",
+    "validation_adjustments": [
+      {
+        "check": "compiler version",
+        "historical_install_control": "5.112.0",
+        "reviewed_shared_supplier": "5.112.2",
+        "basis": "deploy/native-base/package.json; authored sources/reference unchanged"
+      }
+    ]
+  },
+  {
+    "milestone": "w8/m102",
+    "origin": "original sweep423 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "input": {
+        "unit": "own asset | Crème brûlée | 李 | spaced label\n",
+        "repetitions": 256,
+        "bytes": 12544,
+        "sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8"
+      },
+      "program_sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+    },
+    "authored_file_identities": {
+      "qa-pigz-app.py": {
+        "bytes": 2538,
+        "sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b"
+      },
+      "qa-pigz-reference.json": {
+        "bytes": 592,
+        "sha256": "841734a6820198cb2f253be732993d7facac7d70ef83ddfaae34f80afcab8995"
+      },
+      "qa-pigz-marker.json": {
+        "bytes": 18,
+        "sha256": "5de1583eb8ed1b366aca1e7164414463a574f53e5c356fd72114617c9faff21c"
+      }
+    },
+    "build_command_sha256": "20e856c32ee9b3d466eaade16be383a5477a174854ffd847489a54cd232d583e",
+    "start_command": "python qa-pigz-app.py serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m103",
+    "origin": "original sweep424 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          -4,
+          7
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "expected": [
+        {
+          "a": 2,
+          "b": 3,
+          "value": 13
+        },
+        {
+          "a": -4,
+          "b": 7,
+          "value": 13
+        },
+        {
+          "a": 0,
+          "b": 0,
+          "value": 0
+        }
+      ],
+      "unicode": "Crème brûlée & 李",
+      "source_names": [
+        "setup.py",
+        "qa_native_ext.c",
+        "qapy.py",
+        "qsrv.cjs",
+        "qa_local_data-1.0-py3-none-any.whl"
+      ],
+      "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25"
+    },
+    "authored_file_identities": {
+      "setup.py": {
+        "bytes": 145,
+        "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496"
+      },
+      "qa_native_ext.c": {
+        "bytes": 656,
+        "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db"
+      },
+      "qapy.py": {
+        "bytes": 2420,
+        "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9"
+      },
+      "qsrv.cjs": {
+        "bytes": 673,
+        "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10"
+      },
+      "qa_local_data-1.0-py3-none-any.whl": {
+        "bytes": 1069,
+        "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc"
+      },
+      "qref.json": {
+        "bytes": 669,
+        "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a"
+      },
+      "qm.json": {
+        "bytes": 18,
+        "sha256": "4b87a06e6dbc63da7f035720e5f46889db9c578eba2a4b3b52099bd3c2fe9554"
+      }
+    },
+    "build_command_sha256": "4f16ff504540adecbc3c0c4169a14c653fb236d826a97280a1929d72510e6578",
+    "start_command": "node qsrv.cjs serve",
+    "validation_adjustments": []
+  },
+  {
+    "milestone": "w8/m107",
+    "origin": "original sweep434 authored program/data; local execution is not CLI coverage",
+    "source": {
+      "at": "2026-10-17T13:12:02.325620+00:00",
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      }
+    },
+    "authored_file_identities": {
+      "qa434-app.cjs": {
+        "bytes": 3444,
+        "sha256": "cb0b708278d8f40961df34ae6a8fd35c6d302a245ab27414c2c7adeeec247e6d"
+      },
+      "qa434-reference.json": {
+        "bytes": 388,
+        "sha256": "fd1f283d93efe477e6e95fe00c0e7b41891846945567893d792b56a7768a5ab8"
+      },
+      "qa434-marker.json": {
+        "bytes": 18,
+        "sha256": "931e5176195a44528fd6d4129fef503baf8e70e29f15ef4f59c2a3d824819fa6"
+      }
+    },
+    "build_command_sha256": "f98469391c81d009b06d4e82f48b0f0f0bdee292f17784139d9f07fdf4d221e7",
+    "start_command": "node qa434-app.cjs serve",
+    "validation_adjustments": []
+  }
+]

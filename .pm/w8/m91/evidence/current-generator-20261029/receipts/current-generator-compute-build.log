@@ -1,0 +1,87 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from native-node24.Dockerfile
+#1 transferring dockerfile: 2.04kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.6s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#5 DONE 0.1s
+
+#6 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#6 DONE 0.1s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#8 DONE 0.0s
+
+#9 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#9 DONE 0.0s
+
+#10 [stage-0  4/11] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#10 DONE 0.0s
+
+#11 [stage-0  1/11] FROM localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 64.07kB done
+#12 DONE 0.0s
+
+#13 [stage-0  6/11] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#13 CACHED
+
+#14 [stage-0  5/11] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#14 CACHED
+
+#15 [stage-0  2/11] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#15 CACHED
+
+#16 [stage-0  7/11] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#16 CACHED
+
+#17 [stage-0  3/11] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#17 CACHED
+
+#18 [stage-0  4/11] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#18 CACHED
+
+#19 [stage-0  8/11] WORKDIR /opt/render/project/src
+#19 CACHED
+
+#20 [internal] preparing inline document
+#20 CACHED
+
+#21 [stage-0  9/11] COPY . .
+#21 DONE 0.2s
+
+#22 [stage-0 10/11] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#22 DONE 0.1s
+
+#23 [stage-0 11/11] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build"]
+#23 ...
+
+#16 [stage-0  7/11] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#16 CACHED
+
+#23 [stage-0 11/11] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\npython3 /opt/render/project/src/extended-checks.py build"]
+#23 5.333 {"phase": "build", "network": "Docker build/run --network=none; localhost HTTP only; app wheels cached beforehand", "primary_node": "v24.22.1", "system_python": "3.11.2", "original_program_cases": [{"mid": 91, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 93, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 94, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 95, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 96, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 97, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 98, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 99, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 100, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 101, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 102, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 103, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 107, "original_authored_build": true, "source_and_data_proof": true}], "extra_behavior_checks": ["original PG15 archive + genuine PG18 archive exact three rows, PG18client programs and malformed archive", "libvips headers/pkg-config/C-link/pixels and invalid-image", "Django original plurals + GNU extraction/merge/unique/catalog-format failure", "original owned PDF + Helvetica/color PDF exact independent RGB and render failure", "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure", "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure", "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics", "SWIG runtime typemap/wrapper/C import + invalid interface failure", "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure", "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"], "scope": "Node24/Bookworm arm64 current generator with actual local immutable supplied derivative; Python cases run system companion3.11 with explicit local alias/target import path. No hosted acceptance, no primaryPython3.13, no other architectures/bases or operator predeploy Job claim."}
+#23 DONE 6.0s
+
+#24 exporting to image
+#24 exporting layers
+#24 exporting layers 0.3s done
+#24 writing image sha256:eadd5e424231bdefe94ae386c97aa599c73b2bafc96902b2140b7ea3de51ea3c done
+#24 naming to localhost:32828/native-node24-extended-qa:20261029 done
+#24 DONE 0.3s

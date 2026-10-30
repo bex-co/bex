@@ -1,0 +1,12 @@
+from pathlib import Path
+import json,re,subprocess,sys,datetime
+P=Path(__file__).resolve().parent;kind=sys.argv[1];prefix='native-node24' if kind=='compute' else 'native-static-node24';tag='localhost:32828/'+('native-node24-extended-qa' if kind=='compute' else 'native-static-node24-extended-qa')+':20261029';record={'kind':kind,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tag':tag,'phase_receipts':[]};f=P/('generated-'+kind+'-final.json')
+def save():f.write_text(json.dumps(record,indent=2))
+save()
+with (P/('generated-'+kind+'-final-build.log')).open('w') as log:
+ r=subprocess.run(['docker','build','--platform','linux/arm64','--network','none','--progress','plain','--secret','id=render-env,src='+str(P/(prefix+'.render-env')),'-f',str(P/(prefix+'.Dockerfile')),'-t',tag,str(P/'generated-context')],stdout=log,stderr=log,timeout=240)
+record['build_exit']=r.returncode;save();assert r.returncode==0
+r=subprocess.run(['docker','push',tag],capture_output=True,text=True,timeout=90);(P/('generated-'+kind+'-push.log')).write_text(r.stdout+r.stderr);record['push_exit']=r.returncode;save();assert r.returncode==0;m=re.search(r'digest: (sha256:[0-9a-f]{64})',r.stdout+r.stderr);assert m;ref=tag.rsplit(':',1)[0]+'@'+m[1];record['actual_immutable_image']=ref;save()
+for phase in (['runtime','predeploy'] if kind=='compute' else ['static']):
+ r=subprocess.run(['python3',str(P/'run-generated-phase.py'),phase,ref],capture_output=True,text=True,timeout=240);record['phase_receipts'].append({'phase':phase,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save();assert r.returncode==0,(phase,r.stdout,r.stderr)
+print(json.dumps(record))

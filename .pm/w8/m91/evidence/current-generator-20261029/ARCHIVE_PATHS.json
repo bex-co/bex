@@ -1,0 +1,6 @@
+{
+  "recipes/native-node24-before.Dockerfile": "recipes/native-node24-before.recipe.txt",
+  "recipes/native-node24.Dockerfile": "recipes/native-node24.recipe.txt",
+  "recipes/native-static-node24-before.Dockerfile": "recipes/native-static-node24-before.recipe.txt",
+  "recipes/native-static-node24.Dockerfile": "recipes/native-static-node24.recipe.txt"
+}
