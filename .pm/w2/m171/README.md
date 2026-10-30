@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001–t002 done; resumed 2026-10-29 after the user chose a serving-pool ceiling of 8 (t003 lands it)
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004, t005 done; t003/t012 code shipped, their live Stripe steps pending; next t006 (live HA acceptance on `dev-2`)
 
 ## Tasks (in order)
 
@@ -9,8 +9,8 @@
 | t001 | Fetch Render's live Postgres catalog and record which ≥1-CPU tiers bex adds, at Render × 0.70 — **DONE** | 40m | — |
 | t002 | Capacity and placement check: an HA pair of each chosen tier on production node types — **DONE** | 40m | t001 |
 | t003 | Add the tiers to the catalog, pricing, Stripe catalog and schema enums, with Render's plan-change rules for HA | 1h | t002 |
-| t004 | Emit `postgres_cluster_leader_changed` when the primary changes | 1h | t003, w5/m138/t003 |
-| t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry | 45m | t003 |
+| t004 | Emit `postgres_cluster_leader_changed` when the primary changes — **DONE** | 1h | t003, w5/m138/t003 |
+| t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry — **DONE** | 45m | t003 |
 | t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event | 1h | t004, t005 |
 | t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist | 20m | t006 |
 | t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
@@ -87,3 +87,8 @@ Code for t003 and t012 shipped in `8b09490a3`, `ce346c22b` and `dffe10a88`. Back
 **Still open in t003/t012 (live):** (1) verify `kubectl get md -n bex-capi bex-tenant-0` shows `max=8` after the `app-cluster.yml` roll; (2) run `scripts/stripe-billing-setup.py` in **live** mode to create the 5 prices and retire the 2 (Stripe admin authorization needed); (3) move existing subscriptions off the two retired prices at their next period per the runbook. Until (2) runs, usage of the new tiers is metered but not invoiced.
 
 Not changed (follow-ups for t008 parity review): ADR049 says Render's Blueprints refuse retired legacy plans such as `pro-4gb`, while bex accepts `pro-4gb` per t001. The Blueprint pricing label renders `1c-2g` as "1c 2g". The CLI Heroku skill maps X-0 (2 vCPU / 4 GB) to `pro-4gb` rather than `basic-4gb`.
+
+## t004 + t005 — 2026-10-29 (shipped `5aa58bfaf`, `396c8c0fc`)
+
+- **t004:** `postgres_cluster_leader_changed` (details `{"leaderId": "<new primary instance>"}`, the only field in Render's pinned schema). It comes from `Database.status.currentPrimary` against a latched checkpoint (migration `0173`): none at create (the first primary only latches), one per promotion, and none on unrelated status updates. Idempotency: `SELECT … FOR UPDATE` on the checkpoint, plus a promotion-keyed fact (`<dpg>:leader:<primary>:<promotedAt>`, `ON CONFLICT DO NOTHING`). A stale read from another replica is ignored through CNPG's `currentPrimaryTimestamp`, which the operator now projects. The event is subscribable on REST/GraphQL/MCP webhooks and the dashboard picker, and readable by id on all three. Like every datastore event, it has no service-events list home (w3/m82 boundary). Real-Postgres test `TestPGClusterLeaderChangedOncePerPromotion`.
+- **t005:** the pickers already read the catalog. Added: HA enable/disable on existing databases (GraphQL `updateDatabaseHighAvailability`, MCP `update_postgres.enableHighAvailability`, same rule as REST), a create-dialog HA switch shown only for HA-eligible plans, an HA panel switch with standby price confirmation, and the plan section's <1-CPU block using the requested state. Skeletons: the Postgres plan preview now shows 6 tier slots, pinned to `tiers.yaml`, and the HA preview gained a switch slot. Not done: a browser side-by-side of pending vs ready at 1440/390 px. t007 checks that.
