@@ -136,6 +136,23 @@ run_case "CLI plus substantive agent manifest drift" 0 advance_with_cli lego/ope
 # a non-deploy-triggering change (docs) → exit 1
 run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
 
+# w2/050: the message names the commit that moved the manifests, not a newer
+# docs-only tip that merely sits on top of it.
+git push -qf origin "$BASE":main
+advance lego/operator/config/crd/bases/apps.yaml "kind: CustomResourceDefinition # v2"
+manifest_commit="$(git rev-parse --short HEAD)"
+advance docs/notes.md "docs on top"
+docs_tip="$(git rev-parse --short HEAD)"
+set +e
+named="$("$SCRIPT" "$BASE" 2>&1)"
+set -e
+if [[ "$named" == *"changed by: $manifest_commit"* && "$named" != *"$docs_tip"* ]]; then
+  echo "ok: superseded message names the manifest commit, not the docs tip"
+else
+  echo "FAIL: superseded message should name $manifest_commit and not $docs_tip, got: $named" >&2
+  fails=$((fails + 1))
+fi
+
 if [ "$fails" -eq 0 ]; then
   echo "PASS: deploy-superseded.sh"
 else

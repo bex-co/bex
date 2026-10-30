@@ -128,7 +128,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [050 — Production deploys starve under concurrent pushes: a ready fix waited ~2 h because every run was superseded](050.md) ← seen during w2/m169, 2026-10-28.
+- [x] [050 — Production deploys starve under concurrent pushes](done/050.md) — **DONE 2026-10-29**: the real superseder was a manifest change (`d66f96c06`), not the docs tip the message named; the supersession message now names the manifest-changing commits (shallow-safe), with a test
 
 - [ ] [049 — Do tenants' `verify-full` Postgres connections break at every CNPG CA renewal?](049.md) — **RESUMED 2026-10-29 (decided by the Render parity rule: publicly trusted per-database certificates; HTTP-01 works today, no new credential). Next: confirm Render's chain, prove CNPG accepts a user-provided server cert on `dev-2`, then file the implementation milestone** ← found while deciding w2/m170.
 

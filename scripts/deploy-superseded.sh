@@ -43,6 +43,24 @@ if ! git fetch --no-tags origin main >/dev/null 2>&1; then
   exit 2
 fi
 
+MANIFEST_PATHS=(deploy/opensandbox deploy/gitops .github/workflows/deploy.yml lego/operator/config)
+
+# Name the commits that moved the manifests, not origin/main's tip: the tip is
+# often an unrelated docs commit, which once sent a 2-hour deploy delay's
+# diagnosis after the wrong commit (w2/050). The fetch above leaves the range
+# shallow on CI, so fall back to the tip when the log cannot be read.
+superseders() {
+  local commits
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+    # Only on the superseded path, so the extra fetch is rare and bounded.
+    git fetch --no-tags --deepen=500 origin main >/dev/null 2>&1 || true
+  fi
+  if git merge-base --is-ancestor "$SHA" origin/main 2>/dev/null; then
+    commits="$(git log --format=%h "$SHA..origin/main" -- "$@" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+  fi
+  printf '%s' "${commits:-unknown, history too shallow; origin/main is $(git rev-parse --short origin/main)}"
+}
+
 # First compare every production input except the five files that contain one
 # generated digest each. The second pass below compares those files after
 # replacing only their generated field, so a real manifest change is never
@@ -59,7 +77,7 @@ case "$diff_rc" in
   0)
     ;;
   1)
-    echo "superseded by newer production manifests on origin/main ($(git rev-parse --short origin/main)); this run's images will not be built/pinned"
+    echo "superseded by newer production manifests on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"
     exit 0
     ;;
   *)
@@ -117,7 +135,7 @@ generated_rc=$?
 case "$generated_rc" in
   0) ;; # no manifest drift beyond the five generated digest fields
   1)
-    echo "superseded by a substantive generated-file change on origin/main ($(git rev-parse --short origin/main)); this run's images will not be built/pinned"
+    echo "superseded by a substantive generated-file change on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"
     exit 0
     ;;
   *)
