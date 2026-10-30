@@ -1,0 +1,9 @@
+{
+  "case": "node-compute",
+  "container_id": "f7ab73532ff88817264366ae553605eb9491280c96e28b26d6d72f818db0de3d",
+  "image_config_id": "sha256:da0e315557bf77148b23a1171324cb9d30552c6e6ba933f9c0fbcc416f10ae58",
+  "network": "none",
+  "runtime_command_executed": true,
+  "scope": "local generated image; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": false
+}

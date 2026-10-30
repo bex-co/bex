@@ -1,0 +1,9 @@
+{
+  "case": "python313-original",
+  "container_id": "d34b8d76621f982d3a56d83506669c5290c6309bbe30c99c5f5de35db26165e1",
+  "image_config_id": "sha256:354ae6f625f7d3ad180e3d8652b82d66e3190c7969be49beecc9492bbb1463b1",
+  "network": "none",
+  "runtime_command_executed": true,
+  "scope": "local generated image; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": false
+}

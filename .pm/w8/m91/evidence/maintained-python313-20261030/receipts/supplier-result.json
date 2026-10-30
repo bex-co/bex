@@ -1,0 +1,61 @@
+{
+  "at": "2026-10-30T04:44:29.537577+00:00",
+  "tag": "localhost:32828/native-python313-qa:20261030-ed67ff47",
+  "holder_name": "bex-native-python313-qa-supplier-ed67ff47",
+  "architecture": "linux/arm64",
+  "base_image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+  "source_head": "c60e3e95b22416bd01f5ebff5826e3e6634283b3",
+  "context_manifest_sha256": "4f896760262e8a1c87be97bd0eced5fc1316f32a02d68a9746789e7ccb278368",
+  "scope": "genuine local derivative of current reviewed Python3.13 official base; unsigned/local/notproduction/notamd64",
+  "calls": [
+    {
+      "command": [
+        "docker",
+        "build",
+        "--platform",
+        "linux/arm64",
+        "--progress",
+        "plain",
+        "--build-arg",
+        "BASE_IMAGE=python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+        "--iidfile",
+        "/private/tmp/bex-native-python313-acceptance-352wbad7/supplier-iid.txt",
+        "-t",
+        "localhost:32828/native-python313-qa:20261030-ed67ff47",
+        "/private/tmp/bex-native-python313-acceptance-352wbad7/supplier-context"
+      ],
+      "exit": 0,
+      "log": "supplier-build.log"
+    },
+    {
+      "command": [
+        "docker",
+        "push",
+        "localhost:32828/native-python313-qa:20261030-ed67ff47"
+      ],
+      "exit": 0,
+      "log": "supplier-push.log"
+    },
+    {
+      "command": [
+        "docker",
+        "build",
+        "--platform",
+        "linux/arm64",
+        "--progress",
+        "plain",
+        "--build-arg",
+        "NATIVE_BASE=localhost:32828/native-python313-qa@sha256:333ddfd23f1aa11c20c83141432bdd93e709efcf9861e716e2d8db55cef517ef",
+        "-f",
+        "/private/tmp/bex-native-python313-acceptance-352wbad7/supplier-context/check.Dockerfile",
+        "/private/tmp/bex-native-python313-acceptance-352wbad7/supplier-context"
+      ],
+      "exit": 0,
+      "log": "supplier-offline-check.log"
+    }
+  ],
+  "holder_id": "276a39ce3f06e089842cd648b0a9ee6259da8d7c9b0f912f74a73591eee34b6f",
+  "image_config_id": "sha256:2b99c0f499d893e73d3ba624d86ab3227a2355491fe354bb5ceae87e121ae9f6",
+  "immutable_ref": "localhost:32828/native-python313-qa@sha256:333ddfd23f1aa11c20c83141432bdd93e709efcf9861e716e2d8db55cef517ef",
+  "pass": true
+}

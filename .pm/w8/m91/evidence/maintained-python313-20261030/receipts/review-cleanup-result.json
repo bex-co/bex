@@ -1,0 +1,24 @@
+{
+  "recorded_at": "2026-10-30T05:13:38.519517+00:00",
+  "reviews": [
+    "reuse",
+    "quality",
+    "efficiency"
+  ],
+  "findings_fixed": [
+    "inlined the one-use duplicate subprocess runner in original-cases.py",
+    "removed the unused callback accumulation list; returned HTTP proofs remain the oracle"
+  ],
+  "frozen_program_data_validators": "unchanged",
+  "go_test_source_sha256": "1df08cd0e1f9b3ab9c6876419ee4bbdf426ff940382a9c5b362695beb330aa3c",
+  "changed_wrapper_sha256": "930804f41c7572924f3c67de37f73153c1a5364dbdfa4d3e9266870d7266bf23",
+  "post_review_generated_gate": {
+    "command": "go test ./internal/build -run ^TestNativeUtilityGeneratedImages$ -count=1 -timeout=25m -v",
+    "exit": 0,
+    "all_four_cases_passed": true,
+    "elapsed_seconds": 17.746,
+    "log": "logs/maintained-after-review.log.gz"
+  },
+  "full_operator_suite": "Passed before the wrapper-only cleanup; Go source is byte-identical. All four actual generated-image cases reran after cleanup.",
+  "scope": "Local linux/arm64; no hosted/publication/production claim"
+}

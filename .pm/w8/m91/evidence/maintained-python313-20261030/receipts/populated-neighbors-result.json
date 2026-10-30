@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-30T05:00:12.295367+00:00",
+  "exit": 0,
+  "catalog": "Every reviewed source key has a SYNTHETIC fixture digest; unit/host-shell only, no Docker execution. Real generated image checks separately use genuine immutable local refs.",
+  "existing_contracts": 12,
+  "repository_edits": false
+}

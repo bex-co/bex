@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-30T05:01:35.323776+00:00",
+  "commands": [
+    {
+      "command": [
+        "go",
+        "test",
+        "./internal/build",
+        "-run",
+        "^TestNativeUtilityGeneratedImages$",
+        "-count=1",
+        "-timeout=25m",
+        "-v"
+      ],
+      "exit": 0,
+      "log": "maintained-all-final.log",
+      "opt_in_generated_image_gate": true
+    },
+    {
+      "command": [
+        "go",
+        "test",
+        "./internal/build",
+        "-count=1"
+      ],
+      "exit": 0,
+      "log": "build-package-test-final.log",
+      "opt_in_generated_image_gate": false
+    },
+    {
+      "command": [
+        "make",
+        "test"
+      ],
+      "exit": 0,
+      "log": "operator-make-test-final.log",
+      "opt_in_generated_image_gate": false
+    }
+  ],
+  "before_generated": {
+    "lego/operator/config/crd/bases/app.bex.co_databases.yaml": "2a74bc7233c9961dd45a44a82e05e1b6b22d409da840d4bbc43f2f8b34cc8ea0",
+    "lego/operator/config/crd/bases/app.bex.co_apps.yaml": "7091012828f1f3685097f602b18625300cb1bdf703774874a601d84062b22852",
+    "lego/operator/config/crd/bases/app.bex.co_keyvalues.yaml": "1df77ebd625f31a6da2a56f38912f8558b847ff01fcf4d54207632f7382cc7c4",
+    "lego/types/v1alpha1/zz_generated.deepcopy.go": "cbdc62ad9003a5edb3f3af7fe840374781ca7c38e1290345e6ef9b1d06df79e8",
+    "lego/operator/config/rbac/role.yaml": "11eac53e2a271e35ec0d74f6b3de3b168f792f33e0096e1efaeee792360c5869"
+  },
+  "codegen_drift": {},
+  "pass": true
+}
