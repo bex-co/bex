@@ -134,7 +134,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] [048 — Every production GitOps sync stalls while the tenant pool is full: Argo waits on the `tenant-headroom` placeholder](done/048.md) — **DONE 2026-10-20** (placeholder moved to the root app's last sync wave; validator keeps it last) ← seen during w2/m170 rollout, 2026-10-20.
 
-> Inbox `047` (small Postgres tiers priced above Render × 0.70) absorbed into [w2/m171](m171/README.md) as t012 on 2026-10-20 by user decision: $4.20 / $13.30, existing subscriptions move at their next period, in the same Stripe change as the new HA tiers.
+> Inbox `047` (small Postgres tiers priced above Render × 0.70) absorbed into [w2/m171](blocked/m171/README.md) as t012 on 2026-10-20 by user decision: $4.20 / $13.30, existing subscriptions move at their next period, in the same Stripe change as the new HA tiers.
 
 - [x] [046 — MCP `update_environment_variables`, exactly as Render's official MCP server defines it](done/046.md) — **DONE 2026-10-20** (`Parity1to1` in the pinned MCP guard; merge/replace/one deploy/Render's text) ← `/pm-brainstorm for w2` 2026-10-19 #5.
 
