@@ -1,6 +1,6 @@
 # w2 · m245 — Public Postgres URLs verify against system roots, as on Render
 
-**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo — t001–t005 done (production acceptance passed 2026-10-30); next t006 docs
+**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** done — every DoD bullet verified on production 2026-10-30
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | External connection string connects as-is from a stock client, Render-shaped                             — **DONE** | 40m | t002       |
 | t004 | `serverCaCertificate` semantics on REST, GraphQL, MCP and the dashboard connect panel                     — **DONE** | 30m | t003       |
 | t005 | Live acceptance on production: copy → connect, forced renewal → still connects                           — **DONE** | 40m | t004       |
-| t006 | Correct ADR009, ADR018 and the connection docs                                                           | 20m | t005       |
-| t007 | Render parity                                                                                           | 20m | t006       |
-| t008 | Simplify                                                                                                | 15m | t007       |
-| t009 | Test coverage                                                                                           | 30m | t007       |
-| t010 | Closeout                                                                                                | 10m | t008, t009 |
+| t006 | Correct ADR009, ADR018 and the connection docs                                                           — **DONE** | 20m | t005       |
+| t007 | Render parity                                                                                           — **DONE** | 20m | t006       |
+| t008 | Simplify                                                                                                — **DONE** | 15m | t007       |
+| t009 | Test coverage                                                                                           — **DONE** | 30m | t007       |
+| t010 | Closeout                                                                                                — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -29,7 +29,7 @@
 
 - **Source:** promoted from inbox note `w2/049` (2026-10-29, `/loopx w2`). The note's history is preserved in [source-w2-049.md](source-w2-049.md). Its `/unblock` decision (2026-10-29, Render parity rule): publicly trusted per-database certificates.
 - **Evidence:** CNPG-generated tenant CAs rotate about every 90 days, which breaks `verify-full` clients that pinned the CA (w2/m170, Grafana). A copied production URL fails today with `root certificate file "~/.postgresql/root.crt" does not exist` (2026-10-24, w4 QA). Render's hosts present Let's Encrypt certificates (`oregon-postgres.render.com`, `frankfurt-postgres.render.com` → issuer `Let's Encrypt YR1`, verify OK; checked 2026-10-29).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillar 1 (Render compatibility) and [ADR009](../../../docs/ADR009-postgresql-management.md) managed Postgres external access.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillar 1 (Render compatibility) and [ADR009](../../../../docs/ADR009-postgresql-management.md) managed Postgres external access.
 - **Expected outcome:** teams migrating from Render paste their connection string and it works. No tenant connection breaks at a CA rotation.
 - **Why now:** exposure grows with every public database. The CA cycle already broke a first-party consumer, and the parity decision is recorded.
 - **Render parity included:** connection info is read on REST, GraphQL, MCP and the dashboard.
@@ -68,3 +68,11 @@ Deployed with pin `ef993f254` (images `dc80c29bf2bc`, which contains `19bfc60d1`
 - **DoD 2 (forced renewal):** set `Issuing=True` (`ManuallyTriggered`, what `cmctl renew` does) on `dpg-db9r654flioc739mcpbg-public-tls`. It moved to revision 2, and the served serial changed `0699C8…` → `0588F3…` with **no Pod restart** (the instance had run 6d2h with 0 restarts; `cnpg.io/reload` worked on CNPG 1.30.1). The same unchanged URL connected again.
 - **DoD 3 (HA + internal):** a temporary `1c-2g` HA public database in workspace `bex` (`dpg-dbi5pqg9vnuc73fiqpe0`) became `PubliclyTrusted`, with CNPG `serverTLSSecret`/`serverCASecret` set to `<db>-public-tls`/`<db>-public-ca`. Its replica streamed over TLS (`pg_stat_replication`: `streaming`, ssl `t`). `POST …/failover` → 202 promoted `-2` within about 5 s, and the former primary **rejoined as a streaming TLS replica** (it verified the new primary's Let's Encrypt certificate against the root-only CA). The external URL wrote after failover with no CA file, and the internal URL read from inside the namespace. The database was deleted afterwards (204). A first attempt in `bex-canary` hit a separate defect, the Hobby tenant quota refusing the second HA instance, now filed as `w2/054`. That database was deleted too.
 - **DoD 4 (surfaces):** GraphQL `databaseConnectionInfo` matched REST (same host, empty query, `serverCaCertificate: ""`, `PGPASSWORD=` psql form). MCP has no connection-info tool. The dashboard hides the CA block when it is empty (t004 test).
+
+## t006–t010 — 2026-10-30 (closed)
+
+- **t006 docs** (`1a25490cc`, corrected by `ac14b1334`): ADR009 has a new § "Publicly trusted server certificates (w2/m245)" (issuance, CNPG wiring, status, URL shape, `serverCaCertificate`, renewal, cleanup order, Let's Encrypt budget, stale `root.crt` limit), and the External URL row is rewritten. ADR018's connection-info row is updated, and so are the ADR088 tenant line, the CLI checklist and `render-artifacts/psql-cli.md`.
+- **t007 Render parity:** REST omits `serverCaCertificate`, matching the pinned `postgresConnectionInfo`. GraphQL returns `""`. MCP has no connection-info tool, as Render's MCP does not. The dashboard hides the CA block. The bex CLI provisions nothing for an empty CA and passes the URL to `psql` unchanged. **URL shape:** Render documents `postgresql://USER:PASSWORD@EXTERNAL_HOST:PORT/DATABASE` (render.com/docs/postgresql-creating-connecting, checked 2026-10-30), so bex keeps `host:5432/db` with no `sslmode`. A subagent commit that dropped the port based on ADR009's portless record was **not** taken. That record was corrected instead (`ac14b1334`).
+- **t008 simplify** (`b671ee403`): public SNI names are computed once per reconcile, and a `stringsAsAny` helper replaces three loops.
+- **t009 tests** (`8330d2168`): an expired served certificate reverts to CNPG's; a name-set re-issue keeps the database `PubliclyTrusted`; deletion order is covered; foreign same-named objects are never adopted. The backend falls back to `verify-full` + CA (503 if the CA is missing). A CLI end-to-end test checks that a public database gets no `PGSSLROOTCERT`. Mutation spot-checks confirmed the expiry and foreign-object tests catch regressions. Suites pass: `make test`/`make lint`, backend (real-deps rerun green after a known `internal/store` timing flake), CLI, and dashboard with 5693 tests.
+- **t010 Closeout:** all five DoD bullets hold, with evidence in `## t005` (production) and the docs above.
