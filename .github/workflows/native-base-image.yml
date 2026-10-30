@@ -60,11 +60,11 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix: ${{ fromJSON(needs.matrix.outputs.images) }}
-    # An adoption-only commit must not cancel other candidates still building.
-    # Supersede only the same runtime when its publishing inputs really change.
+    # Finish an expensive compile so its verified inline cache can be reused.
+    # New recipes replace pending work, never the same runtime already running.
     concurrency:
       group: native-base-${{ matrix.name }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
