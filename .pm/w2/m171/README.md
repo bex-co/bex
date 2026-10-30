@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004–t007 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t008 (Render parity)
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004–t008 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t009/t010
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event — **DONE** | 1h | t004, t005 |
 | t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist — **DONE** | 20m | t006 |
 | t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
-| t008 | Render parity | 30m | t007, t012 |
+| t008 | Render parity — **DONE** | 30m | t007, t012 |
 | t009 | Simplify | 15m | t008 |
 | t010 | Test coverage | 45m | t008 |
 | t011 | Closeout | 10m | t009, t010 |
@@ -103,3 +103,11 @@ Local CAPD cluster. The shared local operator was updated to main (`bex-operator
 - **Events:** exactly **two** `postgres_cluster_leader_changed` events, none at create and none on later reconciles (checked 2 min later): `evt-7amt1lb01e12k9pq5te8` (02:59:28Z, `{"leaderId":"…-2"}`) and `evt-cfr7bdtc2lr9p1iaqed4` (03:00:50Z, `{"leaderId":"…-1"}`), both readable via `GET /v1/events/{id}`.
 - **Webhook:** each event produced a delivery (`whd-…`, `eventType: postgres_cluster_leader_changed`, `serviceName: dpg-…`) plus one retry of the same event. The target was a deliberately local `https://localhost` URL, which the SSRF guard refused ("destination resolves to a blocked address"), so the event is deliverable through the pipeline. The production check of an external receiver happens in the closing live walk.
 - **Local-environment gap found (not product):** the local overlay deletes production's `allow-cnpg-apiserver-egress` Cilium policy without a Calico equivalent, so no tenant Postgres can initialize on the local cluster (initdb: `dial tcp 10.128.0.1:443: i/o timeout`). For this run, a namespaced NetworkPolicy was added in the throwaway tenant namespace. Filed as `w2/053`.
+
+## t008 — Render parity, 2026-10-30
+
+- **Plans on every surface:** REST, GraphQL, MCP, Blueprint and the dashboard all read the one catalog (t003/t005). Render's pinned `render.yaml` schema `postgresPlan` enum contains `1c-2g`, `1c-4g`, `2c-4g` **and** `pro-4gb`/`basic-4gb`, so accepting `pro-4gb` matches Render. ADR049 refuses only the plans bex does not sell (`pro-8gb` …).
+- **Fixed:** the Blueprint estimate labeled Postgres plans with the compute title-caser ("1c 2g", "Basic 1gb"), while the Postgres surfaces said "1c-2g" / "Basic 1GB". Both now use `postgres.TierDisplayName`.
+- **HA plan-change rule:** Render's HA documentation (re-read 2026-10-30) says only "at least 1 CPU" and nothing about changing plan while HA is on. Per the t001 decision, the fallback stands: refuse with `POSTGRES_HA_PLAN_UNSUPPORTED` unless the same request disables HA, so nothing is silently turned off. It is identical on REST, GraphQL, MCP and Blueprint (t003 tests).
+- **Event:** `postgres_cluster_leader_changed` carries exactly Render's pinned details (`leaderId`). Like every datastore event, it has no service-events list home (an existing w3/m82 boundary, not new here).
+- **Not a bex divergence:** the CLI's Heroku-migration skill table maps X-0 to `pro-4gb` and lists plans bex does not sell. It is the Render skill pack's own mapping, left as-is.
