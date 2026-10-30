@@ -1,0 +1,26 @@
+{
+  "method": "Actual embedded workflow selector; read-only Git diff/output file only. No Docker, signing, network, dispatch or production mutation.",
+  "checks": [
+    {
+      "name": "python-3.7-bullseye",
+      "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "expected": "recover",
+      "actual_outputs": "digest=sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0\nproducer=bfdeb62211ae5c4a875f5474a51c63c036e1d4dd\n",
+      "exit": 0
+    },
+    {
+      "name": "python-3.7-bullseye",
+      "base": "python:changed@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "build",
+      "actual_outputs": "",
+      "exit": 0
+    },
+    {
+      "name": "not-a-reviewed-name",
+      "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "expected": "build",
+      "actual_outputs": "",
+      "exit": 0
+    }
+  ]
+}

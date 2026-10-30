@@ -1,0 +1,69 @@
+{
+  "files": {
+    "python37-job.log.gz": {
+      "bytes": 168475,
+      "sha256": "e4111cdcaf116dec5a7a2d287e99cbbb95d1b9dbbd81bf228aa89494cd0bbd5e",
+      "original_bytes": 1206971,
+      "original_sha256": "301660d1b6742d3c3441ef533e5b0191fa705af15bcb35efd013622b5bb69b8f"
+    },
+    "diagnosis.json": {
+      "bytes": 4041,
+      "sha256": "8d05bab133107950f26c25ab0cde9dabeacfc811b7a1732e6cd5aef060ea4616"
+    }
+  },
+  "scope": "Failure diagnosis only; no candidate approval, production pin or supplier adoption.",
+  "metadata_files": {
+    "anonymous-metadata-preflight/amd64-config.json": {
+      "bytes": 18275,
+      "sha256": "4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce"
+    },
+    "anonymous-metadata-preflight/amd64-manifest.json": {
+      "bytes": 3726,
+      "sha256": "380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710"
+    },
+    "anonymous-metadata-preflight/amd64-official-config.json": {
+      "bytes": 8125,
+      "sha256": "db1238b04cccbbd9feb8398d29e8efcd98f02b7912b7e308dea9d1cca63392ce"
+    },
+    "anonymous-metadata-preflight/amd64-official-manifest.json": {
+      "bytes": 2007,
+      "sha256": "47287d2f807e18545ef0c10941cc884835970fc9da43debabad1461b2782adde"
+    },
+    "anonymous-metadata-preflight/arm64-config.json": {
+      "bytes": 18276,
+      "sha256": "3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee"
+    },
+    "anonymous-metadata-preflight/arm64-manifest.json": {
+      "bytes": 3726,
+      "sha256": "28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1"
+    },
+    "anonymous-metadata-preflight/arm64-official-config.json": {
+      "bytes": 8140,
+      "sha256": "fe333f4c5697e0ed62bccfe92efc04d7417914b3eeaedc8bb3dafb51bcf83038"
+    },
+    "anonymous-metadata-preflight/arm64-official-manifest.json": {
+      "bytes": 2007,
+      "sha256": "bcbcfb6e661887b4006b457e0883bacefe9958c2cfc4d2ad8fc4eae464cfceb8"
+    },
+    "anonymous-metadata-preflight/index.json": {
+      "bytes": 1611,
+      "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+    },
+    "anonymous-metadata-preflight/metadata-receipt.json": {
+      "bytes": 17303,
+      "sha256": "5f17935434259de25e83efba5812426a2fb75fb4416b60bf541a288e470edacb"
+    },
+    "anonymous-metadata-preflight/official-index.json": {
+      "bytes": 1862,
+      "sha256": "f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a"
+    },
+    "anonymous-metadata-preflight/proposed-recovery-entry.json": {
+      "bytes": 821,
+      "sha256": "57e99d88d90f79e9529f344d13e9f2d9a4cd77aaa15348fff26ac494e6fd5aae"
+    },
+    "anonymous-metadata-preflight/recipe-inputs-producer-and-current.json": {
+      "bytes": 2913,
+      "sha256": "8b267f9d9c2aa86e35d3831e138c277788691a7c68cc62f5d8a350974028129a"
+    }
+  }
+}
