@@ -63,7 +63,7 @@ describe("useDeploy", () => {
 
   // w4/262: Live closes the rollout, but a later deploy turns the record
   // Deactivated — keep reading it at the resource baseline.
-  it("keeps a live deploy refreshing at the 30s baseline", () => {
+  it("keeps a live deploy refreshing at the 25s baseline", () => {
     mockUseQuery.mockReturnValue({
       data: {
         deploy: deploy({ status: "live", finishedAt: "2026-07-14T00:01:00Z" }),
@@ -77,7 +77,7 @@ describe("useDeploy", () => {
 
     renderHook(() => useDeploy("web", "dep-1"));
 
-    expect(startPolling).toHaveBeenCalledWith(30_000);
+    expect(startPolling).toHaveBeenCalledWith(25_000);
     expect(stopPolling).not.toHaveBeenCalled();
   });
 
