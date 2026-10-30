@@ -1,0 +1,82 @@
+{
+  "schema": "bex.native-catalog-coverage/v1",
+  "baseline_commit": "cf30a593099de5a7640cd7770365cbbf85d58b2a",
+  "baseline_source_sha256": {
+    "lego/operator/internal/build/nativebases.go": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+    "lego/operator/internal/build/nativebases_test.go": "9e11810c99eecdc9c02e6259076d237749dc27f07b45e9405cd27756aab2898e",
+    "scripts/lib/toolchain-freshness.py": "18de49aec5981c659e067362065c546398b04a896b52db225a6ca4c8e0885c37",
+    "scripts/build-toolchain-freshness.test.sh": "1601fbec6f30561b3af2d75499e6ab6884c1b9bde15930d0fc6e30928df9fb81"
+  },
+  "verified_source_sha256": {
+    "lego/operator/internal/build/nativebases.go": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+    "lego/operator/internal/build/nativebases_test.go": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+    "scripts/lib/toolchain-freshness.py": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+    "scripts/build-toolchain-freshness.test.sh": "e89ef89b67d4a530f1e85f9206cd7d8c7a8fd530a70d9dc62a6ee4cf12bc9109"
+  },
+  "catalog_state": "production map empty; private Go overlays only; no supplier adoption",
+  "checks": [
+    {
+      "case": "old canonical pin list with new supplier-only fixture",
+      "exit": 1,
+      "reason": "new regression expected uncovered digest rejection, old scanner returned 0"
+    },
+    {
+      "case": "new canonical pin list, full shell suite",
+      "exit": 0
+    },
+    {
+      "case": "old resolver test, one-entry private overlay",
+      "exit": 0,
+      "reason": "confirmed coverage gap"
+    },
+    {
+      "case": "new resolver test, empty real catalog",
+      "exit": 0
+    },
+    {
+      "case": "new resolver test, one-entry private overlay",
+      "exit": 1,
+      "reason": "expected completeness rejection: 1 versus 27"
+    },
+    {
+      "case": "new resolver test, complete synthetic private overlay",
+      "exit": 0
+    },
+    {
+      "case": "actual canonical inventory validation",
+      "exit": 0
+    }
+  ],
+  "suites": [
+    {
+      "check": "operator-test",
+      "exit": 0,
+      "seconds": 222.077
+    },
+    {
+      "check": "workspace-lint-wrong-invocation",
+      "exit": 2,
+      "seconds": 62.094,
+      "reason": "GOWORK=off prevented the workspace deadcode analyzer from resolving sibling modules; all compiler lint phases had zero issues"
+    },
+    {
+      "check": "workspace-lint",
+      "exit": 0,
+      "seconds": 108.862,
+      "workspace": "enabled"
+    }
+  ],
+  "review": {
+    "reuse": "cli090: clean",
+    "quality": "fixture_quality: clean",
+    "efficiency": "disk221: clean"
+  },
+  "focused_command": "GOWORK=off go test [-overlay=<local-overlay.json>] ./internal/build -run ^TestSuppliedResolverPreservesEveryReviewedPrimary$ -count=1",
+  "overlay_reproduction": "Decompress partial.go.gz or complete.go.gz outside the module and map the absolute nativebases.go path to it in a Go overlay Replace object. Both variants replace only the empty map literal with synthetic values.",
+  "unverified": [
+    "published supplier completeness",
+    "real catalog population",
+    "production adoption",
+    "original hosted acceptance"
+  ]
+}

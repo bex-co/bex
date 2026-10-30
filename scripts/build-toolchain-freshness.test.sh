@@ -79,6 +79,31 @@ assert_stdout() {
 # GREEN: the committed tree validates.
 assert "canonical inventory validates" 0 env -u FRESHNESS_INVENTORY -u FRESHNESS_ROOT -u FRESHNESS_PIN_SITES "$SCRIPT" validate
 
+# Canonical discovery must cover supplied derivatives without a fixture override.
+write_tree "$tmp/supplied"
+python3 - "$root/scripts/lib/toolchain-freshness.py" "$tmp/supplied" "$DIGEST_C" <<'PYFIXTURE'
+import importlib.util, json, sys
+from pathlib import Path
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("freshness_fixture", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+fixture = Path(sys.argv[2])
+for site in module.CANONICAL_PIN_SITES:
+    target = fixture / site
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("")
+native_site = "lego/operator/internal/build/nativebases.go"
+(fixture / native_site).write_text('package build\nvar supplied = "ghcr.io/bex-co/bex-cnb-run@' + sys.argv[3] + '"\n')
+inventory = json.loads((fixture / "inv.json").read_text())
+inventory["images"].append(dict(inventory["images"][0], id="native-supplier", kind="native-base", upstream="ghcr.io/bex-co/bex-cnb-run:native-fixture", committed="ghcr.io/bex-co/bex-cnb-run@" + sys.argv[3], files=[native_site]))
+(fixture / "covered.json").write_text(json.dumps(inventory))
+PYFIXTURE
+assert "canonical supplied-base digest needs inventory coverage" 1 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/inv.json" "$SCRIPT" validate
+assert "inventoried canonical supplied-base digest validates" 0 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/covered.json" "$SCRIPT" validate
+
 # RED: missing coverage of a pin-site digest.
 write_tree "$tmp/uncovered"
 printf 'extra := "other@%s"\n' "$DIGEST_C" >>"$tmp/uncovered/pin.go"

@@ -129,3 +129,9 @@ The signed scans retain 229 critical findings per architecture, with no Brotli f
 ## Seventh supplier independently verified — 2026-10-30
 
 [Fresh-build Ruby 3.0](evidence/published-ruby30-20261030/README.md) passed the unchanged strict review, all five full signed bundles and 33 fresh public blob reads totaling 1.159 GB. Its reports retain all findings, including reported Brotli CVEs; runtime backport probes passed independently. Seven of 27 suppliers are verified. The remaining 20, complete catalog/adoption and all original hosted acceptance remain pending.
+
+## Catalog adoption guards — 2026-10-30
+
+[The before/after checks](evidence/catalog-coverage-20261030/README.md) close two review gaps before adoption: canonical freshness now covers `nativebases.go`, and the existing all-line resolver test validates and exercises the real catalog whenever populated. The old checks accepted an uncovered supplier digest and passed a deliberately partial one-entry map; the new checks reject both, while empty and complete synthetic catalogs pass. Full operator/codegen/envtest and corrected full-workspace lint/deadcode passed; the initial incorrect `GOWORK=off` lint invocation is retained in the evidence.
+
+Seven of 27 suppliers remain verified; the production catalog is empty. Twenty reviews, complete adoption and original hosted acceptance remain active worker work. No task is closed by this guard.

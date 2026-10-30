@@ -1,0 +1,75 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1470,
+      "sha256": "3a6a2c3f1eced662c6e33febfd38055defb490675331908c9b6e54f3b5d2c6fb"
+    },
+    {
+      "path": "after-complete.log.gz",
+      "bytes": 80,
+      "sha256": "21f79550b48fe3de7d542e3bc06b3c1f1433720deca4caadadc0fe941ae88696"
+    },
+    {
+      "path": "after-empty.log.gz",
+      "bytes": 80,
+      "sha256": "80c09fdbce8c38f567582e7d5bd45d52e82f602863918b6544f430bc38978ec1"
+    },
+    {
+      "path": "after-freshness-regression.log.gz",
+      "bytes": 584,
+      "sha256": "8ae7ac3490bf6bf43e8fe108271b93dbc456d5d67c2e132a89dd6d9ba90aa13b"
+    },
+    {
+      "path": "after-partial.log.gz",
+      "bytes": 201,
+      "sha256": "b4a30d5ecdef360371921118ea880b3d3fe59e5bd9dbcb195ad5a09168e69222"
+    },
+    {
+      "path": "before-freshness-regression.log.gz",
+      "bytes": 604,
+      "sha256": "22d2572e9fb0a7771ff642dab1387199ba8f47bd7d710a46a4a690dc571a92be"
+    },
+    {
+      "path": "before-partial.log.gz",
+      "bytes": 80,
+      "sha256": "438a4c04fc26cc0056924f8b113002f76f4741d6c161807ac244089336a8359a"
+    },
+    {
+      "path": "canonical-validation.log.gz",
+      "bytes": 62,
+      "sha256": "d44ec336ab33ae8609250c5eb397ce190b118c497ce4dd957fb9a1caa2f40522"
+    },
+    {
+      "path": "complete.go.gz",
+      "bytes": 4541,
+      "sha256": "87f2ff563f069a1fc2ed2219db49459c9350dcf7c1483986b1d11e7b878adee8"
+    },
+    {
+      "path": "operator-test.log.gz",
+      "bytes": 905,
+      "sha256": "bd11aee0a0843e9c7e16aa804234b29f335c89c811f7bcb29f185c692fefb569"
+    },
+    {
+      "path": "partial.go.gz",
+      "bytes": 3120,
+      "sha256": "374ec5d867f53b140e674d5957f7e910e29df89f1a3da7add2d27970b086794c"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 3218,
+      "sha256": "29baf7c58b6ec9c0eefc198e1a7e9808ee3e993dda31f3c84a7ccf840846b1e6"
+    },
+    {
+      "path": "workspace-lint-wrong-invocation.log.gz",
+      "bytes": 243,
+      "sha256": "3c92aa1fc35271964f85e2ad3eff9178645d537df5546191cd9263212c090428"
+    },
+    {
+      "path": "workspace-lint.log.gz",
+      "bytes": 76,
+      "sha256": "6b85202367252687be2369b3999dad2f265c221fadd13d2dca07b49cfca34ca2"
+    }
+  ]
+}
