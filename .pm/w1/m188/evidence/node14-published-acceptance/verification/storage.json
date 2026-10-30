@@ -1,0 +1,14 @@
+{
+  "measured_at": "2026-10-30T10:31:52.864234+00:00",
+  "proof_directory": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a",
+  "bytes": {
+    "signed_bundle_gzip": 47322245,
+    "derived_sbom": 68304592,
+    "derived_scan_gzip": 37057020,
+    "total": 152972920
+  },
+  "eleven_candidates_linear_estimate": 1682702120,
+  "free_bytes": 609808384,
+  "all_original_signed_bundles_gzipped": true,
+  "no_guard_paths_changed": true
+}

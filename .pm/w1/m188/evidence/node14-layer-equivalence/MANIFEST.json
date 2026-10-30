@@ -1,0 +1,94 @@
+{
+  "schema": "bex.retained-layer-equivalence-evidence/v1",
+  "captured_at": "2026-10-30T11:12:17.211164+00:00",
+  "index": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "source_archive_commit": "aa4d01773",
+  "scope": "Byte-identical retained metadata, full-stream witnesses and execution provenance. Independent recomputation, not a new layer download. Candidate adoption still requires strict crypto/semantic/guard checks.",
+  "files": {
+    "actual-layer-proof/arm64-manifest.json": {
+      "sha256": "26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+      "bytes": 3916,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/arm64-manifest.json"
+    },
+    "actual-layer-proof/arm64-receipt.json": {
+      "sha256": "de0db79611deb77edc24ab2fee2288a4ff32ac8c4e7adf69f514139388d2f525",
+      "bytes": 11092,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/arm64-receipt.json"
+    },
+    "actual-layer-proof/amd64-manifest.json": {
+      "sha256": "933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+      "bytes": 3916,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/amd64-manifest.json"
+    },
+    "actual-layer-proof/arm64-derived-docker-manifest.json": {
+      "sha256": "13ad925104c9445b3821ae469fefbc3e469c4a40f65f5e244a7700d8ddfeff41",
+      "bytes": 3372,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/arm64-derived-docker-manifest.json"
+    },
+    "actual-layer-proof/amd64-derived-docker-manifest.json": {
+      "sha256": "99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+      "bytes": 3372,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/amd64-derived-docker-manifest.json"
+    },
+    "actual-layer-proof/amd64-config.json": {
+      "sha256": "bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+      "bytes": 15583,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/amd64-config.json"
+    },
+    "actual-layer-proof/arm64-config.json": {
+      "sha256": "7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+      "bytes": 15590,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/arm64-config.json"
+    },
+    "actual-layer-proof/index.json": {
+      "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "bytes": 1611,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/index.json"
+    },
+    "actual-layer-proof/receipt.json": {
+      "sha256": "4e6f0fc6a862ed0280ee024d4ae8849debf8aa3d37c528832e251f73b662b98a",
+      "bytes": 24031,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/receipt.json"
+    },
+    "actual-layer-proof/amd64-receipt.json": {
+      "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+      "bytes": 11141,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/actual-layer-proof/amd64-receipt.json"
+    },
+    "source-checker.py": {
+      "sha256": "91aec2bda683f81ce28c6866b010fa69dec3e0326b3529c8afbd608177590557",
+      "bytes": 6429,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-native-prove-docker-sbom-roots.py"
+    },
+    "source-registry-verifier.py": {
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "bytes": 40661,
+      "source_path": ".pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py"
+    },
+    "execution/warmup-helper.py": {
+      "sha256": "2e069704c5436eb37556d6d8ae836cf00eb315402cab33530296a4245bea918a",
+      "bytes": 901,
+      "source_path": "/tmp/loopx-w8-native-warm-layer-proof.py"
+    },
+    "independent-node-review.json": {
+      "sha256": "909bd838dce049337662fb118f933bd56f8c4a5e9da416b1da5c143a410e2b5c",
+      "bytes": 23611,
+      "source_path": "/tmp/bex-m188-independent-layer-witness-review.json"
+    },
+    "independent-cnb-review.json": {
+      "sha256": "132be8cc21fcb076c386116d572d1b5efabc55b6bcbd1fa0ee4211ba4a70f792",
+      "bytes": 3032,
+      "source_path": "/tmp/bex-m188-layer-equivalence-review.json"
+    },
+    "execution/docker-root-proof-progress.log": {
+      "sha256": "67c17565e821de5098cd2e2e499028b06a1bf60766902275bc941f6db73d5188",
+      "bytes": 16161,
+      "source_path": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+    },
+    "execution/docker-root-proof-warmup.log": {
+      "sha256": "163c87c4f75751d044417dddbdae6ee6e22eb7573d61ae0fc88b6873b13c97cf",
+      "bytes": 3876,
+      "source_path": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+    }
+  }
+}

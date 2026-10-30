@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-30T10:11:15.315843+00:00",
+  "argv": [
+    "/tmp/bex-w1-136-cosign/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--check-claims=true",
+    "--use-signed-timestamps=true",
+    "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha=0000000000000000000000000000000000000000",
+    "--timeout=120s",
+    "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/root-index.raw.json"
+  ],
+  "exit_code": 1,
+  "verification_source": "0000000000000000000000000000000000000000",
+  "root_index_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/root-index.raw.json",
+  "root_index_sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "bundle_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.json",
+  "bundle_raw_sha256": "76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+  "stdout_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_verification_sha.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_verification_sha.stderr",
+  "stderr_sha256": "5bada548945017cf2fed1209ac4407aab3f1863bbc2182bb2a3e9a16ce4381ef"
+}

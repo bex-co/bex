@@ -1,0 +1,175 @@
+{
+  "schema": "bex.local-producer-recovery-receipt/v1",
+  "checked_at": "2026-10-30T11:37:00.781054+00:00",
+  "tag": "python-3.9-bookworm",
+  "base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "digest": "sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "run_id": 41000570846,
+  "job_id": 123982303737,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737",
+  "producer_run_identity": {
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41000570846",
+    "id": 41000570846,
+    "path": ".github/workflows/native-base-image.yml"
+  },
+  "anonymous_metadata_pull": true,
+  "metadata_only_no_filesystem_layers": true,
+  "platforms": {
+    "linux/amd64": {
+      "architecture": "amd64",
+      "os": "linux",
+      "manifest_digest": "sha256:7b94b56be88c99b46191719151964006582c0af9ad6ccce0f72d73144d36dc87",
+      "config_digest": "sha256:e7ed9ee7b9fdd1846f0f8bfba953c5ba9ed44b909cb81f5ed73825bb6ac7dd6a",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.9.25"
+      ]
+    },
+    "linux/arm64": {
+      "architecture": "arm64",
+      "os": "linux",
+      "manifest_digest": "sha256:82299fd378d1f808fc7dee83ba80900587529d23d7db00df624fed7b1b4eea8a",
+      "config_digest": "sha256:32b08787c082a8130de01c7d1b6d7cc6df03cdaeae8b7b37be7897743dc41d96",
+      "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "runtime_env": [
+        "PYTHON_VERSION=3.9.25"
+      ]
+    }
+  },
+  "build_digest_bound_in_log": true,
+  "original_base_bound_in_log": true,
+  "dual_arch_NativeBase_gate_bound_in_log": true,
+  "architecture_gate_proofs": {
+    "amd64": {
+      "real_pg18_archive": {
+        "line_number": 4506,
+        "log_line": "2026-10-30T10:09:10.5818600Z #30 0.151 /tmp/archive.dump: OK",
+        "vertex": "30",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 4528,
+        "log_line": "2026-10-30T10:09:25.2732373Z #32 13.74 native tool transformations passed without network",
+        "vertex": "32",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 4532,
+        "log_line": "2026-10-30T10:09:27.3959195Z #35 1.343 system and bundled Brotli checks passed",
+        "vertex": "35",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      },
+      "primary_python_identity_wheel_c_extension": {
+        "line_number": 4536,
+        "log_line": "2026-10-30T10:09:37.3963169Z #36 9.468 native primary Python 3.9.25 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+        "vertex": "36",
+        "command": "RUN --network=none if [ -x /usr/local/bin/python3 ]; then /usr/local/bin/python3 /tmp/check-primary-python.py; fi"
+      }
+    },
+    "arm64": {
+      "real_pg18_archive": {
+        "line_number": 4499,
+        "log_line": "2026-10-30T10:09:10.3729116Z #29 0.064 /tmp/archive.dump: OK",
+        "vertex": "29",
+        "command": "RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c -   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump   && awk '/^COPY public.native_archive / { copying=1; next } copying && $0==\"\\\\.\" { exit } copying { print }' /tmp/archive.sql > /tmp/actual-rows.txt   && cmp /tmp/expected-rows.txt /tmp/actual-rows.txt   && psql --version && pg_dump --version   && ! pg_restore --file=/tmp/invalid.sql /dev/null"
+      },
+      "offline_tools": {
+        "line_number": 4513,
+        "log_line": "2026-10-30T10:09:14.7462340Z #31 4.162 native tool transformations passed without network",
+        "vertex": "31",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-tools.py"
+      },
+      "system_and_bundled_brotli": {
+        "line_number": 4520,
+        "log_line": "2026-10-30T10:09:16.0031839Z #33 0.433 system and bundled Brotli checks passed",
+        "vertex": "33",
+        "command": "RUN --network=none /usr/bin/python3 /tmp/check-brotli.py"
+      },
+      "primary_python_identity_wheel_c_extension": {
+        "line_number": 4524,
+        "log_line": "2026-10-30T10:09:19.0537563Z #34 3.048 native primary Python 3.9.25 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+        "vertex": "34",
+        "command": "RUN --network=none if [ -x /usr/local/bin/python3 ]; then /usr/local/bin/python3 /tmp/check-primary-python.py; fi"
+      }
+    }
+  },
+  "bullseye_companion_baseline": {
+    "applicable": false,
+    "reason": "Python primary; no legacy Node primary header/executable to backport in this supplier."
+  },
+  "steps": [
+    {
+      "completed_at": "2026-10-30T10:08:44Z",
+      "conclusion": "success",
+      "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "number": 6,
+      "started_at": "2026-10-30T10:00:46Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T10:09:38Z",
+      "conclusion": "success",
+      "name": "verify real native tool transformations without network on both architectures",
+      "number": 7,
+      "started_at": "2026-10-30T10:08:44Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T10:13:29Z",
+      "conclusion": "success",
+      "name": "scan amd64 candidate",
+      "number": 8,
+      "started_at": "2026-10-30T10:09:38Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T10:14:39Z",
+      "conclusion": "success",
+      "name": "scan arm64 candidate",
+      "number": 9,
+      "started_at": "2026-10-30T10:13:29Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-10-30T10:16:31Z",
+      "conclusion": "failure",
+      "name": "sign and attest the immutable candidate",
+      "number": 12,
+      "started_at": "2026-10-30T10:14:50Z",
+      "status": "completed"
+    }
+  ],
+  "failure": {
+    "command": "cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate native-amd64.spdx.json \"$REF\"",
+    "initial_image_sign": "completed, as bash-e progressed to first SPDX payload",
+    "message": "Rekor v1 POST /api/v1/log/entries giving up after 2 attempt(s)",
+    "failed_at": "2026-10-30T10:16:31Z",
+    "http_status_exposed": false,
+    "payload_size_exposed": false,
+    "basis_lines": [
+      "2026-10-30T10:16:28.0146061Z Using payload from: native-amd64.spdx.json",
+      "2026-10-30T10:16:31.7194477Z Error: signing ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b: signing bundle: error signing bundle: Post \"https://rekor.sigstore.dev/api/v1/log/entries\": POST https://rekor.sigstore.dev/api/v1/log/entries giving up after 2 attempt(s)"
+    ]
+  },
+  "scans_interpretation": "Both original Trivy steps completed successfully; scanner exit-code0 reports findings and does not imply no CVEs. Fresh current scans remain required.",
+  "reviewed_recipe_comparison": {
+    "head": "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "changed_files": [
+      "deploy/native-base/README.md"
+    ],
+    "only_markdown": true
+  },
+  "adoptable": false,
+  "requires": "Current authorized recovery must rerun both architecture gates, full scans, full registry-source SBOM/Trivy attestations and modern workflow signing before discovery/adoption.",
+  "raw_log": "/tmp/bex-m188-python39-producer-job123982303737.log",
+  "raw_log_sha256": "bd9c822618eb4249667f58c63c8caaa3bd918c5819f40ab06824b90a04d531a7",
+  "log_gzip": "/tmp/bex-m188-python39-producer-intake/job-123982303737.log.gz",
+  "log_gzip_sha256": "4f324240226544a785b363acd0c8a2aa365402017185e416f778617bfdea4d24",
+  "anonymous_metadata_proof": "/tmp/bex-m188-python39-producer-intake/anonymous-metadata-proof.json",
+  "proposed_recovery_entry": "/tmp/bex-m188-python39-producer-intake/recovery-entry.json"
+}

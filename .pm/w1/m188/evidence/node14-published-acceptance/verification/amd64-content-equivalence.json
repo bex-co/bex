@@ -1,0 +1,392 @@
+{
+  "schema": "native_docker_archive_content_equivalence/v1",
+  "checked_at": "2026-10-30T11:14:47.965820+00:00",
+  "complete": true,
+  "repository": "ghcr.io/bex-co/bex-cnb-run",
+  "root_index_digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "architecture": "amd64",
+  "registry_child_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+  "config_digest": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+  "signed_spdx_digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+  "stereoscope_version": "0.3.1",
+  "reconstruction": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-derived-docker-manifest.json",
+    "sha256": "99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+    "bytes": 3372
+  },
+  "inputs": {
+    "raw_index": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/index.json",
+      "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "bytes": 1611
+    },
+    "raw_manifest": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-manifest.json",
+      "sha256": "933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+      "bytes": 3916
+    },
+    "raw_config": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-config.json",
+      "sha256": "bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+      "bytes": 15583
+    }
+  },
+  "ordered_layer_witnesses": [
+    {
+      "ordinal": 0,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:b0248cf3e63c73d0e496a67807d056ca41d5e968b61087e8eca2cf4b9b4d7b99",
+        "size": 55052736
+      },
+      "diff_id": "sha256:ae56c0c5405b3d38a59b5ec5dfe5db36e8b6ff6ca8595851f903cde13e709282",
+      "uncompressed_bytes": 129352704,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 0
+      }
+    },
+    {
+      "ordinal": 1,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:127e97b4daf784e08840a21765f0d4f251192ef2994d0e4a253490f81e63955b",
+        "size": 5166696
+      },
+      "diff_id": "sha256:24b48387f46743459ad8c3f2a9a0eff07161ff5697c09308f16561b1ab163572",
+      "uncompressed_bytes": 11314176,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 1
+      }
+    },
+    {
+      "ordinal": 2,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:0336c50c9f6942b660e433b1086238eec37057c34b14c4e3b28bd7bf05bd84ba",
+        "size": 10876749
+      },
+      "diff_id": "sha256:6a1ebb98b0dcd82185b3c89fc16cc4cc1bff562b0fe9e2e7c888be1bb076c292",
+      "uncompressed_bytes": 19312128,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 2
+      }
+    },
+    {
+      "ordinal": 3,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:1b89f3c7f7da8adf032a33a75d1b659cee33179ecb88ea0ba75e4fc58ebe63a6",
+        "size": 54584801
+      },
+      "diff_id": "sha256:b86f260e173a767ad95ce5717b5de905de58b34bff072686634a33083a4370b3",
+      "uncompressed_bytes": 156566528,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 3
+      }
+    },
+    {
+      "ordinal": 4,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:2d62772179761f8fddfaed03ed2bdf7078b103b193d18d79a9b49364830d56cf",
+        "size": 196811503
+      },
+      "diff_id": "sha256:cfd0811d364eb96636b1aa426a728af077f72fb1d06bf212a6b937273c2095ef",
+      "uncompressed_bytes": 538099712,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 4
+      }
+    },
+    {
+      "ordinal": 5,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:9b293df1e1ca6c5d4ff93529fafef12b0f636ab6a7b739145e9193a6e4af0521",
+        "size": 4195
+      },
+      "diff_id": "sha256:e29838afe53638fc31f4b5a3dec3e1d40ac86d2811cd6ce750b2c498f821e2eb",
+      "uncompressed_bytes": 349696,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 5
+      }
+    },
+    {
+      "ordinal": 6,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:e0530ed09cd95b41b982e4216c664f31b4068915a86f517caaec6b97c810fbd0",
+        "size": 35243420
+      },
+      "diff_id": "sha256:ca77149bda9ecd5c9b126efc5cb27fe224cd157ff89926619af92e813c488d7d",
+      "uncompressed_bytes": 104619520,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 6
+      }
+    },
+    {
+      "ordinal": 7,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:408804cbb9eb10b086c745a40106b5549d3c4fef4944a15ea3ed71fe339676d5",
+        "size": 2288454
+      },
+      "diff_id": "sha256:f6035f159ce2f46da8b6612bde55d717baa33ba0d3b00e366e7203553f0c2189",
+      "uncompressed_bytes": 7692800,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 7
+      }
+    },
+    {
+      "ordinal": 8,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:80e7b1f500abc0e67ac3e4837776572ccb2ad3ab31719d4f61b64a828f28da18",
+        "size": 451
+      },
+      "diff_id": "sha256:8dc475fa042a0a5b47a01a128e71b8d6cdbd22cb6e3e47e2aa988877b5e3c1cc",
+      "uncompressed_bytes": 3584,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 8
+      }
+    },
+    {
+      "ordinal": 9,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:8e6d66a15d59a74b5e1bb6acd05203727f2059bb76953db01c29fcac0e341971",
+        "size": 29839839
+      },
+      "diff_id": "sha256:5dcdaf6d96969e10129a21fa950f4d813afdd146060afbd0846ac59264502665",
+      "uncompressed_bytes": 76966400,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 9
+      }
+    },
+    {
+      "ordinal": 10,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:40d3e9c5fdf95a6aa4f4569f95ee45c5ca266af3c66b35282408118e05aa537d",
+        "size": 1051
+      },
+      "diff_id": "sha256:36644b697e7b31e4fe3bba64e67c1d68c22d3fc2f6bb4c383dd9686718e146cc",
+      "uncompressed_bytes": 5120,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 10
+      }
+    },
+    {
+      "ordinal": 11,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:3193275619636b8f427a4dfdc5a7519692ecf9ca27524614d8b584902cc925c4",
+        "size": 62633277
+      },
+      "diff_id": "sha256:a80cf9b482ac0fa65b8f7a44363c4fbce91004bb13392da675d8b8411f8262aa",
+      "uncompressed_bytes": 190082560,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 11
+      }
+    },
+    {
+      "ordinal": 12,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:e31137671df698079f964dfb55d69f7f424171ceb5b800299854ab11a8c3adfd",
+        "size": 260
+      },
+      "diff_id": "sha256:8189a569ff04b5b1aa85f4a2fc4c57d9dbe4823cbf4eaf342238fd7f2482b046",
+      "uncompressed_bytes": 4096,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 12
+      }
+    },
+    {
+      "ordinal": 13,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:5950b9b556b029b1196ac7c23c6bf7ffb00c916d56d0058d145a50bb75dec6c7",
+        "size": 2893
+      },
+      "diff_id": "sha256:8d2fac14323eb58491284593bc60625dbbc443c7007adf2666681d319e242209",
+      "uncompressed_bytes": 13312,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 13
+      }
+    },
+    {
+      "ordinal": 14,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:080e6da7ddde1cfba916ad44898e3ccb400d053e03fd400be9f7108aab6acd80",
+        "size": 356
+      },
+      "diff_id": "sha256:18dfeebbc8784b39c7976370a2ce95a06f1aebe9bdf28e3d7e96c29aaefd6c30",
+      "uncompressed_bytes": 3072,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 14
+      }
+    },
+    {
+      "ordinal": 15,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:e37e2c73799f8121c4076df3de132f5a9a410bf589ade2e7003124c4e3f4c47f",
+        "size": 1146
+      },
+      "diff_id": "sha256:8b9e07ccf7c891e59681d3b9737002d485af395cf661cece8cda864ff1aba3af",
+      "uncompressed_bytes": 4096,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 15
+      }
+    },
+    {
+      "ordinal": 16,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:ed27c2537ae1332c46f6a3fd71cf4a44f798ca5f8f7dab6ae3bd039f9fa7c0a9",
+        "size": 1397
+      },
+      "diff_id": "sha256:0e77d60dc441071af271833f1a9f949f67d4cfe88d019e66a3e5efd6acc32e6f",
+      "uncompressed_bytes": 4608,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 16
+      }
+    },
+    {
+      "ordinal": 17,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:ffe78072f8bfc1f7eadc02af987aa0f5876b496e2000d4da19c09faf9169290c",
+        "size": 169166388
+      },
+      "diff_id": "sha256:0ed1ddb4d80d700a827b65902d2adf6276989bd693c9c1a713c0b58d1d7f7726",
+      "uncompressed_bytes": 542286336,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 17
+      }
+    },
+    {
+      "ordinal": 18,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "size": 32
+      },
+      "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "uncompressed_bytes": 1024,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 18
+      }
+    }
+  ],
+  "execution_proofs": [
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/execution/docker-root-proof-progress.log",
+      "sha256": "67c17565e821de5098cd2e2e499028b06a1bf60766902275bc941f6db73d5188",
+      "bytes": 16161,
+      "role": "progress_log"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/execution/docker-root-proof-warmup.log",
+      "sha256": "163c87c4f75751d044417dddbdae6ee6e22eb7573d61ae0fc88b6873b13c97cf",
+      "bytes": 3876,
+      "role": "warmup_log"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/source-checker.py",
+      "sha256": "91aec2bda683f81ce28c6866b010fa69dec3e0326b3529c8afbd608177590557",
+      "bytes": 6429,
+      "role": "collector_code"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/source-registry-verifier.py",
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "bytes": 40661,
+      "role": "registry_verifier"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/execution/warmup-helper.py",
+      "sha256": "2e069704c5436eb37556d6d8ae836cf00eb315402cab33530296a4245bea918a",
+      "bytes": 901,
+      "role": "warmup_helper"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/independent-node-review.json",
+      "sha256": "909bd838dce049337662fb118f933bd56f8c4a5e9da416b1da5c143a410e2b5c",
+      "bytes": 23611,
+      "role": "independent_review"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/independent-cnb-review.json",
+      "sha256": "132be8cc21fcb076c386116d572d1b5efabc55b6bcbd1fa0ee4211ba4a70f792",
+      "bytes": 3032,
+      "role": "independent_cnb_review"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/MANIFEST.json",
+      "sha256": "31c634c9ccc1ec493148162c187d19a3b512284ddca7b863527d2f7b7d9caf89",
+      "bytes": 4865,
+      "role": "custody_manifest"
+    }
+  ],
+  "parent_approval": "Explicit root approval of concrete full-layer content reconstruction, 2026-10-30; same raw config, all19 ordered descriptors/diffIDs/sizes and exact signed digest required. No arbitrary alias acceptance.",
+  "limits": "Independent retained metadata/witness reconstruction and reviewed full-stream execution records. Layer payloads were not retained or re-downloaded by this verifier."
+}

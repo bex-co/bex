@@ -1,0 +1,10 @@
+{
+  "schema": "native_stable_discovery_confirmation/v1",
+  "checked_at": "2026-10-30T11:25:37.871763+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye",
+  "digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "header_digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "anonymous_registry_access": true,
+  "raw_bytes": 1611,
+  "raw_sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+}

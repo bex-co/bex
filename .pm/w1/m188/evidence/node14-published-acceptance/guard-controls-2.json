@@ -1,0 +1,81 @@
+{
+  "schema": "bex.m188.strict-content-equivalence-controls/v1",
+  "scope": "Actual small metadata/witness reconstruction only; original signed statements and crypto/gates remain independent requirements. No candidate approval or receipt count changes.",
+  "passed": true,
+  "results": [
+    {
+      "name": "actual_19_layer_reconstruction_positive",
+      "passed": true,
+      "digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa"
+    },
+    {
+      "name": "config_bytes_tamper",
+      "rejected": true,
+      "reason": "content equivalence raw config hash/size mismatch"
+    },
+    {
+      "name": "witness_diffID_tamper",
+      "rejected": true,
+      "reason": "content equivalence ordered diffID mismatch"
+    },
+    {
+      "name": "ordered_witness_tamper",
+      "rejected": true,
+      "reason": "content equivalence compressed descriptor mismatch"
+    },
+    {
+      "name": "uncompressed_size_tamper",
+      "rejected": true,
+      "reason": "reconstruction does not hash to exact signed SPDX root"
+    },
+    {
+      "name": "compressed_descriptor_tamper",
+      "rejected": true,
+      "reason": "content equivalence compressed descriptor mismatch"
+    },
+    {
+      "name": "missing_layer_witness",
+      "rejected": true,
+      "reason": "content equivalence is missing an ordered layer witness"
+    },
+    {
+      "name": "actual_durable_sidecar_with_execution_provenance_positive",
+      "passed": true
+    },
+    {
+      "name": "sidecar_wrong_raw_config",
+      "rejected": true,
+      "reason": "content proof input is outside root-approved durable fileset"
+    },
+    {
+      "name": "sidecar_diffID_tamper_with_updated_outer_hash",
+      "rejected": true,
+      "reason": "content proof witness fields differ from retained receipt"
+    },
+    {
+      "name": "sidecar_order_tamper_with_updated_outer_hash",
+      "rejected": true,
+      "reason": "content proof compressed descriptor/order mismatch"
+    },
+    {
+      "name": "sidecar_size_tamper_with_updated_outer_hash",
+      "rejected": true,
+      "reason": "content proof witness fields differ from retained receipt"
+    },
+    {
+      "name": "sidecar_compressed_descriptor_tamper",
+      "rejected": true,
+      "reason": "content proof compressed descriptor/order mismatch"
+    },
+    {
+      "name": "sidecar_missing_witness",
+      "rejected": true,
+      "reason": "content proof missing ordered retained witness"
+    },
+    {
+      "name": "sidecar_missing_retained_execution_proof",
+      "rejected": true,
+      "reason": "content equivalence lacks retained execution provenance"
+    }
+  ]
+}

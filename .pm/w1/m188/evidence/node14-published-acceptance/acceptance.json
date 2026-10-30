@@ -1,0 +1,70 @@
+{
+  "schema": "native_candidate_acceptance/v1",
+  "accepted_at": "2026-10-30T11:27:05.754211+00:00",
+  "tag": "node-14-bullseye",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "run_id": 41029596739,
+  "job_id": 123976756119,
+  "job_completed_at": "2026-10-30T09:28:59Z",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "targeted_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+    "sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a"
+  },
+  "candidate": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+    "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697"
+  },
+  "guard_validation": {
+    "file": "/tmp/bex-m188-adoption-guard-validation.json",
+    "sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+    "guard_file": "/tmp/bex-m188-prepare-adoption.py",
+    "guard_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+    "actual_proof_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+    "full_candidate_guard_passed": true,
+    "root_promotion_approved": true
+  },
+  "controls": [
+    {
+      "file": "/tmp/bex-m188-adoption-guard-controls.json",
+      "sha256": "25cd2fa61a97b69522174ea7ab74f80818db1b817072fa3e51e32f861c35c314"
+    },
+    {
+      "file": "/tmp/bex-m188-equivalence-guard-controls.json",
+      "sha256": "72bc4766f06ab8d8e0721517d3b9637590e05091eab472b75166fa79708ee314"
+    }
+  ],
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+    "sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+    "complete": true
+  },
+  "content_equivalence_custody_manifest_sha256": "31c634c9ccc1ec493148162c187d19a3b512284ddca7b863527d2f7b7d9caf89",
+  "stable_discovery_confirmation": {
+    "file": "/tmp/bex-m188-node14-discovery-confirmation.json",
+    "sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b"
+  },
+  "stable_discovery_checked_at": "2026-10-30T11:25:37.871763+00:00",
+  "aggregate": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "sha256": "6c1c761a5ef239caba6fde5574483803de30573b78d2de58bbcd8b9fe6409dec"
+  },
+  "accepted_count": 1,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "remaining": [
+    "node-16-bookworm",
+    "node-18-bookworm",
+    "node-20-bookworm",
+    "python-3.10-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm",
+    "ruby-3.0-bullseye",
+    "ruby-3.1-bookworm",
+    "ruby-3.2-bookworm"
+  ]
+}

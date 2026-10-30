@@ -1,0 +1,384 @@
+{
+  "schema": "bex.independent-layer-witness-review/v1",
+  "checked_at": "2026-10-30T11:03:15.769264+00:00",
+  "candidate_index": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "candidate_approved": false,
+  "guard_changed": false,
+  "new_network_or_filesystem_layer_reads": false,
+  "archived_metadata_tool_hashes_checked": 53,
+  "metadata_manifest_sha256": "sha256:0707651244a4c97bc9c6a6e4fac4c49db462b440b5b3e81c71f74b2d86adc42b",
+  "architectures": {
+    "amd64": {
+      "child_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+      "config_digest": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+      "config_bytes": 15583,
+      "layer_count": 19,
+      "all_ordered_compressed_descriptor_and_diffid_bindings_verified": true,
+      "all_actual_full_stream_execution_pairs_verified": true,
+      "compressed_bytes_witnessed": 621675644,
+      "decompressed_bytes_witnessed": 1776681472,
+      "uncompressed_aggregate_equals_signed_trivy_size": true,
+      "derived_manifest_bytes": 3372,
+      "derived_manifest_digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+      "exact_derived_file_bytes_match": true,
+      "signed_spdx_root_matches": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+      "evidence": [
+        {
+          "ordinal": 0,
+          "compressed_digest": "sha256:b0248cf3e63c73d0e496a67807d056ca41d5e968b61087e8eca2cf4b9b4d7b99",
+          "diff_id": "sha256:ae56c0c5405b3d38a59b5ec5dfe5db36e8b6ff6ca8595851f903cde13e709282",
+          "uncompressed_bytes": 129352704,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 1,
+          "compressed_digest": "sha256:127e97b4daf784e08840a21765f0d4f251192ef2994d0e4a253490f81e63955b",
+          "diff_id": "sha256:24b48387f46743459ad8c3f2a9a0eff07161ff5697c09308f16561b1ab163572",
+          "uncompressed_bytes": 11314176,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 2,
+          "compressed_digest": "sha256:0336c50c9f6942b660e433b1086238eec37057c34b14c4e3b28bd7bf05bd84ba",
+          "diff_id": "sha256:6a1ebb98b0dcd82185b3c89fc16cc4cc1bff562b0fe9e2e7c888be1bb076c292",
+          "uncompressed_bytes": 19312128,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 3,
+          "compressed_digest": "sha256:1b89f3c7f7da8adf032a33a75d1b659cee33179ecb88ea0ba75e4fc58ebe63a6",
+          "diff_id": "sha256:b86f260e173a767ad95ce5717b5de905de58b34bff072686634a33083a4370b3",
+          "uncompressed_bytes": 156566528,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 4,
+          "compressed_digest": "sha256:2d62772179761f8fddfaed03ed2bdf7078b103b193d18d79a9b49364830d56cf",
+          "diff_id": "sha256:cfd0811d364eb96636b1aa426a728af077f72fb1d06bf212a6b937273c2095ef",
+          "uncompressed_bytes": 538099712,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 5,
+          "compressed_digest": "sha256:9b293df1e1ca6c5d4ff93529fafef12b0f636ab6a7b739145e9193a6e4af0521",
+          "diff_id": "sha256:e29838afe53638fc31f4b5a3dec3e1d40ac86d2811cd6ce750b2c498f821e2eb",
+          "uncompressed_bytes": 349696,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 6,
+          "compressed_digest": "sha256:e0530ed09cd95b41b982e4216c664f31b4068915a86f517caaec6b97c810fbd0",
+          "diff_id": "sha256:ca77149bda9ecd5c9b126efc5cb27fe224cd157ff89926619af92e813c488d7d",
+          "uncompressed_bytes": 104619520,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 7,
+          "compressed_digest": "sha256:408804cbb9eb10b086c745a40106b5549d3c4fef4944a15ea3ed71fe339676d5",
+          "diff_id": "sha256:f6035f159ce2f46da8b6612bde55d717baa33ba0d3b00e366e7203553f0c2189",
+          "uncompressed_bytes": 7692800,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 8,
+          "compressed_digest": "sha256:80e7b1f500abc0e67ac3e4837776572ccb2ad3ab31719d4f61b64a828f28da18",
+          "diff_id": "sha256:8dc475fa042a0a5b47a01a128e71b8d6cdbd22cb6e3e47e2aa988877b5e3c1cc",
+          "uncompressed_bytes": 3584,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 9,
+          "compressed_digest": "sha256:8e6d66a15d59a74b5e1bb6acd05203727f2059bb76953db01c29fcac0e341971",
+          "diff_id": "sha256:5dcdaf6d96969e10129a21fa950f4d813afdd146060afbd0846ac59264502665",
+          "uncompressed_bytes": 76966400,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 10,
+          "compressed_digest": "sha256:40d3e9c5fdf95a6aa4f4569f95ee45c5ca266af3c66b35282408118e05aa537d",
+          "diff_id": "sha256:36644b697e7b31e4fe3bba64e67c1d68c22d3fc2f6bb4c383dd9686718e146cc",
+          "uncompressed_bytes": 5120,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 11,
+          "compressed_digest": "sha256:3193275619636b8f427a4dfdc5a7519692ecf9ca27524614d8b584902cc925c4",
+          "diff_id": "sha256:a80cf9b482ac0fa65b8f7a44363c4fbce91004bb13392da675d8b8411f8262aa",
+          "uncompressed_bytes": 190082560,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 12,
+          "compressed_digest": "sha256:e31137671df698079f964dfb55d69f7f424171ceb5b800299854ab11a8c3adfd",
+          "diff_id": "sha256:8189a569ff04b5b1aa85f4a2fc4c57d9dbe4823cbf4eaf342238fd7f2482b046",
+          "uncompressed_bytes": 4096,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 13,
+          "compressed_digest": "sha256:5950b9b556b029b1196ac7c23c6bf7ffb00c916d56d0058d145a50bb75dec6c7",
+          "diff_id": "sha256:8d2fac14323eb58491284593bc60625dbbc443c7007adf2666681d319e242209",
+          "uncompressed_bytes": 13312,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 14,
+          "compressed_digest": "sha256:080e6da7ddde1cfba916ad44898e3ccb400d053e03fd400be9f7108aab6acd80",
+          "diff_id": "sha256:18dfeebbc8784b39c7976370a2ce95a06f1aebe9bdf28e3d7e96c29aaefd6c30",
+          "uncompressed_bytes": 3072,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 15,
+          "compressed_digest": "sha256:e37e2c73799f8121c4076df3de132f5a9a410bf589ade2e7003124c4e3f4c47f",
+          "diff_id": "sha256:8b9e07ccf7c891e59681d3b9737002d485af395cf661cece8cda864ff1aba3af",
+          "uncompressed_bytes": 4096,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 16,
+          "compressed_digest": "sha256:ed27c2537ae1332c46f6a3fd71cf4a44f798ca5f8f7dab6ae3bd039f9fa7c0a9",
+          "diff_id": "sha256:0e77d60dc441071af271833f1a9f949f67d4cfe88d019e66a3e5efd6acc32e6f",
+          "uncompressed_bytes": 4608,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 17,
+          "compressed_digest": "sha256:ffe78072f8bfc1f7eadc02af987aa0f5876b496e2000d4da19c09faf9169290c",
+          "diff_id": "sha256:0ed1ddb4d80d700a827b65902d2adf6276989bd693c9c1a713c0b58d1d7f7726",
+          "uncompressed_bytes": 542286336,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+        },
+        {
+          "ordinal": 18,
+          "compressed_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "uncompressed_bytes": 1024,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        }
+      ]
+    },
+    "arm64": {
+      "child_digest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+      "config_digest": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+      "config_bytes": 15590,
+      "layer_count": 19,
+      "all_ordered_compressed_descriptor_and_diffid_bindings_verified": true,
+      "all_actual_full_stream_execution_pairs_verified": true,
+      "compressed_bytes_witnessed": 616225141,
+      "decompressed_bytes_witnessed": 1718268416,
+      "uncompressed_aggregate_equals_signed_trivy_size": true,
+      "derived_manifest_bytes": 3372,
+      "derived_manifest_digest": "sha256:13ad925104c9445b3821ae469fefbc3e469c4a40f65f5e244a7700d8ddfeff41",
+      "exact_derived_file_bytes_match": true,
+      "signed_spdx_root_matches": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+      "evidence": [
+        {
+          "ordinal": 0,
+          "compressed_digest": "sha256:dc80b8cdbfd36cb20231d807a50d704945d1df4da8f6e23197ccfcb629970491",
+          "diff_id": "sha256:3bea8f5fca657e189a39fdacf3a1e548904e00f120e8dc2979c28e2f0df39893",
+          "uncompressed_bytes": 123184640,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 1,
+          "compressed_digest": "sha256:5884e7f2c8c61aa845de4902fc29639b58861ae6c2d80bafe82082c0456c0740",
+          "diff_id": "sha256:9757c2df764b6e1eeca936a9ce860003ede96236c892600a5f37aa4025e16275",
+          "uncompressed_bytes": 11149312,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 2,
+          "compressed_digest": "sha256:1b792b01ed3c8dc1488cd8aac41ab7d49bb17f3fa22b2e6c846078cec81a1c00",
+          "diff_id": "sha256:a8edac1cd93d8d2efc4e070b40ad93f9e7babd65d14396598b815f0d81ba358e",
+          "uncompressed_bytes": 19164672,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 3,
+          "compressed_digest": "sha256:8f993d5b17f32f4b8a535c25e182e5d8412625beee450e513ca57036e8fdd6dc",
+          "diff_id": "sha256:3435b39010c27cf0a2d6a662f0ca149b9e5548d43b599425ee8409a751581a59",
+          "uncompressed_bytes": 154905088,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 4,
+          "compressed_digest": "sha256:c26edf98ece5babdb6b65e76738cef2c2d05e7075161753d3ba95cd84480d211",
+          "diff_id": "sha256:e45b973e571326ec6817e3a58ebf4c1415c0add7a2ea09c727373540d117f072",
+          "uncompressed_bytes": 497093120,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+        },
+        {
+          "ordinal": 5,
+          "compressed_digest": "sha256:ef4553a29827be949323a49bbe126aac00893203a3234abe3a2915aa4b0b768a",
+          "diff_id": "sha256:080f1d3b99a18c46cc9a126422d4b388ecbb7e4555703a4975aee0a96f6b8727",
+          "uncompressed_bytes": 353792,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 6,
+          "compressed_digest": "sha256:ed281178159ff7df16b4c4b1a1d62219144be1dce4dd66c4b69447dc831d90ae",
+          "diff_id": "sha256:0fcb035c10efca8430ece0e322ca09218d369ae15daf35f69e2ec8ffc7f06689",
+          "uncompressed_bytes": 103622656,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 7,
+          "compressed_digest": "sha256:d2ea503356bea3363388e4b00a0125f19d18e4836a2b9e97aa1372b4bc607b47",
+          "diff_id": "sha256:b79775b96bea895d15b695115ba235a29d394adb3bcc6b26827879c7dc4a1cf8",
+          "uncompressed_bytes": 7692800,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 8,
+          "compressed_digest": "sha256:59cae5602664323025cfc2a08cbfc4f85c546afdb6586d566edea18e9798a5f2",
+          "diff_id": "sha256:df641430d5e6c34a2fe656c91953e2616a03a504b2df6fc73b572a3084a60234",
+          "uncompressed_bytes": 3584,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 9,
+          "compressed_digest": "sha256:3b147b3bd95de1b54fcce9a6d7efbb3bc16e638301fca9e043be013fdcebb6a6",
+          "diff_id": "sha256:cb1823176bda1ea34e8a843c428256601e763a50888507c6174217f2c1a8dd05",
+          "uncompressed_bytes": 76308480,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 10,
+          "compressed_digest": "sha256:c161cfb79086e715e29e9fc7b41ca36bd23d3930bba6313a5e691d3b9958c4f4",
+          "diff_id": "sha256:2880c174482503e4838ae87882232ca2335ae20ac813abdf56330bae67eace9c",
+          "uncompressed_bytes": 5120,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 11,
+          "compressed_digest": "sha256:2b3516c8c56330778bc21beefa7df150b8cadf467154adaba5d17cff01e5cd0b",
+          "diff_id": "sha256:86827c500256a7b2ce541b4c2759f01243b510fcad66333671efca7f4254c54d",
+          "uncompressed_bytes": 185351680,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 12,
+          "compressed_digest": "sha256:eafc29d26ca4181ffc74b494313dee23044f3a1a1ce477a50572a4c781969a03",
+          "diff_id": "sha256:f9d5df62a209252bf383cc607e2638764745dcb7059990c7b78521eedffacf70",
+          "uncompressed_bytes": 4096,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 13,
+          "compressed_digest": "sha256:c27953bb77cd9e7928a1a1636b0af38342bded708f27b0a1ebb24c0851cde4e1",
+          "diff_id": "sha256:31119129ba6257b8013da5fbfdc96c958b21a5d3b2c1f9280342f011976cdde6",
+          "uncompressed_bytes": 13312,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+        },
+        {
+          "ordinal": 14,
+          "compressed_digest": "sha256:e8035716a57222d938628f3e438c1086b289b03f7308fd6454a80d2c00a32c32",
+          "diff_id": "sha256:88a739c75247c68f849dfc3a4224a52a47434e41e4e4b04f09ef2c6c9191b4a8",
+          "uncompressed_bytes": 3072,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 15,
+          "compressed_digest": "sha256:71f2b4941cbd038e07371597a38804648a05fcb67edaca7699f56378c5fa3f8b",
+          "diff_id": "sha256:f0b7191523d43e55a81e643364a6230ba9e54ff0a6b9546a55bfe83e0bc4cc24",
+          "uncompressed_bytes": 4096,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        },
+        {
+          "ordinal": 16,
+          "compressed_digest": "sha256:e62e0a7631ccb467e539ae3acfd5a518c041484f2892ca54512680e5d8a5b9d2",
+          "diff_id": "sha256:00fd841fd327c879c0e9a079699078bce8dc43d485858471f4ec73b57651e986",
+          "uncompressed_bytes": 4608,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+        },
+        {
+          "ordinal": 17,
+          "compressed_digest": "sha256:92c49ca9b0d46cc0864dd2dafc601a079af4d7e07f1b28efb70074d34c581905",
+          "diff_id": "sha256:40ec50ac85bd106457fbc907e4d6234e828d1f5fd7ec45fe3b695009b66d1053",
+          "uncompressed_bytes": 539403264,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log"
+        },
+        {
+          "ordinal": 18,
+          "compressed_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "uncompressed_bytes": 1024,
+          "actual_read_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+          "completed_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+        }
+      ]
+    }
+  },
+  "execution_logs": [
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log",
+      "bytes": 16161,
+      "sha256": "sha256:67c17565e821de5098cd2e2e499028b06a1bf60766902275bc941f6db73d5188"
+    },
+    {
+      "path": "/tmp/loopx-w8-native-modern-review/docker-root-proof-warmup.log",
+      "bytes": 3876,
+      "sha256": "sha256:163c87c4f75751d044417dddbdae6ee6e22eb7573d61ae0fc88b6873b13c97cf"
+    }
+  ],
+  "actual_execution_provenance": {
+    "full_stream_checked_distinct_layers": 37,
+    "read_start_verified_end_pairs": 37,
+    "archived_main_stream_checker_sha256": "sha256:91aec2bda683f81ce28c6866b010fa69dec3e0326b3529c8afbd608177590557",
+    "local_main_checker_equals_archived": true,
+    "warmup_helper_sha256": "sha256:2e069704c5436eb37556d6d8ae836cf00eb315402cab33530296a4245bea918a",
+    "warmup_reuses_exact_archived_layer_function_prefix": true,
+    "main_completion_event": {
+      "at": "2026-10-30T09:38:34.617302+00:00",
+      "stage": "both-architecture-decompressed-proof-complete",
+      "receipt": "/tmp/loopx-w8-native-modern-review/docker-root-proof/receipt.json",
+      "source_log": "/tmp/loopx-w8-native-modern-review/docker-root-proof-progress.log"
+    },
+    "checker_review": "Counted HTTP reader hashes every compressed byte and enforces descriptor length; gzip.GzipFile reads decompressed stream to EOF while independent SHA256+byte count verify config DiffID. Both compressed and decompressed assertions precede writing witness JSON. Shared empty layer is read once under a per-digest file lock and linked to both architectures."
+  },
+  "assessment": "Strict content equivalence established for amd64 synthetic99158 to actual933c: authenticated same raw config, all19 ordered compressed layers actually stream-hashed/decompressed, all expected DiffIDs and measured sizes, exact pinned Stereoscope0.3.1 serialization hashes to the signed SPDX root. This is a content-equivalence witness, not equality of OCI manifest digests or arbitrary alias acceptance. Arm64 keeps its exact signed26f3 registry root, never substitutes unused derived13ad.",
+  "limits_and_custody": [
+    "I independently recomputed metadata/manifest hashes and every linkage from retained witnesses and reviewed execution logs/source. I did not re-download/re-hash/decompress layer payloads during this review, as instructed.",
+    "The raw layer streams were intentionally not retained. Execution evidence consists of local full-stream receipts, exact reviewed source and completed event logs; it is not an independently signed hardware execution attestation.",
+    "Archived main checker and all per-layer records are covered by committed MANIFEST. The two execution logs and warmup helper are currently retained under/tmp but are absent from that durable MANIFEST; copy/pin these small files if durable execution provenance is required before future cleanup.",
+    "Guard changes and full candidate approval remain separate parent decisions; no guard, aggregate count, source pin, or production catalog changed here."
+  ]
+}
