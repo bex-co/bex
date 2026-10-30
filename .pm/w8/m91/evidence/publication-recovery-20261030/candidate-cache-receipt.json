@@ -1,0 +1,37 @@
+{
+  "source": "exact immutable image-ref from actual failed scan input in authorized GitHub job log",
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "source_job": 123885951138,
+  "source_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "anonymous_manifest_and_config_bytes_sha_verified": true,
+  "platforms": [
+    {
+      "architecture": "amd64",
+      "manifest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+      "config": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+      "inline_cache_fields": {
+        "moby.buildkit.cache.v0": {
+          "keys": [],
+          "records": null,
+          "layers": null
+        }
+      },
+      "compressed_image_bytes": 621675644
+    },
+    {
+      "architecture": "arm64",
+      "manifest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+      "config": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+      "inline_cache_fields": {
+        "moby.buildkit.cache.v0": {
+          "keys": [],
+          "records": null,
+          "layers": null
+        }
+      },
+      "compressed_image_bytes": 616225141
+    }
+  ],
+  "cache_only_status": "unsigned and scan/signing gates incomplete; useful source-run-authenticated cache metadata, never an adoption pin",
+  "warm_build_cache_hit": "not tested; do not assume intermediate compiler cache reuse from inline data"
+}
