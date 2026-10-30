@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-10-30T04:55:46.478651+00:00",
+  "source_head": "c60e3e95b",
+  "files": [
+    {
+      "path": "hosted-disk.py",
+      "bytes": 20158,
+      "sha256": "81cdc8b825aa8d2fa5a6d7483f0ebad21642f11a5b64956d3255ea5211eac3f0"
+    },
+    {
+      "path": "credential-refresh-check.py",
+      "bytes": 5480,
+      "sha256": "8d96370601653c4082746ef8998ba0abecdc39d93a3e112b9b369e9d443d22ff"
+    },
+    {
+      "path": "credential-refresh-results.json",
+      "bytes": 810,
+      "sha256": "786da796e998e7a9936b9b33f79537fcf7a6d66c7ae15681d380b6bd04ed6b6a"
+    }
+  ],
+  "prior_preparation": "../fixture-preparation-20261029/",
+  "scope": "Incremental preparation correction. No production authentication, API request or resource. Published CLI used only localhost synthetic credentials."
+}
