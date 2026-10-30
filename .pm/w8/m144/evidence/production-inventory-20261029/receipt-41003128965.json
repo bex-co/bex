@@ -1,0 +1,52 @@
+{
+  "recorded_at": "2026-10-30T04:39:58.288424+00:00",
+  "inventory_run": "https://github.com/bex-co/bex/actions/runs/41003128965",
+  "inventory_job": 123893519702,
+  "inventory_source": "1e9f097743c7780eb0e9b48971b503381ec126a6",
+  "inventory_updated_at": "2026-10-30T04:39:14Z",
+  "app_disk_count": 2,
+  "unmatched_app_claim_count": 0,
+  "requested_below_floor_app_disk_count": 0,
+  "baseline_bindings_and_handles_preserved": true,
+  "platform_deployments": {
+    "bex-controller-manager": {
+      "generation": 1695,
+      "observedGeneration": 1695,
+      "desired": 1,
+      "updated": 1,
+      "ready": 1,
+      "available": 1,
+      "converged": true,
+      "images": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+      },
+      "diskStorageClass": "hcloud-volumes-luks"
+    },
+    "bex-api": {
+      "generation": 2806,
+      "observedGeneration": 2806,
+      "desired": 2,
+      "updated": 2,
+      "ready": 2,
+      "available": 2,
+      "converged": true,
+      "images": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538"
+      },
+      "diskStorageClass": ""
+    }
+  },
+  "operator_disk_storage_class": "hcloud-volumes-luks",
+  "image_source_reviews": {
+    "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538": {
+      "source_sha": "2ac6fd95402e940ce906873e9c9dc77c1ce53077",
+      "gitops_mapping_commit": "d6dd4852a",
+      "strict_cosign_identity": "https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main",
+      "strict_cosign_oidc_issuer": "https://token.actions.githubusercontent.com",
+      "strict_cosign_workflow_sha": "2ac6fd95402e940ce906873e9c9dc77c1ce53077",
+      "strict_cosign_exit": 0,
+      "contains_admitted_capacity_writer_902630131": false
+    }
+  },
+  "production_changes": "none; read-only inventory and public image signature/source review only"
+}
