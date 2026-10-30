@@ -2482,6 +2482,7 @@ export type MutationUpdateDatabaseDiskAutoscalingArgs = {
 
 
 export type MutationUpdateDatabaseHighAvailabilityArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   enabled: Scalars['Boolean']['input'];
   id: Scalars['String']['input'];

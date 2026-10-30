@@ -588,22 +588,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// (w2/m171): the same admission — enabling needs a plan with at least
 		// 1 CPU (POSTGRES_HA_PLAN_UNSUPPORTED), disabling is always allowed —
 		// and the same postgres_ha_status_changed event.
-		"updateDatabaseHighAvailability": &graphql.Field{
-			Type: postgresGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":      gqlutil.ReqArg(graphql.String),
-				"enabled": gqlutil.ReqArg(graphql.Boolean),
-				"dryRun":  gqlutil.Arg(graphql.Boolean),
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				enabled := p.Args["enabled"].(bool)
-				patch := PostgresPatch{EnableHighAvailability: &enabled}
-				if gqlutil.Bool(p.Args, "dryRun") {
-					return s.UpdatePostgresDryRun(p.Context, p.Args["id"].(string), patch)
-				}
-				return s.UpdatePostgres(p.Context, p.Args["id"].(string), patch)
-			},
-		},
+		"updateDatabaseHighAvailability": gqlutil.PatchMutation(postgresGQLType, "enabled",
+			func(enabled bool) PostgresPatch { return PostgresPatch{EnableHighAvailability: &enabled} },
+			s.UpdatePostgres, s.UpdatePostgresDryRun),
 		// setDatabaseReadReplicas replaces the named replica set (w5/m138), the
 		// GraphQL form of REST's PATCH readReplicas; [] removes every replica.
 		"setDatabaseReadReplicas": &graphql.Field{

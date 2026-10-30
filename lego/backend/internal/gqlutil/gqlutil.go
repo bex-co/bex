@@ -257,21 +257,27 @@ func ArgMutation[T any](out graphql.Output, argName string,
 // mutation takes: `(id, <field>, dryRun)`, where dryRun routes to the verb's
 // dry-run — the same call stopped before its first write (w2/m29, w5/m116).
 //
-// Shared because the dryRun branch is a rule, not boilerplate. Six mutations
-// across three features carry it (updateServicePlan, updateDatabasePlan,
-// updateKeyValuePlan, renameDatabase, renameKeyValue,
-// setKeyValueMaxmemoryPolicy), and a seventh that reimplemented the field and
-// dropped the branch would silently APPLY a change the caller asked only to
-// preview — the response looks the same either way, so nothing would surface it.
+// Shared because the dryRun branch is a rule, not boilerplate. Every mutation
+// that carries it (updateServicePlan, updateDatabasePlan, updateKeyValuePlan,
+// renameDatabase, renameKeyValue, setKeyValueMaxmemoryPolicy,
+// updateDatabaseHighAvailability, ...) goes through here, because one that
+// reimplemented the field and dropped the branch would silently APPLY a change
+// the caller asked only to preview — the response looks the same either way,
+// so nothing would surface it.
 //
-// `patch` lifts the single string argument into the feature's patch struct;
-// apply and preview are that feature's verb and its dry-run, which share a
-// signature and are therefore swappable at the call site. Each feature's
-// TestGraphQLDryRun* pins its own wiring in both directions.
-func PatchMutation[P, T any](out graphql.Output, argName string, patch func(string) P,
+// `patch` lifts the single required argument — a String, or a Boolean for an
+// on/off setting — into the feature's patch struct; apply and preview are that
+// feature's verb and its dry-run, which share a signature and are therefore
+// swappable at the call site. Each feature's TestGraphQLDryRun* pins its own
+// wiring in both directions.
+func PatchMutation[V string | bool, P, T any](out graphql.Output, argName string, patch func(V) P,
 	apply, preview func(ctx context.Context, id string, patch P) (T, error)) *graphql.Field {
 	args := IDArg()
-	args[argName] = ReqArg(graphql.String)
+	var argType graphql.Input = graphql.String
+	if _, isBool := any(*new(V)).(bool); isBool {
+		argType = graphql.Boolean
+	}
+	args[argName] = ReqArg(argType)
 	args["dryRun"] = Arg(graphql.Boolean)
 	// Optional everywhere, load-bearing only where the verb guards a member of
 	// a protected environment (w4/m127 — rename, version upgrade, durability,
@@ -283,7 +289,7 @@ func PatchMutation[P, T any](out graphql.Output, argName string, patch func(stri
 		Type: out,
 		Args: args,
 		Resolve: func(p graphql.ResolveParams) (any, error) {
-			id, value := p.Args["id"].(string), p.Args[argName].(string)
+			id, value := p.Args["id"].(string), p.Args[argName].(V)
 			ctx := core.WithConfirm(p.Context, Str(p.Args, "confirm"))
 			if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
 				return preview(ctx, id, patch(value))
