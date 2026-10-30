@@ -1,0 +1,12 @@
+{
+  "command": "bash scripts/gitops-validate.sh",
+  "exit": 0,
+  "validatedCommittedPin": "f5ac1fb0e2ed97c1471e81c21c79b4398fd8d822",
+  "reviewedValuesSha256": "c93e682d158f356f87cd7d3cde3badbd5603cf4636d728025336b607b730e34c",
+  "rawLogSha256": "d6fa5b109b3dedfcb91e1fccdbccb25d3ca789e5b110c2f5e9eedbfc55d73ea3",
+  "rawLogBytes": 23787,
+  "optionalWarnings": [
+    "WARN: fga CLI not installed \u2014 skipping model.fga <-> model.json drift check"
+  ],
+  "productionCalls": false
+}
