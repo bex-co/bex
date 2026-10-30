@@ -214,7 +214,7 @@ jobs:
           retry_signing cosign signing-config create --with-default-rekor-v2 --out "$RUNNER_TEMP/native-signing-config.json"
           retry_signing cosign sign --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" "$REF"
           for arch in amd64 arm64; do
-            syft "$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
+            syft "registry:$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
             retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
           done
