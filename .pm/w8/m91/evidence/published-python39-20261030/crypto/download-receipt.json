@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:784b35924b01e1e1c3d02539c4352ee8f70f11eb64195a8857504923fcc284ac",
+    "native_API_404": true,
+    "unselected_descriptor_count": 1
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:14176665a55987996e9af775186e5d55f268707abc32cec01c7329a9863b175f",
+      "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "bundle_bytes": 9503,
+      "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "14fb7379d35125043238b6cb1069a27388459116691e14d596121961509016ff"
+    },
+    {
+      "manifest_digest": "sha256:85345c5f16b1344a14641c43691196886618aa4524d384f065244bf2efa60bd3",
+      "bundle_digest": "sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "bundle_bytes": 56680863,
+      "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "0c6c117c5ede4a6263da16ef71f2847719fbb31727adc3bf0ef525335693f403"
+    },
+    {
+      "manifest_digest": "sha256:9544a2026b540797cfaaed0ee37a84e14cc13d42a708ca8e289e890f24b75114",
+      "bundle_digest": "sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "bundle_bytes": 56686059,
+      "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "2172bfa26d349b0ebb8f42fedb27f627b15d4e42f187443afa8948aca7e74775"
+    },
+    {
+      "manifest_digest": "sha256:a88c1cd67bbc8c59cca2cd78a95e25a97b0874a253579f19ea76a0e07e7932ab",
+      "bundle_digest": "sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "bundle_bytes": 30519051,
+      "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "394f49739d7d4413931cd5f567fd7ad4107a57324e73fe8646f2036fa53494b3"
+    },
+    {
+      "manifest_digest": "sha256:c6d911c5ae9ac07aabdeb2851ddf8e442dcb71079aaa1009e93cf357d908c788",
+      "bundle_digest": "sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "bundle_bytes": 30531643,
+      "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "8ad9b74e0bfbc034555f2dfd399b8474931201c341b7e06bc5f72a9985f6edcc"
+    }
+  ]
+}

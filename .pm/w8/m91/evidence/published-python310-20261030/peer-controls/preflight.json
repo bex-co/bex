@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-30T15:13:22.238810+00:00",
+  "tool_sha256": {
+    "/tmp/loopx-w8-native-review-v8.py": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "original_guard_source_sha256": "3d58992e22f784eb6d3bf4f251b87d27401038b48a3fdf39a49abbe55a2e4b56",
+  "private_guard_source_sha256": "838e87324752cfb3bd52c4b764e14b3bf89483b8dcd55a74808203696fbc2565",
+  "only_guard_change": {
+    "result_write_path_before": "/tmp/loopx-w8-native-review-v8-guard-tests.json",
+    "result_write_path_after": "/tmp/loopx-w8-python310-peer-controls-fd358/guard-tests-result.json"
+  },
+  "canonical_argv": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v8.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "python-3.10-bookworm",
+    "--sha",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "--run",
+    "41063724329",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-python310-peer-fd358",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-python310-peer-fd358",
+    "--layer-workers",
+    "2"
+  ],
+  "private_cache_and_output_previously_absent": true,
+  "candidate_approved": false
+}

@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-30T15:30:59.758632+00:00",
+  "scope": "Compact export consistency only; full strict supplier verification and actual zero process exit are separately archived.",
+  "checks": [
+    "Executed receipt byte-identical",
+    "Actual verifier exit0",
+    "22 recipe files equal",
+    "Executed source hashes",
+    "All Python source compiles without execution",
+    "README relative links exist",
+    "All small logs byte-identical and fully covered by custody",
+    "Five immutable bundle manifest/descriptor/subject bindings",
+    "All35 actual config/layer descriptors match fresh full-byte receipts totaling1212994198B",
+    "Actual helper image-bundle smoke exit0 and source hashes",
+    "No raw full reports, gzip, ignored.log or bytecode copied toGit"
+  ],
+  "text_log_count": 16,
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "passed": true
+}

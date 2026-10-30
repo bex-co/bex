@@ -1,0 +1,67 @@
+{
+  "scope": "Only completed own raw duplicates removed after independent gzip hash and full decompressed SHA/size equality; full raw signed bytes persist losslessly in private gzip and immutable public OCI.",
+  "removed_raw_bytes": 174427119,
+  "full_bundle_gzip_bytes": 31975185,
+  "entries": [
+    {
+      "raw_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+      "raw_sha256": "754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "raw_bytes": 9503,
+      "lossless_gzip_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json.gz",
+      "gzip_sha256": "122b2072df063544f771322ed973ea80b3f0b718db16d79d8b293e62b6dac87c",
+      "gzip_bytes": 6108,
+      "roundtrip_sha256": "754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "roundtrip_bytes": 9503,
+      "raw_removed": true,
+      "removed_at": "2026-10-30T15:25:55.601155+00:00"
+    },
+    {
+      "raw_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json",
+      "raw_sha256": "b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "raw_bytes": 56680863,
+      "lossless_gzip_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json.gz",
+      "gzip_sha256": "1dac0862b7bee03409f062a6027d6d3f6b9c82ab3d4ec525400c0fcc54e83b9b",
+      "gzip_bytes": 11468284,
+      "roundtrip_sha256": "b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "roundtrip_bytes": 56680863,
+      "raw_removed": true,
+      "removed_at": "2026-10-30T15:25:55.613038+00:00"
+    },
+    {
+      "raw_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json",
+      "raw_sha256": "5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "raw_bytes": 56686059,
+      "lossless_gzip_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json.gz",
+      "gzip_sha256": "8222ac072ddab1b82bb7720dc3809c929d6e20a87149dd196bc1d45d19a2257f",
+      "gzip_bytes": 11471217,
+      "roundtrip_sha256": "5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "roundtrip_bytes": 56686059,
+      "raw_removed": true,
+      "removed_at": "2026-10-30T15:25:55.623131+00:00"
+    },
+    {
+      "raw_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json",
+      "raw_sha256": "98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "raw_bytes": 30519051,
+      "lossless_gzip_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json.gz",
+      "gzip_sha256": "e7197ecb74b52dd0bba1b9fcf78c020b23a8c8f222586077f5a32747766d72d7",
+      "gzip_bytes": 4513948,
+      "roundtrip_sha256": "98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "roundtrip_bytes": 30519051,
+      "raw_removed": true,
+      "removed_at": "2026-10-30T15:25:55.627702+00:00"
+    },
+    {
+      "raw_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json",
+      "raw_sha256": "ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "raw_bytes": 30531643,
+      "lossless_gzip_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json.gz",
+      "gzip_sha256": "dc5677692a61676c82a65883e30c195558e7d801485d237b888c4bd783ea5b53",
+      "gzip_bytes": 4515628,
+      "roundtrip_sha256": "ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "roundtrip_bytes": 30531643,
+      "raw_removed": true,
+      "removed_at": "2026-10-30T15:25:55.633984+00:00"
+    }
+  ]
+}

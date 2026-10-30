@@ -1,0 +1,419 @@
+{
+  "scope": "Copied bytes are exact; .log names become .txt to retain them through repository ignore rules.",
+  "files": [
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-config.json",
+      "compact": "amd64-config.json",
+      "bytes": 16539,
+      "sha256": "58e0afdefdc53ada2751c13228d722cbdc995863865e9101c6e272e20a006989"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-manifest.json",
+      "compact": "amd64-manifest.json",
+      "bytes": 3534,
+      "sha256": "091e70c5829cc0dc527f7563de7171c92d8da59f0eaa4945cd8c589d29fb4321"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-official-config.json",
+      "compact": "amd64-official-config.json",
+      "bytes": 6384,
+      "sha256": "6fd6ebbd05fc4cf5dc3a789c47e42f4d787cb9c90fe5d29835875a934680271d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/amd64-official-manifest.json",
+      "compact": "amd64-official-manifest.json",
+      "bytes": 2325,
+      "sha256": "39b8470a9f625a81098294331d1df87459634eff7f9e3facbd1a9b5739985f45"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-config.json",
+      "compact": "arm64-config.json",
+      "bytes": 16539,
+      "sha256": "b963a38d241a5362923350cc5f68240f4450f161c6894288f8ac798f2d6b2b53"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-manifest.json",
+      "compact": "arm64-manifest.json",
+      "bytes": 3534,
+      "sha256": "0b34572d36f5f97a2976a74086f0b42d510c4eeb2fd0a27f9753daac68d1ec53"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-official-config.json",
+      "compact": "arm64-official-config.json",
+      "bytes": 6399,
+      "sha256": "613aeeaa3bbb575aa12276187e8fed30680a44c5b0782012f79b7f87a17c2a48"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/arm64-official-manifest.json",
+      "compact": "arm64-official-manifest.json",
+      "bytes": 2327,
+      "sha256": "ca81353d18186f51e6ef862b65460068fc6ea04fce8a31f9f463efa50855a130"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.result.json",
+      "bytes": 1233,
+      "sha256": "e8c9fd918616b4772cdddbfbffcca2a9199afad5041a62a00ec4eaff6a1a519d"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.stderr.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.stdout.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-positive.result.json",
+      "bytes": 2591,
+      "sha256": "c2c5f3eacef95651e1c19f377df8f5bd6f49a50cdad8feeee7625832df96cdfe"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.result.json",
+      "bytes": 1237,
+      "sha256": "60771e20df142128a41ab22851df205fecef42e32a7da1384bdd10157524efd4"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.stderr.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.stderr.txt",
+      "bytes": 467,
+      "sha256": "61150d122f6e7b7b5be05646dd2afb3f18f78161bc9088ffc020c94872186a13"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.stdout.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-source.result.json",
+      "bytes": 2599,
+      "sha256": "64d2121349ee3e727962b8ac949024506979a47cfbbcd17d87b2397fc0036023"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.result.json",
+      "bytes": 1238,
+      "sha256": "42aef2313b278a4b5308f1c44740ea5761b1921f2ed9174098bc344f33485b4f"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.stderr.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.stderr.txt",
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.stdout.log",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject.result.json",
+      "compact": "bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7-wrong-subject.result.json",
+      "bytes": 2601,
+      "sha256": "ef912022a051b9949f77077947c4636c97e6411f46d5568259136c91d778a302"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.result.json",
+      "compact": "bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.result.json",
+      "bytes": 1254,
+      "sha256": "79836f6eabb6d49104a2c29380369768abfd15ff2e59d2456ad016bdbf259355"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.stderr.log",
+      "compact": "bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.stdout.log",
+      "compact": "bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive.result.json",
+      "compact": "bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f-positive.result.json",
+      "bytes": 2633,
+      "sha256": "dea0ee9c6636f16a7dafab4d90ed1f653798f74f57fcc7c9f2a056c22da6841b"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.result.json",
+      "compact": "bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.result.json",
+      "bytes": 1223,
+      "sha256": "66b690aaab6d9e2e21f9a2473b7d16586869ff5a67dec633c31ea383073ab1dd"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.stderr.log",
+      "compact": "bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.stdout.log",
+      "compact": "bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive.result.json",
+      "compact": "bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76-positive.result.json",
+      "bytes": 2571,
+      "sha256": "c3376559993784db153b51bd71aafddd63e7b7ce38b24944c659bd7361b5c0af"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a.manifest.json",
+      "compact": "bundles/68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a.manifest.json",
+      "bytes": 1007,
+      "sha256": "68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.result.json",
+      "compact": "bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.result.json",
+      "bytes": 1223,
+      "sha256": "5671500968b30e15ddd2aec88a523642050faea34438d11e3d289a4435a46963"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.stderr.log",
+      "compact": "bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.stdout.log",
+      "compact": "bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive.result.json",
+      "compact": "bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044-positive.result.json",
+      "bytes": 2571,
+      "sha256": "fbb91a7f08f61dabaa99b44820aefe2e7deb154ee1e74094c9baecbbd8ed56ba"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4.manifest.json",
+      "compact": "bundles/9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4.manifest.json",
+      "bytes": 1013,
+      "sha256": "9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24.manifest.json",
+      "compact": "bundles/acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24.manifest.json",
+      "bytes": 1007,
+      "sha256": "acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9.manifest.json",
+      "compact": "bundles/bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9.manifest.json",
+      "bytes": 1038,
+      "sha256": "bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/crypto-results.json",
+      "compact": "bundles/crypto-results.json",
+      "bytes": 20011,
+      "sha256": "95613363407820b960458b56e18266470141d7ef690b6adac8050cf10b0f6987"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1.manifest.json",
+      "compact": "bundles/d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1.manifest.json",
+      "bytes": 1038,
+      "sha256": "d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/download-receipt.json",
+      "compact": "bundles/download-receipt.json",
+      "bytes": 3472,
+      "sha256": "b6d30c22c611324867197ac19eeca9e7053fc896787db471de0dd9f2b8fd2cbe"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.result.json",
+      "compact": "bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.result.json",
+      "bytes": 1254,
+      "sha256": "92165220baaa5b007f3fd337e8e3f2cd7a079a53a04c529b6418c84a545ee254"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.stderr.log",
+      "compact": "bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.stdout.log",
+      "compact": "bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive.result.json",
+      "compact": "bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e-positive.result.json",
+      "bytes": 2633,
+      "sha256": "1d0667abe3e52971898339e7c464f24c53509ad774ff38b1cc18f29e8dfe2095"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/referrer-index.json",
+      "compact": "bundles/referrer-index.json",
+      "bytes": 2164,
+      "sha256": "e1d4df49547d33c7e201e4d0dc95e84e1b00060e47a4086c36e6da87d32668f7"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/ci-runtime-scan-signing-gates.json",
+      "compact": "ci-runtime-scan-signing-gates.json",
+      "bytes": 721,
+      "sha256": "f757314a9de5e188c53fc512b9124619f8a5ac0502d2c24e0e3070b508c5eb11"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/executed-tools/loopx-w8-native-review-v8.py",
+      "compact": "executed-tools/loopx-w8-native-review-v8.py",
+      "bytes": 33614,
+      "sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/executed-tools/loopx-w8-verify-native-artifact.py",
+      "compact": "executed-tools/loopx-w8-verify-native-artifact.py",
+      "bytes": 40661,
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/index.json",
+      "compact": "index.json",
+      "bytes": 1611,
+      "sha256": "b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/official-index.json",
+      "compact": "official-index.json",
+      "bytes": 6511,
+      "sha256": "f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-job.json",
+      "compact": "producer-job.json",
+      "bytes": 5888,
+      "sha256": "86e0088f619f9a12fa7e53171ea4c40bcc9ff4741467bbbc1404646c3cb421aa"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/producer-verification-provenance.json",
+      "compact": "producer-verification-provenance.json",
+      "bytes": 1375,
+      "sha256": "62863267d37858210379c3daa44c69a11c28cf0a83f942ea804fe7329ee4e147"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/progress.json",
+      "compact": "progress.json",
+      "bytes": 211,
+      "sha256": "3b182f6ad11ab99af50e57c0bc382150b862512e042503e8a19cf06f0f2e1d7b"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/receipt.json",
+      "compact": "receipt.json",
+      "bytes": 36771,
+      "sha256": "f30536d4a49329ab3173ab4d49039b9708f28a66765c291ac12c0e2e46bb6a83"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/recipe-inputs-producer.json",
+      "compact": "recipe-inputs-producer.json",
+      "bytes": 2913,
+      "sha256": "8b267f9d9c2aa86e35d3831e138c277788691a7c68cc62f5d8a350974028129a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/recipe-inputs-verification.json",
+      "compact": "recipe-inputs-verification.json",
+      "bytes": 2913,
+      "sha256": "8b267f9d9c2aa86e35d3831e138c277788691a7c68cc62f5d8a350974028129a"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/reviewed-recovery-authorization.json",
+      "compact": "reviewed-recovery-authorization.json",
+      "bytes": 5258,
+      "sha256": "c0bddc5815ec24a8c5a23068817cc0f4fc87ce0e0adaf50a466048baff37ff9e"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/.github/native-base-recovery.json",
+      "compact": "source/.github/native-base-recovery.json",
+      "bytes": 5258,
+      "sha256": "c0bddc5815ec24a8c5a23068817cc0f4fc87ce0e0adaf50a466048baff37ff9e"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/.github/workflows/native-base-image.yml",
+      "compact": "source/.github/workflows/native-base-image.yml",
+      "bytes": 11989,
+      "sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/deploy/native-base/matrix.py",
+      "compact": "source/deploy/native-base/matrix.py",
+      "bytes": 2099,
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/lego/operator/internal/build/native.go",
+      "compact": "source/lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/source/source-files.json",
+      "compact": "source/source-files.json",
+      "bytes": 522,
+      "sha256": "3e96618b2b12437cbb048ac6a43e5dee83e5646a74562a013378a831d444c5ac"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/preflight.json",
+      "compact": "peer-controls/preflight.json",
+      "bytes": 1322,
+      "sha256": "2409608356f343b3d9c073fbb720b66f0bf39f1407b1d6e475f18da05c95f8a9"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/handoff.json",
+      "compact": "peer-controls/handoff.json",
+      "bytes": 2560,
+      "sha256": "beccd605ff0908008f9922a3f710cea7e81903161cb828b618c6589789d4fff2"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/original-guard-tests.py",
+      "compact": "peer-controls/original-guard-tests.py",
+      "bytes": 16634,
+      "sha256": "3d58992e22f784eb6d3bf4f251b87d27401038b48a3fdf39a49abbe55a2e4b56"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/private-guard-tests.py",
+      "compact": "peer-controls/private-guard-tests.py",
+      "bytes": 16654,
+      "sha256": "838e87324752cfb3bd52c4b764e14b3bf89483b8dcd55a74808203696fbc2565"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/guard-tests-result.json",
+      "compact": "peer-controls/guard-tests-result.json",
+      "bytes": 1867,
+      "sha256": "fedaaaf32c6aa47b35033b8089b3d8a6f5b62752c22dc090fcac1a8a623a9b4b"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/guard-tests.log",
+      "compact": "peer-controls/guard-tests.txt",
+      "bytes": 1683,
+      "sha256": "a7332c2f58e4938f1bc442fcb2145798ffc905539be99783beb521bbd3dfd66b"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/review.log",
+      "compact": "peer-controls/review.txt",
+      "bytes": 13402,
+      "sha256": "7e8bd40286a42efb80c542a70556e5ddb9808b975b4ac79a260a0dc1886a708f"
+    },
+    {
+      "source": "/private/tmp/loopx-w8-python310-peer-controls-fd358/archive.py",
+      "compact": "peer-controls/archive.py",
+      "bytes": 7737,
+      "sha256": "0fc52abf0636eee38776e8b0ee4d7c180f1d2913a7719c183a7325e6ea2335c7"
+    }
+  ]
+}

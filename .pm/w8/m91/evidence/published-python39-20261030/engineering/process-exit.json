@@ -1,0 +1,30 @@
+{
+  "started_at": "2026-10-30T15:09:24.915650+00:00",
+  "completed_at": "2026-10-30T15:24:44.776670+00:00",
+  "actual_returncode": 0,
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v8.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "python-3.9-bookworm",
+    "--sha",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "--run",
+    "41063720126",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-python39-fd358",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-python39-fd358",
+    "--layer-workers",
+    "2"
+  ],
+  "executed_source_sha256": {
+    "/tmp/loopx-w8-native-review-v8.py": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "log": "/tmp/loopx-w8-native-review-python39-fd358/v8-attempt1.log"
+}

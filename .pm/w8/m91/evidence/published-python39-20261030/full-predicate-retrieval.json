@@ -1,0 +1,186 @@
+{
+  "schema": "bex.native-full-predicate-retrieval/v1",
+  "repository": "bex-co/bex-cnb-run",
+  "policy": {
+    "schema": "bex.native-published-supplier-evidence/v1",
+    "reviewed_at": "2026-10-30T15:24:44.738273+00:00",
+    "scope": "Published supplier identity/runtime/report evidence only. All findings retained; no zero-CVE claim or security waiver. Complete catalog adoption, generated exact-image replay and original hosted acceptance remain separate. No production pin/resource changed.",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+    "official_base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "verification_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "workflow_run": 41063720126,
+    "job_id": 124090465681,
+    "cosign_version": "3.1.4",
+    "verified_darwin_arm64_binary_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+    "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+    "subject_digest_algorithm": "sha256",
+    "subject_digest": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+    "source_policy": "Actual green verification job; exact producer/ref/base with unchanged non-documentation recipe blobs/modes. OCI labels bind producer; every accepted certificate binds verification SHA.",
+    "crypto_policy": "All5 complete accepted bundles pass exact subject/issuer/workflow/source, Rekorv2 inclusion and signed RFC3161 timestamps. Both actual negative controls reject. No ignore flags.",
+    "report_policy": "Each registry-source SPDX root independently names its actual architecture/config/child. Trivy independently binds its actual config, OS, architecture and full DiffID list. No architecture-union acceptance.",
+    "manual_decompressed_layer_hashing_performed": false,
+    "Docker_export_root_aliases_needed": false,
+    "production_catalog_changed": false,
+    "remaining": "Complete27 supplier review/adoption, exact generated-image replay and hosted acceptance remain separate."
+  },
+  "canonicalization": "Complete decoded predicate sorted-JSON hash is a semantic-document hash; bundle and signed-statement hashes bind original signed bytes. Full raw signed bundles persist privately as independently checked lossless gzip and public immutable OCI blobs.",
+  "entries": [
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "manifest_digest": "sha256:14176665a55987996e9af775186e5d55f268707abc32cec01c7329a9863b175f",
+      "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "bundle_bytes": 9503,
+      "signed_statement_sha256": "14fb7379d35125043238b6cb1069a27388459116691e14d596121961509016ff",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "decoded_predicate_sorted_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "decoded_predicate_sorted_json_bytes": 2,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:14176665a55987996e9af775186e5d55f268707abc32cec01c7329a9863b175f",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "full_private_bundle_gzip": {
+        "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json.gz",
+        "sha256": "122b2072df063544f771322ed973ea80b3f0b718db16d79d8b293e62b6dac87c",
+        "bytes": 6108,
+        "uncompressed_sha256": "754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+        "uncompressed_bytes": 9503
+      },
+      "extracted_full_predicate_gzip_sha256": "d52ee061216797adbc9c56fec7f5afbd3ad9c675fdbbe089c8f9369f418c6c66",
+      "extracted_full_predicate_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "extracted_full_predicate_json_bytes": 2,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/image-signature-None-754d6f1c7e89.predicate.json.gz"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:85345c5f16b1344a14641c43691196886618aa4524d384f065244bf2efa60bd3",
+      "bundle_digest": "sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "bundle_bytes": 56680863,
+      "signed_statement_sha256": "0c6c117c5ede4a6263da16ef71f2847719fbb31727adc3bf0ef525335693f403",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "decoded_predicate_sorted_json_sha256": "669f5c0a3b673b6d8fec8849e0b1c7b47192a0852ce77b53bfe346387556e5d3",
+      "decoded_predicate_sorted_json_bytes": 41837019,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:85345c5f16b1344a14641c43691196886618aa4524d384f065244bf2efa60bd3",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "full_private_bundle_gzip": {
+        "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json.gz",
+        "sha256": "1dac0862b7bee03409f062a6027d6d3f6b9c82ab3d4ec525400c0fcc54e83b9b",
+        "bytes": 11468284,
+        "uncompressed_sha256": "b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+        "uncompressed_bytes": 56680863
+      },
+      "extracted_full_predicate_gzip_sha256": "4e3d7dcce9fffa9cffed740453562c8e1bb09e68f09bd907aaf2e44ed00ab3f4",
+      "extracted_full_predicate_json_sha256": "669f5c0a3b673b6d8fec8849e0b1c7b47192a0852ce77b53bfe346387556e5d3",
+      "extracted_full_predicate_json_bytes": 41837019,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/vulnerability-amd64-b03d9b9038b8.predicate.json.gz"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:9544a2026b540797cfaaed0ee37a84e14cc13d42a708ca8e289e890f24b75114",
+      "bundle_digest": "sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "bundle_bytes": 56686059,
+      "signed_statement_sha256": "2172bfa26d349b0ebb8f42fedb27f627b15d4e42f187443afa8948aca7e74775",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "decoded_predicate_sorted_json_sha256": "d98eeb6f44a50c6b7144e6ccfdb1bfb4cb2b45dd641a24f6e95f78ad5dfc3144",
+      "decoded_predicate_sorted_json_bytes": 41840828,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:9544a2026b540797cfaaed0ee37a84e14cc13d42a708ca8e289e890f24b75114",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "full_private_bundle_gzip": {
+        "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json.gz",
+        "sha256": "8222ac072ddab1b82bb7720dc3809c929d6e20a87149dd196bc1d45d19a2257f",
+        "bytes": 11471217,
+        "uncompressed_sha256": "5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+        "uncompressed_bytes": 56686059
+      },
+      "extracted_full_predicate_gzip_sha256": "f46cc6575bf0f6f96b9b1e8b9ff1b26d7b528368c84c69e5c781f2a2916aa6f0",
+      "extracted_full_predicate_json_sha256": "d98eeb6f44a50c6b7144e6ccfdb1bfb4cb2b45dd641a24f6e95f78ad5dfc3144",
+      "extracted_full_predicate_json_bytes": 41840828,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/vulnerability-arm64-5aeb8c3c6b55.predicate.json.gz"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:a88c1cd67bbc8c59cca2cd78a95e25a97b0874a253579f19ea76a0e07e7932ab",
+      "bundle_digest": "sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "bundle_bytes": 30519051,
+      "signed_statement_sha256": "394f49739d7d4413931cd5f567fd7ad4107a57324e73fe8646f2036fa53494b3",
+      "predicate_type": "https://spdx.dev/Document",
+      "decoded_predicate_sorted_json_sha256": "c824683a338025db137f43191d5850ed4f1d2269fa3a9ad2f68c053d30fcaeb1",
+      "decoded_predicate_sorted_json_bytes": 22455150,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:a88c1cd67bbc8c59cca2cd78a95e25a97b0874a253579f19ea76a0e07e7932ab",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "full_private_bundle_gzip": {
+        "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json.gz",
+        "sha256": "e7197ecb74b52dd0bba1b9fcf78c020b23a8c8f222586077f5a32747766d72d7",
+        "bytes": 4513948,
+        "uncompressed_sha256": "98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+        "uncompressed_bytes": 30519051
+      },
+      "extracted_full_predicate_gzip_sha256": "7b4e9b4b613c972b37cd1c2f19dc754ed6d5ebc6c3047ac5ac9d0e58ddf15eb4",
+      "extracted_full_predicate_json_sha256": "c824683a338025db137f43191d5850ed4f1d2269fa3a9ad2f68c053d30fcaeb1",
+      "extracted_full_predicate_json_bytes": 22455150,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/sbom-amd64-98693dc72e01.predicate.json.gz"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:c6d911c5ae9ac07aabdeb2851ddf8e442dcb71079aaa1009e93cf357d908c788",
+      "bundle_digest": "sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "bundle_bytes": 30531643,
+      "signed_statement_sha256": "8ad9b74e0bfbc034555f2dfd399b8474931201c341b7e06bc5f72a9985f6edcc",
+      "predicate_type": "https://spdx.dev/Document",
+      "decoded_predicate_sorted_json_sha256": "6ef77d22c7ad9c07664f0c2a4da3bc51cb016e1fdce9bacf35da42cd43006821",
+      "decoded_predicate_sorted_json_bytes": 22464451,
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "bundle_manifest_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/sha256:c6d911c5ae9ac07aabdeb2851ddf8e442dcb71079aaa1009e93cf357d908c788",
+      "bundle_blob_url": "https://ghcr.io/v2/bex-co/bex-cnb-run/blobs/sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "full_private_bundle_gzip": {
+        "path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json.gz",
+        "sha256": "dc5677692a61676c82a65883e30c195558e7d801485d237b888c4bd783ea5b53",
+        "bytes": 4515628,
+        "uncompressed_sha256": "ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+        "uncompressed_bytes": 30531643
+      },
+      "extracted_full_predicate_gzip_sha256": "a31c96885be436dc60ae18dc4ce42d5e9b2af180b783a20e2ef59d36a0e2bb2f",
+      "extracted_full_predicate_json_sha256": "6ef77d22c7ad9c07664f0c2a4da3bc51cb016e1fdce9bacf35da42cd43006821",
+      "extracted_full_predicate_json_bytes": 22464451,
+      "extracted_full_predicate_private_path": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/sbom-arm64-ac509a65be12.predicate.json.gz"
+    }
+  ]
+}
