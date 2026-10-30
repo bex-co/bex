@@ -189,8 +189,9 @@ func valkeySecCtx() *corev1.SecurityContext {
 // throttling, scrape_duration 10.0 s and `up` ≈ 0 on valkey-instances. With
 // the collectors trimmed (kvExporterEnv) one scrape needs well under 50 ms of
 // CPU, so 50m finishes it in a fraction of a second. The cost is not billed
-// (KV plans bill the server container's tier, tiers.yaml) and is noise against
-// the per-namespace ResourceQuota (Hobby: 3 CPU requests, 1 Key Value — +40m).
+// (KV plans bill the server container's tier, tiers.yaml), and the Pod runs
+// under the datastore PriorityClass, so the workspace compute quota does not
+// charge it at all (w2/m247).
 func kvExporterResources() corev1.ResourceRequirements {
 	return guaranteedResources("50m", "32Mi")
 }
@@ -900,6 +901,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 		sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, sourceMode)}
 	}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
+	holdDatastorePriority(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before)
 	holdIsolationLabel(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before, kv.Labels[labelNetworkIsolation])
 }
 
