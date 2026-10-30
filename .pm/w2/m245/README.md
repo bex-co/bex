@@ -1,12 +1,12 @@
 # w2 · m245 — Public Postgres URLs verify against system roots, as on Render
 
-**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo
+**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                   | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Prove on `dev-2` that CNPG serves a user-provided server certificate while its replication still verifies | 45m | —          |
+| t001 | Prove on `dev-2` that CNPG serves a user-provided server certificate while its replication still verifies — **DONE** | 45m | —          |
 | t002 | Operator: a publicly trusted certificate per externally reachable database, wired into CNPG and renewed   | 1h  | t001       |
 | t003 | External connection string connects as-is from a stock client, Render-shaped                             | 40m | t002       |
 | t004 | `serverCaCertificate` semantics on REST, GraphQL, MCP and the dashboard connect panel                     | 30m | t003       |
@@ -39,3 +39,12 @@
 - Production cert-manager has only HTTP-01 (traefik) ClusterIssuers, and `dpg-*.db.bex.co` answers ACME on port 80. Per-database HTTP-01 certificates therefore need no new credential. A `*.db.bex.co` wildcard would need a Cloudflare DNS-01 token, a user-supplied credential. Use it only if per-host HTTP-01 proves unworkable.
 - Let's Encrypt allows 50 **new** certificates per registered domain (`bex.co`) per week, shared with every other `*.bex.co` certificate. Renewals are exempt. That caps new public databases at roughly 50/week. t002 records the budget, and if the wildcard is needed, file it as a follow-up with the exact token scope.
 - libpq's `sslmode=verify-full` reads `~/.postgresql/root.crt` unless `sslrootcert=system` (libpq ≥ 16) is given. t003 must therefore choose the URL shape that connects as-is on stock clients, matching Render's exact external URL format.
+
+## t001 findings — 2026-10-29 (`dev-2`, CNPG 1.27.0; production runs 1.30.1)
+
+A two-instance CNPG `Cluster` in namespace `dev-2` used `spec.certificates.serverTLSSecret` (a cert-manager `Certificate` from a local stand-in CA) and `serverCASecret` (a secret holding **only** `ca.crt`, no key: the shape a Let's Encrypt chain will have). Afterwards every test object was deleted.
+
+- **CNPG accepts it.** It keeps generating and managing its own client CA (`<cluster>-ca`) and `streaming_replica` certificate alongside. `status.certificates` listed all four secrets with their expirations.
+- **Replication works.** The joining replica's `pg_basebackup` verified the primary against `server-ca.crt` from the provided `serverCASecret` (`host=<cluster>-rw … sslmode=verify-ca`), so **the server certificate must also cover the in-cluster names** (`<cluster>-rw`, `-r`, `-ro` and their namespace forms). For Let's Encrypt this means a CA secret whose `ca.crt` holds the chain's root (ISRG Root X1/X2). Internal names cannot appear in a public certificate, so t002 must check whether replication verifies only the CA (`verify-ca`, as the join log shows) or also the hostname, and keep in-cluster replication working (e.g. CNPG's `serverAltDNSNames` only on a CNPG-managed cert, or a separate internal path).
+- **Served certificate:** `openssl s_client -starttls postgres` returned the issued certificate, `Verify return code: 0`. Writes replicated (`pg_stat_replication`: `streaming`; replica row count followed).
+- **Renewal needs the `cnpg.io/reload` label.** Without it, after cert-manager re-issued the secret, the old certificate stayed served for more than 85 seconds. With `spec.secretTemplate.labels: {cnpg.io/reload: ""}` on the `Certificate`, the new serial was served within about 40 seconds after renewal, with no Pod restart and replication still streaming. **t002 must set that label.**
