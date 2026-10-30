@@ -1,0 +1,390 @@
+{
+  "accepted_bundles": [
+    "sha256:4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a",
+    "sha256:d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe",
+    "sha256:008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43",
+    "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+    "sha256:5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89"
+  ],
+  "results": [
+    {
+      "bundle_digest": "sha256:4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a.bundle.json",
+            "--type",
+            "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+            "--digest",
+            "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4ec32dbdf6b6340d625751ae9b781014adb56a1331909156ab0d228dae6b837a-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.bundle.json",
+        "--type",
+        "https://spdx.dev/Document",
+        "--digest",
+        "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe.bundle.json",
+            "--type",
+            "https://spdx.dev/Document",
+            "--digest",
+            "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/d0e9d09f55c305c49db579867af53fbf9e009ac11d6b5458ae9d726db8a62bfe-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.bundle.json",
+        "--type",
+        "https://spdx.dev/Document",
+        "--digest",
+        "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43.bundle.json",
+            "--type",
+            "https://spdx.dev/Document",
+            "--digest",
+            "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/008cb8d249b5847152a4a791a2c8d4cf45648f53ca617479fd3978a1b07c9a43-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+        "--type",
+        "https://sigstore.dev/cosign/sign/v1",
+        "--digest",
+        "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+            "--type",
+            "https://sigstore.dev/cosign/sign/v1",
+            "--digest",
+            "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89.bundle.json",
+            "--type",
+            "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+            "--digest",
+            "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5ac8f4c2f637fd6d79d6ade853e75a8a0131f50ac0dc6de986c1ade39fa8ac89-positive-attempt1.stderr.log"
+        }
+      ]
+    }
+  ],
+  "wrong_source": {
+    "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+    "exit_code": 1,
+    "command": [
+      "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+      "verify-blob-attestation",
+      "--bundle",
+      "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+      "--type",
+      "https://sigstore.dev/cosign/sign/v1",
+      "--digest",
+      "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+      "--digestAlg",
+      "sha256",
+      "--certificate-identity",
+      "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "--certificate-oidc-issuer",
+      "https://token.actions.githubusercontent.com",
+      "--certificate-github-workflow-sha",
+      "0000000000000000000000000000000000000000",
+      "--use-signed-timestamps",
+      "--timeout",
+      "5m"
+    ],
+    "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-wrong-source-attempt1.stderr.log",
+    "attempts": [
+      {
+        "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+        "exit_code": 1,
+        "command": [
+          "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+          "verify-blob-attestation",
+          "--bundle",
+          "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+          "--type",
+          "https://sigstore.dev/cosign/sign/v1",
+          "--digest",
+          "792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+          "--digestAlg",
+          "sha256",
+          "--certificate-identity",
+          "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+          "--certificate-oidc-issuer",
+          "https://token.actions.githubusercontent.com",
+          "--certificate-github-workflow-sha",
+          "0000000000000000000000000000000000000000",
+          "--use-signed-timestamps",
+          "--timeout",
+          "5m"
+        ],
+        "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-wrong-source-attempt1.stderr.log"
+      }
+    ]
+  },
+  "wrong_subject": {
+    "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+    "exit_code": 1,
+    "command": [
+      "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+      "verify-blob-attestation",
+      "--bundle",
+      "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+      "--type",
+      "https://sigstore.dev/cosign/sign/v1",
+      "--digest",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "--digestAlg",
+      "sha256",
+      "--certificate-identity",
+      "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "--certificate-oidc-issuer",
+      "https://token.actions.githubusercontent.com",
+      "--certificate-github-workflow-sha",
+      "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "--use-signed-timestamps",
+      "--timeout",
+      "5m"
+    ],
+    "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-wrong-subject-attempt1.stderr.log",
+    "attempts": [
+      {
+        "bundle_digest": "sha256:0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2",
+        "exit_code": 1,
+        "command": [
+          "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+          "verify-blob-attestation",
+          "--bundle",
+          "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2.bundle.json",
+          "--type",
+          "https://sigstore.dev/cosign/sign/v1",
+          "--digest",
+          "0000000000000000000000000000000000000000000000000000000000000000",
+          "--digestAlg",
+          "sha256",
+          "--certificate-identity",
+          "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+          "--certificate-oidc-issuer",
+          "https://token.actions.githubusercontent.com",
+          "--certificate-github-workflow-sha",
+          "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+          "--use-signed-timestamps",
+          "--timeout",
+          "5m"
+        ],
+        "stderr": "/private/tmp/loopx-w8-native-review-ruby30-peer-fd358/native-ruby-3.0-bullseye-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/0f54010faf0c1cc3c6ee3f59f7b125bbdadbf03387dc7227295249458b58f9e2-wrong-subject-attempt1.stderr.log"
+      }
+    ]
+  },
+  "candidate_approved": false
+}

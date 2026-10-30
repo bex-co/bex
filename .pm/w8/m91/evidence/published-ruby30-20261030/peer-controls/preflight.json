@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-30T15:34:20.410023+00:00",
+  "name": "ruby-3.0-bullseye",
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "expected_fresh_build": true,
+  "run": "41063729208",
+  "job_id": 124090806988,
+  "tool_sha256": {
+    "/tmp/loopx-w8-native-review-v8.py": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "guard_cases": 43,
+  "guard_reused_from_unchanged_policy": "/tmp/loopx-w8-python310-peer-controls-fd358/guard-tests-result.json",
+  "private_cache_output_absent": true,
+  "canonical_argv": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v8.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "ruby-3.0-bullseye",
+    "--sha",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "--run",
+    "41063729208",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-ruby30-peer-fd358",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-ruby30-peer-fd358",
+    "--layer-workers",
+    "2"
+  ],
+  "free_bytes": 9831800832,
+  "candidate_approved": false
+}

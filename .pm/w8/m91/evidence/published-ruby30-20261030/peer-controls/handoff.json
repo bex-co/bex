@@ -1,0 +1,13 @@
+{
+  "name": "ruby-3.0-bullseye",
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "run": "41063729208",
+  "job_id": 124090806988,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+  "official_base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+  "output_root": "/tmp/loopx-w8-native-review-ruby30-peer-fd358",
+  "cache_root": "/tmp/loopx-w8-native-cache-ruby30-peer-fd358",
+  "candidate_approved": false,
+  "scope": "Own actual CI/metadata snapshot before full strict review; not approval."
+}
