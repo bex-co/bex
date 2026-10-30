@@ -57,3 +57,8 @@ The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-
 ## Deletion readiness checkpoint — 2026-10-30
 
 The [final snapshot cleanup implementation](evidence/snapshot-delete-finalization-20261030/README.md) passed final full operator tests and all-module lint after three simplify reviews. The [bounded read-only cleanup observer](evidence/cleanup-observer-20261030/README.md) passed local protocol/cancellation and exact-identity tests. [The complete real-dependency backend gate](evidence/disk-billing-retention-20261030/parent-complete-backend-gate.json) also passed. Both fixes must be verified in a signed Ready production image before creating the budgeted fixture; no owned production lifecycle acceptance is claimed.
+
+
+## Real API observer bootstrap correction — 2026-10-30
+
+[An isolated real Kubernetes API check](evidence/real-api-watch-bootstrap-20261030/README.md) caught and corrected empty-list resource-version loss before any fixture was created. Final 35 unit cases and both real watch startup/teardown checks pass. Product Go files remain identical to the full operator/lint validation; actual production adoption and the original paid lifecycle acceptance are still pending.

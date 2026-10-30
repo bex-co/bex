@@ -356,7 +356,7 @@ class CleanupKube(FakeKube):
         self.app_watch.pending = [{**self.app_watch.initial[0], "event": "DELETED", "resourceVersion": "103", "purgeComplete": self.target["app_uid"]}]
         values = dict(name=fixture.purge_job_name(self.target), uid=uid(14), namespace=self.target["namespace"], app=self.target["app_name"], appUid=self.target["app_uid"], workspace=self.target["namespace"], appNamespace=self.target["namespace"], component="disk-snapshot-purge", owner=f"App/{self.target['app_name']}/{self.target['app_uid']}", complete="True" if complete else "", image=IMAGE, command='["/disk-snapshot"]', args='["purge"]', containerNames="snapshot;", workspaceEnv=self.target["namespace"], diskEnv=self.target["app_name"], resourceVersion="102")
         values.update({key: value for key, value in zip(fixture.SNAPSHOT_LOCATION, ("https://snapshots.invalid", "snapshots", "disks", "fsn1"))})
-        self.job_watch.pending = [{**row("cleanup_job", **values), "event": "DELETED"}]
+        self.job_watch.pending = [{"deleting": "", "initNames": "", "volumes": "", **values, "event": "DELETED"}]
 
 
 def cleanup_fixture():
@@ -610,6 +610,29 @@ class CleanupTests(unittest.TestCase):
             result = fixture.run_action(kube, target, "cleanup-observe", "grown-5g", IMAGE)
         self.assertEqual(result["state"], "complete")
         self.assertEqual(sleeps, [10, 2])
+
+    def test_watch_initial_api_list_preserves_empty_collection_version(self):
+        kube = fixture.Kube()
+        kube.run = Mock(return_value=json.dumps({"metadata": {"resourceVersion": "501"}, "items": []}))
+        with patch.object(fixture, "CleanupWatch") as watch:
+            self.assertIs(kube.watch_cleanup("jobs", "cleanup_job", "own-purge", "tea-owned"), watch.return_value)
+            self.assertEqual(watch.call_args.args, ("/apis/batch/v1/namespaces/tea-owned/jobs", "own-purge", "cleanup_job", "501", []))
+        self.assertEqual(kube.run.call_args.args[0], ["get", "--raw", "/apis/batch/v1/namespaces/tea-owned/jobs?fieldSelector=metadata.name%3Down-purge"])
+
+    def test_watch_initial_api_list_filters_private_fields_and_rejects_other_names(self):
+        target, _ = cleanup_fixture()
+        obj = {"metadata": {"name": target["app_name"], "uid": target["app_uid"], "resourceVersion": "502"}, "spec": {"env": [{"name": "SECRET", "value": "PRIVATE_CANARY"}]}}
+        kube = fixture.Kube()
+        kube.run = Mock(return_value=json.dumps({"metadata": {"resourceVersion": "503"}, "items": [obj]}))
+        with patch.object(fixture, "CleanupWatch") as watch:
+            kube.watch_cleanup("apps.app.bex.co", "cleanup_app", target["app_name"], "tea-owned")
+            self.assertEqual(watch.call_args.args[3], "503")
+            self.assertEqual(watch.call_args.args[4][0]["uid"], target["app_uid"])
+            self.assertNotIn("PRIVATE_CANARY", json.dumps(watch.call_args.args[4]))
+            with self.assertRaisesRegex(ValueError, "another name"):
+                kube.watch_cleanup("apps.app.bex.co", "cleanup_app", "another-app", "tea-owned")
+            with self.assertRaisesRegex(ValueError, "unknown fixed"):
+                kube.watch_cleanup("secrets", "cleanup_job", "own-purge", "tea-owned")
 
     def test_watch_filters_private_spec_fields_and_reconnects_from_bookmark(self):
         target, kube = cleanup_fixture()
