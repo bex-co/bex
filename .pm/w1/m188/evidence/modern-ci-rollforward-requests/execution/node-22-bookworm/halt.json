@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T21:09:24.493958+00:00",
+  "error": "accepted request requires unique discovery before more POSTs",
+  "tag": "node-22-bookworm",
+  "remaining_mutations_held": true
+}

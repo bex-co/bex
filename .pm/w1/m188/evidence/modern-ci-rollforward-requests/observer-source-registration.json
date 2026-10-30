@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T21:10:51.983158+00:00",
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "root_admission": {
+    "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/root-source-admission.json",
+    "sha256": "9e108c964380c624c442d04596b066b9ed29ff91764d2aae86be1fdb3b34a809"
+  },
+  "before_source_store_sha256": "6497720a322a6fb591eb3cbfa3f569813d3ae7e3ce3d9a097a6a3a77d84cb598",
+  "after_source_store_sha256": "9ed4fa42335b34a46a279b62ce40b732094c1884dc9529706196fbf552bfd1bb",
+  "aggregate_write": false,
+  "guard_write": false,
+  "remote_write": false
+}

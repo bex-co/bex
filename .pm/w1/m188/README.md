@@ -257,3 +257,11 @@ Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步�
 根复核与独立复核确认配方、运行时、版本matrix和其他门槛未变；113项同伴归档的存储及原文哈希均核对通过。先前 [待准入审核](evidence/846a-source-policy/pending-review.json) 保留false，随后 [明确来源准入](evidence/846a-source-policy/root-admission.json) 与 [独立语义复核](evidence/846a-source-policy/semantic-review.json) 分开记录。守卫只改三个常量行，明确保留旧3990、FD、4462、6fd4等来源及49ee仅Node18限制；[策略切换](evidence/846a-source-policy/policy-activation.json) 只向来源集合加入实际846a SHA，八项验收原文与59项受保护哈希保持不变。[八项完整重放](evidence/846a-source-policy/eight-candidate-regressions.json) 通过，未满11项时仍实际拒绝采用；正式进度仍为8/11。
 
 共享恢复目录新增的Elixir1.18/1.19属于w8/m91，本次 [真实目录19项选择检查](evidence/846a-source-policy/current5-selector-controls.json) 保留全部五项授权。上节空目录对照是当时的收尾准备；现在关闭w1的条件明确为其11个旧版本授权均已移除，其他工作流未完成的授权继续保留，不要求整个共享目录为空。既有Node18/20、Ruby3.2定向请求继续，镜像接入、真实应用及线上验收保持开放。
+
+### 旧排队任务切换到已修复流程 — 2026-10-30（UTC 21:13Z）
+
+旧99f现代运行时发布已出现三次实际失败，83c已包含相同配方、相同27项版本matrix的扫描及Syft传输修复。为避免继续执行旧流程，核对全部68个请求与33个源码指纹后，仅选择十个queued/runner0/零步骤且没有修复流程重复请求的现代任务；三个已开始任务和本项三个旧版本请求均保留。[只读计划](evidence/modern-ci-rollforward-requests/plan-final.json) 与 [随后明确执行授权](evidence/modern-ci-rollforward-requests/root-execution-approval.json) 分别保留原文。
+
+十个替代请求均实际使用83c/main/attempt1，每项只POST一次；[21:13Z请求收据](evidence/modern-ci-rollforward-requests/request-heads.json) 如实记录当时尚未取消旧任务。后续每项须先确认正确替代原生job已存在，再新鲜核对旧job仍queued/runner0/零步骤，才请求取消旧项；任何已开始工作继续保留。原生绑定、取消请求及真实终态另行追加，不回写这份请求阶段快照。不保证GitHub队列优先顺序。
+
+这次CI交接保留w8/m91全部现代运行时义务，其独立镜像验收仍归该工作流；w1正式验收仍为8/11。较大API原文仅做无损压缩，[目录清单](evidence/modern-ci-rollforward-requests/MANIFEST.json) 同时记录存储与原文字节的SHA/大小；发布请求不计作镜像接入或应用验收。

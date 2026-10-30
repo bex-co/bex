@@ -1,0 +1,6 @@
+{
+  "ref": "main",
+  "inputs": {
+    "runtime": "ruby-4.0-bookworm"
+  }
+}

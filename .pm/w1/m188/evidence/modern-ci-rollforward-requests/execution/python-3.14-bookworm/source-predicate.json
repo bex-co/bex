@@ -1,0 +1,9 @@
+{
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "baseline": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "catalog_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+  "allowed_digest_only_paths": [],
+  "predicate_passed": true,
+  "checked_at": "2026-10-30T21:11:31.581438+00:00"
+}

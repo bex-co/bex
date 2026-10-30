@@ -1,0 +1,41 @@
+diff --git a/.github/native-base-recovery.json b/.github/native-base-recovery.json
+index 203dab32c..56fba3681 100644
+--- a/.github/native-base-recovery.json
++++ b/.github/native-base-recovery.json
+@@ -50,6 +50,16 @@
+       "evidence": "https://github.com/bex-co/bex/actions/runs/41067564282/job/124104134360",
+       "reason": "Authenticated main producer built this exact index with an unchanged factory recipe. Both architecture runtime checks and full Trivy scans completed successfully after bounded retries; registry Syft generation then failed with peer HTTP2 PROTOCOL_ERROR, so the full attestation set remains unapproved. Reuse only this immutable same-base artifact and repeat all current runtime checks, both complete scans, full SBOMs, signatures and attestations.",
+       "remove_after": "Remove this authorization after verified discovery publication; this data-only path does not trigger another full publication."
++    },
++    "elixir-1.17": {
++      "base": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
++      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7e8b843cdcca682f47f908e5811b6304385c8b47c135709dfe0c65a39fc7510f",
++      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
++      "run_id": 41067556052,
++      "job_id": 124104259906,
++      "evidence": "https://github.com/bex-co/bex/actions/runs/41067556052/job/124104259906",
++      "reason": "Authenticated main producer built this exact index with an unchanged factory recipe. Both architecture runtime checks and complete Trivy scans passed after bounded scan retries; old-source Syft then failed populating a registry layer with HTTP2 PROTOCOL_ERROR. Reuse only this immutable same-base artifact and repeat every current runtime check, complete scan, full SBOM, signature and attestation.",
++      "remove_after": "Remove this authorization after verified discovery publication; data-only recovery does not trigger another full publication."
+     }
+   }
+ }
+diff --git a/deploy/opensandbox/sandbox-cluster.toml b/deploy/opensandbox/sandbox-cluster.toml
+index de511b4b8..ba206f194 100644
+--- a/deploy/opensandbox/sandbox-cluster.toml
++++ b/deploy/opensandbox/sandbox-cluster.toml
+@@ -43,7 +43,14 @@ path = "/var/lib/opensandbox/opensandbox.db"
+ # opensandbox-system, plus the per-tenant `<ws>-sandbox` grants) is used.
+ # namespace is the DEFAULT target; multi-tenant lookups override it per request.
+ namespace = "opensandbox-system"
+-informer_enabled = true
++# Informer cache OFF (2026-10-30 incident): in production every create waited
++# 300s for "Running with IP" and timed out although the BatchSandbox was Ready
++# (pod Running with an IP, PodsReady condition) — the informer kept serving the
++# object it cached at create time, so readiness was never observed and every
++# agent session failed as "sandbox capacity reached". Direct GETs (rate limited
++# by the client) are cheap at bex's sandbox volume; re-enable only with a
++# reproduction showing tenant-namespace watches deliver updates.
++informer_enabled = false
+ informer_resync_seconds = 300
+ informer_watch_timeout_seconds = 60
+ workload_provider = "batchsandbox"

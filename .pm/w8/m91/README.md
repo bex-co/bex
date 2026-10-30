@@ -172,3 +172,9 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Elixir1.17 publication recovery — 2026-10-30
 
 [Actual failed signing log and immutable recovery intake](evidence/elixir117-publication-recovery-20261030/README.md) show both architecture runtime/scan gates passed before old-source Syft's HTTP2 fault. The current workflow already contains the transport fixes; a minimal exact-index recovery row repeats all current gates without rebuilding or launching a full matrix. No new supplier approval or hosted acceptance is claimed; eight suppliers remain approved.
+
+## Concurrent fixed-profile CI queue handoff — 2026-10-30
+
+Concurrent `w1/m188` is rolling ten unstarted modern99f requests forward to the already-fixed83c/39b2 publication profile after the repeated old scan/Syft failures. All ten replacement requests are bound to83c/main/attempt1, with the factory, official bases and27-line matrix unchanged; each target had a fresh all-source duplicate check. The [w1 board](../../w1/README.md) links the immutable plan, explicit approval and21:13 request-phase receipts.
+
+Each old request retires only after its correct replacement native job exists and a fresh old-job read still shows queued/runner0/zero steps. Started Node24/Go1.27/Elixir1.20 work and the three legacy requests are preserved; modern obligations are retained. Supplier review, full27 adoption and original hosted DoDs remain owned byw8/m91. Dispatch and queue handoff add no supplier approval or task closure.

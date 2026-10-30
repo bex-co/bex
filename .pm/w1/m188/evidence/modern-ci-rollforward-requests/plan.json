@@ -1,0 +1,357 @@
+{
+  "schema": "bex.m188.readonly-modern-rollforward-plan/v1",
+  "at": "2026-10-30T21:02:49.001012+00:00",
+  "execution_authorized": false,
+  "remote_mutations_performed": false,
+  "proposed_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "source_admitted_by_this_agent": false,
+  "reviewed_profile_source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "source_predicate": {
+    "846_ancestor_of_actual_head": true,
+    "old99f_to_current_factory_native_go_diff": [],
+    "matrix_equal_for_all_27": true,
+    "matrix_count": 27,
+    "matrix_sha256": "00760fd0463f51772c972e0f26e8d0cfa9e085daf6e2365458c1bf117dc44580",
+    "catalog_byte_equal_846": false,
+    "existing_846_catalog_entries_unchanged": true,
+    "catalog_added_foreign_tags": [
+      "elixir-1.17"
+    ],
+    "other_nonpm_delta_vs846": [
+      "deploy/opensandbox/sandbox-cluster.toml"
+    ],
+    "dispatch_requirement": "Root must explicitly review/authorize actual source/catalog or a bounded source predicate. Recheck fresh remote head and actual run source; no aliases."
+  },
+  "dedupe": {
+    "all_recent_main_runs": 68,
+    "api_total_count": 68,
+    "all_unique_sources_hashed": 33,
+    "hash_read_failures": 0,
+    "fixed_profile_selectives": [
+      {
+        "run_id": 41121900239,
+        "tag": "elixir-1.18",
+        "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0"
+      },
+      {
+        "run_id": 41121921308,
+        "tag": "elixir-1.19",
+        "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0"
+      },
+      {
+        "run_id": 41127588682,
+        "tag": "elixir-1.17",
+        "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077"
+      }
+    ],
+    "fixed_auto": {
+      "run_id": 41121784740,
+      "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+      "conclusion": "cancelled"
+    },
+    "none_of_proposed_ten_has_fixed_profile_request_at_snapshot": true,
+    "must_refresh_all_recent_runs_before_each_actual_dispatch": true
+  },
+  "proposed_targets": [
+    {
+      "tag": "node-22-bookworm",
+      "old_run_id": 41067575985,
+      "old_job_id": 124104723836,
+      "base": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "initial_observed_at": "2026-10-30T21:00:50.488155+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067575985-jobs.json",
+        "sha256": "38958a58110cc3b46f833c5d3b80e25646047117ca7c11d1ab089fd3c7006b8c"
+      },
+      "final_observed_at": "2026-10-30T21:02:48.659853+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067575985-jobs-final.json",
+        "sha256": "38958a58110cc3b46f833c5d3b80e25646047117ca7c11d1ab089fd3c7006b8c"
+      }
+    },
+    {
+      "tag": "node-26-bookworm",
+      "old_run_id": 41067583832,
+      "old_job_id": 124105682346,
+      "base": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "initial_observed_at": "2026-10-30T21:00:50.172539+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067583832-jobs.json",
+        "sha256": "d5e6afc28ed91a67f34ea4356bbdd05625c66e3c2f825b4ecf315533da41aff3"
+      },
+      "final_observed_at": "2026-10-30T21:02:48.968285+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067583832-jobs-final.json",
+        "sha256": "d5e6afc28ed91a67f34ea4356bbdd05625c66e3c2f825b4ecf315533da41aff3"
+      }
+    },
+    {
+      "tag": "python-3.11-bookworm",
+      "old_run_id": 41067587985,
+      "old_job_id": 124105569005,
+      "base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "initial_observed_at": "2026-10-30T21:00:49.768032+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067587985-jobs.json",
+        "sha256": "b3a2543164da93c331ccdef931ca35d63ba85f8d602bf96481e61cd005a86819"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.889792+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067587985-jobs-final.json",
+        "sha256": "b3a2543164da93c331ccdef931ca35d63ba85f8d602bf96481e61cd005a86819"
+      }
+    },
+    {
+      "tag": "python-3.12-bookworm",
+      "old_run_id": 41067592658,
+      "old_job_id": 124105703075,
+      "base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+      "initial_observed_at": "2026-10-30T21:00:49.607488+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067592658-jobs.json",
+        "sha256": "d9339a12da6b9783705df32a8160ca31215fb481a57d15956ad006b37e381140"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.890034+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067592658-jobs-final.json",
+        "sha256": "d9339a12da6b9783705df32a8160ca31215fb481a57d15956ad006b37e381140"
+      }
+    },
+    {
+      "tag": "python-3.13-bookworm",
+      "old_run_id": 41067596835,
+      "old_job_id": 124105431823,
+      "base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "initial_observed_at": "2026-10-30T21:00:49.466839+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067596835-jobs.json",
+        "sha256": "924a294387427dfcf032e032c5fc7d1041d05b4d68ded5056c9ac347c05afa3f"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.986969+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067596835-jobs-final.json",
+        "sha256": "924a294387427dfcf032e032c5fc7d1041d05b4d68ded5056c9ac347c05afa3f"
+      }
+    },
+    {
+      "tag": "python-3.14-bookworm",
+      "old_run_id": 41067601778,
+      "old_job_id": 124105472916,
+      "base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "initial_observed_at": "2026-10-30T21:00:49.432135+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067601778-jobs.json",
+        "sha256": "3f2660fd79ef95967c675368ca59f607d35573f70f1ab2cd364c9ab882593e49"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.986805+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067601778-jobs-final.json",
+        "sha256": "3f2660fd79ef95967c675368ca59f607d35573f70f1ab2cd364c9ab882593e49"
+      }
+    },
+    {
+      "tag": "ruby-3.3-bookworm",
+      "old_run_id": 41067606635,
+      "old_job_id": 124106001249,
+      "base": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+      "initial_observed_at": "2026-10-30T21:00:48.685916+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067606635-jobs.json",
+        "sha256": "3f05fb58c5ea209628ee01da586c51a5edcca157dc86d899e4240f47472b9802"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.400045+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067606635-jobs-final.json",
+        "sha256": "3f05fb58c5ea209628ee01da586c51a5edcca157dc86d899e4240f47472b9802"
+      }
+    },
+    {
+      "tag": "ruby-3.4-bookworm",
+      "old_run_id": 41067612513,
+      "old_job_id": 124106038502,
+      "base": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+      "initial_observed_at": "2026-10-30T21:00:48.747183+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067612513-jobs.json",
+        "sha256": "a1ee3bf8ccfcffbc4310edf53d913430aa7021f2dbf57682a2b2ed2f12bd7889"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.400597+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067612513-jobs-final.json",
+        "sha256": "a1ee3bf8ccfcffbc4310edf53d913430aa7021f2dbf57682a2b2ed2f12bd7889"
+      }
+    },
+    {
+      "tag": "ruby-4.0-bookworm",
+      "old_run_id": 41067617284,
+      "old_job_id": 124106162459,
+      "base": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+      "initial_observed_at": "2026-10-30T21:00:48.747308+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067617284-jobs.json",
+        "sha256": "f395b697fc3125dc285b0ebaa1ac37980d0af5b099fd6d5009e497f0955c8f89"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.400517+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067617284-jobs-final.json",
+        "sha256": "f395b697fc3125dc285b0ebaa1ac37980d0af5b099fd6d5009e497f0955c8f89"
+      }
+    },
+    {
+      "tag": "rust-1-bookworm",
+      "old_run_id": 41067622215,
+      "old_job_id": 124106478533,
+      "base": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+      "initial_observed_at": "2026-10-30T21:00:47.858240+00:00",
+      "initial_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067622215-jobs.json",
+        "sha256": "30bafd2825e90b21f6f7ee884de2253fe3245d0cafb98b6fe816122781081f08"
+      },
+      "final_observed_at": "2026-10-30T21:02:46.400450+00:00",
+      "status": "queued",
+      "runner_id": 0,
+      "steps_count": 0,
+      "eligible_at_snapshot": true,
+      "existing_fixed_profile_request": null,
+      "proposed_action": "dispatch at most one selective fixed-profile runtime, bind actual job/source, then fresh-check old zero-start before requesting old cancellation",
+      "final_job_evidence": {
+        "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/run-41067622215-jobs-final.json",
+        "sha256": "30bafd2825e90b21f6f7ee884de2253fe3245d0cafb98b6fe816122781081f08"
+      }
+    }
+  ],
+  "excluded_started_or_terminal_old_jobs": [
+    {
+      "tag": "node-24-bookworm",
+      "run_id": 41067580157,
+      "job_id": 124104417775,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21926,
+      "steps_count": 19
+    },
+    {
+      "tag": "golang-1.27-bookworm",
+      "run_id": 41067572282,
+      "job_id": 124104688590,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21941,
+      "steps_count": 18
+    },
+    {
+      "tag": "elixir-1.20",
+      "run_id": 41067568389,
+      "job_id": 124104286411,
+      "status": "in_progress",
+      "conclusion": null,
+      "runner_id": 21919,
+      "steps_count": 19
+    },
+    {
+      "tag": "elixir-1.19",
+      "run_id": 41067564282,
+      "job_id": 124104134360,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21900,
+      "steps_count": 23
+    },
+    {
+      "tag": "elixir-1.18",
+      "run_id": 41067560420,
+      "job_id": 124104056666,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21898,
+      "steps_count": 22
+    },
+    {
+      "tag": "elixir-1.17",
+      "run_id": 41067556052,
+      "job_id": 124104259906,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_id": 21909,
+      "steps_count": 23
+    }
+  ],
+  "preserve_legacy_requests": [
+    41101339222,
+    41113367877,
+    41113373387
+  ],
+  "execution_sequence_if_later_authorized": [
+    "Refresh run discovery and dedupe per target across every actual source, including unadmitted sources; unknown target input means hold.",
+    "Recheck remote immutable source/workflow/factory/matrix/catalog under the exact approved source predicate.",
+    "Dispatch at most one workflow_dispatch runtime=<tag> per proposed eligible tag, sequentially, binding actual source/run/attempt without aliasing.",
+    "Wait for actual correct replacement native job/source/attempt, not just accepted POST; preserve old request until then.",
+    "Fresh-read corresponding old run AND jobs. Cancel only if exact99f native job remains queued, runner0, zero steps. If it starts, preserve it and report fallback duplicate.",
+    "Retain request/binding/fresh-old-check/cancel-result/terminal evidence; no force cancel or other-run mutation."
+  ],
+  "side_effects_and_limits": [
+    "Per-runtime cancel-in-progress=false preserves running work, but a new pending replacement can supersede an older pending job through GitHub concurrency itself; queue position/FIFO/legacy priority is not guaranteed.",
+    "Each eligible old native job is unstarted and has no exported compile to preserve; all ten have no recovery authorization and therefore require normal builds. Same factory and exact official bases do not imply byte-identical image digests because producer revision changes.",
+    "New39b2 profile has fail-closed28GiB free-space checks and full-layer staging; actual runner headroom/peak success is not yet proved. No host/settings/runner changes are authorized.",
+    "This is foreign w8/m91 work. Preserve all target obligations and all started jobs; no claim that m188 owns modern artifact acceptance. Root approval is required for handoff; no dropping modern work.",
+    "All runtime probes, full scans, full SPDX/Trivy predicates, signatures and fresh discovery still required by each owning workstream; dispatch is not acceptance.",
+    "Foreign Elixir recovery entries must be preserved; never empty shared catalog for w1."
+  ],
+  "protected_aggregate_sha256": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "protected_guard_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa"
+}
