@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-30T19:36:04.889742+00:00",
+  "driver_sha256": "2412f4c92107431536a8d72ca8ef2760240546a4ce292fb9eef30af19ae2112c",
+  "policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "quality": "root: exact diff, official cache-only environment scope, strict flags, whitelisted canonical-frame counters and original exception propagation reviewed clean",
+  "reuse": "fixture_quality: clean",
+  "efficiency": "disk221: clean",
+  "decision": "implementation approved for the explicitly assigned independent Ruby31 V10 validation; no artifact approval from local controls",
+  "prior_case_failures": "V8 attempt1 rejected unclassified combined size/SHA; V8 attempt2 rejected missing report pair after TUF persistence error. Neither response or incomplete pair was approved.",
+  "historical_TUF_cause_confirmed": false,
+  "strict_gates": "all unchanged; no new policy retries/ignore/offline/TLS/root/mirror shortcuts"
+}
