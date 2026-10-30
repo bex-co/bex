@@ -1,0 +1,67 @@
+{
+  "schema": "bex.m188.supplemental-evidence-custody/v1",
+  "at": "2026-10-30T20:11:59.383278+00:00",
+  "files": [
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-proposal/proposal.json",
+      "archive": "proposal.json",
+      "bytes": 2074,
+      "sha256": "9bcbac889788524388bf676c67062ecb6f769b8ce0c38e8f2bc5083dc3bf04e0"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-proposal/check.patch",
+      "archive": "proposed.patch",
+      "bytes": 7862,
+      "sha256": "1578a039c8b28edb367bb7fc7f841bdba3873f94a96e4dab1d6ca4cb2e7cdd89"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-proposal/check-v2.py",
+      "archive": "proposed.py",
+      "bytes": 5758,
+      "sha256": "470bf5159c44abd4bded5b8d5c6e68d71cde961a9661ce2d57ba340c3efa44b2"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-check.py",
+      "archive": "original.py",
+      "bytes": 3971,
+      "sha256": "8d904480307992409b37df3092a27b81c62648eaf5e038ca57d09d4458f540b7"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-check-v2.py",
+      "archive": "check-v2.py",
+      "bytes": 5836,
+      "sha256": "ff2a3dc008044f0653c0890a071436c6ae2938f624fa74adfb1c585a23506375"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-proposal/root-activation.json",
+      "archive": "root-activation.json",
+      "bytes": 2003,
+      "sha256": "20300efff169fb0093d452be5fb9c465bd9b09f27235adbb48929ca798d31081"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-current3.json",
+      "archive": "actual-current3-controls.json",
+      "bytes": 3495,
+      "sha256": "f9345a794de878a0565f559cd1dec3724138ac1f98746d8475dd965642f79327"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-empty-fixture.json",
+      "archive": "empty-fixture-controls.json",
+      "bytes": 3054,
+      "sha256": "9d0c5a2e169367fe929713cc5d47b35b7e665672c0015e880e55551c2d612d82"
+    },
+    {
+      "source": "/private/tmp/bex-m188-recovery-selection-v2-proposal/empty-fixture.json",
+      "archive": "empty-fixture.json",
+      "bytes": 67,
+      "sha256": "833292b0c0ef3b16714328997fccb43853b259010f29640d79d4869c6e2fdc14"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/.github/native-base-recovery.json",
+      "archive": "catalog-at-controls.json",
+      "bytes": 3280,
+      "sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39"
+    }
+  ],
+  "scope": "Future empty-catalog helper support and actual-current3/explicit-empty-fixture controls only. Actual repository still has three authorizations; no retirement, publication, adoption, Docker/HTTP or production execution claim."
+}

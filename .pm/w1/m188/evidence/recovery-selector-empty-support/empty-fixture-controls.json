@@ -1,0 +1,106 @@
+{
+  "checked_at": "2026-10-30T19:48:41.879220+00:00",
+  "method": "Actual current workflow embedded selector against isolated temporary Git commits; producer rewritten only inside fixture copy. No Docker, signing, network, production or repository mutation",
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "selector_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+  "catalog": "/private/tmp/bex-m188-recovery-selection-v2-proposal/empty-fixture.json",
+  "catalog_sha256": "833292b0c0ef3b16714328997fccb43853b259010f29640d79d4869c6e2fdc14",
+  "actual_repository_catalog_read": false,
+  "input_authorization_count": 0,
+  "retired_tags_checked": [
+    "node-14-bullseye",
+    "node-16-bookworm",
+    "node-18-bookworm",
+    "node-20-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm",
+    "python-3.10-bookworm",
+    "ruby-3.0-bullseye",
+    "ruby-3.1-bookworm",
+    "ruby-3.2-bookworm"
+  ],
+  "all_11_retired_in_input": true,
+  "actual_empty_catalog_all_authorizations_retired": false,
+  "active_recovery_cases_applicable": false,
+  "results": [
+    {
+      "case": "verified node-14-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-16-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-18-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-20-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.7-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.8-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.9-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.10-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.0-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.1-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.2-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "unlisted runtime",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "removed authorization rebuilds",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    }
+  ]
+}
