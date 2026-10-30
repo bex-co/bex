@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "root_index_sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "bundle_sha256": "6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.command.json",
+    "command_sha256": "35816dfeb589e54b1536bcfe8a5cb9c9dca1d7901e90bf42b368c7359f2cdbda",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_verification_sha.command.json",
+      "command_sha256": "e23fe8d8cdda135e8196261b35f6ebbb8e9287fd8c7f2c155e8867eb4f926ff2",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_index.command.json",
+      "command_sha256": "23704eb46073ae187fcd2131d953c4560d64a4f999ecf3ec4ccce22d888680fd",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_predicate.command.json",
+      "command_sha256": "f73253d1a673be0353987bfd209c74b05b4a8b89d01d5a810c9f3d1b2adda682",
+      "exit_code": 1
+    }
+  }
+}

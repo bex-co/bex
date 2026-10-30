@@ -1,0 +1,52 @@
+{
+  "schema": "native_local_signed_bundle_reuse/v1",
+  "checked_at": "2026-10-30T12:23:16.727536+00:00",
+  "proof_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+  "proof_sha256": "306937c5d3d7d9c67d729e714bc277b0a93cd9aea93b50e01d113b66d8f3a55e",
+  "all_five_crypto_verified": true,
+  "local_source_files": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "blob": "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.json.gz",
+      "gzip_sha256": "b5f51668ed2b706cebe8475f84834826957429ca90dcfcf1404467036b322edd",
+      "own_prior_cli_reused": true
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "blob": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.json.gz",
+      "gzip_sha256": "b8184de6c44741bc5fa07a60f98b83ab2d30988f23d421a616bc8747e65aea71",
+      "own_prior_cli_reused": true
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "blob": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.json.gz",
+      "gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "blob": "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.json.gz",
+      "gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "blob": "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.json.gz",
+      "gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+      "own_prior_cli_reused": false
+    }
+  ],
+  "new_large_downloads": false,
+  "content_binding_approved": false,
+  "accepted": false
+}

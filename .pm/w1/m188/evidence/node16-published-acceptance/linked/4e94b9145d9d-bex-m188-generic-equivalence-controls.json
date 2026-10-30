@@ -1,0 +1,175 @@
+{
+  "schema": "bex.m188.generic-equivalence-controls/v1",
+  "scope": "Two real approved sidecars; every mutation gets a recomputed outer sidecar hash. Original durable files untouched. Structural checks are not cryptographic proofs or candidate approval.",
+  "passed": true,
+  "positives": 2,
+  "negatives": 26,
+  "results": [
+    {
+      "case": "python-3.7-bullseye",
+      "name": "actual_generic_sidecar_positive",
+      "passed": true
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_config_custody",
+      "rejected": true,
+      "reason": "generic content input lacks root-approved durable custody"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_diffID",
+      "rejected": true,
+      "reason": "generic witness DiffID/size differs from retained object"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_order",
+      "rejected": true,
+      "reason": "generic compressed descriptor/order/direct receipt mismatch"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_uncompressed_size",
+      "rejected": true,
+      "reason": "generic witness DiffID/size differs from retained object"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_compressed_descriptor",
+      "rejected": true,
+      "reason": "generic compressed descriptor/order/direct receipt mismatch"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "missing_witness",
+      "rejected": true,
+      "reason": "generic content evidence missing layer witness"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "missing_completion_proof",
+      "rejected": true,
+      "reason": "generic execution role set is incomplete or duplicated"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "unapproved_execution_mode",
+      "rejected": true,
+      "reason": "unapproved content execution mode"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "missing_reused_layer_provenance",
+      "rejected": true,
+      "reason": "generic reused-layer provenance is missing or unexpected"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_reused_witness_ordinal",
+      "rejected": true,
+      "reason": "reused witness compressed identity mismatch"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_reused_root",
+      "rejected": true,
+      "reason": "reused layer lacks accepted Node14 custody"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "wrong_actual_exit_receipt_hash",
+      "rejected": true,
+      "reason": "generic content input lacks root-approved durable custody"
+    },
+    {
+      "case": "python-3.7-bullseye",
+      "name": "non_witness_record_substitution",
+      "rejected": true,
+      "reason": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "actual_generic_sidecar_positive",
+      "passed": true
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_config_custody",
+      "rejected": true,
+      "reason": "generic content input lacks root-approved durable custody"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_diffID",
+      "rejected": true,
+      "reason": "generic witness DiffID/size differs from retained object"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_order",
+      "rejected": true,
+      "reason": "generic compressed descriptor/order/direct receipt mismatch"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_uncompressed_size",
+      "rejected": true,
+      "reason": "generic witness DiffID/size differs from retained object"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_compressed_descriptor",
+      "rejected": true,
+      "reason": "generic compressed descriptor/order/direct receipt mismatch"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "missing_witness",
+      "rejected": true,
+      "reason": "generic content evidence missing layer witness"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "missing_completion_proof",
+      "rejected": true,
+      "reason": "generic execution role set is incomplete or duplicated"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "unapproved_execution_mode",
+      "rejected": true,
+      "reason": "unapproved content execution mode"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "missing_reused_layer_provenance",
+      "rejected": true,
+      "reason": "generic reused-layer provenance is missing or unexpected"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_reused_witness_ordinal",
+      "rejected": true,
+      "reason": "reused witness compressed identity mismatch"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_reused_root",
+      "rejected": true,
+      "reason": "reused layer lacks accepted Node14 custody"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "wrong_actual_exit_receipt_hash",
+      "rejected": true,
+      "reason": "generic content input lacks root-approved durable custody"
+    },
+    {
+      "case": "node-16-bookworm",
+      "name": "non_witness_record_substitution",
+      "rejected": true,
+      "reason": "Expecting value: line 1 column 1 (char 0)"
+    }
+  ]
+}

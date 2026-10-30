@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "root_index_sha256": "2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "bundle_sha256": "e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/commands/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66.command.json",
+    "command_sha256": "d719b1ea79372bd753118b37d60c4278cd79ab867d9bee66873f312abc8ec236",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_verification_sha.command.json",
+      "command_sha256": "af1b8b414bc8a8c5092e2fc923bac0b7e841d3e24bceab71c3654f4078d51dc9",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_index.command.json",
+      "command_sha256": "3b7961259a212dfdd5baac7b13336d7ba582a9a2985df30adb270645d0c3fd4a",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/controls/wrong_predicate.command.json",
+      "command_sha256": "95028259683961132860cd4d079dcdcdc61c394450e8f2f6387b9991dbcb2d99",
+      "exit_code": 1
+    }
+  }
+}
