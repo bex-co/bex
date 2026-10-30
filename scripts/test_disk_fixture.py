@@ -6,9 +6,14 @@ import importlib.util
 import io
 import itertools
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -719,6 +724,271 @@ class CleanupTests(unittest.TestCase):
             self.assertFalse(watcher.thread.is_alive())
             late.terminate.assert_called_once()
             late.stdout.readline.assert_not_called()
+
+
+class ObserverChannelTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.environment = patch.dict(os.environ, {"RUNNER_TEMP": self.temporary.name, "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1"})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+        self.target, _ = bound_fixture()
+        self.directory = fixture.observer_directory()
+        self.directory.mkdir(mode=0o700)
+        self.session = {"scope": fixture.observer_scope(self.target), "startedAt": fixture.now().isoformat(), "phase": "initial-1g"}
+        fixture.channel_write(self.directory, "session.json", self.session)
+        self.children = []
+        self.real_popen = subprocess.Popen
+
+    def ready(self):
+        return {"run": self.target["run"], "serviceId": self.target["service_id"], "collectedAt": fixture.now().isoformat(), "cleanupObservation": {"state": "observerReady", "startedAt": fixture.now().isoformat(), "maximumSeconds": fixture.CLEANUP_SECONDS, "fixtureExpiresAt": self.target["expires_at"], "fixtureBudgetRemainingSeconds": 7199, "namespace": self.target["namespace"], "appUid": self.target["app_uid"], "purgeJobName": fixture.purge_job_name(self.target), "providerBaseline": {"volumeHandle": self.target["binding"]["volume_handle"], "volumeId": 42, "http": 200, "state": "present"}, "watchResourceVersions": {"app": "101", "purgeJob": "102"}}}
+
+    def fake_child(self, program):
+        def spawn(argv, **kwargs):
+            self.assertEqual(argv, [sys.executable, str(Path(fixture.__file__).resolve()), "cleanup-observe", "--phase", "initial-1g"])
+            self.assertIs(kwargs["stderr"], subprocess.DEVNULL)
+            self.assertTrue(kwargs["start_new_session"])
+            child = self.real_popen([sys.executable, "-u", "-c", program], **kwargs)
+            self.children.append(child)
+            return child
+        return patch.object(fixture.subprocess, "Popen", side_effect=spawn)
+
+    def test_ready_artifact_is_sanitized_and_available_before_child_finishes(self):
+        ready = self.ready()
+        ready["collectedAt"] = fixture.now().isoformat()
+        ready["PRIVATE_CANARY"] = "not retained"
+        ready["cleanupObservation"]["providerBaseline"]["PRIVATE_CANARY"] = "not retained"
+        release = self.directory / "test-release"
+        complete = {"run": self.target["run"], "serviceId": self.target["service_id"], "collectedAt": fixture.now().isoformat(), "cleanupObservation": {"state": "complete"}}
+        program = "import json,time,pathlib\nprint(" + repr(json.dumps(ready)) + ",flush=True)\nwhile not pathlib.Path(" + repr(str(release)) + ").exists(): time.sleep(.01)\nprint(" + repr(json.dumps(complete)) + ",flush=True)"
+        received, errors = [], []
+
+        def consume():
+            try:
+                marker = fixture.wait_observer_channel(self.directory, self.session, readiness=True, timeout=3)
+                self.assertIsNone(self.children[0].poll())
+                self.assertNotIn("PRIVATE_CANARY", json.dumps(marker))
+                received.append(marker)
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                release.touch()
+
+        consumer = threading.Thread(target=consume)
+        consumer.start()
+        with self.fake_child(program):
+            self.assertTrue(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        consumer.join(timeout=4)
+        self.assertFalse(consumer.is_alive())
+        self.assertFalse(errors, errors)
+        self.assertEqual(received[0]["cleanupObservation"]["watchResourceVersions"], {"app": "101", "purgeJob": "102"})
+        self.assertNotIn("PRIVATE_CANARY", (self.directory / "observer.jsonl").read_text())
+        self.assertEqual(fixture.wait_observer_channel(self.directory, self.session, timeout=1)["exitCode"], 0)
+        self.assertEqual(self.children[0].poll(), 0)
+
+    def test_exit_zero_without_complete_marker_does_not_prove_cleanup(self):
+        receipt = self.ready()
+        receipt["collectedAt"] = fixture.now().isoformat()
+        with self.fake_child("print(" + repr(json.dumps(receipt)) + ",flush=True)"):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        with self.assertRaises(ValueError):
+            fixture.wait_observer_channel(self.directory, self.session, timeout=1)
+        self.assertEqual(fixture.channel_read(self.directory, "status.json")["reason"], "exited-without-complete-proof")
+
+    def test_failure_before_ready_retains_only_bounded_status(self):
+        with self.fake_child("import sys\nprint('PRIVATE_CANARY',file=sys.stderr)\nsys.exit(9)"):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        self.assertFalse((self.directory / "ready.json").exists())
+        self.assertEqual(fixture.channel_read(self.directory, "status.json")["exitCode"], 9)
+        self.assertNotIn("PRIVATE_CANARY", (self.directory / "status.json").read_text())
+        with self.assertRaises(ValueError):
+            fixture.wait_observer_channel(self.directory, self.session, readiness=True, timeout=1)
+
+    def test_invalid_ready_scope_provider_or_watch_versions_never_publish(self):
+        for mutate in (lambda r: r.update(serviceId="srv-foreign"), lambda r: r["cleanupObservation"]["providerBaseline"].update(http=404), lambda r: r["cleanupObservation"]["watchResourceVersions"].update(app=""), lambda r: r["cleanupObservation"].update(state="protocolSmokeReady")):
+            receipt = self.ready()
+            receipt["collectedAt"] = fixture.now().isoformat()
+            mutate(receipt)
+            with self.assertRaises(ValueError):
+                fixture.observer_ready(receipt, self.target, self.session)
+
+    def test_fixed_stop_request_terminates_and_reaps_owned_child(self):
+        program = "import time\nwhile True: time.sleep(.1)"
+        def stop():
+            deadline = time.monotonic() + 3
+            while not fixture.channel_read(self.directory, "status.json") and time.monotonic() < deadline:
+                time.sleep(.01)
+            fixture.channel_write(self.directory, "stop.json", {"scope": self.session["scope"]})
+        controller = threading.Thread(target=stop)
+        controller.start()
+        with self.fake_child(program):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        controller.join(timeout=3)
+        self.assertIsNotNone(self.children[0].poll())
+        self.assertEqual(fixture.channel_read(self.directory, "status.json")["reason"], "stopped-or-deadline")
+        self.assertEqual(fixture.observer_channel("observer-stop", self.target, "initial-1g")["observerChannel"], "stopped")
+
+    def test_supervisor_cancellation_stops_child_and_keeps_unknown_result(self):
+        program = "import time\nwhile True: time.sleep(.1)"
+        def cancel():
+            deadline = time.monotonic() + 3
+            while not self.children and time.monotonic() < deadline:
+                time.sleep(.01)
+            os.kill(os.getpid(), signal.SIGTERM)
+        controller = threading.Thread(target=cancel)
+        controller.start()
+        with self.fake_child(program):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        controller.join(timeout=3)
+        self.assertIsNotNone(self.children[0].poll())
+        self.assertIsNone(fixture.channel_read(self.directory, "status.json")["exitCode"])
+
+    def test_stale_or_foreign_attempt_is_not_adopted_and_never_signalled(self):
+        with patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}), patch.object(fixture.os, "killpg") as kill:
+            with self.assertRaises(ValueError):
+                fixture.observer_channel("observer-stop", self.target, "initial-1g")
+            kill.assert_not_called()
+        fixture.channel_write(self.directory, "status.json", {"scope": self.session["scope"], "state": "running", "updatedAt": (fixture.now() - timedelta(seconds=30)).isoformat(), "ready": False})
+        with self.assertRaisesRegex(ValueError, "heartbeat is stale"):
+            fixture.wait_observer_channel(self.directory, self.session, readiness=True, timeout=1)
+        with self.assertRaises(FileExistsError), patch.object(fixture.subprocess, "Popen") as popen:
+            fixture.observer_channel("observer-start", self.target, "initial-1g")
+        popen.assert_not_called()
+
+    def test_oversized_stdout_stops_owned_child_without_ready_artifact(self):
+        program = "import time\nprint('x'*262145,flush=True)\ntime.sleep(30)"
+        with self.fake_child(program):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        self.assertFalse((self.directory / "ready.json").exists())
+        self.assertEqual((self.directory / "observer.jsonl").stat().st_size, 0)
+        self.assertIsNotNone(self.children[0].poll())
+
+    def test_detached_supervisor_hands_ready_to_next_step_then_stops_its_child(self):
+        (self.directory / "session.json").unlink()
+        self.directory.rmdir()
+        payload = self.ready()
+        worker = "import json,time,datetime\nr=json.loads(" + repr(json.dumps(payload)) + ")\nr['cleanupObservation']['startedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()\nr['collectedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()\nprint(json.dumps(r),flush=True)\nwhile True: time.sleep(.1)"
+        driver = "\n".join([
+            "import importlib.util,json,pathlib,subprocess,sys",
+            "spec=importlib.util.spec_from_file_location('disk_fixture', " + repr(str(Path(fixture.__file__).resolve())) + ")",
+            "module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)",
+            "module.load_proof=lambda **kwargs: json.loads(" + repr(json.dumps(self.target)) + ")",
+            "real_popen=subprocess.Popen",
+            "def spawn(argv,**kwargs):",
+            "    assert argv[2]=='cleanup-observe'",
+            "    return real_popen([sys.executable,'-u','-c'," + repr(worker) + "],**kwargs)",
+            "module.subprocess.Popen=spawn",
+            "sys.argv=['disk_fixture.py','observer-supervise','--phase','initial-1g']",
+            "module.main()",
+        ])
+        supervisors = []
+        def spawn(argv, **kwargs):
+            self.assertEqual(argv[2], "observer-supervise")
+            child = self.real_popen([sys.executable, "-u", "-c", driver], **kwargs)
+            supervisors.append(child)
+            return child
+        try:
+            with patch.object(fixture.subprocess, "Popen", side_effect=spawn):
+                marker = fixture.observer_channel("observer-start", self.target, "initial-1g")
+            self.assertIsNone(supervisors[0].poll())
+            self.assertEqual(marker["cleanupObservation"]["state"], "observerReady")
+            self.assertEqual(fixture.channel_read(self.directory, "ready.json"), marker)
+            self.assertEqual(fixture.observer_channel("observer-stop", self.target, "initial-1g")["observerChannel"], "stopped")
+            self.assertEqual(supervisors[0].wait(timeout=3), 1)
+            self.assertEqual(fixture.channel_read(self.directory, "status.json")["reason"], "stopped-or-deadline")
+        finally:
+            for child in supervisors:
+                if child.poll() is None:
+                    fixture.channel_write(self.directory, "stop.json", {"scope": fixture.observer_scope(self.target)})
+                    child.wait(timeout=12)
+
+    def test_failed_supervisor_start_is_reaped_without_claiming_ready(self):
+        (self.directory / "session.json").unlink()
+        self.directory.rmdir()
+        children = []
+        def spawn(_argv, **kwargs):
+            child = self.real_popen([sys.executable, "-c", "raise SystemExit(8)"], **kwargs)
+            children.append(child)
+            return child
+        with patch.object(fixture.subprocess, "Popen", side_effect=spawn), patch.object(fixture, "CHANNEL_START_SECONDS", 0.3):
+            with self.assertRaisesRegex(ValueError, "wait expired"):
+                fixture.observer_channel("observer-start", self.target, "initial-1g")
+        self.assertEqual(children[0].poll(), 8)
+        self.assertFalse((self.directory / "ready.json").exists())
+        self.assertEqual(fixture.channel_read(self.directory, "stop.json")["scope"], fixture.observer_scope(self.target))
+
+    def test_total_artifact_bound_stops_collection_and_does_not_report_success(self):
+        receipt = {"run": self.target["run"], "serviceId": self.target["service_id"], "collectedAt": fixture.now().isoformat(), "cleanupObservation": {"state": "pending", "reason": "x" * 4096}}
+        program = "import time\nfor _ in range(600): print(" + repr(json.dumps(receipt)) + ",flush=True)\ntime.sleep(30)"
+        with self.fake_child(program):
+            self.assertFalse(fixture.supervise_observer(self.directory, self.target, self.session, "initial-1g"))
+        self.assertLessEqual((self.directory / "observer.jsonl").stat().st_size, 2 * 1024**2)
+        self.assertFalse((self.directory / "ready.json").exists())
+        self.assertIsNotNone(self.children[0].poll())
+        self.assertEqual(fixture.channel_read(self.directory, "status.json")["reason"], "invalid-or-failed-observer-channel")
+
+    def test_failed_child_reap_cannot_be_reported_as_stopped(self):
+        fixture.channel_write(self.directory, "status.json", {"scope": self.session["scope"], "state": "finished", "updatedAt": fixture.now().isoformat(), "ready": False, "exitCode": None, "reason": "child-reap-unproved"})
+        with self.assertRaisesRegex(ValueError, "shutdown is unproved"), patch.object(fixture.os, "killpg") as kill:
+            fixture.observer_channel("observer-stop", self.target, "initial-1g")
+        kill.assert_not_called()
+
+    def test_start_cancellation_before_popen_returns_stops_unassigned_owned_child(self):
+        (self.directory / "session.json").unlink()
+        self.directory.rmdir()
+        entered, blocked = threading.Event(), threading.Event()
+        children = []
+        program = "\n".join([
+            "import json,pathlib,time,sys",
+            "directory=pathlib.Path(" + repr(str(self.directory)) + ")",
+            "deadline=time.monotonic()+3",
+            "while time.monotonic()<deadline:",
+            "    if (directory/'stop.json').exists():",
+            "        assert json.loads((directory/'stop.json').read_text())=={'scope':json.loads((directory/'session.json').read_text())['scope']}",
+            "        sys.exit(0)",
+            "    time.sleep(.01)",
+            "sys.exit(7)",
+        ])
+        def spawn(_argv, **kwargs):
+            child = self.real_popen([sys.executable, "-c", program], **kwargs)
+            children.append(child)
+            entered.set()
+            blocked.wait(5)
+            raise AssertionError("the blocked Popen call should be cancelled before returning its handle")
+        def cancel():
+            if entered.wait(2):
+                os.kill(os.getpid(), signal.SIGTERM)
+        previous = signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+        controller = threading.Thread(target=cancel)
+        controller.start()
+        try:
+            with patch.object(fixture.subprocess, "Popen", side_effect=spawn), patch.object(fixture.os, "killpg") as kill:
+                with self.assertRaises(SystemExit) as error:
+                    fixture.observer_channel("observer-start", self.target, "initial-1g")
+                self.assertEqual(error.exception.code, 143)
+                kill.assert_not_called()
+            self.assertEqual(children[0].wait(timeout=4), 0)
+            self.assertFalse((self.directory / "ready.json").exists())
+            self.assertEqual(fixture.channel_read(self.directory, "stop.json"), {"scope": fixture.observer_scope(self.target)})
+        finally:
+            blocked.set()
+            controller.join(timeout=3)
+            signal.signal(signal.SIGTERM, previous)
+            for child in children:
+                child.wait(timeout=4)
+
+    def test_old_finished_success_is_durable_but_invalid_terminal_results_fail(self):
+        status = {"scope": self.session["scope"], "state": "finished", "updatedAt": (fixture.now() - timedelta(seconds=30)).isoformat(), "ready": True, "exitCode": 0, "reason": "observer-exited"}
+        fixture.channel_write(self.directory, "status.json", status)
+        self.assertEqual(fixture.wait_observer_channel(self.directory, self.session, timeout=1), status)
+        for change in ({"ready": False}, {"exitCode": None}, {"exitCode": 1}, {"exitCode": False}, {"reason": "child-reap-unproved"}, {"scope": {"run": "foreign"}}):
+            fixture.channel_write(self.directory, "status.json", {**status, **change})
+            with self.assertRaises(ValueError):
+                fixture.wait_observer_channel(self.directory, self.session, timeout=1)
+        fixture.channel_write(self.directory, "status.json", {**status, "state": "running"})
+        with self.assertRaisesRegex(ValueError, "heartbeat is stale"):
+            fixture.wait_observer_channel(self.directory, self.session, timeout=1)
 
 
 if __name__ == "__main__":

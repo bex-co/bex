@@ -1,0 +1,62 @@
+{
+  "action-review.json": {
+    "stored": "action-review.json",
+    "original_bytes": 1091,
+    "original_sha256": "4d433672d1b0e325f0e0878cacd131db3ed2138522315fdf84afa6f3881c83ee"
+  },
+  "bex-m144-early-artifact-actionlint-configured.log": {
+    "stored": "bex-m144-early-artifact-actionlint-configured.log.gz",
+    "original_bytes": 0,
+    "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "bex-m144-early-artifact-actionlint.log": {
+    "stored": "bex-m144-early-artifact-actionlint.log.gz",
+    "original_bytes": 2818,
+    "original_sha256": "9f454a84a552103d3652e455c630c6dd123fd585ae0d8e49468728bc3f8ce7e4"
+  },
+  "bex-m144-early-artifact-actionlint.yaml": {
+    "stored": "bex-m144-early-artifact-actionlint.yaml",
+    "original_bytes": 55,
+    "original_sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0"
+  },
+  "bex-m144-early-artifact-actions-guard.log": {
+    "stored": "bex-m144-early-artifact-actions-guard.log.gz",
+    "original_bytes": 290,
+    "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+  },
+  "bex-m144-early-artifact-actions-tests.log": {
+    "stored": "bex-m144-early-artifact-actions-tests.log.gz",
+    "original_bytes": 2751,
+    "original_sha256": "9079bcc89779321ec133f998ae19ca03107024f7f95d4be0e6b1d122c260f753"
+  },
+  "bex-m144-early-artifact-tests.log": {
+    "stored": "bex-m144-early-artifact-tests.log.gz",
+    "original_bytes": 8636,
+    "original_sha256": "a184ec52c3a01c4406a5cb3021ee47dcf9ef0ccaae40989eb94165cbb8ba6db9"
+  },
+  "source/.github/workflows/hcloud-csi-rollout.yml": {
+    "stored": "source/.github/workflows/hcloud-csi-rollout.yml.gz",
+    "original_bytes": 8454,
+    "original_sha256": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa"
+  },
+  "source/scripts/disk_fixture.py": {
+    "stored": "source/scripts/disk_fixture.py.gz",
+    "original_bytes": 72630,
+    "original_sha256": "8e7082764e951be7a00c0316cc3bac4c17bb3b10c14cb436220d15c4ea79c5e0"
+  },
+  "source/scripts/github-actions-validate.sh": {
+    "stored": "source/scripts/github-actions-validate.sh.gz",
+    "original_bytes": 28351,
+    "original_sha256": "c32ad398bbd88ec2aef755a088c5c9e9d0d225933a9f5b34188a8f886d4a9867"
+  },
+  "source/scripts/test_disk_fixture.py": {
+    "stored": "source/scripts/test_disk_fixture.py.gz",
+    "original_bytes": 63532,
+    "original_sha256": "948e6cd1a2943b6abeca1b62691e931b6d96851696f0580cab6b158fd8f375c2"
+  },
+  "source.patch": {
+    "stored": "source.patch.gz",
+    "original_bytes": 41096,
+    "original_sha256": "7763569ecc91fa0b127236f24865953360fbe9422c360e9b59d64d46f30c4562"
+  }
+}

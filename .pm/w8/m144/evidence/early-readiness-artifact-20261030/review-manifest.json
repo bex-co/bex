@@ -1,0 +1,60 @@
+{
+  "schema": "bex-m144-local-early-artifact-review-v1",
+  "createdAt": "2026-10-30T13:37:16.860462+00:00",
+  "claims": {
+    "fixtureTests": {
+      "count": 49,
+      "seconds": 4.521,
+      "exit": 0,
+      "rawLog": "bex-m144-early-artifact-tests.log"
+    },
+    "actionsGuard": {
+      "exit": 0,
+      "rawLog": "bex-m144-early-artifact-actions-guard.log"
+    },
+    "actionsGuardSelfTests": {
+      "exit": 0,
+      "rawLog": "bex-m144-early-artifact-actions-tests.log"
+    },
+    "actionlint": {
+      "version": "1.7.12",
+      "exit": 0,
+      "config": "bex-m144-early-artifact-actionlint.yaml",
+      "rawLog": "bex-m144-early-artifact-actionlint-configured.log",
+      "unconfiguredLog": "bex-m144-early-artifact-actionlint.log",
+      "unconfiguredLimitation": "Only pre-existing custom runner labels unrecognized; configured exact bex-ci/bex-production labels."
+    },
+    "networkCalls": "Official public action documentation only; no live resource/API calls, auth, workflow dispatch, fixture creation or paid proof.",
+    "processEvidence": "Actual local Python fake children, plus detached local fake supervisor; synthetic marker never claims production readiness.",
+    "notExecuted": [
+      "GitHub artifact upload/download while active (new resource-free observer-channel-smoke operation available to root after ship)",
+      "Production observer/fixture/provider calls",
+      "New real Kube API probe (underlying watch mechanism unchanged)"
+    ]
+  },
+  "sourceSha256": {
+    "scripts/disk_fixture.py": "8e7082764e951be7a00c0316cc3bac4c17bb3b10c14cb436220d15c4ea79c5e0",
+    "scripts/test_disk_fixture.py": "948e6cd1a2943b6abeca1b62691e931b6d96851696f0580cab6b158fd8f375c2",
+    ".github/workflows/hcloud-csi-rollout.yml": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa",
+    "scripts/github-actions-validate.sh": "c32ad398bbd88ec2aef755a088c5c9e9d0d225933a9f5b34188a8f886d4a9867"
+  },
+  "artifactsSha256": {
+    "action-review.json": "4d433672d1b0e325f0e0878cacd131db3ed2138522315fdf84afa6f3881c83ee",
+    "bex-m144-early-artifact-actionlint-configured.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bex-m144-early-artifact-actionlint.log": "9f454a84a552103d3652e455c630c6dd123fd585ae0d8e49468728bc3f8ce7e4",
+    "bex-m144-early-artifact-actionlint.yaml": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+    "bex-m144-early-artifact-actions-guard.log": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+    "bex-m144-early-artifact-actions-tests.log": "9079bcc89779321ec133f998ae19ca03107024f7f95d4be0e6b1d122c260f753",
+    "bex-m144-early-artifact-tests.log": "a184ec52c3a01c4406a5cb3021ee47dcf9ef0ccaae40989eb94165cbb8ba6db9",
+    "source/.github/workflows/hcloud-csi-rollout.yml": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa",
+    "source/scripts/disk_fixture.py": "8e7082764e951be7a00c0316cc3bac4c17bb3b10c14cb436220d15c4ea79c5e0",
+    "source/scripts/github-actions-validate.sh": "c32ad398bbd88ec2aef755a088c5c9e9d0d225933a9f5b34188a8f886d4a9867",
+    "source/scripts/test_disk_fixture.py": "948e6cd1a2943b6abeca1b62691e931b6d96851696f0580cab6b158fd8f375c2",
+    "source.patch": "7763569ecc91fa0b127236f24865953360fbe9422c360e9b59d64d46f30c4562"
+  },
+  "supersedes": "/private/tmp/bex-w8-m144-early-artifact-channel-20261030/MANIFEST.json",
+  "reviewFixes": [
+    "Cancellation cleanup covers owned startup before Popen returns its handle. Real local blocked Popen child observes exact scope stop marker, exits0, and no PID signaling occurs.",
+    "Exact-scope successful finished result is durable beyond heartbeat freshness. 30-second-old finished success passes; invalid terminal/foreign scope/stale running states reject."
+  ]
+}

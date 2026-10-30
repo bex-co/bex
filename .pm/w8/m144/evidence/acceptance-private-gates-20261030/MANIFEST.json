@@ -1,0 +1,52 @@
+{
+  "files": {
+    "ARCHIVE_PATHS.json": {
+      "bytes": 1548,
+      "sha256": "f5531586d0a5bef10e678cbc3f8fc88e29ae6ac95077ab38bd521c8ab55aa477"
+    },
+    "hosted-disk.py.txt.gz": {
+      "bytes": 7999,
+      "sha256": "58242019020c2414da0215cb9dc554934e4d46d14fd4a4e1dae46c27b2f8de1b"
+    },
+    "test_m144_guards.py.txt.gz": {
+      "bytes": 5920,
+      "sha256": "5d5a09c7980b6b4475dae3e53318aec9d9c4c472599b6b1f8b481d5caa8dcb3c"
+    },
+    "m144-private-preparation-receipt.json": {
+      "bytes": 3536,
+      "sha256": "6b779c901cc57c95351f18ad372c3b601ba56074d6fbf42e7096bef025c228c4"
+    },
+    "reviewed-constant-addition.patch.gz": {
+      "bytes": 479,
+      "sha256": "5f00ae43396501cc41ceb5d77240bff8533b82b552d5d622426d3ed50db06a26"
+    },
+    "README.md": {
+      "bytes": 1484,
+      "sha256": "d96c5d14f026db2fec61b1a02ac56c4270f9c9f18d627ea6703ffe0c452e9992"
+    },
+    "m144_guards.py.txt.gz": {
+      "bytes": 5881,
+      "sha256": "fe71a44988373f76eaaeeb8ac5c63f2fbd4acb70de73c99bad79fc257ecd9861"
+    },
+    "acceptance-plan.json": {
+      "bytes": 32896,
+      "sha256": "18f8897d88a91d93f689043f5af0c872cdbc1ed33c95d0809260de5c9e6af0f3"
+    },
+    "current-source-compatibility.json": {
+      "bytes": 931,
+      "sha256": "18245d83d4cfd65ab6d5320fc012f80c04abba8a4ca46863ef49424445371060"
+    },
+    "guard-21.log.gz": {
+      "bytes": 887,
+      "sha256": "ea65a51a7c6a5d5e642ea0b9a5a2d5f06a91cd8d7b4ffb73a97b353596273252"
+    },
+    "rollout-requirements.json": {
+      "bytes": 3481,
+      "sha256": "2e0d2e7a878386672866136af4dd1d4542c150838ad643f8e14f274768402654"
+    },
+    "cleanup-compatibility.log.gz": {
+      "bytes": 85,
+      "sha256": "e67ce4f704920eef55782004fa2b9e65a6b4040cec80481f523245385fab499b"
+    }
+  }
+}

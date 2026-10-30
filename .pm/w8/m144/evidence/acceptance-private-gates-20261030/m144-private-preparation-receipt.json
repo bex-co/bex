@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-30T12:50:03.263788+00:00",
+  "status": "source-only private preparation; not live rollout, usage or acceptance evidence",
+  "test_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/test_m144_guards.py"
+  ],
+  "test_exit_code": 0,
+  "tests": 21,
+  "test_raw_log": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/m144-private-guard-current-final.log",
+  "test_raw_log_sha256": "05be7dc9e627f4247f921129fe94469478368d5a0170533eef11718aa44978cb",
+  "changed_private_source_files": {
+    "hosted-disk.py": {
+      "bytes": 22978,
+      "sha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953"
+    },
+    "acceptance-plan.json": {
+      "bytes": 32896,
+      "sha256": "18f8897d88a91d93f689043f5af0c872cdbc1ed33c95d0809260de5c9e6af0f3"
+    },
+    "m144_guards.py": {
+      "bytes": 18036,
+      "sha256": "1f73f0f7d95a3479cc885bd2b8dcef1764a28de1c7be4b9a0eda60fba8d60a88"
+    },
+    "rollout-requirements.json": {
+      "bytes": 3481,
+      "sha256": "2e0d2e7a878386672866136af4dd1d4542c150838ad643f8e14f274768402654"
+    },
+    "test_m144_guards.py": {
+      "bytes": 24245,
+      "sha256": "41a9c2bdaa61ce8cae9238b1ff9f0ca9d86ec2205a346d6a4cc4c47198838393"
+    }
+  },
+  "new_billing_guard": "Actual own disk creation/grow server timestamps + exact PATCH receipt + anchored wire brackets; per-closed-hour1-to-5 expected integer interval, physical10Gi explicit rejection. Requested-size parity status is separate from unproved seal/invoice.",
+  "frozen_HTTP_fixture_source_unchanged": true,
+  "fixture_identity_nonce_dataset_budget_unchanged": true,
+  "rollout_ready_gate_created": false,
+  "actual_HTTP_requests": 0,
+  "actual_authentication_operations": 0,
+  "actual_hosted_resource_creations": 0,
+  "workflow_dispatches": 0,
+  "credential_file_contents_read": false,
+  "git_mutations": false,
+  "Git_reads": "local merge-base ancestry and approved public-source blob hashes only",
+  "unexecuted": [
+    "actual new-image public signature/live Ready and actual rollout gate",
+    "authentication/refresh/revocation",
+    "HTTP201 create, real grow PATCH and all resource/workflow actions",
+    "actual own usage GET and weighted billing comparison",
+    "physical fill/growth/remount/snapshot/restore/UI/kubelet cases",
+    "actual DELETE/provider/purge absence",
+    "financial sealing/export/invoice acceptance"
+  ],
+  "current_source_compatibility": {
+    "at": "2026-10-30T12:49:12.965783+00:00",
+    "source_commit": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "original_full_validation_commit": "a59db2dd82c06427c2c64c8352a6b7b8ad3c4b02",
+    "changed_required_source": "lego/operator/internal/controller/cleanup_job.go",
+    "original_sha256": "8728aee6f4089f418ee08a269385ba7845b9c4b870867a1fa64021727776b3c8",
+    "current_sha256": "ba7d9d8c5b1d7edc202a4778f0a922c2e437a1616874c2f91cca32978530228b",
+    "review": "Only9 added lines defining datastore purge-name constants/comments; every existing cleanup/snapshot function byte unchanged. Other16 required blobs unchanged.",
+    "focused_command": "GOWORK=off go test ./internal/controller -run '^Test(CleanupJob|DiskDeletion|DiskCleanup)' -count=1",
+    "focused_exit_code": 0,
+    "focused_log_sha256": "40212ffe16ead0e92dcf31fca5f81451bd80ed0dea2ef75ac21a38be56ce470a",
+    "qualified_production_CI_and_Ready_image_still_required": true
+  },
+  "test_fixture_source_commit": "requirements.tested_source_commit; required original purge/retention ancestors unchanged"
+}
