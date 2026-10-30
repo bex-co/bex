@@ -1,0 +1,6 @@
+{
+  "bothFixedWatchInitialBookmarks": true,
+  "childrenAndThreadsReaped": true,
+  "scope": "Real isolated envtest API; no production connection or resource",
+  "server": "v1.34.1"
+}

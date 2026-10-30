@@ -1,0 +1,52 @@
+{
+  "files": {
+    "ARCHIVE_PATHS.json": {
+      "bytes": 1470,
+      "sha256": "3a3569858622e65f763993f26d7f2ce68eabfadd53ff3ddc3aac0aae2ee9fa76"
+    },
+    "README.md": {
+      "bytes": 1247,
+      "sha256": "be7073d51377da5cc889f363f10993040989fb60d674ab2d09dbb94c079da2a4"
+    },
+    "disk_fixture.py.txt.gz": {
+      "bytes": 16290,
+      "sha256": "d8735e9521844d9e3c9f4b5bdc98099085ab70d1b4c6a891b49f92a02aa6f843"
+    },
+    "fixture-35-final.log.gz": {
+      "bytes": 55,
+      "sha256": "4b0c4e8862f137b8dc197a822f03c719cf08849c378efe5bd49818edfa0be06a"
+    },
+    "fixture-35.log.gz": {
+      "bytes": 1290,
+      "sha256": "64669f10c06d4a366d7bcd7a2027d591199cbca3cd8baf59d510504c9f35ace8"
+    },
+    "main.go.txt": {
+      "bytes": 1997,
+      "sha256": "2c2f35058c46ce4c564fd59892ed63dd2a6f9f34f784c724e64037452a1fd599"
+    },
+    "receipt.json": {
+      "bytes": 182,
+      "sha256": "1471f4a882a029d77b1a7d1d74eb482908b575fe9d9f668ac03a356e23c9ae1a"
+    },
+    "review.json": {
+      "bytes": 959,
+      "sha256": "b29f4ee58998519b1cd48cc79a7d1bfe485f047769464ca065dcdf59693a8d8c"
+    },
+    "run-fixed-final.log.gz": {
+      "bytes": 220,
+      "sha256": "746f6df2f0bb6d202af0bbc76f3060dd559bb96a502e6c54c26fda846dc786f9"
+    },
+    "run.log.gz": {
+      "bytes": 370,
+      "sha256": "41c25efa72293e85d4c4acf3ad28ebb079da1e6d1e0e9bec8e33b026a38013ca"
+    },
+    "test_disk_fixture.py.txt.gz": {
+      "bytes": 10503,
+      "sha256": "5fbbab71ebbf634fdfcb8e2da7d4b644d88c3450854b8c6d37c2b4ed5caf74d0"
+    },
+    "watch.py": {
+      "bytes": 592,
+      "sha256": "7f3ccfa94cbfe044e57d4b54ec2ab5b9893aeedcc014a9a4434d646bfdfafe12"
+    }
+  }
+}

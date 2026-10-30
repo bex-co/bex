@@ -1,0 +1,33 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "time"
+ "k8s.io/client-go/discovery"
+ "k8s.io/client-go/tools/clientcmd"
+ "k8s.io/client-go/tools/clientcmd/api"
+ "sigs.k8s.io/controller-runtime/pkg/envtest"
+)
+func main() {
+ root := "/Users/tianpan/projects/bex7"
+ work := "/private/tmp/bex-w8-m144-real-watch-20261030"
+ env := &envtest.Environment{BinaryAssetsDirectory: filepath.Join(root,"lego/operator/bin/k8s/1.34.1-darwin-arm64"), CRDDirectoryPaths: []string{filepath.Join(root,"lego/operator/config/crd/bases")}, ControlPlaneStartTimeout: 45*time.Second, ControlPlaneStopTimeout: 30*time.Second}
+ cfg, err := env.Start(); if err != nil { panic(err) }
+ defer func(){if err:=env.Stop();err!=nil {panic(err)}}()
+ file:=filepath.Join(work,"own.kubeconfig")
+ defer os.Remove(file)
+ raw:=api.Config{Clusters:map[string]*api.Cluster{"local":{Server:cfg.Host,CertificateAuthorityData:cfg.CAData}},AuthInfos:map[string]*api.AuthInfo{"local":{ClientCertificateData:cfg.CertData,ClientKeyData:cfg.KeyData}},Contexts:map[string]*api.Context{"local":{Cluster:"local",AuthInfo:"local"}},CurrentContext:"local"}
+ if err:=clientcmd.WriteToFile(raw,file);err!=nil {panic(err)}
+ if err:=os.Chmod(file,0600);err!=nil {panic(err)}
+ dc,err:=discovery.NewDiscoveryClientForConfig(cfg);if err!=nil {panic(err)}
+ version,err:=dc.ServerVersion();if err!=nil {panic(err)}
+ cmd:=exec.Command("python3",filepath.Join(work,"watch.py"));cmd.Env=append(os.Environ(),"KUBECONFIG="+file,"PYTHONPATH="+filepath.Join(root,"scripts"));cmd.Stdout=os.Stdout;cmd.Stderr=os.Stderr
+ if err:=cmd.Run();err!=nil {panic(err)}
+ receipt:=map[string]any{"server":version.GitVersion,"scope":"Real isolated envtest API; no production connection or resource", "bothFixedWatchInitialBookmarks":true,"childrenAndThreadsReaped":true}
+ data,_:=json.MarshalIndent(receipt,"","  ");if err:=os.WriteFile(filepath.Join(work,"receipt.json"),append(data,'\n'),0600);err!=nil {panic(err)}
+ fmt.Println(string(data))
+}

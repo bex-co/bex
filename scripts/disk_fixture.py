@@ -46,10 +46,7 @@ FIELDS = {
 }
 IDENTITY = {**META, "owner": OWNER, "app": r"{.metadata.labels.app\.bex\.co/app}", "appUid": r"{.metadata.labels.app\.bex\.co/app-uid}", "workspace": r"{.metadata.labels.app\.bex\.co/workspace}", "namespace": "{.metadata.namespace}"}
 FIELDS["cleanup_workload"] = IDENTITY
-FIELDS["cleanup_app"] = {**FIELDS["app"], "resourceVersion": "{.metadata.resourceVersion}", "purgeComplete": r"{.metadata.annotations.app\.bex\.co/disk-snapshot-purge-complete}"}
-FIELDS["cleanup_job"] = {**IDENTITY, "resourceVersion": "{.metadata.resourceVersion}", "component": r"{.metadata.labels.app\.bex\.co/component}", "appNamespace": r"{.metadata.labels.app\.bex\.co/app-namespace}", "complete": '{range .status.conditions[?(@.type=="Complete")]}{.status}{end}', "image": '{.spec.template.spec.containers[?(@.name=="snapshot")].image}', "command": '{.spec.template.spec.containers[?(@.name=="snapshot")].command}', "args": '{.spec.template.spec.containers[?(@.name=="snapshot")].args}', "containerNames": '{range .spec.template.spec.containers[*]}{.name}{";"}{end}', "initNames": '{range .spec.template.spec.initContainers[*]}{.name}{";"}{end}', "volumes": "{.spec.template.spec.volumes}", "workspaceEnv": '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="BEX_DISK_WORKSPACE")].value}', "diskEnv": '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="BEX_DISK_ID")].value}'}
 SNAPSHOT_LOCATION = ("BEX_DISK_SNAPSHOT_ENDPOINT", "BEX_DISK_SNAPSHOT_BUCKET", "BEX_DISK_SNAPSHOT_PREFIX", "BEX_DISK_SNAPSHOT_REGION")
-FIELDS["cleanup_job"].update({key: '{.spec.template.spec.containers[?(@.name=="snapshot")].env[?(@.name=="' + key + '")].value}' for key in SNAPSHOT_LOCATION})
 CLEANUP_SECONDS = 100 * 60
 
 
@@ -157,16 +154,18 @@ class Kube:
         return json.loads(self.run(["-n", namespace, "get", "cronjob", name, "-o", "json"]))
 
     def watch_cleanup(self, resource, kind, name, namespace):
-        fields = FIELDS[kind]
-        expression = '{.metadata.resourceVersion}{"\\n"}{range .items[*]}' + '{"\\t"}'.join(fields.values()) + '{"\\n"}{end}'
-        args = ["-n", namespace, "get", resource, "--field-selector", "metadata.name=" + name]
-        raw = self.run([*args, "-o", "jsonpath=" + expression])
-        version, _, rows = raw.partition("\n")
-        require(re.fullmatch(r"[0-9]+", version), "cleanup watch resourceVersion unavailable")
-        values = [row for row in csv.reader(io.StringIO(rows), delimiter="\t", quoting=csv.QUOTE_NONE) if row]
-        require(all(len(row) == len(fields) for row in values), "invalid initial cleanup metadata")
-        initial = [dict(zip(fields, row)) for row in values]
+        require((resource, kind) in (("apps.app.bex.co", "cleanup_app"), ("jobs", "cleanup_job")), "unknown fixed cleanup watch")
         endpoint = "/apis/" + ("app.bex.co/v1alpha1" if resource == "apps.app.bex.co" else "batch/v1") + "/namespaces/" + namespace + "/" + ("apps" if resource == "apps.app.bex.co" else "jobs")
+        # kubectl's aggregated JSONPath list can discard collection metadata
+        # for an empty result. The exact API list retains the replay version.
+        raw = self.run(["get", "--raw", endpoint + "?" + urlencode({"fieldSelector": "metadata.name=" + name})])
+        require(len(raw) <= 262144, "initial cleanup list exceeded its fixed size bound")
+        result = json.loads(raw)
+        version = result["metadata"]["resourceVersion"]
+        require(re.fullmatch(r"[0-9]+", version), "cleanup watch resourceVersion unavailable")
+        require(len(result["items"]) <= 1, "fixed cleanup list returned multiple identities")
+        initial = [cleanup_watch_row(row, kind) for row in result["items"]]
+        require(all(row["name"] == name for row in initial), "fixed cleanup list returned another name")
         return CleanupWatch(endpoint, name, kind, version, initial)
 
 
