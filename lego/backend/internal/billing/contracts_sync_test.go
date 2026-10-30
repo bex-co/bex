@@ -210,3 +210,45 @@ func TestCatalogFitsOneSubscription(t *testing.T) {
 		t.Fatalf("%d billable dimensions exceed Stripe's 20 items per Subscription", n)
 	}
 }
+
+// TestStripeEnsureContractToleratesACatalogStripeLacks: when pricing.yaml ships
+// before the live Stripe catalog carries its new Prices, an existing
+// Subscription keeps rating what it already rates. EnsureContract must not
+// fail, because that would hold every workspace's usage, and nothing is written.
+func TestStripeEnsureContractToleratesACatalogStripeLacks(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	var present []string
+	for _, name := range names {
+		if name != "instance_seconds.postgres.1c-2g" {
+			present = append(present, name)
+		}
+	}
+	if len(present) == len(names) {
+		t.Fatal("catalog has no 1c-2g dimension to withhold")
+	}
+	catalog := stripePriceCatalogJSON(t, present)
+	items := stripeSubscriptionItemsJSON(t, len(present), nil)
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && path == "/v1/prices":
+			return 200, catalog
+		case method == http.MethodGet && path == "/v1/subscription_items":
+			return 200, items
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("EnsureContract must not block usage on an incomplete live catalog: %v", err)
+	}
+	stub.mu.Lock()
+	defer stub.mu.Unlock()
+	for i, body := range stub.bodies {
+		if body != "" {
+			t.Errorf("nothing may be written while the catalog is unresolved: %s %s", stub.hits[i], body)
+		}
+	}
+}

@@ -344,7 +344,14 @@ func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscrip
 	}
 	priceIDs, err := c.resolvePriceIDs(ctx)
 	if err != nil {
-		return err
+		// Fail soft: an existing Subscription already rates every dimension it
+		// had, so a catalog the live Stripe account does not fully carry yet
+		// (pricing.yaml deployed before scripts/stripe-billing-setup.py ran)
+		// must not hold every workspace's usage. Report it and retry the sync
+		// next cycle; only new Subscriptions still need the whole catalog.
+		log.Printf("billing: skipping catalog sync of subscription %s for %s: %v", subscriptionID, tenantID, err)
+		c.metrics.Operation("contract_item_sync", "catalog_unresolved")
+		return nil
 	}
 	c.mu.Lock()
 	meters := c.priceMeters
