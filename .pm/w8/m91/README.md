@@ -34,3 +34,9 @@ After publication, both native clients' fresh first original Free backup-process
 - **采用方案：** m91/design.md 的 C：按已审阅官方基础镜像构建 bex 原生基础镜像，CI 发布 amd64/arm64，评审后锁 digest，所有 workspace 随后续原生构建采用。共享依赖、数据、头文件按发行版正常安装；不在每次租户构建中 apt-get，不用可选的偏离方案挡住 parity。沿用现有 runner / GHCR，不新增云资源；镜像体积和刷新耗时由 worker 实测记录。
 - **剩余门槛：** 无用户决策门槛；发布产物、锁定及线上验收都是尚未完成的 worker 工作。需要提交时仍遵守仓库显式 $ship 规则。
 - **worker 下一步：** m91 先建立可复现共享供应链；其余项复用该机制逐工具做真实功能回归。保留 bookworm/trixie、amd64/arm64、主运行时/companion、build/pre-deploy/runtime/static、PATH/缓存及排除路径的原验收，不能仅凭 --version 或配置存在关闭。发布前复核所选版本和上游摘要。
+
+## Supplier implementation checkpoint — 2026-10-29
+
+The publishing factory and offline utility gates are implemented for all 27 current reviewed lines. Real local transformations passed on Node 24 amd64/arm64, Node 14 Bullseye and Elixir 1.18 Trixie; PostgreSQL 18 archive processing, live psql/pg_dump and malformed-input control passed. A real generated exact-OTP-28.0 build and network-disabled runtime passed using a genuine immutable local Bookworm supplier. Primary Python 3.7/3.8/3.14 metadata, matching C headers/extensions, wheel installation, local import precedence and post-tree-replacement restoration passed. These supplier tests do not replace the individual tool milestones' larger hosted/phase acceptance.
+
+Three final simplify reviewers cleared the mechanism after removing an unused config field and avoiding wheel downloads on non-Python bases. The production supplier catalog remains empty until actual published digests, signatures, SBOMs and anonymous pulls are reviewed. No source-only task or milestone is closed here; publication, adoption and the original fresh two-client hosted DoD remain active worker work. See `deploy/native-base/README.md` and the implementation review in design.md.

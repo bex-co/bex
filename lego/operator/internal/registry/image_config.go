@@ -132,10 +132,27 @@ func ReadImageRevision(ctx context.Context, httpClient *http.Client, registryHos
 	return document.Config.Labels[RevisionLabel], nil
 }
 
+// ReadImageRuntimeMetadata reads environment and build provenance through the
+// same bounded, digest-verified path as the image's ports and revision.
+func ReadImageRuntimeMetadata(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (env, history []string, err error) {
+	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, entry := range document.History {
+		history = append(history, entry.CreatedBy)
+	}
+	return document.Config.Env, history, nil
+}
+
 type imageConfigDocument struct {
 	OS           string `json:"os"`
 	Architecture string `json:"architecture"`
-	Config       struct {
+	History      []struct {
+		CreatedBy string `json:"created_by"`
+	} `json:"history"`
+	Config struct {
+		Env          []string                   `json:"Env"`
 		ExposedPorts map[string]json.RawMessage `json:"ExposedPorts"`
 		Labels       map[string]string          `json:"Labels"`
 	} `json:"config"`

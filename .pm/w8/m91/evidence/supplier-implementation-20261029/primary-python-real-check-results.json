@@ -1,0 +1,37 @@
+{
+  "scope": "Actual reviewed official primary images, not full shared-base bundle; metadata/module/headers/C-extension/wheel/idempotence/project-precedence/error checks. Factory CI separately covers full shared-base/multiarch.",
+  "results": [
+    {
+      "line": "37",
+      "architecture": "linux/arm64",
+      "Dockerfile": "/private/tmp/bex7-native-acceptance-novb586u/primary-check.Dockerfile",
+      "network_disabled_for_helper_and_behavior_checks": true,
+      "proof": "#13 1.552 native primary Python 3.7.17 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+      "exit": 0
+    },
+    {
+      "line": "38",
+      "architecture": "linux/arm64",
+      "Dockerfile": "/private/tmp/bex7-native-acceptance-novb586u/primary-check.Dockerfile",
+      "network_disabled_for_helper_and_behavior_checks": true,
+      "proof": "#14 1.746 native primary Python 3.8.20 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+      "exit": 0
+    },
+    {
+      "line": "314",
+      "architecture": "linux/arm64",
+      "Dockerfile": "/private/tmp/bex7-native-acceptance-novb586u/primary-check.Dockerfile",
+      "network_disabled_for_helper_and_behavior_checks": true,
+      "proof": "#13 1.804 native primary Python 3.14.10 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network",
+      "exit": 0
+    }
+  ],
+  "post_transplant": {
+    "line": "3.7.17",
+    "architecture": "arm64",
+    "original_primary_usr_local_restored": true,
+    "helper_and_full_checks_network_disabled": true,
+    "exit": 0,
+    "log": "/private/tmp/bex7-native-acceptance-novb586u/primary-37-transplant.log"
+  }
+}

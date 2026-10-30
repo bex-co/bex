@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Official language versions stay pinned by the publishing matrix. System
 # packages are installed once here, never by a tenant build.
 ARG BASE_IMAGE=scratch
@@ -16,8 +17,14 @@ RUN sh /tmp/bex-node-brotli/patch.sh && rm -rf /tmp/bex-node-brotli
 COPY node-brotli/check.js /usr/share/bex-security/node-check.js
 COPY --link --from=node-tools /opt/bex/native-node-tools /opt/bex/native-node-tools
 COPY tsc webpack /usr/bin/
+COPY python-tools.json fetch-python-tools.py install-python-tools.py /opt/bex/python-tools/
+COPY bex-native-python-tools /usr/bin/
 COPY install.sh /tmp/bex-native-install.sh
 COPY patch-system-brotli.sh /tmp/bex-patch-system-brotli.sh
-RUN chmod 755 /usr/bin/tsc /usr/bin/webpack \
+RUN chmod 755 /usr/bin/tsc /usr/bin/webpack /usr/bin/bex-native-python-tools \
   && sh /tmp/bex-native-install.sh \
+  && if [ -x /usr/local/bin/python3 ]; then \
+    /usr/bin/python3 /opt/bex/python-tools/fetch-python-tools.py; \
+  fi \
   && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh
+RUN --network=none /usr/bin/bex-native-python-tools

@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+# Reuse an existing public package so tenants can pull without registry credentials.
+env:
+  NATIVE_IMAGE: ghcr.io/bex-co/bex-cnb-run
+
 jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
@@ -79,13 +83,13 @@ jobs:
           push: true
           provenance: mode=max
           sbom: true
-          cache-from: type=registry,ref=ghcr.io/bex-co/bex-native:${{ matrix.name }}
+          cache-from: type=registry,ref=${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}
           cache-to: type=inline
           build-args: BASE_IMAGE=${{ matrix.base }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          tags: ghcr.io/bex-co/bex-native:${{ matrix.name }}-${{ github.sha }}
+          tags: ${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}-${{ github.sha }}
       - name: verify real native tool transformations without network on both architectures
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
@@ -93,7 +97,7 @@ jobs:
           file: deploy/native-base/check.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
-          build-args: NATIVE_BASE=ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          build-args: NATIVE_BASE=${{ env.NATIVE_IMAGE }}@${{ steps.build.outputs.digest }}
       # Runtime probes above gate the repaired system and bundled decoders.
       # Report every known vulnerability as well, including unfixed findings;
       # old Node versions may still match version-only CVE rules after backport.
@@ -104,7 +108,7 @@ jobs:
           TRIVY_PLATFORM: linux/amd64
         with:
           cache: false
-          image-ref: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.build.outputs.digest }}
           format: json
           output: native-amd64.trivy.json
           exit-code: "0"
@@ -114,7 +118,7 @@ jobs:
           TRIVY_PLATFORM: linux/arm64
         with:
           cache: false
-          image-ref: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.build.outputs.digest }}
           format: json
           output: native-arm64.trivy.json
           exit-code: "0"
@@ -122,7 +126,7 @@ jobs:
       - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - name: sign and attest the immutable candidate
         env:
-          REF: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          REF: ${{ env.NATIVE_IMAGE }}@${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes --oidc-provider=github-actions "$REF"
           for arch in amd64 arm64; do
@@ -132,5 +136,5 @@ jobs:
           done
           # Only verified, scanned and signed candidates reach this discovery
           # tag. Adopting its immutable digest still requires a reviewed commit.
-          docker buildx imagetools create --tag "ghcr.io/bex-co/bex-native:${{ matrix.name }}" "$REF"
+          docker buildx imagetools create --tag "${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}" "$REF"
           echo "${{ matrix.base }} -> $REF" >> "$GITHUB_STEP_SUMMARY"

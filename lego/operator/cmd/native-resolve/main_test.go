@@ -38,6 +38,10 @@ func (stubExact) ResolveTag(context.Context, string, string) (string, bool, erro
 
 func (stubExact) ListTags(context.Context, string, string) ([]string, error) { return nil, nil }
 
+func (stubExact) ImageMetadata(context.Context, string) (env, history []string, err error) {
+	return nil, nil, nil
+}
+
 func TestMain(m *testing.M) {
 	exactImages = stubExact{}
 	os.Exit(m.Run())

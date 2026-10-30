@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 )
 
 // Exact runtime versions (w8/175). Render installs the exact version a service
@@ -53,6 +55,8 @@ type ExactImageResolver interface {
 	ResolveTag(ctx context.Context, repo, tag string) (digest string, ok bool, err error)
 	// ListTags returns the repo's tags that begin with prefix.
 	ListTags(ctx context.Context, repo, prefix string) ([]string, error)
+	// ImageMetadata returns the pinned image's verified Linux/amd64 environment and build history.
+	ImageMetadata(ctx context.Context, image string) (env, history []string, err error)
 }
 
 const (
@@ -135,6 +139,19 @@ func (d *DockerHubResolver) ResolveTag(ctx context.Context, repo, tag string) (s
 
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (env, history []string, err error) {
+	ref, digest, pinned := strings.Cut(image, "@")
+	repo, _, tagged := strings.Cut(ref, ":")
+	if !pinned || !tagged || !exactRepos[repo] || !digestPattern.MatchString(digest) {
+		return nil, nil, fmt.Errorf("%s is not a pinned reviewed runtime image", image)
+	}
+	env, history, err = registry.ReadImageRuntimeMetadata(ctx, d.Client, d.RegistryURL, repoPath(repo), digest, "")
+	if err == nil && len(env) == 0 {
+		return nil, nil, fmt.Errorf("pinned runtime image %s has no environment", image)
+	}
+	return env, history, err
+}
+
 const (
 	// tagPageSize is the Hub API's largest page; maxTagPages bounds a listing.
 	// A prefix as narrow as an Elixir and OTP release (1.19.5-erlang-28.3)
@@ -185,7 +202,7 @@ func (d *DockerHubResolver) tagPage(ctx context.Context, u string) (names []stri
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, false, fmt.Errorf("tag listing answered %d", resp.StatusCode)
+		return nil, false, fmt.Errorf("tag listing answered %d for %s", resp.StatusCode, u)
 	}
 	var body struct {
 		Next    *string `json:"next"`

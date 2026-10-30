@@ -53,6 +53,12 @@ type NativeChoice struct {
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string
+	// imageEnv preserves an exact primary's metadata when its installation is
+	// copied onto a supplied system base instead of inheriting its FROM.
+	imageEnv []string
+	// imageSuite is the Debian suite named by verified official-image history;
+	// empty only for the recognized legacy ADD history without a suite.
+	imageSuite string
 }
 
 // Narration is the build-log line that names the choice and its source.

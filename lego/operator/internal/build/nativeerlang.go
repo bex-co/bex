@@ -52,7 +52,13 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 		elixir = line.version
 	}
 	request := choice.erlang
-	tags, err := exact.ListTags(ctx, hexpmElixirRepo, elixir+"-erlang-"+otpName(request))
+	prefix := elixir + "-erlang-" + otpName(request)
+	if strings.Count(request, ".") == 3 {
+		// A four-part request names one release. Do not page through its RCs,
+		// longer numeric neighbors, or Alpine/Ubuntu builds to find Debian.
+		prefix += "-debian-"
+	}
+	tags, err := exact.ListTags(ctx, hexpmElixirRepo, prefix)
 	if err != nil {
 		return NativeChoice{}, fmt.Errorf("look up Elixir %s on Erlang/OTP %s: %w", elixir, request, err)
 	}

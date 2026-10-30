@@ -58,6 +58,14 @@ func erlangFake(erlangTags ...string) *fakeExact {
 	return &fakeExact{digests: digests}
 }
 
+func TestExactErlangFullReleaseLimitsTheTagSearch(t *testing.T) {
+	fake := erlangFake("28.5.0.6")
+	resolveExact(t, fake, nativeElixirRuntime, map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.5.0.6"}, nil)
+	if len(fake.asked) == 0 || fake.asked[0] != "list hexpm/elixir:1.19.5-erlang-28.5.0.6-debian-" {
+		t.Fatalf("a fully specified release searched unrelated image families: %v", fake.asked)
+	}
+}
+
 // w8/197: ERLANG_VERSION finer than a major builds on the official erlang image
 // of the newest matching OTP release both registries publish, with Elixir from
 // hexpm's build on that release, and the log names the OTP installed.

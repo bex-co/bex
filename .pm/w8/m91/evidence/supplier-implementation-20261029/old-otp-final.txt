@@ -1,0 +1,14 @@
+=== RUN   TestNativeSuppliedImageRunsOldExactOTP
+    nativebases_test.go:359: offline runtime:
+        pg_restore: error: input file is too short (read 0, expected 5)
+        psql (PostgreSQL) 18.6 (Debian 18.6-1.pgdg12+2)
+        pg_dump (PostgreSQL) 18.6 (Debian 18.6-1.pgdg12+2)
+        v24.22.1
+        11.19.1
+        Version 7.0.2
+        exact-otp-runtime-and-libraries-ok
+        native-supplied-runtime-ok
+    nativebases_test.go:360: source erlang:28.0.0.0@sha256:7f5ef6ecbd63f3b65ac306c4e82f3a294d0a3e3ba03de074590e3b8bf0d2fadd on bookworm, supplied base localhost:32828/native-bookworm@sha256:29e85dec2901b622cb18ef10e2eb594a3de7f642c83d27f533c1c813dc7de2be; build/runtime real PG18 archive, complete Erlang shared-library closure, crypto/SSL/ETS and Node companion pass
+--- PASS: TestNativeSuppliedImageRunsOldExactOTP (11.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	11.614s
