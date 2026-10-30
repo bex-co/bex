@@ -230,7 +230,7 @@ if [ -z "${BEX_CANARY_STATIC_REPO:-}" ]; then
   echo "        explicitly recorded gap."
 else
   if API="$API/v1" BEARER="$(canary_bearer)" REPO="$BEX_CANARY_STATIC_REPO" \
-    OWNER_ID="$BEX_CANARY_WORKSPACE_ID" DEADLINE="$ABSENCE_DEADLINE" \
+    OWNER_ID="$BEX_CANARY_WORKSPACE_ID" DEADLINE="$ABSENCE_DEADLINE" SERVE_DEADLINE="$SERVE_DEADLINE" REQUIRE_SERVING=1 \
     bash scripts/static-delete-timing-verify.sh; then
     echo "  ok: static-site create → serve → delete → absence verified"
   else

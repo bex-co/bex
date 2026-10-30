@@ -23,7 +23,12 @@
 #   REPO     a public git repo whose root is a no-build static site (examples/static-site shape)
 # Optional env:
 #   BRANCH        default main
-#   PUBLISH_PATH  default "" (repo root; the no-build publish path)
+#   PUBLISH_PATH  default "." (repo root; the no-build publish path). Sent
+#                 explicitly: an empty publishPath means Render's default
+#                 "public" (lego/backend/internal/apps/rest.go), not the root
+#   REQUIRE_SERVING 1 => fail unless the fixture serves 200 on its public host
+#                 before the delete (the deploy canary sets it); default 0 only
+#                 warns, for delete-timing runs on a cluster without public DNS
 #   OWNER_ID      workspace id (tea-...); omitted => the token's default workspace
 #   GRAPHQL       GraphQL endpoint; default derives from API (strip trailing /v1 -> /graphql)
 #   POLL_INTERVAL seconds between deletion polls (default 3)
@@ -41,7 +46,9 @@ command -v jq >/dev/null || fail "jq is required"
 : "${BEARER:?set BEARER to a pre-exchanged access token}"
 : "${REPO:?set REPO to a public no-build static-site git repo}"
 BRANCH="${BRANCH:-main}"
-PUBLISH_PATH="${PUBLISH_PATH:-}"
+PUBLISH_PATH="${PUBLISH_PATH:-.}"
+REQUIRE_SERVING="${REQUIRE_SERVING:-0}"
+case "$REQUIRE_SERVING" in 0 | 1) ;; *) echo "FAIL: REQUIRE_SERVING must be 0 or 1" >&2; exit 2 ;; esac
 GRAPHQL="${GRAPHQL:-${API%/v1}/graphql}"
 POLL_INTERVAL="${POLL_INTERVAL:-3}"
 DEADLINE="${DEADLINE:-300}"
@@ -135,19 +142,25 @@ create_static_site() {
 }
 
 wait_serving() {
-  local body="$TMP_DIR/get.json" waited=0 phase url
-  while [ "$waited" -lt "$SERVE_DEADLINE" ]; do
-    if acurl -o "$body" "$API/services/$SERVICE_ID" 2>/dev/null; then
+  local body="$TMP_DIR/get.json" phase="" url end
+  end=$(( $(date +%s) + SERVE_DEADLINE ))
+  while [ "$(date +%s)" -lt "$end" ]; do
+    if [ -z "$PUBLIC_URL" ] && acurl -o "$body" "$API/services/$SERVICE_ID" 2>/dev/null; then
       phase="$(jq -r '.phase // ""' "$body")"
       url="$(jq -r '.serviceDetails.url // .url // ""' "$body")"
       if [ -n "$url" ] && { [ "$phase" = "Running" ] || [ "$phase" = "Live" ]; }; then
         PUBLIC_URL="$url"
-        echo "serving at phase=$phase (url recorded, not printed)"
-        return 0
       fi
     fi
-    sleep "$POLL_INTERVAL"; waited=$((waited + POLL_INTERVAL))
+    # Strict mode also waits for the public host's 200 (a fresh route/cert can
+    # lag the Live phase by a few seconds).
+    if [ -n "$PUBLIC_URL" ] && { [ "$REQUIRE_SERVING" != 1 ] || [ "$(public_state)" = "serving" ]; }; then
+      echo "serving at phase=$phase (url recorded, not printed)"
+      return 0
+    fi
+    sleep "$POLL_INTERVAL"
   done
+  [ "$REQUIRE_SERVING" = 1 ] && fail "fixture not serving 200 within ${SERVE_DEADLINE}s (phase=${phase:-unknown}, url=$([ -n "$PUBLIC_URL" ] && echo set || echo unset))"
   echo "WARN: fixture did not reach a serving state within ${SERVE_DEADLINE}s; proceeding to delete-timing anyway" >&2
 }
 
