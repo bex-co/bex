@@ -1,0 +1,44 @@
+{
+  "schema": "bex.native-backport-acceptance-workflow-validation/v1",
+  "at": "2026-10-30T14:35:56.882261+00:00",
+  "source_head": "5ab35c370cafea4a46590a42a25b506f9a78e766",
+  "files_sha256": {
+    ".github/workflows/native-backport-acceptance.yml": "85e23a18cbf113801f2b48de48a21e087aa6dce45c1b0d4031a14965fbbd3f40",
+    "lego/operator/internal/build/nativebackport_test.go": "f1e749942a8314a540245cf48f6ea780324bc4af9167d2bc91b41e72b231e503",
+    "lego/operator/internal/build/nativebackport_python_test.go": "032f6a6bf4780118435feee415c115bd594bc8526601e373c91549bd90186cf9",
+    "lego/operator/internal/build/nativebackport_ruby_test.go": "cf382a096815cd7371f219754b938fc149265a25d8ab8957e0d4342ee72d7373"
+  },
+  "scope": "One new manual workflow and one selected-primary/companion image log per existing fixture file; no test behavior or runtime pin changes.",
+  "workflow_cases": [
+    "Node14",
+    "Node16",
+    "Node18",
+    "Node20",
+    "Python3.7+Node20",
+    "Ruby3.0+Node20"
+  ],
+  "checks": [
+    {
+      "command": "actionlint -config-file /tmp/bex-m188-native-acceptance-actionlint.yaml .github/workflows/native-backport-acceptance.yml",
+      "result": "PASS",
+      "note": "Local actionlint needs existing custom bex-ci runner label declared; temporary config declares only that label. Initial plain actionlint reported only unknown custom label."
+    },
+    {
+      "command": "bash scripts/github-actions-validate.sh",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "env -u GOFLAGS -u BEX_BUILDKIT_INTEGRATION GOWORK=off go test ./internal/build -run '^(TestNativeBackportsBuildAndStart|TestNativePythonBackportBuildAndStart|TestNativeRubyBackportBuildAndStart)$' -count=1 -timeout=3m -v",
+      "result": "PASS compile; all3 integration entrypoints SKIPPED by design"
+    }
+  ],
+  "publisher_trigger_matches": [],
+  "no_actual_integration_run": true,
+  "no_dispatch_commit_push": true,
+  "unrelated_unblock_skill_changes_preserved": true,
+  "limits": "No Docker fixture build, HTTP/security runtime acceptance or all11-pin adoption claim. Workflow remains manual and must not run until the actual verified pins are adopted."
+}
