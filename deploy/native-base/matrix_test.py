@@ -28,6 +28,16 @@ class PublishingInputs(unittest.TestCase):
         after = before.replace('a' * 64, 'b' * 64)
         self.assertNotEqual(native_matrix.matrix(before), native_matrix.matrix(after))
 
+    def test_backport_lines_publish_before_unrelated_lines_without_dropping_any(self):
+        names = ['elixir:1.20', 'node:14-bullseye', 'ruby:3.4-bookworm', 'python:3.10-bookworm']
+        source = self.source('\n'.join(
+            '{line: "x", image: "' + name + '@sha256:' + 'a' * 64 + '"},'
+            for name in names
+        ))
+        published = [image['name'] for image in native_matrix.matrix(source)['include']]
+        self.assertEqual(published[:2], ['node-14-bullseye', 'python-3.10-bookworm'])
+        self.assertCountEqual(published, [name.replace(':', '-') for name in names])
+
     def test_refuses_unreviewed_or_recursive_inputs(self):
         for image in ('node:14-bullseye', 'ghcr.io/bex-co/bex-native:node-14@sha256:' + 'a' * 64):
             with self.subTest(image=image), self.assertRaises(ValueError):
