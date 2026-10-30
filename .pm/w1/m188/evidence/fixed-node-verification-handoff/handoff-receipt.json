@@ -1,0 +1,100 @@
+{
+  "schema": "fixed_node_verification_handoff/v1",
+  "recorded_at": "2026-10-30T19:22:16.756923+00:00",
+  "immutable_as_of_observations": true,
+  "replacement_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "source_admission": {
+    "file": "/tmp/bex-m188-6fd4-source-admission.json",
+    "sha256": "a61e8e502d812ff75b028ba5ba3cac9b0091e7c45903c8321348ae2bd9575b1c"
+  },
+  "dispatch_summary": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/dispatch-summary.json",
+    "sha256": "02c2eb1260926847a73a4ea6e95e5b35de33ed7a830ab4722ddbaf4254e9ce0c"
+  },
+  "source_equivalence": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/source-6fd4f45536a2574c404b05539dacb6aaafb781f8.json",
+    "sha256": "68bffa87b6f1f080588bc0c2da226906f80e062d2810894ac53c8d2fa1303bd8"
+  },
+  "rows": [
+    {
+      "runtime": "node-18-bookworm",
+      "replacement_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "replacement_run_id": 41113367877,
+      "replacement_native_job_id": 124263227234,
+      "replacement_run_attempt": 1,
+      "replacement_run": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/replacement-run.json",
+        "sha256": "4fb35eb40874a6ce6e5960af583ea87dc477c6a742525f7c7b1a9baa0cb458ba"
+      },
+      "replacement_native_job": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/replacement-native-job.json",
+        "sha256": "1e8786d789c5fa41ce411d5f093991813b0ef2861878c07a2ac809d101a4a4d4"
+      },
+      "compiled_producer_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+      "compiled_producer_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "old_fd_run_id": 41063711572,
+      "fresh_zero_start_review": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/review.json",
+        "sha256": "a9982f61e74c24308dc0419c56731ef2e20253e28510c0873aa71849d11eeb27"
+      },
+      "cancel_request": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/cancel-request.json",
+        "sha256": "dcb16b7ebbcf95cbf862ce38eb4381ee4e783fb3b9347e95bb0586488cce2381"
+      },
+      "cancel_http_status": 202,
+      "terminal_observation": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/completion-pending.json",
+        "sha256": "35aa183b5bd9c063956c2a67d02f09e6a86a5e4176e053d5a71a8836c14e3f4f"
+      },
+      "terminal_observation_at": "2026-10-30T19:19:22.084867+00:00",
+      "old_status_as_observed": "in_progress",
+      "old_conclusion_as_observed": null,
+      "terminal_cancellation_confirmed": false
+    },
+    {
+      "runtime": "node-20-bookworm",
+      "replacement_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "replacement_run_id": 41113373387,
+      "replacement_native_job_id": 124263887574,
+      "replacement_run_attempt": 1,
+      "replacement_run": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/replacement-run.json",
+        "sha256": "4c724f3a3840c914ddf9d56eb3fb42eafade00590cf4a21f4651b59f9e11a56f"
+      },
+      "replacement_native_job": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/replacement-native-job.json",
+        "sha256": "e31faeceeb614e45f67dc1ba79cd252793e205f79acb86916ddd9e8aeff04c67"
+      },
+      "compiled_producer_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "compiled_producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "old_fd_run_id": 41063715618,
+      "fresh_zero_start_review": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/review.json",
+        "sha256": "c9689444c553eb526787eea199f287767834c9b5a32065be9964dea41b70d15e"
+      },
+      "cancel_request": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/cancel-request.json",
+        "sha256": "39eb75c49b63884fe5953254b08fab0dcda9c60cf6662cc8617759b2148238a5"
+      },
+      "cancel_http_status": 202,
+      "terminal_observation": {
+        "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/completion-final.json",
+        "sha256": "87df13d0352e34d6952e8916136890f6c8ff1c3255d9f5de801f94deb198d19d"
+      },
+      "terminal_observation_at": "2026-10-30T19:20:46.230226+00:00",
+      "old_status_as_observed": "completed",
+      "old_conclusion_as_observed": "cancelled",
+      "terminal_cancellation_confirmed": true
+    }
+  ],
+  "dispatch_post_count": 2,
+  "old_fd_cancel_post_count": 2,
+  "no_started_native_work_at_each_cancel_precheck": true,
+  "other_runs_modified": false,
+  "ruby32_existing_run_reused": 41101339222,
+  "aggregate_written": false,
+  "accepted_count_unchanged": 8,
+  "candidate_promotion_performed": false,
+  "source_adoption_performed": false,
+  "later_terminal_confirmations": "Append separate files; preserve these request and pending observations unchanged."
+}

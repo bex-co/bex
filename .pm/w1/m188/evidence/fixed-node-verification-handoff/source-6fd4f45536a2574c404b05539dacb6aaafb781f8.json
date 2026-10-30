@@ -1,0 +1,46 @@
+{
+  "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "base": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "ancestor": true,
+  "at": "2026-10-30T19:12:38.845812+00:00",
+  "eligible": true,
+  "non_pm_paths": [
+    "deploy/gitops/base/bex.yaml",
+    "deploy/gitops/base/dashboard.yaml",
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml",
+    "deploy/opensandbox/kustomization.yaml",
+    "lego/operator/config/api/deployment.yaml"
+  ],
+  "all_paths_allowed": true,
+  "normalized_files": {
+    "deploy/gitops/base/bex.yaml": {
+      "before_sha256": "9b945f283957649a3df83870c9648fc4cbd2a84739c9bb6b9157af294c5a021d",
+      "after_sha256": "599c066bc36392ed69971c801d6c4fee5c6b37ee0634aeb04a2068ed29b4597b",
+      "only_sha256_replacements": true
+    },
+    "deploy/gitops/base/dashboard.yaml": {
+      "before_sha256": "f7ad56951af7b0d8feb164e3dec4b275050383170932ac4f0f7e7259736897c3",
+      "after_sha256": "d7f89062f61fee45721fcf7296d83d1d4e78bd782b4e995fbe07c4028aeba0a4",
+      "only_sha256_replacements": true
+    },
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml": {
+      "before_sha256": "980a1241f60bdf0a305504a96fd9b25d51ca67a3c367b64c0bbef69b756aae6c",
+      "after_sha256": "666f7b918814ca27f5c30b82188e20daa263dffd9e550e5e83b9245c3f6c7f6f",
+      "only_sha256_replacements": true
+    },
+    "deploy/opensandbox/kustomization.yaml": {
+      "before_sha256": "cd229601a8abb8c0ab56fc5bb001bb81cdf5806e610bff068f1e78ff98912acd",
+      "after_sha256": "c70ffc926771f8b8ff2703210718f9e5c657255f6cd6fafc164aaba591a49de8",
+      "only_sha256_replacements": true
+    },
+    "lego/operator/config/api/deployment.yaml": {
+      "before_sha256": "88ed4b4bf16097fcf7e5c70ab7c82a2d265fc27f0c2549d549d93f476ff13241",
+      "after_sha256": "a22610ad9659f7c9644f5a483355dd5ba3d07a8446027a534c3ee4c20e5c56e6",
+      "only_sha256_replacements": true
+    }
+  },
+  "file_modes_unchanged": true,
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "catalog_sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+  "base_catalog_sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39"
+}

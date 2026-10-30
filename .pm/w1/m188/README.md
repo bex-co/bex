@@ -229,3 +229,9 @@ Syft保持相同registry来源、平台和完整spdx-json，只在该命令设�
 后续4462仅增加PM记录，与3990所有非PM字节完全相同；[精确来源准入](evidence/publisher-source-reviews/4462-admission.json) 和 [仅来源策略追加](evidence/publisher-source-reviews/4462-activation.json) 均保留原八项。[八项回归及未满11项的实际采用拒绝](evidence/4462-eight-candidate-regressions.json) 通过，原守卫快照与验收记录不改。
 
 3990自动全量重复发布在原生任务尚未产生时提交一次取消，最终已确认cancelled，未损失编译；见 [逐次请求和实际终态](evidence/3990-duplicate-batch-cancellation/completion-final.json)。4462已有的Ruby3.2定向恢复请求 `41101339222` 经实际run/jobs确认，直接复用，没有重复派发；见 [请求核对](evidence/ruby32-4462-recovery-request/inspection.json)。剩余Node18/20、Ruby3.2继续；source pin、inventory、真实应用测试与生产rollout尚未完成。
+
+### Node18/20 的修复流程交接 — 2026-10-30（UTC 19:22Z）
+
+后续main的6fd4仅改变五处自动生成的部署镜像digest；发布workflow、配方、共享action、版本matrix与恢复目录均与3990逐字节相同。[精确来源准入](evidence/publisher-source-reviews/6fd4-admission.json)、[来源策略追加](evidence/publisher-source-reviews/6fd4-activation.json) 和 [八项完整回归](evidence/6fd4-eight-candidate-regressions.json) 已记录；只增加该实际SHA，不改变八项验收证据，未满11项时仍拒绝生成采用副本。
+
+已核实Node18的新run `41113367877` / job `124263227234` 与Node20的新run `41113373387` / job `124263887574`，两者均实际使用6fd4，包含Syft传输修复。原已编译索引分别保留49ee与BF producer身份。两次旧FD取消均在新原生任务存在、旧任务仍queued/runner0且没有任何已开始步骤时各提交一次；Node20已确认cancelled，Node18收据保留19:19Z时的pending观察，后续终态另行追加，不回写历史。见 [交接收据](evidence/fixed-node-verification-handoff/handoff-receipt.json) 与 [原文目录](evidence/fixed-node-verification-handoff/MANIFEST.json)。Ruby3.2继续复用既有4462请求；本次只解决排队交接，正式验收仍为8/11。

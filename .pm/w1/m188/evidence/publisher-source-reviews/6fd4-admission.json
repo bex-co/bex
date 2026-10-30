@@ -1,0 +1,23 @@
+{
+  "schema": "bex.m188.root-generated-pin-source-admission/v1",
+  "at": "2026-10-30T19:09:35.466920+00:00",
+  "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "baseline": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "admitted": true,
+  "roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "non_pm_changed_paths": [
+    "deploy/gitops/base/bex.yaml",
+    "deploy/gitops/base/dashboard.yaml",
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml",
+    "deploy/opensandbox/kustomization.yaml",
+    "lego/operator/config/api/deployment.yaml"
+  ],
+  "all_non_pm_changes_are_only_sha256_digest_replacements_in_listed_generated_deployment_files": true,
+  "native_publisher_workflow_recipe_sharedactions_matrix_runtime_versions_and_recovery_inputs_byte_identical": true,
+  "root_decision": "Root inspected complete diff. Five unrelated deployment image pins changed; no native publisher input or trust/gate change. Admit only this exact source; actual candidates still need all crypto/semantic/runtime checks.",
+  "source_adoption_performed": false
+}
