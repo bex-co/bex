@@ -1,0 +1,89 @@
+{
+  "scope": "All small original crypto logs are retained byte-identically with .txt suffixes so normal git add includes them despite the global *.log ignore.",
+  "files": [
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f-positive.stderr.log",
+      "archived_file": "crypto/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3-positive.stdout.log",
+      "archived_file": "crypto/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-subject.stdout.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-subject.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-source.stdout.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-source.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-positive.stderr.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc-positive.stdout.log",
+      "archived_file": "crypto/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21-positive.stdout.log",
+      "archived_file": "crypto/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3-positive.stderr.log",
+      "archived_file": "crypto/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f-positive.stdout.log",
+      "archived_file": "crypto/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-subject.stderr.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-subject.stderr.txt",
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-source.stderr.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-wrong-source.stderr.txt",
+      "bytes": 467,
+      "sha256": "5bada548945017cf2fed1209ac4407aab3f1863bbc2182bb2a3e9a16ce4381ef"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc-positive.stderr.log",
+      "archived_file": "crypto/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21-positive.stderr.log",
+      "archived_file": "crypto/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21-positive.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-positive.stdout.log",
+      "archived_file": "crypto/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66-positive.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

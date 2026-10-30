@@ -1,0 +1,52 @@
+{
+  "schema": "bex.m188.recovery-auth-and-cancel-review/v1",
+  "explicit_pass": true,
+  "entries": [
+    {
+      "tag": "python-3.10-bookworm",
+      "manifest_files_verified": 11,
+      "immutable_index_child_configs_verified": true,
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "version": "3.10.22",
+      "actual_gate_log_lines_verified": 8,
+      "original_amd64_scan": "cancelled",
+      "original_arm64_scan": "skipped",
+      "original_signing": "skipped",
+      "source_recipe_non_md_blobs_equal": 22,
+      "safe_cancel_precheck_after_export_and_runtime_verified": true,
+      "request_age_seconds": 14.665,
+      "adoptable": false,
+      "fresh_all_gate_replay_required": true
+    },
+    {
+      "tag": "node-18-bookworm",
+      "manifest_files_verified": 11,
+      "immutable_index_child_configs_verified": true,
+      "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "version": "18.20.8",
+      "actual_gate_log_lines_verified": 8,
+      "original_amd64_scan": "cancelled",
+      "original_arm64_scan": "skipped",
+      "original_signing": "skipped",
+      "source_recipe_non_md_blobs_equal": 22,
+      "safe_cancel_precheck_after_export_and_runtime_verified": true,
+      "request_age_seconds": 5.913,
+      "adoptable": false,
+      "fresh_all_gate_replay_required": true
+    }
+  ],
+  "producer49ee_scope": "Node18 only, guard restriction unchanged",
+  "obsolete21ed": {
+    "pre_cancel_unfinished_jobs": 2,
+    "all_pending_zero_steps_no_runner": true,
+    "request_accepted": true,
+    "replacement_run": 41043547006,
+    "replacement_source": "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "replacement_expected_matrix_rows": 27,
+    "claim_limit": "This verifies retained pre-cancel snapshots and accepted cancellation requests; no invented post-cancel per-step status."
+  },
+  "existing_source_archives_and_custodies_byte_exact": true,
+  "concrete_defects": [],
+  "candidate_approval_or_count_changes": false,
+  "repository_or_remote_mutations": false
+}

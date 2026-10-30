@@ -1,0 +1,37 @@
+{
+  "schema": "native_retained_execution_custody/v1",
+  "archived_at": "2026-10-30T12:24:06.576579+00:00",
+  "scope": "Retained original driver stream, exit and completion records. Exact argv was not present here; do not present a replay command as original invocation. Source candidate acceptance remains separate.",
+  "files": [
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/node-16-bookworm.stdout.log",
+      "file": "driver-stdout.txt",
+      "bytes": 15533,
+      "sha256": "fa33a00040b4822c69a7a52bf73913dd434c7e8afa0a61d490e100bfe38e23e2"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/node-16-bookworm.stderr.log",
+      "file": "driver-stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/node-16-bookworm-exit.json",
+      "file": "driver-exit.json",
+      "bytes": 307,
+      "sha256": "a9731cf5685aaa7ca7f4230d5f5d97dd963678e678814762303f210ffb363d47"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/batch-result.json",
+      "file": "batch-result.json",
+      "bytes": 657,
+      "sha256": "528e0e9a5aaadd17ff5252ce318d17a4b549ca7bf5fd098051da6f80679da07c"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-supplier-reviews/native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a/progress.json",
+      "file": "completion-progress.json",
+      "bytes": 211,
+      "sha256": "a99f63c91a09a7a30c5ec001f628fbb57f837f26fd9758da9c09c40aab325958"
+    }
+  ]
+}

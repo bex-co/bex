@@ -1,0 +1,60 @@
+{
+  "scope": "Original producer identity and successful build/runtime gates only; intentionally interrupted scans/signing are not acceptance.",
+  "files": [
+    {
+      "file": "416ebb0a8ea3f6991e067451991a9041465d96cd0c4a109736af785840d78179.raw.json",
+      "bytes": 3724,
+      "sha256": "416ebb0a8ea3f6991e067451991a9041465d96cd0c4a109736af785840d78179"
+    },
+    {
+      "file": "42a3fadaad4ff3f5480a4f7d3ff6f125a0f762b988a09bdb8d9ee7981fe14acc.raw.json",
+      "bytes": 15511,
+      "sha256": "42a3fadaad4ff3f5480a4f7d3ff6f125a0f762b988a09bdb8d9ee7981fe14acc"
+    },
+    {
+      "file": "49d30a96f365362c15f8568e75bf44c99b8b841fd400d2da8de090660e10746d.raw.json",
+      "bytes": 3724,
+      "sha256": "49d30a96f365362c15f8568e75bf44c99b8b841fd400d2da8de090660e10746d"
+    },
+    {
+      "file": "7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb.raw.json",
+      "bytes": 1611,
+      "sha256": "7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb"
+    },
+    {
+      "file": "9c84d1658f4cbb2b66b7bdee381ca8f8f969fff7e5d7115c0ff3c4d1f4363d17.raw.json",
+      "bytes": 15514,
+      "sha256": "9c84d1658f4cbb2b66b7bdee381ca8f8f969fff7e5d7115c0ff3c4d1f4363d17"
+    },
+    {
+      "file": "amd64-config.json",
+      "bytes": 16276,
+      "sha256": "9f5ac707e30314b0486bf3a1755eb3f166355dd2b0fd88b65147fdeaf02a8bd9"
+    },
+    {
+      "file": "anonymous-metadata-proof.json",
+      "bytes": 1347,
+      "sha256": "6d8f40a56e0a450e8fefce5e1f6359961fdbe844e99a833306d244c6ee17b105"
+    },
+    {
+      "file": "arm64-config.json",
+      "bytes": 16279,
+      "sha256": "5cfed98869ab1eb11dbfcc97ba7614daa718026e7bc228441da2a664cc32da9f"
+    },
+    {
+      "file": "job-123967210277.log.gz",
+      "bytes": 94487,
+      "sha256": "cfbf41272be7fd7b3b41e9f0d634565e3e12e454448239867f8d62d191b172dc"
+    },
+    {
+      "file": "receipt.json",
+      "bytes": 33140,
+      "sha256": "b2f08d061619d1288c2fe87e8d56940bfb503c3a2da2054f9e32fe9b1300fe53"
+    },
+    {
+      "file": "recovery-entry.json",
+      "bytes": 1090,
+      "sha256": "79e5e59e7d80baf3ebdeb4cf8dfd0f6b2af63572f2ab7ab041937add14986cd0"
+    }
+  ]
+}

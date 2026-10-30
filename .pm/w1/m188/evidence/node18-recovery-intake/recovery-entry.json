@@ -1,0 +1,12 @@
+{
+  "node-18-bookworm": {
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+    "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "run_id": 41026904247,
+    "job_id": 123967210277,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "bex.native-published-supplier-evidence/v1",
+  "reviewed_at": "2026-10-30T10:37:44.757832+00:00",
+  "scope": "Published supplier identity/runtime/report evidence only. All findings retained; no zero-CVE claim or security waiver. Complete catalog adoption, generated exact-image replay and original hosted acceptance remain separate. No production pin/resource changed.",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+  "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "workflow_run": 41029603442,
+  "job_id": 123977642604,
+  "cosign_version": "3.1.4",
+  "verified_darwin_arm64_binary_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+  "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+  "subject_digest_algorithm": "sha256",
+  "subject_digest": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "source_policy": "Actual fully green verification job; exact reviewed producer/ref/base with all22 unchanged non-documentation recipe blobs/modes. OCI labels retain producer; every accepted certificate binds verification SHA.",
+  "crypto_policy": "Every accepted bundle passes exact subject/issuer/workflow/source, transparency inclusion and explicit signed RFC3161 timestamps. No ignore flags. Actual wrong-source and wrong-subject controls rejected.",
+  "report_policy": "Both architectures bind separately to actual config/child, DiffIDs and exact independently derived Docker-export manifest roots. No architecture-union acceptance. All findings retained; no security waiver or zero-CVE claim.",
+  "source_counts": {
+    "arm64": [
+      714
+    ],
+    "amd64": [
+      717
+    ]
+  },
+  "trivy": {
+    "arm64": [
+      {
+        "findings": 17654,
+        "severity_counts": {
+          "LOW": 5023,
+          "HIGH": 3082,
+          "CRITICAL": 249,
+          "MEDIUM": 9102,
+          "UNKNOWN": 198
+        },
+        "brotli_findings": [
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "brotli",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli-dev",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli1",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          }
+        ]
+      }
+    ],
+    "amd64": [
+      {
+        "findings": 17655,
+        "severity_counts": {
+          "LOW": 5024,
+          "HIGH": 3082,
+          "CRITICAL": 249,
+          "MEDIUM": 9102,
+          "UNKNOWN": 198
+        },
+        "brotli_findings": [
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "brotli",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli-dev",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli1",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          }
+        ]
+      }
+    ]
+  },
+  "production_catalog_changed": false,
+  "remaining": "Other24 suppliers, complete catalog adoption, exact generated-image replay and original hosted acceptance remain separate."
+}

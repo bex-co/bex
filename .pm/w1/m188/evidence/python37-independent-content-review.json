@@ -1,0 +1,114 @@
+{
+  "schema": "bex.independent-python37-content-witness-review/v1",
+  "checked_at": "2026-10-30T12:21:32.874983+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "candidate_approved": false,
+  "guard_or_aggregate_changed": false,
+  "new_network_or_layer_reads": false,
+  "result": "PASS: strict content equivalence for signed AMD synthetic root; ARM retains exact signed registry child. No arbitrary alias.",
+  "manifest_sha256": "1e3c903e037743db9ed8e3de606cc0b4306d7814ffb35ff021e171629574e21a",
+  "manifest_entries_verified": 101,
+  "tracked_actual_file_count": 102,
+  "untracked_or_missing_files": [],
+  "log_custody_records_verified": 14,
+  "actual_layer_receipt_sha256": "1d16149a3bfaea8b3911a052b8c0d8f365b0751f581afcf64937a0d504b7ffd1",
+  "main_driver_sha256": "278dcb063b4c1c571932e8f358056d5abe9154b48cb057365e67242865d27a36",
+  "policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "actual_stream_execution_log": {
+    "path": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye.stdout.log",
+    "sha256": "dc44863d96de56f68b0d46ba55602cd3f41af5d0bc3af4d2072aba83dbb2c8d8",
+    "bytes": 14801,
+    "starts_correlated": 34,
+    "new_unique_layers": 34,
+    "shared_empty_layer_reused_from_node14_actual_proof": 1,
+    "raw_layer_streams_retained": false
+  },
+  "architectures": {
+    "amd64": {
+      "actual_registry_child_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "raw_config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "raw_config_bytes": 18275,
+      "ordered_layer_count": 18,
+      "compressed_bytes_witnessed": 584532347,
+      "uncompressed_bytes_witnessed": 1671352320,
+      "new_stream_log_reads": 17,
+      "previous_actual_empty_layer_reuses": 1,
+      "derived_docker_manifest_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+      "derived_bytes": 3209,
+      "signed_spdx_roots": [
+        "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d"
+      ],
+      "signed_root_exact_derived_equivalence": true,
+      "signed_root_exact_registry_child": false,
+      "signed_statement_sha256": "1e1cc450be8dc3d01c06550787502593277c8f87d4a3d5b9323c7f4846961e83",
+      "signed_bundle_digest": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:amd64.md5sums"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:amd64.md5sums"
+        },
+        {
+          "name": "node",
+          "version": "24.22.1",
+          "sourceInfo": "acquired package info from the following paths: /opt/bex/native-node-tools/node"
+        },
+        {
+          "name": "python",
+          "version": "3.7.17",
+          "sourceInfo": "acquired package info from the following paths: /usr/local/bin/python3.7, /usr/local/bin/python3.7m, /usr/local/lib/libpython3.7m.so.1.0"
+        }
+      ]
+    },
+    "arm64": {
+      "actual_registry_child_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "raw_config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+      "raw_config_bytes": 18276,
+      "ordered_layer_count": 18,
+      "compressed_bytes_witnessed": 579020737,
+      "uncompressed_bytes_witnessed": 1614118912,
+      "new_stream_log_reads": 17,
+      "previous_actual_empty_layer_reuses": 1,
+      "derived_docker_manifest_digest": "sha256:7c8ed47e2690d5c92e38882c6ee4753a88c2c2a2993f2909faaccb24141e7abe",
+      "derived_bytes": 3209,
+      "signed_spdx_roots": [
+        "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1"
+      ],
+      "signed_root_exact_derived_equivalence": false,
+      "signed_root_exact_registry_child": true,
+      "signed_statement_sha256": "4c3bf49c1fc12168f9638224abe3e26c442b16fb1d552905ef401f5e43e85a75",
+      "signed_bundle_digest": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:arm64.md5sums"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:arm64.md5sums"
+        },
+        {
+          "name": "node",
+          "version": "24.22.1",
+          "sourceInfo": "acquired package info from the following paths: /opt/bex/native-node-tools/node"
+        },
+        {
+          "name": "python",
+          "version": "3.7.17",
+          "sourceInfo": "acquired package info from the following paths: /usr/local/bin/python3.7, /usr/local/bin/python3.7m, /usr/local/lib/libpython3.7m.so.1.0"
+        }
+      ]
+    }
+  },
+  "custody_gap": "The generic-driver stdout execution/progress log remains in/tmp and is not in the durable archive MANIFEST/LOG-CUSTODY, which currently covers all14 crypto logs. Pin/copy this small14801-byte log before cleanup if full durable stream execution provenance is desired. Main checker and all35 layer witnesses are tracked and hash-manifested.",
+  "limits": "I independently reconstructed all metadata and exact manifest bytes, checked all35 witness linkages, correlated34 actual-stream starts/receipt timestamps and validated the reused empty-layer witness against prior actual Node14 proof. I read only existing cached signed SBOM bundles to bind their roots; no cryptographic verification, layer downloads or fresh decompression of filesystem layers repeated. Root owns candidate/guard/adoption decisions."
+}

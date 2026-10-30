@@ -1,0 +1,37 @@
+{
+  "schema": "native_retained_execution_custody/v1",
+  "archived_at": "2026-10-30T12:24:06.575166+00:00",
+  "scope": "Retained original driver stream, exit and completion records. Exact argv was not present here; do not present a replay command as original invocation. Source candidate acceptance remains separate.",
+  "files": [
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye.stdout.log",
+      "file": "driver-stdout.txt",
+      "bytes": 14801,
+      "sha256": "dc44863d96de56f68b0d46ba55602cd3f41af5d0bc3af4d2072aba83dbb2c8d8"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye.stderr.log",
+      "file": "driver-stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye-exit.json",
+      "file": "driver-exit.json",
+      "bytes": 313,
+      "sha256": "22db5ac6edae52582afe9e769c37b35354095b78170741dd70451771e9e6b25b"
+    },
+    {
+      "source": "/tmp/loopx-w8-next-native-reviews/batch-result.json",
+      "file": "batch-result.json",
+      "bytes": 657,
+      "sha256": "528e0e9a5aaadd17ff5252ce318d17a4b549ca7bf5fd098051da6f80679da07c"
+    },
+    {
+      "source": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/progress.json",
+      "file": "completion-progress.json",
+      "bytes": 211,
+      "sha256": "6f0b5a5b41845b90105c41792cb6b8e75901eb69310e289ce7bcf656dbdf535c"
+    }
+  ]
+}

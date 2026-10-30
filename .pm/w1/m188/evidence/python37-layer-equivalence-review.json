@@ -1,0 +1,366 @@
+{
+  "schema": "bex.m188.python37-layer-equivalence-review/v1",
+  "scope": "Independent retained metadata/witness reconstruction and tracked/archive integrity; crypto revalidation handled by runtime agent. No filesystem layers downloaded.",
+  "root_index_digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "archive_manifest_sha256": "1e3c903e037743db9ed8e3de606cc0b4306d7814ffb35ff021e171629574e21a",
+  "archive_files_checked": 101,
+  "archive_hash_errors": [],
+  "untracked_manifest_files": [],
+  "manifest_files_missing_from_d52": [],
+  "actual_layer_proof_files": 38,
+  "architectures": {
+    "amd64": {
+      "child_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "raw_config_bytes": 18275,
+      "layer_count": 18,
+      "ordered_compressed_descriptor_witness_and_config_diffids_verified": true,
+      "reconstructed_bytes": 3209,
+      "reconstructed_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+      "compressed_bytes_witnessed": 584532347,
+      "uncompressed_bytes_witnessed": 1671352320,
+      "actual_signed_spdx_root": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+      "binding_required": "verified_docker_archive_content",
+      "reconstruction_matches_archived_additional_binding": true,
+      "actual_signed_root_equals_reconstruction": true,
+      "actual_signed_root_equals_registry_child": false
+    },
+    "arm64": {
+      "child_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+      "raw_config_bytes": 18276,
+      "layer_count": 18,
+      "ordered_compressed_descriptor_witness_and_config_diffids_verified": true,
+      "reconstructed_bytes": 3209,
+      "reconstructed_digest": "sha256:7c8ed47e2690d5c92e38882c6ee4753a88c2c2a2993f2909faaccb24141e7abe",
+      "compressed_bytes_witnessed": 579020737,
+      "uncompressed_bytes_witnessed": 1614118912,
+      "actual_signed_spdx_root": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "binding_required": "exact_registry_manifest",
+      "reconstructed_digest_is_unsigned_unused_derivation": true,
+      "reconstruction_matches_archived_additional_binding": true,
+      "actual_signed_root_equals_reconstruction": false,
+      "actual_signed_root_equals_registry_child": true
+    }
+  },
+  "candidate_approved": false,
+  "guard_changed": false,
+  "aggregate_count_changed": false,
+  "custody": {
+    "executed_helper_hashes_match_receipt": true,
+    "complete_controlflow_reviewed": true,
+    "new_full_stream_start_receipt_pairs": [
+      {
+        "architecture": "amd64",
+        "ordinal": 0,
+        "compressed_digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+        "read_start_at": "2026-10-30T10:35:35.040142+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:29.348746+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 1,
+        "compressed_digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+        "read_start_at": "2026-10-30T10:36:29.349685+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:36.187629+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 2,
+        "compressed_digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+        "read_start_at": "2026-10-30T10:36:00.747613+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:27.473437+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 3,
+        "compressed_digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+        "read_start_at": "2026-10-30T10:30:04.936585+00:00",
+        "verified_receipt_at": "2026-10-30T10:33:07.214942+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 4,
+        "compressed_digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+        "read_start_at": "2026-10-30T10:36:59.195507+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:05.677897+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 5,
+        "compressed_digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+        "read_start_at": "2026-10-30T10:36:41.920877+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:48.154337+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 6,
+        "compressed_digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+        "read_start_at": "2026-10-30T10:37:22.088054+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:22.882197+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 7,
+        "compressed_digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+        "read_start_at": "2026-10-30T10:37:12.339838+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:15.887545+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 9,
+        "compressed_digest": "sha256:ffbe35d433df83e05652535c3ba083a7fb7d63bbc4fef4c0129fc172d04ba16d",
+        "read_start_at": "2026-10-30T10:37:19.260709+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:19.938994+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 10,
+        "compressed_digest": "sha256:9e12219c57184e6642087a5f1bb1cd833b5abc125566b4451357d4eaccf16a43",
+        "read_start_at": "2026-10-30T10:34:27.545236+00:00",
+        "verified_receipt_at": "2026-10-30T10:34:45.796619+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 11,
+        "compressed_digest": "sha256:3103c7d9972838974e994f2cd10ae50de7e67cf700fe1b8f6cf7c4a8a7e1b54e",
+        "read_start_at": "2026-10-30T10:37:20.711318+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:21.487026+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 12,
+        "compressed_digest": "sha256:50c1fa0215140ef525ea9e0e1dd5f1d69032825fc2dd7f48ddbaf9b62b389ca5",
+        "read_start_at": "2026-10-30T10:37:15.889213+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:16.601498+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 13,
+        "compressed_digest": "sha256:2a9655868638dd471ab2ac6baef84fe71b32cef61ce45a63f571bf8bf1507b18",
+        "read_start_at": "2026-10-30T10:37:19.940340+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:20.710369+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 14,
+        "compressed_digest": "sha256:e86ea87b7281b51774a25af69f2963f38395b6af74d4d11de4c28e72325e549a",
+        "read_start_at": "2026-10-30T10:37:18.886168+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:19.740011+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 15,
+        "compressed_digest": "sha256:035cf11b8387aff086bf6a3aef66eeba748a559d3b26d39882e83ebe8751eae5",
+        "read_start_at": "2026-10-30T10:37:17.901262+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:18.885200+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 16,
+        "compressed_digest": "sha256:958f021f24e4a40d47b6f24ad15332142dafbd804d9d5fb1961fe8539883e32d",
+        "read_start_at": "2026-10-30T10:33:07.215851+00:00",
+        "verified_receipt_at": "2026-10-30T10:35:41.430728+00:00"
+      },
+      {
+        "architecture": "amd64",
+        "ordinal": 17,
+        "compressed_digest": "sha256:a6d739680a5ae71b53ab66c49886342596c59e1d5e8d2efc5c8e4df3623a6a31",
+        "read_start_at": "2026-10-30T10:37:05.678955+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:08.641001+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 0,
+        "compressed_digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76",
+        "read_start_at": "2026-10-30T10:36:27.474292+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:18.259959+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 1,
+        "compressed_digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee",
+        "read_start_at": "2026-10-30T10:36:36.189205+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:41.919912+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 2,
+        "compressed_digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573",
+        "read_start_at": "2026-10-30T10:35:41.431705+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:00.746253+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 3,
+        "compressed_digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044",
+        "read_start_at": "2026-10-30T10:30:04.936851+00:00",
+        "verified_receipt_at": "2026-10-30T10:32:11.559090+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 4,
+        "compressed_digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4",
+        "read_start_at": "2026-10-30T10:36:55.711864+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:59.194606+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 5,
+        "compressed_digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef",
+        "read_start_at": "2026-10-30T10:36:48.155921+00:00",
+        "verified_receipt_at": "2026-10-30T10:36:55.711052+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 6,
+        "compressed_digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4",
+        "read_start_at": "2026-10-30T10:37:21.488280+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:22.239772+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 7,
+        "compressed_digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef",
+        "read_start_at": "2026-10-30T10:37:10.707812+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:12.338397+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 9,
+        "compressed_digest": "sha256:55c37cf8efcbeab30c7800e43a909985e9c3be8d8f294bc88358cf060a76c36d",
+        "read_start_at": "2026-10-30T10:37:19.740907+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:20.494191+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 10,
+        "compressed_digest": "sha256:fc6974789e92babbc8bf4e3275ffa6ede84ab1d670967415cc15df0189e1fdb2",
+        "read_start_at": "2026-10-30T10:34:45.798962+00:00",
+        "verified_receipt_at": "2026-10-30T10:35:35.038792+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 11,
+        "compressed_digest": "sha256:9e0066427b0dee613291b7817c0df0bf1b9c08ff87f8251f1a398176bbc24314",
+        "read_start_at": "2026-10-30T10:37:21.329873+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:22.087023+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 12,
+        "compressed_digest": "sha256:05d37386d0aede26f19c16e9ff7318f3686dfb1c70d1ec50b627b5952efefa3f",
+        "read_start_at": "2026-10-30T10:37:16.602516+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:17.285659+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 13,
+        "compressed_digest": "sha256:6c4123de96c13cedbb00cf4a30dc14f123aaa3ffcfb9dd447e2c3a2e6dd56b50",
+        "read_start_at": "2026-10-30T10:37:20.495332+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:21.328231+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 14,
+        "compressed_digest": "sha256:d3a52a0e79554d2ee05c99cc5227adc010a4482dbca88a847bb90f99245344cf",
+        "read_start_at": "2026-10-30T10:37:18.262390+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:19.259849+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 15,
+        "compressed_digest": "sha256:63a5755fccd219c02fc8aec4ed599e39563588b7a7fe451e4f0c7ebcf340237a",
+        "read_start_at": "2026-10-30T10:37:17.286893+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:17.900237+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 16,
+        "compressed_digest": "sha256:88b8140f2226d65044ed386f3c8e2125756ff1e2bcec93ab0361aadcd6b01c06",
+        "read_start_at": "2026-10-30T10:32:11.561642+00:00",
+        "verified_receipt_at": "2026-10-30T10:34:27.542072+00:00"
+      },
+      {
+        "architecture": "arm64",
+        "ordinal": 17,
+        "compressed_digest": "sha256:93b4b86aaa6df2ca0c24eccc78ab30e03a51ef64b4a8c7f12af78d2973d4d0dc",
+        "read_start_at": "2026-10-30T10:37:08.642034+00:00",
+        "verified_receipt_at": "2026-10-30T10:37:10.706815+00:00"
+      }
+    ],
+    "prior_full_stream_witnesses_reused": [
+      {
+        "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "origin": "root-accepted Node14 durable full-stream witness",
+        "compressed_bytes": 32,
+        "uncompressed_bytes": 1024
+      }
+    ],
+    "all_new_reads_completed_by_exit0_after_synchronous_pool_map": true,
+    "stdout": {
+      "file": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye.stdout.log",
+      "bytes": 14801,
+      "sha256": "dc44863d96de56f68b0d46ba55602cd3f41af5d0bc3af4d2072aba83dbb2c8d8"
+    },
+    "exit": {
+      "file": "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye-exit.json",
+      "bytes": 313,
+      "sha256": "22db5ac6edae52582afe9e769c37b35354095b78170741dd70451771e9e6b25b"
+    },
+    "completion_progress": {
+      "file": "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/progress.json",
+      "bytes": 211,
+      "sha256": "6f0b5a5b41845b90105c41792cb6b8e75901eb69310e289ce7bcf656dbdf535c"
+    },
+    "actual_argv_capture": "Not claimed; actual command binding is run/source/name/receipt from retained exit plus actual stdout and executed helper hashes/controlflow, as root authorized. README replay is not used as original argv evidence.",
+    "additional_small_files_to_archive": [
+      "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye.stdout.log",
+      "/tmp/loopx-w8-next-native-reviews/python-3.7-bullseye-exit.json",
+      "/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/progress.json",
+      "/tmp/loopx-w8-next-native-reviews/batch-result.json"
+    ],
+    "actual_execution_bindings_sufficient_under_root_criterion": true,
+    "privileged_remote_execution_attestation_claimed": false,
+    "exact_argv_present": false,
+    "execution_custody_manifest": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/MANIFEST.json",
+      "sha256": "4108ec542d8a2d2fd87062998dffa840450f0e9092a5550988c0066f15e8a022",
+      "bytes": 1558
+    },
+    "owned_stable_records": [
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-stdout.txt",
+        "sha256": "dc44863d96de56f68b0d46ba55602cd3f41af5d0bc3af4d2072aba83dbb2c8d8",
+        "bytes": 14801
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-exit.json",
+        "sha256": "22db5ac6edae52582afe9e769c37b35354095b78170741dd70451771e9e6b25b",
+        "bytes": 313
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/batch-result.json",
+        "sha256": "528e0e9a5aaadd17ff5252ce318d17a4b549ca7bf5fd098051da6f80679da07c",
+        "bytes": 657
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/completion-progress.json",
+        "sha256": "6f0b5a5b41845b90105c41792cb6b8e75901eb69310e289ce7bcf656dbdf535c",
+        "bytes": 211
+      }
+    ]
+  },
+  "owned_stable_archive": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive",
+  "owned_archive_all101_bytes_verified": true,
+  "content_equivalence_valid": true,
+  "execution_custody_valid_with_retained_small_records": true,
+  "requires_stable_execution_copy_before_guard": false,
+  "execution_custody_durable_copy_verified": true,
+  "unresolved_artifact_identity_risks": []
+}

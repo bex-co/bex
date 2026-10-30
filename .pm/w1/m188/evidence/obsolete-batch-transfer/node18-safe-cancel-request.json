@@ -1,0 +1,9 @@
+{
+  "requested_at": "2026-10-30T12:28:20.712443+00:00",
+  "run": 41026904247,
+  "fresh_review_checked_at": "2026-10-30T12:28:14.799773+00:00",
+  "exit": 0,
+  "stdout": "\u2713 Request to cancel workflow 41026904247 submitted.\n",
+  "stderr": "",
+  "other_runs_untouched": true
+}
