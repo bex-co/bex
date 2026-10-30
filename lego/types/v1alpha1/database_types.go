@@ -528,6 +528,13 @@ type DatabaseStatus struct {
 	// +optional
 	CurrentPrimary string `json:"currentPrimary,omitempty"`
 
+	// CurrentPrimaryTimestamp is CNPG's status.currentPrimaryTimestamp: when
+	// CurrentPrimary was promoted (RFC3339). The control plane orders primary
+	// changes by it, so postgres_cluster_leader_changed records once per
+	// promotion even when two observers read the CR at different moments.
+	// +optional
+	CurrentPrimaryTimestamp string `json:"currentPrimaryTimestamp,omitempty"`
+
 	// LastFailoverAt records the spec.failoverAt value the controller last acted
 	// on, so the controller only triggers a switchover once per request.
 	// +optional

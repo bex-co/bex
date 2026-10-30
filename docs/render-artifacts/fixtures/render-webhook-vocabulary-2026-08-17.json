@@ -179,6 +179,7 @@
     "postgres_backup_completed",
     "postgres_backup_failed",
     "postgres_backup_started",
+    "postgres_cluster_leader_changed",
     "postgres_connection_pool_enabled_changed",
     "postgres_created",
     "postgres_credentials_created",
@@ -236,7 +237,6 @@
     "artifact_fetch_failed",
     "artifact_source_changed",
     "pipeline_minutes_exhausted",
-    "postgres_cluster_leader_changed",
     "postgres_connection_pool_changed",
     "postgres_read_replica_stale"
   ]

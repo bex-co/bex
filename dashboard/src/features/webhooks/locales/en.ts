@@ -657,6 +657,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres High Availability Changed",
     description: "Event label — postgres_ha_status_changed",
   },
+  "webhooks.event.postgres_cluster_leader_changed": {
+    message: "Postgres Cluster Leader Changed",
+    description: "Event label — postgres_cluster_leader_changed",
+  },
   "webhooks.event.postgres_connection_pool_enabled_changed": {
     message: "Postgres Connection Pool Changed",
     description: "Event label — postgres_connection_pool_enabled_changed",

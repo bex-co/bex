@@ -44,6 +44,7 @@ const GROUPS: Record<string, string[]> = {
     "postgres_credentials_created",
     "postgres_credentials_deleted",
     "postgres_ha_status_changed",
+    "postgres_cluster_leader_changed",
     "postgres_connection_pool_enabled_changed",
     "postgres_disk_size_changed",
     "postgres_disk_autoscaling_enabled_changed",

@@ -93,9 +93,10 @@ The status-transition types below are no longer omitted. `datastore_event_facts`
 | `postgres_wal_archive_failed` | The `WALArchiving` condition (mirroring CNPG's `ContinuousArchiving`) turning False on a backup-enabled database; once per failure, re-armed on recovery, silent while suspended, upgrading or restoring (w5/m141) |
 | `postgres_restore_succeeded` / `postgres_restore_failed` | Terminal outcome of a `Database` created as a recovery target |
 | `postgres_upgrade_started` / `postgres_upgrade_succeeded` / `postgres_upgrade_failed` | Major-version transition between `spec.version` and the observed current version |
+| `postgres_cluster_leader_changed` | `Database.status.currentPrimary` moving to another instance — an automatic failover or the `failover` verb's switchover (w2/m171). One event per promotion: the first primary a database reports (its creation) records nothing, a resync or an unrelated status change records nothing, and the operator's projection of CNPG's `currentPrimaryTimestamp` orders observations, so an older read committed late by another bex-api replica cannot record a change back. `details.leaderId` is the new primary instance (Render's only detail field for this type) |
 
 Two rules keep availability truthful rather than noisy. A datastore that has never reported Ready is **provisioning, not down** — the outage edge arms only after the first healthy observation, because a CNPG cluster with zero ready instances reports the same phase whether it is being created or has just lost its only instance. And a **suspended** datastore is intentional downtime: it is observed availability-empty, never unavailable.
 
 ## Honest omissions
 
-`postgres_cluster_leader_changed` (owned by w2/m171 t004), `postgres_connection_pool_changed` (bex's pooler is on/off only, and that toggle has its own event) and `postgres_read_replica_stale` (needs a replication-health signal) still require a durable source or a feature bex does not yet implement. None of these is approximated by request acceptance.
+`postgres_connection_pool_changed` (bex's pooler is on/off only, and that toggle has its own event) and `postgres_read_replica_stale` (needs a replication-health signal) still require a durable source or a feature bex does not yet implement. None of these is approximated by request acceptance.
