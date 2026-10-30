@@ -1,0 +1,29 @@
+{
+  "items": [
+    "w8/082"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "ba03d55ff908548d48a1fcfbd9f0593a691cebdd",
+  "branch": "fix/preserve-log-time-precision-20261029",
+  "url": "https://github.com/render-oss/cli/pull/63",
+  "title": "Keep fractional timestamps when applying log filters",
+  "files": [
+    "pkg/command/form_test.go",
+    "pkg/command/time.go",
+    "pkg/command/time_test.go",
+    "pkg/tui/views/logview_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:11.032949+00:00"
+}

@@ -1,6 +1,6 @@
 # w8 · m57 — Preserve literal string lists in interactive CLI forms
 
-**Worker:** worker8 **Goal:** applying unchanged log filters preserves their literal terms and selected result set. **Status:** blocked — t001/t002 prepared and tested; t003–t007 need separately authorized upstream submission, upstream acceptance/release, Bex pin/release and native receipts.
+**Worker:** worker8 **Goal:** applying unchanged log filters preserves their literal terms and selected result set. **Status:** blocked — [upstream PR #72](https://github.com/render-oss/cli/pull/72) 已提交；等 upstream merge/release、Bex delivery 和原线上验收
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Prepare an upstream lossless string-list form correction — **DONE 2026-10-12** | 40m | — |
 | t002 | Verify shared form callers and neighboring value types — **DONE 2026-10-12** | 20m | t001 |
-| t003 | Adopt the accepted upstream correction through the CLI pin — **BLOCKED: needs separately authorized external upstream submission, upstream acceptance/release, then Bex pin/release** | 30m | t002 |
+| t003 | Adopt the accepted upstream correction through the CLI pin — **BLOCKED: PR #72 submitted; upstream merge/release + Bex delivery + original acceptance** | 30m | t002 |
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify | 10m | t004 |
 | t006 | Test coverage | 25m | t004 |
@@ -54,3 +54,12 @@ Live text and a comma-containing owned service display-name selector were exerci
 - **授权范围：** 在独立 upstream checkout 审核最新 main、去重、刷新补丁、补行为测试；必要的 fork 分支 commit/push 和向 render-oss/cli 提交 PR 是本次明确授权提交的组成部分。不修改/发布 bex 本仓库代码，不给 bex main 新增 commit/push 权限，不重复询问已给出的提交许可。
 - **判定：** 已修复或重复的附证据跳过；可证实通用缺陷且验证充分的提交最小修复；没有通用依据的保留说明，不把 bex 特有差异强推上游。公开内容只含通用复现、修复及测试，不带租户、凭据或生产私有日志。
 - **剩余：** 每项记录独立的 PR 链接、上游基线、测试/限制；提交不等于合入或发布，原 adoption / native / cleanup DoD 保留，仍受真实 upstream merge/release 门槛约束。
+
+## D2 已提交上游（2026-10-29，PR #72）
+
+- **结论来源：** 用户明确批准 D2 + 最新 upstream 源码复核、行为测试和本次实际提交。
+- **涉及 ID：** w8/m57。[Preserve literal string-list elements through TUI forms](https://github.com/render-oss/cli/pull/72)，head `fd2aa3cad96f291768887c43e6a2510e98b23876`，base `c31e586eb6f38138af3cc986b079e46a78c61de7`。
+- **验证：** 57 个开发包通过，新增代码 lint 为 0；完整 lint 的 92 项既有 main 告警未伪装成通过。新回归覆盖实际 parser / command / fake API / 子进程等对应行为；公开提交不含真实租户、凭据或生产私有日志。
+- **证据：** [补丁和验证记录](../../evidence/upstream-d2-20261029/m57/README.md)。
+- **当前状态：** 提交许可已消除，不再重复询问。仍 blocked 等 upstream 审阅、合入、发布；之后由 worker 审阅 Bex pin，按单独授权发布 CLI，再做本项原 native/shared-surface/清理验收。不是已修复交付，不是 done。
+- **范围：** 必要的 commit/push 均在独立 puncsky/cli fork 分支；本轮没有提交或 push bex main，也未触碰其他会话的 source 工作。

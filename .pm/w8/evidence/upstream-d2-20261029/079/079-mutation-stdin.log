@@ -1,0 +1,22 @@
+--- FAIL: TestRunPSQLCommandForwardsStdin (0.02s)
+    --- FAIL: TestRunPSQLCommandForwardsStdin/exact_bytes_reach_the_child (0.01s)
+        psql_test.go:115: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/079/pkg/tui/views/psql_test.go:115
+            	Error:      	Not equal: 
+            	            	expected: "id,body\n1,\"a, \"\"quoted\"\"\nline\"\n2,\"é漢\"\n3,\"\"\n"
+            	            	actual  : ""
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1,6 +1 @@
+            	            	-id,body
+            	            	-1,"a, ""quoted""
+            	            	-line"
+            	            	-2,"é漢"
+            	            	-3,""
+            	            	 
+            	Test:       	TestRunPSQLCommandForwardsStdin/exact_bytes_reach_the_child
+FAIL
+FAIL	github.com/render-oss/cli/pkg/tui/views	0.572s
+FAIL

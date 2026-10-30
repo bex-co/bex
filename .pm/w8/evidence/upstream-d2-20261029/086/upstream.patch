@@ -1,0 +1,286 @@
+diff --git a/pkg/tui/views/resourcelist.go b/pkg/tui/views/resourcelist.go
+index 18edb48..6abeac6 100644
+--- a/pkg/tui/views/resourcelist.go
++++ b/pkg/tui/views/resourcelist.go
+@@ -41,8 +41,10 @@ func NewResourceView(ctx context.Context,
+ 		return onSelect(r)
+ 	}
+ 
+-	// check for a persistent project filter if other input has not been provided
+-	if len(input.EnvironmentIDs) == 0 {
++	// check for a persistent project filter if other input has not been provided.
++	// An explicitly selected Project counts as input even when it has no
++	// environments.
++	if input.Project == nil && len(input.EnvironmentIDs) == 0 {
+ 		savedInput, err := DefaultListResourceInput(ctx)
+ 		if err == nil && savedInput.Project != nil {
+ 			input.Project = savedInput.Project
+diff --git a/pkg/tui/views/resourceloader.go b/pkg/tui/views/resourceloader.go
+index a78d53a..608df99 100644
+--- a/pkg/tui/views/resourceloader.go
++++ b/pkg/tui/views/resourceloader.go
+@@ -28,6 +28,13 @@ func NewResourceLoader(resourceService *resource.Service) *ResourceLoader {
+ 	return &ResourceLoader{resourceService: resourceService}
+ }
+ 
++// LoadResourceData lists resources for the input's scope. A selected Project
++// with no environments has an empty scope, so it lists nothing rather than
++// falling back to the unfiltered workspace listing. Without a selected
++// Project, empty EnvironmentIDs still mean all resources.
+ func (l *ResourceLoader) LoadResourceData(ctx context.Context, in ListResourceInput) ([]resource.Resource, error) {
++	if in.Project != nil && len(in.EnvironmentIDs) == 0 {
++		return []resource.Resource{}, nil
++	}
+ 	return l.resourceService.ListResources(ctx, in.ToParams())
+ }
+diff --git a/pkg/tui/views/resourceloader_test.go b/pkg/tui/views/resourceloader_test.go
+new file mode 100644
+index 0000000..4324c6b
+--- /dev/null
++++ b/pkg/tui/views/resourceloader_test.go
+@@ -0,0 +1,245 @@
++package views_test
++
++import (
++	"context"
++	"reflect"
++	"strings"
++	"testing"
++
++	tea "github.com/charmbracelet/bubbletea"
++	"github.com/stretchr/testify/require"
++
++	renderapi "github.com/render-oss/cli/internal/fakes/renderapi"
++	"github.com/render-oss/cli/internal/testids"
++	"github.com/render-oss/cli/pkg/client"
++	"github.com/render-oss/cli/pkg/config"
++	"github.com/render-oss/cli/pkg/resource"
++	"github.com/render-oss/cli/pkg/tui"
++	"github.com/render-oss/cli/pkg/tui/views"
++)
++
++type resourceFixture struct {
++	server           *renderapi.Server
++	loader           *views.ResourceLoader
++	workspaceService string
++	envService       string
++	envID            string
++	savedProject     *client.Project
++}
++
++// newResourceFixture seeds a workspace with one service outside any
++// environment and one service in envID, then points the default client and an
++// isolated config at the fake API.
++func newResourceFixture(t *testing.T) resourceFixture {
++	t.Helper()
++
++	workspaceID := testids.WorkspaceID("resource-loader")
++	server := renderapi.NewServer(t)
++	server.Owners.Add(renderapi.NewOwner(client.Owner{Id: workspaceID, Name: "Test Workspace"}))
++
++	envID := testids.EnvironmentID("populated")
++	savedProject := server.Projects.Add(renderapi.NewProject(renderapi.ProjectAttrs{
++		Id:      testids.ProjectID("saved"),
++		Name:    "Saved Default",
++		OwnerId: workspaceID,
++	}))
++	savedProject.EnvironmentIds = []string{envID}
++	server.Environments.Add(renderapi.NewEnvironment(client.Environment{
++		Id:        envID,
++		Name:      "populated",
++		ProjectId: savedProject.Id,
++	}))
++
++	workspaceSvc := server.Services.Add(renderapi.NewWebService(renderapi.WebServiceAttrs{
++		Service: renderapi.CommonServiceAttrs{Name: "workspace-service", OwnerID: workspaceID},
++	}))
++	envSvc := server.Services.Add(renderapi.NewWebService(renderapi.WebServiceAttrs{
++		Service: renderapi.CommonServiceAttrs{Name: "env-service", OwnerID: workspaceID, EnvironmentID: envID},
++	}))
++
++	t.Setenv("RENDER_CLI_CONFIG_PATH", t.TempDir()+"/cli.yaml")
++	t.Setenv("RENDER_HOST", server.URL())
++	t.Setenv("RENDER_API_KEY", "test-api-key")
++	t.Setenv("RENDER_WORKSPACE", workspaceID)
++
++	resourceService, err := resource.NewDefaultResourceService()
++	require.NoError(t, err)
++
++	return resourceFixture{
++		server:           server,
++		loader:           views.NewResourceLoader(resourceService),
++		workspaceService: workspaceSvc.Id,
++		envService:       envSvc.Id,
++		envID:            envID,
++		savedProject:     savedProject,
++	}
++}
++
++func resourceIDs(resources []resource.Resource) []string {
++	ids := []string{}
++	for _, r := range resources {
++		ids = append(ids, r.ID())
++	}
++	return ids
++}
++
++func TestResourceLoaderScopesToSelectedProject(t *testing.T) {
++	emptyProject := &client.Project{Id: testids.ProjectID("empty"), Name: "Empty Project", EnvironmentIds: []string{}}
++
++	t.Run("all projects lists every workspace resource", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{})
++		require.NoError(t, err)
++		require.ElementsMatch(t, []string{f.workspaceService, f.envService}, resourceIDs(resources))
++	})
++
++	t.Run("empty environment ids without a project stay unfiltered", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{EnvironmentIDs: []string{}})
++		require.NoError(t, err)
++		require.ElementsMatch(t, []string{f.workspaceService, f.envService}, resourceIDs(resources))
++	})
++
++	t.Run("selected project with no environments lists nothing", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{
++			Project:        emptyProject,
++			EnvironmentIDs: emptyProject.EnvironmentIds,
++		})
++		require.NoError(t, err)
++		require.Empty(t, resources)
++		for _, path := range []string{"/services", "/postgres", "/key-value", "/workflows"} {
++			require.False(t, f.server.HasRequest("GET", path), "unexpected unfiltered %s request", path)
++		}
++	})
++
++	t.Run("selected project with nil environments lists nothing", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{
++			Project: &client.Project{Id: emptyProject.Id, Name: emptyProject.Name},
++		})
++		require.NoError(t, err)
++		require.Empty(t, resources)
++		require.False(t, f.server.HasRequest("GET", "/services"))
++	})
++
++	t.Run("selected project with an empty environment filters by it", func(t *testing.T) {
++		f := newResourceFixture(t)
++		emptyEnvID := testids.EnvironmentID("empty")
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{
++			Project:        &client.Project{Id: testids.ProjectID("control"), Name: "Control", EnvironmentIds: []string{emptyEnvID}},
++			EnvironmentIDs: []string{emptyEnvID},
++		})
++		require.NoError(t, err)
++		require.Empty(t, resources)
++		require.True(t, f.server.HasRequest("GET", "/services?environmentId="+emptyEnvID))
++	})
++
++	t.Run("selected project with a populated environment lists its resources", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		resources, err := f.loader.LoadResourceData(context.Background(), views.ListResourceInput{
++			Project:        f.savedProject,
++			EnvironmentIDs: f.savedProject.EnvironmentIds,
++		})
++		require.NoError(t, err)
++		require.Equal(t, []string{f.envService}, resourceIDs(resources))
++	})
++}
++
++// runLoad executes the view's init commands and returns the first resource
++// load result, unwrapping batches, sequences and loading messages.
++func runLoad(t *testing.T, cmd tea.Cmd) (tui.LoadDataMsg[[]resource.Resource], bool) {
++	t.Helper()
++	if cmd == nil {
++		return tui.LoadDataMsg[[]resource.Resource]{}, false
++	}
++	var cmds []tea.Cmd
++	switch msg := cmd().(type) {
++	case tui.LoadDataMsg[[]resource.Resource]:
++		return msg, true
++	case tui.ErrorMsg:
++		t.Fatalf("load failed: %v", msg.Err)
++	case tui.LoadingDataMsg:
++		cmds = []tea.Cmd{msg.Cmd}
++	case tea.BatchMsg:
++		cmds = msg
++	default:
++		// tea.Sequence produces an unexported []tea.Cmd message.
++		v := reflect.ValueOf(msg)
++		if v.Kind() == reflect.Slice && v.Type().Elem() == reflect.TypeOf(tea.Cmd(nil)) {
++			for i := 0; i < v.Len(); i++ {
++				cmds = append(cmds, v.Index(i).Interface().(tea.Cmd))
++			}
++		}
++	}
++	for _, c := range cmds {
++		if loaded, ok := runLoad(t, c); ok {
++			return loaded, true
++		}
++	}
++	return tui.LoadDataMsg[[]resource.Resource]{}, false
++}
++
++func renderResourceView(t *testing.T, f resourceFixture, input views.ListResourceInput) string {
++	t.Helper()
++	v := views.NewResourceView(context.Background(), input, f.loader.LoadResourceData, func(resource.Resource) tea.Cmd { return nil })
++	v.Update(tui.StackSizeMsg{Width: 120, Height: 24})
++	loaded, ok := runLoad(t, v.Init())
++	require.True(t, ok, "resource view did not load data")
++	v.Update(loaded)
++	return v.View()
++}
++
++func TestResourceViewKeepsExplicitProjectOverSavedDefault(t *testing.T) {
++	t.Run("explicit empty project with a saved default", func(t *testing.T) {
++		f := newResourceFixture(t)
++		require.NoError(t, config.SetProjectFilter(f.savedProject.Id, f.savedProject.Name))
++
++		screen := renderResourceView(t, f, views.ListResourceInput{
++			Project:        &client.Project{Id: testids.ProjectID("empty"), Name: "Empty Project", EnvironmentIds: []string{}},
++			EnvironmentIDs: []string{},
++		})
++		require.Contains(t, screen, "Project: Empty Project")
++		require.NotContains(t, screen, "Project: Saved Default")
++		require.Contains(t, screen, "No Results")
++		require.False(t, f.server.HasRequest("GET", "/projects/"+f.savedProject.Id), "saved default should not be consulted")
++		require.False(t, f.server.HasRequest("GET", "/services"))
++	})
++
++	t.Run("explicit empty project without a saved default", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		screen := renderResourceView(t, f, views.ListResourceInput{
++			Project:        &client.Project{Id: testids.ProjectID("empty"), Name: "Empty Project", EnvironmentIds: []string{}},
++			EnvironmentIDs: []string{},
++		})
++		require.Contains(t, screen, "Project: Empty Project")
++		require.Contains(t, screen, "No Results")
++		require.NotContains(t, screen, "workspace-service")
++	})
++
++	t.Run("no explicit scope applies the saved default", func(t *testing.T) {
++		f := newResourceFixture(t)
++		require.NoError(t, config.SetProjectFilter(f.savedProject.Id, f.savedProject.Name))
++
++		screen := renderResourceView(t, f, views.ListResourceInput{})
++		require.Contains(t, screen, "Project: Saved Default")
++		require.Contains(t, screen, "env-service")
++		require.NotContains(t, screen, "workspace-service")
++	})
++
++	t.Run("no explicit scope and no saved default lists everything", func(t *testing.T) {
++		f := newResourceFixture(t)
++
++		screen := renderResourceView(t, f, views.ListResourceInput{})
++		require.False(t, strings.Contains(screen, "Project: "))
++		require.Contains(t, screen, "workspace-service")
++		require.Contains(t, screen, "env-service")
++	})
++}

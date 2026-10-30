@@ -1,0 +1,29 @@
+{
+  "items": [
+    "w8/087"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "2649e185af3210318b141f3e727105dee47da48a",
+  "branch": "fix/clear-datastore-project-scope-20261029",
+  "url": "https://github.com/render-oss/cli/pull/68",
+  "title": "Clear datastore picker scope when clearing its project filter",
+  "files": [
+    "cmd/kvcli.go",
+    "cmd/pgcli.go",
+    "cmd/projectfilterclear_test.go",
+    "cmd/psql.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:33.728199+00:00"
+}

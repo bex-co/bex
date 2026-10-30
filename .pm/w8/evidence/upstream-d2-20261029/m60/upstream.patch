@@ -1,0 +1,490 @@
+diff --git a/cmd/logscopy_test.go b/cmd/logscopy_test.go
+new file mode 100644
+index 0000000..44a7f05
+--- /dev/null
++++ b/cmd/logscopy_test.go
+@@ -0,0 +1,141 @@
++package cmd
++
++import (
++	"context"
++	"os/exec"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/stretchr/testify/require"
++
++	"github.com/render-oss/cli/pkg/command"
++	"github.com/render-oss/cli/pkg/tui/views"
++)
++
++// shellSplit splits a copied command into argv the way a POSIX shell does.
++func shellSplit(t *testing.T, s string) []string {
++	t.Helper()
++	sh, err := exec.LookPath("sh")
++	if err != nil {
++		t.Skip("sh not available")
++	}
++	out, err := exec.Command(sh, "-c", `eval "set -- $1"; printf '%s\0' "$@"`, "sh", s).Output()
++	require.NoError(t, err)
++	return strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
++}
++
++func parseLogInput(t *testing.T, argv []string) (*views.LogInput, error) {
++	t.Helper()
++	cmd := NewLogsCmd(nil)
++	format := command.Interactive
++	cmd.SetContext(command.SetFormatInContext(context.Background(), &format))
++	if err := cmd.ParseFlags(argv); err != nil {
++		return nil, err
++	}
++	var input views.LogInput
++	if err := command.ParseCommand(cmd, cmd.Flags().Args(), &input); err != nil {
++		return nil, err
++	}
++	return &input, nil
++}
++
++// TestLogsCopyCommandRoundTrip verifies that the command shown and copied for
++// a log view parses back, through the real logs flag parser, to the same input.
++func TestLogsCopyCommandRoundTrip(t *testing.T) {
++	tcs := []struct {
++		name string
++		argv []string
++	}{
++		{name: "phrase with space", argv: []string{"--resources", "srv-1", "--type", "app", "--text", "LEFT RIGHT"}},
++		{name: "literal comma", argv: []string{"--resources", "srv-1", "--type", "app", "--text", `"LEFT,RIGHT"`}},
++		{name: "relative start", argv: []string{"--resources", "srv-1", "--type", "app", "--text", "plain", "--start", "30m"}},
++		{name: "plain control", argv: []string{"--resources", "srv-1", "--type", "app", "--text", "plain"}},
++		{name: "two OR terms", argv: []string{"--resources", "srv-1", "--type", "app", "--text", "LEFT,RIGHT"}},
++		{name: "absolute bounds with nanoseconds", argv: []string{"--resources", "srv-1", "--start", "2026-10-11T08:30:05.415654123-07:00", "--end", "2026-10-11T09:00:00Z"}},
++		{name: "quotes, unicode and shell metacharacters", argv: []string{"--resources", "srv-1,srv-2", "--text", `"say ""hi""",it's,$HOME,*,日本語，テスト, lead`}},
++		{name: "empty element neighbor", argv: []string{"--resources", "srv-1", "--text", `,a`}},
++		{name: "enums and scalars", argv: []string{"--resources", "srv-1", "--level", "error,warning", "--type", "app,request", "--method", "GET,POST", "--direction", "forward", "--limit", "5", "--tail"}},
++		{name: "repeated slice flag", argv: []string{"--resources", "srv-1", "--text", "a b", "--text", "c"}},
++		{name: "path with spaces", argv: []string{"--resources", "srv-1", "--path", "/a b,/c", "--status-code", "500"}},
++		{name: "lone carriage return", argv: []string{"--resources", "srv-1", "--text", "\"a\rb\""}},
++		{name: "defaults only", argv: []string{}},
++	}
++
++	for _, tc := range tcs {
++		t.Run(tc.name, func(t *testing.T) {
++			original, err := parseLogInput(t, tc.argv)
++			require.NoError(t, err)
++
++			copied, err := command.CommandName(NewLogsCmd(nil), original)
++			require.NoError(t, err)
++			require.NotContains(t, copied, "{")
++			require.True(t, strings.HasPrefix(copied, "logs"), copied)
++
++			argv := shellSplit(t, copied)
++			require.Equal(t, "logs", argv[0])
++			replayed, err := parseLogInput(t, argv[1:])
++			require.NoError(t, err, copied)
++
++			requireSameTime(t, original.StartTime, replayed.StartTime)
++			requireSameTime(t, original.EndTime, replayed.EndTime)
++			original.StartTime, original.EndTime = nil, nil
++			replayed.StartTime, replayed.EndTime = nil, nil
++			require.Equal(t, original, replayed, copied)
++		})
++	}
++}
++
++func TestLogsCopyCommandPreservesSearchElements(t *testing.T) {
++	original, err := parseLogInput(t, []string{"--resources", "srv-1", "--text", "LEFT RIGHT", "--start", "30m"})
++	require.NoError(t, err)
++
++	copied, err := command.CommandName(NewLogsCmd(nil), original)
++	require.NoError(t, err)
++	require.Contains(t, copied, "--text='LEFT RIGHT'")
++	require.Contains(t, copied, "--start=30m")
++
++	original, err = parseLogInput(t, []string{"--resources", "srv-1", "--text", `"LEFT,RIGHT"`})
++	require.NoError(t, err)
++	require.Equal(t, []string{"LEFT,RIGHT"}, original.Text)
++
++	copied, err = command.CommandName(NewLogsCmd(nil), original)
++	require.NoError(t, err)
++	require.Contains(t, copied, `--text='"LEFT,RIGHT"'`)
++}
++
++func requireSameTime(t *testing.T, want, got *command.TimeOrRelative) {
++	t.Helper()
++	if want == nil {
++		require.Nil(t, got)
++		return
++	}
++	require.NotNil(t, got)
++	if want.Relative != nil {
++		require.NotNil(t, got.Relative)
++		require.Equal(t, *want.Relative, *got.Relative)
++		return
++	}
++	require.Nil(t, got.Relative)
++	require.True(t, want.T.Equal(*got.T), "want %s, got %s", want.T, got.T)
++}
++
++// TestTailLogsCopyCommandKeepsStartTime covers the automatic start time set by
++// TailLogsFlow, which has no relative text.
++func TestTailLogsCopyCommandKeepsStartTime(t *testing.T) {
++	start := time.Date(2026, 10, 11, 8, 30, 5, 415654123, time.FixedZone("PDT", -7*60*60))
++	input := views.LogInput{
++		ResourceIDs: []string{"srv-1"},
++		StartTime:   &command.TimeOrRelative{T: &start},
++		Tail:        true,
++	}
++
++	copied, err := command.CommandName(NewLogsCmd(nil), &input)
++	require.NoError(t, err)
++	require.Contains(t, copied, "--start=2026-10-11T08:30:05.415654123-07:00")
++
++	replayed, err := parseLogInput(t, shellSplit(t, copied)[1:])
++	require.NoError(t, err)
++	require.True(t, start.Equal(*replayed.StartTime.T))
++	require.True(t, replayed.Tail)
++}
+diff --git a/pkg/command/formatter.go b/pkg/command/formatter.go
+index 0c6efbb..0f91cec 100644
+--- a/pkg/command/formatter.go
++++ b/pkg/command/formatter.go
+@@ -38,7 +38,7 @@ func StringToOutput(s string) (Output, error) {
+ }
+ 
+ func CommandName(cmd *cobra.Command, v any) (string, error) {
+-	inputString, err := InputToString(v)
++	inputString, err := inputToString(v, cmd.Flags())
+ 	if err != nil {
+ 		return "", err
+ 	}
+diff --git a/pkg/command/formatter_test.go b/pkg/command/formatter_test.go
+new file mode 100644
+index 0000000..68e261e
+--- /dev/null
++++ b/pkg/command/formatter_test.go
+@@ -0,0 +1,128 @@
++package command_test
++
++import (
++	"os/exec"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/spf13/cobra"
++	"github.com/stretchr/testify/require"
++
++	"github.com/render-oss/cli/pkg/command"
++	"github.com/render-oss/cli/pkg/pointers"
++)
++
++type copyInput struct {
++	Name     string                  `cli:"arg:0"`
++	Second   *string                 `cli:"arg:1"`
++	Slice    []string                `cli:"slice"`
++	Array    []string                `cli:"array"`
++	Enum     []string                `cli:"enum"`
++	Single   string                  `cli:"single"`
++	Optional *string                 `cli:"optional"`
++	Count    *int                    `cli:"count"`
++	Flag     bool                    `cli:"flag"`
++	Since    *command.TimeOrRelative `cli:"since"`
++}
++
++func newCopyCmd() *cobra.Command {
++	cmd := &cobra.Command{Use: "thing"}
++	cmd.Flags().StringSlice("slice", nil, "")
++	cmd.Flags().StringArray("array", nil, "")
++	cmd.Flags().Var(command.NewEnumInput([]string{"a", "b", "c"}, true), "enum", "")
++	cmd.Flags().Var(command.NewEnumInput([]string{"x", "y"}, false), "single", "")
++	cmd.Flags().String("optional", "", "")
++	cmd.Flags().Int("count", 0, "")
++	cmd.Flags().Bool("flag", false, "")
++	cmd.Flags().Var(command.NewTimeInput(), "since", "")
++	return cmd
++}
++
++func parseCopyInput(t *testing.T, argv []string) copyInput {
++	t.Helper()
++	cmd := newCopyCmd()
++	require.NoError(t, cmd.ParseFlags(argv))
++	var v copyInput
++	require.NoError(t, command.ParseCommand(cmd, cmd.Flags().Args(), &v))
++	return v
++}
++
++func posixSplit(t *testing.T, s string) []string {
++	t.Helper()
++	sh, err := exec.LookPath("sh")
++	if err != nil {
++		t.Skip("sh not available")
++	}
++	out, err := exec.Command(sh, "-c", `eval "set -- $1"; printf '%s\0' "$@"`, "sh", s).Output()
++	require.NoError(t, err)
++	return strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
++}
++
++func TestCommandNameRoundTrip(t *testing.T) {
++	tcs := []struct {
++		name string
++		argv []string
++	}{
++		{name: "positional spaces and quotes", argv: []string{"my service", `it's "x"`}},
++		{name: "string slice elements", argv: []string{"n", "--slice", `"a,b",c d,é`}},
++		{name: "string array repeated", argv: []string{"n", "--array", "K=a,b", "--array", "L=c d", "--array", ""}},
++		{name: "enum list", argv: []string{"n", "--enum", "a,c", "--single", "y"}},
++		{name: "explicit scalars", argv: []string{"n", "--optional", "v w", "--count", "3", "--flag"}},
++		{name: "relative time", argv: []string{"n", "--since", "5h"}},
++		{name: "absolute time", argv: []string{"n", "--since", "2026-10-11T08:30:05.000000001Z"}},
++		{name: "nil and defaults", argv: []string{"n"}},
++	}
++
++	for _, tc := range tcs {
++		t.Run(tc.name, func(t *testing.T) {
++			original := parseCopyInput(t, tc.argv)
++
++			copied, err := command.CommandName(newCopyCmd(), &original)
++			require.NoError(t, err)
++
++			argv := posixSplit(t, copied)
++			require.Equal(t, "thing", argv[0])
++			replayed := parseCopyInput(t, argv[1:])
++
++			if original.Since != nil {
++				require.NotNil(t, replayed.Since)
++				require.Equal(t, original.Since.Relative, replayed.Since.Relative)
++				if original.Since.Relative == nil {
++					require.True(t, original.Since.T.Equal(*replayed.Since.T))
++				}
++				original.Since, replayed.Since = nil, nil
++			}
++			require.Equal(t, original, replayed, copied)
++		})
++	}
++}
++
++func TestCommandNameFormatsFlagTypes(t *testing.T) {
++	since := time.Date(2026, 10, 11, 8, 30, 5, 415654000, time.UTC)
++	v := copyInput{
++		Name:  "a b",
++		Slice: []string{"LEFT,RIGHT"},
++		Array: []string{"x", "y z"},
++		Enum:  []string{"a", "b"},
++		Since: &command.TimeOrRelative{T: &since},
++	}
++
++	str, err := command.CommandName(newCopyCmd(), &v)
++	require.NoError(t, err)
++	require.Equal(t, `thing 'a b' --slice='"LEFT,RIGHT"' --array=x --array='y z' --enum=a,b --since=2026-10-11T08:30:05.415654Z`, str)
++}
++
++func TestInputToStringQuoting(t *testing.T) {
++	v := copyInput{
++		Name:     "a b",
++		Second:   pointers.From("c"),
++		Slice:    []string{"LEFT RIGHT", "it's"},
++		Optional: pointers.From(""),
++		Since:    &command.TimeOrRelative{Relative: pointers.From("30m")},
++	}
++
++	str, err := command.InputToString(&v)
++	require.NoError(t, err)
++	require.Equal(t, `'a b' c --slice='LEFT RIGHT,it'\''s' --since=30m`, str)
++}
+diff --git a/pkg/command/inputs.go b/pkg/command/inputs.go
+index 8efbf78..100b481 100644
+--- a/pkg/command/inputs.go
++++ b/pkg/command/inputs.go
+@@ -1,11 +1,14 @@
+ package command
+ 
+ import (
++	"bytes"
++	"encoding/csv"
+ 	"fmt"
+ 	"reflect"
+ 	"regexp"
+ 	"strconv"
+ 	"strings"
++	"time"
+ 
+ 	"github.com/spf13/cobra"
+ 	"github.com/spf13/pflag"
+@@ -370,13 +373,32 @@ func ParseCommand(cmd *cobra.Command, args []string, v any) error {
+ 	return nil
+ }
+ 
++// InputToString formats the cli-tagged fields of v as shell-quoted command
++// arguments. []string fields are encoded with pflag's StringSlice CSV grammar;
++// use CommandName to honor the effective flag types of a specific command.
+ func InputToString(v any) (string, error) {
++	return inputToString(v, nil)
++}
++
++func inputToString(v any, flags *pflag.FlagSet) (string, error) {
++	args, err := inputArgs(v, flags)
++	if err != nil {
++		return "", err
++	}
++	return strings.Join(args, " "), nil
++}
++
++// inputArgs converts the cli-tagged fields of v into shell-quoted argv tokens:
++// positional arguments in index order, followed by flags. When flags is
++// non-nil, slice fields are encoded for the registered flag type so that
++// parsing the tokens again with ParseCommand yields the same values.
++func inputArgs(v any, flags *pflag.FlagSet) ([]string, error) {
+ 	vtype := reflect.TypeOf(v).Elem()
+ 	elem := reflect.ValueOf(v).Elem()
+ 
+-	// Create a slice to store the arguments. The size is the maximum number of fields.
++	// Positional arguments by index. The size is the maximum number of fields.
+ 	args := make([]string, vtype.NumField())
+-	var flagsStr []string
++	var flagArgs []string
+ 
+ 	// Loop through the struct fields
+ 	for i := 0; i < vtype.NumField(); i++ {
+@@ -391,6 +413,17 @@ func InputToString(v any) (string, error) {
+ 
+ 		elemField := elem.FieldByName(field.Name)
+ 
++		// Time flags keep the relative text the user entered or the full
++		// absolute timestamp, in a form accepted by CobraTime.Set.
++		if field.Type == reflect.TypeOf(&TimeOrRelative{}) {
++			strVal, ok := timeArgValue(elemField.Interface().(*TimeOrRelative))
++			if !ok {
++				continue
++			}
++			flagArgs = append(flagArgs, flagArg(cliTag, strVal))
++			continue
++		}
++
+ 		// If the field is a pointer, get the value
+ 		if field.Type.Kind() == reflect.Ptr {
+ 			if elemField.IsNil() {
+@@ -400,10 +433,8 @@ func InputToString(v any) (string, error) {
+ 			elemField = elemField.Elem()
+ 		}
+ 
+-		var strVal string
+-
+-		// If the field is a slice, join the values
+-		if field.Type.Kind() == reflect.Slice {
++		// Slices are encoded according to the effective flag type
++		if elemField.Kind() == reflect.Slice {
+ 			if elemField.Len() == 0 {
+ 				continue
+ 			}
+@@ -412,13 +443,35 @@ func InputToString(v any) (string, error) {
+ 			for i := 0; i < elemField.Len(); i++ {
+ 				slice = append(slice, fmt.Sprintf("%v", elemField.Index(i)))
+ 			}
+-			strVal = strings.Join(slice, ",")
+-		} else {
+-			if elemField.IsZero() {
+-				continue
++
++			var flag *pflag.Flag
++			if flags != nil {
++				flag = flags.Lookup(cliTag)
++			}
++
++			switch {
++			case flag != nil && flag.Value.Type() == "stringArray":
++				// StringArray flags take one element per invocation
++				for _, s := range slice {
++					flagArgs = append(flagArgs, flagArg(cliTag, s))
++				}
++			case elemField.Type().Elem().Kind() == reflect.String && (flag == nil || flag.Value.Type() == "stringSlice"):
++				strVal, err := stringSliceArgValue(slice)
++				if err != nil {
++					return nil, err
++				}
++				flagArgs = append(flagArgs, flagArg(cliTag, strVal))
++			default:
++				// Enum and numeric/bool slice flags split on bare commas
++				flagArgs = append(flagArgs, flagArg(cliTag, strings.Join(slice, ",")))
+ 			}
+-			strVal = fmt.Sprintf("%v", elemField)
++			continue
++		}
++
++		if elemField.IsZero() {
++			continue
+ 		}
++		strVal := fmt.Sprintf("%v", elemField)
+ 
+ 		if isArg(cliTag) {
+ 			matches := argRegex.FindStringSubmatch(cliTag)
+@@ -426,17 +479,63 @@ func InputToString(v any) (string, error) {
+ 			// This should never error. It means the tag is not formatted correctly.
+ 			index, err := strconv.Atoi(indexStr)
+ 			if err != nil {
+-				return "", fmt.Errorf("internal failure parsing arguments")
++				return nil, fmt.Errorf("internal failure parsing arguments")
+ 			}
+ 
+-			args[index] = strVal
++			args[index] = shellQuote(strVal)
+ 		} else {
+-			flagsStr = append(flagsStr, fmt.Sprintf("--%s=%s", cliTag, strVal))
++			flagArgs = append(flagArgs, flagArg(cliTag, strVal))
+ 		}
+ 	}
+ 
+-	argsString := strings.Trim(strings.Join(args, " "), " ")
+-	flagsString := strings.Join(flagsStr, " ")
++	var result []string
++	for _, arg := range args {
++		if arg != "" {
++			result = append(result, arg)
++		}
++	}
++	return append(result, flagArgs...), nil
++}
++
++func timeArgValue(t *TimeOrRelative) (string, bool) {
++	switch {
++	case t == nil:
++		return "", false
++	case t.Relative != nil:
++		return *t.Relative, true
++	case t.T != nil:
++		return t.T.Format(time.RFC3339Nano), true
++	default:
++		return "", false
++	}
++}
++
++// stringSliceArgValue encodes values with the CSV grammar pflag's StringSlice
++// flags parse, so commas, quotes and spaces inside an element are retained.
++func stringSliceArgValue(values []string) (string, error) {
++	b := &bytes.Buffer{}
++	w := csv.NewWriter(b)
++	if err := w.Write(values); err != nil {
++		return "", err
++	}
++	w.Flush()
++	if err := w.Error(); err != nil {
++		return "", err
++	}
++	return strings.TrimSuffix(b.String(), "\n"), nil
++}
++
++func flagArg(name, value string) string {
++	return "--" + name + "=" + shellQuote(value)
++}
+ 
+-	return strings.Trim(fmt.Sprintf("%s %s", argsString, flagsString), " "), nil
++var shellSafeRegex = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./-]+$`)
++
++// shellQuote quotes s for POSIX shells when it contains characters the shell
++// would otherwise interpret.
++func shellQuote(s string) string {
++	if shellSafeRegex.MatchString(s) {
++		return s
++	}
++	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+ }

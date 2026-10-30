@@ -1,0 +1,28 @@
+{
+  "items": [
+    "w8/086"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "4f124b4956e10fd1fb2e38344f65b17d8eaa7bba",
+  "branch": "fix/scope-empty-project-filters-20261029",
+  "url": "https://github.com/render-oss/cli/pull/67",
+  "title": "Keep empty project filters scoped to the selected project",
+  "files": [
+    "pkg/tui/views/resourcelist.go",
+    "pkg/tui/views/resourceloader.go",
+    "pkg/tui/views/resourceloader_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:30.567513+00:00"
+}

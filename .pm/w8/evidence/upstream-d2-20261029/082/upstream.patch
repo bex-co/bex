@@ -1,0 +1,194 @@
+diff --git a/pkg/command/form_test.go b/pkg/command/form_test.go
+index 8dd18b6..fc0815b 100644
+--- a/pkg/command/form_test.go
++++ b/pkg/command/form_test.go
+@@ -2,6 +2,7 @@ package command
+ 
+ import (
+ 	"testing"
++	"time"
+ 
+ 	"github.com/stretchr/testify/assert"
+ )
+@@ -119,3 +120,55 @@ func TestPreferredEditor(t *testing.T) {
+ 		assert.Equal(t, "nano", preferredEditor())
+ 	})
+ }
++
++func TestFormValuesPreserveTimeOrRelative(t *testing.T) {
++	type sample struct {
++		Text      []string        `cli:"text"`
++		StartTime *TimeOrRelative `cli:"start"`
++		EndTime   *TimeOrRelative `cli:"end"`
++	}
++
++	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
++	for _, str := range []string{
++		"2026-10-11T00:50:00.857576125Z",
++		"2026-10-11T00:41:23.001Z",
++		"2026-10-11T06:11:23.603458191+05:30",
++		"2026-10-11T00:41:23Z",
++		"2026-10-11T06:11:23+05:30",
++		"5m",
++	} {
++		t.Run(str, func(t *testing.T) {
++			parsed, err := ParseTime(now, &str)
++			assert.NoError(t, err)
++			input := sample{Text: []string{"original"}, StartTime: parsed, EndTime: parsed}
++
++			t.Run("unchanged apply", func(t *testing.T) {
++				var out sample
++				assert.NoError(t, StructFromFormValues(FormValuesFromStruct(&input), &out))
++				assert.Equal(t, str, out.StartTime.String())
++				assert.Equal(t, str, out.EndTime.String())
++				if parsed.Relative == nil {
++					assert.True(t, parsed.T.Equal(*out.StartTime.T))
++					assert.True(t, parsed.T.Equal(*out.EndTime.T))
++				}
++			})
++
++			t.Run("unrelated text edit", func(t *testing.T) {
++				values := FormValuesFromStruct(&input)
++				values["text"] = NewStringSliceFormValue("updated")
++				var out sample
++				assert.NoError(t, StructFromFormValues(values, &out))
++				assert.Equal(t, []string{"updated"}, out.Text)
++				assert.Equal(t, str, out.StartTime.String())
++				assert.Equal(t, str, out.EndTime.String())
++			})
++		})
++	}
++
++	t.Run("unset times stay unset", func(t *testing.T) {
++		var out sample
++		assert.NoError(t, StructFromFormValues(FormValuesFromStruct(&sample{}), &out))
++		assert.Nil(t, out.StartTime)
++		assert.Nil(t, out.EndTime)
++	})
++}
+diff --git a/pkg/command/time.go b/pkg/command/time.go
+index fb98b06..81a2351 100644
+--- a/pkg/command/time.go
++++ b/pkg/command/time.go
+@@ -37,7 +37,10 @@ func (t *TimeOrRelative) String() string {
+ 	if t.Relative != nil {
+ 		return *t.Relative
+ 	}
+-	return t.T.Format(time.RFC3339)
++	// RFC3339Nano keeps fractional seconds so that absolute times survive a
++	// String -> ParseTime round trip (e.g. when the log filter form is re-applied).
++	// Whole-second times still format identically to RFC3339.
++	return t.T.Format(time.RFC3339Nano)
+ }
+ 
+ var relativeRegex = regexp.MustCompile(`^(\d+)([smhd])$`)
+diff --git a/pkg/command/time_test.go b/pkg/command/time_test.go
+index 977d954..6226ddf 100644
+--- a/pkg/command/time_test.go
++++ b/pkg/command/time_test.go
+@@ -129,3 +129,40 @@ func TestTimeSuggestion(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func TestTimeOrRelativeStringRoundTrip(t *testing.T) {
++	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
++	tcs := []struct {
++		name     string
++		str      string
++		expected string
++	}{
++		{name: "utc nanoseconds", str: "2026-10-11T00:50:00.857576125Z", expected: "2026-10-11T00:50:00.857576125Z"},
++		{name: "utc milliseconds", str: "2026-10-11T00:41:23.001Z", expected: "2026-10-11T00:41:23.001Z"},
++		{name: "offset nanoseconds", str: "2026-10-11T06:11:23.603458191+05:30", expected: "2026-10-11T06:11:23.603458191+05:30"},
++		{name: "utc whole second", str: "2026-10-11T00:41:23Z", expected: "2026-10-11T00:41:23Z"},
++		{name: "offset whole second", str: "2026-10-11T06:11:23+05:30", expected: "2026-10-11T06:11:23+05:30"},
++		{name: "relative", str: "5m", expected: "5m"},
++	}
++
++	for _, tc := range tcs {
++		t.Run(tc.name, func(t *testing.T) {
++			parsed, err := command.ParseTime(now, &tc.str)
++			require.NoError(t, err)
++			require.Equal(t, tc.expected, parsed.String())
++
++			str := parsed.String()
++			reparsed, err := command.ParseTime(now, &str)
++			require.NoError(t, err)
++			require.True(t, parsed.T.Equal(*reparsed.T), "expected %s, got %s", parsed.T, reparsed.T)
++			require.Equal(t, parsed.Relative, reparsed.Relative)
++		})
++	}
++}
++
++func TestCobraTimeFractionalSeconds(t *testing.T) {
++	cobraTime := command.CobraTime{}
++	require.NoError(t, cobraTime.Set("2026-10-11T00:50:00.857576125Z"))
++	require.Equal(t, "2026-10-11T00:50:00.857576125Z", cobraTime.String())
++	require.Equal(t, 857576125, cobraTime.Get().T.Nanosecond())
++}
+diff --git a/pkg/tui/views/logview_test.go b/pkg/tui/views/logview_test.go
+index f9df934..c1047bc 100644
+--- a/pkg/tui/views/logview_test.go
++++ b/pkg/tui/views/logview_test.go
+@@ -12,6 +12,7 @@ import (
+ 	"github.com/render-oss/cli/cmd"
+ 	"github.com/render-oss/cli/pkg/client"
+ 	lclient "github.com/render-oss/cli/pkg/client/logs"
++	"github.com/render-oss/cli/pkg/command"
+ 	"github.com/render-oss/cli/pkg/tui"
+ 	"github.com/render-oss/cli/pkg/tui/testhelper"
+ 	"github.com/render-oss/cli/pkg/tui/views"
+@@ -110,4 +111,52 @@ func TestLogView(t *testing.T) {
+ 		err := tm.Quit()
+ 		require.NoError(t, err)
+ 	})
++
++	t.Run("applying unchanged filters preserves fractional time bounds", func(t *testing.T) {
++		ctx := context.Background()
++
++		start, err := time.Parse(time.RFC3339Nano, "2026-10-11T00:50:00.857576125Z")
++		require.NoError(t, err)
++		end, err := time.Parse(time.RFC3339Nano, "2026-10-11T06:20:00.857576999+05:30")
++		require.NoError(t, err)
++
++		input := views.LogInput{
++			ResourceIDs: []string{"foo"},
++			StartTime:   &command.TimeOrRelative{T: &start},
++			EndTime:     &command.TimeOrRelative{T: &end},
++		}
++
++		interactiveInputs := make(chan views.LogInput, 1)
++		interactiveLogsCommand := func(ctx context.Context, input views.LogInput, breadcrumb string) tea.Cmd {
++			interactiveInputs <- input
++			return nil
++		}
++
++		logCmd := cmd.NewLogsCmd(nil)
++
++		m := views.NewLogsView(ctx, logCmd, interactiveLogsCommand, input, loadFunc)
++		tm := teatest.NewTestModel(t, testhelper.Stackify(m))
++
++		tm.Send(tea.WindowSizeMsg{Width: 80, Height: 80})
++		tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
++
++		teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
++			return bytes.Contains(bts, []byte("foo"))
++		}, teatest.WithCheckInterval(time.Millisecond*10), teatest.WithDuration(time.Second*3))
++
++		// Apply without editing any field
++		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
++
++		select {
++		case got := <-interactiveInputs:
++			require.NotNil(t, got.StartTime)
++			require.NotNil(t, got.EndTime)
++			require.True(t, start.Equal(*got.StartTime.T), "start: expected %s, got %s", start.Format(time.RFC3339Nano), got.StartTime.T.Format(time.RFC3339Nano))
++			require.True(t, end.Equal(*got.EndTime.T), "end: expected %s, got %s", end.Format(time.RFC3339Nano), got.EndTime.T.Format(time.RFC3339Nano))
++		case <-time.After(time.Second * 3):
++			t.Fatal("filter callback was not invoked")
++		}
++
++		require.NoError(t, tm.Quit())
++	})
+ }

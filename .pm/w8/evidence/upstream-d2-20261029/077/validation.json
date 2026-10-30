@@ -1,0 +1,27 @@
+{
+  "items": [
+    "w8/077"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "efc4e8a7205098c8fe4f7fcb58f0265557085234",
+  "branch": "fix/preserve-stringarray-values-20261029",
+  "url": "https://github.com/render-oss/cli/pull/62",
+  "title": "Preserve StringArray flag values without a CSV round trip",
+  "files": [
+    "pkg/command/inputs.go",
+    "pkg/command/inputs_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:07.610873+00:00"
+}

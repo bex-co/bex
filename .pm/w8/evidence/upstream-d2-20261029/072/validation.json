@@ -1,0 +1,27 @@
+{
+  "items": [
+    "w8/072"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "c6c2c667cee2320bd58a2830f37704d8386db2f8",
+  "branch": "fix/allow-image-cron-command-updates-20261029",
+  "url": "https://github.com/render-oss/cli/pull/64",
+  "title": "Allow cron-command updates for image-backed cron jobs",
+  "files": [
+    "pkg/service/update.go",
+    "pkg/service/update_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:15.280806+00:00"
+}

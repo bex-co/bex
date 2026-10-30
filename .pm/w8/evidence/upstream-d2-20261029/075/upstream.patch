@@ -1,0 +1,712 @@
+diff --git a/pkg/service/clone.go b/pkg/service/clone.go
+index a105e8f..eb51454 100644
+--- a/pkg/service/clone.go
++++ b/pkg/service/clone.go
+@@ -45,8 +45,14 @@ func ServiceFromAPI(input *servicetypes.ServiceCreateInput, source *client.Servi
+ 	defaults := mapSourceDefaultsToServiceInput(extracted)
+ 
+ 	applyBaseDefaults(input, defaults)
++	// The clone's type and runtime may differ from the source's, so it
++	// inherits only the settings they accept: filter once the type is
++	// resolved, and again once the source and runtime are. The caller's own
++	// flags are never filtered, so validation still refuses unsupported ones.
++	defaults = defaults.WithoutFieldsUnsupportedBy(*input)
+ 	applySourceDefaults(input, defaults)
+ 	applyRuntimeDefaults(input, defaults)
++	defaults = defaults.WithoutFieldsUnsupportedBy(*input)
+ 	applyRegistryCredentialDefault(input, defaults)
+ 	applyCronDefaults(input, defaults)
+ 	applyAdditionalCloneDefaults(input, defaults)
+diff --git a/pkg/service/clone_test.go b/pkg/service/clone_test.go
+index b6c812d..cbc02c2 100644
+--- a/pkg/service/clone_test.go
++++ b/pkg/service/clone_test.go
+@@ -6,6 +6,7 @@ import (
+ 
+ 	"github.com/stretchr/testify/require"
+ 
++	"github.com/render-oss/cli/internal/testrequire"
+ 	"github.com/render-oss/cli/pkg/client"
+ 	"github.com/render-oss/cli/pkg/pointers"
+ 	types "github.com/render-oss/cli/pkg/types"
+@@ -245,10 +246,11 @@ func TestCLIInputFromSource(t *testing.T) {
+ 
+ 	t.Run("from image override defaults runtime to image and builds request", func(t *testing.T) {
+ 		source := &client.Service{
+-			Type:           client.WebService,
+-			Repo:           pointers.From("https://github.com/renderinc/api"),
+-			Branch:         pointers.From("master"),
+-			ServiceDetails: mustWebServiceDetails(t, client.ServiceRuntimeNode, client.NativeEnvironmentDetails{}),
++			Type:   client.WebService,
++			Repo:   pointers.From("https://github.com/renderinc/api"),
++			Branch: pointers.From("master"),
++			ServiceDetails: mustWebServiceDetails(t, client.ServiceRuntimeNode,
++				client.NativeEnvironmentDetails{BuildCommand: "npm ci", StartCommand: "npm start"}),
+ 		}
+ 		input := servicetypes.ServiceCreateInput{
+ 			Name:  "clone-explicit-image",
+@@ -256,13 +258,16 @@ func TestCLIInputFromSource(t *testing.T) {
+ 			Image: pointers.From("docker.io/custom/image:latest"),
+ 		}
+ 
+-		ServiceFromAPI(&input, source)
+-		body, err := BuildCreateRequest(input, "tea-abc123")
++		input, body, err := cloneCreateRequest(t, input, source)
+ 
+ 		require.NoError(t, err)
++		// The source's native build and start commands do not apply to an image.
++		require.Nil(t, input.BuildCommand)
++		require.Nil(t, input.StartCommand)
+ 		details, err := body.ServiceDetails.AsWebServiceDetailsPOST()
+ 		require.NoError(t, err)
+ 		require.Equal(t, client.ServiceRuntimeImage, details.Runtime)
++		require.Nil(t, details.EnvSpecificDetails)
+ 	})
+ 
+ 	t.Run("from repo override clears incompatible image runtime and fails build without explicit runtime", func(t *testing.T) {
+@@ -755,6 +760,414 @@ func TestCLIInputFromSource(t *testing.T) {
+ 	})
+ }
+ 
++// A clone may change the service type or swap a native runtime for a prebuilt
++// image. It inherits only the source settings the destination accepts, so
++// validation never refuses a setting the caller did not supply; settings the
++// caller does supply are validated as usual.
++func TestServiceFromAPIInheritsOnlySettingsTheDestinationAccepts(t *testing.T) {
++	cloneAs := func(serviceType servicetypes.ServiceType) servicetypes.ServiceCreateInput {
++		return servicetypes.ServiceCreateInput{Name: "clone", From: pointers.From("srv-source"), Type: svcType(serviceType)}
++	}
++	computeTypes := []servicetypes.ServiceType{
++		servicetypes.ServiceTypeWebService, servicetypes.ServiceTypePrivateService,
++		servicetypes.ServiceTypeBackgroundWorker, servicetypes.ServiceTypeCronJob,
++	}
++
++	t.Run("static site to compute service", func(t *testing.T) {
++		for _, serviceType := range computeTypes {
++			t.Run(string(serviceType), func(t *testing.T) {
++				input := cloneAs(serviceType)
++				input.Runtime = svcRuntime(servicetypes.ServiceRuntimeNode)
++				if serviceType == servicetypes.ServiceTypeCronJob {
++					input.CronCommand = pointers.From("node job.js")
++					input.CronSchedule = pointers.From("0 * * * *")
++				} else {
++					input.StartCommand = pointers.From("npm start")
++				}
++
++				got, body, err := cloneCreateRequest(t, input, cloneSourceStaticSite(t))
++
++				require.NoError(t, err)
++				require.Equal(t, client.ServiceType(serviceType), body.Type)
++				require.Nil(t, got.PublishDirectory)
++				require.Equal(t, "https://github.com/org/site", *got.Repo)
++				require.Equal(t, "site", *got.RootDirectory)
++				require.Equal(t, "npm run build", *got.BuildCommand)
++				if serviceType == servicetypes.ServiceTypeCronJob {
++					require.Nil(t, got.Previews)
++				} else {
++					require.Equal(t, servicetypes.PreviewsGenerationManual, *got.Previews)
++				}
++				if serviceType == servicetypes.ServiceTypeWebService {
++					require.Equal(t, []string{"cidr=10.0.0.0/8,description=office"}, got.IPAllowList)
++				} else {
++					require.Empty(t, got.IPAllowList)
++				}
++			})
++		}
++	})
++
++	t.Run("web service to static site", func(t *testing.T) {
++		got, body, err := cloneCreateRequest(t, cloneAs(servicetypes.ServiceTypeStaticSite), cloneSourceWebService(t))
++
++		require.NoError(t, err)
++		require.Equal(t, client.StaticSite, body.Type)
++		require.Nil(t, got.Runtime)
++		require.Nil(t, got.Region)
++		require.Nil(t, got.Plan)
++		require.Nil(t, got.StartCommand)
++		require.Nil(t, got.PreDeployCommand)
++		require.Nil(t, got.HealthCheckPath)
++		require.Nil(t, got.NumInstances)
++		require.Nil(t, got.MaxShutdownDelay)
++		require.Nil(t, got.MaintenanceMode)
++		require.Equal(t, "npm ci", *got.BuildCommand)
++		require.Equal(t, servicetypes.PreviewsGenerationAutomatic, *got.Previews)
++		require.Equal(t, []string{"cidr=10.0.0.0/8,description=office"}, got.IPAllowList)
++	})
++
++	t.Run("web service to cron job", func(t *testing.T) {
++		input := cloneAs(servicetypes.ServiceTypeCronJob)
++		input.CronCommand = pointers.From("node job.js")
++		input.CronSchedule = pointers.From("0 0 1 1 *")
++
++		got, body, err := cloneCreateRequest(t, input, cloneSourceWebService(t))
++
++		require.NoError(t, err)
++		require.Nil(t, got.HealthCheckPath)
++		require.Nil(t, got.StartCommand)
++		require.Nil(t, got.PreDeployCommand)
++		require.Nil(t, got.NumInstances)
++		require.Nil(t, got.MaxShutdownDelay)
++		require.Nil(t, got.Previews)
++		require.Nil(t, got.MaintenanceMode)
++		require.Nil(t, got.MaintenanceModeURI)
++		require.Empty(t, got.IPAllowList)
++		require.Equal(t, map[string]any{
++			"runtime":  "node",
++			"region":   "frankfurt",
++			"plan":     "starter",
++			"schedule": "0 0 1 1 *",
++			"envSpecificDetails": map[string]any{
++				"buildCommand": "npm ci",
++				"startCommand": "node job.js",
++			},
++		}, testrequire.AsJSONMap(t, body.ServiceDetails))
++	})
++
++	for _, serviceType := range []servicetypes.ServiceType{servicetypes.ServiceTypePrivateService, servicetypes.ServiceTypeBackgroundWorker} {
++		t.Run("web service to "+string(serviceType), func(t *testing.T) {
++			got, body, err := cloneCreateRequest(t, cloneAs(serviceType), cloneSourceWebService(t))
++
++			require.NoError(t, err)
++			require.Nil(t, got.HealthCheckPath)
++			require.Nil(t, got.MaintenanceMode)
++			require.Nil(t, got.MaintenanceModeURI)
++			require.Empty(t, got.IPAllowList)
++			require.Equal(t, map[string]any{
++				"runtime":                 "node",
++				"region":                  "frankfurt",
++				"plan":                    "starter",
++				"preDeployCommand":        "npm run migrate",
++				"numInstances":            float64(2),
++				"maxShutdownDelaySeconds": float64(45),
++				"previews":                map[string]any{"generation": "automatic"},
++				"envSpecificDetails": map[string]any{
++					"buildCommand": "npm ci",
++					"startCommand": "npm start",
++				},
++			}, testrequire.AsJSONMap(t, body.ServiceDetails))
++		})
++	}
++
++	t.Run("cron job to web service", func(t *testing.T) {
++		input := cloneAs(servicetypes.ServiceTypeWebService)
++		input.StartCommand = pointers.From("./server")
++
++		got, _, err := cloneCreateRequest(t, input, cloneSourceCronJob(t))
++
++		require.NoError(t, err)
++		require.Nil(t, got.CronCommand)
++		require.Nil(t, got.CronSchedule)
++		require.Equal(t, servicetypes.ServiceRuntimeGo, *got.Runtime)
++		require.Equal(t, "go build -o job .", *got.BuildCommand)
++		require.Equal(t, "starter", *got.Plan)
++	})
++
++	nativeSources := map[servicetypes.ServiceType]func(*testing.T) *client.Service{
++		servicetypes.ServiceTypeWebService: cloneSourceWebService,
++		servicetypes.ServiceTypePrivateService: func(t *testing.T) *client.Service {
++			return &client.Service{
++				Type: client.PrivateService, Repo: pointers.From("https://github.com/org/app"), Branch: pointers.From("main"),
++				ServiceDetails: mustPrivateServiceDetails(t, client.ServiceRuntimeNode,
++					client.NativeEnvironmentDetails{BuildCommand: "npm ci", StartCommand: "npm start"}),
++			}
++		},
++		servicetypes.ServiceTypeBackgroundWorker: func(t *testing.T) *client.Service {
++			return &client.Service{
++				Type: client.BackgroundWorker, Repo: pointers.From("https://github.com/org/app"), Branch: pointers.From("main"),
++				ServiceDetails: mustBackgroundWorkerDetails(t, client.ServiceRuntimeNode,
++					client.NativeEnvironmentDetails{BuildCommand: "npm ci", StartCommand: "npm start"}),
++			}
++		},
++		servicetypes.ServiceTypeCronJob: cloneSourceCronJob,
++	}
++	for _, serviceType := range computeTypes {
++		t.Run("native "+string(serviceType)+" to prebuilt image", func(t *testing.T) {
++			input := servicetypes.ServiceCreateInput{
++				Name: "clone", From: pointers.From("srv-source"), Image: pointers.From("docker.io/org/app:1.2.3"),
++			}
++
++			got, body, err := cloneCreateRequest(t, input, nativeSources[serviceType](t))
++
++			require.NoError(t, err)
++			require.Equal(t, client.ServiceType(serviceType), body.Type)
++			require.Equal(t, servicetypes.ServiceRuntimeImage, *got.Runtime)
++			require.Nil(t, got.BuildCommand)
++			require.Nil(t, got.StartCommand)
++			require.Nil(t, got.Repo)
++			require.Nil(t, got.Branch)
++			require.Equal(t, "docker.io/org/app:1.2.3", body.Image.ImagePath)
++			if serviceType == servicetypes.ServiceTypeWebService {
++				require.Equal(t, "/healthz", *got.HealthCheckPath)
++				require.Equal(t, "npm run migrate", *got.PreDeployCommand)
++				require.Equal(t, 2, *got.NumInstances)
++			}
++			if serviceType == servicetypes.ServiceTypeCronJob {
++				require.Equal(t, "0 * * * *", *got.CronSchedule)
++				require.Equal(t, "./job", *got.CronCommand)
++			}
++		})
++	}
++
++	t.Run("prebuilt image inherited from the source", func(t *testing.T) {
++		// The clone's runtime is only known once the source's image is applied.
++		source := &client.Service{
++			Type:      client.PrivateService,
++			ImagePath: pointers.From("docker.io/org/app:latest"),
++			ServiceDetails: mustPrivateServiceDetails(t, client.ServiceRuntimeImage,
++				client.NativeEnvironmentDetails{StartCommand: "run"}),
++		}
++
++		got, body, err := cloneCreateRequest(t, servicetypes.ServiceCreateInput{Name: "clone", From: pointers.From("srv-source")}, source)
++
++		require.NoError(t, err)
++		require.Nil(t, got.StartCommand)
++		require.Equal(t, "docker.io/org/app:latest", body.Image.ImagePath)
++	})
++
++	t.Run("explicit unsupported settings are still refused", func(t *testing.T) {
++		cases := []struct {
++			name    string
++			source  func(*testing.T) *client.Service
++			input   func() servicetypes.ServiceCreateInput
++			wantErr string
++		}{
++			{
++				name:   "publish directory for a web service",
++				source: cloneSourceStaticSite,
++				input: func() servicetypes.ServiceCreateInput {
++					input := cloneAs(servicetypes.ServiceTypeWebService)
++					input.Runtime = svcRuntime(servicetypes.ServiceRuntimeNode)
++					input.StartCommand = pointers.From("npm start")
++					input.PublishDirectory = pointers.From("dist")
++					return input
++				},
++				wantErr: "--publish-directory is not supported for web_service",
++			},
++			{
++				name:   "health check path for a cron job",
++				source: cloneSourceWebService,
++				input: func() servicetypes.ServiceCreateInput {
++					input := cloneAs(servicetypes.ServiceTypeCronJob)
++					input.HealthCheckPath = pointers.From("/healthz")
++					return input
++				},
++				wantErr: "--health-check-path is not supported for cron_job",
++			},
++			{
++				name:   "start command for a cron job",
++				source: cloneSourceWebService,
++				input: func() servicetypes.ServiceCreateInput {
++					input := cloneAs(servicetypes.ServiceTypeCronJob)
++					input.StartCommand = pointers.From("npm start")
++					return input
++				},
++				wantErr: "--start-command is not supported for cron_job",
++			},
++			{
++				name:   "maintenance mode for a private service",
++				source: cloneSourceWebService,
++				input: func() servicetypes.ServiceCreateInput {
++					input := cloneAs(servicetypes.ServiceTypePrivateService)
++					input.MaintenanceMode = pointers.From(true)
++					return input
++				},
++				wantErr: "--maintenance-mode is not supported for private_service",
++			},
++			{
++				name:   "build command for a prebuilt image",
++				source: cloneSourceWebService,
++				input: func() servicetypes.ServiceCreateInput {
++					return servicetypes.ServiceCreateInput{
++						Name: "clone", From: pointers.From("srv-source"),
++						Image: pointers.From("docker.io/org/app:1.2.3"), BuildCommand: pointers.From("npm ci"),
++					}
++				},
++				wantErr: "--build-command and --start-command are only supported for native runtimes",
++			},
++			{
++				name:   "start command for a prebuilt image",
++				source: cloneSourceWebService,
++				input: func() servicetypes.ServiceCreateInput {
++					return servicetypes.ServiceCreateInput{
++						Name: "clone", From: pointers.From("srv-source"),
++						Image: pointers.From("docker.io/org/app:1.2.3"), StartCommand: pointers.From("npm start"),
++					}
++				},
++				wantErr: "--build-command and --start-command are only supported for native runtimes",
++			},
++		}
++		for _, tc := range cases {
++			t.Run(tc.name, func(t *testing.T) {
++				_, _, err := cloneCreateRequest(t, tc.input(), tc.source(t))
++				require.EqualError(t, err, tc.wantErr)
++			})
++		}
++	})
++
++	t.Run("same type and runtime keeps every setting", func(t *testing.T) {
++		web, body, err := cloneCreateRequest(t, servicetypes.ServiceCreateInput{Name: "clone", From: pointers.From("srv-source")}, cloneSourceWebService(t))
++		require.NoError(t, err)
++		require.Equal(t, "app", *web.RootDirectory)
++		require.Equal(t, []string{"app/**"}, web.BuildFilterPaths)
++		require.False(t, *web.AutoDeploy)
++		require.Equal(t, map[string]any{
++			"runtime":                 "node",
++			"region":                  "frankfurt",
++			"plan":                    "starter",
++			"healthCheckPath":         "/healthz",
++			"preDeployCommand":        "npm run migrate",
++			"numInstances":            float64(2),
++			"maxShutdownDelaySeconds": float64(45),
++			"previews":                map[string]any{"generation": "automatic"},
++			"maintenanceMode":         map[string]any{"enabled": false, "uri": ""},
++			"ipAllowList":             []any{map[string]any{"cidrBlock": "10.0.0.0/8", "description": "office"}},
++			"envSpecificDetails": map[string]any{
++				"buildCommand": "npm ci",
++				"startCommand": "npm start",
++			},
++		}, testrequire.AsJSONMap(t, body.ServiceDetails))
++
++		static, body, err := cloneCreateRequest(t, servicetypes.ServiceCreateInput{Name: "clone", From: pointers.From("srv-source")}, cloneSourceStaticSite(t))
++		require.NoError(t, err)
++		require.Equal(t, "site", *static.RootDirectory)
++		require.Equal(t, map[string]any{
++			"buildCommand": "npm run build",
++			"publishPath":  "dist",
++			"previews":     map[string]any{"generation": "manual"},
++			"ipAllowList":  []any{map[string]any{"cidrBlock": "10.0.0.0/8", "description": "office"}},
++		}, testrequire.AsJSONMap(t, body.ServiceDetails))
++	})
++
++	t.Run("another native runtime keeps the commands", func(t *testing.T) {
++		input := servicetypes.ServiceCreateInput{
++			Name: "clone", From: pointers.From("srv-source"), Runtime: svcRuntime(servicetypes.ServiceRuntimePython),
++		}
++
++		got, _, err := cloneCreateRequest(t, input, cloneSourceWebService(t))
++
++		require.NoError(t, err)
++		require.Equal(t, servicetypes.ServiceRuntimePython, *got.Runtime)
++		require.Equal(t, "npm ci", *got.BuildCommand)
++		require.Equal(t, "npm start", *got.StartCommand)
++		require.Equal(t, "npm run migrate", *got.PreDeployCommand)
++		require.Equal(t, "/healthz", *got.HealthCheckPath)
++	})
++}
++
++// cloneCreateRequest runs a clone through the same steps as `services create
++// --from`: normalize the flags, merge the source's defaults, then validate the
++// result and build the create request from it.
++func cloneCreateRequest(t *testing.T, input servicetypes.ServiceCreateInput, source *client.Service) (servicetypes.ServiceCreateInput, client.CreateServiceJSONRequestBody, error) {
++	t.Helper()
++
++	input = servicetypes.NormalizeServiceCreateCLIInput(input)
++	ServiceFromAPI(&input, source)
++	input, err := servicetypes.NormalizeAndValidateCreateInput(input, false)
++	if err != nil {
++		return input, client.CreateServiceJSONRequestBody{}, err
++	}
++	body, err := BuildCreateRequest(input, "tea-abc123")
++	require.NoError(t, err)
++	return input, body, nil
++}
++
++func cloneSourceStaticSite(t *testing.T) *client.Service {
++	t.Helper()
++	gen := client.PreviewsGeneration("manual")
++	return &client.Service{
++		Type:    client.StaticSite,
++		Repo:    pointers.From("https://github.com/org/site"),
++		Branch:  pointers.From("main"),
++		RootDir: "site",
++		ServiceDetails: mustStaticSiteDetailsExtended(t, client.StaticSiteDetails{
++			BuildCommand: "npm run build",
++			PublishPath:  "dist",
++			Previews:     &client.Previews{Generation: &gen},
++			IpAllowList:  &[]client.CidrBlockAndDescription{{CidrBlock: "10.0.0.0/8", Description: "office"}},
++		}),
++	}
++}
++
++func cloneSourceWebService(t *testing.T) *client.Service {
++	t.Helper()
++	gen := client.PreviewsGeneration("automatic")
++	return &client.Service{
++		Type:        client.WebService,
++		Repo:        pointers.From("https://github.com/org/app"),
++		Branch:      pointers.From("main"),
++		RootDir:     "app",
++		AutoDeploy:  client.AutoDeployNo,
++		BuildFilter: &client.BuildFilter{Paths: []string{"app/**"}},
++		ServiceDetails: mustWebServiceDetailsExtended(t, client.WebServiceDetails{
++			Runtime:         client.ServiceRuntimeNode,
++			Region:          client.Frankfurt,
++			Plan:            client.PlanStarter,
++			HealthCheckPath: "/healthz",
++			EnvSpecificDetails: mustEnvSpecific(t, client.NativeEnvironmentDetails{
++				BuildCommand:     "npm ci",
++				StartCommand:     "npm start",
++				PreDeployCommand: pointers.From("npm run migrate"),
++			}),
++			NumInstances:            2,
++			MaxShutdownDelaySeconds: pointers.From(45),
++			Previews:                &client.Previews{Generation: &gen},
++			// The API reports maintenance mode even while it is disabled.
++			MaintenanceMode: &client.MaintenanceMode{Enabled: false, Uri: ""},
++			IpAllowList:     &[]client.CidrBlockAndDescription{{CidrBlock: "10.0.0.0/8", Description: "office"}},
++		}),
++	}
++}
++
++func cloneSourceCronJob(t *testing.T) *client.Service {
++	t.Helper()
++	var details client.Service_ServiceDetails
++	require.NoError(t, details.FromCronJobDetails(client.CronJobDetails{
++		Runtime:            client.ServiceRuntimeGo,
++		Region:             client.Frankfurt,
++		Plan:               client.PlanStarter,
++		Schedule:           "0 * * * *",
++		EnvSpecificDetails: mustEnvSpecific(t, client.NativeEnvironmentDetails{BuildCommand: "go build -o job .", StartCommand: "./job"}),
++	}))
++	return &client.Service{
++		Type:           client.CronJob,
++		Repo:           pointers.From("https://github.com/org/job"),
++		Branch:         pointers.From("main"),
++		ServiceDetails: details,
++	}
++}
++
+ func mustWebServiceDetails(t *testing.T, runtime client.ServiceRuntime, native client.NativeEnvironmentDetails) client.Service_ServiceDetails {
+ 	t.Helper()
+ 
+diff --git a/pkg/types/service/servicecreate.go b/pkg/types/service/servicecreate.go
+index 1f36b9c..3f90a04 100644
+--- a/pkg/types/service/servicecreate.go
++++ b/pkg/types/service/servicecreate.go
+@@ -196,7 +196,7 @@ func (s ServiceCreateInput) SupportsRegistryCredentials() bool {
+ }
+ 
+ func usesNativeCommandFlags(s ServiceCreateInput) bool {
+-	return s.BuildCommand != nil || s.StartCommand != nil
++	return slices.ContainsFunc(s.restrictedFields(), func(f restrictedField) bool { return f.set && f.nativeOnly })
+ }
+ 
+ func resolvesToImageRuntime(s ServiceCreateInput) bool {
+@@ -256,91 +256,79 @@ func validateSecretFileFlags(secretFiles []string) error {
+ 	return nil
+ }
+ 
+-func validateFlagsForType(serviceType ServiceType, s ServiceCreateInput) error {
+-	reject := func(flag string, allowedTypes ...ServiceType) error {
+-		if slices.Contains(allowedTypes, serviceType) {
+-			return nil
+-		}
+-		return fmt.Errorf("--%s is not supported for %s", flag, serviceType)
+-	}
++// Service types that accept each type-specific flag.
++var (
++	cronJobTypes        = []ServiceType{ServiceTypeCronJob}
++	webServiceTypes     = []ServiceType{ServiceTypeWebService}
++	staticSiteTypes     = []ServiceType{ServiceTypeStaticSite}
++	longRunningTypes    = []ServiceType{ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker}
++	previewTypes        = []ServiceType{ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeStaticSite}
++	ipAllowListTypes    = []ServiceType{ServiceTypeWebService, ServiceTypeStaticSite}
++	computeServiceTypes = []ServiceType{ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeCronJob}
++)
+ 
+-	if s.CronCommand != nil {
+-		if err := reject("cron-command", ServiceTypeCronJob); err != nil {
+-			return err
+-		}
+-	}
+-	if s.CronSchedule != nil {
+-		if err := reject("cron-schedule", ServiceTypeCronJob); err != nil {
+-			return err
+-		}
+-	}
+-	if s.HealthCheckPath != nil {
+-		if err := reject("health-check-path", ServiceTypeWebService); err != nil {
+-			return err
+-		}
+-	}
+-	if s.PublishDirectory != nil {
+-		if err := reject("publish-directory", ServiceTypeStaticSite); err != nil {
+-			return err
+-		}
+-	}
+-	if s.StartCommand != nil {
+-		if err := reject("start-command", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker); err != nil {
+-			return err
+-		}
+-	}
+-	if s.PreDeployCommand != nil {
+-		if err := reject("pre-deploy-command", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker); err != nil {
+-			return err
+-		}
+-	}
+-	if s.NumInstances != nil {
+-		if err := reject("num-instances", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker); err != nil {
+-			return err
+-		}
+-	}
+-	if s.MaxShutdownDelay != nil {
+-		if err := reject("max-shutdown-delay", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker); err != nil {
+-			return err
+-		}
+-	}
+-	if s.Previews != nil {
+-		if err := reject("previews", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeStaticSite); err != nil {
+-			return err
+-		}
+-	}
+-	if s.MaintenanceMode != nil {
+-		if err := reject("maintenance-mode", ServiceTypeWebService); err != nil {
+-			return err
+-		}
+-	}
+-	if s.MaintenanceModeURI != nil {
+-		if err := reject("maintenance-mode-uri", ServiceTypeWebService); err != nil {
+-			return err
+-		}
+-	}
+-	if len(s.IPAllowList) > 0 {
+-		if err := reject("ip-allow-list", ServiceTypeWebService, ServiceTypeStaticSite); err != nil {
+-			return err
+-		}
+-	}
++// restrictedField is a flag that only some service types or runtimes accept.
++type restrictedField struct {
++	flag string
++	// types lists the service types that accept the flag; nil means all of them.
++	types []ServiceType
++	// nativeOnly marks a flag that a service on the image runtime refuses.
++	nativeOnly bool
++	set        bool
++	clear      func(*ServiceCreateInput)
++}
+ 
++func (f restrictedField) supportedBy(serviceType ServiceType) bool {
++	return f.types == nil || slices.Contains(f.types, serviceType)
++}
++
++// restrictedFields lists the flags that only some service types or runtimes
++// accept, in the order validateFlagsForType checks them. Validation refuses
++// such a flag when it is set; WithoutFieldsUnsupportedBy clears it instead.
++func (s ServiceCreateInput) restrictedFields() []restrictedField {
+ 	parsedRuntime, _ := s.OptionalServiceRuntime()
+-	if parsedRuntime != nil {
+-		if err := reject("runtime", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeCronJob); err != nil {
+-			return err
+-		}
++	return []restrictedField{
++		{flag: "cron-command", types: cronJobTypes, set: s.CronCommand != nil, clear: func(s *ServiceCreateInput) { s.CronCommand = nil }},
++		{flag: "cron-schedule", types: cronJobTypes, set: s.CronSchedule != nil, clear: func(s *ServiceCreateInput) { s.CronSchedule = nil }},
++		{flag: "health-check-path", types: webServiceTypes, set: s.HealthCheckPath != nil, clear: func(s *ServiceCreateInput) { s.HealthCheckPath = nil }},
++		{flag: "publish-directory", types: staticSiteTypes, set: s.PublishDirectory != nil, clear: func(s *ServiceCreateInput) { s.PublishDirectory = nil }},
++		{flag: "build-command", nativeOnly: true, set: s.BuildCommand != nil, clear: func(s *ServiceCreateInput) { s.BuildCommand = nil }},
++		{flag: "start-command", types: longRunningTypes, nativeOnly: true, set: s.StartCommand != nil, clear: func(s *ServiceCreateInput) { s.StartCommand = nil }},
++		{flag: "pre-deploy-command", types: longRunningTypes, set: s.PreDeployCommand != nil, clear: func(s *ServiceCreateInput) { s.PreDeployCommand = nil }},
++		{flag: "num-instances", types: longRunningTypes, set: s.NumInstances != nil, clear: func(s *ServiceCreateInput) { s.NumInstances = nil }},
++		{flag: "max-shutdown-delay", types: longRunningTypes, set: s.MaxShutdownDelay != nil, clear: func(s *ServiceCreateInput) { s.MaxShutdownDelay = nil }},
++		{flag: "previews", types: previewTypes, set: s.Previews != nil, clear: func(s *ServiceCreateInput) { s.Previews = nil }},
++		{flag: "maintenance-mode", types: webServiceTypes, set: s.MaintenanceMode != nil, clear: func(s *ServiceCreateInput) { s.MaintenanceMode = nil }},
++		{flag: "maintenance-mode-uri", types: webServiceTypes, set: s.MaintenanceModeURI != nil, clear: func(s *ServiceCreateInput) { s.MaintenanceModeURI = nil }},
++		{flag: "ip-allow-list", types: ipAllowListTypes, set: len(s.IPAllowList) > 0, clear: func(s *ServiceCreateInput) { s.IPAllowList = nil }},
++		{flag: "runtime", types: computeServiceTypes, set: parsedRuntime != nil, clear: func(s *ServiceCreateInput) { s.Runtime = nil }},
++		{flag: "region", types: computeServiceTypes, set: s.Region != nil, clear: func(s *ServiceCreateInput) { s.Region = nil }},
++		{flag: "plan", types: computeServiceTypes, set: s.Plan != nil, clear: func(s *ServiceCreateInput) { s.Plan = nil }},
+ 	}
+-	if s.Region != nil {
+-		if err := reject("region", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeCronJob); err != nil {
+-			return err
++}
++
++func validateFlagsForType(serviceType ServiceType, s ServiceCreateInput) error {
++	for _, f := range s.restrictedFields() {
++		if f.set && !f.supportedBy(serviceType) {
++			return fmt.Errorf("--%s is not supported for %s", f.flag, serviceType)
+ 		}
+ 	}
+-	if s.Plan != nil {
+-		if err := reject("plan", ServiceTypeWebService, ServiceTypePrivateService, ServiceTypeBackgroundWorker, ServiceTypeCronJob); err != nil {
+-			return err
++	return nil
++}
++
++// WithoutFieldsUnsupportedBy returns s with every field cleared that
++// destination would refuse, given its service type and runtime. Cloning
++// applies it to the source service's settings, so a clone of another type or
++// runtime inherits only the settings it accepts; flags the caller sets are not
++// filtered and still fail validation.
++func (s ServiceCreateInput) WithoutFieldsUnsupportedBy(destination ServiceCreateInput) ServiceCreateInput {
++	// Validation refuses an unknown type, which leaves nothing to filter by.
++	serviceType, _ := destination.OptionalServiceType()
++	imageRuntime := resolvesToImageRuntime(destination)
++	for _, f := range s.restrictedFields() {
++		if (serviceType != nil && !f.supportedBy(*serviceType)) || (imageRuntime && f.nativeOnly) {
++			f.clear(&s)
+ 		}
+ 	}
+-
+-	return nil
++	return s
+ }
+diff --git a/pkg/types/service/servicecreate_test.go b/pkg/types/service/servicecreate_test.go
+index 1b8c996..1a43661 100644
+--- a/pkg/types/service/servicecreate_test.go
++++ b/pkg/types/service/servicecreate_test.go
+@@ -362,6 +362,54 @@ func TestValidateFlagsForType(t *testing.T) {
+ 	})
+ }
+ 
++// Whatever the destination's type and runtime, the settings left after
++// WithoutFieldsUnsupportedBy pass the validation that refuses them all.
++func TestWithoutFieldsUnsupportedBy(t *testing.T) {
++	everySetting := servicetypes.ServiceCreateInput{
++		Region:             svcRegion(types.RegionOregon),
++		Plan:               pointers.From("starter"),
++		BuildCommand:       pointers.From("npm ci"),
++		StartCommand:       pointers.From("npm start"),
++		PreDeployCommand:   pointers.From("npm run migrate"),
++		HealthCheckPath:    pointers.From("/healthz"),
++		PublishDirectory:   pointers.From("dist"),
++		CronCommand:        pointers.From("npm run job"),
++		CronSchedule:       pointers.From("0 * * * *"),
++		NumInstances:       pointers.From(2),
++		MaxShutdownDelay:   pointers.From(30),
++		Previews:           pointers.From(servicetypes.PreviewsGenerationManual),
++		MaintenanceMode:    pointers.From(true),
++		MaintenanceModeURI: pointers.From("/maintenance.html"),
++		IPAllowList:        []string{"cidr=10.0.0.0/8"},
++	}
++	withDestination := func(s servicetypes.ServiceCreateInput, destination servicetypes.ServiceCreateInput) servicetypes.ServiceCreateInput {
++		s.Name, s.Type, s.Repo, s.Image, s.Runtime = "clone", destination.Type, destination.Repo, destination.Image, destination.Runtime
++		return s
++	}
++
++	for _, value := range servicetypes.ServiceTypeValues() {
++		serviceType := servicetypes.ServiceType(value)
++		destinations := map[string]servicetypes.ServiceCreateInput{
++			"native": {Type: svcType(serviceType), Repo: pointers.From("https://github.com/org/repo"), Runtime: svcRuntime(servicetypes.ServiceRuntimeNode)},
++			"image":  {Type: svcType(serviceType), Image: pointers.From("docker.io/org/app:latest")},
++		}
++		if serviceType == servicetypes.ServiceTypeStaticSite {
++			destinations = map[string]servicetypes.ServiceCreateInput{
++				"repo": {Type: svcType(serviceType), Repo: pointers.From("https://github.com/org/repo")},
++			}
++		}
++		for name, destination := range destinations {
++			t.Run(string(serviceType)+"/"+name, func(t *testing.T) {
++				require.Error(t, withDestination(everySetting, destination).Validate(false))
++
++				filtered := everySetting.WithoutFieldsUnsupportedBy(destination)
++
++				require.NoError(t, withDestination(filtered, destination).Validate(false))
++			})
++		}
++	}
++}
++
+ func TestNormalizeAndValidateCreateInput(t *testing.T) {
+ 	t.Run("normalizes and validates", func(t *testing.T) {
+ 		input := servicetypes.ServiceCreateInput{
