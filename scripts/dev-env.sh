@@ -1232,7 +1232,15 @@ agent_import_image_to_node() {
     echo "error: importing $img onto node $node failed" >&2
     return 1
   fi
-  observed=$(agent_node_image_identity "$node" "$img") || {
+  # crictl can briefly miss an image ctr has just imported; retry before
+  # calling the import failed (seen on dev-3, 2026-10-30).
+  local try
+  for try in 1 2 3 4 5; do
+    observed=$(agent_node_image_identity "$node" "$img" 2>/dev/null) && break
+    observed=""
+    sleep 1
+  done
+  [ -n "$observed" ] || {
     echo "error: post-import inspection of $img on node $node failed" >&2
     return 1
   }
@@ -1281,40 +1289,53 @@ agent_reconcile_node_images() {
   done
 }
 
+# source_fingerprint <src>... — a hash of exactly what a build would read under
+# those paths in THIS checkout: tracked blobs, uncommitted edits and untracked
+# files. Image tags are shared by every worktree on the machine, so a build
+# time says nothing about whose source an image holds (w3/m79: an image another
+# worktree built later from older source passed a timestamp check and ran a
+# driver that rejected this bex-api's agent command).
+source_fingerprint() {
+  {
+    git ls-files -s -- "$@"
+    git diff HEAD -- "$@"
+    git ls-files -o --exclude-standard -z -- "$@" | xargs -0 shasum 2>/dev/null
+  } | shasum | cut -d' ' -f1
+}
+
 # image_stale <image> <src>... — true when the image is missing, AGENT_REBUILD=1,
-# or any file under a src path is newer than the image's Created timestamp.
+# or it was not built from this checkout's current source under those paths
+# (its bex.dev/source label differs from source_fingerprint).
 image_stale() {
   local img="$1"
   shift
   if [ "${AGENT_REBUILD:-0}" = "1" ]; then return 0; fi
-  local created
-  created=$(docker image inspect -f '{{.Created}}' "$img" 2>/dev/null) || return 0
-  created="${created%%.*}Z" # trim fractional seconds for find(1)'s -newermt
-  local src
-  for src in "$@"; do
-    if [ -n "$(find "$src" -newermt "$created" -print -quit 2>/dev/null)" ]; then
-      return 0
-    fi
-  done
-  return 1
+  local label
+  label=$(docker image inspect -f '{{index .Config.Labels "bex.dev/source"}}' "$img" 2>/dev/null) || return 0
+  [ "$label" != "$(source_fingerprint "$@")" ]
 }
 
 agent_build_images() {
+  local src
   if image_stale bex-agent-sandbox:dev lego; then
-    (cd lego && docker build -q -f agent-image/Dockerfile -t bex-agent-sandbox:dev . >/dev/null)
+    src=$(source_fingerprint lego)
+    (cd lego && docker build -q --label "bex.dev/source=$src" -f agent-image/Dockerfile -t bex-agent-sandbox:dev . >/dev/null)
   fi
   if image_stale bex-lego:dev lego; then
-    (cd lego && docker build -q -t bex-lego:dev . >/dev/null)
+    src=$(source_fingerprint lego)
+    (cd lego && docker build -q --label "bex.dev/source=$src" -t bex-lego:dev . >/dev/null)
   fi
   if image_stale opensandbox-server:0.2.2-local deploy/opensandbox "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile"; then
-    docker build -q -f "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile" \
+    docker build -q --label "bex.dev/source=$(source_fingerprint deploy/opensandbox "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile")" \
+      -f "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile" \
       -t opensandbox-server:0.2.2-local deploy/opensandbox >/dev/null
   fi
   # The chart's image helper prepends "v" to a semver-looking tag, so the built
   # tag must already carry it or the Deployment references an image that is not
   # on the node.
   if image_stale opensandbox-controller:v0.2.0-bex deploy/opensandbox; then
-    docker build -q -f deploy/opensandbox/controller.Dockerfile \
+    docker build -q --label "bex.dev/source=$(source_fingerprint deploy/opensandbox)" \
+      -f deploy/opensandbox/controller.Dockerfile \
       -t opensandbox-controller:v0.2.0-bex deploy/opensandbox >/dev/null
   fi
 }
