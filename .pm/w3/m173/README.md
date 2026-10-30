@@ -1,6 +1,6 @@
 # w3 · m173 — Production credentials reach only main-branch production jobs
 
-**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** blocked — t001–t004, t006, t008, t009 done; t005 live GitHub settings apply needs your authorization, t007 live proof and t010 closeout follow it
+**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** todo — t001–t004, t006, t008, t009 done; t005 live apply authorized by the user 2026-10-29, then t007 live proof and t010 closeout
 
 ## Tasks (in order)
 
@@ -41,3 +41,14 @@
 - **Why now:** ADR083 accepted a critical-severity residual on the condition that these gates hold (obligation 5), and they do not; today any workflow run on any branch can read every production credential. The fix is small, and every new workflow added in the meantime widens the surface.
 - **Render parity omitted:** no REST/GraphQL/MCP/UI change — CI workflow files, scripts and GitHub repository settings only.
 - **Constraints:** stay on self-hosted runners (`DO_NOT_DO.md` `#CI-RUNNERS`); no runner-host change (`#RUNNER-HOSTS`). t005's GitHub settings changes and any credential rotation are outward-facing and need explicit user authorization.
+
+## Unblock 记录（2026-10-29，/unblock w3，origin/main `e4d9c65d6`）
+
+- **涉及：** t005、t007、t010。
+- **用户明确决定 D2（2026-10-29，听完白话解释后确认）：**
+  1. 授权 t005 的在线 GitHub 设置变更：新建 `production-snapshot`（`production-observe` 已存在，复核于 2026-10-29），让 `scripts/production-secrets.txt` 里的全部 `production-*` 环境都只允许 main 分支部署（不设 reviewer，见 `#ENV-REVIEWERS`）；运行 `bash scripts/gh-secrets.sh` 推送环境级副本；等每个受影响的 workflow 在 main 上各绿一次后，删除仓库级副本（以及 `BEX_AGENT_SNAPSHOT_S3_*`、`BEX_STRIPE_WEBHOOK_SECRET_TEST`）。
+  2. 授权 t007 推一次性探针分支并 dispatch（只打印布尔值），完成后删除该分支。
+  3. **不轮换凭据**：单用户 Mac，没有泄露证据（与 `#RUNNER-HOSTS` 一致）。ADR079 finding 1 的 rotation 按此结论记为不需要。
+  4. 本地 `.env` 收紧权限：已由 `/unblock` 在 2026-10-29 执行 `chmod 600`，`bex-security`、`bex3`、`bex7`、`bex8` 现在都是 `-rw-------`；`bex5`、`bex6`、`bex10` 原本就是 0600。
+- **复核现状：** 仓库级 secret 仍是 37 个；drift issue #101 仍然开着（预期如此，t005 完成后应自动关闭）；`production-restore` 的 reviewer 已于 2026-10-29 移除（`0fc15e4b8`）。
+- **剩余阻塞：** 无。worker 严格按顺序执行 t005 → t007 → t010，在 t005/t007 里记录 run id 和只列名称的 secret 清单。

@@ -1,6 +1,6 @@
 # w3 · m176 — New workspaces get actionable empty states and a getting-started checklist (ADR075 D1+D2)
 
-**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** blocked — t001–t003, t007, t008 done (shipped); t004 screenshots + t005 live walk need `dev-3` (mock cluster down), t006 Render comparison needs a render.com account; t009 closeout follows
+**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** todo — t001–t003, t007, t008 done (shipped); 2026-10-29 unblock: rebuild mock cluster (pre-approved) → t004 screenshots + t005 dev-3 walk; t006 Render captures already taken with the user's login; t009 closeout follows
 
 ## Tasks (in order)
 
@@ -37,3 +37,16 @@
 - **Expected outcome:** a new signup moves from the payment wall to a first deploy through the dashboard's own guidance; ADR075's funnel counters (workspaces at zero resources) have a lever to move.
 - **Why now:** the open-signup gates (`w6/m42`) and the payment wall shipped, so every new account now clears verify + card and lands on dead-text empties; this is the unscheduled remaining half of ADR075, and `w5/161` already covers the auth-error dead end.
 - **Render parity included:** dashboard UI change — compare against Render's new-workspace dashboard empty states and onboarding prompts.
+
+## Unblock 记录（2026-10-29，/unblock w3，origin/main `e4d9c65d6`）
+
+- **涉及：** t004、t005、t006、t009。
+- **现有规则（AGENTS.md「Local dev environments are pre-approved」）：** t004/t005 需要的 `dev-3` 依赖 mock cluster，而 `scripts/mock-cluster.sh` 的完整重建不需要用户批准，不构成 blocked（2026-10-29 复核时仍只剩 `bex-tenant-0-…` 一个容器）。
+- **用户明确决定 D4（2026-10-29）：** 由用户亲自登录 render.com 提供对比来源。用户已在本会话的 Playwright 浏览器里登录（workspace `Tian Pan's Workspace`，hobby 套餐）。
+- **已采集的 Render 素材（1440 宽，存于 `.playwright-mcp/`，已 gitignore）：**
+  - `m176-render-blueprints-1440.png`：空状态标题「You haven't created any Blueprint instances yet.」，说明文字带 infrastructure-as-code / Learn more 链接，下方一个「+ New Blueprint Instance」按钮。
+  - `m176-render-env-groups-1440.png`：「You have no environment groups.」，一句说明，一个「+ New Environment Group」按钮。
+  - `m176-render-overview-1440.png`：Overview 右上角有「Invite your team」入口；Projects 区是「Get organized with Projects」推广卡，带「+ Create your first project」和 Learn more，可关闭；**没有 getting-started checklist**。
+  - 这个 workspace 有 2 个活跃服务，所以没截到「零服务 Overview」。新建空 workspace 可能涉及套餐，不在本次授权范围内，**没有创建**。
+- **worker 的 t006 做法：** 用以上素材做对比，并写进 ADR018/ADR075：bex 的三个空状态按钮对应 Render 的「+ New …」模式；checklist 是 ADR075 D2 的有意增强，Render 没有，按 parity 规则要么记为已签字的 divergence，要么带着这个问题回来找用户（不能自行认定）。如果需要零服务 Overview 或 390 宽截图，且浏览器会话仍有效，可以只读地补截；会话失效就请用户重新登录，不要创建 Render 资源。
+- **剩余阻塞：** 无（唯一可能的新问题：checklist divergence 需要用户签字）。
