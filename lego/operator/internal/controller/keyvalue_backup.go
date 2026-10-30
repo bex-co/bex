@@ -286,7 +286,9 @@ test -s /backup/dump.rdb`},
 						EnableServiceLinks:           new(false),
 						RestartPolicy:                corev1.RestartPolicyNever,
 						AutomountServiceAccountToken: new(false),
-						InitContainers:               initContainers,
+						// Not charged to the services' compute quota (datastore_priority.go).
+						PriorityClassName: appv1alpha1.DatastorePriorityClassName,
+						InitContainers:    initContainers,
 						Containers: []corev1.Container{{
 							Name:    "upload",
 							Image:   publish.DefaultAWSCLIImage,
@@ -457,7 +459,7 @@ func (r *KeyValueReconciler) deleteKeyValueBackupJobs(ctx context.Context, kv *a
 
 func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *batchv1.Job {
 	backoff := int32(3)
-	name := cleanupJobName("purge-kv-", kv.Name, kv.UID)
+	name := cleanupJobName(kvPurgeJobPrefix, kv.Name, kv.UID)
 	labels := keyValueBackupLabels(kv, keyValueBackupPurgeComponent)
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace, Labels: labels},
@@ -471,6 +473,8 @@ func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *b
 					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
+					// Not charged to the services' compute quota (datastore_priority.go).
+					PriorityClassName: appv1alpha1.DatastorePriorityClassName,
 					Containers: []corev1.Container{{
 						Name:    "purge",
 						Image:   publish.DefaultAWSCLIImage,

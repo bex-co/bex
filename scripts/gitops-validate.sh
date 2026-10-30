@@ -2608,7 +2608,11 @@ for required_operator_workload_guard in \
   "['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']" \
   "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']" \
   "variables.pod.priorityClassName == 'bex-datastore'" \
-  "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'KeyValue'"; do
+  "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind in ['KeyValue', 'Database'] && o.?controller.orValue(false)" \
+  "variables.target.metadata.name.startsWith('purge-db-')" \
+  "variables.target.metadata.?labels['app.bex.co/database-uid'].orValue('') != ''" \
+  "variables.target.metadata.name.startsWith('purge-kv-')" \
+  "variables.target.metadata.?labels['app.bex.co/keyvalue-uid'].orValue('') != ''"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
     echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2
     fail=1

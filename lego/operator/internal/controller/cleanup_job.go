@@ -30,6 +30,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// The datastores' delete-time purge Job name prefixes. The operator workload
+// admission policy admits the datastore PriorityClass on these unowned Jobs by
+// prefix (deploy/gitops/base/operator-workload-admission.yaml), so a rename
+// must change both.
+const (
+	dbPurgeJobPrefix = "purge-db-"
+	kvPurgeJobPrefix = "purge-kv-"
+)
+
 // cleanupJobName derives a stable DNS-label name for a parent's terminal Job.
 // Long resource names use a wider UID hash while remaining within Kubernetes'
 // 63-byte Job-name limit.
