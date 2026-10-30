@@ -1,0 +1,126 @@
+{
+  "owner": "tea-daif693dqjvc73e7as3g",
+  "approved": {
+    "srv-dap3r714dm7c7390q91g": "qa-20260922-cd9361-nativecron",
+    "srv-dap3umrbdpcs73f5eeug": "qa-20260922-cd9361-longcronxx",
+    "srv-dap3v694dm7c7390q930": "qa-20260922-cd9361-boundary"
+  },
+  "beforeIds": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-dbalgb8eir4c73eq4fr0",
+    "srv-dbeqqeho11ns7394188g",
+    "srv-dbeqshiirk6c739cd9lg",
+    "srv-dbeqshiirk6c739cd9ng",
+    "srv-dbeqshqirk6c739cd9q0",
+    "srv-dbff93rl76bs73djutp0",
+    "srv-dbffafrl76bs73djuu1g",
+    "srv-dbffe0povisc73fhqndg"
+  ],
+  "beforeLimits": {
+    "services": {
+      "used": 14,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 0
+    },
+    "postgres": {
+      "used": 1,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 1,
+      "freeLimit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 1
+    }
+  },
+  "startedAt": "2026-10-30T00:08:11Z",
+  "preflight": [
+    {
+      "id": "srv-dap3r714dm7c7390q91g",
+      "name": "qa-20260922-cd9361-nativecron",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "type": "cron_job"
+    },
+    {
+      "id": "srv-dap3umrbdpcs73f5eeug",
+      "name": "qa-20260922-cd9361-longcronxx",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "type": "cron_job"
+    },
+    {
+      "id": "srv-dap3v694dm7c7390q930",
+      "name": "qa-20260922-cd9361-boundary",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "type": "cron_job"
+    }
+  ],
+  "deletes": [
+    {
+      "id": "srv-dap3r714dm7c7390q91g",
+      "exit": 0
+    },
+    {
+      "id": "srv-dap3umrbdpcs73f5eeug",
+      "exit": 0
+    },
+    {
+      "id": "srv-dap3v694dm7c7390q930",
+      "exit": 0
+    }
+  ],
+  "detailStatuses": {
+    "srv-dap3r714dm7c7390q91g": 404,
+    "srv-dap3umrbdpcs73f5eeug": 404,
+    "srv-dap3v694dm7c7390q930": 404
+  },
+  "afterIds": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-dbalgb8eir4c73eq4fr0",
+    "srv-dbeqqeho11ns7394188g",
+    "srv-dbeqshiirk6c739cd9lg",
+    "srv-dbeqshiirk6c739cd9ng",
+    "srv-dbeqshqirk6c739cd9q0",
+    "srv-dbff93rl76bs73djutp0",
+    "srv-dbffafrl76bs73djuu1g",
+    "srv-dbffe0povisc73fhqndg"
+  ],
+  "afterLimits": {
+    "services": {
+      "used": 11,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 0
+    },
+    "postgres": {
+      "used": 1,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 1,
+      "freeLimit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 1
+    }
+  },
+  "completedAt": "2026-10-30T00:08:42Z",
+  "missingBaselineIds": [],
+  "newNonApprovedIds": []
+}

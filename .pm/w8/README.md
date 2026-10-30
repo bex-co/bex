@@ -695,7 +695,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **064** — [A stale `BEX_WORKSPACE` name blocks help, version and workspace recovery before dispatch](done/064.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-07 offline sweep 1; checkout regression, production confirmation outstanding. — **DONE 2026-10-08**
 - [x] **062** — [Static `routes`/`headers` REST answers bare items: no `{route|header, cursor}` envelope and no `id`/`priority`, unlike Render's contract](done/062.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 43. — **DONE 2026-10-07**
 - [x] **063** — [Env-group linking and service secret files drift from Render's REST contract: link → 204 no body, `serviceLinks` bare ID strings, bulk `PUT …/secret-files` → 405](done/063.md) (~55m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 44. — **DONE 2026-10-07**
-- [ ] **048** — [Cron jobs are paid-only, as on Render](blocked/048.md) — **BLOCKED（2026-10-29 复核）：** paid-only 线上已通过；D1 待决定三个既有 QA free cron 删除或保留，无外部 owner 通知。
+- [x] **048** — [Cron jobs are paid-only, as on Render](done/048.md) — **DONE 2026-10-29：** paid-only 线上验收已通过；D1 的三个旧 QA cron 已删且 GET 404，配额 14→11、terminating 0，其余基线不变。
 
 - [x] **061** — [Render's `/metrics/{memory,cpu,…}` answers a bare `404 not found` for a live Key Value or Postgres](done/061.md) — **DONE 2026-10-05**: Key Value `memory` serves `kv_memory`; other datastore pairs are a coded 400 naming the pair; a missing id stays 404.
 - [x] **060** — [Service events answer `service_hibernated`/`service_woken` on the Render REST feed, outside Render's event-type enum](done/060.md) — **DONE 2026-10-05**: kept as declared bex extensions per ADR018; a gate now fails on any REST event type outside Render's enum that is not declared with a reason.
@@ -779,7 +779,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## 解除阻塞复核（2026-10-29，`99ddf393061a`）
 
 - **核查基线：** `git fetch origin main` + `git pull --ff-only origin main` 成功，revision `99ddf393061ab2b3f4e60b93243ed8624f12fd3e`；开始时工作树干净。按 15 个共同卡点分组读取全部 57 个 blocked 条目（29 milestones / 28 inbox notes），覆盖其未完成任务与共同设计；未把 done/ 当开放项。
-- **处置：** 恢复 17 项待实施/验证，保留 40 项真实门槛；本次没有把仅源码合入或已部署的项标 done。所有结论来源见原条目本次复核记录。
+- **初次复核处置：** 恢复 17 项待实施/验证，保留 40 项真实门槛；本次没有把仅源码合入或已部署的项标 done。所有结论来源见原条目本次复核记录。
 - **目录/索引漂移：** 57 个 blocked 项均有索引；m67/m126/m139 目录 blocked 但 README status 为 todo，本次统一。额外发现 inbox 的两个 `223` 索引共指同一文件（quota 原因 vs Render Dashboard login 文案）；实际 223.md 仅存 quota 内容，另一个标题的原始卡片未找到，不能替其他会话编造/覆盖它，后续 PM 需从提交/会话恢复原文并分配新 ID。该 active 项不属于这 57 项，不在本轮擅自关闭。
 - **生产访问：** 既有 CLI grant 可只读列出三个自有 workspace；已安装 bex 是 dev build / Render v2.26.0，不能当 published/current-pin 验收。strict SSH key pin 不匹配导致本次全局 kubeconfig 获取失败；未改 known_hosts / 未绕过校验。恢复 strict access 是 worker / production operator 的事实核查，不是要求用户作产品选择。
 
@@ -792,7 +792,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 | 数据库扩展 rollout | w8/m92, w8/m104, w8/m109, w8/m110, w8/m111, w8/m112 | 6 项仍 blocked；供应镜像 + owner 按需 allowlist 由 parity 确定，只需专题决定既有库 operand/preload 重启的影响/窗口 |
 | 数据库验收资源 | w8/m65, w8/m126 | 升级/自然日历均非门槛；D3 待临时 QA workspace 及最小 fixture，保留既有数据库 |
 | Free web 小预算生命周期 | w8/m139 | 已恢复 t008，dev-8 测试时钟/Mailpit + 生产 read side，保留 D5 不补公告 |
-| 旧 QA cron | w8/048 | D1 待删除三个既有 QA cron 或保留 grandfathering，不默认改付费 |
+| 旧 QA cron | w8/048 | D1 已明确删除并执行完成，三个旧 QA cron 均 GET 404；w8/048 已归档 done |
 | PostgreSQL TLS 信任边界 | w8/m87 | 单独讨论 proxy 持全租户私钥 / 明文 SQL；设计与 t002 的 BackendKeyData 策略冲突亦需 worker 修正 |
 | Web 压缩供应方 | w8/m83 | 先找官方 streaming-safe / HTTP 正确的修复；未准备的 Traefik/Yaegi PR 不混入 D2，不能删原 DoD 来解锁 |
 | HTTP/3 edge 与费用 | w8/211 | 仍需专题决定付费 UDP/IP 路径、Cloudflare 或明确偏离；未新增资源 |
@@ -807,6 +807,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## 本轮决定进展（2026-10-29，接续 D1/D2/D3）
 
-- **D1：用户明确选择删除。** w8/048 的三个指定旧 QA cron 已获删除许可；正在逐 ID 复核和清理，尚未以许可代替 404/配额验收。
+- **D1：用户明确选择删除。** w8/048 的三个指定旧 QA cron 已删除并完成 404 / 完整列表 / quota 验收，现归档 done。其余基线不变。
 - **D3：用户明确允许，要求最终干净和正确。** w8/m65 / w8/m126 可用一个临时 QA workspace 和同一份最小 PostgreSQL fixture（Free 验收后短时最低付费升级）；详细基线、精确 ID、正常删除、异步资源/配额、临时凭据/进程和计费正确性要求已写入两个 milestone。资源尚未创建，不声称就绪。
 - **D2：仅询问上游收益，尚未决定。** 已向用户解释通用缺陷的价值；最新 Render main `c31e586eb6f38138af3cc986b079e46a78c61de7` 仍有 psql 未转发 stdin / 成功 stderr 丢失、restart 原始响应漏检状态、secret-file 路径 TrimSpace。日志 YAML 的 #56 属于此前已提交项，不在本批 19 项。没有公开 PR、对外消息或 push。
+
+### 本轮执行后状态
+
+- **当前：** 17 项已恢复待办，39 项仍 blocked；w8/048 已完成。原 active 223 及后来其他会话的队列变动不计入这 57 项复核数。
+- **D3 实际条件：** 2026-10-30 00:08 UTC 只读 GraphQL 预检确认新 Hobby workspace 的 creation policy 为 mode=all、paymentRequired=true、providerAvailable=true。因此未盲目创建付款 SetupIntent / workspace。现有 tian-personal（`tea-da2isimlm39c739m4ofg`）调用者为 admin、Postgres used/freeUsed/terminating 均 0、freeLimit=1；billing readiness 为 paymentMethodReady=true、paymentMethodOnboardingRequired=false。这里已有 2 个服务，不能当作空 workspace。已询问用户是否改在这个现有 workspace 仅创建自有数据库 fixture；未把原“新临时 workspace”许可擅自扩大成改变现有 workspace 的设置或资源。两个数据库 milestone 保持 blocked 等范围确认；没有创建 fixture 或发生测试资源费用。
+- **D2 仍未获许可：** 已回答对 Render 用户的通用收益并再次请求明确提交决定；本轮没有对外 PR、评论、邮件或 Git push。
