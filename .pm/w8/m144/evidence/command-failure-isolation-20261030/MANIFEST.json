@@ -1,0 +1,429 @@
+{
+  "schema": "bex.w8.evidence-custody/v1",
+  "files": [
+    {
+      "path": "active-holder-ID.txt.gz",
+      "bytes": 72,
+      "sha256": "50c0937a5c24181b6448344147b7f9870186b82c925f16a4e4792304998a72d7",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/active-holder-ID.txt",
+      "original_bytes": 65,
+      "original_sha256": "fae7d1d3cdca9bd177d84a7331ad57d62b24fdf8aebceb7bbb1169e1385fdc9f"
+    },
+    {
+      "path": "active-holder-handoff.json.gz",
+      "bytes": 605,
+      "sha256": "e18b779e4c33bc05e58c5fe523f96b9e82c2a5f8bbf726b1930b2d046bf8c3b6",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/active-holder-handoff.json",
+      "original_bytes": 1059,
+      "original_sha256": "56bba0281744950145e5efde6f7f6691a11c5f62963fef6182c998e7a4fc7aa7"
+    },
+    {
+      "path": "active-holder-receipt.json.gz",
+      "bytes": 516,
+      "sha256": "168b4cf5db21036d9dded3055207e03acc2e49c9df46a07b181e6a4c7e2706f7",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/active-holder-receipt.json",
+      "original_bytes": 814,
+      "original_sha256": "9bde29b37354517c9390e999712ac8f83bc5a87d353e80fa85a247b584963060"
+    },
+    {
+      "path": "anonymous-arm64-pull-attempt2.log.gz",
+      "bytes": 309,
+      "sha256": "4502aa2d1e039b2a02ec132900c634cfb7bba01c108f72f30151ca8a47b681c1",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/anonymous-arm64-pull-attempt2.log",
+      "original_bytes": 996,
+      "original_sha256": "48e08430bb69ed57982444d8e426c4ace6ccc38d51a7cc5b7b4bdf648730d248"
+    },
+    {
+      "path": "anonymous-arm64-pull.log.gz",
+      "bytes": 310,
+      "sha256": "7ad4daf6f0bd9d8e2a4ab2eb76dda72cf380c9e278da9e492eb7208b8ab4e13f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/anonymous-arm64-pull.log",
+      "original_bytes": 996,
+      "original_sha256": "f1b736f6412211a6ad4b9767930f192f1cf8430339ea92b0274a81ac2a37fb50"
+    },
+    {
+      "path": "bounded_failure_test.go.gz",
+      "bytes": 1980,
+      "sha256": "9af0da4cb214a69cd59fc5223963612b7ca773b4f0da8a8c4e8fdda3cf1fa88a",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/bounded_failure_test.go",
+      "original_bytes": 4897,
+      "original_sha256": "5a6262e29c58b94143bde17ae9e740aca1dfcee5b603b761cbe2964d26b4f1d7"
+    },
+    {
+      "path": "compile-attempt1-go.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/compile-attempt1-go.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "compile-attempt1-guard-error.json.gz",
+      "bytes": 219,
+      "sha256": "241a8848f1cc5c81cfd103cd2a01b8b5789146d0c2d54ca2ca113503532f7dd7",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/compile-attempt1-guard-error.json",
+      "original_bytes": 278,
+      "original_sha256": "78817461d183ebe0280557caa4ea2377fc68137ea4964e7bc9612b3459e78d4d"
+    },
+    {
+      "path": "compile-attempt1-guard-race-result.json.gz",
+      "bytes": 1966,
+      "sha256": "6343eff1a91e186c71d535d69a4fdc24933cc5fe470a9121757b8dfb50587a3b",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/compile-attempt1-guard-race-result.json",
+      "original_bytes": 10931,
+      "original_sha256": "833e8eb645e31b939378879586429a6427b332411f3064dfee01c537a2c8030e"
+    },
+    {
+      "path": "compile-result.json.gz",
+      "bytes": 510,
+      "sha256": "8badad6b97f65813ff84525a53bcffb24cf07c54600fb33abf78b8d46dd93204",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/compile-result.json",
+      "original_bytes": 2294,
+      "original_sha256": "9cc043371f4adde4d7aa347f795497fc58e6d0711d470e5d91e210bf4e59b44d"
+    },
+    {
+      "path": "compile.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/compile.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "config-id-after-image-loss-inspect.log.gz",
+      "bytes": 117,
+      "sha256": "b9cbbb55b0d2593a60d38fc08947a56deccdc2b3d1a16a840cab11ab11c36879",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/config-id-after-image-loss-inspect.log",
+      "original_bytes": 116,
+      "original_sha256": "fa730b884fde3e5c94f67feebfa80c8f1d6e44f768a4727505b8927611459b6d"
+    },
+    {
+      "path": "execution-plan.json.gz",
+      "bytes": 4432,
+      "sha256": "0d2109c104038197809c50a375fe4426af5e976a703db4f7f75e6e62d141819e",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/execution-plan.json",
+      "original_bytes": 10458,
+      "original_sha256": "63d13f3820dfc493f89b3be9fc26b927d530365626b171259b03eb62ed9dcf0c"
+    },
+    {
+      "path": "execution-preflight.json.gz",
+      "bytes": 218,
+      "sha256": "543f3ce47285edbe8b08e3f37038615a51b76d1dfd0dd3fab479503396adfa6a",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/execution-preflight.json",
+      "original_bytes": 287,
+      "original_sha256": "ad6cf9dcf5e71a4cfdd878aab584e311f74576c5acce1868b35583e8dcb7b7a6"
+    },
+    {
+      "path": "failure-owner.sh.gz",
+      "bytes": 1559,
+      "sha256": "959794c26dea55adbcbc67a8b4f799726832e69cbf402947d26a47ee3b4e6040",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/failure-owner.sh",
+      "original_bytes": 4069,
+      "original_sha256": "0e6bcef95e482ac78e61231a8d4789919c9c2a7d682213866a00b17506307686"
+    },
+    {
+      "path": "image-after-inspect.json.gz",
+      "bytes": 469,
+      "sha256": "0563bf300dce5e457587d82335ead3999a3bff645aa7dd70286f754c27046a0f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/image-after-inspect.json",
+      "original_bytes": 748,
+      "original_sha256": "7a62b670526aab99650184714dca94ad51ec765da29b41692df012c753fcf64c"
+    },
+    {
+      "path": "image-after-replacement-pull.json.gz",
+      "bytes": 469,
+      "sha256": "0563bf300dce5e457587d82335ead3999a3bff645aa7dd70286f754c27046a0f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/image-after-replacement-pull.json",
+      "original_bytes": 748,
+      "original_sha256": "7a62b670526aab99650184714dca94ad51ec765da29b41692df012c753fcf64c"
+    },
+    {
+      "path": "image-after-run-missing-inspect.log.gz",
+      "bytes": 140,
+      "sha256": "86686825f1a113e0412f20b934775fe4af9c2579339a8bcaeb18146d5f1b7def",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/image-after-run-missing-inspect.log",
+      "original_bytes": 144,
+      "original_sha256": "f08601ec143d80aed62dbda267882009def6c16dc9c976b3aea7b876bee3ac59"
+    },
+    {
+      "path": "image-before-inspect.log.gz",
+      "bytes": 144,
+      "sha256": "c86b0b1d687d1ed04b43cdd32e6d286ba83e4431e2ec9e35f345208c9b9bf767",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/image-before-inspect.log",
+      "original_bytes": 146,
+      "original_sha256": "b0668bc7b65456d456e8ffb0ed731e7788e868a4dea180851a4a173dd3ce77c2"
+    },
+    {
+      "path": "image-binding-plan.json.gz",
+      "bytes": 824,
+      "sha256": "ad4c6f6c72771ffb05244f889d33e899a78e00db5e2691596b3f27d7ff522c20",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/image-binding-plan.json",
+      "original_bytes": 1581,
+      "original_sha256": "0a7c980ee7af855eeca76430383a723e960d3854682bee6aa27c68d1e9aec30a"
+    },
+    {
+      "path": "locked-source-map.json.gz",
+      "bytes": 1119,
+      "sha256": "fc38f83b621b44661cc15273de1c1d2bb1ae9aad1b54cea4ebb7d0485bfcfe0b",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/locked-source-map.json",
+      "original_bytes": 2132,
+      "original_sha256": "9d03b082b162785de7b3cd012278da743c6a9b66a4e999a46c6ed11e934127bf"
+    },
+    {
+      "path": "measured-handoff.json.gz",
+      "bytes": 491,
+      "sha256": "27ba5d81ca2a28f7a9fce406aaa46600c4bff886711affe139e85b3bd4dc895f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/measured-handoff.json",
+      "original_bytes": 865,
+      "original_sha256": "03a657de4a7ef81a631f869dbb256674a27291bd5e8303ed3bf991578a8ec0f1"
+    },
+    {
+      "path": "overlay.json.gz",
+      "bytes": 155,
+      "sha256": "9e77edca3fa6c74053329b95410e81f18f13aa8c758e078f84e5efbfe73096ee",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/overlay.json",
+      "original_bytes": 202,
+      "original_sha256": "f8a0024ed141f13bb1a22a30395b227ea38ba77ba7c8f0c716fd17c76110c764"
+    },
+    {
+      "path": "owner-helper.diff.gz",
+      "bytes": 607,
+      "sha256": "602c8b98d35b0445f0e0568223bf7b0c6c5d353c738e234496ce52ad48df65b1",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/owner-helper.diff",
+      "original_bytes": 1530,
+      "original_sha256": "2ebcad61d21a59fe60d8601a82f0ba57c57e72adcf26624bff1ff021eb6618f4"
+    },
+    {
+      "path": "pull-attempt2-process-result.json.gz",
+      "bytes": 179,
+      "sha256": "c9405633795644d40a14ef9cb70d2e899cda1dcdef3a295c7d9ec6cad0e80a98",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/pull-attempt2-process-result.json",
+      "original_bytes": 237,
+      "original_sha256": "abd70f51efd42769f66f3160d658e8b6fde2369ecc3586ac5ca5662503894fbf"
+    },
+    {
+      "path": "pull-process-result.json.gz",
+      "bytes": 276,
+      "sha256": "5cd1895dd9cdc202840888771c39ded6a5970a0f185b27258836cb6505b3c512",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/pull-process-result.json",
+      "original_bytes": 385,
+      "original_sha256": "a3039a4736a8888d8bb04a5157b7f9fc0c9efd9e806ad5abf03a8f53479759e9"
+    },
+    {
+      "path": "receipt.json.gz",
+      "bytes": 1835,
+      "sha256": "a483e3860cb3be3eb045ad972582a3f11a5852e676454e1e12b2973dc5db44bc",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/receipt.json",
+      "original_bytes": 4644,
+      "original_sha256": "55d26a84125f922249bf938e1aa0a1b15befbe31737afe82d9bd29cb03503dd4"
+    },
+    {
+      "path": "replacement-holder-intent.json.gz",
+      "bytes": 258,
+      "sha256": "511affe3b4e13c6fe4f29cb173fa765e8f7ba5ee2dc5f68a87bb39513b291ecb",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/replacement-holder-intent.json",
+      "original_bytes": 351,
+      "original_sha256": "1e13f21acbfec5a78957e8f2cba78b82d1b73d0df644a2aaf7f3045aa1d0ed84"
+    },
+    {
+      "path": "replacement-holder-start.log.gz",
+      "bytes": 72,
+      "sha256": "50c0937a5c24181b6448344147b7f9870186b82c925f16a4e4792304998a72d7",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/replacement-holder-start.log",
+      "original_bytes": 65,
+      "original_sha256": "fae7d1d3cdca9bd177d84a7331ad57d62b24fdf8aebceb7bbb1169e1385fdc9f"
+    },
+    {
+      "path": "root-image-events.json.gz",
+      "bytes": 180,
+      "sha256": "36d676977eeaedf123766f6951bcff7be4eeaf14108a41c476adedebbe2dfbfd",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/root-image-events.json",
+      "original_bytes": 216,
+      "original_sha256": "718003e18d7aba4c34c53ca73f054bc1b517db834c9072aab5bb326fdd078609"
+    },
+    {
+      "path": "run-7dcca724025dd904/execution-receipt.json.gz",
+      "bytes": 577,
+      "sha256": "c1d702f508b746ce65ce4505cb15e028489e4e19d0743085eff0a437ae9ac4f5",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-7dcca724025dd904/execution-receipt.json",
+      "original_bytes": 1488,
+      "original_sha256": "9966258cba76251b6f481cb7bcca538beb94639470900b3fa959b4296656485f"
+    },
+    {
+      "path": "run-7dcca724025dd904/intended-owner.json.gz",
+      "bytes": 218,
+      "sha256": "6af9e6283fd28e35a519545d7d30ce9ad029d9585e15a03f9c47c0b29507b221",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-7dcca724025dd904/intended-owner.json",
+      "original_bytes": 289,
+      "original_sha256": "8194965eddd38b00af93ec07e72776567e614c5f3265aa0be9d6bcbf36cbefee"
+    },
+    {
+      "path": "run-7dcca724025dd904/stop.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-7dcca724025dd904/stop",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/check.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/check",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/checked.json.gz",
+      "bytes": 65,
+      "sha256": "21ad8e076faeac25deb45fd639dad04ff7a7c79591028696c9affe482605b61f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/checked.json",
+      "original_bytes": 80,
+      "original_sha256": "449fb1877cf8d35e24d0c8e7c992674c919d4216b04bc2fce41418572b5b6136"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/cleanup.json.gz",
+      "bytes": 50,
+      "sha256": "e665f24dc186380c2de9e4a601317be0e747dceaf31e2852d300aac589ea30e2",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/cleanup.json",
+      "original_bytes": 35,
+      "original_sha256": "738447d898c8ece38d4d35e916609a154b8dc8ae136b1cb800fc3652e40d9285"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/execution-receipt.json.gz",
+      "bytes": 1635,
+      "sha256": "09cd019a0713110052185b0333c302769850b44af868ebd60efc464956d99288",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/execution-receipt.json",
+      "original_bytes": 17234,
+      "original_sha256": "fd350b25a2537b1857fda9e826f47bf46facdb2e43c9769fdc15b4dfa1ef6e02"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/geometry-a-after.json.gz",
+      "bytes": 94,
+      "sha256": "0c1dd6dcb74b1b950262f8c987ef057092c9f071fba84070c4d91e70dc3373df",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/geometry-a-after.json",
+      "original_bytes": 80,
+      "original_sha256": "40fcba99b38251d2739856229c63b649ca0da685af3d6ec48b11d891c81d3185"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/geometry-a-before.json.gz",
+      "bytes": 94,
+      "sha256": "0c1dd6dcb74b1b950262f8c987ef057092c9f071fba84070c4d91e70dc3373df",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/geometry-a-before.json",
+      "original_bytes": 80,
+      "original_sha256": "40fcba99b38251d2739856229c63b649ca0da685af3d6ec48b11d891c81d3185"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/geometry-b-after.json.gz",
+      "bytes": 94,
+      "sha256": "b32a3bfcfec99e3ef748992bbe9b3c022aaf174117566633af6e05f388fd40cc",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/geometry-b-after.json",
+      "original_bytes": 80,
+      "original_sha256": "51297473da34a54d35a507535d72b8526c7c37cf7153e0a9f966bfab22805b2f"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/geometry-b-before.json.gz",
+      "bytes": 94,
+      "sha256": "b32a3bfcfec99e3ef748992bbe9b3c022aaf174117566633af6e05f388fd40cc",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/geometry-b-before.json",
+      "original_bytes": 80,
+      "original_sha256": "51297473da34a54d35a507535d72b8526c7c37cf7153e0a9f966bfab22805b2f"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/intended-owner.json.gz",
+      "bytes": 218,
+      "sha256": "f0f5b3ea8e0d25d1a7c020b3fa96354ee60ea0eb7b7a56b0bb5c27a425f7ac0d",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/intended-owner.json",
+      "original_bytes": 289,
+      "original_sha256": "ce011fcd728879a15f36c24cf842ab5eb0bb6acd2af600ef79de33ae4770aa7d"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/owner.log.gz",
+      "bytes": 485,
+      "sha256": "7d6cd603ac6d790cd306bac8c820a80eea0a417926b1a072c047e4fc2a41e42b",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/owner.log",
+      "original_bytes": 1512,
+      "original_sha256": "21682e9429c7e2951a5ff78aa099cb9e499aa420bc3dc14a420851a8149cc93c"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/ready.json.gz",
+      "bytes": 156,
+      "sha256": "7e4c521171a6f04cda6113458af0ce2ce3196653eb05bb2ae75ab518978d9ebc",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/ready.json",
+      "original_bytes": 209,
+      "original_sha256": "14fcc0a72e217f009746009651a3bd9c06f946b0bbc01de6e6b4d630d0b422a9"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/sentinels.sha256.gz",
+      "bytes": 143,
+      "sha256": "ead661fe95e553881f470598d2aa50743c03f9a2d6e6c0430c403a876c026d19",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/sentinels.sha256",
+      "original_bytes": 184,
+      "original_sha256": "27567269580f83b68435ed67c7a5ca15f76f161cf289cfc010fb04e0842f8e7c"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/stop.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/stop",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run-83a4b3cd299b69b5/two-cases.log.gz",
+      "bytes": 274,
+      "sha256": "0d3adc44d724ee0d6a0ca4290bb3888349b54dfb7a43730e70aea2f828834b83",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-83a4b3cd299b69b5/two-cases.log",
+      "original_bytes": 753,
+      "original_sha256": "a7df4bc25ad508cc6677bb06ac4db6edbb957cbd2d2fa2ea944cbc7d7c143d0d"
+    },
+    {
+      "path": "run-owned-cases-v2.log.gz",
+      "bytes": 354,
+      "sha256": "8ca779fe8025d89e0b2dd23419d6715968be44a53f7c9321a06ec96276fbf56b",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-owned-cases-v2.log",
+      "original_bytes": 550,
+      "original_sha256": "446cdb1aeab6d89119a525c11faa4e3c9e11904051622e830eb6854ffb8c68c1"
+    },
+    {
+      "path": "run-owned-cases-v2.py.gz",
+      "bytes": 2976,
+      "sha256": "6138b789eba3f14fb8657f3bc6cf4dceba22fdf8034db03d7d80e673ab661bdd",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-owned-cases-v2.py",
+      "original_bytes": 7154,
+      "original_sha256": "c9a63ccaa5930f4c5e921c0b7599dadd4b6420997b9516854271ee8d849b5d8a"
+    },
+    {
+      "path": "run-owned-cases.log.gz",
+      "bytes": 680,
+      "sha256": "26c1f1decaa8457d0b737dc68bec67d8342a29d4cef648ab8651ab8a0c74ebad",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-owned-cases.log",
+      "original_bytes": 1433,
+      "original_sha256": "8ca0a5920675732fbd0c69435d034f54f4e2849f8b5fd5bc0234c873f0679984"
+    },
+    {
+      "path": "run-owned-cases.py.gz",
+      "bytes": 2944,
+      "sha256": "76df8f09f02c54399c87b9c521ca8614a5937284b8acf0e122c10801e49a4b5f",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/run-owned-cases.py",
+      "original_bytes": 7076,
+      "original_sha256": "9cc22091b8107dbeb914c56899dced2f41a82ac83abc24e53dd90c9be1911af4"
+    },
+    {
+      "path": "zero-owned-resources-after-startup-failure.json.gz",
+      "bytes": 373,
+      "sha256": "f8db95ef51a1ad909075b5656fedb665c82e216b47e561298aa5a5c10bfd572d",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/zero-owned-resources-after-startup-failure.json",
+      "original_bytes": 526,
+      "original_sha256": "0f6f971a503cb494cbd8d2fe4b43a2f6d5e3876c808162951d25c7d88dfc863d"
+    },
+    {
+      "path": "actual-run-receipt.json.gz",
+      "bytes": 4305,
+      "sha256": "6c404cdd1abbb01f3a2b6941613ae79e766e141e9866ef1fda0a14a3aa7718f6",
+      "original_path": "/private/tmp/bex-w8-m144-t006-failure-overlay-20261030/actual-run-receipt.json",
+      "original_bytes": 11769,
+      "original_sha256": "988671c4bbec751f102ca55b441fdb389b237f9b6c5e2077439656c2d79de519"
+    }
+  ]
+}
