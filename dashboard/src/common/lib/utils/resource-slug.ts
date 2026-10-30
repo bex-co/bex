@@ -16,7 +16,7 @@ function lowerCodePoint(c: string): string {
 /** The slug before any length cap: accents fold onto their base letters
  *  (NFKD, combining marks dropped), runs of non-[a-z0-9] collapse to one
  *  hyphen, trimmed at both ends; "" when nothing is left. */
-function uncappedSlug(name: string): string {
+export function uncappedSlug(name: string): string {
   let slug = "";
   let dash = false;
   const folded = [...name]

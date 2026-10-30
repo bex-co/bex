@@ -19,7 +19,7 @@ The captures are local QA artifacts and intentionally remain outside source cont
 
 ## bex behavior after m90
 
-- **Workspace Details** contains required `Workspace slug` and `Billing Email`. The latter comes from the authenticated Kratos identity. Hobby is read-only/account-email; paid plans accept a different valid address. The server repeats both email validation and Hobby ownership validation.
+- **Workspace Details** contains required `Name` (freeform, as on Render — w3/m246, 2026-10-30), a `Workspace slug` derived from it and editable (a bex extension: the unique key for the CLI and API), and `Billing Email`. The latter comes from the authenticated Kratos identity. Hobby is read-only/account-email; paid plans accept a different valid address. The server repeats both email validation and Hobby ownership validation.
 - The four plan cards retain the ADR030 catalog: **$0 / $17.50 / $349.30 / Custom terms**. These are intentionally 30% below Render's $0 / $25 / $499 / contact pricing.
 - **Payment Method** is always present and belongs only to the reserved workspace. It never reads, copies, or gates on the current workspace's Customer or readiness marker.
 - A server policy controls collection: `all` requires a verified payment method for every plan; `paid` requires one for Pro, Scale, and Enterprise while keeping Hobby optional; `off` leaves self-hosted creation usable without Stripe.
@@ -38,7 +38,7 @@ The captures are local QA artifacts and intentionally remain outside source cont
 | Provider collection | Stripe-hosted card fields | Stripe Payment Element + SetupIntent | Match in security boundary |
 | Failure/retry | Form remains recoverable | Opaque resumable attempt; idempotent finalize; bounded cleanup | Match with explicit server guarantees |
 | Plan prices | `$0` / `$25` / `$499` / contact | `$0` / `$17.50` / `$349.30` / Custom terms | Deliberate ADR030 difference |
-| Name | Freeform | DNS-label slug | Deliberate App-CR naming constraint |
+| Name | Freeform | Freeform name + a derived, editable DNS-label slug (bex extension) | Match since w3/m246 (2026-10-30); the slug is an extra field, not a divergence in the name |
 | Enterprise | Contact sales | Self-serve selectable | Known deliberate divergence (`.pm/w9/050.md`) |
 | Licensed monthly workspace SKU | Render plan charge | No licensed monthly SKU; usage-meter contract only | Deliberate current billing model |
 | REST / MCP create | None | None | Match |
