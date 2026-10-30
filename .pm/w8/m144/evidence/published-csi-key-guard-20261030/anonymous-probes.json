@@ -1,0 +1,103 @@
+{
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "platforms": {
+    "amd64": {
+      "anonymous_engine_auth_config": {},
+      "reference": "ghcr.io/bex-co/bex-operator@sha256:70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f",
+      "preexisting_local_image": false,
+      "pull_elapsed_seconds": 67.846,
+      "execution_results": [
+        {
+          "name": "driver-help",
+          "argv": [
+            "/bin/hcloud-csi-driver",
+            "--help"
+          ],
+          "exit_code": 0,
+          "output_bytes": 284
+        },
+        {
+          "name": "cryptsetup-version",
+          "argv": [
+            "cryptsetup",
+            "--version"
+          ],
+          "exit_code": 0,
+          "output_bytes": 64
+        },
+        {
+          "name": "blkid-help",
+          "argv": [
+            "blkid",
+            "--help"
+          ],
+          "exit_code": 0,
+          "output_bytes": 2047
+        },
+        {
+          "name": "dumpe2fs-version",
+          "argv": [
+            "dumpe2fs",
+            "-V"
+          ],
+          "exit_code": 0,
+          "output_bytes": 66
+        }
+      ],
+      "owned_image_cleanup_exit": 0,
+      "free_bytes_after": 9453793280
+    },
+    "arm64": {
+      "anonymous_engine_auth_config": {},
+      "reference": "ghcr.io/bex-co/bex-operator@sha256:dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e",
+      "preexisting_local_image": false,
+      "pull_elapsed_seconds": 64.956,
+      "execution_results": [
+        {
+          "name": "driver-help",
+          "argv": [
+            "/bin/hcloud-csi-driver",
+            "--help"
+          ],
+          "exit_code": 0,
+          "output_bytes": 284
+        },
+        {
+          "name": "cryptsetup-version",
+          "argv": [
+            "cryptsetup",
+            "--version"
+          ],
+          "exit_code": 0,
+          "output_bytes": 64
+        },
+        {
+          "name": "blkid-help",
+          "argv": [
+            "blkid",
+            "--help"
+          ],
+          "exit_code": 0,
+          "output_bytes": 2047
+        },
+        {
+          "name": "dumpe2fs-version",
+          "argv": [
+            "dumpe2fs",
+            "-V"
+          ],
+          "exit_code": 0,
+          "output_bytes": 66
+        }
+      ],
+      "owned_image_cleanup_exit": 0,
+      "free_bytes_after": 9457053696
+    }
+  },
+  "compressed_unique_layer_bytes": 82518703,
+  "global_free_reserve_bytes": 2147483648,
+  "minimum_observed_free_bytes": 9430736896,
+  "docker_endpoint_kind": "existing local Unix socket",
+  "no_provider_or_cluster_access": true,
+  "no_host_mounts_or_network_in_probe_containers": true
+}

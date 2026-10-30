@@ -1,0 +1,99 @@
+{
+  "source": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "candidate_ref": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "digest": "sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "anonymous_metadata_only": true,
+  "all_raw_metadata_sha256_verified": true,
+  "checks": {
+    "amd64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    },
+    "arm64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    }
+  },
+  "candidate": {
+    "index": "sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+    "index_media_type": "application/vnd.oci.image.index.v1+json",
+    "platforms": {
+      "amd64": {
+        "manifest": "sha256:70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f",
+        "config": "sha256:b5bd2dd0f9bca3832958ed602bd1a6bf4302cda9554855a3711824436e9a798c",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {
+          "org.opencontainers.image.revision": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+          "org.opencontainers.image.source": "https://github.com/bex-co/bex",
+          "org.opencontainers.image.version": "2.22.0-bex-bounded-ext4-v1"
+        },
+        "diff_ids": [
+          "sha256:34884abbe92863fce933ed7c39c0e045631af0ed86d5cc0dfbdf9fdca426ce3c",
+          "sha256:f940970fb9448545d41359ce02e3abbbcefa222fb158c561f401be23a8f5f4e7",
+          "sha256:f838fec15ce27df3cb63c73898646fa65f719cae64350bb65787abd56603c521",
+          "sha256:012aa28b1f1db44a79d3435f46c99ea3da522f937fafed3cb325029c4fabde45",
+          "sha256:4e5a59a89ab203b18f431c616af01108b6f3a7981c6aa6a41a055057d56e223d"
+        ],
+        "layer_count": 5
+      },
+      "arm64": {
+        "manifest": "sha256:dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e",
+        "config": "sha256:1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e",
+        "architecture": "arm64",
+        "os": "linux",
+        "labels": {
+          "org.opencontainers.image.revision": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+          "org.opencontainers.image.source": "https://github.com/bex-co/bex",
+          "org.opencontainers.image.version": "2.22.0-bex-bounded-ext4-v1"
+        },
+        "diff_ids": [
+          "sha256:b2848c02ac6ff53d265469b5b30f649f335e546a83330cd8916d54e65e640409",
+          "sha256:3283a8870581e5387f9d6d9bee541abe3c290d834e2a139729d7e93c02ca37e4",
+          "sha256:98f3af52e9df9d90b939c4cbe0ce0e5436aa46f6822c0fc6df5b7b2f62cfe875",
+          "sha256:0a4b41db921b0923b96295ca8ab754865b5e9dbee2fc746d35267ff7b467793d",
+          "sha256:ddb1c55cb8c54cff62a3ea65c4acfd15918dafe0997c4620b2622587879511c5"
+        ],
+        "layer_count": 5
+      }
+    }
+  },
+  "official_base": {
+    "index": "sha256:459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+    "index_media_type": "application/vnd.docker.distribution.manifest.list.v2+json",
+    "platforms": {
+      "amd64": {
+        "manifest": "sha256:e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e",
+        "config": "sha256:148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {},
+        "diff_ids": [
+          "sha256:34884abbe92863fce933ed7c39c0e045631af0ed86d5cc0dfbdf9fdca426ce3c",
+          "sha256:f940970fb9448545d41359ce02e3abbbcefa222fb158c561f401be23a8f5f4e7",
+          "sha256:f838fec15ce27df3cb63c73898646fa65f719cae64350bb65787abd56603c521",
+          "sha256:012aa28b1f1db44a79d3435f46c99ea3da522f937fafed3cb325029c4fabde45"
+        ],
+        "layer_count": 4
+      },
+      "arm64": {
+        "manifest": "sha256:2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5",
+        "config": "sha256:17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa",
+        "architecture": "arm64",
+        "os": "linux",
+        "labels": {},
+        "diff_ids": [
+          "sha256:b2848c02ac6ff53d265469b5b30f649f335e546a83330cd8916d54e65e640409",
+          "sha256:3283a8870581e5387f9d6d9bee541abe3c290d834e2a139729d7e93c02ca37e4",
+          "sha256:98f3af52e9df9d90b939c4cbe0ce0e5436aa46f6822c0fc6df5b7b2f62cfe875",
+          "sha256:0a4b41db921b0923b96295ca8ab754865b5e9dbee2fc746d35267ff7b467793d"
+        ],
+        "layer_count": 4
+      }
+    }
+  }
+}

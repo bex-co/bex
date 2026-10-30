@@ -1,0 +1,172 @@
+{
+  "actual-kernel-step.log": {
+    "stored": "actual-kernel-step.log.gz",
+    "rawSha256": "f81ee120fe6050d7d7c373a95df8466c5571d9b4da2e656780229def0c71b475",
+    "rawBytes": 2615
+  },
+  "anonymous-amd64-blkid-help.txt": {
+    "stored": "anonymous-amd64-blkid-help.txt.gz",
+    "rawSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "rawBytes": 2047
+  },
+  "anonymous-amd64-cryptsetup-version.txt": {
+    "stored": "anonymous-amd64-cryptsetup-version.txt.gz",
+    "rawSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "rawBytes": 64
+  },
+  "anonymous-amd64-driver-help.txt": {
+    "stored": "anonymous-amd64-driver-help.txt.gz",
+    "rawSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "rawBytes": 284
+  },
+  "anonymous-amd64-dumpe2fs-version.txt": {
+    "stored": "anonymous-amd64-dumpe2fs-version.txt.gz",
+    "rawSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "rawBytes": 66
+  },
+  "anonymous-arm64-blkid-help.txt": {
+    "stored": "anonymous-arm64-blkid-help.txt.gz",
+    "rawSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "rawBytes": 2047
+  },
+  "anonymous-arm64-cryptsetup-version.txt": {
+    "stored": "anonymous-arm64-cryptsetup-version.txt.gz",
+    "rawSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "rawBytes": 64
+  },
+  "anonymous-arm64-driver-help.txt": {
+    "stored": "anonymous-arm64-driver-help.txt.gz",
+    "rawSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "rawBytes": 284
+  },
+  "anonymous-arm64-dumpe2fs-version.txt": {
+    "stored": "anonymous-arm64-dumpe2fs-version.txt.gz",
+    "rawSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "rawBytes": 66
+  },
+  "anonymous-probes.json": {
+    "stored": "anonymous-probes.json",
+    "rawSha256": "08623d8b3f5886d88484bac38f990aced59218e5718b408a4b8f006e1c1f2e62",
+    "rawBytes": 2727
+  },
+  "anonymous-pull-amd64.jsonl": {
+    "stored": "anonymous-pull-amd64.jsonl.gz",
+    "rawSha256": "75d0b7f3d3cfb50c5f1985d46016230164862cb0faf720bb1d709389bbd767aa",
+    "rawBytes": 35615
+  },
+  "anonymous-pull-arm64.jsonl": {
+    "stored": "anonymous-pull-arm64.jsonl.gz",
+    "rawSha256": "c8ef2ee3e406e0d0c032b4a4359d8b6822be7e1b2ae24e6b7a4b8af9620272e6",
+    "rawBytes": 24935
+  },
+  "candidate-amd64-config.json": {
+    "stored": "candidate-amd64-config.json",
+    "rawSha256": "b5bd2dd0f9bca3832958ed602bd1a6bf4302cda9554855a3711824436e9a798c",
+    "rawBytes": 2555
+  },
+  "candidate-amd64-manifest.json": {
+    "stored": "candidate-amd64-manifest.json",
+    "rawSha256": "70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f",
+    "rawBytes": 1247
+  },
+  "candidate-arm64-config.json": {
+    "stored": "candidate-arm64-config.json",
+    "rawSha256": "1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e",
+    "rawBytes": 2558
+  },
+  "candidate-arm64-manifest.json": {
+    "stored": "candidate-arm64-manifest.json",
+    "rawSha256": "dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e",
+    "rawBytes": 1247
+  },
+  "candidate-index.json": {
+    "stored": "candidate-index.json",
+    "rawSha256": "e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+    "rawBytes": 1609
+  },
+  "crypto-review.json": {
+    "stored": "crypto-review.json",
+    "rawSha256": "ae94712dba5b709f8241234a71fefdee914c07af484eff4d6e46be30032258f9",
+    "rawBytes": 1832
+  },
+  "factory-job.json": {
+    "stored": "factory-job.json",
+    "rawSha256": "cde8a0e365ae14ffae5b9d5037cb99af90b5b493551b48e5e8f54e64c92dde21",
+    "rawBytes": 4520
+  },
+  "factory-run.json": {
+    "stored": "factory-run.json",
+    "rawSha256": "80ea7119c1240466c8c56085efaff3ed07f1a8d1717ebed60058363d593f098c",
+    "rawBytes": 350
+  },
+  "official-csi-amd64-config.json": {
+    "stored": "official-csi-amd64-config.json",
+    "rawSha256": "148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24",
+    "rawBytes": 1861
+  },
+  "official-csi-amd64-manifest.json": {
+    "stored": "official-csi-amd64-manifest.json",
+    "rawSha256": "e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e",
+    "rawBytes": 1158
+  },
+  "official-csi-arm64-config.json": {
+    "stored": "official-csi-arm64-config.json",
+    "rawSha256": "17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa",
+    "rawBytes": 1865
+  },
+  "official-csi-arm64-manifest.json": {
+    "stored": "official-csi-arm64-manifest.json",
+    "rawSha256": "2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5",
+    "rawBytes": 1158
+  },
+  "official-csi-index.json": {
+    "stored": "official-csi-index.json",
+    "rawSha256": "459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+    "rawBytes": 1079
+  },
+  "owned-image-cleanup-amd64.txt": {
+    "stored": "owned-image-cleanup-amd64.txt.gz",
+    "rawSha256": "5ce68b08b0a25789213c2e5dcca2a7696866f2389947fa36aa8ec400711be331",
+    "rawBytes": 596
+  },
+  "owned-image-cleanup-arm64.txt": {
+    "stored": "owned-image-cleanup-arm64.txt.gz",
+    "rawSha256": "784ff8e09749f6211bf2e6c3c9d74fc2376cfa5751344fe6dd35ceb9d560482a",
+    "rawBytes": 515
+  },
+  "raw-metadata-review.json": {
+    "stored": "raw-metadata-review.json",
+    "rawSha256": "4c0a521a1a80e476cb024af32683a80400ac9be21a4d1f3b557c7b9ee6b1c6a1",
+    "rawBytes": 4607
+  },
+  "review.json": {
+    "stored": "review.json",
+    "rawSha256": "5d3468619a96cd1d8188e960b5956ddc7a3116fce0fe42e1c5ad7b8662a85dcc",
+    "rawBytes": 10451
+  },
+  "sbom.stderr.txt": {
+    "stored": "sbom.stderr.txt.gz",
+    "rawSha256": "83d5d0e1f672943a127e0c45326ab0af324387989f7c788b866ebe71d4cc1db3",
+    "rawBytes": 391
+  },
+  "sbom.stdout.jsonl": {
+    "stored": "sbom.stdout.jsonl.gz",
+    "rawSha256": "fc889c96e0ec2f0407d9380c800d11c71de7d2ba8166088cf6037c89a7912db9",
+    "rawBytes": 1849790
+  },
+  "signature.stderr.txt": {
+    "stored": "signature.stderr.txt.gz",
+    "rawSha256": "83d5d0e1f672943a127e0c45326ab0af324387989f7c788b866ebe71d4cc1db3",
+    "rawBytes": 391
+  },
+  "signature.stdout.jsonl": {
+    "stored": "signature.stdout.jsonl.gz",
+    "rawSha256": "dfbf2f27823bbf656115c32f9b1ebd43b9438a35cf6b40016ef21f77037ed692",
+    "rawBytes": 627
+  },
+  "source-patch.sha256": {
+    "stored": "source-patch.sha256",
+    "rawSha256": "39bdf89a159992f97c608c6dcd95e3c44b035fe53adf3ff598282de0e7cbfe29",
+    "rawBytes": 103
+  }
+}

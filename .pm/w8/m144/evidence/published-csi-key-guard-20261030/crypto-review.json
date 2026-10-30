@@ -1,0 +1,60 @@
+{
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "source": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "cosign_version": "v3.1.4",
+  "strict_identity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+  "strict_issuer": "https://token.actions.githubusercontent.com",
+  "strict_workflow_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "signature_verified": true,
+  "spdx_attestation_verified": true,
+  "verified_signature_count": 2,
+  "sbom_summaries": [
+    {
+      "spdx_version": "SPDX-2.3",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-operator",
+          "digest": {
+            "sha256": "e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c"
+          }
+        }
+      ],
+      "package_count": 84,
+      "package_architecture_qualifiers": [
+        "amd64",
+        "x86_64"
+      ],
+      "filesystem_packages": [
+        {
+          "name": "blkid",
+          "version": "2.42.1-r0"
+        },
+        {
+          "name": "cryptsetup",
+          "version": "2.8.6-r0"
+        },
+        {
+          "name": "device-mapper-libs",
+          "version": "2.03.35-r3"
+        },
+        {
+          "name": "e2fsprogs",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "e2fsprogs-extra",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "libblkid",
+          "version": "2.42.1-r0"
+        },
+        {
+          "name": "libuuid",
+          "version": "2.42.1-r0"
+        }
+      ]
+    }
+  ],
+  "sbom_scope": "Factory invokes Syft once for the multiarch index without a --platform argument; architecture qualifiers above describe the actual package inventory. Two runtime child manifests are separately verified and probed."
+}

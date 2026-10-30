@@ -1,0 +1,168 @@
+{
+  "files": {
+    "official-csi-amd64-manifest.json": {
+      "bytes": 1158,
+      "sha256": "e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e"
+    },
+    "candidate-arm64-config.json": {
+      "bytes": 2558,
+      "sha256": "1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e"
+    },
+    "anonymous-arm64-driver-help.txt.gz": {
+      "bytes": 163,
+      "sha256": "9e667648cba803e5f682b4a59da653b4e56983c58f3fb36dd3dfef06023b30d4"
+    },
+    "candidate-index.json": {
+      "bytes": 1609,
+      "sha256": "e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c"
+    },
+    "anonymous-arm64-dumpe2fs-version.txt.gz": {
+      "bytes": 81,
+      "sha256": "4abeb7755f2ebb22f416bc7558e4f7af12a8e1e6b50d1e00ecfad1193cc01f31"
+    },
+    "ARCHIVE_PATHS.json": {
+      "bytes": 6461,
+      "sha256": "3be5971f7691e459a507efc5f1af478db0b7698698f5f0db5ef7f7f9594b882f"
+    },
+    "candidate-amd64-manifest.json": {
+      "bytes": 1247,
+      "sha256": "70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f"
+    },
+    "owned-image-cleanup-arm64.txt.gz": {
+      "bytes": 315,
+      "sha256": "3acf77a283f3e10606d77bed41bd25eab34456a6c99171c3d5b17731f8f4e89b"
+    },
+    "anonymous-amd64-dumpe2fs-version.txt.gz": {
+      "bytes": 81,
+      "sha256": "4abeb7755f2ebb22f416bc7558e4f7af12a8e1e6b50d1e00ecfad1193cc01f31"
+    },
+    "official-csi-arm64-manifest.json": {
+      "bytes": 1158,
+      "sha256": "2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5"
+    },
+    "anonymous-pull-arm64.jsonl.gz": {
+      "bytes": 1715,
+      "sha256": "460fda1b92ef21bd078590e49d1224d15b68ebaca759cb51101b01d7156045d1"
+    },
+    "official-csi-arm64-config.json": {
+      "bytes": 1865,
+      "sha256": "17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa"
+    },
+    "anonymous-arm64-cryptsetup-version.txt.gz": {
+      "bytes": 82,
+      "sha256": "262223b35b62d92249f6556d225377fe017dd52c7e495107d1a65539b2894dcc"
+    },
+    "reviewer-manifest.json": {
+      "bytes": 4714,
+      "sha256": "8c9f53cc2aacd7bf06f62265558a5318583763eadac1e8b3015cfe3c69200dae"
+    },
+    "source-patch.sha256": {
+      "bytes": 103,
+      "sha256": "39bdf89a159992f97c608c6dcd95e3c44b035fe53adf3ff598282de0e7cbfe29"
+    },
+    "raw-metadata-review.json": {
+      "bytes": 4607,
+      "sha256": "4c0a521a1a80e476cb024af32683a80400ac9be21a4d1f3b557c7b9ee6b1c6a1"
+    },
+    "candidate-arm64-manifest.json": {
+      "bytes": 1247,
+      "sha256": "dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e"
+    },
+    "pin-unit.log.gz": {
+      "bytes": 54,
+      "sha256": "65bdc770132a1c5e0dc22f1b7dcbe9b2a2733be88d501f674e7f1ecdc186a804"
+    },
+    "signature.stderr.txt.gz": {
+      "bytes": 266,
+      "sha256": "20cc8ffec79204d7f5c4b56e4444ab8ac69dd9a6220bc4465276d0ff615b1974"
+    },
+    "README.md": {
+      "bytes": 1353,
+      "sha256": "c5b3ecaec8f9903a87e1b04b5a30ba9a291991ec57a6430a3e4c3c2d14094a96"
+    },
+    "sbom.stdout.jsonl.gz": {
+      "bytes": 280556,
+      "sha256": "47cc7114f80c0d2c4f82e05a8ba68172f0b905de43b87b592e2c43dc19c49ae4"
+    },
+    "anonymous-amd64-blkid-help.txt.gz": {
+      "bytes": 916,
+      "sha256": "576f330645c3809c524b45a8f5a7a0030c5225a36b644c99729a7d4d89594bfe"
+    },
+    "anonymous-amd64-cryptsetup-version.txt.gz": {
+      "bytes": 82,
+      "sha256": "262223b35b62d92249f6556d225377fe017dd52c7e495107d1a65539b2894dcc"
+    },
+    "signature.stdout.jsonl.gz": {
+      "bytes": 233,
+      "sha256": "3b596d6503521c696209a0749b2b2c10b6a0501ddbbdf3ce707b0ef4ad5b1897"
+    },
+    "pin-validation.json": {
+      "bytes": 289,
+      "sha256": "c90edd0a10cd10ec60494d1bf5d469fa4242add8db353e45906861f2ad4449e3"
+    },
+    "actual-kernel-step.log.gz": {
+      "bytes": 1101,
+      "sha256": "08996ded87eb50e96cf993617cf8e8cc167b54429184459b064aed31c30c32f9"
+    },
+    "official-csi-amd64-config.json": {
+      "bytes": 1861,
+      "sha256": "148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24"
+    },
+    "sbom.stderr.txt.gz": {
+      "bytes": 266,
+      "sha256": "20cc8ffec79204d7f5c4b56e4444ab8ac69dd9a6220bc4465276d0ff615b1974"
+    },
+    "anonymous-amd64-driver-help.txt.gz": {
+      "bytes": 163,
+      "sha256": "9e667648cba803e5f682b4a59da653b4e56983c58f3fb36dd3dfef06023b30d4"
+    },
+    "factory-run.json": {
+      "bytes": 350,
+      "sha256": "80ea7119c1240466c8c56085efaff3ed07f1a8d1717ebed60058363d593f098c"
+    },
+    "anonymous-arm64-blkid-help.txt.gz": {
+      "bytes": 916,
+      "sha256": "576f330645c3809c524b45a8f5a7a0030c5225a36b644c99729a7d4d89594bfe"
+    },
+    "anonymous-probes.json": {
+      "bytes": 2727,
+      "sha256": "08623d8b3f5886d88484bac38f990aced59218e5718b408a4b8f006e1c1f2e62"
+    },
+    "review.json": {
+      "bytes": 10451,
+      "sha256": "5d3468619a96cd1d8188e960b5956ddc7a3116fce0fe42e1c5ad7b8662a85dcc"
+    },
+    "anonymous-pull-amd64.jsonl.gz": {
+      "bytes": 2350,
+      "sha256": "ed082210e488d3aa74f946f3f03540b5e0ed336cddf67783a0913867357e645c"
+    },
+    "official-csi-index.json": {
+      "bytes": 1079,
+      "sha256": "459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664"
+    },
+    "factory-job.json": {
+      "bytes": 4520,
+      "sha256": "cde8a0e365ae14ffae5b9d5037cb99af90b5b493551b48e5e8f54e64c92dde21"
+    },
+    "owned-image-cleanup-amd64.txt.gz": {
+      "bytes": 352,
+      "sha256": "074291b0b5756684ee7b92b34528a05a9aa9fff4fa0930fac6689625bf89a4b7"
+    },
+    "signature.json": {
+      "bytes": 789,
+      "sha256": "2e2230444f4b202b37138516a5c4aa6d50f2cd64f37e8acd114e2497579940d6"
+    },
+    "crypto-review.json": {
+      "bytes": 1832,
+      "sha256": "ae94712dba5b709f8241234a71fefdee914c07af484eff4d6e46be30032258f9"
+    },
+    "candidate-amd64-config.json": {
+      "bytes": 2555,
+      "sha256": "b5bd2dd0f9bca3832958ed602bd1a6bf4302cda9554855a3711824436e9a798c"
+    },
+    "pin-protocol.log.gz": {
+      "bytes": 113,
+      "sha256": "6860a708ecfbedbfca1b00b851df168eb811eddcf9e08331b88032a344fd44f8"
+    }
+  }
+}

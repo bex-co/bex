@@ -1,0 +1,12 @@
+{
+  "conclusion": "success",
+  "created_at": "2026-10-30T14:26:24Z",
+  "event": "push",
+  "head_branch": "main",
+  "head_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "html_url": "https://github.com/bex-co/bex/actions/runs/41071547850",
+  "id": 41071547850,
+  "run_attempt": 1,
+  "status": "completed",
+  "updated_at": "2026-10-30T15:31:57Z"
+}

@@ -84,3 +84,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Tenant isolation and cleanup preparation verified — 2026-10-30
 
 [Actual small local tenant/device checks](evidence/tenant-device-isolation-20261030/README.md) pass for capless and Render capabilities with ordinary-write controls, unchanged two-volume geometry/sentinels and exact owned cleanup. [The private release/cleanup gates](evidence/private-release-and-cleanup-gates-20261030/README.md) pass25 guard cases and9 watchdog tests, reject the old CSI guard source and retain the unarmed timer’s reviewed timeout/reconciliation fixes. Actual new image factories/adoption, queue fit and paid lifecycle acceptance remain open.
+
+## New CSI guard image qualified and pinned — 2026-10-30
+
+[The new factory and independent artifact review](evidence/published-csi-key-guard-20261030/README.md) qualify `e9516afe…` at exact key-refusal source `15ed18b94…`, with the real kernel test, strict signature/source checks and successful anonymous executions on both architectures. The signed SBOM covers amd64 only, stated explicitly. Both controller/node source pins now select the new image. Its scoped live rollout is next; the paid fixture remains gated on actual CSI adoption and the separately qualified platform release.
