@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
 	"time"
 
@@ -33,7 +34,9 @@ const stripeLookupKeyLimit = 10
 // billable workspace. The emitter's store query excludes Mode A workspaces
 // before this method is reached, so excluded tenants get neither Customer nor
 // Subscription. List-before-create plus Stripe's idempotency key closes process
-// restarts and concurrent reconciles.
+// restarts and concurrent reconciles. An existing Subscription is brought up to
+// the current catalog by syncContractItems, so a dimension added to
+// pricing.yaml after the workspace subscribed is rated too.
 func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) error {
 	if err := c.EnsureCustomer(ctx, tenantID); err != nil {
 		return err
@@ -42,10 +45,10 @@ func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) erro
 	if !ok {
 		return fmt.Errorf("stripe: customer cache missing after ensure for workspace %s", tenantID)
 	}
-	if _, found, err := c.findSubscription(ctx, tenantID, customerID); err != nil {
+	if subscriptionID, found, err := c.findSubscription(ctx, tenantID, customerID); err != nil {
 		return err
 	} else if found {
-		return nil
+		return c.syncContractItems(ctx, tenantID, subscriptionID)
 	}
 
 	priceIDs, err := c.resolvePriceIDs(ctx)
@@ -254,6 +257,7 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 
 	lookupKeys := pricing.Default.BillableMeterNames()
 	found := make(map[string]string, len(lookupKeys))
+	meters := make(map[string]string, len(lookupKeys))
 	for chunk := range slices.Chunk(lookupKeys, stripeLookupKeyLimit) {
 		keys := make([]*string, 0, len(chunk))
 		for _, key := range chunk {
@@ -278,6 +282,7 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 				return nil, err
 			}
 			found[price.LookupKey] = price.ID
+			meters[price.ID] = price.Recurring.Meter
 		}
 		if err := iter.Err(); err != nil {
 			return nil, fmt.Errorf("stripe: list prices: %w", err)
@@ -295,8 +300,104 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 	c.mu.Lock()
 	if len(c.priceIDs) == 0 {
 		c.priceIDs = slices.Clone(priceIDs)
+		c.priceMeters = meters
 	}
 	out := slices.Clone(c.priceIDs)
 	c.mu.Unlock()
 	return out, nil
+}
+
+// syncContractItems brings an existing Subscription up to the active catalog
+// (w2/m171). EnsureContract attaches every Price only when it creates a
+// Subscription. Without this, a dimension added to pricing.yaml later (the
+// 1c-2g / pro-4gb / basic-4gb Postgres plans) was metered for existing
+// workspaces but never rated on their invoices.
+//
+// Matching is by Stripe meter, not Price id. A repriced dimension keeps its
+// meter and gets a new Price, so a Subscription still on the retired Price
+// already rates that meter, and adding the new Price beside it would bill the
+// same usage twice. For each catalog Price whose meter no item rates, an item is
+// added with proration_behavior=none: metered usage has nothing to prorate and
+// is rated from the moment the item exists.
+//
+// An item on a retired Price is reported (log + metric), never swapped here.
+// The decision (t012) is that existing Subscriptions move at their next period.
+// Stripe's tool for an item change that takes effect at a period boundary is a
+// Subscription Schedule. But a schedule's phases declaratively re-apply
+// metadata, discounts and default payment settings at the transition, while bex
+// updates those directly on the Subscription: checkout binding clears the
+// pending-setup flag and sets the default card, and comp applies its coupon. A
+// schedule created now would replay stale values at the boundary. Swapping the
+// items in place would move the price mid-period, which is not what was
+// decided. So the swap stays an operator step (docs/runbooks/
+// stripe-billing-setup.md § Repricing a dimension). It is a price cut, so the
+// wait never overcharges anyone.
+//
+// The catalog is fixed for the process lifetime (embedded pricing.yaml, Price
+// ids resolved once), so a Subscription is synced at most once per process.
+func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscriptionID string) error {
+	c.mu.Lock()
+	done := c.syncedContracts[subscriptionID]
+	c.mu.Unlock()
+	if done {
+		return nil
+	}
+	priceIDs, err := c.resolvePriceIDs(ctx)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	meters := c.priceMeters
+	c.mu.Unlock()
+
+	listParams := &stripe.SubscriptionItemListParams{
+		ListParams:   stripe.ListParams{Limit: stripe.Int64(100)},
+		Subscription: stripe.String(subscriptionID),
+	}
+	listParams.Context = ctx
+	rated := map[string]string{} // meter → the Price id an item rates it with
+	iter := c.sc.SubscriptionItems.List(listParams)
+	for iter.Next() {
+		item := iter.SubscriptionItem()
+		if item.Price == nil || item.Price.Recurring == nil || item.Price.Recurring.Meter == "" {
+			continue
+		}
+		rated[item.Price.Recurring.Meter] = item.Price.ID
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("stripe: list items of subscription %s for %s: %w", subscriptionID, tenantID, err)
+	}
+
+	for _, priceID := range priceIDs {
+		meter := meters[priceID]
+		if current, ok := rated[meter]; ok {
+			if current != priceID {
+				c.metrics.Operation("contract_retired_price", "pending")
+				log.Printf("billing: subscription %s (%s) rates meter %s with retired price %s, catalog price %s; move it at the next period (stripe-billing-setup runbook)",
+					subscriptionID, tenantID, meter, current, priceID)
+			}
+			continue
+		}
+		params := &stripe.SubscriptionItemParams{
+			Subscription:      stripe.String(subscriptionID),
+			Price:             stripe.String(priceID),
+			ProrationBehavior: stripe.String("none"),
+		}
+		params.Context = ctx
+		params.SetIdempotencyKey("bex-subscription-item-" + subscriptionID + "-" + priceID)
+		if _, err := c.sc.SubscriptionItems.New(params); err != nil {
+			c.metrics.Operation("contract_item_add", "error")
+			return fmt.Errorf("stripe: add price %s to subscription %s for %s: %w", priceID, subscriptionID, tenantID, err)
+		}
+		c.metrics.Operation("contract_item_add", "success")
+		rated[meter] = priceID
+	}
+
+	c.mu.Lock()
+	if c.syncedContracts == nil {
+		c.syncedContracts = map[string]bool{}
+	}
+	c.syncedContracts[subscriptionID] = true
+	c.mu.Unlock()
+	return nil
 }

@@ -142,6 +142,11 @@ type StripeClient struct {
 	mu        sync.Mutex
 	customers map[string]string // workspace id (tea-…) → Stripe customer id (cus_…)
 	priceIDs  []string          // complete active catalog, resolved once
+	// priceMeters maps each catalog price to its Stripe meter, resolved with
+	// priceIDs; syncedContracts holds Subscriptions already brought up to that
+	// catalog in this process (syncContractItems).
+	priceMeters     map[string]string
+	syncedContracts map[string]bool
 
 	billingEpoch          time.Time
 	compCouponID          string
