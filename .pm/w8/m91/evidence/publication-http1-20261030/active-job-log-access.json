@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-30T13:04:53.409607+00:00",
+  "run": 41043547006,
+  "active_job_id": 124022952060,
+  "active_job_name": "build (node-16-bookworm, node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8...",
+  "job_status": "in_progress",
+  "log_exit": 1,
+  "response_bytes": 215,
+  "stderr": "gh: HTTP 404\n"
+}
