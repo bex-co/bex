@@ -25,10 +25,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -342,5 +346,235 @@ func TestDiskCleanupDeletesTheSecretInATenantNamespace(t *testing.T) {
 	err := real.Get(context.Background(), client.ObjectKeyFromObject(leftover), &corev1.Secret{})
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("passphrase Secret should be gone after a detach, got %v", err)
+	}
+}
+
+func TestDiskFilesystemIntentGrowsWithoutRotatingPassphrase(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := diskApp("bounded", &appv1alpha1.DiskSpec{SizeGB: 1})
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
+	ctx := context.Background()
+	if err := r.reconcileDisk(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}
+	initial := &corev1.Secret{}
+	if err := cl.Get(ctx, key, initial); err != nil {
+		t.Fatal(err)
+	}
+	passphrase := initial.StringData[diskLUKSSecretKey]
+	if string(initial.Data[diskFilesystemBytesKey]) != "1073741824" {
+		t.Fatalf("initial capacity=%q", initial.Data[diskFilesystemBytesKey])
+	}
+	// Admission has accepted a 5Gi request; node intent may now rise to it.
+	if err := r.syncDiskFilesystemIntent(ctx, app, 5); err != nil {
+		t.Fatal(err)
+	}
+	grown := &corev1.Secret{}
+	if err := cl.Get(ctx, key, grown); err != nil {
+		t.Fatal(err)
+	}
+	if string(grown.Data[diskFilesystemBytesKey]) != "5368709120" || grown.StringData[diskLUKSSecretKey] != passphrase {
+		t.Fatal("grow failed to retain passphrase and raise logical capacity")
+	}
+	// A stale admitted-PVC read cannot lower a previously accepted bound.
+	if err := r.syncDiskFilesystemIntent(ctx, app, 1); err != nil {
+		t.Fatal(err)
+	}
+	after := &corev1.Secret{}
+	if err := cl.Get(ctx, key, after); err != nil {
+		t.Fatal(err)
+	}
+	if string(after.Data[diskFilesystemBytesKey]) != "5368709120" || after.ResourceVersion != grown.ResourceVersion {
+		t.Fatal("stale reconcile lowered or rewrote converged intent")
+	}
+}
+
+func TestDiskPassphraseRefusesMissingKeyInsteadOfProvisioningPlaintext(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := diskApp("missing-key", &appv1alpha1.DiskSpec{SizeGB: 1})
+	broken := &corev1.Secret{}
+	broken.Name = diskLUKSSecretName(app.Name)
+	broken.Namespace = app.Namespace
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, broken).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
+	if err := r.ensureDiskPassphrase(context.Background(), app); err == nil {
+		t.Fatal("accepted disk Secret without LUKS key")
+	}
+	after := &corev1.Secret{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(broken), after); err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Data) != 0 || len(after.StringData) != 0 {
+		t.Fatal("damaged Secret was overwritten")
+	}
+}
+
+func TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth(t *testing.T) {
+	for _, tc := range []struct {
+		name                    string
+		expandable, quotaDenied bool
+		wantGB                  int32
+		wantReason              string
+	}{
+		{name: "quota refusal", expandable: true, quotaDenied: true, wantGB: 1, wantReason: "StorageBlockedByQuota"},
+		{name: "nonexpandable class", wantGB: 1, wantReason: "StorageClassNotExpandable"},
+		{name: "accepted grow inside provider floor", expandable: true, wantGB: 5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			scheme := runtime.NewScheme()
+			if err := corev1.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			if err := storagev1.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			if err := appv1alpha1.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			app := diskApp("admitted-grow", &appv1alpha1.DiskSpec{SizeGB: 1, MountPath: "/var/data"})
+			class := &storagev1.StorageClass{}
+			class.Name = "bounded"
+			class.AllowVolumeExpansion = new(tc.expandable)
+			pvc := &corev1.PersistentVolumeClaim{}
+			pvc.Name = diskPVCName(app.Name)
+			pvc.Namespace = app.Namespace
+			pvc.Spec.StorageClassName = new(class.Name)
+			pvc.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: diskQuantity(1)}
+			pvc.Status.Phase = corev1.ClaimBound
+			pvc.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: diskQuantity(10)}
+			admittedGrow := false
+			patchAttempts := 0
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, class, pvc).WithStatusSubresource(app, pvc).WithInterceptorFuncs(interceptor.Funcs{
+				Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+					if claim, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+						patchAttempts++
+						if pvcRequestedStorageGB(claim) != 5 {
+							t.Fatalf("expander did not request 5Gi: %+v", claim.Spec.Resources)
+						}
+						if tc.quotaDenied {
+							return apierrors.NewForbidden(schema.GroupResource{Resource: "persistentvolumeclaims"}, claim.Name, fmt.Errorf("exceeded quota: tenant-quota"))
+						}
+						if err := c.Patch(ctx, obj, patch, opts...); err != nil {
+							return err
+						}
+						admittedGrow = true
+						return nil
+					}
+					return c.Patch(ctx, obj, patch, opts...)
+				},
+				Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+					if secret, ok := obj.(*corev1.Secret); ok && string(secret.Data[diskFilesystemBytesKey]) == "5368709120" && !admittedGrow {
+						t.Fatal("authorized node growth before PVC admission")
+					}
+					return c.Update(ctx, obj, opts...)
+				},
+			}).Build()
+			r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
+			if err := r.reconcileDisk(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			app.Spec.Disk.SizeGB = 5
+			if err := cl.Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := r.reconcileDisk(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantReason != "" {
+				assertDiskGrowthBlocked(t, app, tc.wantReason)
+			}
+			if tc.quotaDenied && patchAttempts != 1 {
+				t.Fatalf("quota fixture did not exercise failed mutated-PVC patch: %d", patchAttempts)
+			}
+			if !tc.expandable && patchAttempts != 0 {
+				t.Fatalf("nonexpandable class reached patch: %d", patchAttempts)
+			}
+			stored := &corev1.PersistentVolumeClaim{}
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(pvc), stored); err != nil {
+				t.Fatal(err)
+			}
+			if pvcRequestedStorageGB(stored) != tc.wantGB {
+				t.Fatalf("persisted PVC request=%d want %d", pvcRequestedStorageGB(stored), tc.wantGB)
+			}
+			// A later remount/reconcile sees the same rejected App desired/status,
+			// but the CSI node's Secret still authorizes only the admitted request.
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			fresh := &appv1alpha1.App{}
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), fresh); err != nil {
+				t.Fatal(err)
+			}
+			if err := r.reconcileDisk(ctx, fresh); err != nil {
+				t.Fatal(err)
+			}
+			secret := &corev1.Secret{}
+			if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}, secret); err != nil {
+				t.Fatal(err)
+			}
+			wantBytes := fmt.Sprint(int64(tc.wantGB) << 30)
+			if got := string(secret.Data[diskFilesystemBytesKey]); got != wantBytes {
+				t.Fatalf("subsequent remount authorized %s bytes, want admitted %s", got, wantBytes)
+			}
+		})
+	}
+}
+
+// assertDiskGrowthBlocked checks both the refusal and the deliberately larger
+// desired status used by the subsequent-remount regression.
+func assertDiskGrowthBlocked(t *testing.T, app *appv1alpha1.App, reason string) {
+	t.Helper()
+	condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+	if condition == nil || condition.Reason != reason {
+		t.Fatalf("blocked condition=%+v, want %s", app.Status.Conditions, reason)
+	}
+	if app.Status.Disk == nil || app.Status.Disk.AllocatedSizeGB != 5 {
+		t.Fatal("regression fixture must retain desired status even after refusal")
+	}
+}
+
+func TestDiskCreateRefusedByQuotaPublishesNoFilesystemIntent(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := diskApp("quota-create", &appv1alpha1.DiskSpec{SizeGB: 5})
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithInterceptorFuncs(interceptor.Funcs{
+		Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			if _, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+				return apierrors.NewForbidden(schema.GroupResource{Resource: "persistentvolumeclaims"}, obj.GetName(), fmt.Errorf("exceeded quota: tenant-quota"))
+			}
+			return c.Create(ctx, obj, opts...)
+		},
+	}).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
+	if err := r.reconcileDisk(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	secret := &corev1.Secret{}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}, secret); err != nil {
+		t.Fatal(err)
+	}
+	if len(secret.Data[diskFilesystemBytesKey]) != 0 || len(secret.Data[diskFilesystemModeKey]) != 0 {
+		t.Fatal("unadmitted disk create authorized a node filesystem")
 	}
 }

@@ -1,0 +1,21 @@
+# Service disks with a requested-size ext4 boundary inside the existing LUKS
+# device. The reviewed bex hcloud-CSI derivative must be running on every node
+# and controller before BEX_DISK_STORAGE_CLASS selects this class (w8/m144).
+# Existing claims keep hcloud-volumes-luks; StorageClass/CSI handles are immutable.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hcloud-volumes-luks-bounded
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+provisioner: csi.hetzner.cloud
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  boundedFilesystem: ext4-v1
+  csi.storage.k8s.io/node-publish-secret-name: ${pvc.name}-luks
+  csi.storage.k8s.io/node-publish-secret-namespace: ${pvc.namespace}
+  csi.storage.k8s.io/node-expand-secret-name: ${pvc.name}-luks
+  csi.storage.k8s.io/node-expand-secret-namespace: ${pvc.namespace}

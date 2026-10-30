@@ -1,13 +1,13 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001 done; bounded CSI derivative/publication/rollout in progress
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Verify a LUKS-compatible capacity mechanism](t001.md) | 45m | — |
-| t002 | [Supply the trusted quota helper and constrained reconciliation](t002.md) | 80m | t001 |
+| t001 | [Verify a LUKS-compatible capacity mechanism](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Publish bounded CSI and converge logical intent](t002.md) | 80m | t001 |
 | t003 | [Handle existing disks and accept real grow/remount behavior](t003.md) | 60m | t002 |
 | t004 | [Render parity across every disk surface](t004.md) | 20m | t003 |
 | t005 | [Simplify the capacity mechanism](t005.md) | 15m | t004 |
