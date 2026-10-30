@@ -1,0 +1,9 @@
+# Actual platform and CSI readiness — 2026-10-30
+
+The completed scoped CSI rollout observes the qualified e9516afe… driver Ready on one controller and all eleven node pods. The actual fixed installer command precedes the readiness JSON; the exact reviewed validator rejects old-image or terminating release pods and requires desired/Ready counts to agree. The run and cluster job succeeded. API step metadata is incomplete, so the receipt explicitly derives success from the reviewed command, validated stdout and successful job, rather than inventing a step status.
+
+That job's selected pre-Helm inventory already observes the signed a544bb8a… platform on both API pods and the manager, with actual imageIDs, Ready/running states and converged generations. The manager globally selects the bounded class. Root checked the actual class fields against the committed contract. Both original legacy bindings/handles and class projections remain preserved in the pre-upgrade comparison; PV metadata.uid lifetime and post-upgrade foreign filesystem state are not claimed. The separately requested post-CSI inventory41107548122 remains pending.
+
+The small selected archive preserves raw reviewed JSON/output and its manifest; the full38,001-byte job log remains private0600 with SHA recorded. Canonical receipts preserve the pre-Helm/post-Helm chronology. The existing private bounded-CSI release subcheck passes against these real artifacts and the earlier strict signature/source/patch proof. The first local invocation omitted its repository argument and was corrected; no production action came from that local check.
+
+Fresh CI queue fit, the original owned 1Gi hard-full/online5Gi lifecycle, every authoring/metrics/billing surface and cleanup remain open. No paid fixture or complete release gate was created here.

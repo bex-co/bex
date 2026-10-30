@@ -1,0 +1,19 @@
+{
+  "image": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "source_commit": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "patch_sha256": "035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec",
+  "signature_verification": {
+    "exit_code": 0,
+    "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+    "oidc_issuer": "https://token.actions.githubusercontent.com",
+    "workflow_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+    "receipt": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/published-csi-key-guard-20261030/signature.json",
+      "sha256": "2e2230444f4b202b37138516a5c4aa6d50f2cd64f37e8acd114e2497579940d6"
+    }
+  },
+  "ready_rollout_receipt": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-release-ready-20261030/csi-ready.json",
+    "sha256": "64341376e2d26900a9b0dcf4029505ad6f11fde532776aef4063b34239284361"
+  }
+}
