@@ -39,8 +39,6 @@ An adoption-only change to `native.go` compares equal publishing inputs and skip
 
 The eleven frozen Brotli backport lines publish first, retaining their reviewed order. All other reviewed lines remain queued behind them and use the same checks.
 
-The publisher pins Cosign 3.1.4 and explicitly uses its official TUF-derived Rekor v2 signing configuration. Rekor records signed PAE hashes while complete SPDX and Trivy predicates remain in their signed OCI bundles. This supports compiler-sized native SBOMs without dropping package/file inventory or disabling transparency verification. GitHub OIDC identity, source revision and all runtime/scan gates remain required.
-
 ## Recovering a completed build
 
 Full utility images contain compiler-sized ELF files; each architecture gets a bounded 20-minute Trivy analysis budget. Scanning, findings, both architecture checks and signing remain mandatory. Registry login retries transport failures at most three times, with a 60-second bound per attempt, and always removes the job credential afterward.
