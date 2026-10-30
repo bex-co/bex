@@ -167,7 +167,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m69** — [Preserve native cron startup semantics](done/m69/README.md) (6 tasks, 2h50m) Sweep302:24 focused source passes; both fresh live runs still fail in /bin/sh, native logs confirm; all own fixtures cleaned. — **DONE 2026-10-29** (paid two-client hosted replay passes on pin b33dd43c4428)
 
-- [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED (2026-10-15: t001–t003, t005, t006 done — backend and dashboard keep nonblank build/start/pre-deploy/cron/hook command text byte for byte (whitespace-only still clears) with failing-first REST/GraphQL/MCP/Blueprint/dashboard regressions; upstream CLI patch + request-construction regressions prepared in `blocked/m68/evidence/t001-upstream/upstream-command-text.patch`. Needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the deployed fix for the hosted two-client `7461696c20` replay with cleanup (t004/t007))** Sweep299:41 focused source passes; live API pre-deploy still executes the shortened argument, both native readers confirm; own fixture cleaned.
+- [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED（2026-10-29）：** [upstream #75](https://github.com/render-oss/cli/pull/75) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED（2026-10-29 复核）：** t001–t006 done；等用户发起 `$release cli`，再做 published-binary 验收，latest v0.3.3 早于本项新变更。
 
@@ -183,12 +183,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m61** — [Honor application PATH during native builds](done/m61/README.md) (8 tasks,230m) — **DONE 2026-10-15:** prior native helper/image fixes plus sweep289 four-case pre-deploy live acceptance and complete cleanup; direct output and surface limits recorded.
 
-- [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
+- [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED（2026-10-29）：** [upstream #73](https://github.com/render-oss/cli/pull/73) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **m58** — [Preserve Unicode matches in log history](done/m58/README.md) — **DONE 2026-10-13** (fixes t001 + t007 `8fb0afa1a`; live App/saturated/KV/PG receipts, REST/GraphQL/MCP agreement; live GraphQL/dashboard and saturated managed-data recorded as boundaries)
 - [x] **m59** — [Return static sites to direct publication after clearing their build command](done/m59/README.md) — **DONE 2026-10-29** (dashboard clear live-accepted on pin b33dd43c4428)
 
-- [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
+- [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED（2026-10-29）：** [upstream #72](https://github.com/render-oss/cli/pull/72) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **m56** — [Publish complete service settings before rolling a release](done/m56/README.md) (7 tasks; 4h15m) ← functional CLI QA, 2026-10-10; both clients execute a cleared pre-deploy command during a successful compound save.
 
@@ -611,7 +611,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **119** — [Env-group tombstones accumulate forever and every scan still reads them](done/119.md) — **CLOSED AS ALREADY MET (2026-10-18):** m114 removed the scan and fences; final cutover code removed in `2bd432ac2`, value-only real-store coverage added in `0f456f069`; findings preserved as superseded history
 
-- [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
+- [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED（2026-10-29）：** [upstream #59](https://github.com/render-oss/cli/pull/59) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **117** — [Native Ruby enforces committed dependency locks](done/117.md) (55m, major) — **DONE 2026-10-17:** both original stale first builds correctly reject without prefix; matched-lock-only replacements Live with exact locked gem and six HTTP200 responses, shared reads and full cleanup (sweep417).
 
@@ -629,12 +629,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](done/109.md) — **DONE 2026-10-15:** hosted sweep324 accepts the bulk short route, atomic value refusal and strict single-key/unknown/method neighbors; shared value readbacks and exact unlinked-group cleanup pass.
 
-- [ ] **108** — [Same-type clones silently ignore explicit empty overrides](blocked/108.md) — **BLOCKED (2026-10-15: upstream patch + clone regressions prepared in `evidence/108/upstream/108-upstream.patch` (stacked variant for m68+075); needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client live empty-override clone replay with cleanup; no fork/request repair per DO_NOT_DO)** Sweep292 adds137 local applicability/control captures; same issue and estimate.
-- [ ] **107** — [A valid output flag cannot override an invalid output default](blocked/107.md) — **BLOCKED (2026-10-15: upstream root-init patch + real-detector regression prepared in `evidence/107/upstream-output-priority.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the sweep279 native replays; no fork/bridge workaround per DO_NOT_DO)**
+- [ ] **108** — [Same-type clones silently ignore explicit empty overrides](blocked/108.md) — **BLOCKED（2026-10-29）：** [upstream #75](https://github.com/render-oss/cli/pull/75) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
+- [ ] **107** — [A valid output flag cannot override an invalid output default](blocked/107.md) — **BLOCKED（2026-10-29）：** [upstream #71](https://github.com/render-oss/cli/pull/71) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **106** — [Served deploys settle Live after auto-hibernation](done/106.md) — **DONE2026-10-15:** sweep287 passes the parked two-client live gate with exact-owned cleanup; source fix and regressions already landed.
 
-- [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](blocked/103.md) — **BLOCKED (2026-10-14: upstream parser patch + regressions prepared in `evidence/103/upstream-secret-file-path.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the twelve native receipts; no fork/backend workaround per DO_NOT_DO)**
+- [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](blocked/103.md) — **BLOCKED（2026-10-29）：** [upstream #61](https://github.com/render-oss/cli/pull/61) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **102** — [Blueprint environment copies use a literal shadowed by a reference](done/102.md) — **DONE 2026-10-13** (fix `13a2fd5eb`; sweep212 16-case native matrix passes; DeployStack zero-write and GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
@@ -651,11 +651,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](done/095.md) — **DONE 2026-10-15 UTC:** sweep263 accepts actual group-only first/reapply, presence/no-op/invalid controls,36 decisive native validations and exact cleanup; deployed revision unknown.
 - [x] **094** — [Blueprint plans call an existing environment group a create when its name is padded](done/094.md) — **DONE 2026-10-15 UTC:** sweep261 accepts48 native current-state validation cases with full plan captures, controls and exact owned-group cleanup; deployed revision unknown.
 
-- [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`093-upstream.patch`](blocked/093-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED（2026-10-29）：** [upstream #70](https://github.com/render-oss/cli/pull/70) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **092** — [Blueprint parser loses explicit empty env-value presence](done/092.md) — **DONE 2026-10-13** (fix `a7f6c1531`; sweep207 44-check native matrix passes; empty seed seeded once and retained through DeployStack; hosted apply and non-REST surfaces recorded as boundaries)
 
-- [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED（2026-10-29）：** [upstream #69](https://github.com/render-oss/cli/pull/69) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **090** — [CLI Dashboard opens a relative path from a fresh config](done/090.md) — **DONE 2026-10-29:** signature-verified published v0.3.3 passes 12 native menu/config cases, 12 shared links, and authenticated browser arrival; own sessions/configs cleaned.
 
@@ -663,29 +663,29 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **088** — [Git source changes retain image runtime metadata and break CLI cloning](done/088.md) — **DONE 2026-10-15** (fix `17a128ed8`; sweep252 both native clients save/clone/deploy successfully, HTTP200, shared projections/exports agree, four-kind source controls pass; all fixtures cleaned)
 
-- [ ] **087** — [Clearing a datastore project filter leaves its active scope in place](blocked/087.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`087-upstream.patch`](blocked/087-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **087** — [Clearing a datastore project filter leaves its active scope in place](blocked/087.md) — **BLOCKED（2026-10-29）：** [upstream #68](https://github.com/render-oss/cli/pull/68) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
-- [ ] **086** — [Empty project filters show every workspace resource](blocked/086.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`086-upstream.patch`](blocked/086-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **086** — [Empty project filters show every workspace resource](blocked/086.md) — **BLOCKED（2026-10-29）：** [upstream #67](https://github.com/render-oss/cli/pull/67) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
-- [ ] **085** — [Interactive datastore errors omit their underlying detail](blocked/085.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`085-upstream.patch`](blocked/085-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **085** — [Interactive datastore errors omit their underlying detail](blocked/085.md) — **BLOCKED（2026-10-29）：** [upstream #66](https://github.com/render-oss/cli/pull/66) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
-- [ ] **084** — [Postgres restart reports success when the API refuses it](blocked/084.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`084-upstream.patch`](blocked/084-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **084** — [Postgres restart reports success when the API refuses it](blocked/084.md) — **BLOCKED（2026-10-29）：** [upstream #60](https://github.com/render-oss/cli/pull/60) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 - [x] **083** — [Refuse unsupported managed-data live tails before WebSocket upgrade](done/083.md) — **DONE 2026-10-15 UTC:** sweep259 accepts both native clients/families, twelve diagnostic transport refusals, historical/App-tail controls and exact cleanup; deployed revision unknown.
-- [ ] **082** — [Applying the CLI log filter silently removes fractional timestamp bounds](blocked/082.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`082-upstream.patch`](blocked/082-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **082** — [Applying the CLI log filter silently removes fractional timestamp bounds](blocked/082.md) — **BLOCKED（2026-10-29）：** [upstream #63](https://github.com/render-oss/cli/pull/63) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **081** — [Blueprint validation accepts port links to services with no network address](done/081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard. — **DONE 2026-10-10** (fix `5b91fcdab`; live two-client validation passed)
 
-- [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](blocked/079.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`079-upstream.patch`](blocked/079-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](blocked/079.md) — **BLOCKED（2026-10-29）：** [upstream #59](https://github.com/render-oss/cli/pull/59) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **078** — [Empty workspace flags bypass current-workspace name resolution](done/078.md) (55m) ← functional CLI QA, 2026-10-09; release and HEAD validation failures, exact offline captures across three commands; launcher fallback correction. — **DONE 2026-10-10** (launcher fix `1ccd5bed6`; live control passed; ships to users in the next CLI release)
 
-- [ ] **077** — [Repeated environment flags silently convert interior CRLF to LF](blocked/077.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`077-upstream.patch`](blocked/077-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **077** — [Repeated environment flags silently convert interior CRLF to LF](blocked/077.md) — **BLOCKED（2026-10-29）：** [upstream #62](https://github.com/render-oss/cli/pull/62) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
-- [ ] **076** — [Unicode descriptions hit a byte limit advertised as 255 characters](blocked/076.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`076-upstream.patch`](blocked/076-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
-- [ ] **075** — [Clones inherit fields forbidden by requested type/runtime](blocked/075.md) — **BLOCKED (2026-10-15: type + runtime/source-kind applicability patch prepared in `evidence/075/upstream-v2/075-upstream-v2.patch` (16 failing-first clone cases); Git-only root/build-filter/auto-deploy on native→image recorded as a remaining limitation; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and live two-client clone acceptance; no fork/server workaround per DO_NOT_DO)**
+- [ ] **076** — [Unicode descriptions hit a byte limit advertised as 255 characters](blocked/076.md) — **BLOCKED（2026-10-29）：** [upstream #65](https://github.com/render-oss/cli/pull/65) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
+- [ ] **075** — [Clones inherit fields forbidden by requested type/runtime](blocked/075.md) — **BLOCKED（2026-10-29）：** [upstream #74](https://github.com/render-oss/cli/pull/74) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 - [x] **074** — [Service secret-file upserts return 200 instead of the pinned 201](done/074.md) (35m) ← functional CLI QA + API-only diagnostics, 2026-10-09; actual pinned typed success result is absent. — **DONE 2026-10-10** (fix `1d95b6b8f`; live production check passed)
 - [x] **073** — [Empty secret-file responses omit required content](done/073.md) (55m) ← functional CLI QA + API-only diagnostics, 2026-10-09; mounted bytes and GraphQL pass, item/bulk response fields do not. — **DONE 2026-10-10** (fix `8cf443bcc`; live production check passed)
-- [ ] **072** — [Image cron command updates fail in the pinned upstream CLI](blocked/072.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`072-upstream.patch`](blocked/072-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **072** — [Image cron command updates fail in the pinned upstream CLI](blocked/072.md) — **BLOCKED（2026-10-29）：** [upstream #64](https://github.com/render-oss/cli/pull/64) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
 - [x] **071** — [Namespace prune shares m52's stale-snapshot shape](done/071.md) ← filed 2026-10-09 from w8/m52 t002 — **DONE 2026-10-09** (fresh `GetTenant` + UID-bound delete)
 - [ ] **070** — [Upstream `pgcli --help` advertises flags that real pgcli refuses](blocked/070.md) — **BLOCKED (2026-10-09: submitted as [render-oss/cli#57](https://github.com/render-oss/cli/pull/57); waiting on upstream review/merge and a release, then a Bex pin refresh + CLI release)**
@@ -788,7 +788,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 | 共同卡点 | 涉及全部 ID | 本轮结论 / 下一步 |
 | --- | --- | --- |
 | 共享原生基础镜像与精确 Python 安全修补 | w8/m91, w8/m93, w8/m94, w8/m95, w8/m96, w8/m97, w8/m98, w8/m99, w8/m100, w8/m101, w8/m102, w8/m103, w8/m107, w8/222 | 14 项恢复；按现有 parity 规则选共享 CI 镜像，逐项功能验收，不等可选偏离决定 |
-| 准备好的 CLI 上游补丁 | w8/m57, w8/m60, w8/m68, w8/072, w8/075, w8/076, w8/077, w8/079, w8/082, w8/084, w8/085, w8/086, w8/087, w8/091, w8/093, w8/103, w8/107, w8/108, w8/118 | 19 项仍 blocked；D2 仅待公开提交许可，随后逐项 fresh source / issue dedupe、测试、提交；合入/上游 release/CLI release 另有真实门槛 |
+| 准备好的 CLI 上游补丁 | w8/m57, w8/m60, w8/m68, w8/072, w8/075, w8/076, w8/077, w8/079, w8/082, w8/084, w8/085, w8/086, w8/087, w8/091, w8/093, w8/103, w8/107, w8/108, w8/118 | D2 已批准并实际提交 17 个 PR，覆盖全部 19 项；[清单/证据](evidence/upstream-d2-20261029/README.md)。继续等 upstream merge/release、Bex pin/release 和原验收。 |
 | 已提交、待上游交付 | w8/066, w8/067, w8/068, w8/070 | #54–#57 本次均 open / merged=false；无需重复请求提交许可 |
 | CLI 发布与验收 | w8/090, w8/m67, w8/m143 | 090 的修复在 v0.3.3，已恢复验收；m67/m143 新变更仍等用户明确 release |
 | 数据库扩展 rollout | w8/m92, w8/m104, w8/m109, w8/m110, w8/m111, w8/m112 | 6 项仍 blocked；供应镜像 + owner 按需 allowlist 由 parity 确定，只需专题决定既有库 operand/preload 重启的影响/窗口 |
@@ -822,3 +822,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## D2 已明确批准（2026-10-29）
 
 用户授权「approve to submit changes that are helpful」。19 项（m57、m60、m68、072、075、076、077、079、082、084、085、086、087、091、093、103、107、108、118）逐项审核最新 upstream main、测试后，仅向 render-oss/cli 提交通用有效的修复；已修复/重复/依据不足的跳过并留证据。提交所需的独立 fork 分支 commit/push 已获该指令授权，不涉及 bex main 提交或发布。PR 结果逐项写回原 blocked 卡片；上游尚未接受/发布不能标已交付。D3 仅在澄清测试位置，资源/短时付费/完整清理许可不重复询问。
+
+## D2 已提交完成（2026-10-29）
+
+- 用户明确批准的 19 个 ID 已全部审阅并提交为 17 个公开 PR（两组共享实现合并）。全部 remote head 与文件清单匹配已测试提交，均 open；[完整清单、补丁和验证](evidence/upstream-d2-20261029/README.md)。
+- 57 个开发包通过，新增 lint 为 0；上游原版完整 lint 的 92 项既有告警已在公开 PR 中注明。上游交付门槛仍然存在，本批卡片不标 done。
+- D3：已再次用白话说明，只需确认是否把临时测试库放到 tian-personal 的空名额。资源/短时最低付费升级/彻底清理许可早已记录，不重复询问；尚未建库、未改任何现有服务、数据库、workspace 或付款设置。本轮等待这个范围答案，未启动 D3 验收。

@@ -1,6 +1,6 @@
 # w8 · m68 — Preserve executable command text
 
-**Worker:** worker8 **Goal:** accepted build/start/pre-deploy/cron commands execute with the argument bytes the user authored. **Status:** blocked — t001–t003, t005, t006 done (upstream patch prepared; backend `commandText` + dashboard `commandText` shipped with regressions); t004/t007 need user-authorized render-oss/cli submission, upstream release, a Bex CLI pin/release and the deployed fix for hosted two-client proof
+**Worker:** worker8 **Goal:** accepted build/start/pre-deploy/cron commands execute with the argument bytes the user authored. **Status:** blocked — [upstream PR #75](https://github.com/render-oss/cli/pull/75) 已提交；等 upstream merge/release、Bex delivery 和原线上验收
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Preserve nonblank command flags in an upstream-ready change — **DONE** | 35m | — |
 | t002 | Preserve command text in shared backend writers — **DONE** | 45m | — |
 | t003 | Preserve command drafts in dashboard producers — **DONE** | 35m | — |
-| t004 | Render parity — **BLOCKED (upstream submission + Bex release + deploy)** | 25m | t001, t002, t003 |
+| t004 | Render parity — **BLOCKED: PR #75 submitted; upstream merge/release + Bex delivery + original acceptance** | 25m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 10m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t004 |
-| t007 | Closeout — **BLOCKED (t004 gates + hosted two-client replay)** | 15m | t005, t006 |
+| t007 | Closeout — **BLOCKED: PR #75 submitted; upstream merge/release + Bex delivery + original acceptance** | 15m | t005, t006 |
 
 ## Definition of done
 
@@ -51,3 +51,12 @@ Fresh upstream main remains28b233e, with the six inspected hosting files byte-id
 - **授权范围：** 在独立 upstream checkout 审核最新 main、去重、刷新补丁、补行为测试；必要的 fork 分支 commit/push 和向 render-oss/cli 提交 PR 是本次明确授权提交的组成部分。不修改/发布 bex 本仓库代码，不给 bex main 新增 commit/push 权限，不重复询问已给出的提交许可。
 - **判定：** 已修复或重复的附证据跳过；可证实通用缺陷且验证充分的提交最小修复；没有通用依据的保留说明，不把 bex 特有差异强推上游。公开内容只含通用复现、修复及测试，不带租户、凭据或生产私有日志。
 - **剩余：** 每项记录独立的 PR 链接、上游基线、测试/限制；提交不等于合入或发布，原 adoption / native / cleanup DoD 保留，仍受真实 upstream merge/release 门槛约束。
+
+## D2 已提交上游（2026-10-29，PR #75）
+
+- **结论来源：** 用户明确批准 D2 + 最新 upstream 源码复核、行为测试和本次实际提交。
+- **涉及 ID：** w8/m68, w8/108。[Preserve explicit service input during normalization](https://github.com/render-oss/cli/pull/75)，head `d391ee034a4eda43a55e0db187f050e8bbc8c506`，base `c31e586eb6f38138af3cc986b079e46a78c61de7`。
+- **验证：** 57 个开发包通过，新增代码 lint 为 0；完整 lint 的 92 项既有 main 告警未伪装成通过。新回归覆盖实际 parser / command / fake API / 子进程等对应行为；公开提交不含真实租户、凭据或生产私有日志。
+- **证据：** [补丁和验证记录](../../evidence/upstream-d2-20261029/m68/README.md)。
+- **当前状态：** 提交许可已消除，不再重复询问。仍 blocked 等 upstream 审阅、合入、发布；之后由 worker 审阅 Bex pin，按单独授权发布 CLI，再做本项原 native/shared-surface/清理验收。不是已修复交付，不是 done。
+- **范围：** 必要的 commit/push 均在独立 puncsky/cli fork 分支；本轮没有提交或 push bex main，也未触碰其他会话的 source 工作。
