@@ -117,3 +117,7 @@ All critical findings remain visible, including the Bullseye custom-backport fla
 [Python 3.8 Bookworm](evidence/published-python38-20261030/README.md) now passes the same strict amd64/arm64 supplier review, bringing the total to four of twenty-seven. Its five complete signed bundles, exact producer/recovery recipe inputs, independent architecture reports, actual compressed/decompressed layer proofs and all thirty-five anonymous image blobs pass. The final pass used bounded resumable layer files after transport truncation, preserving every artifact gate; failed attempts, 43 guards and proof-linked cleanup remain recorded.
 
 The signed scans retain 229 critical findings per architecture, with no Brotli findings. This is supplier evidence approval only. The production catalog remains empty; the remaining twenty-three reviews, full adoption, exact generated-image replay and original hosted DoDs remain open. No task is closed.
+
+## Corrected current publication scheduling — 2026-10-30
+
+[The current queue receipts](evidence/current-publication-queue-20261030/README.md) retain the guarded retirement of an entirely queued obsolete full matrix and exactly16 targeted dispatches on the HTTP1/complete-retry source. The old full matrix had latent rows, not missing definitions; no running build was interrupted. Four approved suppliers and seven already-active targets were excluded. Catalog/adoption and all original hosted acceptance remain pending.
