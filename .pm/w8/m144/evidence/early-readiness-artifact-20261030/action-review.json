@@ -1,0 +1,26 @@
+{
+  "action": "actions/upload-artifact",
+  "release": "v7.0.2",
+  "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+  "runtime": "node24",
+  "nested_actions": false,
+  "permissions": "contents:read unchanged; artifact action uses ACTIONS_RUNTIME_TOKEN, no new repository token input or permission",
+  "inputs_reviewed": [
+    "name",
+    "path",
+    "if-no-files-found",
+    "retention-days",
+    "compression-level",
+    "overwrite",
+    "include-hidden-files",
+    "archive(default true)"
+  ],
+  "sources": [
+    "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+    "https://github.com/actions/upload-artifact/commit/cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "https://raw.githubusercontent.com/actions/upload-artifact/cf430e030ddbb5b0abf93d22962f4752f3646cd9/action.yml",
+    "https://github.com/actions/upload-artifact/tree/v7.0.2#v4---whats-new",
+    "https://raw.githubusercontent.com/actions/toolkit/main/packages/artifact/src/internal/shared/config.ts",
+    "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts"
+  ]
+}

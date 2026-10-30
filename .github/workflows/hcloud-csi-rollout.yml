@@ -12,7 +12,7 @@ on:
         type: choice
         required: true
         default: inventory
-        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup, fixture-cleanup-observe]
+        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup, fixture-cleanup-observe, observer-channel-smoke]
       fixture_phase:
         description: Fixture evidence phase (ignored by inventory and rollout)
         type: choice
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ inputs.operation == 'fixture-cleanup-observe' && 'hcloud-csi-fixture-observer' || 'hcloud-csi-rollout' }}
+  group: ${{ inputs.operation == 'fixture-cleanup-observe' && 'hcloud-csi-fixture-observer' || inputs.operation == 'observer-channel-smoke' && 'hcloud-csi-observer-channel-smoke' || 'hcloud-csi-rollout' }}
   cancel-in-progress: false
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
           OPERATION: ${{ inputs.operation }}
         run: |
           case "$OPERATION" in
-            inventory) ;;
+            inventory|observer-channel-smoke) ;;
             rollout) bash scripts/install-hcloud-csi.sh validate-pin ;;
             fixture-backup-cleanup) python3 scripts/disk_fixture.py validate-cleanup ;;
             fixture-backup-status) python3 scripts/disk_fixture.py validate-status ;;
@@ -52,7 +52,7 @@ jobs:
 
   cluster:
     needs: validate
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.operation != 'observer-channel-smoke'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     environment: production-cluster
     timeout-minutes: ${{ inputs.operation == 'fixture-cleanup-observe' && 110 || 40 }}
@@ -94,7 +94,7 @@ jobs:
         if: inputs.operation == 'rollout'
         run: bash scripts/install-hcloud-csi.sh rollout
       - name: fixed owned-fixture operation with committed lifetime proof
-        if: startsWith(inputs.operation, 'fixture-')
+        if: startsWith(inputs.operation, 'fixture-') && inputs.operation != 'fixture-cleanup-observe'
         env:
           OPERATION: ${{ inputs.operation }}
           FIXTURE_PHASE: ${{ inputs.fixture_phase }}
@@ -103,11 +103,77 @@ jobs:
           case "$OPERATION" in
             fixture-bind|fixture-inspect|fixture-backup|fixture-backup-status|fixture-backup-cleanup)
               python3 scripts/disk_fixture.py "${OPERATION#fixture-}" --phase "$FIXTURE_PHASE" ;;
-            fixture-cleanup-observe)
-              set -o pipefail
-              python3 scripts/disk_fixture.py cleanup-observe --phase "$FIXTURE_PHASE" | tee "$RUNNER_TEMP/fixture-cleanup.jsonl" ;;
             *) echo 'unknown fixed fixture operation' >&2; exit 1 ;;
           esac
+      - name: start owned observer and await actual watch/provider readiness
+        id: observer_ready
+        if: inputs.operation == 'fixture-cleanup-observe'
+        timeout-minutes: 4
+        env:
+          FIXTURE_PHASE: ${{ inputs.fixture_phase }}
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: python3 scripts/disk_fixture.py observer-start --phase "$FIXTURE_PHASE"
+      - name: publish readiness while the observer remains active
+        if: inputs.operation == 'fixture-cleanup-observe' && steps.observer_ready.outcome == 'success'
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: m144-fixture-observer-ready
+          path: ${{ runner.temp }}/bex-fixture-observer/ready.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+      - name: await bounded observer completion
+        if: inputs.operation == 'fixture-cleanup-observe'
+        timeout-minutes: 103
+        run: python3 scripts/disk_fixture.py observer-wait
+      - name: stop and reap only this observer's child
+        if: always() && inputs.operation == 'fixture-cleanup-observe'
+        timeout-minutes: 1
+        run: python3 scripts/disk_fixture.py observer-stop
+      - name: retain bounded observer evidence after child shutdown
+        if: always() && inputs.operation == 'fixture-cleanup-observe'
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: m144-fixture-observer-evidence
+          path: |
+            ${{ runner.temp }}/bex-fixture-observer/observer.jsonl
+            ${{ runner.temp }}/bex-fixture-observer/status.json
+          if-no-files-found: warn
+          retention-days: 7
+          overwrite: false
+          include-hidden-files: false
       - name: scrub kubeconfig
         if: always()
         run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+
+  observer-channel-smoke:
+    needs: validate
+    if: github.ref == 'refs/heads/main' && inputs.operation == 'observer-channel-smoke'
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: 5
+    steps:
+      - name: write resource-free artifact protocol marker
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          marker = {"state": "protocolSmokeReady", "run": "not-an-owned-fixture", "serviceId": "not-a-service-id", "appUid": "not-an-app-uid", "workflowRunId": os.environ["GITHUB_RUN_ID"], "noResourceAccess": True}
+          (Path(os.environ["RUNNER_TEMP"]) / "bex-fixture-channel-smoke.json").write_text(json.dumps(marker) + "\n")
+          PY
+      - name: publish protocol marker before this job finishes
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: m144-observer-channel-smoke
+          path: ${{ runner.temp }}/bex-fixture-channel-smoke.json
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: false
+          include-hidden-files: false
+      - name: keep the resource-free job active for artifact API verification
+        run: sleep 60

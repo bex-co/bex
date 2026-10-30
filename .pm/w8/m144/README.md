@@ -62,3 +62,13 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Real API observer bootstrap correction — 2026-10-30
 
 [An isolated real Kubernetes API check](evidence/real-api-watch-bootstrap-20261030/README.md) caught and corrected empty-list resource-version loss before any fixture was created. Final 35 unit cases and both real watch startup/teardown checks pass. Product Go files remain identical to the full operator/lint validation; actual production adoption and the original paid lifecycle acceptance are still pending.
+
+
+## Private acceptance and weighted-meter preparation — 2026-10-30
+
+[The updated private driver and21 guards](evidence/acceptance-private-gates-20261030/README.md) require actual signed/Ready deletion fixes and bound queue/cleanup timing before any create. Its fixed usage readback verifies weighted requested1→5GB-seconds and refuses physical10Gi charges; sealing/invoice claims remain unproved. The reviewed later cleanup-helper constant addition passes focused tests. No live gate, create intent or fixture exists, and original production acceptance remains open.
+
+
+## Early readiness artifact channel — 2026-10-30
+
+[The reviewed early artifact channel](evidence/early-readiness-artifact-20261030/README.md) makes the actual watch/provider readiness marker downloadable while the observer remains active; active log API access was confirmed unavailable. Three reviews and49 local cases cover supervision, cancellation, durable terminal status and strict smoke/real authority separation. The resource-free live GitHub artifact smoke is still required before relying on the channel. No paid fixture exists.

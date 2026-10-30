@@ -1,0 +1,42 @@
+{
+  "hosted-disk.py": {
+    "stored": "hosted-disk.py.txt.gz",
+    "original_bytes": 22978,
+    "original_sha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953"
+  },
+  "acceptance-plan.json": {
+    "stored": "acceptance-plan.json",
+    "original_bytes": 32896,
+    "original_sha256": "18f8897d88a91d93f689043f5af0c872cdbc1ed33c95d0809260de5c9e6af0f3"
+  },
+  "m144_guards.py": {
+    "stored": "m144_guards.py.txt.gz",
+    "original_bytes": 18036,
+    "original_sha256": "1f73f0f7d95a3479cc885bd2b8dcef1764a28de1c7be4b9a0eda60fba8d60a88"
+  },
+  "rollout-requirements.json": {
+    "stored": "rollout-requirements.json",
+    "original_bytes": 3481,
+    "original_sha256": "2e0d2e7a878386672866136af4dd1d4542c150838ad643f8e14f274768402654"
+  },
+  "test_m144_guards.py": {
+    "stored": "test_m144_guards.py.txt.gz",
+    "original_bytes": 24245,
+    "original_sha256": "41a9c2bdaa61ce8cae9238b1ff9f0ca9d86ec2205a346d6a4cc4c47198838393"
+  },
+  "guard-21.log": {
+    "stored": "guard-21.log.gz",
+    "original_bytes": 3657,
+    "original_sha256": "05be7dc9e627f4247f921129fe94469478368d5a0170533eef11718aa44978cb"
+  },
+  "cleanup-compatibility.log": {
+    "stored": "cleanup-compatibility.log.gz",
+    "original_bytes": 68,
+    "original_sha256": "40212ffe16ead0e92dcf31fca5f81451bd80ed0dea2ef75ac21a38be56ce470a"
+  },
+  "reviewed-constant-addition.patch": {
+    "stored": "reviewed-constant-addition.patch.gz",
+    "original_bytes": 864,
+    "original_sha256": "6eb8be1d486a0ce49fe698a478e8655cc5097e3057e5bece69b9e3f743c24533"
+  }
+}

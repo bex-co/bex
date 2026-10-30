@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T12:49:12.965783+00:00",
+  "source_commit": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+  "original_full_validation_commit": "a59db2dd82c06427c2c64c8352a6b7b8ad3c4b02",
+  "changed_required_source": "lego/operator/internal/controller/cleanup_job.go",
+  "original_sha256": "8728aee6f4089f418ee08a269385ba7845b9c4b870867a1fa64021727776b3c8",
+  "current_sha256": "ba7d9d8c5b1d7edc202a4778f0a922c2e437a1616874c2f91cca32978530228b",
+  "review": "Only9 added lines defining datastore purge-name constants/comments; every existing cleanup/snapshot function byte unchanged. Other16 required blobs unchanged.",
+  "focused_command": "GOWORK=off go test ./internal/controller -run '^Test(CleanupJob|DiskDeletion|DiskCleanup)' -count=1",
+  "focused_exit_code": 0,
+  "focused_log_sha256": "40212ffe16ead0e92dcf31fca5f81451bd80ed0dea2ef75ac21a38be56ce470a",
+  "qualified_production_CI_and_Ready_image_still_required": true
+}

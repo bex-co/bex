@@ -1,0 +1,7 @@
+# Private acceptance gates and requested-size meter — 2026-10-30
+
+The private driver now requires actual signed/Ready source containing both deletion fixes, exact reviewed source bytes, bounded CSI/global-class facts, and a current CI queue estimate with a fifteen-minute cleanup reserve. After creation it also requires committed lifetime bindings and the matching server-established observerReady/provider baseline. No gate file or resource exists.
+
+A fixed own-workspace/creation-month usage GET discards foreign service rows, estimates and invoices before persistence. It compares the fresh owned SID’s closed-window disk_gb_seconds with actual server createdAt/grow updatedAt and anchored request brackets, including hourly integer rounding; physical10Gi quantities fail. Financial sealing and invoices remain unproved. One grow intent is recorded before PATCH, and an ambiguous response cannot be blindly replayed.
+
+All21 isolated guards pass; no authentication, HTTP, workflow dispatch or paid resource was used. Names, nonce, frozen fixture program/data and the one-service/one-disk5Gi/two-hour/$0.03 budget are unchanged. The subsequent main change adds only datastore prefix constants to cleanup_job.go, leaving every cleanup function intact. Focused deletion tests pass on that source; other16 required blobs remain identical to the prior full test/lint evidence. Actual production CI/signature/readiness remains required. No credential files or contents are included.
