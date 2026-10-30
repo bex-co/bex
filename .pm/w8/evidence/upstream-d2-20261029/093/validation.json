@@ -1,0 +1,31 @@
+{
+  "items": [
+    "w8/093"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "bd0e07a322315ef5a86df8f23de19ad4efae4281",
+  "branch": "fix/resolve-id-shaped-scope-names-20261029",
+  "url": "https://github.com/render-oss/cli/pull/70",
+  "title": "Resolve ID-shaped project and environment names after an ID miss",
+  "files": [
+    "cmd/kvlist_test.go",
+    "cmd/pglist_test.go",
+    "pkg/environment/repo.go",
+    "pkg/project/repo.go",
+    "pkg/resolve/resolve.go",
+    "pkg/resolve/resolve_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:40.415909+00:00"
+}

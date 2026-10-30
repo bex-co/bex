@@ -1,0 +1,32 @@
+--- FAIL: TestRunPSQLCommandForwardsSuccessfulDiagnostics (0.02s)
+    --- FAIL: TestRunPSQLCommandForwardsSuccessfulDiagnostics/stdout_and_warning (0.00s)
+        psql_test.go:83: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/079/pkg/tui/views/psql_test.go:83
+            	Error:      	Not equal: 
+            	            	expected: "WARNING:  careful\n"
+            	            	actual  : ""
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1,2 +1 @@
+            	            	-WARNING:  careful
+            	            	 
+            	Test:       	TestRunPSQLCommandForwardsSuccessfulDiagnostics/stdout_and_warning
+    --- FAIL: TestRunPSQLCommandForwardsSuccessfulDiagnostics/notice_only (0.00s)
+        psql_test.go:83: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/079/pkg/tui/views/psql_test.go:83
+            	Error:      	Not equal: 
+            	            	expected: "NOTICE:  fyi\n"
+            	            	actual  : ""
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1,2 +1 @@
+            	            	-NOTICE:  fyi
+            	            	 
+            	Test:       	TestRunPSQLCommandForwardsSuccessfulDiagnostics/notice_only
+FAIL
+FAIL	github.com/render-oss/cli/pkg/tui/views	1.540s
+FAIL

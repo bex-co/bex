@@ -1,0 +1,42 @@
+{
+  "items": [
+    "w8/079",
+    "w8/118"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "ac326568aa6ce8856cd390c8f4807a713d7633c9",
+  "branch": "fix/preserve-successful-psql-diagnostics-20261029",
+  "url": "https://github.com/render-oss/cli/pull/59",
+  "title": "Preserve stdin and successful diagnostics in noninteractive psql",
+  "files": [
+    "cmd/psql.go",
+    "pkg/tui/views/psql.go",
+    "pkg/tui/views/psql_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {
+    "079:stdin": {
+      "regressionFailsWhenFixRemoved": true,
+      "passesWhenRestored": true,
+      "package": "./pkg/tui/views",
+      "test": "TestRunPSQLCommandForwardsStdin"
+    },
+    "079:diagnostics": {
+      "regressionFailsWhenFixRemoved": true,
+      "passesWhenRestored": true,
+      "package": "./pkg/tui/views",
+      "test": "TestRunPSQLCommandForwardsSuccessfulDiagnostics"
+    }
+  },
+  "recordedAt": "2026-10-30T00:48:56.672083+00:00"
+}

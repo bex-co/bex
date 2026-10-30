@@ -1,0 +1,24 @@
+--- FAIL: TestResolveSecretFileInputs (0.00s)
+    --- FAIL: TestResolveSecretFileInputs/reads_the_file_whose_name_ends_in_whitespace,_not_its_trimmed_neighbor (0.00s)
+        secretfiles_test.go:58: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/103/pkg/service/secretfiles_test.go:58
+            	Error:      	Not equal: 
+            	            	expected: "INTENDED "
+            	            	actual  : "NEIGHBOR"
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1 +1 @@
+            	            	-INTENDED 
+            	            	+NEIGHBOR
+            	Test:       	TestResolveSecretFileInputs/reads_the_file_whose_name_ends_in_whitespace,_not_its_trimmed_neighbor
+            	Messages:   	suffix " "
+    --- FAIL: TestResolveSecretFileInputs/a_missing_whitespace-suffixed_file_is_not_replaced_by_its_neighbor (0.00s)
+        secretfiles_test.go:69: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/103/pkg/service/secretfiles_test.go:69
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestResolveSecretFileInputs/a_missing_whitespace-suffixed_file_is_not_replaced_by_its_neighbor
+FAIL
+FAIL	github.com/render-oss/cli/pkg/service	0.630s
+FAIL

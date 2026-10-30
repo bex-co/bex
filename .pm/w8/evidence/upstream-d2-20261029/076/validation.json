@@ -1,0 +1,27 @@
+{
+  "items": [
+    "w8/076"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "3d1b4d33ae85d5e4f6821b69f9cd26e39145d0c6",
+  "branch": "fix/count-ip-description-characters-20261029",
+  "url": "https://github.com/render-oss/cli/pull/65",
+  "title": "Count IP allowlist descriptions in Unicode characters",
+  "files": [
+    "pkg/types/ipallowlist.go",
+    "pkg/types/ipallowlist_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:19.895856+00:00"
+}

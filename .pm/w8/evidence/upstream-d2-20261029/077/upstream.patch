@@ -1,0 +1,62 @@
+diff --git a/pkg/command/inputs.go b/pkg/command/inputs.go
+index 8efbf78..5ab5d51 100644
+--- a/pkg/command/inputs.go
++++ b/pkg/command/inputs.go
+@@ -90,12 +90,15 @@ func getStringSliceValue(flags *pflag.FlagSet, tag string) ([]string, error) {
+ 
+ 		// StringArray flags support multiple invocations: --flag a --flag b
+ 		// Unlike StringSlice which expects comma-separated: --flag=a,b
++		// Read the stored values directly: GetStringArray round-trips them
++		// through CSV, which turns an interior CRLF into LF and drops an
++		// explicitly empty argument.
+ 		if flag.Value.Type() == "stringArray" {
+-			val, err := flags.GetStringArray(tag)
+-			if err != nil {
+-				return nil, err
++			sliceValue, ok := flag.Value.(pflag.SliceValue)
++			if !ok {
++				return nil, fmt.Errorf("unexpected string array type")
+ 			}
+-			return val, nil
++			return sliceValue.GetSlice(), nil
+ 		}
+ 	}
+ 
+diff --git a/pkg/command/inputs_test.go b/pkg/command/inputs_test.go
+index 93934a4..0231d2f 100644
+--- a/pkg/command/inputs_test.go
++++ b/pkg/command/inputs_test.go
+@@ -156,6 +156,33 @@ func TestParseCommand(t *testing.T) {
+ 		require.Equal(t, []string{"bar", "baz"}, v.Foo)
+ 	})
+ 
++	t.Run("parse string array keeps values verbatim", func(t *testing.T) {
++		type testStruct struct {
++			Foo []string `cli:"foo"`
++		}
++		for _, tc := range []struct {
++			name string
++			args []string
++			want []string
++		}{
++			{"interior CRLF", []string{"--foo", "K=first\r\nsecond"}, []string{"K=first\r\nsecond"}},
++			{"LF, lone CR and tab", []string{"--foo", "K=a\nb\rc\td"}, []string{"K=a\nb\rc\td"}},
++			{"commas and quotes", []string{"--foo", `K="a,b"`, "--foo", "L=c,d"}, []string{`K="a,b"`, "L=c,d"}},
++			{"explicit empty argument", []string{"--foo="}, []string{""}},
++			{"valid empty value", []string{"--foo", "K="}, []string{"K="}},
++			{"no flag", nil, []string{}},
++		} {
++			t.Run(tc.name, func(t *testing.T) {
++				var v testStruct
++				cmd := &cobra.Command{}
++				cmd.Flags().StringArray("foo", []string{}, "")
++				require.NoError(t, cmd.ParseFlags(tc.args))
++				require.NoError(t, command.ParseCommand(cmd, []string{}, &v))
++				require.Equal(t, tc.want, v.Foo)
++			})
++		}
++	})
++
+ 	t.Run("arg parsing", func(t *testing.T) {
+ 		t.Run("simple arg", func(t *testing.T) {
+ 			type testStruct struct {

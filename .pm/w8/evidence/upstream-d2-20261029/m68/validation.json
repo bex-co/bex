@@ -1,0 +1,36 @@
+{
+  "items": [
+    "w8/m68",
+    "w8/108"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "d391ee034a4eda43a55e0db187f050e8bbc8c506",
+  "branch": "fix/preserve-executable-command-text-20261029",
+  "url": "https://github.com/render-oss/cli/pull/75",
+  "title": "Preserve explicit service input during normalization",
+  "files": [
+    "cmd/servicecreate.go",
+    "cmd/servicecreate_test.go",
+    "cmd/serviceupdate_test.go",
+    "internal/fakes/renderapi/services.go",
+    "pkg/types/service/servicecreate.go",
+    "pkg/types/service/servicecreate_test.go",
+    "pkg/types/service/serviceupdate.go",
+    "pkg/types/service/serviceupdate_test.go",
+    "pkg/types/util.go",
+    "pkg/types/util_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:59.420943+00:00"
+}

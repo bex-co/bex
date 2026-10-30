@@ -1,0 +1,27 @@
+{
+  "items": [
+    "w8/m57"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "fd2aa3cad96f291768887c43e6a2510e98b23876",
+  "branch": "fix/preserve-form-string-lists-20261029",
+  "url": "https://github.com/render-oss/cli/pull/72",
+  "title": "Preserve literal string-list elements through TUI forms",
+  "files": [
+    "pkg/command/form.go",
+    "pkg/command/formstringslice_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:49.680837+00:00"
+}

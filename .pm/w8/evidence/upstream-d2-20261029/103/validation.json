@@ -1,0 +1,35 @@
+{
+  "items": [
+    "w8/103"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "983f1db802e857d8ba930d7923d77a4ebcc52f79",
+  "branch": "fix/preserve-secret-file-path-20261029",
+  "url": "https://github.com/render-oss/cli/pull/61",
+  "title": "Preserve literal local paths in secret-file arguments",
+  "files": [
+    "pkg/service/secretfiles_test.go",
+    "pkg/types/service/secretfile.go",
+    "pkg/types/service/secretfile_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {
+    "103:literal-path": {
+      "regressionFailsWhenFixRemoved": true,
+      "passesWhenRestored": true,
+      "package": "./pkg/service",
+      "test": "TestResolveSecretFileInputs"
+    }
+  },
+  "recordedAt": "2026-10-30T00:49:04.151490+00:00"
+}

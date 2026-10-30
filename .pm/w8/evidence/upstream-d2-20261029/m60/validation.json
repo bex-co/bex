@@ -1,0 +1,29 @@
+{
+  "items": [
+    "w8/m60"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "4734154901377785405c0d969da40769296caa27",
+  "branch": "fix/preserve-copied-command-arguments-20261029",
+  "url": "https://github.com/render-oss/cli/pull/73",
+  "title": "Preserve search and time arguments in copied CLI commands",
+  "files": [
+    "cmd/logscopy_test.go",
+    "pkg/command/formatter.go",
+    "pkg/command/formatter_test.go",
+    "pkg/command/inputs.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:53.011997+00:00"
+}

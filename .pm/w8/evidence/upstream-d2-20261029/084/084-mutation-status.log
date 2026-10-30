@@ -1,0 +1,34 @@
+--- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors (0.00s)
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Bad_Request (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Bad_Request
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Not_Found (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Not_Found
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Conflict (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Conflict
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Too_Many_Requests (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Too_Many_Requests
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Internal_Server_Error (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Internal_Server_Error
+    --- FAIL: TestRestartPostgresDatabase_ReturnsAPIErrors/Service_Unavailable (0.00s)
+        repo_test.go:80: 
+            	Error Trace:	/private/tmp/bex7-render-cli-d2-aiwh2wdx/cases/084/pkg/postgres/repo_test.go:80
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestRestartPostgresDatabase_ReturnsAPIErrors/Service_Unavailable
+FAIL
+FAIL	github.com/render-oss/cli/pkg/postgres	0.602s
+FAIL

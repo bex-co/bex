@@ -1,0 +1,27 @@
+{
+  "items": [
+    "w8/091"
+  ],
+  "base": "c31e586eb6f38138af3cc986b079e46a78c61de7",
+  "commit": "ddc92c0046822c8c90fdf90a9dbc58a7ea95b9ab",
+  "branch": "fix/keep-ssh-project-chooser-20261029",
+  "url": "https://github.com/render-oss/cli/pull/69",
+  "title": "Return to SSH service selection after changing a project filter",
+  "files": [
+    "cmd/ssh.go",
+    "cmd/sshprojectfilter_test.go"
+  ],
+  "go": "1.27.3",
+  "platform": "darwin/arm64",
+  "developmentSuite": "go test ./cmd/... ./pkg/... ./internal/...",
+  "developmentPackagesPassed": 57,
+  "e2e": "Not run: upstream AGENTS.md excludes live-API e2e from the default development loop.",
+  "lint": {
+    "version": "2.14.0",
+    "unmodifiedMainFindings": 92,
+    "newCodeExit": 0,
+    "newFindings": []
+  },
+  "behavioralNegativeControls": {},
+  "recordedAt": "2026-10-30T00:49:37.285893+00:00"
+}
