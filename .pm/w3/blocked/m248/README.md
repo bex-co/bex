@@ -1,6 +1,6 @@
 # w3 · m248 — Git webhooks are acknowledged within GitHub's 10 s and redeploy out of band
 
-**Worker:** worker3 **Goal:** every push webhook gets a `2xx` within GitHub's 10 s budget while the redeploys it triggers still happen exactly once; no delivery hangs for minutes or ends `502` on a rollout **Status:** todo
+**Worker:** worker3 **Goal:** every push webhook gets a `2xx` within GitHub's 10 s budget while the redeploys it triggers still happen exactly once; no delivery hangs for minutes or ends `502` on a rollout **Status:** blocked — t001 instrumentation live; waiting for the next slow-delivery episode to name the step (slowness is episodic: e.g. 10-29 14:00–17:59Z, none since)
 
 ## Tasks (in order)
 
@@ -43,3 +43,9 @@ Why: GitHub gives up on a webhook delivery after 10 s, yet the edge logs show `P
 - **Expected outcome:** GitHub stops recording failed/timed-out deliveries; pushes deploy reliably across bex-api rollouts.
 - **Why now:** deliveries routinely exceed GitHub's 10 s and some hang an hour; any push landing on a rollout can be lost.
 - **Render parity omitted:** the inbound git webhook is a bex extension (ADR018 § bex ahead of Render); no REST/GraphQL/MCP/UI shape changes.
+
+## Correction + gate (2026-10-30 evening, loopx w3)
+
+- **The slowness is episodic, not routine.** Edge logs per hour (Loki, `/v1/webhooks/git`): 10-29 00:00–13:59 and 18:00–23:59 and all of 10-30 to 19:59 — every delivery ≤ 1.1 s (≈ 2 300 deliveries); **10-29 14:00–17:59: 7 deliveries over 5 s** (10.2–30.3 s, and the two ~3 600 s ones that ended 502). Earlier windows recorded in `w3/done/046.md` (10-28 04:00–10:00) fit the same pattern. The "5–19 s routinely" in 046 came from reading only the bad windows.
+- Instrumentation (`c8b90f83c`, `slow delivery … steps=[…]`) is in production since the 2026-10-30 18:07Z deploy; no slow delivery has occurred since, so no step is named yet.
+- **Gate:** the next slow episode. When `slow delivery` lines appear (Loki `{namespace="bex-system", container="api"} |= "slow delivery"`), name the step (t001) and choose the fix: a targeted fix of that step and/or the asynchronous acknowledgement (t002). No user decision needed — a worker re-checks the logs.
