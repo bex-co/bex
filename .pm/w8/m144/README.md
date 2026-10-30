@@ -1,6 +1,6 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001/t002 done; signed CSI and global bounded class verified live; deletion metering/snapshot cleanup fixes and owned production acceptance remain
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001/t002 done; API/operator and key-guarded CSI verified Ready; owned growth/remount, backup/restore, billing and surface acceptance remain
 
 ## Tasks (in order)
 
@@ -101,3 +101,8 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Current paid-test queue review — 2026-10-30
 
 [Actual completed-job timing and current inventory wait](evidence/production-queue-budget-20261030/README.md) do not yet establish that the unchanged two-hour owned fixture, observer/backup work and15-minute cleanup reserve fit. Real platform/CSI Ready evidence remains valid. No resource, create intent, release gate or armed watchdog exists, and no new idle-runner requirement is introduced. Original capacity, lifecycle, billing and surface DoDs remain open.
+
+
+## Local command-failure coverage — 2026-10-30
+
+[Two executed error-path cases](evidence/command-failure-isolation-20261030/README.md) preserve actual A/B filesystem identity, geometry and data while simulated inspection/resize commands fail; no fallback formatting or false success occurs. The exact test owner and mappings are cleaned, with a restricted tools holder temporarily retained for separate testing. Harness failures and both authorized image pulls remain explicit. No kernel fault, actual billing, hosted lifecycle or separate ambiguous-format safety result is claimed; original production acceptance remains open.
