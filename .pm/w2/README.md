@@ -154,6 +154,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [051 — The beancount forum (Discourse multisite) answers 404 for every host](done/051.md) — **CLOSED 2026-10-29: false alarm** (the forum lives under `/forum`; every entry point returns 200; Redis blips are the single-replica gap owned by `w1/m186`) ← found during w2/035's health check
 - [x] [052 — Delete bare-name Zot repos that no live App owns](done/052.md) — **DONE 2026-10-30**: 25 unreferenced bare repos deleted after a digest-verified backup; the 2 platform images kept; App deletion already purges its own repos
 - [x] [053 — Tenant Postgres cannot initialize on the local cluster: no CNPG → API-server egress under Calico](done/053.md) — **DONE 2026-10-30**: `mock-cluster.sh` applies a Calico GlobalNetworkPolicy equivalent; a fresh local tenant Postgres became healthy with no manual policy
+- [ ] [054 — A Hobby workspace cannot run a high-availability Postgres: the tenant quota and the barman sidecar's limits refuse the standby](054.md) ← found during w2/m245 t005, 2026-10-30; Render parity
 
 _(2026-09-15: `036` resolved — the three product-dead dashboard env components, plus a fourth their deletion exposed, deleted with their tests; moved to `done/036.md`.)_
 

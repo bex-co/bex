@@ -1,6 +1,6 @@
 # w2 · m245 — Public Postgres URLs verify against system roots, as on Render
 
-**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo — t001–t004 done (shipped `19bfc60d1`, `1d5212871`); next t005 live acceptance after the production deploy
+**Worker:** worker2 **Goal:** a tenant who copies a public database's external connection string into any stock Postgres client connects securely with no downloaded CA, and keeps connecting across certificate renewals, as with Render's `*-postgres.render.com` hosts. **Status:** todo — t001–t005 done (production acceptance passed 2026-10-30); next t006 docs
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Operator: a publicly trusted certificate per externally reachable database, wired into CNPG and renewed   — **DONE** | 1h  | t001       |
 | t003 | External connection string connects as-is from a stock client, Render-shaped                             — **DONE** | 40m | t002       |
 | t004 | `serverCaCertificate` semantics on REST, GraphQL, MCP and the dashboard connect panel                     — **DONE** | 30m | t003       |
-| t005 | Live acceptance on production: copy → connect, forced renewal → still connects                           | 40m | t004       |
+| t005 | Live acceptance on production: copy → connect, forced renewal → still connects                           — **DONE** | 40m | t004       |
 | t006 | Correct ADR009, ADR018 and the connection docs                                                           | 20m | t005       |
 | t007 | Render parity                                                                                           | 20m | t006       |
 | t008 | Simplify                                                                                                | 15m | t007       |
@@ -58,3 +58,13 @@ A two-instance CNPG `Cluster` in namespace `dev-2` used `spec.certificates.serve
 - **Let's Encrypt budget:** 50 new certificates per week for `bex.co`; renewals are exempt; a name-set change counts as a new order. Recorded in `database_public_tls.go`.
 - **Exposure checked before shipping:** the only two public databases (`dpg-db34l9bor55s73cqpq9g` in `bex`, `dpg-db9r654flioc739mcpbg` in `bex-canary`) are QA fixtures with no active client and no in-cluster config referencing their URLs, so the certificate switch breaks no pinned client.
 - **Known limit, same as Render:** a client machine with a stale `~/.postgresql/root.crt` still verifies against that file.
+
+## t005 — production acceptance, 2026-10-30 (PASS)
+
+Deployed with pin `ef993f254` (images `dc80c29bf2bc`, which contains `19bfc60d1`/`1d5212871`). The earlier run failed only on a Sigstore Rekor timeout (first occurrence, rerun).
+
+- **Rollout:** both existing public databases (`dpg-db34l9bor55s73cqpq9g`, `dpg-db9r654flioc739mcpbg`) got Ready `<db>-public-tls` Certificates and `status.externalCertificate: PubliclyTrusted`. `openssl s_client -starttls postgres` on both showed `CN=<db>.db.bex.co`, issuer `Let's Encrypt YR2`, `Verify return code: 0 (ok)`.
+- **DoD 1 (copy → connect, no CA):** REST connection-info for `dpg-db9r654flioc739mcpbg` returned `externalConnectionString` with host `<db>.db.bex.co:5432` and an **empty query**, no `serverCaCertificate`, and `psqlCommand` in Render's `PGPASSWORD=… psql -h …` form. On a machine with no `~/.postgresql/root.crt` and `PGSSLROOTCERT` unset, `psql "<url>"` connected (`pg_stat_ssl.ssl = t`). `psql "<url>?sslmode=verify-full&sslrootcert=system"` also connected, so the hostname verifies against system roots.
+- **DoD 2 (forced renewal):** set `Issuing=True` (`ManuallyTriggered`, what `cmctl renew` does) on `dpg-db9r654flioc739mcpbg-public-tls`. It moved to revision 2, and the served serial changed `0699C8…` → `0588F3…` with **no Pod restart** (the instance had run 6d2h with 0 restarts; `cnpg.io/reload` worked on CNPG 1.30.1). The same unchanged URL connected again.
+- **DoD 3 (HA + internal):** a temporary `1c-2g` HA public database in workspace `bex` (`dpg-dbi5pqg9vnuc73fiqpe0`) became `PubliclyTrusted`, with CNPG `serverTLSSecret`/`serverCASecret` set to `<db>-public-tls`/`<db>-public-ca`. Its replica streamed over TLS (`pg_stat_replication`: `streaming`, ssl `t`). `POST …/failover` → 202 promoted `-2` within about 5 s, and the former primary **rejoined as a streaming TLS replica** (it verified the new primary's Let's Encrypt certificate against the root-only CA). The external URL wrote after failover with no CA file, and the internal URL read from inside the namespace. The database was deleted afterwards (204). A first attempt in `bex-canary` hit a separate defect, the Hobby tenant quota refusing the second HA instance, now filed as `w2/054`. That database was deleted too.
+- **DoD 4 (surfaces):** GraphQL `databaseConnectionInfo` matched REST (same host, empty query, `serverCaCertificate: ""`, `PGPASSWORD=` psql form). MCP has no connection-info tool. The dashboard hides the CA block when it is empty (t004 test).
