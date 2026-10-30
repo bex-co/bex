@@ -1,0 +1,70 @@
+{
+  "checked_at": "2026-10-30T00:59:28.988520+00:00",
+  "total_apps": 30,
+  "candidates": [
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono",
+      "runtime": "node",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-7684776fbc-47tz7",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-124@sha256:a03a7cedd7723d94affbfb80182cb2ea30a84fdb771d78b4bc8f35ec727c4294",
+          "status": "Running",
+          "runtime_probe": "v24.22.1\n{\"brotli\":\"1.2.0\",\"modules\":\"137\"}\nlibbrotli1:amd64\t1.0.9-2+b6",
+          "probe_error": "",
+          "probe_exit": 0
+        }
+      ]
+    },
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "runtime": "node",
+      "phase": "Failed",
+      "suspended": false,
+      "pods": []
+    },
+    {
+      "namespace": "tea-da2isimlm39c739m4ofg",
+      "app": "tea-da2isimlm39c739m4ofg-tianpan-v4-web",
+      "runtime": "node",
+      "phase": "Running",
+      "suspended": false,
+      "pods": [
+        {
+          "pod": "tea-da2isimlm39c739m4ofg-tianpan-v4-web-59bfffb5c4-2m9sj",
+          "image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-46@sha256:f831e31ddf1d8c0bc5b309fa403669c01d5d76144c21c8acec85c6d54522eb5f",
+          "status": "Running",
+          "runtime_probe": "v22.23.4\n{\"brotli\":\"1.1.0\",\"modules\":\"127\"}\nlibbrotli1:amd64\t1.0.9-2+b6",
+          "probe_error": "",
+          "probe_exit": 0
+        }
+      ]
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "runtime": "node",
+      "phase": "Canceled",
+      "suspended": true,
+      "pods": []
+    }
+  ],
+  "legacy_live_counts": {
+    "node14": 0,
+    "node16": 0,
+    "node18": 0,
+    "node20": 0,
+    "python3.7": 0,
+    "python3.8": 0,
+    "python3.9": 0,
+    "python3.10": 0,
+    "ruby3.0": 0,
+    "ruby3.1": 0,
+    "ruby3.2": 0
+  },
+  "scope": "30 current App CRs across all namespaces; native live pods probed. Failed/suspended with no pods not classified as currently running; stored version signals can resolve at future build."
+}

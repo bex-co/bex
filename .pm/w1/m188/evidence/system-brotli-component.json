@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-10-30T01:17:22Z",
+  "scope": "system Brotli component builds; not signed published native image acceptance",
+  "platforms": {
+    "amd64": {
+      "tag": "bex-m188-system-amd64",
+      "package_source": "Debian brotli 1.0.9-2+deb12u1, rebuilt against Bullseye with +bex11u1",
+      "upstream_tests": "14/14 passed",
+      "malformed_stream_and_healthy_roundtrip": "passed",
+      "local_image_id": "sha256:74c157ca873fd089eba1194f95d0e74193a376011defccc8e7aa26df5fee5773"
+    },
+    "arm64": {
+      "tag": "bex-m188-system-arm64",
+      "package_source": "Debian brotli 1.0.9-2+deb12u1, rebuilt against Bullseye with +bex11u1",
+      "upstream_tests": "14/14 passed",
+      "malformed_stream_and_healthy_roundtrip": "passed",
+      "local_image_id": "sha256:2bf9cf259aa8d3d0525b70765b88c2bb973ca42aa05c09cfe36b6897252f3530"
+    }
+  },
+  "before_control": {
+    "image": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "platform": "linux/arm64",
+    "result": "unpatched decoder rejected by gate: error -9 rather than permanent block-switch error -17"
+  }
+}

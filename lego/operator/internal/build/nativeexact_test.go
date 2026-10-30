@@ -53,6 +53,35 @@ func (f *fakeExact) ListTags(_ context.Context, repo, prefix string) ([]string, 
 
 const exactDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000001"
 
+func TestPlatformBackportPreservesExactLookupAndVerifiedFallback(t *testing.T) {
+	const platform = "ghcr.io/bex-co/bex-native:node-14-bullseye@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	r := resolver{t: nativeToolchain{label: "Node", lines: []nativeLine{{line: "14", image: platform, upstream: "node:14-bullseye@" + exactDigest}}}}
+	choice, err := r.choice("14", "NODE_VERSION=14.21.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	choice.Exact = "14.21.2"
+	for name, registry := range map[string]*fakeExact{
+		"published exact":  {digests: map[string]string{"node:14.21.2-bullseye": exactDigest}},
+		"missing exact":    {},
+		"registry failure": {err: errors.New("registry unavailable")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := pinExactVersion(context.Background(), registry, choice)
+			if len(registry.asked) != 1 || registry.asked[0] != "node:14.21.2-bullseye" {
+				t.Fatalf("exact lookup escaped the official source: %v", registry.asked)
+			}
+			if name == "published exact" {
+				if got.Image != "node:14.21.2-bullseye@"+exactDigest || got.Line != "14.21.2" {
+					t.Fatalf("explicit version was not preserved: %+v", got)
+				}
+			} else if got.Image != platform {
+				t.Fatalf("failed lookup lost the verified platform fallback: %+v", got)
+			}
+		})
+	}
+}
+
 func resolveExact(t *testing.T, fake *fakeExact, runtime string, env, files map[string]string) ([]NativeChoice, string) {
 	t.Helper()
 	o := nativeOptions()

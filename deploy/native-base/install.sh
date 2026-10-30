@@ -29,12 +29,9 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools pandoc \
   pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip \
-  gnupg2 nano vim libbrotli1
+  gnupg2 nano vim libbrotli1 libbrotli-dev
 
-if [ "$VERSION_CODENAME" = bookworm ]; then
-  # Keep the exact Python default while repairing its inherited system Brotli.
-  dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.0.9-2+deb12u1
-fi
+sh /tmp/bex-patch-system-brotli.sh
 
 # The image has no server. All programs use the same packaged client/libpq
 # closure, including archives produced by bex's default PostgreSQL 18 server.

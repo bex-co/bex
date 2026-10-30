@@ -61,6 +61,10 @@ jobs:
           context: deploy/native-base
           platforms: linux/amd64,linux/arm64
           push: true
+          provenance: mode=max
+          sbom: true
+          cache-from: type=registry,ref=ghcr.io/bex-co/bex-native:${{ matrix.name }}
+          cache-to: type=inline
           build-args: BASE_IMAGE=${{ matrix.base }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -74,6 +78,30 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false
           build-args: NATIVE_BASE=ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+      # Runtime probes above gate the repaired system and bundled decoders.
+      # Report every known vulnerability as well, including unfixed findings;
+      # old Node versions may still match version-only CVE rules after backport.
+      # Never hide these with a global CVE ignore or treat an SBOM as a probe.
+      - name: scan amd64 candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+        with:
+          cache: false
+          image-ref: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          format: json
+          output: native-amd64.trivy.json
+          exit-code: "0"
+      - name: scan arm64 candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          cache: false
+          image-ref: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
+          format: json
+          output: native-arm64.trivy.json
+          exit-code: "0"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - name: sign and attest the immutable candidate
@@ -81,6 +109,12 @@ jobs:
           REF: ghcr.io/bex-co/bex-native@${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes --oidc-provider=github-actions "$REF"
-          syft "$REF" -o spdx-json > "$RUNNER_TEMP/sbom.spdx.json"
-          cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate "$RUNNER_TEMP/sbom.spdx.json" "$REF"
+          for arch in amd64 arm64; do
+            syft "$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
+            cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
+            cosign attest --yes --oidc-provider=github-actions --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
+          done
+          # Only verified, scanned and signed candidates reach this discovery
+          # tag. Adopting its immutable digest still requires a reviewed commit.
+          docker buildx imagetools create --tag "ghcr.io/bex-co/bex-native:${{ matrix.name }}" "$REF"
           echo "${{ matrix.base }} -> $REF" >> "$GITHUB_STEP_SUMMARY"
