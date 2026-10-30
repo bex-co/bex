@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED (2026-10-28: t001–t006 done — the launcher replaces `skills` with an embedded 20-skill bex pack derived from render-oss/skills, with state in the bex config dir; Render's skills and state are never touched. Local sandbox acceptance passed. Needs the next `bex-cli/v*` release (user-run `/release cli`), then a QA spot-check of an agent deploying through the installed bex-cli skill, with the fixture deleted with a 404 proof)**
+- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED（2026-10-29 复核）：** t001–t006 / local acceptance done；等用户发起 `$release cli`，再验安装技能引导真实 deploy 并清理。
 
 - [x] **m142** — [Clear image-network choices when PORT intent changes](done/m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）** — **DONE 2026-10-29** (PORT removal and rollback with zero errors, on production)
 
@@ -23,7 +23,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m140** — [Password-free internal Key Value connections](done/m140/README.md) (9 tasks;260m) ← promoted from w8/204, 2026-10-28 — **DONE 2026-10-29** (password-free internal Key Value, isolated per workspace, on production)
 
-- [ ] **m139** — [Free web services share 750 instance hours per workspace per month, as on Render](blocked/m139/README.md) (8 tasks;275m) ← `/qa-find-bugs-cli` loop sweep p8q1 2026-10-24: no free-hours budget exists, so Free web services run without a monthly cap; Render suspends them after 750 h. freehours.Sweeper (5 min, replica-safe) accounts month-to-date Free service instance-seconds from the meter, claims 80%/exhausted emails in free_hours_notices (migration 0161), suspends Free web services via an annotated spec.suspended (billing suspender), refuses manual resume, lifts on upgrade/month end; freeInstanceHours on REST/GraphQL/MCP and a dashboard card; ADR030 §10, ADR018 — **BLOCKED (2026-10-29: t001–t007 done; the 80% warning, the meter and every readout check out on production. Exhaustion, suspension and the exhausted email need the clock: bex-canary is expected to cross 750 h around 2026-10-30 00:00–04:00 UTC (re-run t008 then); the reset/resume after 2026-11-01 00:00 UTC)**
+- [ ] **m139** — [Free web services share 750 instance hours per workspace per month, as on Render](m139/README.md) (8 tasks;275m) ← `/qa-find-bugs-cli` loop sweep p8q1 2026-10-24: no free-hours budget exists, so Free web services run without a monthly cap; Render suspends them after 750 h. freehours.Sweeper (5 min, replica-safe) accounts month-to-date Free service instance-seconds from the meter, claims 80%/exhausted emails in free_hours_notices (migration 0161), suspends Free web services via an annotated spec.suspended (billing suspender), refuses manual resume, lifts on upgrade/month end; freeInstanceHours on REST/GraphQL/MCP and a dashboard card; ADR030 §10, ADR018 — **待验收（2026-10-29 复核）：** t001–t007 done；按原 DoD 用隔离 dev-8 缩短预算/测试时钟验证 enforcement，生产验读取端，不等自然月界。
 
 - [x] **m138** — [Hobby workspaces get Render's Hobby limits; Pro features start at Pro](done/m138/README.md) (13 tasks;380m) ← `/qa-find-bugs-cli` loop sweeps b1c3/j3k5 2026-10-24: a Hobby workspace creates 3 environments per project, webhooks and network isolation, and reads HTTP request logs — all Pro-and-higher or capped on Render. core plan-feature table (PlanAllows, PlanFeatureMessage, MaxEnvironmentsPerProject, WebhookDestinationLimit) on core.Base.Plans; gates on environment/project/Blueprint create and ACL (cap 2, isolation Pro), webhook create (Pro, 1 on Pro / 100 Scale) and request logs (Pro; explicit type=request refused, all-types drops request lines); dashboard isolation lock and webhooks hint; ADR030 §9, ADR018 **t013 added 2026-10-26** (live `/qa-find-bugs w4` run 5804): the environment-cap, network-isolation and request-log Hobby refusals carry no machine-readable code, unlike `WEBHOOK_PLAN_LIMIT`. — **DONE 2026-10-29** (Hobby limits and Pro gates on every surface, on production)
 
@@ -49,7 +49,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m127** — [Free services cannot send outbound SMTP (25/465/587), as on Render](done/m127/README.md) (7 tasks;210m) ← promoted from `149` on 2026-10-20 (user decision: keep the provider 25/465 block, refuse free services 587). t001–t006 done: operator `app.bex.co/free-plan` pod label (Deployment, cron, pre-deploy; follows plan changes), clusterwide Cilium `egressDeny` of TCP 25/465/587 to `world` with a gitops-validate guard, plan-picker copy (en/zh), ADR018/ADR022. — **DONE 2026-10-29** (free SMTP ports refused, paid 587/2525 open on production)
 
-- [ ] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](blocked/m126/README.md) (9 tasks;380m) ← promoted from `145` on 2026-10-20 (user decision: implement Render's expiry). t001–t008 done: `expiresAt` from the Database CR (rollout clamp 2026-10-27), a replica-safe `FreeExpirySweeper` (warn 7 days ahead, suspend at expiry, delete after 14 days through the user delete path, audit + owner email), upgrade clears it on every plan writer, dashboard Expires row + warning + list hint; ADR009/ADR018. — **BLOCKED (2026-10-29: t001–t008 done; `expiresAt` reads correctly on every surface for both existing free databases (2026-11-26, the rollout clamp + 30 d) and the sweeper is deployed. The remaining clock-driven checks can only be observed on production on 2026-11-19 (warning), 2026-11-26 (expiry/suspension), 2026-12-10 (deletion) — re-run t009 then; a fresh-create and upgrade check needs a free Postgres slot in bex-canary)**
+- [ ] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](blocked/m126/README.md) (9 tasks;380m) ← promoted from `145` on 2026-10-20 (user decision: implement Render's expiry). t001–t008 done: `expiresAt` from the Database CR (rollout clamp 2026-10-27), a replica-safe `FreeExpirySweeper` (warn 7 days ahead, suspend at expiry, delete after 14 days through the user delete path, audit + owner email), upgrade clears it on every plan writer, dashboard Expires row + warning + list hint; ADR009/ADR018. — **BLOCKED（2026-10-29 复核）：** t001–t008 done；等 D3 的 fresh QA Postgres 槽和短时 paid-upgrade fixture；生命周期用 dev 测试时钟，不必等 11–12 月。
 
 - [x] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](done/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik ([evidence](done/m125/evidence/README.md)); ADR010/ADR018. — **DONE 2026-10-29** (edge-minted Rndr-Id end to end on production)
 
@@ -87,7 +87,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](done/m108/README.md) (6 tasks;210m) — **SUPERSEDED 2026-10-29（被 w8/207 的 `readTimeout: 6000s` 取代）**
 
-- [ ] **m107** — [Supply ZIP creation in native builds and runtimes](blocked/m107/README.md) (6 tasks;190m) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m107** — [Supply ZIP creation in native builds and runtimes](m107/README.md) (6 tasks;190m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
 - [x] **m106** — [Supply Hugo for the documented static quickstart](done/m106/README.md) (6 tasks;195m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Hugo quickstart unchanged; exact cleanup ([evidence](done/m106/evidence/hosted-2026-10-18/README.md)).
 
@@ -95,31 +95,31 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
-- [ ] **m103** — [Supply native Python packaging and development tools](blocked/m103/README.md) (8 tasks, 335m, 3 major omissions) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m103** — [Supply native Python packaging and development tools](m103/README.md) (8 tasks, 335m, 3 major omissions) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m102** — [Supply pigz for native asset builds](blocked/m102/README.md) (6 tasks, 190m, major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m102** — [Supply pigz for native asset builds](m102/README.md) (6 tasks, 190m, major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m101** — [Supply Webpack for native production bundles](blocked/m101/README.md) (6 tasks, 225m, major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m101** — [Supply Webpack for native production bundles](m101/README.md) (6 tasks, 225m, major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m100** — [Supply SWIG for native C-binding builds](blocked/m100/README.md) (6 tasks,200m,major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m100** — [Supply SWIG for native C-binding builds](m100/README.md) (6 tasks,200m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m99** — [Supply TypeScript for native builds and runtime](blocked/m99/README.md) (6 tasks,225m,major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m99** — [Supply TypeScript for native builds and runtime](m99/README.md) (6 tasks,225m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m98** — [Supply jq and rsync for native asset builds](blocked/m98/README.md) (7 tasks,270m,2 major omissions) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m98** — [Supply jq and rsync for native asset builds](m98/README.md) (7 tasks,270m,2 major omissions) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m97** — [Supply Ghostscript for native PDF rendering](blocked/m97/README.md) (6 tasks,215m,major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m97** — [Supply Ghostscript for native PDF rendering](m97/README.md) (6 tasks,215m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m96** — [Supply GNU gettext for native message compilation](blocked/m96/README.md) (6 tasks,195m,major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m96** — [Supply GNU gettext for native message compilation](m96/README.md) (6 tasks,195m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m95** — [Supply libvips in native builds and runtime](blocked/m95/README.md) (6 tasks,230m,major) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m95** — [Supply libvips in native builds and runtime](m95/README.md) (6 tasks,230m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m94** — [Supply SQLite CLI in native builds and runtime](blocked/m94/README.md) (6 tasks) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m94** — [Supply SQLite CLI in native builds and runtime](m94/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m93** — [Supply Pandoc in native builds and runtime](blocked/m93/README.md) (6 tasks) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
 - [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (7 tasks;250m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
-- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](blocked/m91/README.md) (6 tasks;205m) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
+- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
 - [x] **m90** — [Install Yarn dependencies before static builds](done/m90/README.md) (6 tasks;140m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built with the bare dependency-using command and no installer prefix; exact cleanup ([evidence](done/m90/evidence/hosted-2026-10-18/README.md)).
 
@@ -167,11 +167,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED (2026-10-15: t001–t003, t005, t006 done — backend and dashboard keep nonblank build/start/pre-deploy/cron/hook command text byte for byte (whitespace-only still clears) with failing-first REST/GraphQL/MCP/Blueprint/dashboard regressions; upstream CLI patch + request-construction regressions prepared in `blocked/m68/evidence/t001-upstream/upstream-command-text.patch`. Needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the deployed fix for the hosted two-client `7461696c20` replay with cleanup (t004/t007))** Sweep299:41 focused source passes; live API pre-deploy still executes the shortened argument, both native readers confirm; own fixture cleaned.
 
-- [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-29: t001–t006 done — Render CLI v2.29.0 adopted, refused tails close with 4000, hosted candidate checks pass: tail resumes exactly once, finished build tail exits 1 once, `networkPolicy.type` accepted. Needs the next `bex-cli/v*` release (user-run `/release cli`), then t007 re-runs the three checks on the published binary)**
+- [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED（2026-10-29 复核）：** t001–t006 done；等用户发起 `$release cli`，再做 published-binary 验收，latest v0.3.3 早于本项新变更。
 
 - [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](done/m78/README.md).
 
-- [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
+- [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED（2026-10-29 复核）：** CNPG 1.30.1 + in-place 已由 w7/m156 上线验收；现等 D3 的自有 QA Postgres fixture，随后验证 300/1005 条 burst，不能用 WAL 验收替代。
 
 - [x] **m64** — [Keep Blueprint environment copies consistent across applies](done/m64/README.md) — **DONE 2026-10-29** (Blueprint copies consistent; dashboard Validate scoped, on production)
 
@@ -406,9 +406,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **223** — [A rollout refused by the workspace's memory quota sits "in progress" with no reason](223.md) — found by the m117 re-check 2026-10-29
 
 - [ ] **223** — [`bex login` tells the user to complete login in the "Render Dashboard"](223.md) (~45m) ← loopx w4 replay of w4/m116, 2026-10-29 UTC (released `bex-cli/v0.3.3`; minor). Upstream `pkg/tui/views/login.go` hard-codes the string; `branding.RewriteText` covers help text only, and w8/m29 t002 left runtime strings out of scope.
-- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](blocked/222.md) — **BLOCKED (2026-10-29: needs the user to choose: keep Render's exact 3.14.8 default (shipped by w8/217; its frozen image carries the unfixed system `libbrotli1`, which CPython itself does not link), revert to 3.14.10 as a signed-off divergence, or build a bex-owned 3.14.8 image on the patched base)**
+- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) — **待实施（2026-10-29 复核）：** 复用 m91 的共享镜像，保持 Python 3.14.8 精确默认值并修补 Brotli；不需选择版本偏离。
 
-- [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](blocked/221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **BLOCKED (2026-10-29: needs the user to decide: keep requested-size billing on a 10 GB volume, bill 10 GB, refuse under 10 GB, or cap the filesystem at the requested size)**
+- [ ] **221** — [Small disks (1–9 GB) ship at Render's sizes and bill the requested size on a 10 GB Hetzner volume; keep that, bill 10 GB, or bring back the refusal?](221.md) (~30m once decided, minor) ← w8/215 implementation 2026-10-29: option 1 shipped as the parity-sufficient choice; a 1 GB disk loses ≈ $0.59/month and fills at 10 GB, not 1 GB — **待实施（2026-10-29 复核）：** 保持 requested-size 计费，按原选项 4 补齐真实容量上限，验证 LUKS / 在线扩容。
 
 - [x] **220** — [Toggling environment isolation briefly cuts a Key Value off from its own environment](done/220.md) — found by the m136 live check 2026-10-29 — **DONE 2026-10-29** (proxy pods relabelled in place; no roll)
 
@@ -461,7 +461,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](done/194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor) — DONE 2026-10-23 (live-verified 2026-10-23 sweep d4e8; rechecked 2026-10-26 sweep cbcd)
 
-- [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](blocked/192.md) ← w8/183 2026-10-22 (due 2026-11-22) — **BLOCKED (needs a production operator to list pre-cutoff static sites and add the `/* → /index.html` rewrite to the SPAs before the code step removes `SPAFallbackCutoff`; removing it first would break running single-page apps)**; no code is done yet.
+- [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](blocked/192.md) ← w8/183 2026-10-22 (due 2026-11-22) — **BLOCKED（2026-10-29 复核）：** worker 恢复 strict 生产访问并完成全量 pre-cutoff SPA inventory / rewrite 后再移除 cutoff；局部列表不是零存量证明，due 2026-11-22。
 
 - [x] **191** — [List endpoints called without `limit` return the whole list unsorted instead of Render's default page of 20, so a cursor from that page continues a different order; unfiltered `GET /notification-settings/overrides` returns one workspace instead of all](done/191.md) ← `/qa-find-bugs-cli` sweep 1326 2026-10-22: unsigned ADR018 divergences; minor, ~1h30m. — **DONE (2026-10-22)**: REST lists default to Render's first page; overrides span the caller's workspaces.
 
@@ -655,7 +655,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **091** — [SSH project filters start connection preparation before choosing a service](blocked/091.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`091-upstream.patch`](blocked/091-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
-- [ ] **090** — [CLI Dashboard opens a relative path from a fresh config](blocked/090.md) — **BLOCKED (source fix is on main; current-build service/deploy Dashboard actions pass in sweeps209/211, including equivalent API bases; published 0.3.2 still opens relative paths; CLI release, real browser arrival and complete shared-link acceptance remain)**
+- [ ] **090** — [CLI Dashboard opens a relative path from a fresh config](090.md) — **待验收（2026-10-29 复核）：** v0.3.3 已含 Dashboard 默认 origin / 等价 host 修复；重放已发布二进制及真实浏览器到达。
 
 - [x] **089** — [CLI dashboard actions open the OAuth host and return 404](done/089.md) — **DONE 2026-10-29** (CLI dashboard links land on the dashboard, on production)
 
@@ -695,7 +695,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **064** — [A stale `BEX_WORKSPACE` name blocks help, version and workspace recovery before dispatch](done/064.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-07 offline sweep 1; checkout regression, production confirmation outstanding. — **DONE 2026-10-08**
 - [x] **062** — [Static `routes`/`headers` REST answers bare items: no `{route|header, cursor}` envelope and no `id`/`priority`, unlike Render's contract](done/062.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 43. — **DONE 2026-10-07**
 - [x] **063** — [Env-group linking and service secret files drift from Render's REST contract: link → 204 no body, `serviceLinks` bare ID strings, bulk `PUT …/secret-files` → 405](done/063.md) (~55m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 44. — **DONE 2026-10-07**
-- [ ] **048** — [Cron jobs are paid-only, as on Render](blocked/048.md) — **BLOCKED (2026-10-29: hosted paid side passes — plan-less cron create → `starter`, `update --plan free` refused by both clients; the read-only production inventory found 3 legacy free crons, all 2026-09-22 QA fixtures in bex-canary. Needs the user to decide: delete them, move them to a paid plan, or keep them; no external owner notice is needed)**
+- [ ] **048** — [Cron jobs are paid-only, as on Render](blocked/048.md) — **BLOCKED（2026-10-29 复核）：** paid-only 线上已通过；D1 待决定三个既有 QA free cron 删除或保留，无外部 owner 通知。
 
 - [x] **061** — [Render's `/metrics/{memory,cpu,…}` answers a bare `404 not found` for a live Key Value or Postgres](done/061.md) — **DONE 2026-10-05**: Key Value `memory` serves `kv_memory`; other datastore pairs are a coded 400 naming the pair; a missing id stays 404.
 - [x] **060** — [Service events answer `service_hibernated`/`service_woken` on the Render REST feed, outside Render's event-type enum](done/060.md) — **DONE 2026-10-05**: kept as declared bex extensions per ADR018; a gate now fails on any REST event type outside Render's enum that is not declared with a reason.
@@ -776,3 +776,37 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **200** — [**Blocker:** every prebuilt-image web service create fails: `spec.portMode "web-image-v1"` is missing from the App CRD enum (w4/m243 regression)](done/200.md) (~30m) ← `/qa-find-bugs-cli` loop sweep k2m4 2026-10-25 — DONE 2026-10-25 (CRD fix live: image creates return 201; first deploys then hit w8/201)
 
+## 解除阻塞复核（2026-10-29，`99ddf393061a`）
+
+- **核查基线：** `git fetch origin main` + `git pull --ff-only origin main` 成功，revision `99ddf393061ab2b3f4e60b93243ed8624f12fd3e`；开始时工作树干净。按 15 个共同卡点分组读取全部 57 个 blocked 条目（29 milestones / 28 inbox notes），覆盖其未完成任务与共同设计；未把 done/ 当开放项。
+- **处置：** 恢复 17 项待实施/验证，保留 40 项真实门槛；本次没有把仅源码合入或已部署的项标 done。所有结论来源见原条目本次复核记录。
+- **目录/索引漂移：** 57 个 blocked 项均有索引；m67/m126/m139 目录 blocked 但 README status 为 todo，本次统一。额外发现 inbox 的两个 `223` 索引共指同一文件（quota 原因 vs Render Dashboard login 文案）；实际 223.md 仅存 quota 内容，另一个标题的原始卡片未找到，不能替其他会话编造/覆盖它，后续 PM 需从提交/会话恢复原文并分配新 ID。该 active 项不属于这 57 项，不在本轮擅自关闭。
+- **生产访问：** 既有 CLI grant 可只读列出三个自有 workspace；已安装 bex 是 dev build / Render v2.26.0，不能当 published/current-pin 验收。strict SSH key pin 不匹配导致本次全局 kubeconfig 获取失败；未改 known_hosts / 未绕过校验。恢复 strict access 是 worker / production operator 的事实核查，不是要求用户作产品选择。
+
+| 共同卡点 | 涉及全部 ID | 本轮结论 / 下一步 |
+| --- | --- | --- |
+| 共享原生基础镜像与精确 Python 安全修补 | w8/m91, w8/m93, w8/m94, w8/m95, w8/m96, w8/m97, w8/m98, w8/m99, w8/m100, w8/m101, w8/m102, w8/m103, w8/m107, w8/222 | 14 项恢复；按现有 parity 规则选共享 CI 镜像，逐项功能验收，不等可选偏离决定 |
+| 准备好的 CLI 上游补丁 | w8/m57, w8/m60, w8/m68, w8/072, w8/075, w8/076, w8/077, w8/079, w8/082, w8/084, w8/085, w8/086, w8/087, w8/091, w8/093, w8/103, w8/107, w8/108, w8/118 | 19 项仍 blocked；D2 仅待公开提交许可，随后逐项 fresh source / issue dedupe、测试、提交；合入/上游 release/CLI release 另有真实门槛 |
+| 已提交、待上游交付 | w8/066, w8/067, w8/068, w8/070 | #54–#57 本次均 open / merged=false；无需重复请求提交许可 |
+| CLI 发布与验收 | w8/090, w8/m67, w8/m143 | 090 的修复在 v0.3.3，已恢复验收；m67/m143 新变更仍等用户明确 release |
+| 数据库扩展 rollout | w8/m92, w8/m104, w8/m109, w8/m110, w8/m111, w8/m112 | 6 项仍 blocked；供应镜像 + owner 按需 allowlist 由 parity 确定，只需专题决定既有库 operand/preload 重启的影响/窗口 |
+| 数据库验收资源 | w8/m65, w8/m126 | 升级/自然日历均非门槛；D3 待临时 QA workspace 及最小 fixture，保留既有数据库 |
+| Free web 小预算生命周期 | w8/m139 | 已恢复 t008，dev-8 测试时钟/Mailpit + 生产 read side，保留 D5 不补公告 |
+| 旧 QA cron | w8/048 | D1 待删除三个既有 QA cron 或保留 grandfathering，不默认改付费 |
+| PostgreSQL TLS 信任边界 | w8/m87 | 单独讨论 proxy 持全租户私钥 / 明文 SQL；设计与 t002 的 BackendKeyData 策略冲突亦需 worker 修正 |
+| Web 压缩供应方 | w8/m83 | 先找官方 streaming-safe / HTTP 正确的修复；未准备的 Traefik/Yaegi PR 不混入 D2，不能删原 DoD 来解锁 |
+| HTTP/3 edge 与费用 | w8/211 | 仍需专题决定付费 UDP/IP 路径、Cloudflare 或明确偏离；未新增资源 |
+| 区域 readback 的既有 D1 | w8/218 | 需明确是否修改 D1 的 BEX_REGION readback；内部区域不变，不擅自覆盖用户已选行为 |
+| 小盘实际容量 | w8/221 | 已恢复，保持 requested-size 计费并实现请求容量上限；可选涨价/拒绝不阻塞 parity |
+| 旧静态站迁移 | w8/192 | 全量 inventory / 必需 rewrite 真实完成后再恢复 cutoff 移除，due 2026-11-22 |
+| 构建 narration 缺行 | w8/069 | 保留 recurrence gate，下一次先留 Job/pod/source/Loki 证据，无需用户选择 |
+
+**交接状态：** 17 项已在活跃路径；当前 D1/D2/D3 尚未收到答案，按 unblock 技能不提前启动 loopx。决策批次结束后 `$loopx w8` 会处理全部开放队列（包括原 active 223），不只本次恢复项。本轮 `$unblock` 没有新增 commit/push 权限；仓库要求用户明确 `$ship`。未提交或发布任何改动。
+
+证据入口：Render [原生工具表](https://render.com/docs/native-runtimes#tools-and-utilities)、[Postgres 扩展表](https://render.com/docs/postgresql-extensions)；GitHub [Bex v0.3.3](https://github.com/bex-co/bex/releases/tag/bex-cli/v0.3.3)、[上游 PR #54](https://github.com/render-oss/cli/pull/54)、[#55](https://github.com/render-oss/cli/pull/55)、[#56](https://github.com/render-oss/cli/pull/56)、[#57](https://github.com/render-oss/cli/pull/57)；[w7/m156 生产验收](../w7/done/m156/README.md)。
+
+## 本轮决定进展（2026-10-29，接续 D1/D2/D3）
+
+- **D1：用户明确选择删除。** w8/048 的三个指定旧 QA cron 已获删除许可；正在逐 ID 复核和清理，尚未以许可代替 404/配额验收。
+- **D3：用户明确允许，要求最终干净和正确。** w8/m65 / w8/m126 可用一个临时 QA workspace 和同一份最小 PostgreSQL fixture（Free 验收后短时最低付费升级）；详细基线、精确 ID、正常删除、异步资源/配额、临时凭据/进程和计费正确性要求已写入两个 milestone。资源尚未创建，不声称就绪。
+- **D2：仅询问上游收益，尚未决定。** 已向用户解释通用缺陷的价值；最新 Render main `c31e586eb6f38138af3cc986b079e46a78c61de7` 仍有 psql 未转发 stdin / 成功 stderr 丢失、restart 原始响应漏检状态、secret-file 路径 TrimSpace。日志 YAML 的 #56 属于此前已提交项，不在本批 19 项。没有公开 PR、对外消息或 push。

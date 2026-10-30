@@ -1,6 +1,6 @@
 # w8 · m126 — Free Postgres expires after 30 days and reports `expiresAt`, as on Render
 
-**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** todo（2026-10-29 解除阻塞，待线上验收；原记录：t001–t008 done 2026-10-20; t009 live check on production after the release pipeline deploys bex-api and the dashboard
+**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** blocked — t001–t008 done；日历不是门槛，待 D3 的 fresh QA Postgres 槽及短时 paid-upgrade fixture，随后完成原 DoD
 
 ## Tasks (in order)
 
@@ -59,3 +59,18 @@ Live on production after the release pipeline deploys bex-api and the dashboard:
 - **剩余工作：** 只剩线上验收（待验证，未完成）。部署不等于验收通过。
 - **worker 下一步：** loopx 按原 DoD 和上方 BLOCKED 记录里的检查清单在生产执行线上验收：通过则按 done 规则关闭；不通过则修复后复验。fixture 按 ID 删除并留 404 证据。
 - **用户门槛：** 无。
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m126/t009。
+- **结论来源：** 本次复核原 DoD、t009 与生产资源只读列表。生命周期验收原文允许测试时钟 / dev 回填日期；不要求等待 2026-11-19 至 12-10 的生产日历。已有生产读取端证据保留。
+- **剩余门槛：** bex-canary 的唯一 Free Postgres 槽被 `dpg-db9r654flioc739mcpbg` 占用，未删除或升级它。D3 待用户决定临时 QA workspace 及一次最小短时付费 PostgreSQL fixture，用于 fresh-create 和 free→paid 的实际验收。现有 D4 仅批准 cron 验收付费 fixture，不扩大为数据库付款授权。
+- **worker 下一步：** D3 明确且资源实际就绪后恢复 t009；在 dev-8 用测试时钟验证 warn/suspend/final-warning/delete/claim 幂等，生产验证 fresh creation+30d 和 upgrade 清除 expiresAt。记录邮件实际收件、删除和审计，只清理自有 fixture 并留 404。所有原 DoD 仍有效；自然日历观察是可补充证据。
+
+## 用户决定 D3（2026-10-29，接续本轮 unblock）
+
+- **结论来源：** 用户明确回复「D3 允许，但是最终状态要干净和正确」。
+- **授权范围：** 一个本轮临时 QA workspace、一份新的最小 Free Postgres；先用于 m65 的 Free burst 和 m126 的 fresh expiresAt 验收，再做一次 m126 必需的最低付费档短时升级。复用同一 fixture，尽快删除，不触碰原有数据库。允许由此产生的短时数据库费用，不授权添加/替换支付卡、修改其他 workspace 计费或绕过产品权限/付款检查。
+- **前置复核：** 已获准创建/付费不是资源已就绪的证明；worker 仍须核实普通产品入口的创建权限、workspace cap、payment policy 和可用额度。能自行核查的事实由 worker 查，遇真实外部门槛再精确记录。未实际提供资源前不伪称线上验收已经开始或完成。
+- **干净且正确：** 开始前保存资源/配额和本轮凭据基线；按创建返回的确切 ID 记自有资源账本。结束时数据库和 workspace 经正常路径删除且查询/列表不可见，确认异步关联资源和 quota/terminating 收敛、没有继续运行的付费实例；只撤销本轮 session/grant、删除本轮临时 config/CA/日志凭据并回收进程。原有资源和其余会话保持原状态。保留正确的审计/已发生用量记录，不能为“干净”删除计费事实。无法证实任何一项时明确列出残留和责任人，不能关闭 milestone。
+- **worker 下一步：** 先准备最小资源及清理保证，再恢复并完成本项原 DoD；无新增 commit/push 授权。本轮 D2 仍是用户提问，未获公开上游提交许可。

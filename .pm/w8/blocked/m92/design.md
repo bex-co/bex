@@ -31,7 +31,7 @@
 
 1. **Image.**
    - **(a)** Adopt CNPG's PostGIS images. This closes m92 only; m104 and m109–m112 become documented divergences.
-   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../m91/design.md), option C.
+   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../../m91/design.md), option C.
 2. **Activation.**
    - **(a)** Pre-install in every application database, like `vector`.
    - **(b)** On-demand `CREATE EXTENSION` by the owner through an allowlist extension (Render's contract).
