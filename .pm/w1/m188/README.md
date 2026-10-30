@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14 签名发布独立验收通过（1/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7 签名发布独立验收通过（3/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -168,3 +168,10 @@ Node16、Python3.7、Python3.8 的旧 amd64 SPDX 也未证明与实际子镜像�
 - 旧21ed批次的两个剩余任务均 pending、0步骤，已提交取消；保留已在进行的 canonical5e89 全27项批次，避免重新冷编译刚完成的 Node18。见 [逐次安全检查与请求](evidence/obsolete-batch-transfer/21ed-obsolete-queued-cancel-review.json)。所有取消均保留已导出的不可变产物及历史证据，不以取消请求冒充发布或采用成功。
 
 同步 main 的 `59e9d38fa` 已清理 Node16/Python3.7 的临时恢复授权；保留该清理，不恢复已过期条目。本项独立完整采用守卫继续核验两者的已有签名与真实层证据，未仅凭其他 worker 的结论增加计数。当前五个授权路径与三个已清理路径、配方/包/base 等负向路径的十四项实际选择检查通过；新增授权与逐次取消证据另经 [独立复核](evidence/new-recovery-auth-cancel-review.json)。Node20 旧 attempt2 重跑只剩零步骤 pending native 任务，已停止该旧重跑，保留 `41053647412` 的当前 registry 来源恢复。
+
+### 独立正式验收推进至 3/11 — 2026-10-30（UTC 12:45Z）
+
+- Node14、[Python3.7](evidence/python37-published-acceptance/acceptance.json)、[Node16](evidence/node16-published-acceptance/acceptance.json) 均已完成完整候选守卫与新鲜匿名 discovery body/header digest 检查，逐项计数为1、2、3；原有通过记录保持哈希不变。来源是已固定的实际双架构发布，不是 overlay 或模拟镜像。
+- 两项新候选的 amd64 Docker-save 合成摘要都由实际压缩层 digest、解压 DiffID/大小、顺序及原配置精确重建；arm64 均直接绑定 registry 子镜像，不使用未被实际签名的另一派生摘要。两份独立复核、保留的实际读取/完成记录、五份严格签名和全扫描语义均通过。新守卫的2个正向与26个有意篡改反例通过；保留发现与回移/探针处置，不将旧运行时宣称为零漏洞。
+- Python3.7 的重复定向恢复在重新确认 queued/runner0/steps0 后提交取消；Node16/Python3.7 临时授权的既有清理保留。当前源 pin 尚未采用；剩余Node18/20、Python3.8/3.9/3.10、Ruby3.0/3.1/3.2均有当前发布路径。t002–t008继续开放。
+- 已推送 `5803d2030` 并针对其实际 SHA [检查发布输入范围](evidence/publisher-source-reviews/5803.json)。Node18与Python3.10以新授权进入完整恢复；三项Ruby在相同当前配方下新建候选，均不因为已排队就计入通过。

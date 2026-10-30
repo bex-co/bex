@@ -1,0 +1,11 @@
+{
+  "schema": "native_stable_discovery_confirmation/v1",
+  "checked_at": "2026-10-30T12:43:38.229712+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye",
+  "digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "header_digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "anonymous_registry_access": true,
+  "raw_bytes": 1611,
+  "raw_file": "/tmp/bex-m188-python-3.7-bullseye-discovery-confirmation.raw.json",
+  "raw_sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+}

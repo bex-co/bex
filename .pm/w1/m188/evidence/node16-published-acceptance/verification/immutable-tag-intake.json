@@ -1,0 +1,8 @@
+{
+  "checked_at": "2026-10-30T11:33:00.409810+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm-4330878c280bc9748444c8e1e50ff7388df1228a",
+  "digest": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "header_digest": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "anonymous_access": true,
+  "perarch_config_checks_deferred_to_required_finalizer": true
+}

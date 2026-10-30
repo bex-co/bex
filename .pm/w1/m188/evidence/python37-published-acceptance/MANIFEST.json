@@ -1,0 +1,317 @@
+{
+  "schema": "native_acceptance_archive/v1",
+  "archived_at": "2026-10-30T12:48:12.549934+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "accepted_count_at_promotion": 2,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "files": [
+    {
+      "source": "/tmp/bex-m188-python-3.7-bullseye-acceptance.json",
+      "archive": "acceptance.json",
+      "bytes": 3686,
+      "sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "archive": "verification/proof.json",
+      "bytes": 19519,
+      "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "archive": "verification/candidate.json",
+      "bytes": 12083,
+      "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+      "archive": "verification/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+      "bytes": 1009,
+      "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+      "archive": "verification/architecture-binding.json",
+      "bytes": 11907,
+      "sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98"
+    },
+    {
+      "source": "/tmp/bex-m188-python-3.7-bullseye-discovery-confirmation.json",
+      "archive": "linked/7a4ce5bd0f55-bex-m188-python-3.7-bullseye-discovery-confirmation.json",
+      "bytes": 582,
+      "sha256": "7a4ce5bd0f55bf3d4a4f3b7ed270440e503b0e7da48d15e817e4c8da401ecafb"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/aggregate-at-promotion-2.json",
+      "archive": "verification/aggregate-at-promotion-2.json",
+      "bytes": 72137,
+      "sha256": "91f2fbe86d4e5d867e1be39e687bb0604c6dbb30eb9185792500fe5e30732c14"
+    },
+    {
+      "source": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+      "archive": "linked/8c284bc98623-8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+      "bytes": 68751,
+      "sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "archive": "verification/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "bytes": 5322,
+      "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/publisher-job.json",
+      "archive": "verification/publisher-job.json",
+      "bytes": 6269,
+      "sha256": "778ba899839e4b9bc62210a3a3f438ab13015bdc8f44ad906fb34b5a747a1e72"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/publisher-job-snapshot.json",
+      "archive": "verification/publisher-job-snapshot.json",
+      "bytes": 332,
+      "sha256": "941cb78eb3d784527e71144d4f19f20e70a4715e1e9dc872c348b0d62d63fde1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verification-job.log.gz",
+      "archive": "verification/verification-job.log.gz",
+      "bytes": 58468,
+      "sha256": "e370b5711966b8196f6fc67b89f295ea682c7d24e38aef0a2c1c8cbd986fc5b7"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+      "archive": "verification/guard-validation.json",
+      "bytes": 1009,
+      "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/producer-job.json",
+      "archive": "verification/producer-job.json",
+      "bytes": 6109,
+      "sha256": "c448f6e50596688d7fef1e0a91e13f235e34660c9277b99f6990b59daa9b39d0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/collection-index.raw.json",
+      "archive": "verification/collection-index.raw.json",
+      "bytes": 2368,
+      "sha256": "0b397d15e087a5017924a96b5a5806a46cdd2d0c396375fa612ff20f2a2bd972"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/immutable-tag-intake.json",
+      "archive": "verification/immutable-tag-intake.json",
+      "bytes": 371,
+      "sha256": "5fb8e89689f454c59e0478a6981e970ff6220e48850c37034fcbb1d93d3dd2b3"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/local-reuse-receipt.json",
+      "archive": "verification/local-reuse-receipt.json",
+      "bytes": 2940,
+      "sha256": "d4f6dea51e0a19cd5248ce5f43fce80e727af601e92f9bc911fdb71167df4b75"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/amd64-content-equivalence.json",
+      "archive": "verification/amd64-content-equivalence.json",
+      "bytes": 18950,
+      "sha256": "49e5fe2a9924746842681a006da1af43e7bd2fbf28bb8637db62fd3e44f3ac2a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/producer-job.log.gz",
+      "archive": "verification/producer-job.log.gz",
+      "bytes": 168475,
+      "sha256": "e4111cdcaf116dec5a7a2d287e99cbbb95d1b9dbbd81bf228aa89494cd0bbd5e"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.stderr",
+      "archive": "verification/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.command.json",
+      "archive": "verification/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.command.json",
+      "bytes": 2143,
+      "sha256": "a0b00c0cc076bdc07a141b4ad410a1e7fed49348009e5615a09bcdca417f901a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.stdout",
+      "archive": "verification/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.command.json",
+      "archive": "verification/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.command.json",
+      "bytes": 2174,
+      "sha256": "3e5eb847915b532f5dcd9ade3d44cc87742840cea49fe0b467710e202657bddc"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.stderr",
+      "archive": "verification/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.stderr",
+      "archive": "verification/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.command.json",
+      "archive": "verification/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.command.json",
+      "bytes": 2174,
+      "sha256": "544955c3b613258937eebfd541c34aef99653336672d5aec0b1a480710b906f4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.stdout",
+      "archive": "verification/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.stdout",
+      "archive": "verification/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce.config.json",
+      "archive": "verification/manifests/4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce.config.json",
+      "bytes": 18275,
+      "sha256": "4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2.json",
+      "archive": "verification/manifests/0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2.json",
+      "bytes": 1013,
+      "sha256": "0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561.json",
+      "archive": "verification/manifests/e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561.json",
+      "bytes": 1007,
+      "sha256": "e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710.registry-child.json",
+      "archive": "verification/manifests/380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710.registry-child.json",
+      "bytes": 3726,
+      "sha256": "380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788.json",
+      "archive": "verification/manifests/d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788.json",
+      "bytes": 1038,
+      "sha256": "d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee.config.json",
+      "archive": "verification/manifests/3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee.config.json",
+      "bytes": 18276,
+      "sha256": "3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1.registry-child.json",
+      "archive": "verification/manifests/28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1.registry-child.json",
+      "bytes": 3726,
+      "sha256": "28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837.json",
+      "archive": "verification/manifests/4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837.json",
+      "bytes": 1007,
+      "sha256": "4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758.json",
+      "archive": "verification/manifests/8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758.json",
+      "bytes": 1038,
+      "sha256": "8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/root-index.raw.json",
+      "archive": "linked/41a74a7d36f4-root-index.raw.json",
+      "bytes": 1611,
+      "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2.json",
+      "archive": "linked/0f4ed49ff3cd-0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2.json",
+      "bytes": 1013,
+      "sha256": "0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.json.gz",
+      "archive": "linked/b5f51668ed2b-6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.json.gz",
+      "bytes": 6059,
+      "sha256": "b5f51668ed2b706cebe8475f84834826957429ca90dcfcf1404467036b322edd"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.command.json",
+      "archive": "linked/35816dfeb589-6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.command.json",
+      "bytes": 2061,
+      "sha256": "35816dfeb589e54b1536bcfe8a5cb9c9dca1d7901e90bf42b368c7359f2cdbda"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561.json",
+      "archive": "linked/e87cb8b8cbc5-e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561.json",
+      "bytes": 1007,
+      "sha256": "e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.command.json",
+      "archive": "linked/77c1195ff854-8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.command.json",
+      "bytes": 2051,
+      "sha256": "77c1195ff854b0332f63d655beca599135e8838bfd5014f5a689211fe0ed49a0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/image-signature.statement.json",
+      "archive": "linked/b50d27d7f09e-image-signature.statement.json",
+      "bytes": 234,
+      "sha256": "b50d27d7f09ec347250fdcd25752c6057269db75b2c38884eb1550063530a9f5"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/controls.json",
+      "archive": "linked/12dbbf4200a5-controls.json",
+      "bytes": 1599,
+      "sha256": "12dbbf4200a5f03149129a525b450a317d21cce7ecb6c8e89e4408ad11380159"
+    },
+    {
+      "source": "/tmp/bex-m188-generic-equivalence-controls.json",
+      "archive": "linked/4e94b9145d9d-bex-m188-generic-equivalence-controls.json",
+      "bytes": 5322,
+      "sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/publisher-job.json",
+      "archive": "linked/778ba899839e-publisher-job.json",
+      "bytes": 6269,
+      "sha256": "778ba899839e4b9bc62210a3a3f438ab13015bdc8f44ad906fb34b5a747a1e72"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.stdout",
+      "archive": "linked/e3b0c44298fc-6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.stderr",
+      "archive": "linked/80a53f76c7ed-6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.stdout",
+      "archive": "linked/e3b0c44298fc-8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.stderr",
+      "archive": "linked/80a53f76c7ed-8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    }
+  ],
+  "large_predicates": "Full signed predicates remain in digest-addressed public OCI objects and local verified gzip caches, referenced by proof.json. Exact original paths are retained; this manifest maps archived metadata."
+}

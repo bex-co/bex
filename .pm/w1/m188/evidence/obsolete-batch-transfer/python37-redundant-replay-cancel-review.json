@@ -1,0 +1,21 @@
+{
+  "reviewed_at": "2026-10-30T12:45:05.431202+00:00",
+  "run_id": 41051768218,
+  "source": "e47a2c6157339a3a786118866f28b4ee8b619774",
+  "accepted_candidate": {
+    "file": "/tmp/bex-m188-python-3.7-bullseye-acceptance.json",
+    "sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346"
+  },
+  "native_jobs": [
+    {
+      "id": 124052616787,
+      "name": "build (python-3.7-bullseye, python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d62...",
+      "status": "queued",
+      "runner_id": 0,
+      "steps": []
+    }
+  ],
+  "zero_started_native_jobs_only": true,
+  "recommendation": "Cancel only this redundant root selective Py3.7 replay after immediate recheck",
+  "remote_cancel_performed": false
+}

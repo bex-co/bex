@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-30T12:45:43.514309+00:00",
+  "requested_at": "2026-10-30T12:45:44.911709+00:00",
+  "run": 41051768218,
+  "native_job_id": 124052616787,
+  "state_at_recheck": "queued, runner0, steps0",
+  "accepted_candidate": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "accepted_count_before_request": 3,
+  "exit": 0,
+  "stdout": "\u2713 Request to cancel workflow 41051768218 submitted.\n",
+  "stderr": "",
+  "accepted_count_at_original_py37_review": 2,
+  "node16_accepted_at": "2026-10-30T12:45:18.618682+00:00",
+  "count_note": "Node16 completed promotion before the queued-replay cancellation; the original Py37 review count was2."
+}

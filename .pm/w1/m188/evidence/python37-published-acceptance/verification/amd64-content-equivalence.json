@@ -1,0 +1,394 @@
+{
+  "schema": "native_docker_archive_content_equivalence/v1",
+  "checked_at": "2026-10-30T12:32:03.351383+00:00",
+  "complete": true,
+  "repository": "ghcr.io/bex-co/bex-cnb-run",
+  "root_index_digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "architecture": "amd64",
+  "registry_child_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+  "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+  "signed_spdx_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+  "stereoscope_version": "0.3.1",
+  "execution_mode": "generic_native_supplier_driver/v1",
+  "reconstruction": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/amd64-derived-docker-manifest.json",
+    "sha256": "057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+    "bytes": 3209
+  },
+  "inputs": {
+    "raw_index": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/identity/index.json",
+      "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "bytes": 1611
+    },
+    "raw_manifest": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/identity/amd64-manifest.json",
+      "sha256": "380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "bytes": 3726
+    },
+    "raw_config": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/identity/amd64-config.json",
+      "sha256": "4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "bytes": 18275
+    }
+  },
+  "ordered_layer_witnesses": [
+    {
+      "ordinal": 0,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+        "size": 55056714
+      },
+      "diff_id": "sha256:8a5350ad66cbc3e11338f19e88a58df039b8539c8121b52662dee70b221162ff",
+      "uncompressed_bytes": 129364480,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb.json",
+        "sha256": "0c7ebe3924fae4b2eca9aee3f0a9e439cd67444650131284f3ec4070b59b812c",
+        "bytes": 498
+      }
+    },
+    {
+      "ordinal": 1,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+        "size": 15760408
+      },
+      "diff_id": "sha256:dcbfd799de9c4b56539f3ebe5b9048af95dd6b8d214b51dc6d7f6e3232d31dea",
+      "uncompressed_bytes": 29516800,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e.json",
+        "sha256": "29e956b15ea8dc6076698a1f8dcc44a5f5276938e58382aab1f6daa202b7360e",
+        "bytes": 497
+      }
+    },
+    {
+      "ordinal": 2,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+        "size": 54584790
+      },
+      "diff_id": "sha256:b237bc5a2ac83b24ca6e6ecdc2a44cce4e2bf827595584811483c514af6111fd",
+      "uncompressed_bytes": 156565504,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5.json",
+        "sha256": "1b0a6a0f1983cd6b61946ac2ce19b163ba965277998e1507ed4a11b0d7fb4d89",
+        "bytes": 498
+      }
+    },
+    {
+      "ordinal": 3,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+        "size": 196842512
+      },
+      "diff_id": "sha256:172b321076115b39fcb2af113451bbfa4c707b35a2dd8a5300096b9957faeddd",
+      "uncompressed_bytes": 538077696,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294.json",
+        "sha256": "bd20982d20ed04c6d3a981d3ce17c6aaadc03740aaf12775703e22c3653a161c",
+        "bytes": 499
+      }
+    },
+    {
+      "ordinal": 4,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+        "size": 6291084
+      },
+      "diff_id": "sha256:6db4cf9c31a6996c1029568d655647e81f4e8f4595a23bf0447162f47eaf37b8",
+      "uncompressed_bytes": 19047936,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5.json",
+        "sha256": "f22da3b9b48a886b82f2f2bc0159eb92d9093db6ff569877161a12a572b3f7e6",
+        "bytes": 496
+      }
+    },
+    {
+      "ordinal": 5,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+        "size": 14974156
+      },
+      "diff_id": "sha256:76dcb2737999392775218baf537678a198ffb478ec68656a084daf4ce3477d6e",
+      "uncompressed_bytes": 42420224,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df.json",
+        "sha256": "623bbb4c6c5baf47bc55f2e87021732500352cea81e72bc1cba76dd1d39668e2",
+        "bytes": 497
+      }
+    },
+    {
+      "ordinal": 6,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+        "size": 243
+      },
+      "diff_id": "sha256:63158ac63485fc1fc42ed6933aba7ed12b41f97a282ab530ab501aa9b050d2ca",
+      "uncompressed_bytes": 5120,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850.json",
+        "sha256": "9d40197d2adc536dcb9a392ba5f627b66a54cce14c185edd8edda7594f0d7734",
+        "bytes": 488
+      }
+    },
+    {
+      "ordinal": 7,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+        "size": 2850048
+      },
+      "diff_id": "sha256:716638664778fcdc9ff4e154a01e23f7f8d998a35114564b70a5f0cd989a8ba1",
+      "uncompressed_bytes": 10499584,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce.json",
+        "sha256": "b260aff24e0f198f2d954825f4a63f065df05337c6392b58e6c0ed298807d460",
+        "bytes": 496
+      }
+    },
+    {
+      "ordinal": 8,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "size": 32
+      },
+      "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "uncompressed_bytes": 1024,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json",
+        "sha256": "6cfd0ade0bf13579f8aa6ef06faacc34b65502fbc5eaa9fdfb450382f805cf64",
+        "bytes": 487
+      }
+    },
+    {
+      "ordinal": 9,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:ffbe35d433df83e05652535c3ba083a7fb7d63bbc4fef4c0129fc172d04ba16d",
+        "size": 1056
+      },
+      "diff_id": "sha256:ad6655336f877300cfdd14c4aef259ee223b987ca86140fca6bcce9981c99004",
+      "uncompressed_bytes": 5120,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/ffbe35d433df83e05652535c3ba083a7fb7d63bbc4fef4c0129fc172d04ba16d.json",
+        "sha256": "d0cab1914727a111a41c63aadba1c2eaab3451fb8b2bb4ed8ad5303f0f15e1d5",
+        "bytes": 489
+      }
+    },
+    {
+      "ordinal": 10,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:9e12219c57184e6642087a5f1bb1cd833b5abc125566b4451357d4eaccf16a43",
+        "size": 62634886
+      },
+      "diff_id": "sha256:79b0a29684a4bef1f6074e15e1a01d5552ad4abd32b9daeaa64e2aefe1dc1418",
+      "uncompressed_bytes": 190082560,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/9e12219c57184e6642087a5f1bb1cd833b5abc125566b4451357d4eaccf16a43.json",
+        "sha256": "f29369285118d5c97429bb18c5121268872b4c25e0fa20857738b7cf0a2f6c9e",
+        "bytes": 498
+      }
+    },
+    {
+      "ordinal": 11,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:3103c7d9972838974e994f2cd10ae50de7e67cf700fe1b8f6cf7c4a8a7e1b54e",
+        "size": 263
+      },
+      "diff_id": "sha256:06e062d69614214996751a08ba9ff6bb57dcb6539fafd34c221234a5adf4b276",
+      "uncompressed_bytes": 4096,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/3103c7d9972838974e994f2cd10ae50de7e67cf700fe1b8f6cf7c4a8a7e1b54e.json",
+        "sha256": "f1ae25520fa59778d3ab1fe809192d9793fae9f13364d02c0dcb55cd06c8ea62",
+        "bytes": 488
+      }
+    },
+    {
+      "ordinal": 12,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:50c1fa0215140ef525ea9e0e1dd5f1d69032825fc2dd7f48ddbaf9b62b389ca5",
+        "size": 2895
+      },
+      "diff_id": "sha256:2808c2bcd5af8586dc2645ab97108b13f40a65606f904237f78f616f7c5db189",
+      "uncompressed_bytes": 13312,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/50c1fa0215140ef525ea9e0e1dd5f1d69032825fc2dd7f48ddbaf9b62b389ca5.json",
+        "sha256": "94b9747768edab238285ebc2beb1ae93ff9aa99c7abc3b812e7f582b9c5d0a56",
+        "bytes": 490
+      }
+    },
+    {
+      "ordinal": 13,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:2a9655868638dd471ab2ac6baef84fe71b32cef61ce45a63f571bf8bf1507b18",
+        "size": 360
+      },
+      "diff_id": "sha256:452a1bd5bbed527cd41cb8db8ae476b58086e7492ed053e0952ffd9ba685a621",
+      "uncompressed_bytes": 3072,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/2a9655868638dd471ab2ac6baef84fe71b32cef61ce45a63f571bf8bf1507b18.json",
+        "sha256": "00b3dc219f2474f0d8ec369a39142b19db882eb393b6ca4f421d9c41d2ea57dc",
+        "bytes": 488
+      }
+    },
+    {
+      "ordinal": 14,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:e86ea87b7281b51774a25af69f2963f38395b6af74d4d11de4c28e72325e549a",
+        "size": 1143
+      },
+      "diff_id": "sha256:34425b68d51b0594220204a85f9313f626eea7eac00ee5073fa8a78bd4c49335",
+      "uncompressed_bytes": 4096,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/e86ea87b7281b51774a25af69f2963f38395b6af74d4d11de4c28e72325e549a.json",
+        "sha256": "09fdb65b19bd8761118d7dc80cc82d401f3bc3bb4b78272697a618b640353e1b",
+        "bytes": 489
+      }
+    },
+    {
+      "ordinal": 15,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:035cf11b8387aff086bf6a3aef66eeba748a559d3b26d39882e83ebe8751eae5",
+        "size": 1393
+      },
+      "diff_id": "sha256:2e9487d97da731b8d38e3d87e399d78fe74dd43c6a639440553019babf128b5b",
+      "uncompressed_bytes": 4608,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/035cf11b8387aff086bf6a3aef66eeba748a559d3b26d39882e83ebe8751eae5.json",
+        "sha256": "13a6f90ae21e3d50731263535d539d65195664c3325de646a516fea9829288e5",
+        "bytes": 489
+      }
+    },
+    {
+      "ordinal": 16,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:958f021f24e4a40d47b6f24ad15332142dafbd804d9d5fb1961fe8539883e32d",
+        "size": 171767998
+      },
+      "diff_id": "sha256:bd732c6f32835ee203d06384e9754592a3ed59b360953e5e713e1615218b3b5c",
+      "uncompressed_bytes": 544078336,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/958f021f24e4a40d47b6f24ad15332142dafbd804d9d5fb1961fe8539883e32d.json",
+        "sha256": "39c23243eed5f97d71bf6500ff08de2aed01d9f23938b051f7caf7e4d3cd9b30",
+        "bytes": 499
+      }
+    },
+    {
+      "ordinal": 17,
+      "compressed_descriptor": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:a6d739680a5ae71b53ab66c49886342596c59e1d5e8d2efc5c8e4df3623a6a31",
+        "size": 3762366
+      },
+      "diff_id": "sha256:e69ab6281e215cbb13f303197f737ef13ed5a507a0c942bc9edae464f48ae6ba",
+      "uncompressed_bytes": 11658752,
+      "receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/actual-layer-proof/verified-layers/a6d739680a5ae71b53ab66c49886342596c59e1d5e8d2efc5c8e4df3623a6a31.json",
+        "sha256": "758a58615920d08252cb0f03e2ff4c44be1bda652afe68415a55c93803e501e2",
+        "bytes": 496
+      }
+    }
+  ],
+  "execution_proofs": [
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-stdout.txt",
+      "sha256": "dc44863d96de56f68b0d46ba55602cd3f41af5d0bc3af4d2072aba83dbb2c8d8",
+      "bytes": 14801,
+      "role": "driver_stdout"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "role": "driver_stderr"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/driver-exit.json",
+      "sha256": "22db5ac6edae52582afe9e769c37b35354095b78170741dd70451771e9e6b25b",
+      "bytes": 313,
+      "role": "driver_exit"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/batch-result.json",
+      "sha256": "528e0e9a5aaadd17ff5252ce318d17a4b549ca7bf5fd098051da6f80679da07c",
+      "bytes": 657,
+      "role": "batch_result"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/completion-progress.json",
+      "sha256": "6f0b5a5b41845b90105c41792cb6b8e75901eb69310e289ce7bcf656dbdf535c",
+      "bytes": 211,
+      "role": "completion_progress"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/executed-tools/native-supplier-review-v2.py",
+      "sha256": "278dcb063b4c1c571932e8f358056d5abe9154b48cb057365e67242865d27a36",
+      "bytes": 23023,
+      "role": "collector_code"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/executed-tools/native-review-policy.py",
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "bytes": 40661,
+      "role": "registry_verifier"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/MANIFEST.json",
+      "sha256": "1e3c903e037743db9ed8e3de606cc0b4306d7814ffb35ff021e171629574e21a",
+      "bytes": 19884,
+      "role": "custody_manifest"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-execution-custody/MANIFEST.json",
+      "sha256": "4108ec542d8a2d2fd87062998dffa840450f0e9092a5550988c0066f15e8a022",
+      "bytes": 1558,
+      "role": "execution_custody_manifest"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-layer-equivalence-review.json",
+      "sha256": "ba6051728e6bcd13ada809b853eb17347acbe56febcf02745187820a93ac80aa",
+      "bytes": 16881,
+      "role": "independent_review"
+    },
+    {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-independent-content-review.json",
+      "sha256": "b01c2ff41214d0b2e4ad274859e4dd85a94a8b6b692429bcb46cdcdeddc71933",
+      "bytes": 6458,
+      "role": "independent_node_review"
+    }
+  ],
+  "reused_layer_provenance": [
+    {
+      "compressed_digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+      "accepted_root_index_digest": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "accepted_custody_manifest": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/MANIFEST.json",
+        "sha256": "31c634c9ccc1ec493148162c187d19a3b512284ddca7b863527d2f7b7d9caf89",
+        "bytes": 4865
+      },
+      "accepted_receipt": {
+        "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/actual-layer-proof/amd64-receipt.json",
+        "sha256": "0fd50db3d9c7fbcf1d7c46916600c0fb6ceb03642f3b51a1704a5659c410c059",
+        "bytes": 11141,
+        "layer_ordinal": 18
+      }
+    }
+  ],
+  "parent_approval": "Explicit root approval after independent Node and Cnb retained-content/execution reviews. Exact config/18 ordered descriptors+DiffIDs+sizes must reconstruct actual signed AMD root. ARM keeps exact signed registry child.",
+  "limits": "No layer payloads retained/re-downloaded here. Retained actual execution start/exit/completion records plus reviewed synchronous full-stream hashing controlflow; no original exact argv or privileged execution-attestation claim."
+}

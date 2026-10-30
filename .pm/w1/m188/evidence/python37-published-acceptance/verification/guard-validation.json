@@ -1,0 +1,19 @@
+{
+  "schema": "bex.m188.full-candidate-guard-validation/v1",
+  "full_candidate_guard_passed": true,
+  "candidate": "python-3.7-bullseye",
+  "actual_proof_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "guard_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+  "seconds": 2.77,
+  "candidate_digest": "sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "all_five_original_crypto_records_and_derived_linkage_checked": true,
+  "amd64_binding": "verified_docker_archive_content",
+  "arm64_binding": "exact_registry_manifest",
+  "generic_execution_custody_checked": true,
+  "controls_file": "/tmp/bex-m188-generic-equivalence-controls.json",
+  "controls_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+  "receipt_count_not_modified": 1,
+  "no_adoption_copies": true
+}

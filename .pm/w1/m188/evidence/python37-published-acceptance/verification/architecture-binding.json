@@ -1,0 +1,247 @@
+{
+  "schema": "native_architecture_binding/v1",
+  "checked_at": "2026-10-30T12:32:33.091962+00:00",
+  "complete": true,
+  "root_index_sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "per_arch": {
+    "amd64": {
+      "expected_child": {
+        "manifest_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+        "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710.registry-child.json",
+        "manifest_sha256": "380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+        "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "ordered_layers": [
+          {
+            "digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+            "size": 55056714,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+            "size": 15760408,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+            "size": 54584790,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+            "size": 196842512,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+            "size": 6291084,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+            "size": 14974156,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+            "size": 243,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+            "size": 2850048,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+            "size": 32,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:ffbe35d433df83e05652535c3ba083a7fb7d63bbc4fef4c0129fc172d04ba16d",
+            "size": 1056,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:9e12219c57184e6642087a5f1bb1cd833b5abc125566b4451357d4eaccf16a43",
+            "size": 62634886,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:3103c7d9972838974e994f2cd10ae50de7e67cf700fe1b8f6cf7c4a8a7e1b54e",
+            "size": 263,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:50c1fa0215140ef525ea9e0e1dd5f1d69032825fc2dd7f48ddbaf9b62b389ca5",
+            "size": 2895,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:2a9655868638dd471ab2ac6baef84fe71b32cef61ce45a63f571bf8bf1507b18",
+            "size": 360,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:e86ea87b7281b51774a25af69f2963f38395b6af74d4d11de4c28e72325e549a",
+            "size": 1143,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:035cf11b8387aff086bf6a3aef66eeba748a559d3b26d39882e83ebe8751eae5",
+            "size": 1393,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:958f021f24e4a40d47b6f24ad15332142dafbd804d9d5fb1961fe8539883e32d",
+            "size": 171767998,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:a6d739680a5ae71b53ab66c49886342596c59e1d5e8d2efc5c8e4df3623a6a31",
+            "size": 3762366,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          }
+        ]
+      },
+      "spdx": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d?arch=amd64",
+        "root_purl_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+        "expected_registry_child": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+        "binding": "verified_docker_archive_content",
+        "verified": true,
+        "content_equivalence": {
+          "file": "/private/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/amd64-content-equivalence.json",
+          "sha256": "49e5fe2a9924746842681a006da1af43e7bd2fbf28bb8637db62fd3e44f3ac2a"
+        }
+      },
+      "trivy": {
+        "image_id": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "expected_config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "binding": "exact_registry_config",
+        "verified": true
+      }
+    },
+    "arm64": {
+      "expected_child": {
+        "manifest_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1.registry-child.json",
+        "manifest_sha256": "28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "ordered_layers": [
+          {
+            "digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76",
+            "size": 53704892,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee",
+            "size": 15746671,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573",
+            "size": 54676309,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044",
+            "size": 189778334,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4",
+            "size": 6405066,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef",
+            "size": 14739252,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4",
+            "size": 244,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef",
+            "size": 2850059,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+            "size": 32,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:55c37cf8efcbeab30c7800e43a909985e9c3be8d8f294bc88358cf060a76c36d",
+            "size": 1055,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:fc6974789e92babbc8bf4e3275ffa6ede84ab1d670967415cc15df0189e1fdb2",
+            "size": 61851456,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:9e0066427b0dee613291b7817c0df0bf1b9c08ff87f8251f1a398176bbc24314",
+            "size": 263,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:05d37386d0aede26f19c16e9ff7318f3686dfb1c70d1ec50b627b5952efefa3f",
+            "size": 2893,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:6c4123de96c13cedbb00cf4a30dc14f123aaa3ffcfb9dd447e2c3a2e6dd56b50",
+            "size": 360,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:d3a52a0e79554d2ee05c99cc5227adc010a4482dbca88a847bb90f99245344cf",
+            "size": 1146,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:63a5755fccd219c02fc8aec4ed599e39563588b7a7fe451e4f0c7ebcf340237a",
+            "size": 1396,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:88b8140f2226d65044ed386f3c8e2125756ff1e2bcec93ab0361aadcd6b01c06",
+            "size": 175498970,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          },
+          {
+            "digest": "sha256:93b4b86aaa6df2ca0c24eccc78ab30e03a51ef64b4a8c7f12af78d2973d4d0dc",
+            "size": 3762339,
+            "media_type": "application/vnd.oci.image.layer.v1.tar+gzip"
+          }
+        ]
+      },
+      "spdx": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1?arch=arm64",
+        "root_purl_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "expected_registry_child": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "trivy": {
+        "image_id": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "expected_config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "binding": "exact_registry_config",
+        "verified": true
+      }
+    }
+  },
+  "failures": [],
+  "filesystem_layers_pulled": false,
+  "synthetic_alias_acceptance": false
+}

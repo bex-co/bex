@@ -1,0 +1,52 @@
+{
+  "schema": "native_local_signed_bundle_reuse/v1",
+  "checked_at": "2026-10-30T12:27:29.192520+00:00",
+  "proof_file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+  "proof_sha256": "427e4fb6f91a20d7580f25508d43338e7aa5d424336e07091273fb935e8e6f0e",
+  "all_five_crypto_verified": true,
+  "local_source_files": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "blob": "sha256:e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/e495ff27d60fd1e887234affd80ea08900e74390531b1a7e7289777d84481a66.json.gz",
+      "gzip_sha256": "dd9de5116122f0b0b3dad68bec207c34153300850b24ed349b8ecf66e49cc2e7",
+      "own_prior_cli_reused": true
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "blob": "sha256:f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f83fd05b185d0013d71e343a7bfa72cba83084bde611dc0b6e79b11cd1d9d27f.json.gz",
+      "gzip_sha256": "845dbb8835544c5d687274a5c083e3c3f131bc0e4e7db2547e02be9cac3b80ac",
+      "own_prior_cli_reused": true
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "blob": "sha256:824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/824a19849e70122145e2de180542dfeffe1ac3a86fb132fb4b36beb30ab62cdc.json.gz",
+      "gzip_sha256": "c2622ee27538d736f57862e3466700ddb03cfc97c65c71f7fd69bf95d5a686d8",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "blob": "sha256:971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/971e016e8d55bfa0cb5b224f01a43e1a25236ac3fd3e95d479d863df3b3e5ae3.json.gz",
+      "gzip_sha256": "cb855b3d1303a88131d012fb46dbe0feb8e30770936dc5aa4bca13ecde13eb67",
+      "own_prior_cli_reused": false
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "blob": "sha256:cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21",
+      "gzip_input": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/cd911d7f92de439c0de58627d9a1ab4811dd9af7a87b00222db795b0bb34cc21.json.gz",
+      "gzip_sha256": "7d349e064cf7621b6e25fdacd66e7e29963ba43db572d30a383b128d55e7fec8",
+      "own_prior_cli_reused": false
+    }
+  ],
+  "new_large_downloads": false,
+  "content_binding_approved": false,
+  "accepted": false
+}

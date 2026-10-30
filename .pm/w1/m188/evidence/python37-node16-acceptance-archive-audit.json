@@ -1,0 +1,46 @@
+{
+  "schema": "bex.m188.three-candidate-archive-audit/v1",
+  "explicit_pass": true,
+  "archives": [
+    {
+      "archive": ".pm/w1/m188/evidence/python37-published-acceptance",
+      "files_verified": 51,
+      "bytes_verified": 543170,
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61",
+      "receipt_sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346",
+      "all_critical_receipt_links_resolve_via_manifest": true,
+      "aggregate_snapshot_count": 2,
+      "guard_snapshot": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+      "control_positives": 2,
+      "control_negatives": 26,
+      "credential_pattern_findings": [],
+      "large_predicate_external_custody_explicit": true
+    },
+    {
+      "archive": ".pm/w1/m188/evidence/node16-published-acceptance",
+      "files_verified": 51,
+      "bytes_verified": 504553,
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "receipt_sha256": "0a7f01b6fd6730d32be046411dc6165b8c7ad1fb9b261c85aa1c3b60955cbb1f",
+      "all_critical_receipt_links_resolve_via_manifest": true,
+      "aggregate_snapshot_count": 3,
+      "guard_snapshot": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+      "control_positives": 2,
+      "control_negatives": 26,
+      "credential_pattern_findings": [],
+      "large_predicate_external_custody_explicit": true
+    }
+  ],
+  "all_existing_source_execution_custodies_byte_exact": true,
+  "readme_status_honest": "3/11 supplier acceptance; no task closure, source pin adoption or rollout claimed",
+  "concrete_defects": [],
+  "repository_remote_mutations": false,
+  "adoption_plan": {
+    "file": "/tmp/bex-m188-adoption-plan.json",
+    "verified_count": 3,
+    "complete_receipt_available": false,
+    "review_copies_refused": true,
+    "review_copy_directory_absent": true
+  },
+  "current_guard_unchanged": "5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c"
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "bex.m188.approved-source-equivalence-review/v1",
+  "exact_sha": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+  "reviewed_baselines": [
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "5e89a6076905a91b4496fe36a476774c3f50585c"
+  ],
+  "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+  "workflow_byte_identical": true,
+  "native_go_official_matrix_byte_identical": true,
+  "recipe_shared_actions_unchanged": true,
+  "security_and_portable_ancestors_verified": true,
+  "recovery_authorization_delta": {
+    "added": [
+      "node-18-bookworm",
+      "python-3.10-bookworm"
+    ],
+    "retired": [
+      "node-16-bookworm",
+      "python-3.7-bullseye"
+    ],
+    "changed_existing": [],
+    "new_entries_match_independent_intakes": true,
+    "producer49ee_scope": "Node18 only; no widening"
+  },
+  "ancestor_commits": [
+    "5803d2030 fix(ci): reuse gated Node18 and Python3.10 artifacts for canonical recovery",
+    "2db6f8df7 docs(pm): close w2/057",
+    "25b99d8a3 fix(quota): datastore backup and export Jobs no longer count against the services' compute quota",
+    "59e9d38fa chore(native): retire verified Node16 and Python3.7 recovery",
+    "773e6bbcb fix(disks): preserve resource versions when starting cleanup watches"
+  ],
+  "non_pm_delta": [
+    "M\t.github/native-base-recovery.json",
+    "M\tdeploy/gitops/base/operator-workload-admission.yaml",
+    "M\tdocs/ADR043-tenant-namespace-isolation.md",
+    "M\tlego/operator/internal/controller/cleanup_job.go",
+    "M\tlego/operator/internal/controller/container_policy_admission_test.go",
+    "M\tlego/operator/internal/controller/database_controller.go",
+    "M\tlego/operator/internal/controller/database_exports.go",
+    "M\tlego/operator/internal/controller/datastore_priority.go",
+    "M\tlego/operator/internal/controller/datastore_priority_test.go",
+    "M\tlego/operator/internal/controller/keyvalue_backup.go",
+    "M\tscripts/disk_fixture.py",
+    "M\tscripts/gitops-validate.sh",
+    "M\tscripts/test_disk_fixture.py"
+  ],
+  "changed_path_count": 293,
+  "publisher_closure_assessment": "Only root-reviewed recovery-data changes enter native publisher. Disk fixture/watch, operator datastore quota/admission Go and PM/evidence changes are outside workflow/context/matrix. Historical verification commit auth remains available.",
+  "approved_roles": {
+    "producer": "all11",
+    "verification": "all11"
+  },
+  "admitted": true,
+  "approval_basis": "Root authorized exact actual pushed5803 admission after inspection; no rejected568 or later dispatch alias admitted automatically."
+}
