@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,8 +39,12 @@ func (stubExact) ResolveTag(context.Context, string, string) (string, bool, erro
 
 func (stubExact) ListTags(context.Context, string, string) ([]string, error) { return nil, nil }
 
-func (stubExact) ImageMetadata(context.Context, string) (env, history []string, err error) {
-	return nil, nil, nil
+func (stubExact) ImageMetadata(_ context.Context, image string) (env, history []string, err error) {
+	if strings.HasPrefix(image, "python:3.11.9-bookworm@sha256:") {
+		return []string{"PYTHON_VERSION=3.11.9", "PATH=/usr/local/bin:/usr/bin"},
+			[]string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}, nil
+	}
+	return nil, nil, fmt.Errorf("no metadata fixture for %s", image)
 }
 
 func TestMain(m *testing.M) {

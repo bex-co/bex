@@ -68,7 +68,7 @@ func TestNativeDockerfileCarriesFFmpeg(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			check(t, runtime+" "+line.line+" resolved", string(df), line.image)
+			check(t, runtime+" "+line.line+" resolved", string(df), expectedNativeBase(line.image))
 		}
 	}
 	static := nativeOptions()

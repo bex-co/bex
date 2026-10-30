@@ -1,0 +1,101 @@
+# syntax=docker/dockerfile:1.7
+FROM scratch AS bex-hugo-amd64
+ADD --checksum=sha256:b382aacb522a470455ab771d0e8296e42488d3ea4e61fe49c11c32ec7fb6ee8b https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_extended_0.111.3_linux-amd64.tar.gz /hugo.tar.gz
+FROM scratch AS bex-hugo-arm64
+ADD --checksum=sha256:695176416dbe09d8c84abeb093f5f27132e6811221569811c855b577122bd670 https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_extended_0.111.3_linux-arm64.tar.gz /hugo.tar.gz
+FROM bex-hugo-${TARGETARCH} AS bex-hugo-tarball
+FROM busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e AS bex-hugo
+RUN --mount=type=bind,from=bex-hugo-tarball,target=/in mkdir /out && tar -xzof /in/hugo.tar.gz -C /out hugo
+FROM node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+COPY --link --from=bex-hugo /out/hugo /hugo
+RUN ln -sf /hugo /usr/local/bin/hugo
+WORKDIR /opt/render/project/src
+COPY . .
+COPY <<'BEX_LOAD_ENV' /opt/bex/load-env
+: bex-native-env-rev=none
+decoder="$(command -v base64)" || exit 1
+eval "bex_decode() { '$decoder' -d; }"
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
+  case $key in ''|[0-9]*|*[!A-Za-z0-9_]*) continue ;; esac # a dotted name reaches the container, not the shell
+  export "$key=${value%.}"
+done < /run/secrets/render-env
+BEX_LOAD_ENV
+COPY --chmod=0755 <<'BEX_INSTALL_DEPS' /opt/bex/install-deps
+#!/bin/bash
+case "${SKIP_INSTALL_DEPS:-}" in
+  [Tt][Rr][Uu][Ee]) echo "==> Skipping dependency installation (SKIP_INSTALL_DEPS=true)"; exit 0 ;;
+esac
+tools="${PATH:+$PATH:}/usr/local/bin:/usr/bin:/bin"
+run_install() {
+  echo "==> Installing dependencies with $1"
+  shift
+  PATH=$tools "$@"
+  local status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "==> Automatic dependency installation failed (exit $status); running the build command anyway. Set SKIP_INSTALL_DEPS=true to install in the build command instead"
+  fi
+}
+javascript() {
+  local signals= managers= yarn_declared= manifest head
+  signal() {
+    signals="$signals $2"
+    [[ " $managers " == *" $1 "* ]] || managers="$managers $1"
+  }
+  for lock in npm-shrinkwrap.json package-lock.json; do [ -e "$lock" ] && signal npm "$lock"; done
+  [ -e yarn.lock ] && signal yarn yarn.lock
+  [ -e pnpm-lock.yaml ] && signal pnpm pnpm-lock.yaml
+  for lock in bun.lock bun.lockb; do [ -e "$lock" ] && signal bun "$lock"; done
+  manifest=$(<package.json)
+  if [[ $manifest =~ \"packageManager\"[[:space:]]*:[[:space:]]*\"(npm|yarn|pnpm|bun)@([^\"]*)\" ]]; then
+    [ "${BASH_REMATCH[1]}" = yarn ] && yarn_declared=${BASH_REMATCH[2]}
+    signal "${BASH_REMATCH[1]}" "packageManager ${BASH_REMATCH[1]}@${BASH_REMATCH[2]}"
+  fi
+  skip() {
+    echo "==> Not installing dependencies automatically: $1 (${signals# }); install them in the build command"
+  }
+  case "$managers" in
+    "" | " npm")
+      run_install "npm${signals:+ (${signals# })}" npm install --include=dev --no-audit --no-fund ;;
+    " yarn")
+      # A Yarn 2+ lockfile has a __metadata block after its short comment
+      # header; Yarn Classic's has none.
+      if ! [[ -z $yarn_declared || $yarn_declared == 1 || $yarn_declared == 1.* ]]; then
+        skip "this is a Yarn 2+ project"
+        return
+      fi
+      if [ -f yarn.lock ]; then
+        mapfile -n 8 -t head < yarn.lock
+        if [[ ${head[*]} == *__metadata:* ]]; then
+          skip "this is a Yarn 2+ project"
+          return
+        fi
+      fi
+      run_install "Yarn (${signals# })" yarn install --production=false --non-interactive ;;
+    " "*" "*) skip "more than one package manager is named" ;;
+    *) skip "this is a${managers} project" ;;
+  esac
+}
+[ -f package.json ] && javascript
+if [ -f Gemfile ]; then
+  if PATH=$tools command -v bundle >/dev/null; then
+    lockfile=
+    [ -f Gemfile.lock ] && lockfile=" (Gemfile.lock)"
+    run_install "Bundler$lockfile" bundle install
+  else
+    echo "==> Not installing Gemfile dependencies automatically: Bundler is not available; install them in the build command"
+  fi
+fi
+exit 0
+BEX_INSTALL_DEPS
+ARG RENDER_GIT_COMMIT
+RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/bin/bash /opt/bex/install-deps || exit\npython3 /opt/render/project/src/extended-checks.py build"]

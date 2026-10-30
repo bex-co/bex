@@ -1,0 +1,22 @@
+{
+  "kind": "compute",
+  "at": "2026-10-30T02:27:16.259535+00:00",
+  "tag": "localhost:32828/native-node24-extended-qa:20261029",
+  "phase_receipts": [
+    {
+      "phase": "runtime",
+      "exit": 0,
+      "stdout": "{\"phase\": \"runtime\", \"pass\": true, \"container_removed\": true, \"proof_dir\": \"/private/tmp/bex7-native-acceptance-novb586u/generated-runtime-proof\"}\n",
+      "stderr": ""
+    },
+    {
+      "phase": "predeploy",
+      "exit": 0,
+      "stdout": "{\"phase\": \"predeploy\", \"pass\": true, \"container_removed\": true, \"proof_dir\": \"/private/tmp/bex7-native-acceptance-novb586u/generated-predeploy-proof\"}\n",
+      "stderr": ""
+    }
+  ],
+  "build_exit": 0,
+  "push_exit": 0,
+  "actual_immutable_image": "localhost:32828/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac"
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "static",
+  "at": "2026-10-30T02:27:17.412838+00:00",
+  "tag": "localhost:32828/native-static-node24-extended-qa:20261029",
+  "phase_receipts": [
+    {
+      "phase": "static",
+      "exit": 0,
+      "stdout": "{\"phase\": \"static\", \"pass\": true, \"container_removed\": true, \"proof_dir\": \"/private/tmp/bex7-native-acceptance-novb586u/generated-static-proof\"}\n",
+      "stderr": ""
+    }
+  ],
+  "build_exit": 0,
+  "push_exit": 0,
+  "actual_immutable_image": "localhost:32828/native-static-node24-extended-qa@sha256:66152e9adba8625180ce97043224a3c569c0c25638f6ec7cbd9f3fd0b697317f"
+}

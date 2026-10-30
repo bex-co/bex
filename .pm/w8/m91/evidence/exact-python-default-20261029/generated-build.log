@@ -1,0 +1,288 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.75kB done
+#1 DONE 0.0s
+
+#2 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#3 DONE 0.6s
+
+#4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#4 CACHED
+
+#5 [internal] load metadata for localhost:32828/native-python-default-qa@sha256:fe4c9d72e071edcc46dd3e3f45759bfa714dc485d6459ef97a23a55dfeab6784
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#7 ...
+
+#8 [auth] library/node:pull token for registry-1.docker.io
+#8 DONE 0.0s
+
+#9 [auth] mwader/static-ffmpeg:pull token for registry-1.docker.io
+#9 DONE 0.0s
+
+#10 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#10 DONE 0.9s
+
+#7 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#7 DONE 0.9s
+
+#11 [internal] load .dockerignore
+#11 transferring context: 2B done
+#11 DONE 0.0s
+
+#12 [internal] preparing inline document
+#12 DONE 0.0s
+
+#13 FROM docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#13 CACHED
+
+#14 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#14 CACHED
+
+#15 [stage-0 12/20] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#15 CACHED
+
+#16 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#16 CACHED
+
+#17 [internal] load build context
+#17 transferring context: 3.86kB done
+#17 DONE 0.0s
+
+#18 [stage-0  1/20] FROM localhost:32828/native-python-default-qa@sha256:fe4c9d72e071edcc46dd3e3f45759bfa714dc485d6459ef97a23a55dfeab6784
+#18 ...
+
+#12 [internal] preparing inline document
+#12 CACHED
+
+#18 [stage-0  1/20] FROM localhost:32828/native-python-default-qa@sha256:fe4c9d72e071edcc46dd3e3f45759bfa714dc485d6459ef97a23a55dfeab6784
+#18 DONE 0.2s
+
+#19 [stage-0  2/20] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/lib/os-release /opt/bex-primary-os-release
+#19 DONE 0.1s
+
+#20 [stage-0  3/20] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#20 DONE 0.2s
+
+#21 [stage-0  4/20] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/local/ /usr/local/
+#21 DONE 0.3s
+
+#22 [stage-0  5/20] RUN --network=none /sbin/ldconfig
+#22 DONE 0.2s
+
+#23 [stage-0  6/20] RUN --network=none /usr/bin/bex-native-python-tools
+#23 0.778 Processing ./opt/bex/python-tools/wheels/setuptools-80.9.0-py3-none-any.whl
+#23 0.785 Processing ./opt/bex/python-tools/wheels/wheel-0.48.0-py3-none-any.whl
+#23 0.786 Processing ./opt/bex/python-tools/wheels/packaging-25.0-py3-none-any.whl
+#23 0.822 Installing collected packages: wheel, setuptools, packaging
+#23 0.880 
+#23 0.880 Successfully installed packaging-25.0 setuptools-80.9.0 wheel-0.48.0
+#23 0.881 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#23 1.068 <string>:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+#23 1.091 native primary Python packaging ready: setuptools-80.9.0, wheel-0.48.0, packaging-25.0
+#23 DONE 1.4s
+
+#24 [stage-0  7/20] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/bin/node /usr/local/bin/node
+#24 DONE 0.1s
+
+#25 [stage-0  8/20] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/lib/node_modules /usr/local/lib/node_modules
+#25 DONE 0.2s
+
+#26 [stage-0  9/20] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+#26 DONE 0.2s
+
+#27 [stage-0 10/20] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#27 DONE 0.1s
+
+#28 [stage-0 11/20] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#28 DONE 0.2s
+
+#29 [stage-0 12/20] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#29 DONE 0.1s
+
+#30 [stage-0 13/20] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#30 DONE 0.5s
+
+#31 [stage-0 14/20] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+#31 1.849 Collecting poetry==2.1.3
+#31 2.052   Downloading poetry-2.1.3-py3-none-any.whl.metadata (7.1 kB)
+#31 2.107 Collecting build<2.0.0,>=1.2.1 (from poetry==2.1.3)
+#31 2.163   Downloading build-1.6.1-py3-none-any.whl.metadata (5.6 kB)
+#31 2.228 Collecting cachecontrol<0.15.0,>=0.14.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#31 2.337   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+#31 2.409 Collecting cleo<3.0.0,>=2.1.0 (from poetry==2.1.3)
+#31 2.479   Downloading cleo-2.1.0-py3-none-any.whl.metadata (12 kB)
+#31 2.826 Collecting dulwich<0.23.0,>=0.22.6 (from poetry==2.1.3)
+#31 2.904   Downloading dulwich-0.22.8-py3-none-any.whl.metadata (4.9 kB)
+#31 3.000 Collecting fastjsonschema<3.0.0,>=2.18.0 (from poetry==2.1.3)
+#31 3.078   Downloading fastjsonschema-2.22.2-py3-none-any.whl.metadata (2.1 kB)
+#31 3.142 Collecting findpython<0.7.0,>=0.6.2 (from poetry==2.1.3)
+#31 3.224   Downloading findpython-0.6.3-py3-none-any.whl.metadata (5.3 kB)
+#31 3.369 Collecting installer<0.8.0,>=0.7.0 (from poetry==2.1.3)
+#31 3.451   Downloading installer-0.7.0-py3-none-any.whl.metadata (936 bytes)
+#31 3.520 Collecting keyring<26.0.0,>=25.1.0 (from poetry==2.1.3)
+#31 3.666   Downloading keyring-25.7.0-py3-none-any.whl.metadata (21 kB)
+#31 3.900 Collecting packaging>=24.0 (from poetry==2.1.3)
+#31 4.008   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#31 4.119 Collecting pbs-installer<2026.0.0,>=2025.1.6 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 4.145   Downloading pbs_installer-2025.12.17-py3-none-any.whl.metadata (992 bytes)
+#31 4.198 Collecting pkginfo<2.0,>=1.12 (from poetry==2.1.3)
+#31 4.242   Downloading pkginfo-1.13.3-py3-none-any.whl.metadata (14 kB)
+#31 4.311 Collecting platformdirs<5,>=3.0.0 (from poetry==2.1.3)
+#31 4.366   Downloading platformdirs-4.14.0-py3-none-any.whl.metadata (5.4 kB)
+#31 4.463 Collecting poetry-core==2.1.3 (from poetry==2.1.3)
+#31 4.529   Downloading poetry_core-2.1.3-py3-none-any.whl.metadata (3.5 kB)
+#31 4.591 Collecting pyproject-hooks<2.0.0,>=1.0.0 (from poetry==2.1.3)
+#31 4.682   Downloading pyproject_hooks-1.3.3-py3-none-any.whl.metadata (1.3 kB)
+#31 4.916 Collecting requests<3.0,>=2.26 (from poetry==2.1.3)
+#31 4.961   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+#31 5.044 Collecting requests-toolbelt<2.0.0,>=1.0.0 (from poetry==2.1.3)
+#31 5.097   Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata (14 kB)
+#31 5.309 Collecting shellingham<2.0,>=1.5 (from poetry==2.1.3)
+#31 5.447   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+#31 5.510 Collecting tomlkit<1.0.0,>=0.11.4 (from poetry==2.1.3)
+#31 5.676   Downloading tomlkit-0.15.2-py3-none-any.whl.metadata (3.4 kB)
+#31 5.805 Collecting trove-classifiers>=2022.5.19 (from poetry==2.1.3)
+#31 5.862   Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl.metadata (2.4 kB)
+#31 6.028 Collecting virtualenv<21.0.0,>=20.26.6 (from poetry==2.1.3)
+#31 6.082   Downloading virtualenv-20.39.1-py3-none-any.whl.metadata (3.5 kB)
+#31 6.173 Collecting msgpack<2.0.0,>=0.5.2 (from cachecontrol<0.15.0,>=0.14.0->cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#31 6.240   Downloading msgpack-1.2.4-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (8.3 kB)
+#31 6.366 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#31 6.477   Downloading filelock-4.2.4-py3-none-any.whl.metadata (2.0 kB)
+#31 6.566 Collecting crashtest<0.5.0,>=0.4.1 (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#31 6.707   Downloading crashtest-0.4.1-py3-none-any.whl.metadata (1.1 kB)
+#31 7.412 Collecting rapidfuzz<4.0.0,>=3.0.0 (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#31 7.451   Downloading rapidfuzz-3.14.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl.metadata (12 kB)
+#31 7.626 Collecting urllib3>=1.25 (from dulwich<0.23.0,>=0.22.6->poetry==2.1.3)
+#31 7.663   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+#31 7.759 Collecting SecretStorage>=3.2 (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 7.817   Downloading secretstorage-3.5.0-py3-none-any.whl.metadata (4.0 kB)
+#31 8.097 Collecting jeepney>=0.4.2 (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 8.157   Downloading jeepney-0.9.0-py3-none-any.whl.metadata (1.2 kB)
+#31 8.311 Collecting jaraco.classes (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 8.376   Downloading jaraco.classes-3.4.0-py3-none-any.whl.metadata (2.6 kB)
+#31 8.512 Collecting jaraco.functools (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 8.600   Downloading jaraco_functools-4.6.0-py3-none-any.whl.metadata (2.9 kB)
+#31 8.656 Collecting jaraco.context (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 8.760   Downloading jaraco_context-6.1.2-py3-none-any.whl.metadata (4.2 kB)
+#31 9.012 Collecting httpx<1,>=0.27.0 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 9.075   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+#31 9.311 Collecting zstandard>=0.21.0 (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 9.384   Downloading zstandard-0.25.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (3.3 kB)
+#31 9.451 Collecting anyio (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 9.531   Downloading anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+#31 9.607 Collecting certifi (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 9.650   Downloading certifi-2026.10.23-py3-none-any.whl.metadata (2.5 kB)
+#31 10.11 Collecting httpcore==1.* (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 10.17   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+#31 10.31 Collecting idna (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 10.37   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+#31 10.46 Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 10.58   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+#31 10.76 Collecting charset_normalizer<4,>=2 (from requests<3.0,>=2.26->poetry==2.1.3)
+#31 10.84   Downloading charset_normalizer-3.5.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (46 kB)
+#31 11.19 Collecting distlib<1,>=0.3.7 (from virtualenv<21.0.0,>=20.26.6->poetry==2.1.3)
+#31 11.26   Downloading distlib-0.4.4-py2.py3-none-any.whl.metadata (5.3 kB)
+#31 11.27 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#31 11.32   Downloading filelock-3.32.7-py3-none-any.whl.metadata (2.0 kB)
+#31 11.62 Collecting cryptography>=2.0 (from SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 11.71   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl.metadata (4.4 kB)
+#31 12.04 Collecting cffi>=2.0.0 (from cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 12.12   Downloading cffi-2.1.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (2.5 kB)
+#31 12.26 Collecting pycparser (from cffi>=2.0.0->cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 12.37   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+#31 12.45 Collecting typing_extensions>=4.16.0 (from anyio->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#31 12.51   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+#31 12.60 Collecting more-itertools (from jaraco.classes->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#31 12.69   Downloading more_itertools-11.2.1-py3-none-any.whl.metadata (42 kB)
+#31 12.86 Downloading poetry-2.1.3-py3-none-any.whl (278 kB)
+#31 13.58 Downloading poetry_core-2.1.3-py3-none-any.whl (332 kB)
+#31 14.13 Downloading build-1.6.1-py3-none-any.whl (31 kB)
+#31 14.19 Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+#31 14.48 Downloading cleo-2.1.0-py3-none-any.whl (78 kB)
+#31 14.63 Downloading crashtest-0.4.1-py3-none-any.whl (7.6 kB)
+#31 14.72 Downloading dulwich-0.22.8-py3-none-any.whl (273 kB)
+#31 15.26 Downloading fastjsonschema-2.22.2-py3-none-any.whl (27 kB)
+#31 15.36 Downloading findpython-0.6.3-py3-none-any.whl (20 kB)
+#31 15.48 Downloading installer-0.7.0-py3-none-any.whl (453 kB)
+#31 16.06 Downloading keyring-25.7.0-py3-none-any.whl (39 kB)
+#31 16.12 Downloading msgpack-1.2.4-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (455 kB)
+#31 16.81 Downloading pbs_installer-2025.12.17-py3-none-any.whl (68 kB)
+#31 16.95 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#31 17.07 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#31 17.24 Downloading pkginfo-1.13.3-py3-none-any.whl (35 kB)
+#31 17.36 Downloading platformdirs-4.14.0-py3-none-any.whl (35 kB)
+#31 17.46 Downloading pyproject_hooks-1.3.3-py3-none-any.whl (10 kB)
+#31 17.57 Downloading rapidfuzz-3.14.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl (1.4 MB)
+#31 18.64    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 1.4 MB/s  0:00:01
+#31 18.71 Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+#31 18.88 Downloading charset_normalizer-3.5.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (247 kB)
+#31 19.12 Downloading idna-3.20-py3-none-any.whl (69 kB)
+#31 19.20 Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl (54 kB)
+#31 19.34 Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+#31 19.43 Downloading tomlkit-0.15.2-py3-none-any.whl (52 kB)
+#31 19.54 Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+#31 19.71 Downloading virtualenv-20.39.1-py3-none-any.whl (5.8 MB)
+#31 24.25    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.8/5.8 MB 1.3 MB/s  0:00:04
+#31 24.30 Downloading distlib-0.4.4-py2.py3-none-any.whl (472 kB)
+#31 25.01 Downloading filelock-3.32.7-py3-none-any.whl (100 kB)
+#31 25.13 Downloading certifi-2026.10.23-py3-none-any.whl (135 kB)
+#31 25.29 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#31 25.40 Downloading jeepney-0.9.0-py3-none-any.whl (49 kB)
+#31 25.49 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#31 25.67 Downloading secretstorage-3.5.0-py3-none-any.whl (15 kB)
+#31 25.79 Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl (4.7 MB)
+#31 29.61    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 1.3 MB/s  0:00:03
+#31 29.67 Downloading cffi-2.1.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (222 kB)
+#31 29.90 Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl (14 kB)
+#31 29.96 Downloading zstandard-0.25.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (5.1 MB)
+#31 33.37    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 1.6 MB/s  0:00:03
+#31 33.42 Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+#31 33.54 Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#31 33.58 Downloading jaraco.classes-3.4.0-py3-none-any.whl (6.8 kB)
+#31 33.63 Downloading jaraco_context-6.1.2-py3-none-any.whl (7.9 kB)
+#31 33.68 Downloading jaraco_functools-4.6.0-py3-none-any.whl (11 kB)
+#31 33.74 Downloading more_itertools-11.2.1-py3-none-any.whl (74 kB)
+#31 33.81 Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+#31 33.89 Installing collected packages: trove-classifiers, distlib, zstandard, urllib3, typing_extensions, tomlkit, shellingham, rapidfuzz, pyproject-hooks, pycparser, poetry-core, platformdirs, pkginfo, pbs-installer, packaging, msgpack, more-itertools, jeepney, jaraco.context, installer, idna, h11, filelock, fastjsonschema, crashtest, charset_normalizer, certifi, virtualenv, requests, jaraco.functools, jaraco.classes, httpcore, findpython, dulwich, cleo, cffi, build, anyio, requests-toolbelt, httpx, cryptography, cachecontrol, SecretStorage, keyring, poetry
+#31 35.40 
+#31 35.40 Successfully installed SecretStorage-3.5.0 anyio-4.15.1 build-1.6.1 cachecontrol-0.14.4 certifi-2026.10.23 cffi-2.1.1 charset_normalizer-3.5.2 cleo-2.1.0 crashtest-0.4.1 cryptography-50.0.2 distlib-0.4.4 dulwich-0.22.8 fastjsonschema-2.22.2 filelock-3.32.7 findpython-0.6.3 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.20 installer-0.7.0 jaraco.classes-3.4.0 jaraco.context-6.1.2 jaraco.functools-4.6.0 jeepney-0.9.0 keyring-25.7.0 more-itertools-11.2.1 msgpack-1.2.4 packaging-26.3 pbs-installer-2025.12.17 pkginfo-1.13.3 platformdirs-4.14.0 poetry-2.1.3 poetry-core-2.1.3 pycparser-3.12 pyproject-hooks-1.3.3 rapidfuzz-3.14.6 requests-2.34.2 requests-toolbelt-1.0.0 shellingham-1.5.4 tomlkit-0.15.2 trove-classifiers-2026.9.21.13 typing_extensions-4.16.0 urllib3-2.8.0 virtualenv-20.39.1 zstandard-0.25.0
+#31 DONE 39.7s
+
+#32 [stage-0 15/20] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#32 DONE 0.2s
+
+#33 [stage-0 16/20] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#33 DONE 0.1s
+
+#34 [stage-0 17/20] WORKDIR /opt/render/project/src
+#34 DONE 0.1s
+
+#35 [stage-0 18/20] COPY . .
+#35 DONE 0.1s
+
+#36 [stage-0 19/20] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#36 DONE 0.1s
+
+#37 [stage-0 20/20] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build"]
+#37 0.637 system and bundled Brotli checks passed
+#37 2.062 native primary Python 3.14.8 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#37 2.122 {"phase": "build", "python": "3.14.8 (main, Oct 21 2026, 03:37:45) [GCC 12.2.0]", "executable": "/usr/local/bin/python3", "PYTHON_VERSION": "3.14.8", "openssl": "OpenSSL 3.0.22 25 Aug 2026", "shared_objects_checked": 80, "brotli_packages": "libbrotli-dev:arm64\t1.0.9-2+deb12u1\nlibbrotli1:arm64\t1.0.9-2+deb12u1\n", "stdlib_roundtrips": "pass", "packaging_C_extension": "pass", "system_brotli_invalid_and_valid_streams": "pass"}
+#37 DONE 2.2s
+
+#38 exporting to image
+#38 exporting layers
+#38 exporting layers 0.6s done
+#38 writing image sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d
+#38 writing image sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d done
+#38 naming to docker.io/library/bex-w8-222-python-default:local done
+#38 DONE 0.6s

@@ -1,0 +1,14 @@
+{
+  "actual_generated_ref": "localhost:32828/generated-python-default-qa@sha256:511cdc8bd4c717758fb91d614bbe6438b894276ace358eab02603186e04ed245",
+  "manifest_sha256_verified": "sha256:511cdc8bd4c717758fb91d614bbe6438b894276ace358eab02603186e04ed245",
+  "config_digest": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+  "architecture": "arm64",
+  "os": "linux",
+  "image_size_bytes": 2926144150,
+  "network_disabled_runtime": "offline-runtime.log",
+  "real_sboms": [
+    "generated-image.syft.json",
+    "generated-image.spdx.json"
+  ],
+  "purpose": "local acceptance evidence only; production adoption map unchanged"
+}

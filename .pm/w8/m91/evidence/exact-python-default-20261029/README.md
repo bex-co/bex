@@ -1,0 +1,7 @@
+# Exact Python default and loader closure — 2026-10-29
+
+This is local arm64 acceptance supporting the m91 supplier mechanism and w8/222. The actual no-signal generated recipe selects Python 3.14.8; its offline executable, eighty shared objects, `dlopen`, packaging/C-extension and Brotli checks pass. The original exact official image fails the malformed-stream control. The real official-Syft SBOM records Python 3.14.8 and patched Debian Brotli packages.
+
+The first real transplant exposed a stale loader cache. m91 now refreshes that cache offline immediately after replacing `/usr/local`, before helpers and companions. The local test supplier is explicitly a generic retained Bookworm fixture plus documented helper/security and Tcl/Tk prerequisites; it is not the production Python supplier. The receipt preserves that distinction and all remaining architecture, publication, production adoption and hosted limits.
+
+The full SPDX SBOM is compressed without modifying its original bytes. Decompress and compare SHA-256 against receipt.json; the verified Syft tool receipt and exact scan command are retained. The additional native Syft JSON, its source-image identity and original hash remain in the receipt and named scratch directory. Logs retain their raw bytes, including any compiler whitespace. Source tests separately verify empty and populated catalogs, exact identity/environment, loader refresh and upstream-retaining backports. No production digest or resource is created by this bundle, and w8/222 remains open.

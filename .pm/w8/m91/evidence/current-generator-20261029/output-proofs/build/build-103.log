@@ -1,0 +1,25 @@
+QA_PYTOOLS_BEFORE {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": true}}
+running egg_info
+creating qa_native_helper.egg-info
+writing qa_native_helper.egg-info/PKG-INFO
+writing dependency_links to qa_native_helper.egg-info/dependency_links.txt
+writing top-level names to qa_native_helper.egg-info/top_level.txt
+writing manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+reading manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+QA_PYTOOLS_METADATA {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": true}, "distribution": {"name": "qa-native-helper", "version": "1.0"}}
+Looking in links: /opt/render/project/src/qa-wheels
+Processing ./qa_local_data-1.0-py3-none-any.whl
+Installing collected packages: qa-local-data
+Successfully installed qa-local-data-1.0
+QA_PYTOOLS_WHEEL {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": true}, "distribution": {"name": "qa-native-helper", "version": "1.0"}, "wheel": {"label": "Crème brûlée & 李", "installed_module_sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5"}}
+running build_ext
+building 'qa_native_ext' extension
+creating build
+creating build/temp.linux-aarch64-cpython-311
+aarch64-linux-gnu-gcc -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -fPIC -I/usr/include/python3.11 -c qa_native_ext.c -o build/temp.linux-aarch64-cpython-311/qa_native_ext.o
+creating build/lib.linux-aarch64-cpython-311
+aarch64-linux-gnu-gcc -shared -Wl,-O1 -Wl,-Bsymbolic-functions -g -fwrapv -O2 build/temp.linux-aarch64-cpython-311/qa_native_ext.o -L/usr/lib/aarch64-linux-gnu -o build/lib.linux-aarch64-cpython-311/qa_native_ext.cpython-311-aarch64-linux-gnu.so
+copying build/lib.linux-aarch64-cpython-311/qa_native_ext.cpython-311-aarch64-linux-gnu.so -> 
+QA_PYTOOLS_AFTER {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": true}, "distribution": {"name": "qa-native-helper", "version": "1.0"}, "wheel": {"label": "Crème brûlée & 李", "installed_module_sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5"}, "result": [{"a": 2, "b": 3, "value": 13}, {"a": -4, "b": 7, "value": 13}, {"a": 0, "b": 0, "value": 0}], "unicode": "Crème brûlée & 李", "extension": {"file": "qa_native_ext.cpython-311-aarch64-linux-gnu.so", "bytes": 78880, "sha256": "05f0dae8d83a088bc091c140be6965c5acde7af1414952ba46464fa11ed05d3b"}}

@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -109,26 +110,34 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 		env           map[string]string
 		files         map[string]string
 		tag           string
+		metadata      []string
 	}{
-		{"python env", "python", map[string]string{"PYTHON_VERSION": "3.11.9"}, nil, "python:3.11.9-bookworm"},
-		{"node env", "node", map[string]string{"NODE_VERSION": "18.18.0"}, nil, "node:18.18.0-bookworm"},
-		{"nvmrc", "node", nil, map[string]string{".nvmrc": "v20.1.0\n"}, "node:20.1.0-bookworm"},
-		{"python file", "python", nil, map[string]string{".python-version": "3.12.1\n"}, "python:3.12.1-bookworm"},
-		{"ruby file", "ruby", nil, map[string]string{".ruby-version": "3.3.1\n"}, "ruby:3.3.1-bookworm"},
-		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.0"}, nil, "elixir:1.17.0"},
+		{"python env", "python", map[string]string{"PYTHON_VERSION": "3.11.9"}, nil, "python:3.11.9-bookworm", []string{"PYTHON_VERSION=3.11.9"}},
+		{"node env", "node", map[string]string{"NODE_VERSION": "18.18.0"}, nil, "node:18.18.0-bookworm", []string{"NODE_VERSION=18.18.0"}},
+		{"nvmrc", "node", nil, map[string]string{".nvmrc": "v20.1.0\n"}, "node:20.1.0-bookworm", []string{"NODE_VERSION=20.1.0"}},
+		{"python file", "python", nil, map[string]string{".python-version": "3.12.1\n"}, "python:3.12.1-bookworm", []string{"PYTHON_VERSION=3.12.1"}},
+		{"ruby file", "ruby", nil, map[string]string{".ruby-version": "3.3.1\n"}, "ruby:3.3.1-bookworm", []string{"RUBY_VERSION=3.3.1"}},
+		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.0"}, nil, "elixir:1.17.0", []string{"ELIXIR_VERSION=v1.17.0", "OTP_VERSION=27.0"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest}}
+			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest}, env: tc.metadata,
+				history: []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}
 			choices, dockerfile := resolveExact(t, fake, tc.runtime, tc.env, tc.files)
-			if len(fake.asked) != 1 || fake.asked[0] != tc.tag {
-				t.Fatalf("asked %v, want [%s]", fake.asked, tc.tag)
+			wantAsked := []string{tc.tag}
+			if len(nativeSuppliedBases) != 0 {
+				wantAsked = append(wantAsked, "env "+tc.tag+"@"+exactDigest)
 			}
-			if !strings.Contains(dockerfile, "FROM "+tc.tag+"@"+exactDigest) {
-				t.Errorf("Dockerfile does not build on the exact image:\n%s", dockerfile)
+			if !slices.Equal(fake.asked, wantAsked) {
+				t.Fatalf("asked %v, want %v", fake.asked, wantAsked)
 			}
+			reviewed, err := ResolveNativeVersion(tc.runtime, tc.env, files(tc.files))
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertExactNativePrimary(t, dockerfile, reviewed.Image, tc.tag+"@"+exactDigest, tc.metadata)
 			_, version, _ := strings.Cut(strings.SplitN(tc.tag, "-", 2)[0], ":")
-			if choices[0].Line != version || !strings.Contains(choices[0].Narration(), version) {
+			if choices[0].Line != version || choices[0].Image != tc.tag+"@"+exactDigest || !strings.Contains(choices[0].Narration(), version) {
 				t.Errorf("narration %q does not name %s", choices[0].Narration(), version)
 			}
 		})
@@ -171,7 +180,7 @@ func TestExactVersionFallsBackToTheReviewedPatch(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			choices, dockerfile := resolveExact(t, fake, "python", map[string]string{"PYTHON_VERSION": "3.11.9"}, nil)
 			line, _ := nativeToolchains["python"].find("3.11")
-			if !strings.Contains(dockerfile, "FROM "+line.image) {
+			if choices[0].Image != line.image || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || strings.Contains(dockerfile, "rm -rf /usr/local") {
 				t.Errorf("Dockerfile left the reviewed image:\n%s", dockerfile)
 			}
 			narration := choices[0].Narration()
@@ -222,7 +231,8 @@ func TestDockerHubResolver(t *testing.T) {
 // on Render's default 3.4.4, and the log names it; an older or unknown-age
 // service, and any explicit signal, keep the line's reviewed patch.
 func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
-	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}}
+	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}, env: []string{"RUBY_VERSION=3.4.4"}}
+	reviewed, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	run := func(created time.Time, files map[string]string) NativeChoice {
 		t.Helper()
 		o := nativeOptions()
@@ -231,6 +241,11 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		choices, err := ResolveNativeBuildExact(context.Background(), fake, created, "ruby", bundle, dockerfile, src)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if choices[0].Image == "ruby:3.4.4-bookworm@"+exactDigest {
+			out, err := os.ReadFile(dockerfile)
+			must(t, err)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, fake.env)
 		}
 		return choices[0]
 	}
@@ -264,7 +279,8 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 // PYTHON_VERSION=3.14 keeps the reviewed patch, and an older or unknown-age
 // service keeps its 3.13 default.
 func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
-	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}}
+	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, env: []string{"PYTHON_VERSION=3.14.8"}}
+	reviewed, _ := nativeToolchains[nativePythonRuntime].find("3.14")
 	run := func(created time.Time, env map[string]string) NativeChoice {
 		t.Helper()
 		o := nativeOptions()
@@ -274,6 +290,11 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if choices[0].Image == "python:3.14.8-bookworm@"+exactDigest {
+			out, err := os.ReadFile(dockerfile)
+			must(t, err)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, fake.env)
+		}
 		return choices[0]
 	}
 
@@ -281,7 +302,6 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || got.Narration() != "==> Using Python 3.14.8 (default)" {
 		t.Errorf("new service: %+v narration %q", got, got.Narration())
 	}
-	reviewed, _ := nativeToolchains[nativePythonRuntime].find("3.14")
 	if c := run(pythonCreationCutoff.Add(time.Hour), map[string]string{"PYTHON_VERSION": "3.14"}); c.Line != "3.14" || c.Image != reviewed.image {
 		t.Errorf("PYTHON_VERSION=3.14 must keep the reviewed %s: %+v", reviewed.version, c)
 	}

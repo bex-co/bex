@@ -1,0 +1,86 @@
+{
+  "phase": "runtime",
+  "network": "Docker build/run --network=none; localhost HTTP only; app wheels cached beforehand",
+  "primary_node": "v24.22.1",
+  "system_python": "3.11.2",
+  "original_program_cases": [
+    {
+      "mid": 91,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 93,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 94,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 95,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 96,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 97,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 98,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 99,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 100,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 101,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 102,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 103,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    },
+    {
+      "mid": 107,
+      "original_authored_runtime_HTTP_proofs": 3,
+      "independent_source_and_data_proofs": true
+    }
+  ],
+  "extra_behavior_checks": [
+    "original PG15 archive + genuine PG18 archive exact three rows, PG18client programs and malformed archive",
+    "libvips headers/pkg-config/C-link/pixels and invalid-image",
+    "Django original plurals + GNU extraction/merge/unique/catalog-format failure",
+    "original owned PDF + Helvetica/color PDF exact independent RGB and render failure",
+    "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure",
+    "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure",
+    "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics",
+    "SWIG runtime typemap/wrapper/C import + invalid interface failure",
+    "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure",
+    "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"
+  ],
+  "scope": "Node24/Bookworm arm64 current generator with actual local immutable supplied derivative; Python cases run system companion3.11 with explicit local alias/target import path. No hosted acceptance, no primaryPython3.13, no other architectures/bases or operator predeploy Job claim."
+}

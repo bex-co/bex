@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-30T02:37:18.957036+00:00",
+  "purpose": "Independent local current-generator behavioral acceptance; original hosted DoDs remain open. No production supplier catalog/adoption or hosted fixtures changed.",
+  "architecture": "linux/arm64",
+  "primary": "Node24.22.1 on Bookworm",
+  "Python_execution_scope": "Python cases run the supplied system companion3.11.2 using a local test alias for python and an explicit per-fixture target import path. Original primaryPython3.13 hosted specs remain unchanged/unverified here.",
+  "source_carrier": "git-fixtures/basic master6ecf0ef2c2dffb796033e5a02219af86ec6584e5; exact LICENSE/CHANGELOG bytes+hashes checked in every authored build/runtime.",
+  "supplier": "localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1",
+  "generated_images": {
+    "compute": "localhost:32828/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+    "static": "localhost:32828/native-static-node24-extended-qa@sha256:66152e9adba8625180ce97043224a3c569c0c25638f6ec7cbd9f3fd0b697317f"
+  },
+  "behavioral_results": {
+    "build": "13original authored programs with exact source/data proofs;10extra utility behavior/failure checks; build RUNnetwork=none.",
+    "default_compute_CMD": "39localhostHTTP/artifact proofs from13retained original programs,10extra checks; container network=none.",
+    "image_predeploy_command": "Same generatedcomputeimage executes explicit predeploy-mode command;39localhostHTTP/artifact proofs+10extra checks, network=none. THIS IS NOT A KUBERNETES PRE-DEPLOY JOB.",
+    "native_static": "Canonical native-static generatedbuild passes13original programs+10extra; actual public directory extracted. Host independently decodes5gzip/ZIPfiles with exact bytes/CRC32/ISIZE/method checks.",
+    "supplier_removed": "The current preparer recipe before supplied-base adoption fails127missingpg_restore after original source+PG15archive proofs and allthree clients reportENOENT."
+  },
+  "PG_boundary": "Original1721bytePG15custom archive/hash/threeINSERTrows retained. A separate genuine PG18custom archive a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c is converted in build/runtime/predeploy-command modes with exact threeCOPY rows and PG18client programs. No hosted database restore/migration or newserver connection claim.",
+  "independent_checks": [
+    "libvips pkg-config+headers+realCcompile/link/imagepixels and invalidimage",
+    "Original PyVips PPM/PNG proofs; original Django compilemessages/plural0,1,2,5 and independently decoded catalogs; gettext extraction/merge/uniq/format-error",
+    "Original PDF pixels plus Helvetica/color PDF independently decodedRGBsamples+fontblackpixels, render-errorpropagation",
+    "jq invalidJSON;rsync exactUnicode/spacename bytes/excludes/stale-own-output/removal/missing-source",
+    "strict TypeScript interface/enum emission+execution and noEmitOnError/no-output",
+    "real Webpack two-module production bundle+execution and unresolvedmodule/errorstats",
+    "SWIG real typemap/wrapper/Cextension import and invalidinterface",
+    "ZIP independent names/bytes/sizes/CRC32/stored/deflated empty/binary/Unicode/space cases and missinginput",
+    "pigz build-only empty/binary/Unicode+invalidinput; retained gzip independently inflated and validated without requiring runtimepigz"
+  ],
+  "unverified_scope": [
+    "Productionpublication/signature/SBOMreview andoperatoradoption in everyworkspace;actualfreshBex/Renderfirstdeploys/nativeCLIlogs/sharedreadbacks/exacthostedcleanup",
+    "Otherprimary runtimes/lines/distributions andamd64 for these expanded cases (separate foundation tests have narrower otherbase/arch evidence)",
+    "PrimaryPython3.13 originaltoolsfixtures;exactdefault3.14.8 is owned by separate222check",
+    "Kubernetes predeployJob scheduling/environment/mounts, native-init process integration and actualsecret-file mounting (QA-onlyPG15input was locally provisioned for this imagefixture)",
+    "Actualobject-store/staticHTTPpublication, browserfullproductflows, externalDBconnections andotherPostgresclient/serverversions",
+    "Literalenv/PATH/root/cache/exclusionneighbors are source/unit controls here; this runtime fixture doesnot substitute for alltheirintendedintegrationcases"
+  ],
+  "source_controls_reviewed": [
+    "build.go nativepreparer/resolver scheduling remainsBuilderNativeguarded; Dockerfile/CNB/prebuilt/buildlesspaths notmutated",
+    "nativebases_test.go TestSuppliedBasePreservesEveryReviewedPrimary/TestSuppliedExactPrimaryPrecedesCompanions/TestSuppliedBaseRefusesUnreviewedInputs",
+    "nativeversion_test.go TestResolveNativeBuildRefusesAForeignDockerfile; native_test.go env/PATH/secret/cache/root controls; source reviewed, not claimed newlyexecuted in this bundle"
+  ],
+  "qualifications": [
+    "The protectedNode24fixture predatesnewm188 probeCOPY; commontools passed, andsecuritychecks passedwhenlatestprobe wasmounted. Combinedprimaryrecipe installsprobe explicitly.",
+    "The old original2x1 PNGdecoder was retained fororiginalfixtures. It cannot decode64x48font/colorPDFoutput; a separategeneralCRC/filterdecoder fixed this harness-size error without productchanges.",
+    "LocalDocker tags disappeared between toolcalls; finalbuild/push/create/proofexport are atomic and use ownedlocal immutable registryrefs. Allcreatedproofcontainers are recorded andremoved.",
+    "Applicationwheelcache is prepared beforeofflinechecks. Manifest records actualartifact identities; binariesremainin retained/tmpcache and are omittedfromthistext/proofbundle.",
+    "No user credentials,environmentsecrets,OAuth tokens orcookiejars included. No hosted fixture created."
+  ],
+  "retained_scratch_root": "/private/tmp/bex7-native-acceptance-novb586u"
+}

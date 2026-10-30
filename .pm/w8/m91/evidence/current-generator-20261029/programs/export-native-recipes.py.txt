@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Export production-generator recipes through a Go test overlay; no repo writes."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+repo = Path('/Users/tianpan/projects/bex7')
+output = Path(__file__).resolve().parent
+image = os.environ.get('BEX_NATIVE_QA_IMAGE', '')
+if '@sha256:' not in image:
+    raise SystemExit('BEX_NATIVE_QA_IMAGE must name the actual immutable local Node24 supplier')
+source = repo / 'lego/operator/internal/build/nativebases_test.go'
+extra = r'''
+func TestScratchExportNativeRecipes(t *testing.T) {
+    dir, supplied := os.Getenv("BEX_NATIVE_QA_OUTPUT"), os.Getenv("BEX_NATIVE_QA_IMAGE")
+    if dir == "" || !strings.Contains(supplied, "@sha256:") { t.Fatal("missing scratch output or actual supplied pin") }
+    original := nativeSuppliedBases
+    t.Cleanup(func() { nativeSuppliedBases = original })
+    nativeSuppliedBases = map[string]string{nativeToolchains[nativeNodeRuntime].defaultImage(): supplied}
+    for _, static := range []bool{false, true} {
+        o := nativeOptions()
+        o.Runtime = nativeNodeRuntime
+        o.BuildCommand = "python3 /opt/render/project/src/extended-checks.py build"
+        o.StartCommand = "python3 /opt/render/project/src/extended-checks.py runtime"
+        prefix := "native-node24"
+        if static {
+            o.StaticSite, o.StartCommand, o.StaticPublishPath = true, "", "public"
+            prefix = "native-static-node24"
+        }
+        bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "24"}, nil)
+        initial, err := os.ReadFile(dockerfile)
+        must(t, err)
+        must(t, os.WriteFile(filepath.Join(dir, prefix+"-before.Dockerfile"), initial, 0600))
+        choices, err := ResolveNativeBuildExact(t.Context(), &fakeExact{}, time.Time{}, nativeNodeRuntime, bundle, dockerfile, src)
+        must(t, err)
+        resolved, err := os.ReadFile(dockerfile)
+        must(t, err)
+        if len(choices) == 0 || !strings.Contains(string(resolved), "FROM "+supplied+"\n") { t.Fatalf("missing actual supplier: %+v\n%s", choices, resolved) }
+        must(t, os.WriteFile(filepath.Join(dir, prefix+".Dockerfile"), resolved, 0600))
+        env, err := os.ReadFile(bundle)
+        must(t, err)
+        must(t, os.WriteFile(filepath.Join(dir, prefix+".render-env"), env, 0600))
+        t.Logf("%s from actual supplied base %s; %s", prefix, supplied, choices[0].Narration())
+    }
+}
+'''
+with tempfile.TemporaryDirectory(prefix='bex-native-recipe-overlay-') as temp:
+    patched = Path(temp) / source.name
+    patched.write_text(source.read_text() + extra)
+    overlay = Path(temp) / 'overlay.json'
+    overlay.write_text(json.dumps({'Replace': {str(source): str(patched)}}))
+    env = dict(os.environ, GOWORK='off', BEX_NATIVE_QA_OUTPUT=str(output))
+    subprocess.run(['go', 'test', '-overlay', str(overlay), './internal/build', '-run', '^TestScratchExportNativeRecipes$', '-count=1', '-v'], cwd=repo / 'lego/operator', env=env, check=True)

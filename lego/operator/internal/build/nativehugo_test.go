@@ -37,10 +37,12 @@ func TestNativeStaticBuildCarriesHugo(t *testing.T) {
 	for _, o := range []Options{static, python} {
 		df := resolvedDockerfileFrom(t, o, map[string]string{"NODE_VERSION": "22"}, nil)
 		stages, lines := nativeStaticTools(o)
-		base := strings.Index(df, "\nFROM "+nativeToolchains[nativeRuntime(o)].defaultImage())
+		reviewed := nativeToolchains[nativeRuntime(o)].defaultImage()
 		if o.Runtime == "" {
-			base = strings.Index(df, "\nFROM node:22")
+			node22, _ := nativeToolchains[nativeNodeRuntime].find("22")
+			reviewed = node22.image
 		}
+		base := strings.Index(df, "\nFROM "+expectedNativeBase(reviewed)+"\n")
 		if !strings.HasPrefix(df, "# syntax=docker/dockerfile:1.7\n"+stages) || base < 0 || strings.Count(df, lines) != 1 ||
 			strings.Index(df, lines) < base || strings.Index(df, lines) > strings.Index(df, "COPY . .") {
 			t.Fatalf("%s static build lacks the Hugo stages before its base or the copy before its source:\n%s", nativeRuntime(o), df)

@@ -1,0 +1,23 @@
+from pathlib import Path
+import datetime,json,secrets,subprocess,sys
+P=Path(__file__).resolve().parent;phase=sys.argv[1];image=sys.argv[2];name='bex-native-qa-'+phase+'-'+secrets.token_hex(4);receipt={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'phase':phase,'image':image,'name':name,'network':'none','container_created':False,'removed':False};dest=P/('generated-'+phase+'-proof');dest.mkdir(exist_ok=True);file=P/('generated-'+phase+'-receipt.json')
+def save():file.write_text(json.dumps(receipt,indent=2))
+check=subprocess.run(['docker','container','inspect',name],capture_output=True);assert check.returncode!=0;save();args=['docker','create','--network','none','--name',name,image]
+if phase=='predeploy':args+=['/bin/bash','-c','python3 /opt/render/project/src/extended-checks.py predeploy']
+if phase=='static':args+=['/bin/true']
+r=subprocess.run(args,capture_output=True,text=True,timeout=20);assert r.returncode==0;cid=r.stdout.strip();assert len(cid)==64;receipt.update(container_created=True,id=cid);save()
+try:
+ if phase!='static':
+  with (P/('generated-'+phase+'-run.log')).open('w') as output:r=subprocess.run(['docker','start','-a',cid],stdout=output,stderr=output,timeout=180)
+  state=json.loads(subprocess.check_output(['docker','inspect','--format','{{json .State}}',cid],text=True));receipt.update(client_exit=r.returncode,state=state);save();assert r.returncode==0 and state['ExitCode']==0
+ for path in ['qa-output','public']:
+  r=subprocess.run(['docker','cp',cid+':/opt/render/project/src/'+path,str(dest/path)],capture_output=True,text=True,timeout=30);assert r.returncode==0,r.stderr
+ receipt['copied_actual_proof_files']=True
+ if phase!='static':
+  summary=json.loads((dest/'qa-output'/(phase+'-summary.json')).read_text());assert len(summary['original_program_cases'])==13 and sum(v['original_authored_runtime_HTTP_proofs'] for v in summary['original_program_cases'])==39;receipt['summary']=summary
+ else:
+  summary=json.loads((dest/'qa-output/build-summary.json').read_text());assert len(summary['original_program_cases'])==13;receipt['summary']=summary
+ receipt['pass']=True;save()
+finally:
+ r=subprocess.run(['docker','rm','-f',cid],capture_output=True,text=True,timeout=20);receipt['removed']=r.returncode==0;save()
+print(json.dumps({'phase':phase,'pass':receipt.get('pass',False),'container_removed':receipt['removed'],'proof_dir':str(dest)}))

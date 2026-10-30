@@ -1,0 +1,14 @@
+{
+  "repo_commit": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+  "original_supplier": "localhost:32828/native-bookworm@sha256:29e85dec2901b622cb18ef10e2eb594a3de7f642c83d27f533c1c813dc7de2be",
+  "verified_manifest_digest": "sha256:29e85dec2901b622cb18ef10e2eb594a3de7f642c83d27f533c1c813dc7de2be",
+  "overlay_files_sha256": {
+    "python-tools.json": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+    "fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6",
+    "install-python-tools.py": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+    "bex-native-python-tools": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+    "check-brotli.py": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+    "node-brotli/check.js": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e"
+  },
+  "scope": "local test derivative only; current helper/probes atop retained prior factory artifact"
+}

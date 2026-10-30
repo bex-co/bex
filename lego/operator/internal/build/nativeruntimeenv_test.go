@@ -130,7 +130,7 @@ func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 				env, files = nil, map[string]string{tc.versionFile: line.version + "\n"}
 			}
 			df := resolvedDockerfileFrom(t, o, env, files)
-			if !strings.Contains(df, "\nFROM "+line.image+"\n") || !precedesBuild(df) {
+			if !strings.Contains(df, "\nFROM "+expectedNativeBase(line.image)+"\n") || !precedesBuild(df) {
 				t.Fatalf("%s %s: %s default is not once before the build RUN on that line:\n%s", tc.runtime, line.line, tc.name, df)
 			}
 		}

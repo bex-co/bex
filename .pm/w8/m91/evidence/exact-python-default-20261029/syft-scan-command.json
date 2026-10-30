@@ -1,0 +1,15 @@
+{
+  "args": [
+    "/private/tmp/bex-w8-222-acceptance/tools/syft",
+    "scan",
+    "docker:sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+    "--platform",
+    "linux/arm64",
+    "-o",
+    "syft-json=/private/tmp/bex-w8-222-acceptance/generated-image.syft.json",
+    "-o",
+    "spdx-json=/private/tmp/bex-w8-222-acceptance/generated-image.spdx.json"
+  ],
+  "DOCKER_HOST": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "SYFT_CHECK_FOR_APP_UPDATE": "false"
+}

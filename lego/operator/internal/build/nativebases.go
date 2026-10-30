@@ -170,7 +170,8 @@ func applyNativeSuppliedBase(dockerfile, reviewedImage string, choice NativeChoi
 		"RUN . /opt/bex-primary-os-release && [ -n \"$VERSION_CODENAME\" ] && primary_os=\"$VERSION_CODENAME\" && . /etc/os-release && [ -n \"$VERSION_CODENAME\" ] && " +
 		"{ [ \"$primary_os\" = \"$VERSION_CODENAME\" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && " +
 		"rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local\n" +
-		"COPY --link --from=" + choice.Image + " /usr/local/ /usr/local/\n")
+		"COPY --link --from=" + choice.Image + " /usr/local/ /usr/local/\n" +
+		"RUN --network=none /sbin/ldconfig\n")
 	escaper := strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `\$`)
 	for _, item := range choice.imageEnv {
 		key, value, valid := strings.Cut(item, "=")

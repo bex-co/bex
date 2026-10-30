@@ -271,7 +271,7 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	}
 	after, _ := os.ReadFile(dockerfile)
 	py311, _ := nativeToolchains["python"].find("3.11")
-	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+py311.image+"\n"+
+	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+expectedNativeBase(py311.image)+"\n"+
 		nativeJSToolLines(nativeToolchains["node"].defaultImage())+
 		"RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n", 1)
 	if string(after) != want {
@@ -302,14 +302,15 @@ func TestResolveNativeBuildKeepsPnpmOnEveryNodeLine(t *testing.T) {
 		}
 		after, _ := os.ReadFile(dockerfile)
 		tools := nativeNodeTools(nativeOptions())
-		if !strings.Contains(string(after), "FROM "+l.image+"\n") || !strings.Contains(string(after), tools) ||
+		if !strings.Contains(string(after), "FROM "+expectedNativeBase(l.image)+"\n") || !strings.Contains(string(after), tools) ||
 			strings.Index(string(after), tools) > strings.Index(string(after), "\nCOPY . .\n") {
 			t.Fatalf("node %s Dockerfile lost its pnpm layers:\n%s", l.line, after)
 		}
 		if l.line == "26" && !strings.Contains(string(after), "/usr/local/bin/bun\n") {
 			t.Fatalf("Bun opt-in displaced:\n%s", after)
 		}
-		if l.line == "24" && string(after) != string(before) {
+		wantDefault := strings.Replace(string(before), "FROM "+l.image+"\n", "FROM "+expectedNativeBase(l.image)+"\n", 1)
+		if l.line == "24" && string(after) != wantDefault {
 			t.Fatalf("the default line must leave the Dockerfile unchanged:\n%s", after)
 		}
 	}
@@ -443,7 +444,7 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	df, _ := os.ReadFile(dockerfile)
 	node22, _ := nativeToolchains["node"].find("22")
 	bun13, _ := nativeBun.find("1.3")
-	from := strings.Index(string(df), "\nFROM "+node22.image+"\n")
+	from := strings.Index(string(df), "\nFROM "+expectedNativeBase(node22.image)+"\n")
 	copyBun := strings.Index(string(df), "\nCOPY --link --from="+bun13.image+" /usr/local/bin/bun /usr/local/bin/bun\nRUN ln -sf bun /usr/local/bin/bunx\n")
 	source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
 	if from < 0 || copyBun < from || source < copyBun || build < source {
@@ -460,13 +461,15 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 		t.Error("a refused Bun request rewrote the Dockerfile")
 	}
 
-	// No opt-in: exactly one choice and the Dockerfile byte-identical.
+	// No opt-in: exactly one choice and only the supplied FROM may change.
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, nil)
 	before, _ = os.ReadFile(dockerfile)
 	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
 		t.Fatalf("no opt-in choices = %+v, %v", choices, err)
 	}
-	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+	defaultImage := nativeToolchains[nativeNodeRuntime].defaultImage()
+	want := strings.Replace(string(before), "FROM "+defaultImage+"\n", "FROM "+expectedNativeBase(defaultImage)+"\n", 1)
+	if after, _ := os.ReadFile(dockerfile); string(after) != want {
 		t.Fatalf("no opt-in changed the Dockerfile:\n%s", after)
 	}
 }
@@ -519,7 +522,7 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 			t.Fatalf("python %s choices = %+v, %v", line.line, choices, err)
 		}
 		df, _ := os.ReadFile(dockerfile)
-		from := strings.Index(string(df), "\nFROM "+line.image+"\n")
+		from := strings.Index(string(df), "\nFROM "+expectedNativeBase(line.image)+"\n")
 		poetry := strings.Index(string(df), "\nRUN /usr/local/bin/python -m venv /opt/bex/poetry && ")
 		source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
 		if from < 0 || poetry < from || source < poetry || build < source || !strings.Contains(string(df), "poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n") {
@@ -573,7 +576,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 				t.Fatalf("%s %s choices = %+v, %v", runtime, line.line, choices, err)
 			}
 			df, _ := os.ReadFile(dockerfile)
-			from := strings.Index(string(df), "\nFROM "+line.image+"\n")
+			from := strings.Index(string(df), "\nFROM "+expectedNativeBase(line.image)+"\n")
 			tools := strings.Index(string(df), "\n"+nativeJSToolLines(nativeToolchains["node"].defaultImage()))
 			source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
 			if from < 0 || tools < from || source < tools || build < source {

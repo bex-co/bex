@@ -1,0 +1,19 @@
+{
+  "official_source": "https://github.com/anchore/syft/releases/tag/v1.55.0",
+  "verification_guide": "https://oss.anchore.com/docs/installation/verification/",
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob",
+    "/private/tmp/bex-w8-222-acceptance/tools/syft_1.55.0_checksums.txt",
+    "--bundle",
+    "/private/tmp/bex-w8-222-acceptance/tools/syft_1.55.0_checksums.txt.sigstore.json",
+    "--certificate-identity-regexp",
+    "https://github\\.com/anchore/syft/\\.github/workflows/.+",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com"
+  ],
+  "cosign_exit_code": 0,
+  "archive_sha256": "1217c258bd5eb91ef3189cf22a82e02f9cac07e4ce934350f428e93aff674625",
+  "checksum_match": true,
+  "binary_sha256": "55a63db797b2a060aa56c7a03991bb11084e01ed4e3863df12370d74e84b4821"
+}

@@ -1,0 +1,6 @@
+=== RUN   TestScratchExportNativeRecipes
+    nativebases_test.go:431: native-node24 from actual supplied base localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1; ==> Using Node 24 (from NODE_VERSION=24)
+    nativebases_test.go:431: native-static-node24 from actual supplied base localhost:32828/native-node24-qa@sha256:3275930ed1007abbf2d00a243d93f7a88b7070fc451821342d74ea67ce1001e1; ==> Using Node 24 (from NODE_VERSION=24)
+--- PASS: TestScratchExportNativeRecipes (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.568s

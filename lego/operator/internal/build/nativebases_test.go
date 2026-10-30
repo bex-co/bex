@@ -17,12 +17,14 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -30,26 +32,81 @@ import (
 
 const suppliedFixtureImage = "ghcr.io/bex-co/bex-native:test@" + otherDigest
 
-func TestSuppliedBasePreservesEveryReviewedPrimary(t *testing.T) {
+// The resolver returns the upstream language identity even after its final
+// FROM adopts a supplied derivative. Neighbor tests must check both contracts.
+func expectedNativeBase(reviewed string) string {
+	key := reviewed
+	for _, toolchain := range nativeToolchains {
+		for _, line := range toolchain.lines {
+			if line.image == reviewed {
+				key = cmp.Or(line.upstream, line.image)
+			}
+		}
+	}
+	if supplied, ok := nativeSuppliedBases[key]; ok {
+		return supplied
+	}
+	return reviewed
+}
+
+func assertExactNativePrimary(t *testing.T, dockerfile, reviewed, exact string, env []string) {
+	t.Helper()
+	base := exact
+	if len(nativeSuppliedBases) != 0 {
+		base = expectedNativeBase(reviewed)
+		copyAt := strings.Index(dockerfile, "COPY --link --from="+exact+" /usr/local/ /usr/local/\n")
+		resetAt := strings.Index(dockerfile, "rm -rf /usr/local")
+		refreshAt := strings.Index(dockerfile, "\nRUN --network=none /sbin/ldconfig\n")
+		if resetAt < 0 || copyAt < resetAt || refreshAt < copyAt {
+			t.Fatalf("exact primary or its loader cache was not replaced:\n%s", dockerfile)
+		}
+		for _, item := range env {
+			key, value, _ := strings.Cut(item, "=")
+			if !strings.Contains(dockerfile, "ENV "+key+"=\""+value+"\"\n") {
+				t.Errorf("exact primary environment %q was not restored:\n%s", item, dockerfile)
+			}
+		}
+	}
+	if !strings.Contains(dockerfile, "\nFROM "+base+"\n") {
+		t.Errorf("primary FROM must be %s:\n%s", base, dockerfile)
+	}
+}
+
+func TestSuppliedResolverPreservesEveryReviewedPrimary(t *testing.T) {
+	original := nativeSuppliedBases
+	t.Cleanup(func() { nativeSuppliedBases = original })
+	catalog := map[string]string{}
+	for runtime, toolchain := range nativeToolchains {
+		for _, line := range toolchain.lines {
+			catalog[cmp.Or(line.upstream, line.image)] = "ghcr.io/bex-co/bex-native:test-" + runtime + "-" + line.line + "@" + otherDigest
+		}
+	}
 	for runtime, toolchain := range nativeToolchains {
 		for _, line := range toolchain.lines {
 			t.Run(runtime+"/"+line.line, func(t *testing.T) {
-				o := nativeOptions()
-				o.Runtime = runtime
-				before, err := rewriteNativeBase(nativeDockerfile(o), toolchain.defaultImage(), line.image)
-				if err != nil {
-					t.Fatal(err)
+				env, source := map[string]string{}, map[string]string{}
+				switch runtime {
+				case nativePythonRuntime:
+					env["PYTHON_VERSION"] = line.line
+				case nativeNodeRuntime:
+					env["NODE_VERSION"] = line.line
+				case nativeElixirRuntime:
+					env["ELIXIR_VERSION"] = line.line
+				case nativeRubyRuntime:
+					source[".ruby-version"] = line.line
 				}
-				after, err := applyNativeSuppliedBase(before, line.image, NativeChoice{Image: line.image}, map[string]string{line.image: suppliedFixtureImage})
-				if err != nil {
-					t.Fatal(err)
+				nativeSuppliedBases = nil
+				beforeChoices, before := resolveExact(t, &fakeExact{}, runtime, env, source)
+				nativeSuppliedBases = catalog
+				afterChoices, after := resolveExact(t, &fakeExact{}, runtime, env, source)
+				for _, choices := range [][]NativeChoice{beforeChoices, afterChoices} {
+					if choices[0].Line != line.line || choices[0].Image != line.image {
+						t.Fatalf("supplier changed the reviewed language identity: %+v", choices)
+					}
 				}
-				want := strings.Replace(before, "\nFROM "+line.image+"\n", "\nFROM "+suppliedFixtureImage+"\n", 1)
-				if after != want {
-					t.Fatalf("reviewed primary or tenant recipe changed:\n%s", after)
-				}
-				if got, err := applyNativeSuppliedBase(before, line.image, NativeChoice{Image: line.image}, nil); err != nil || got != before {
-					t.Fatalf("unadopted supplier changed native build: %v", err)
+				want := strings.Replace(before, "\nFROM "+line.image+"\n", "\nFROM "+catalog[cmp.Or(line.upstream, line.image)]+"\n", 1)
+				if !strings.Contains(before, "\nFROM "+line.image+"\n") || after != want || strings.Contains(after, "rm -rf /usr/local") {
+					t.Fatalf("supplier changed the reviewed primary or companion/user layers:\n%s", after)
 				}
 			})
 		}
@@ -64,33 +121,35 @@ func TestSuppliedExactPrimaryPrecedesCompanions(t *testing.T) {
 		{"elixir", "ELIXIR_VERSION", "1.17.0", "elixir:1.17.0"},
 	} {
 		t.Run(tc.runtime, func(t *testing.T) {
+			original := nativeSuppliedBases
+			t.Cleanup(func() { nativeSuppliedBases = original })
 			env := map[string]string{tc.env: tc.version, "BUN_VERSION": "1.3"}
 			files := map[string]string{}
 			if tc.runtime == "ruby" {
 				delete(env, "RUBY_VERSION")
 				files[".ruby-version"] = tc.version
 			}
-			choices, before := resolveExact(t, &fakeExact{digests: map[string]string{tc.tag: exactDigest}}, tc.runtime, env, files)
 			reviewed, err := ResolveNativeVersion(tc.runtime, env, func(name string) ([]byte, bool) { v, ok := files[name]; return []byte(v), ok })
 			if err != nil {
 				t.Fatal(err)
 			}
-			choice := choices[0]
-			choice.imageEnv = []string{tc.env + "=" + tc.version, "PATH=/usr/local/bin:/usr/bin", "LITERAL=$HOME\\path\"quoted"}
+			nativeSuppliedBases = map[string]string{reviewed.Image: suppliedFixtureImage}
+			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest},
+				env:     []string{tc.env + "=" + tc.version, "PATH=/usr/local/bin:/usr/bin", "LITERAL=$HOME\\path\"quoted"},
+				history: []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}
 			if tc.runtime == "elixir" {
-				choice.imageEnv = append(choice.imageEnv, "OTP_VERSION=27.0")
+				fake.env = append(fake.env, "OTP_VERSION=27.0")
 			}
-			after, err := applyNativeSuppliedBase(before, reviewed.Image, choice, map[string]string{reviewed.Image: suppliedFixtureImage})
-			if err != nil {
-				t.Fatal(err)
-			}
+			choices, after := resolveExact(t, fake, tc.runtime, env, files)
+			choice := choices[0]
 			reset := strings.Index(after, "rm -rf /usr/local")
 			primaryCopy := strings.Index(after, "COPY --link --from="+choice.Image+" /usr/local/")
-			if reset < 0 || primaryCopy < reset {
+			refresh := strings.Index(after, "\nRUN --network=none /sbin/ldconfig\n")
+			if reset < 0 || primaryCopy < reset || refresh < primaryCopy {
 				t.Fatalf("exact primary was merged instead of replaced:\n%s", after)
 			}
 			for _, marker := range []string{" /usr/local/bin/bun /usr/local/bin/bun", "/opt/bex/poetry", " /usr/local/bin/node /usr/local/bin/node", "\nCOPY . .\n"} {
-				if at := strings.Index(after, marker); at >= 0 && at < primaryCopy {
+				if at := strings.Index(after, marker); at >= 0 && at < refresh {
 					t.Fatalf("exact primary erased later installation %q:\n%s", marker, after)
 				}
 			}
@@ -115,19 +174,19 @@ func TestSuppliedExactPrimaryPrecedesCompanions(t *testing.T) {
 }
 
 func TestSuppliedExactErlangKeepsTheMatchedElixir(t *testing.T) {
+	original := nativeSuppliedBases
+	t.Cleanup(func() { nativeSuppliedBases = original })
 	fake := erlangFake("28.3.3.0")
 	env := map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.3"}
-	choices, before := resolveExact(t, fake, "elixir", env, nil)
 	reviewed, err := ResolveNativeVersion("elixir", env, func(string) ([]byte, bool) { return nil, false })
 	if err != nil {
 		t.Fatal(err)
 	}
+	nativeSuppliedBases = map[string]string{reviewed.Image: suppliedFixtureImage}
+	fake.env = []string{"OTP_VERSION=28.3.3.0", "PATH=/usr/local/bin:/usr/bin"}
+	fake.history = []string{"# debian.sh --arch 'amd64' out/ 'trixie' '@1749513600'"}
+	choices, after := resolveExact(t, fake, "elixir", env, nil)
 	choice := choices[0]
-	choice.imageEnv = []string{"OTP_VERSION=28.3.3.0", "PATH=/usr/local/bin:/usr/bin"}
-	after, err := applyNativeSuppliedBase(before, reviewed.Image, choice, map[string]string{reviewed.Image: suppliedFixtureImage})
-	if err != nil {
-		t.Fatal(err)
-	}
 	erlang := strings.Index(after, "COPY --link --from="+choice.Image+" /usr/local/")
 	elixir := strings.Index(after, "COPY --link --from="+choice.elixirImage+" /usr/local/lib/elixir")
 	if erlang < 0 || elixir < erlang || !strings.Contains(after, "ENV OTP_VERSION=\"28.3.3.0\"") || !strings.Contains(after, "ELIXIR_VERSION=v1.19.5") {
@@ -364,37 +423,55 @@ elixir -e 'unless System.version() == "1.18.4" and System.get_env("OTP_VERSION")
 // catalog and exact lookup continue to name the reviewed official input.
 func TestSuppliedBasePreservesPlatformBackportProvenance(t *testing.T) {
 	const platform = "ghcr.io/bex-co/bex-native:python-backport@" + otherDigest
-	official, _ := nativeToolchains[nativePythonRuntime].find("3.14")
-	reviewed := NativeChoice{Label: "Python", Line: "3.14", Image: platform, upstream: official.image, Exact: "3.14.8"}
-	original := nativeSuppliedBases
-	t.Cleanup(func() { nativeSuppliedBases = original })
-	nativeSuppliedBases = map[string]string{official.image: suppliedFixtureImage}
-	for _, found := range []bool{false, true} {
-		t.Run(fmt.Sprintf("exact-found-%v", found), func(t *testing.T) {
-			fake := &fakeExact{env: []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}}
-			if found {
-				fake.digests = map[string]string{"python:3.14.8-bookworm": exactDigest}
-			}
-			choice, err := pinNativePrimary(t.Context(), fake, nativePythonRuntime, reviewed)
-			if err != nil {
-				t.Fatal(err)
-			}
-			before := "# syntax=docker/dockerfile:1.7\nFROM " + choice.Image + "\nCOPY . .\n"
-			after, err := applyNativeSuppliedBase(before, reviewed.Image, choice, nativeSuppliedBases)
-			if err != nil || !strings.Contains(after, "FROM "+suppliedFixtureImage) {
-				t.Fatalf("supplier lost the official catalog key: %v\n%s", err, after)
-			}
-			if len(fake.asked) == 0 || fake.asked[0] != "python:3.14.8-bookworm" {
-				t.Fatalf("exact lookup escaped official input: %v", fake.asked)
-			}
-			hook := strings.Contains(after, "RUN --network=none /usr/bin/bex-native-python-tools")
-			if found {
-				if !hook || !strings.Contains(after, "COPY --link --from=python:3.14.8-bookworm@"+exactDigest+" /usr/local/") {
-					t.Fatalf("exact Python or its offline tools were lost:\n%s", after)
+	originalToolchain, originalCatalog := nativeToolchains[nativePythonRuntime], nativeSuppliedBases
+	t.Cleanup(func() {
+		nativeToolchains[nativePythonRuntime], nativeSuppliedBases = originalToolchain, originalCatalog
+	})
+	official, _ := originalToolchain.find("3.14")
+	upstream := cmp.Or(official.upstream, official.image)
+	backported := originalToolchain
+	backported.lines = slices.Clone(originalToolchain.lines)
+	for i := range backported.lines {
+		if backported.lines[i].line == "3.14" {
+			backported.lines[i].image, backported.lines[i].upstream = platform, upstream
+		}
+	}
+	nativeToolchains[nativePythonRuntime] = backported
+	for _, supplied := range []bool{false, true} {
+		for _, found := range []bool{false, true} {
+			t.Run(fmt.Sprintf("supplied-%v/exact-found-%v", supplied, found), func(t *testing.T) {
+				nativeSuppliedBases = nil
+				if supplied {
+					nativeSuppliedBases = map[string]string{upstream: suppliedFixtureImage}
 				}
-			} else if choice.Image != platform || hook || strings.Contains(after, "rm -rf /usr/local") {
-				t.Fatalf("failed exact lookup discarded the verified platform fallback: %+v\n%s", choice, after)
-			}
-		})
+				fake := &fakeExact{env: []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}}
+				if found {
+					fake.digests = map[string]string{"python:3.14.8-bookworm": exactDigest}
+				}
+				choices, after := resolveExact(t, fake, nativePythonRuntime, map[string]string{"PYTHON_VERSION": "3.14.8"}, nil)
+				choice := choices[0]
+				base := platform
+				if found {
+					base = "python:3.14.8-bookworm@" + exactDigest
+					if choice.Image != base {
+						t.Fatalf("exact source identity changed: %+v", choice)
+					}
+					assertExactNativePrimary(t, after, platform, base, fake.env)
+				}
+				if supplied {
+					base = suppliedFixtureImage
+				}
+				if !strings.Contains(after, "\nFROM "+base+"\n") || choice.upstream != upstream {
+					t.Fatalf("resolver lost the upstream key or existing derivative: %+v\n%s", choice, after)
+				}
+				if len(fake.asked) == 0 || fake.asked[0] != "python:3.14.8-bookworm" {
+					t.Fatalf("exact lookup escaped official input: %v", fake.asked)
+				}
+				hook := strings.Contains(after, "RUN --network=none /usr/bin/bex-native-python-tools")
+				if hook != (found && supplied) || (!found && (choice.Image != platform || strings.Contains(after, "rm -rf /usr/local"))) {
+					t.Fatalf("exact transplant or verified fallback changed: %+v\n%s", choice, after)
+				}
+			})
+		}
 	}
 }
