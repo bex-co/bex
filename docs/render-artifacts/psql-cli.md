@@ -3,6 +3,8 @@
 **Verified:** 2026-07-18 PDT **Target:** local CAPD app cluster, `dev-7` (non-production) **Clients:** checksum-verified, unmodified Render CLI v2.21.0 and PostgreSQL `psql` 18.4
 
 > **TLS mode superseded (w9/063, 2026-09-20).** Every `sslmode=require` reading below is accurate **as of 2026-07-18**. **w4/m95** has since moved a public database's external connection strings to `sslmode=verify-full`, which the pinned CLI passes to `psql` verbatim, so reproducing this run today additionally requires the connection-info CA (`PGSSLROOTCERT=/path/to/<id>-ca.pem`, downloadable from the dashboard Connections panel) — without it `psql` correctly refuses the private CNPG CA. See the `psql [id|name]` row in [the CLI compatibility checklist](../cli-compatibility-checklist.md) for the dated verify-full-era probe. The rows below are left unedited as the historical record.
+>
+> **Publicly trusted again (w2/m245, 2026-10-30).** In production a public database now serves a Let's Encrypt certificate, and connection-info returns Render's URL with no `sslmode` and no `serverCaCertificate`, so the CLI's `psql` connects with no CA file, as against Render. The verify-full + CA requirement above applies only while the certificate is still issuing, or on clusters without `BEX_DB_CLUSTER_ISSUER`. See [ADR009 § Publicly trusted server certificates](../ADR009-postgresql-management.md#publicly-trusted-server-certificates-w2m245).
 
 ## Result
 
