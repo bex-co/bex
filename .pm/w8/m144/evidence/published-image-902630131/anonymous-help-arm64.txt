@@ -1,0 +1,5 @@
+Usage of /bin/hcloud-csi-driver:
+  -controller -node
+	Run the csi controller. Can be used with -node to run as an AIO binary (e.g., for docker swarm).
+  -node -controller
+	Run the csi node driver. Can be used with -controller to run as an AIO binary (e.g., for docker swarm).

@@ -1,0 +1,206 @@
+{
+  "factory": {
+    "conclusion": "success",
+    "headSha": "9026301316233effaaee71e5ba49730c093bd446",
+    "status": "completed",
+    "url": "https://github.com/bex-co/bex/actions/runs/40988719522"
+  },
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "digest": "sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "platforms": [
+    {
+      "os": "linux",
+      "architecture": "amd64",
+      "manifestDigest": "sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693",
+      "configDigest": "sha256:06d926fe24cdc83696ae766216f9247a26208b212f6b896025a5c3df896ef332",
+      "version": "2.22.0-bex-bounded-ext4-v1",
+      "entrypoint": [
+        "/bin/hcloud-csi-driver"
+      ],
+      "anonymousPullReference": "ghcr.io/bex-co/bex-operator@sha256:75a302bc647ad759a4a9e49b9fb1fc66bfb415b274917cc8aec07601a696d693"
+    },
+    {
+      "os": "linux",
+      "architecture": "arm64",
+      "manifestDigest": "sha256:37b4e1c90972390efc6f41c032707d0fe0f0df871909d30fac396d9d44302235",
+      "configDigest": "sha256:1f785fc1c7402f54e349a6d5e128c831225b088208a690f16bd445a27998cfab",
+      "version": "2.22.0-bex-bounded-ext4-v1",
+      "entrypoint": [
+        "/bin/hcloud-csi-driver"
+      ],
+      "anonymousPullReference": "ghcr.io/bex-co/bex-operator@sha256:37b4e1c90972390efc6f41c032707d0fe0f0df871909d30fac396d9d44302235"
+    }
+  ],
+  "sbomPackageCount": 84,
+  "verifiedStatementDigests": [
+    "sha256:0803db566a339583c3248b132849e2a8f8158c31d7dd0cb797f5156c4ee0c51c"
+  ],
+  "spdxVersions": [
+    "SPDX-2.3"
+  ],
+  "reviewedFilesystemPackages": [
+    {
+      "name": "cryptsetup",
+      "version": "2.8.6-r0",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup:cryptsetup:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/alpine/cryptsetup@2.8.6-r0?arch=x86_64&distro=alpine-3.24.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "name": "cryptsetup-libs",
+      "version": "2.8.6-r0",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup-libs:cryptsetup-libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup-libs:cryptsetup_libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup_libs:cryptsetup-libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup_libs:cryptsetup_libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup:cryptsetup-libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:cryptsetup:cryptsetup_libs:2.8.6-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/alpine/cryptsetup-libs@2.8.6-r0?arch=x86_64&distro=alpine-3.24.1&upstream=cryptsetup",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "name": "e2fsprogs",
+      "version": "1.47.4-r0",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs:e2fsprogs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/alpine/e2fsprogs@1.47.4-r0?arch=x86_64&distro=alpine-3.24.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "name": "e2fsprogs-extra",
+      "version": "1.47.4-r0",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs-extra:e2fsprogs-extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs-extra:e2fsprogs_extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs_extra:e2fsprogs-extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs_extra:e2fsprogs_extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs:e2fsprogs-extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs:e2fsprogs_extra:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/alpine/e2fsprogs-extra@1.47.4-r0?arch=x86_64&distro=alpine-3.24.1&upstream=e2fsprogs",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "name": "e2fsprogs-libs",
+      "version": "1.47.4-r0",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs-libs:e2fsprogs-libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs-libs:e2fsprogs_libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs_libs:e2fsprogs-libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs_libs:e2fsprogs_libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs:e2fsprogs-libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:e2fsprogs:e2fsprogs_libs:1.47.4-r0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/alpine/e2fsprogs-libs@1.47.4-r0?arch=x86_64&distro=alpine-3.24.1&upstream=e2fsprogs",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "sbomScope": "Verified signed index-subject SPDX produced by the workflow; per-platform SBOM coverage is not inferred.",
+  "cosignVersion": "v3.0.6 (checksum verified against pinned installer action)",
+  "certificateWorkflowSHA": "9026301316233effaaee71e5ba49730c093bd446",
+  "signatureIdentity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+  "anonymousPullPlatforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ]
+}
