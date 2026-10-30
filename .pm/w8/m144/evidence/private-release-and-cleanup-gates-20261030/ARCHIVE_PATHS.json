@@ -1,0 +1,42 @@
+{
+  "gate-v2/test_m144_guards.py": {
+    "stored": "test_m144_guards.py.gz",
+    "rawSha256": "bb1e7e35f53706a1af479dcecf9d91f417842b3913d0133be9e3472f6b84e1da",
+    "rawBytes": 29251
+  },
+  "gate-v2/m144_guards.py": {
+    "stored": "m144_guards.py.gz",
+    "rawSha256": "b1f649564cc3509ab899b3424d9a5780b0f60a25411dffe594406d6c23a84ea6",
+    "rawBytes": 20733
+  },
+  "gate-v2/acceptance-plan.json": {
+    "stored": "acceptance-plan.json",
+    "rawSha256": "24611cf2a76a3958692f03aff5ec91e4bf606c2fa858e6ac5ff0d2356502edf7",
+    "rawBytes": 33675
+  },
+  "gate-v2/rollout-requirements.json": {
+    "stored": "rollout-requirements.json",
+    "rawSha256": "68aeb1e2a9df286f2522a1fb948c9e5a50cef35f11821219d5baf87706f48790",
+    "rawBytes": 3843
+  },
+  "gate-v2/private-csi-gate-tests.log": {
+    "stored": "private-csi-gate-tests.log.gz",
+    "rawSha256": "a649f0400efd8829732bfcde69abb607a46541adb80d965f9ad6cab55eb5c44a",
+    "rawBytes": 2882
+  },
+  "watchdog/cleanup-watchdog.py": {
+    "stored": "cleanup-watchdog.py.gz",
+    "rawSha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+    "rawBytes": 5859
+  },
+  "watchdog/test_cleanup_watchdog.py": {
+    "stored": "test_cleanup_watchdog.py.gz",
+    "rawSha256": "d033d6a2700d04c751bd08e53e4fe0b9559806e4f9bf4f767f129a7c692906ae",
+    "rawBytes": 5319
+  },
+  "watchdog/cleanup-watchdog-tests.log": {
+    "stored": "cleanup-watchdog-tests.log.gz",
+    "rawSha256": "1bf914182f7ee8508cd5dd04116e1d5e34ba43935c07ac7c2a552fcd11847bbc",
+    "rawBytes": 4358
+  }
+}

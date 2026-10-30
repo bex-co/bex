@@ -80,3 +80,7 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Missing node encryption key refused — 2026-10-30
 
 [The independently reproduced CSI request defect and final fix](evidence/csi-key-refusal-20261030/README.md) cover valid bounded capacity metadata with a missing/empty encryption passphrase. Final upstream Linux tests and separate before/after regressions pass, preserving legacy plaintext behavior. The existing deployed CSI predates this correction: a new signed factory image and verified controller/node adoption are required before creating the paid fixture. No production plaintext-storage observation or lifecycle acceptance is claimed.
+
+## Tenant isolation and cleanup preparation verified — 2026-10-30
+
+[Actual small local tenant/device checks](evidence/tenant-device-isolation-20261030/README.md) pass for capless and Render capabilities with ordinary-write controls, unchanged two-volume geometry/sentinels and exact owned cleanup. [The private release/cleanup gates](evidence/private-release-and-cleanup-gates-20261030/README.md) pass25 guard cases and9 watchdog tests, reject the old CSI guard source and retain the unarmed timer’s reviewed timeout/reconciliation fixes. Actual new image factories/adoption, queue fit and paid lifecycle acceptance remain open.

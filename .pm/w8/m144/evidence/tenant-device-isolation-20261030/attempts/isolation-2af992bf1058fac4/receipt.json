@@ -1,0 +1,79 @@
+{
+  "schema": "m144-local-isolation-v1",
+  "nonce": "2af992bf1058fac4",
+  "publishedRuntime": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "scope": "two own small local loop/LUKS volumes; no Kubernetes, cloud, real tenant, 1GiB or billing claim",
+  "beforeFreeBytes": 10138570752,
+  "renderCapabilities": [
+    "CHOWN",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "SETGID",
+    "SETUID",
+    "SYS_CHROOT"
+  ],
+  "policySourceSha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+  "holderId": "80d4a27219b6680794947efc8547ca65c287ad34ee7c345583be98641e57bf8d",
+  "ownerId": "e05a354685a0207e034ee6e958c4459ed0ec57abcaac6dd3a8bca05588f18957",
+  "ownedDevices": {
+    "loopA": "/dev/loop0",
+    "loopB": "/dev/loop1",
+    "mappingA": "m144t006-2af992bf1058fac4-a",
+    "mappingB": "m144t006-2af992bf1058fac4-b",
+    "majorA": 7,
+    "minorA": 0,
+    "filesystemBytes": 67108864,
+    "sourceImagesBytes": 167772160
+  },
+  "ownedVolumeA": "bex-m144-t006-volume-a-2af992bf1058fac4",
+  "caplessPolicy": {
+    "Privileged": false,
+    "CapAdd": null,
+    "CapDrop": [
+      "ALL"
+    ],
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "SecurityOpt": [
+      "no-new-privileges=true"
+    ],
+    "NetworkMode": "none"
+  },
+  "caplessExit": 0,
+  "renderPolicy": {
+    "Privileged": false,
+    "CapAdd": [
+      "CAP_CHOWN",
+      "CAP_DAC_OVERRIDE",
+      "CAP_FOWNER",
+      "CAP_SETGID",
+      "CAP_SETUID",
+      "CAP_SYS_CHROOT"
+    ],
+    "CapDrop": [
+      "ALL"
+    ],
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "SecurityOpt": [
+      "no-new-privileges=true"
+    ],
+    "NetworkMode": "none"
+  },
+  "renderExit": 0,
+  "verification": {
+    "geometryAUnchanged": true,
+    "geometryBUnchanged": true,
+    "sentinelsUnchanged": true
+  },
+  "ownedVolumeRemoved": true,
+  "ownerFinalState": {
+    "Running": false,
+    "ExitCode": 0
+  },
+  "cleanup": {
+    "cleanupExit": 0,
+    "originalExit": 0
+  },
+  "afterFreeBytes": 10040422400
+}

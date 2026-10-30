@@ -1,0 +1,79 @@
+{
+  "schema": "bex-m144-private-csi-gate-v2",
+  "frozenAt": "2026-10-30T14:36:59.224948+00:00",
+  "changedPrivateSourceFiles": [
+    "m144_guards.py",
+    "rollout-requirements.json",
+    "acceptance-plan.json",
+    "test_m144_guards.py"
+  ],
+  "requiredCsiGuardCommit": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "testedCsiSourceCommit": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "requiredPatchSha256": "035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec",
+  "guardShape": "Exact newly qualified CSI image/source/ancestor/Git patch bytes, strict CSI factory signer/issuer/source and hashed signature receipt; hashed successful fixed rollout receipt with raw driver_readiness/counts/image, old-pod termination and exact validator Git blob. Existing platform signature/Ready/source-map checks remain.",
+  "tests": {
+    "command": "python3 -m unittest test_m144_guards -v",
+    "exit": 0,
+    "count": 25,
+    "seconds": 0.294,
+    "log": "private-csi-gate-tests.log",
+    "positiveQualification": "Synthetic schema only. Separate local Git checks use real committed source; no actual rollout/signature/readiness receipt was fabricated or filled."
+  },
+  "unchangedSourceSha256": {
+    "hosted-disk.py": {
+      "beforeSha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953",
+      "currentSha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953"
+    },
+    "disk-fixture.py": {
+      "beforeSha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+      "currentSha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4"
+    },
+    "spec.json": {
+      "beforeSha256": "e3fd70eb725b55017cdafbba50596c78fc84b804f43fd3da25ac1f96bbd18d14",
+      "currentSha256": "e3fd70eb725b55017cdafbba50596c78fc84b804f43fd3da25ac1f96bbd18d14"
+    },
+    "start-command.txt": {
+      "beforeSha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74",
+      "currentSha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74"
+    }
+  },
+  "baselineReferences": {
+    "hosted-disk.py": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/m144-private-preparation-receipt.json",
+    "fixtureProgramSpecStartCommand": ".pm/w8/m144/evidence/fixture-preparation-20261029/MANIFEST.json"
+  },
+  "rolloutReadyGateCreated": false,
+  "rolloutReadyGateCurrentlyPresent": false,
+  "budget": "Unchanged1 Starter,1 disk,1\u21925GiB,7200s,$0.03 with900s cleanup reserve.",
+  "actualLiveCalls": 0,
+  "credentialContentsRead": false,
+  "authOperations": 0,
+  "workflowDispatches": 0,
+  "GitMutations": false,
+  "unexecuted": [
+    "Actual new CSI factory digest/signature/source verification",
+    "Actual new CSI rollout/Ready evidence and root gate",
+    "Actual owned paid lifecycle/API/usage/cleanup acceptance"
+  ],
+  "artifactSha256": {
+    "test_m144_guards.py": {
+      "sha256": "bb1e7e35f53706a1af479dcecf9d91f417842b3913d0133be9e3472f6b84e1da",
+      "bytes": 29251
+    },
+    "m144_guards.py": {
+      "sha256": "b1f649564cc3509ab899b3424d9a5780b0f60a25411dffe594406d6c23a84ea6",
+      "bytes": 20733
+    },
+    "acceptance-plan.json": {
+      "sha256": "24611cf2a76a3958692f03aff5ec91e4bf606c2fa858e6ac5ff0d2356502edf7",
+      "bytes": 33675
+    },
+    "rollout-requirements.json": {
+      "sha256": "68aeb1e2a9df286f2522a1fb948c9e5a50cef35f11821219d5baf87706f48790",
+      "bytes": 3843
+    },
+    "private-csi-gate-tests.log": {
+      "sha256": "a649f0400efd8829732bfcde69abb607a46541adb80d965f9ad6cab55eb5c44a",
+      "bytes": 2882
+    }
+  }
+}

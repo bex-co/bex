@@ -1,0 +1,27 @@
+{
+  "schema": "m144-local-isolation-v1",
+  "nonce": "827d6f2219d404f4",
+  "publishedRuntime": "ghcr.io/bex-co/bex-operator@sha256:0807342734d3c327f689f4054916646562199d36d3e29153bb6cb871e4452ee7",
+  "scope": "two own small local loop/LUKS volumes; no Kubernetes, cloud, real tenant, 1GiB or billing claim",
+  "beforeFreeBytes": 10323152896,
+  "renderCapabilities": [
+    "CHOWN",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "SETGID",
+    "SETUID",
+    "SYS_CHROOT"
+  ],
+  "policySourceSha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+  "holderId": "6efea0e0132e40e9aead598f7c92ffa2e7971d85018d8473bc01beba01afbf89",
+  "ownerId": "a482ab22ca7007aa313cfce6fc14284c8c86535e9ac08c304ad961221c0e127a",
+  "ownerFinalState": {
+    "Running": false,
+    "ExitCode": 1
+  },
+  "cleanup": {
+    "cleanupExit": 0,
+    "originalExit": 1
+  },
+  "afterFreeBytes": 10184765440
+}

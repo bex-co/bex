@@ -1,0 +1,261 @@
+{
+  "schema": "bex-m144-private-local-isolation-proof-v1",
+  "frozenAt": "2026-10-30T14:36:59.220205+00:00",
+  "command": "python3 /private/tmp/bex-w8-m144-t006-local-20261030/isolation.py",
+  "exit": 0,
+  "successAttempt": "isolation-2af992bf1058fac4",
+  "scope": "Small local Linux capability/device isolation only, using old080734 runtime filesystem tools; not the new CSI key guard artifact, not Kubernetes emulation, no1GiB/5GiB/hard-full/grow/billing/production acceptance.",
+  "deviceCanary": "Only A filesystem is mounted to attacker. No --device or device-cgroup exception is granted. An owner-created mode0666 block-device inode within A names the exact own raw loop device for a real default-cgroup open-denial test; actual mapper path and B are absent.",
+  "results": {
+    "bothPoliciesExit0": true,
+    "caplessMask": "0x0",
+    "renderMask": "0x400cb",
+    "renderCapabilitySource": "lego/types/v1alpha1/container_policy.go",
+    "renderCapabilities": [
+      "CHOWN",
+      "DAC_OVERRIDE",
+      "FOWNER",
+      "SETGID",
+      "SETUID",
+      "SYS_CHROOT"
+    ],
+    "renderCapabilitySourceSha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+    "noNewPrivs": 1,
+    "denied": [
+      "mknod exactown loop major/minor",
+      "open own mode0666 loop inode",
+      "resize2fs",
+      "mkfs.ext4",
+      "mount"
+    ],
+    "positiveControl": "Each policy wrote1MiB to its own writable A filesystem.",
+    "twoVolumeSafety": {
+      "geometryAUnchanged": true,
+      "geometryBUnchanged": true,
+      "sentinelsUnchanged": true
+    },
+    "cleanup": {
+      "cleanupExit": 0,
+      "originalExit": 0
+    },
+    "volumeRemoved": true,
+    "resourceIDs": {
+      "holderId": "80d4a27219b6680794947efc8547ca65c287ad34ee7c345583be98641e57bf8d",
+      "ownerId": "e05a354685a0207e034ee6e958c4459ed0ec57abcaac6dd3a8bca05588f18957",
+      "ownedVolumeA": "bex-m144-t006-volume-a-2af992bf1058fac4",
+      "ownedDevices": {
+        "loopA": "/dev/loop0",
+        "loopB": "/dev/loop1",
+        "mappingA": "m144t006-2af992bf1058fac4-a",
+        "mappingB": "m144t006-2af992bf1058fac4-b",
+        "majorA": 7,
+        "minorA": 0,
+        "filesystemBytes": 67108864,
+        "sourceImagesBytes": 167772160
+      }
+    },
+    "hostFreeBeforeBytes": 10138570752,
+    "hostFreeAfterBytes": 10040422400,
+    "ownedSourceCacheScratchBytesApprox": 831451136,
+    "peakActualPhysicalNotMeasured": true,
+    "scratchQualification": "Two sparse80MiB images were in owned384MiB tmpfs; persistent owned source/cache tree~793MiB, plus small anonymous runtime pull. Physical allocated scratch stayed below2GiB; host minimum sampled free~9.35GiB."
+  },
+  "failedHarnessAttempts": "Every available failed attempt receipt/raw log retained under attempts plus stage logs. Earlier failed harness source versions were not separately snapshotted; only the final successfully executed source has exact frozen bytes. Failures were missing unused image after GC, read-only trusted-owner setup, BusyBox auto filesystem detection, and runc cross-namespace bind; none is reported as a product failure.",
+  "exclusions": [
+    "No credentials, .env, live ledger, token intent, images, binaries or caches in this bundle.",
+    "No provider API, paid resources, workflow dispatch or production mutation.",
+    "No repo/product patch edits from this harness. No task marked done."
+  ],
+  "artifacts": {
+    "attempts/isolation-2af992bf1058fac4/anonymous-fixed-runtime-pull.log": {
+      "sha256": "d7ca2fc1f9ef4e33c4850331ff0ba126b9b95d636750e0fcbffb190aefae43fe",
+      "bytes": 963
+    },
+    "attempts/isolation-2af992bf1058fac4/capless.log": {
+      "sha256": "b7826de6a968fe8b4092847eca6252d748b5c6bf43fe507dce1519fc56fb4916",
+      "bytes": 872
+    },
+    "attempts/isolation-2af992bf1058fac4/check": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "attempts/isolation-2af992bf1058fac4/checked.json": {
+      "sha256": "449fb1877cf8d35e24d0c8e7c992674c919d4216b04bc2fce41418572b5b6136",
+      "bytes": 80
+    },
+    "attempts/isolation-2af992bf1058fac4/cleanup.json": {
+      "sha256": "738447d898c8ece38d4d35e916609a154b8dc8ae136b1cb800fc3652e40d9285",
+      "bytes": 35
+    },
+    "attempts/isolation-2af992bf1058fac4/geometry-a-after.json": {
+      "sha256": "c0418bca7cd7c14ff99f0d8df727e843c2770e65563e3e161ef55fdff1404b69",
+      "bytes": 79
+    },
+    "attempts/isolation-2af992bf1058fac4/geometry-a-before.json": {
+      "sha256": "c0418bca7cd7c14ff99f0d8df727e843c2770e65563e3e161ef55fdff1404b69",
+      "bytes": 79
+    },
+    "attempts/isolation-2af992bf1058fac4/geometry-b-after.json": {
+      "sha256": "83e9b01da305b06dcb849c6f323b97e7b4358ebd623c30470e480e7ea3eb75bd",
+      "bytes": 79
+    },
+    "attempts/isolation-2af992bf1058fac4/geometry-b-before.json": {
+      "sha256": "83e9b01da305b06dcb849c6f323b97e7b4358ebd623c30470e480e7ea3eb75bd",
+      "bytes": 79
+    },
+    "attempts/isolation-2af992bf1058fac4/owner.log": {
+      "sha256": "a2e198b64216fa6015c0a266e1e38624716b57eaf258e16f47bf4afaa2a0c7bb",
+      "bytes": 1504
+    },
+    "attempts/isolation-2af992bf1058fac4/ready.json": {
+      "sha256": "a815de24029f6445aab0b848d2da0dba2da6c3cfd8973c59839d6fc003f2622a",
+      "bytes": 205
+    },
+    "attempts/isolation-2af992bf1058fac4/receipt.json": {
+      "sha256": "f293e4c9f227d2baf97ee0a0057ce3ff2b3c4f04e49af7ac5ea3a738b9d61c82",
+      "bytes": 2024
+    },
+    "attempts/isolation-2af992bf1058fac4/render.log": {
+      "sha256": "4fe16dd685ba9c1902903582dcefb16e19812190b98d5a3347fd56ca30a738bb",
+      "bytes": 872
+    },
+    "attempts/isolation-2af992bf1058fac4/sentinels.sha256": {
+      "sha256": "27567269580f83b68435ed67c7a5ca15f76f161cf289cfc010fb04e0842f8e7c",
+      "bytes": 184
+    },
+    "attempts/isolation-2af992bf1058fac4/stop": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "attempts/isolation-72c192ce2679af9a/cleanup.json": {
+      "sha256": "bb57218f9ecb340c717d8d1f2b8743af686ddca0580a4d591b38057ae83a8d63",
+      "bytes": 37
+    },
+    "attempts/isolation-72c192ce2679af9a/owner.log": {
+      "sha256": "64930fe37383033d6a6c01482a49b2d21c239f3a1db5bde3e714ae144efe7092",
+      "bytes": 1545
+    },
+    "attempts/isolation-72c192ce2679af9a/receipt.json": {
+      "sha256": "22a4705b22c2facddefdd35f9f4b62f0529236da759e25ef360cb54ccd114f21",
+      "bytes": 889
+    },
+    "attempts/isolation-72c192ce2679af9a/stop": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "attempts/isolation-7f7810c0e18ceba9/receipt.json": {
+      "sha256": "e3169508c71a009093c9c4afaf80b5dc5636feb7182013430b8c7e3faf2721b9",
+      "bytes": 590
+    },
+    "attempts/isolation-827d6f2219d404f4/anonymous-fixed-runtime-pull.log": {
+      "sha256": "37fba10331b7831fa94c978e85fd75ae01287440ddb6023875bb4042e3a3f3ec",
+      "bytes": 963
+    },
+    "attempts/isolation-827d6f2219d404f4/cleanup.json": {
+      "sha256": "ad31f8013d365bebebae4eef023dbddf553a38240f2de87a5db5df276a28680b",
+      "bytes": 35
+    },
+    "attempts/isolation-827d6f2219d404f4/owner.log": {
+      "sha256": "cad63a358302c66bbfbf6fa42be3281694a6bb34c88bee576b100af202cfafdd",
+      "bytes": 77
+    },
+    "attempts/isolation-827d6f2219d404f4/receipt.json": {
+      "sha256": "86acfed1c361c78acce13d8fc262cbe06738f57d87aa1d47ee453873a2a1be2f",
+      "bytes": 885
+    },
+    "attempts/isolation-827d6f2219d404f4/stop": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "attempts/isolation-83e8bbb29a590cb6/anonymous-fixed-runtime-pull.log": {
+      "sha256": "c65a1f71037bea19db2d25897739ea57cf9482f4dc4825280385176c8bd62117",
+      "bytes": 996
+    },
+    "attempts/isolation-83e8bbb29a590cb6/capless.log": {
+      "sha256": "cc1693ebccd43563f67f5059c675335b70d8ff83c14c26ec27fc012331f52b14",
+      "bytes": 405
+    },
+    "attempts/isolation-83e8bbb29a590cb6/cleanup.json": {
+      "sha256": "738447d898c8ece38d4d35e916609a154b8dc8ae136b1cb800fc3652e40d9285",
+      "bytes": 35
+    },
+    "attempts/isolation-83e8bbb29a590cb6/geometry-a-before.json": {
+      "sha256": "0f950422fe0170fff4aefea684eda617175fe02df399cf03ae72ecee2e9162a2",
+      "bytes": 79
+    },
+    "attempts/isolation-83e8bbb29a590cb6/geometry-b-before.json": {
+      "sha256": "4e257baf1f36baf2ff97a4d257f7c22845c29f29521bedba1daa696447c2a271",
+      "bytes": 79
+    },
+    "attempts/isolation-83e8bbb29a590cb6/owner.log": {
+      "sha256": "7d4f757dc34b86197215a4f1e40ea8243b75d412ef441d6a49d6b062dd557103",
+      "bytes": 1444
+    },
+    "attempts/isolation-83e8bbb29a590cb6/ready.json": {
+      "sha256": "36822e9300652acd1ff36d8a2975656f68360165f3769bfbae932c2017dd0114",
+      "bytes": 205
+    },
+    "attempts/isolation-83e8bbb29a590cb6/receipt.json": {
+      "sha256": "eb5ba2c8aa6c42b9940f1c66e00f401b7e720b2d59428c807826be1ec6571436",
+      "bytes": 1424
+    },
+    "attempts/isolation-83e8bbb29a590cb6/sentinels.sha256": {
+      "sha256": "27567269580f83b68435ed67c7a5ca15f76f161cf289cfc010fb04e0842f8e7c",
+      "bytes": 184
+    },
+    "attempts/isolation-83e8bbb29a590cb6/stop": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "attempts/isolation-896bf4771d70d47b/receipt.json": {
+      "sha256": "631c40b9da489d882e370667950919d5dfec7bfdf802ae4a1ba2d8300d28fedf",
+      "bytes": 590
+    },
+    "final-owned-cleanup-inventory.json": {
+      "sha256": "9f7f0b64dc44647b6626ede7c784f47c51c23133a14237b20d96f44ce81a51d2",
+      "bytes": 469
+    },
+    "isolation-attacker.sh": {
+      "sha256": "b05b9abecac41110c760272efff63dcc7b113cf68886ec45c54f532a7a2b42af",
+      "bytes": 974
+    },
+    "isolation-owner.sh": {
+      "sha256": "eb815bc764462e2f5e7fe2f2fe711b5794320b75acce090aa09b0c50e435bb26",
+      "bytes": 4066
+    },
+    "isolation-run-auto-mount-failure.log": {
+      "sha256": "d98a727b90e572bcd22a8286e0bca36100ab72832b527147a2461f1195900882",
+      "bytes": 442
+    },
+    "isolation-run-cross-namespace-bind-failure.log": {
+      "sha256": "f939f02f3a1668f5d01e14b9ef67d3bf958bf0793604311a061638ab83a4b13c",
+      "bytes": 348
+    },
+    "isolation-run-initial-failure.log": {
+      "sha256": "01ddb37b9690c9b05979507c9b3b57d659dba850417ccee8206d88130413dd55",
+      "bytes": 2313
+    },
+    "isolation-run-missing-image.log": {
+      "sha256": "e345961cf8730f39668460fdeaa80f062be69998a9d09f20725247a77e5079c8",
+      "bytes": 2381
+    },
+    "isolation-run-owned-setup-failure.log": {
+      "sha256": "88f2f7da28571e0c87cb4fc5cf6e6124a803989e4596d355f7cf76c4dc992b50",
+      "bytes": 442
+    },
+    "isolation-run.log": {
+      "sha256": "545397669892c05cd46b5c62158c8f944149e1b4b627b6835d0fb860af1b1781",
+      "bytes": 72
+    },
+    "isolation.py": {
+      "sha256": "67f2ecf1400d014bdfbf8d45e6437b43a48ad53295db3dd24148b29d032dccf0",
+      "bytes": 6953
+    },
+    "runtime-tools.log": {
+      "sha256": "abe9ecffa04c23ae658faeaf72120eb5305b0596ac554af5a540b870de5b17b3",
+      "bytes": 566
+    }
+  },
+  "artifactCount": 47,
+  "artifactBytes": 36543
+}

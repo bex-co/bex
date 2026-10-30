@@ -1,0 +1,5 @@
+# Local tenant/device isolation — 2026-10-30
+
+Both capless and exact repository Render-capability processes passed on two owned local80MiB sparse loop/LUKS devices containing64MiB ext4 filesystems. The allowed mask was0x400cb, with no_new_privs1. Ordinary1MiB writes succeeded; mknod, opening an actual mode0666 own-loop inode under the default device cgroup, resize2fs, mkfs and mount were denied. Only A was mounted to attackers; B was absent. Both UUID/block geometries and sentinels remained unchanged. All owned mappings, loops, containers, holder and local volume were verified removed.
+
+The exact executed three-file harness, raw successful checks and all available earlier setup-failure receipts are retained losslessly. Earlier failed script versions were not snapshotted; this limitation is explicit. The old published080734 image supplied filesystem tools only. This does not qualify the newly fixed CSI artifact, emulate Kubernetes/user namespaces, or establish1Gi/5Gi capacity, growth, billing or production acceptance. The earlier real patched-code kernel proof remains separate. Trusted-node EIO/command-failure injection variants were not executed.
