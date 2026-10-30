@@ -1,0 +1,18 @@
+{
+  "reviewed_at": "2026-10-30T18:04:21.865909+00:00",
+  "driver_sha256": "b9b011f5cb0af01ffecdb23b115c26260b73056aec472a47152b766120d37e80",
+  "policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "baseline_driver_sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+  "code_quality": "root: independent exact-diff, fail-propagation/join, all-results/deterministic-order, locked cache/progress, capacity and unchanged policy review clean",
+  "reuse": "cli090: clean; canonical pull/public/progress/validated existing worker setting reused; no generic pool abstraction needed",
+  "efficiency": "disk221: clean; phases sequential, digest-deduplicated bounded streams, no retained layer files",
+  "decision": "tool implementation accepted for future explicitly assigned real cases; zero candidate approval implied",
+  "current_case": "Ruby3.1 remains on unchanged V8/session90103",
+  "required_for_real_case": [
+    "actual whole-job success",
+    "unique initially empty case output/cache",
+    "unchanged full strict artifact/policy gates",
+    "external2GiB free-floor supervisor and bounded own-file budget",
+    "actual all-blob SHA/size completion before approval"
+  ]
+}

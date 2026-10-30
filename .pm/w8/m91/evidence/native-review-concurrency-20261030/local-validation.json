@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-30T18:00:02.015434+00:00",
+  "scope": "PRIVATE V9 prototype for ROOT review only. No real candidate/payload/verifier execution or public pull; no .pm/Git/CI/auth mutation. Ruby31 V8/session90103 untouched.",
+  "status": "LOCAL_GATES_PASS_NOT_APPROVED_FOR_REAL_CASE",
+  "v8_sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a",
+  "v9_sha256": "b9b011f5cb0af01ffecdb23b115c26260b73056aec472a47152b766120d37e80",
+  "policy_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "source_equivalence": "Reversing ONLY the new pull_blobs helper, the finalization call-site replacement and the additive receipt-policy metadata reconstructs the exact original V8 bytes. Every other crypto/report/source/auth/cache function and validated CLI bound is unchanged.",
+  "concurrency": {
+    "workers": "Reuses existing --layer-workers default2,validated1\u20134; phases sequential.",
+    "full_hash_implementation": "Unchanged canonical BlobReceipts.pull; full compressed SHA256 and exact size are required.",
+    "complete_receipts": "Futures are stored in original descriptor order; every success is required before returning that ordered list to finalization.",
+    "failure": "First completed error cancels only unstarted own futures; executor context joins already-started reads before failure returns; approval write remains unreachable.",
+    "cache": "Canonical independent per-digest flock and separately opened global cache flock protect existing read/update/atomic-dump; no raw image bytes retained by full-stream path.",
+    "auth": "Unchanged public() per blob, with independent fresh anonymous headers. Existing anonymous401 refresh policy and all TLS/digest/subject/source gates unchanged.",
+    "progress": "Existing Review.progress lock serializes JSON atomic rename and stdout; capacity checked before forwarding progress.",
+    "disk": "2GiB reserve plus16MiB bounded cache/progress headroom checked before each stream, heartbeat and completion. Streaming memory is1MiB per worker. Existing external global-space supervision still required for future realcase."
+  },
+  "tests": {
+    "concurrency_command": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "python3",
+      "/private/tmp/loopx-w8-native-v9-local-validation-20261030/concurrency-tests.py"
+    ],
+    "concurrency_exit": 0,
+    "unittest_methods": 4,
+    "negative_body_subcases": [
+      "wrongSHA",
+      "truncated",
+      "overlong"
+    ],
+    "actual_canonical_cache_and_hash": true,
+    "overlap_proved": 2,
+    "ordered_results_despite_out_of_order_completion": true,
+    "all_cache_rows_retained": true,
+    "cache_reuse_anonymous_HEAD_rechecked": true,
+    "blocked_started_read_join_proved": true,
+    "finish_exception_prevents_any_approval_receipt": true,
+    "single_worker_reuse_proved": true,
+    "reserve_refused_before_network": true,
+    "strict_guards_command": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "python3",
+      "/private/tmp/loopx-w8-native-v9-local-validation-20261030/strict-guards.py"
+    ],
+    "strict_guards_exit": 0,
+    "strict_guard_count": 43,
+    "strict_guard_logic_identical_except_driver_and_private_result_paths": true
+  },
+  "initial_attempt": "Retained initial local harness failure: mocked cached HEAD response omitted .headers. Added that field; no V9 implementation change was required for the failure.",
+  "floor_free_bytes_at_freeze": 4519870464,
+  "review_limit": "ROOT must review exact V9 diff/hash before assigning any actual next candidate. No local unit receipt is public-registry or artifact qualification evidence.",
+  "artifacts": {
+    "concurrency-tests.initial-harness-failure.log": {
+      "bytes": 3292,
+      "sha256": "63de19e988a6e02463adf83b03083a083cd311d05b7f41e3e4743e6d7e841c41"
+    },
+    "concurrency-tests.log": {
+      "bytes": 728,
+      "sha256": "12b153d38009f381a91608521637e0b30453d7a62f9e80f9e140ec024efd8d32"
+    },
+    "concurrency-tests.py": {
+      "bytes": 9844,
+      "sha256": "04a2df52180d8f1bb1b15db0a34559071458962bc8dd34e0fc13bf923e825ec7"
+    },
+    "source-preflight.initial.json": {
+      "bytes": 553,
+      "sha256": "2f1a3219299a2d10e6db4134d11b2d5cbfc6e674b26959d9faa427e0bcc5b7fc"
+    },
+    "strict-guards-result.json": {
+      "bytes": 1867,
+      "sha256": "409e4701155a624f1ced7368f1f5c728caffe815e0d5727268c990e45ff6c450"
+    },
+    "strict-guards.log": {
+      "bytes": 1683,
+      "sha256": "11911f1b1d3ca1a13cea0c64674f4956807fadca4625c1b446ed6e79049d30f7"
+    },
+    "strict-guards.py": {
+      "bytes": 16670,
+      "sha256": "f04ce820c74e2c3f9bc6dd9f3e78af292f50a1f7e9442ae08e91180c484f0745"
+    },
+    "v8-to-v9.diff": {
+      "bytes": 10854,
+      "sha256": "7fba3afd36fe694003b5ed9ccc8445f6f06ce6d26f0343e07fe9c8cde28585d2"
+    }
+  },
+  "external_sources": {
+    "/tmp/loopx-w8-native-review-v8.py": {
+      "bytes": 33614,
+      "sha256": "b1331524b7f4ce87a8b984856bc9fa61037888b9026fb7800752423e60e7731a"
+    },
+    "/tmp/loopx-w8-native-review-v9.py": {
+      "bytes": 34440,
+      "sha256": "b9b011f5cb0af01ffecdb23b115c26260b73056aec472a47152b766120d37e80"
+    },
+    "/tmp/loopx-w8-verify-native-artifact.py": {
+      "bytes": 40661,
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+    },
+    "/tmp/loopx-w8-native-review-v8-guard-tests.py": {
+      "bytes": 16634,
+      "sha256": "3d58992e22f784eb6d3bf4f251b87d27401038b48a3fdf39a49abbe55a2e4b56"
+    }
+  }
+}

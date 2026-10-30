@@ -139,3 +139,7 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Full SBOM transport recovery — 2026-10-30
 
 [Independent actual Ruby 3.2 failure and primary-source transport evidence](evidence/publication-syft-http1-20261030/README.md) confirm Syft's registry HTTP2 stream fault. Concurrent peer fix `3990b9acf35f62ba1d702387bc2061a83342b2b3` already supplies HTTP1, bounded complete SBOM retries and the same exact-index recovery record; its implementation is preserved. The independently reviewed job-env proposal was superseded before push, so this checkpoint ships evidence only. Seven suppliers remain approved; Ruby 3.1 strict review is active. Corrected publication, all-27 adoption and all original hosted DoDs remain open.
+
+## Bounded artifact-review concurrency — 2026-10-30
+
+[The reviewed private V9 tool](evidence/native-review-concurrency-20261030/README.md) verifies final anonymous image bytes with bounded parallel streams while retaining canonical hash/size/cache/auth checks and requiring every result before approval. Four meaningful local concurrency/corruption controls, the existing 43 strict guards and three reviews pass. This is tool validation only; no actual candidate has run on V9, and Ruby 3.1 remains on V8. Seven suppliers are approved; complete adoption and the original hosted DoDs remain open.

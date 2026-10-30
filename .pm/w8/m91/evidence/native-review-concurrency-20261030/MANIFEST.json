@@ -1,0 +1,75 @@
+{
+  "schema": "bex.evidence-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1779,
+      "sha256": "b5685d926676758ecda955cd4691a55bab39079b3e156e9eb0ef6fec71b6f819"
+    },
+    {
+      "path": "ROOT-REVIEW.json",
+      "bytes": 1232,
+      "sha256": "06ddb28f582893c5ddb02b3115214e22526c9068da3f20d96c8696fefe3f74a9"
+    },
+    {
+      "path": "concurrency-tests.initial-harness-failure.log.gz",
+      "bytes": 982,
+      "sha256": "372aa9781487d9ccb49d3a58e0f5c04221a65c986f5c740a627dc2b968e0633d"
+    },
+    {
+      "path": "concurrency-tests.log.gz",
+      "bytes": 258,
+      "sha256": "b366cad4e973c1412bfa2ff0255304fdf45e6f30443acf8c01114c485e8bcad2"
+    },
+    {
+      "path": "concurrency-tests.py.gz",
+      "bytes": 3195,
+      "sha256": "7e675adee11ea307e84df5beb2bba060fb845746d97f4f5479e3bc1b6dcfc5f0"
+    },
+    {
+      "path": "local-validation.json",
+      "bytes": 5475,
+      "sha256": "7d681fc818ef382817818729c00d34dd791ac1c071f8ebfeb9684b24783af29b"
+    },
+    {
+      "path": "loopx-w8-native-review-v8.py.gz",
+      "bytes": 11033,
+      "sha256": "5ecf34d210cf5d86e442a875b2e41d92db192b6fd1a030aa017c7da94104aac7"
+    },
+    {
+      "path": "loopx-w8-native-review-v9.py.gz",
+      "bytes": 11178,
+      "sha256": "420a98f384c117fa1287609625892092b0128bc8157f3bc738dbb65fdc320adc"
+    },
+    {
+      "path": "loopx-w8-verify-native-artifact.py.gz",
+      "bytes": 12266,
+      "sha256": "d24bde1c5e488d8b0c3130f792d1e405ab3036854aceaf22efd18efbba40d923"
+    },
+    {
+      "path": "source-preflight.initial.json.gz",
+      "bytes": 382,
+      "sha256": "a9a75c94e64d4b23ef7e88daa99677d42d4ad6f4900a02efcb409b3ba7b04625"
+    },
+    {
+      "path": "strict-guards-result.json.gz",
+      "bytes": 867,
+      "sha256": "268aaa58eeacd50e2a15d468db418eff3e85dc66d98d641b2f98cbbb4271f40e"
+    },
+    {
+      "path": "strict-guards.log.gz",
+      "bytes": 847,
+      "sha256": "ac8e77d2829e8d62cb711dcce5c5cfda6d166ac3159d846e545527909fc13d81"
+    },
+    {
+      "path": "strict-guards.py.gz",
+      "bytes": 5350,
+      "sha256": "6bbf80baa906b4ef623e2b2bad5e932e3154733344e2f5f1e7d9da44af25d914"
+    },
+    {
+      "path": "v8-to-v9.diff.gz",
+      "bytes": 3293,
+      "sha256": "663b557c0c2502f54cfde49f3cfd6fa790e538255395632f462acad2c7495932"
+    }
+  ]
+}
