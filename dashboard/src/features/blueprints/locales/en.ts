@@ -37,7 +37,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   // --- Create action ---
   "blueprints.createButton": {
-    message: "New Blueprint",
+    message: "New Blueprint Instance",
     description: "Button label that opens the New Blueprint dialog",
   },
   "blueprints.createTitle": {
@@ -489,7 +489,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   // --- Empty state ---
   "blueprints.emptyTitle": {
-    message: "No blueprints yet",
+    message: "You haven't created any Blueprint instances yet.",
     description: "Blueprints list empty-state heading",
   },
   "blueprints.emptyBody": {

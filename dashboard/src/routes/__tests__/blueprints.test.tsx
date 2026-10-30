@@ -255,14 +255,19 @@ describe("BlueprintsPage (list)", () => {
   it("shows empty state with auto-registration copy when there are no blueprints", async () => {
     renderBlueprintsPage();
 
-    expect(await screen.findByText("No blueprints yet")).toBeInTheDocument();
+    // Render's wording (w3/049): "Blueprint instance", not "blueprint".
+    expect(
+      await screen.findByText(
+        "You haven't created any Blueprint instances yet.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/auto-register/i)).toBeInTheDocument();
   });
 
   it("offers New Blueprint from the empty state itself (ADR075 D1)", async () => {
     const router = renderBlueprintsPage();
     const buttons = await screen.findAllByRole("button", {
-      name: "New Blueprint",
+      name: "New Blueprint Instance",
     });
     expect(buttons).toHaveLength(2); // header + empty state
     await userEvent.click(buttons[1]);
@@ -284,7 +289,7 @@ describe("BlueprintsPage (list)", () => {
 
     // The header's button; an empty list also offers the empty-state one.
     const [headerButton] = await screen.findAllByRole("button", {
-      name: "New Blueprint",
+      name: "New Blueprint Instance",
     });
     await userEvent.click(headerButton);
 
