@@ -352,6 +352,13 @@ func (h *publicTLSHarness) requireServedAcrossReissue() {
 	if got := clusterCertificates(h.cluster())["serverTLSSecret"]; got != "dpg-orders-public-tls" {
 		t.Fatalf("re-issue unwired the serving certificate: %v", got)
 	}
+	// The re-issue is for the new name set, while clients keep the Render URL:
+	// flipping to Pending would hand them verify-full against a CA they lack.
+	cert, _ = h.certificate()
+	if names, _, _ := unstructured.NestedStringSlice(cert.Object, "spec", "dnsNames"); !reflect.DeepEqual(names, publicNames[:1]) {
+		t.Fatalf("re-issue dnsNames = %v, want %v", names, publicNames[:1])
+	}
+	h.requireStatus(appv1alpha1.DBExternalCertificatePubliclyTrusted, "Issued")
 }
 
 // requireWithdrawn: public access off brings CNPG's certificate back; the
@@ -428,6 +435,127 @@ func TestUntrustedPublicCertificateIsNotWired(t *testing.T) {
 	}
 	if db.Status.ExternalCertificate != appv1alpha1.DBExternalCertificatePending {
 		t.Fatalf("externalCertificate = %q, want Pending", db.Status.ExternalCertificate)
+	}
+}
+
+// servePubliclyTrusted drives a fresh harness to PubliclyTrusted: requested,
+// issued, wired, and observed by CNPG.
+func (h *publicTLSHarness) servePubliclyTrusted(tlsCrt []byte) {
+	h.t.Helper()
+	h.reconcile()
+	h.markIssued(tlsCrt)
+	h.reconcile()
+	h.cnpgObserves("dpg-orders-public-tls")
+	h.reconcile()
+	h.requireStatus(appv1alpha1.DBExternalCertificatePubliclyTrusted, "Issued")
+}
+
+func publicTLSRoots(root *x509.Certificate) *x509.CertPool {
+	roots := x509.NewCertPool()
+	roots.AddCert(root)
+	return roots
+}
+
+// TestExpiredServedPublicCertificateFallsBackToCNPG: a served certificate that
+// renewal failed to replace must not stay served past its expiry. The Cluster
+// goes back to CNPG's certificate and status leaves PubliclyTrusted at once, so
+// bex-api hands out the verify-full contract again instead of a Render URL that
+// would now fail verification.
+func TestExpiredServedPublicCertificateFallsBackToCNPG(t *testing.T) {
+	notAfter := publicTLSNow.Add(90 * 24 * time.Hour)
+	root, tlsCrt := issuedChain(t, publicNames, notAfter)
+	h := newPublicTLSHarness(t, "letsencrypt-prod", publicTLSRoots(root))
+	h.servePubliclyTrusted(tlsCrt)
+
+	h.r.Now = func() time.Time { return notAfter.Add(time.Minute) }
+	h.reconcile()
+	certs := clusterCertificates(h.cluster())
+	if certs["serverTLSSecret"] != nil || certs["serverAltDNSNames"] == nil {
+		t.Fatalf("expired certificate still wired: %v", certs)
+	}
+	// CNPG's status still names the old Secret until it rolls over, but the
+	// spec no longer does, so nothing may claim it is publicly trusted.
+	h.requireStatus(appv1alpha1.DBExternalCertificatePending, "CertificateUntrusted")
+	// Still public: the Certificate and its Secrets stay for the renewal.
+	if _, err := h.certificate(); err != nil {
+		t.Fatalf("Certificate deleted while the database is still public: %v", err)
+	}
+	h.requireSecrets(true)
+}
+
+// TestDeletingPublicDatabaseRemovesCertificateAndSecrets: the key pair carries
+// no owner reference, so deletion must remove it explicitly once the Cluster
+// is gone, together with the Certificate and the CA bundle.
+func TestDeletingPublicDatabaseRemovesCertificateAndSecrets(t *testing.T) {
+	root, tlsCrt := issuedChain(t, publicNames, publicTLSNow.Add(90*24*time.Hour))
+	h := newPublicTLSHarness(t, "letsencrypt-prod", publicTLSRoots(root))
+	h.servePubliclyTrusted(tlsCrt)
+
+	if err := h.cl.Delete(h.ctx, h.database()); err != nil {
+		t.Fatal(err)
+	}
+	h.reconcile() // deletes the Cluster
+	// The Cluster still existed on that pass, so nothing it may serve went.
+	h.requireSecrets(true)
+	h.reconcile() // Cluster gone: certificate cleanup, finalizer released
+	if _, err := h.certificate(); !apierrors.IsNotFound(err) {
+		t.Fatalf("Certificate survived the database (err=%v)", err)
+	}
+	h.requireSecrets(false)
+	if err := h.cl.Get(h.ctx, h.req.NamespacedName, &appv1alpha1.Database{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("Database finalizer not released (err=%v)", err)
+	}
+}
+
+// TestPublicTLSLeavesForeignObjectsAlone: a same-named Certificate or Secret
+// that is not this Database's (another controller's, or a previous lifetime's
+// with a different UID) is never adopted, wired into CNPG, or deleted.
+func TestPublicTLSLeavesForeignObjectsAlone(t *testing.T) {
+	_, tlsCrt := issuedChain(t, publicNames, publicTLSNow.Add(90*24*time.Hour))
+	h := newPublicTLSHarness(t, "letsencrypt-prod", nil)
+	foreignCert := &unstructured.Unstructured{}
+	foreignCert.SetGroupVersionKind(certManagerCertificateGVK)
+	foreignCert.SetName("dpg-orders-public-tls")
+	foreignCert.SetNamespace("default")
+	_ = unstructured.SetNestedField(foreignCert.Object, "someone-elses-secret", "spec", "secretName")
+	foreignSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders-public-tls", Namespace: "default", Labels: map[string]string{labelDatabaseUID: "uid-previous-lifetime"}},
+		Type:       corev1.SecretTypeTLS,
+		Data:       map[string][]byte{corev1.TLSCertKey: tlsCrt, corev1.TLSPrivateKeyKey: []byte("key")},
+	}
+	for _, o := range []client.Object{foreignCert, foreignSecret} {
+		if err := h.cl.Create(h.ctx, o); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	h.reconcile()
+	if certs := clusterCertificates(h.cluster()); certs["serverTLSSecret"] != nil {
+		t.Fatalf("foreign certificate wired into CNPG: %v", certs)
+	}
+	h.requireStatus(appv1alpha1.DBExternalCertificatePending, "CertificateFailed")
+	cert, err := h.certificate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secretName, _, _ := unstructured.NestedString(cert.Object, "spec", "secretName"); secretName != "someone-elses-secret" || len(cert.GetOwnerReferences()) != 0 {
+		t.Fatalf("foreign Certificate was adopted: secretName=%q owners=%v", secretName, cert.GetOwnerReferences())
+	}
+
+	db := h.database()
+	db.Spec.Public = false
+	if err := h.cl.Update(h.ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	h.reconcile()
+	if _, err := h.certificate(); err != nil {
+		t.Fatalf("withdrawal deleted a foreign Certificate: %v", err)
+	}
+	if err := h.cl.Get(h.ctx, types.NamespacedName{Namespace: "default", Name: "dpg-orders-public-tls"}, &corev1.Secret{}); err != nil {
+		t.Fatalf("withdrawal deleted a Secret from another lifetime: %v", err)
+	}
+	if got := h.database().Status.ExternalCertificate; got != "" {
+		t.Fatalf("externalCertificate after withdrawal = %q, want empty", got)
 	}
 }
 

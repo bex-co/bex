@@ -144,3 +144,67 @@ func TestPendingPublicCertificateKeepsPrivateCAContract(t *testing.T) {
 		t.Fatalf("private-CA contract incomplete: psql=%q ca=%q", ci.PSQLCommand, ci.ServerCACertificate)
 	}
 }
+
+// The URL shape follows what the endpoints serve right now, not what they once
+// served: when the operator stops serving the public certificate (withdrawal,
+// or an expired Secret it unwired), status goes back to Pending and the read
+// returns to the private-CA contract. With CNPG's CA missing at that moment the
+// read refuses (503) rather than handing out either a Render-shaped URL a
+// private certificate cannot satisfy or a verify-full URL with no CA.
+func TestExternalURLFollowsTheServedCertificateBackToPrivateCA(t *testing.T) {
+	svc, cl := newService()
+	seedPublicDatabase(t, cl, "flip-db", appv1alpha1.DBExternalCertificatePubliclyTrusted)
+	read := func() (int, PostgresConnectionInfo) {
+		t.Helper()
+		rec := serveREST(svc, http.MethodGet, "/v1/postgres/flip-db/connection-info", "")
+		var ci PostgresConnectionInfo
+		if rec.Code == http.StatusOK {
+			if err := json.Unmarshal(rec.Body.Bytes(), &ci); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return rec.Code, ci
+	}
+	setCertificate := func(cert appv1alpha1.DatabaseExternalCertificate) {
+		t.Helper()
+		var db appv1alpha1.Database
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "flip-db"}, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Status.ExternalCertificate = cert
+		if err := cl.Update(context.Background(), &db); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	code, ci := read()
+	if code != http.StatusOK || ci.ExternalConnectionString != "postgresql://flip_db_user:s3cret@flip-db.db.bex.co/flip_db" || ci.ServerCACertificate != "" {
+		t.Fatalf("publicly trusted read = %d %q ca=%q", code, ci.ExternalConnectionString, ci.ServerCACertificate)
+	}
+
+	for _, cert := range []appv1alpha1.DatabaseExternalCertificate{appv1alpha1.DBExternalCertificatePending, ""} {
+		setCertificate(cert)
+		code, ci = read()
+		if code != http.StatusOK {
+			t.Fatalf("externalCertificate %q: connection-info => %d", cert, code)
+		}
+		if ci.ExternalConnectionString != "postgresql://flip_db_user:s3cret@flip-db.db.bex.co:5432/flip_db?sslmode=verify-full" ||
+			!strings.HasSuffix(ci.ExternalConnectionPoolString, ":5432/flip_db?sslmode=verify-full") ||
+			!strings.Contains(ci.PSQLCommand, "sslmode=verify-full") ||
+			!strings.Contains(ci.ServerCACertificate, "BEGIN CERTIFICATE") {
+			t.Fatalf("externalCertificate %q kept the publicly trusted contract: %+v", cert, ci)
+		}
+	}
+
+	var ca corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "flip-db-ca"}, &ca); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Delete(context.Background(), &ca); err != nil {
+		t.Fatal(err)
+	}
+	setCertificate(appv1alpha1.DBExternalCertificatePending)
+	if code, _ := read(); code != http.StatusServiceUnavailable {
+		t.Fatalf("private certificate served with no CA: connection-info => %d, want 503", code)
+	}
+}
