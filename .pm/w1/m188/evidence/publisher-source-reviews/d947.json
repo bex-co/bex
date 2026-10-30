@@ -1,0 +1,24 @@
+{
+  "schema": "bex.m188.approved-source-equivalence-review/v1",
+  "exact_sha": "d94787bb4fb93751e485fe6d47946d82cc6da052",
+  "reviewed_baseline": "5e89a6076905a91b4496fe36a476774c3f50585c",
+  "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+  "workflow_byte_identical": true,
+  "native_go_byte_identical": true,
+  "official_matrix_equal": true,
+  "recipe_changes": [],
+  "non_markdown_recipe_unchanged": true,
+  "security_and_portable_ancestors_verified": true,
+  "approved_roles": {
+    "producer": "all11",
+    "verification": "all11"
+  },
+  "approval_basis": "Root explicitly authorized this exact admission after unchanged recipe/workflow/input checks. This does not approve a candidate or mutate accepted counts.",
+  "recovery_runtime_names": [
+    "node-16-bookworm",
+    "node-20-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm"
+  ]
+}
