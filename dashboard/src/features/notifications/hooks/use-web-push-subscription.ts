@@ -56,11 +56,14 @@ async function probeWebPushStatus(
   return sub ? "subscribed" : "prompt";
 }
 
+export type WebPushAction = "subscribe" | "unsubscribe";
+
 export function useWebPushSubscription(
   vapidPublicKey: string,
   serverAvailable: boolean,
 ) {
   const [status, setStatus] = useState<WebPushStatus>("busy");
+  const [lastAction, setLastAction] = useState<WebPushAction>("subscribe");
   const [register] = useMutation(
     RegisterNotificationWebPushSubscriptionDocument,
   );
@@ -80,6 +83,7 @@ export function useWebPushSubscription(
 
   const subscribe = useCallback(async () => {
     if (!browserSupportsPush() || !vapidPublicKey) return false;
+    setLastAction("subscribe");
     setStatus("busy");
     try {
       const permission = await Notification.requestPermission();
@@ -118,13 +122,17 @@ export function useWebPushSubscription(
   }, [register, vapidPublicKey]);
 
   const unsubscribe = useCallback(async () => {
+    setLastAction("unsubscribe");
     setStatus("busy");
     try {
+      // Server first: if it fails (e.g. a dropped connection) the browser
+      // subscription is still intact and a retry finishes the job, instead of
+      // leaving the server delivering to a subscription the browser dropped.
+      await unregister({ variables: { browserId: readBrowserId() } });
       const registration =
         await navigator.serviceWorker.getRegistration("/push-sw.js");
       const sub = await registration?.pushManager.getSubscription();
       await sub?.unsubscribe();
-      await unregister({ variables: { browserId: readBrowserId() } });
       setStatus("prompt");
       return true;
     } catch {
@@ -133,5 +141,7 @@ export function useWebPushSubscription(
     }
   }, [unregister]);
 
-  return { status, subscribe, unsubscribe };
+  // The action an "error" status came from, so the panel can offer it again.
+  const failedAction = status === "error" ? lastAction : null;
+  return { status, failedAction, subscribe, unsubscribe };
 }

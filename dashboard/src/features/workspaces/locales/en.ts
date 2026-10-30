@@ -232,6 +232,11 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Cancel",
     description: "/new/workspace cancel button",
   },
+  "workspaces.createCancelError": {
+    message: "Couldn't cancel workspace creation. Try again.",
+    description:
+      "/new/workspace toast when cancelling the pending creation fails",
+  },
   "workspaces.createSubmit": {
     message: "Create Workspace",
     description: "/new/workspace submit button",

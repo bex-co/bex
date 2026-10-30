@@ -191,11 +191,9 @@ export function useWorkspaceCreationBilling(
 
   const cancel = useCallback(async () => {
     if (!attempt) return;
-    try {
-      await cancelMutation({ variables: { attemptId: attempt.id } });
-    } finally {
-      setAttempt(null);
-    }
+    // A rejected cancel keeps the attempt so the caller can say so and retry.
+    await cancelMutation({ variables: { attemptId: attempt.id } });
+    setAttempt(null);
   }, [attempt, cancelMutation]);
 
   const loadError = policyQuery.error ?? resumeQuery.error;

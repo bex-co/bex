@@ -15,10 +15,8 @@ export function WebPushSettingsPanel() {
   const { t } = useTranslations();
   const { webPushAvailable, vapidPublicKey, loading } =
     usePushNotificationSettings();
-  const { status, subscribe, unsubscribe } = useWebPushSubscription(
-    vapidPublicKey ?? "",
-    webPushAvailable ?? false,
-  );
+  const { status, failedAction, subscribe, unsubscribe } =
+    useWebPushSubscription(vapidPublicKey ?? "", webPushAvailable ?? false);
 
   if (loading) {
     return null;
@@ -48,22 +46,26 @@ export function WebPushSettingsPanel() {
             {t("notifications.webPushDenied")}
           </p>
         ) : null}
-        {status === "error" ? (
-          // Panel-level failure (subscription setup), not a field validation —
-          // role="alert" is enough; no control to attach aria-describedby to
-          // (m101/t012 sibling decision).
-          <p className="text-destructive text-sm" role="alert">
-            {t("notifications.webPushError")}
-          </p>
-        ) : null}
-        {status === "prompt" || status === "busy" || status === "subscribed" ? (
+        {status === "prompt" ||
+        status === "busy" ||
+        status === "subscribed" ||
+        status === "error" ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm">
-              {status === "subscribed"
-                ? t("notifications.webPushOn")
-                : t("notifications.webPushOff")}
-            </p>
-            {status === "subscribed" ? (
+            {status === "error" ? (
+              // Panel-level failure (subscription setup), not a field
+              // validation — role="alert" is enough (m101/t012 sibling
+              // decision). The button below offers the failed action again.
+              <p className="text-destructive text-sm" role="alert">
+                {t("notifications.webPushError")}
+              </p>
+            ) : (
+              <p className="text-sm">
+                {status === "subscribed"
+                  ? t("notifications.webPushOn")
+                  : t("notifications.webPushOff")}
+              </p>
+            )}
+            {status === "subscribed" || failedAction === "unsubscribe" ? (
               <Button
                 type="button"
                 variant="outline"

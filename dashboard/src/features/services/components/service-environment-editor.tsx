@@ -192,16 +192,9 @@ export function ServiceEnvironmentEditor({
       }}
       // Only a rebuild reports a failed rollout. Its retry re-sends an empty
       // rebuild patch, as an environment group's does, keeping the cause.
-      retryRollout={async () => {
-        try {
-          return (await rebuild({ envVars: [], secretFiles: [] })).rolledOut;
-        } catch (err) {
-          toast.error(
-            mutationErrorMessage(err, t("services.triggerDeployError")),
-          );
-          return false;
-        }
-      }}
+      retryRollout={async () =>
+        (await rebuild({ envVars: [], secretFiles: [] })).rolledOut
+      }
     />
   );
 }
@@ -664,8 +657,14 @@ export function EnvironmentEditor({
 
   async function retryDeploy() {
     if (!pendingChoice || createDenied) return;
-    if (await retryRollout(pendingChoice)) {
-      setPendingChoice(null);
+    // retryRollout may reject (e.g. a dropped connection); say so and keep
+    // the retry button in place.
+    try {
+      if (await retryRollout(pendingChoice)) {
+        setPendingChoice(null);
+      }
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("services.triggerDeployError")));
     }
   }
 

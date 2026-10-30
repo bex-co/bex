@@ -118,4 +118,37 @@ describe("useWebPushSubscription", () => {
     expect(mutate).toHaveBeenCalled();
     expect(result.current.status).toBe("prompt");
   });
+
+  it("keeps the browser subscription when the server unregister fails", async () => {
+    const subscription = {
+      endpoint: "https://push.example/ep",
+      keys: { p256dh: "p256", auth: "auth" },
+    };
+    const { pushManager } = installPushEnv({
+      permission: "granted",
+      subscription,
+    });
+    const { result } = renderHook(() => useWebPushSubscription(vapid, true));
+    await waitFor(() => expect(result.current.status).toBe("subscribed"));
+    const browserSub = await pushManager.getSubscription();
+    mutate.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      await result.current.unsubscribe();
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.failedAction).toBe("unsubscribe");
+    expect(browserSub.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("names a failed subscribe so it can be retried", async () => {
+    installPushEnv({ permission: "default" });
+    const { result } = renderHook(() => useWebPushSubscription(vapid, true));
+    await waitFor(() => expect(result.current.status).toBe("prompt"));
+    mutate.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      await result.current.subscribe();
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.failedAction).toBe("subscribe");
+  });
 });
