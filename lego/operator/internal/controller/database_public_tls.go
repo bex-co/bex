@@ -103,6 +103,7 @@ const (
 )
 
 func databasePublicTLSName(db *appv1alpha1.Database) string { return db.Name + dbPublicTLSSuffix }
+func databasePublicCAName(db *appv1alpha1.Database) string  { return db.Name + dbPublicCASuffix }
 
 // clusterIssuerRef is a cert-manager Certificate's issuerRef to a
 // ClusterIssuer, as every operator-managed Certificate spells it. The group is
@@ -111,7 +112,6 @@ func databasePublicTLSName(db *appv1alpha1.Database) string { return db.Name + d
 func clusterIssuerRef(name string) map[string]any {
 	return map[string]any{"name": name, "kind": "ClusterIssuer"}
 }
-func databasePublicCAName(db *appv1alpha1.Database) string { return db.Name + dbPublicCASuffix }
 
 // databasePublicTLS is what one reconcile resolved about the public certificate.
 type databasePublicTLS struct {
@@ -126,13 +126,9 @@ type databasePublicTLS struct {
 // public Database: one certificate covering every public SNI name (primary,
 // pooler, read replicas), written to a Secret CNPG reloads on renewal.
 func databasePublicCertificateSpec(db *appv1alpha1.Database, names []string, issuer string) map[string]any {
-	dnsNames := make([]any, len(names))
-	for i, name := range names {
-		dnsNames[i] = name
-	}
 	return map[string]any{
 		"secretName": databasePublicTLSName(db),
-		"dnsNames":   dnsNames,
+		"dnsNames":   stringsAsAny(names),
 		"issuerRef":  clusterIssuerRef(issuer),
 		"secretTemplate": map[string]any{"labels": map[string]any{
 			cnpgReloadLabel:  "",
@@ -149,12 +145,13 @@ func clusterNamesPublicTLS(db *appv1alpha1.Database, cluster *unstructured.Unstr
 }
 
 // preparePublicTLS converges the Certificate (and the CA Secret derived from
-// what it issued) for a public Database and decides whether the Cluster serves
-// it. It never fails the reconcile: on any problem the Database keeps serving
-// with whatever certificate the Cluster already uses, and the
-// PublicCertificateReady condition says why.
-func (r *DatabaseReconciler) preparePublicTLS(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured) databasePublicTLS {
-	names := databaseServerAltDNSNames(db, r.DBDomain)
+// what it issued) for a public Database's SNI names and decides whether the
+// Cluster serves it. names is databaseServerAltDNSNames, computed once per
+// reconcile and shared with the Cluster projection. It never fails the
+// reconcile: on any problem the Database keeps serving with whatever
+// certificate the Cluster already uses, and the PublicCertificateReady
+// condition says why.
+func (r *DatabaseReconciler) preparePublicTLS(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, names []string) databasePublicTLS {
 	if len(names) == 0 || r.PublicCertIssuer == "" {
 		return databasePublicTLS{}
 	}
