@@ -27,3 +27,9 @@ spec:
             spec:
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      # As in the real CRD: cert-manager writes conditions through /status.
+      subresources:
+        status: {}

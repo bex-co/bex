@@ -19,6 +19,7 @@ package controller
 import (
 	"cmp"
 	"context"
+	"crypto/x509"
 	"fmt"
 	"slices"
 	"strconv"
@@ -217,6 +218,11 @@ type clusterParams struct {
 	// generated server certificate. Without these SANs, verify-full clients
 	// would fail closed even when they trust the cluster's server CA.
 	serverAltDNSNames []string
+	// serverTLSSecret/serverCASecret, when set, replace CNPG's generated server
+	// certificate with the issued publicly trusted one (w2/m245). CNPG rejects
+	// serverAltDNSNames alongside them, so they supersede it.
+	serverTLSSecret string
+	serverCASecret  string
 }
 
 func versionedBackupServerName(name, version string) string {
@@ -551,7 +557,12 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		"parameters":               pgParams,
 		"shared_preload_libraries": []any{"pg_stat_statements"},
 	}
-	if len(p.serverAltDNSNames) > 0 {
+	if p.serverTLSSecret != "" {
+		spec["certificates"] = map[string]any{
+			"serverTLSSecret": p.serverTLSSecret,
+			"serverCASecret":  p.serverCASecret,
+		}
+	} else if len(p.serverAltDNSNames) > 0 {
 		names := make([]any, len(p.serverAltDNSNames))
 		for i, name := range p.serverAltDNSNames {
 			names[i] = name
@@ -674,6 +685,14 @@ type DatabaseReconciler struct {
 	// DBDomain is the wildcard base for external endpoints, e.g. "db.bex.co".
 	// Empty => Public databases get no external route.
 	DBDomain string
+	// PublicCertIssuer is the cert-manager ClusterIssuer (BEX_DB_CLUSTER_ISSUER)
+	// that issues each public Database a publicly trusted server certificate
+	// (database_public_tls.go). Empty => public endpoints keep CNPG's generated
+	// certificate, verified against the cluster's own CA.
+	PublicCertIssuer string
+	// PublicCertRoots are the roots an issued public certificate must chain to.
+	// Nil uses the system pool; tests inject their own CA.
+	PublicCertRoots *x509.CertPool
 	// Backup is the object-store target for backups + PITR. Unset (any field
 	// empty) => backups are disabled for every plan (recovery unavailable).
 	Backup BackupStore
@@ -721,6 +740,7 @@ func (r *DatabaseReconciler) secretClient() client.Client {
 // deliberately unowned and shared by every Database in the namespace.
 // +kubebuilder:rbac:groups=barmancloud.cnpg.io,resources=objectstores,verbs=get;create;update;patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch;update
 // +kubebuilder:rbac:groups="",resources=resourcequotas,verbs=get;list;watch
@@ -824,6 +844,11 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 	noteReservedRoles(&db, owner)
+	publicTLS := r.preparePublicTLS(ctx, &db, cluster)
+	serverTLSSecret, serverCASecret := "", ""
+	if publicTLS.wired {
+		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
+	}
 	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
 		plan: plan, storageGB: storageGB, version: db.Spec.Version,
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
@@ -834,8 +859,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		readReplicas:      len(db.Spec.ReadReplicas),
 		parameters:        db.Spec.Parameters,
 		serverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),
+		serverTLSSecret:   serverTLSSecret,
+		serverCASecret:    serverCASecret,
 	}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
+	}
+	tlsRequeue, err := r.settlePublicTLS(ctx, &db, cluster, publicTLS)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 	r.reconcileApplicationDatabase(ctx, &db, dbname, owner)
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelNetworkIsolation], "-environment-ingress", map[string]string{cnpgClusterLabel: db.Name}, &metav1.LabelSelector{MatchLabels: map[string]string{logicalExportDBLabel: db.Name}}); err != nil {
@@ -869,14 +900,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	r.updateExternalAddressStatus(&db)
 
 	if db.Spec.Suspended {
-		return r.settleSuspended(ctx, &db, exportRequeue)
+		return r.settleSuspended(ctx, &db, soonerRequeue(exportRequeue, tlsRequeue))
 	}
 
 	// The projection includes readers as well as any HA standby. Read the
 	// accepted intent so readiness cannot use a different capacity calculation.
 	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
-	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(exportRequeue, diskRequeue))
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue))
 }
 
 // databaseServerAltDNSNames returns every public SNI name that can terminate
@@ -1780,6 +1811,18 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 			return r.dbDeletionPending(ctx, db, "waiting for CNPG Cluster deletion", 5*time.Second), nil
 		} else if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
+		}
+		// The Cluster no longer serves the public certificate. Delete the
+		// Certificate before its Secret, or cert-manager would order a fresh
+		// one (against the Let's Encrypt budget) for a database being deleted;
+		// the key pair has no owner reference for GC to follow.
+		if r.PublicCertIssuer != "" || db.Status.ExternalCertificate != "" {
+			if err := r.deletePublicCertificate(ctx, db); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err := r.deletePublicTLSSecrets(ctx, db); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 		// Cluster is gone: run and observe the persisted barman S3 purge Job.
 		if db.Status.BackupsEnabled && r.Backup.configured() {
