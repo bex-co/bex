@@ -35,6 +35,17 @@ import (
 // outage each. Instead an existing workload ADOPTS the class only when its Pods
 // are about to be replaced anyway; until then it is charged exactly as before,
 // which is no regression. New workloads always carry it.
+//
+// The datastores' maintenance Pods carry it too (w2/057): Postgres logical
+// export and export-expiry Jobs (controlled by their Database), the Key Value
+// backup CronJob's template (controlled by its KeyValue), and the two
+// delete-time purge Jobs (`purge-db-`/`purge-kv-`, unowned by design and
+// identified by their parent-UID label). Otherwise a workspace whose services
+// fill the compute quota could have a backup or export refused. Each is
+// stamped unconditionally: a Job is created once and never updated, and a
+// CronJob template change restarts nothing. CNPG's own bootstrap Jobs
+// (initdb, join, pgbasebackup, recovery) inherit the Cluster's
+// spec.priorityClassName (CNPG 1.30.1 pkg/specs/jobs.go CreatePrimaryJob).
 
 // holdDatastorePriority stamps the datastore class on a Valkey-family pod
 // template, unless the workload already exists without it and the class is the

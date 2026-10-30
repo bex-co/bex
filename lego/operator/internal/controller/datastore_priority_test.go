@@ -18,8 +18,10 @@ package controller
 
 import (
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -169,5 +171,29 @@ func TestExistingPoolerFollowsItsClustersPriorityClass(t *testing.T) {
 	_ = unstructured.SetNestedField(withClass.Object, poolerTemplate(), "spec", "template")
 	if !poolerAdoptsDatastorePriority(withClass, classless) {
 		t.Error("an adopted Pooler class was dropped")
+	}
+}
+
+// w2/057: the datastores' maintenance Pods (Postgres export, export expiry and
+// backup purge; Key Value backup and purge) carry the class too, so a
+// workspace whose services fill its compute quota still backs up and exports.
+func TestDatastoreMaintenanceJobsCarryTheDatastorePriorityClass(t *testing.T) {
+	db := exportTestDatabase(time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC))
+	dbs := &DatabaseReconciler{Backup: testStore}
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
+	}
+	kvs := &KeyValueReconciler{Backup: testKeyValueBackupStore}
+	for name, pod := range map[string]corev1.PodSpec{
+		"postgres export":        exportJob(db, db.Spec.Exports[0], testStore).Spec.Template.Spec,
+		"postgres export expiry": exportCleanupJob(db, appv1alpha1.DatabaseExportStatus{ID: db.Spec.Exports[0].ID, ObjectKey: "s3://b/k"}, testStore).Spec.Template.Spec,
+		"postgres backup purge":  dbs.dbBackupPurgeJob(db).Spec.Template.Spec,
+		"key value backup":       kvs.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-platform").JobTemplate.Spec.Template.Spec,
+		"key value backup purge": kvs.keyValueBackupPurgeJob(kv).Spec.Template.Spec,
+	} {
+		if pod.PriorityClassName != appv1alpha1.DatastorePriorityClassName {
+			t.Errorf("%s Pod priorityClassName = %q, want %q", name, pod.PriorityClassName, appv1alpha1.DatastorePriorityClassName)
+		}
 	}
 }

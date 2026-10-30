@@ -312,6 +312,8 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
+					// Not charged to the services' compute quota (datastore_priority.go).
+					PriorityClassName: appv1alpha1.DatastorePriorityClassName,
 					Volumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
 						SizeLimit: resource.NewQuantity(exportWorkVolumeSize, resource.BinarySI),
 					}}}},
@@ -388,6 +390,8 @@ func exportCleanupJob(db *appv1alpha1.Database, status appv1alpha1.DatabaseExpor
 					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
+					// Not charged to the services' compute quota (datastore_priority.go).
+					PriorityClassName: appv1alpha1.DatastorePriorityClassName,
 					Containers: []corev1.Container{{
 						Name:            "expire",
 						Image:           publish.DefaultAWSCLIImage,

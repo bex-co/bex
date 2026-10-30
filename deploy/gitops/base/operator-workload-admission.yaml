@@ -134,22 +134,30 @@ spec:
          has(variables.pod.automountServiceAccountToken) && variables.pod.automountServiceAccountToken == false)
       reason: Forbidden
       message: operator-authored workloads must use no privileged ServiceAccount and must disable token automount
-    # Priority grammar (w2/m247): the workspace compute quota is scoped
+    # Priority grammar (w2/m247, w2/057): the workspace compute quota is scoped
     # `PriorityClass NotIn [bex-datastore]`, so the class is a quota exemption.
-    # Only the Key Value workloads (the Valkey StatefulSet and its internal
-    # proxy Deployment, controlled by a KeyValue) may carry it; every other
+    # Only datastore workloads may carry it: those controlled by a KeyValue
+    # (the Valkey StatefulSet, its internal proxy Deployment, the backup
+    # CronJob) or a Database (the logical export and export-expiry Jobs), and
+    # the two delete-time purge Jobs, which are deliberately unowned (their
+    # parent is being finalized) and are identified by name prefix plus the
+    # parent-UID label the operator adopts them by. Every other
     # operator-authored workload, App Pods above all, runs with no class.
-    # CNPG-generated Postgres Pods get theirs from the Cluster spec and are not
-    # authored through this identity.
+    # CNPG-generated Postgres Pods and bootstrap Jobs get theirs from the
+    # Cluster spec and are not authored through this identity.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.pod.?priorityClassName.orValue('') == '' ||
         (variables.pod.priorityClassName == 'bex-datastore' &&
-         request.resource.resource in ['statefulsets', 'deployments'] &&
-         variables.target.metadata.?ownerReferences.orValue([]).exists(o,
-           o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'KeyValue' && o.?controller.orValue(false)))
+         (variables.target.metadata.?ownerReferences.orValue([]).exists(o,
+            o.apiVersion == 'app.bex.co/v1alpha1' && o.kind in ['KeyValue', 'Database'] && o.?controller.orValue(false)) ||
+          (request.resource.resource == 'jobs' &&
+           ((variables.target.metadata.name.startsWith('purge-db-') &&
+             variables.target.metadata.?labels['app.bex.co/database-uid'].orValue('') != '') ||
+            (variables.target.metadata.name.startsWith('purge-kv-') &&
+             variables.target.metadata.?labels['app.bex.co/keyvalue-uid'].orValue('') != '')))))
       reason: Forbidden
-      message: operator-authored workloads may not set a priorityClassName; only KeyValue-owned workloads may run under bex-datastore
+      message: operator-authored workloads may not set a priorityClassName; only datastore-owned workloads may run under bex-datastore
     - expression: >-
         request.operation == 'DELETE' ||
         (!variables.pod.?hostNetwork.orValue(false) &&
