@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004–t008 done; t003/t012 code shipped, live Stripe steps pending (Stripe admin); next t009/t010
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** blocked on the live Stripe catalog — t001, t002, t004–t010 done; t003/t012 code shipped, their live Stripe steps need the Stripe admin; t011 Closeout after that
 
 ## Tasks (in order)
 
@@ -15,8 +15,8 @@
 | t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist — **DONE** | 20m | t006 |
 | t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
 | t008 | Render parity — **DONE** | 30m | t007, t012 |
-| t009 | Simplify | 15m | t008 |
-| t010 | Test coverage | 45m | t008 |
+| t009 | Simplify — **DONE** | 15m | t008 |
+| t010 | Test coverage — **DONE** | 45m | t008 |
 | t011 | Closeout | 10m | t009, t010 |
 
 ## Definition of done
@@ -111,3 +111,18 @@ Local CAPD cluster. The shared local operator was updated to main (`bex-operator
 - **HA plan-change rule:** Render's HA documentation (re-read 2026-10-30) says only "at least 1 CPU" and nothing about changing plan while HA is on. Per the t001 decision, the fallback stands: refuse with `POSTGRES_HA_PLAN_UNSUPPORTED` unless the same request disables HA, so nothing is silently turned off. It is identical on REST, GraphQL, MCP and Blueprint (t003 tests).
 - **Event:** `postgres_cluster_leader_changed` carries exactly Render's pinned details (`leaderId`). Like every datastore event, it has no service-events list home (an existing w3/m82 boundary, not new here).
 - **Not a bex divergence:** the CLI's Heroku-migration skill table maps X-0 to `pro-4gb` and lists plans bex does not sell. It is the Render skill pack's own mapping, left as-is.
+
+## t009 + t010 — 2026-10-30
+
+- **t009:** GraphQL `updateDatabaseHighAvailability` now goes through `gqlutil.PatchMutation` (widened to boolean fields) instead of a hand-rolled copy of its dry-run handling. As a side effect it gains the standard optional `confirm` argument. Reviewed and left as is: the catalog-unresolved retry cost (2 list calls per workspace per hourly cycle, only while live Stripe lacks a price), and the leader checkpoint (no extra queries).
+- **t010:** new tests cover the HA plan-change rule on GraphQL (`updateDatabasePlan` + dry run) and MCP `update_postgres`. Leader-changed is tested with missing, unparseable and mixed timestamps, including a real-Postgres NULL promotion-time case. Subscription sync is tested for retry after an unresolved catalog and for a failed item list. The dashboard create dialog is checked never to send HA after switching to a <1-CPU plan (a mutation check confirmed the test catches it), along with the HA panel price confirmation, refusal handling and the standby-being-removed state. Backend real-deps suite: 72 packages pass. Operator `make test`/`make lint` pass. Dashboard: 5685 tests pass.
+
+## Parked 2026-10-30 — the only open gate is the live Stripe catalog
+
+All implementable work is shipped. What remains needs the user (Stripe admin):
+
+1. **t003/t012 live step:** run `scripts/stripe-billing-setup.py` in **live** mode, creating the `1c-2g`, `pro-4gb` and `basic-4gb` prices and the corrected `basic-256mb`/`basic-1gb` prices, then retire the two old ones. The script must then report the live catalog in sync with `pricing.yaml`. Asked in `/loopx w2` on 2026-10-29. No answer yet. Until this runs, usage of the new tiers is metered but not invoiced (fail-soft sync, so no other billing is affected).
+2. **Then:** at each existing subscription's next period, swap the two retired price items per `docs/runbooks/stripe-billing-setup.md` § Repricing a dimension (list the affected subscriptions first).
+3. **t011 Closeout:** verify the DoD on production with the pinned CLI (`bex postgres create --plan 1c-2g --high-availability`), REST, GraphQL, MCP and the dashboard (two instances on distinct nodes, failover, one event), the usage estimate, and `stripe-billing-setup.py` in sync. Then close.
+
+Release condition: the user authorizes the live Stripe run (or runs it), and the script reports in sync.
