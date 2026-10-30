@@ -1,6 +1,6 @@
 # w3 · m173 — Production credentials reach only main-branch production jobs
 
-**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** todo — t001–t004, t006, t008, t009 done; t005 live apply authorized by the user 2026-10-29, then t007 live proof and t010 closeout
+**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** blocked — t001–t004, t006, t008, t009 done; release-tag policy fixed 2026-10-29; t005 needs the user to choose how the exact live secret values are sourced (A/B/C below); t007, t010 follow
 
 ## Tasks (in order)
 
@@ -52,3 +52,8 @@
   4. 本地 `.env` 收紧权限：已由 `/unblock` 在 2026-10-29 执行 `chmod 600`，`bex-security`、`bex3`、`bex7`、`bex8` 现在都是 `-rw-------`；`bex5`、`bex6`、`bex10` 原本就是 0600。
 - **复核现状：** 仓库级 secret 仍是 37 个；drift issue #101 仍然开着（预期如此，t005 完成后应自动关闭）；`production-restore` 的 reviewer 已于 2026-10-29 移除（`0fc15e4b8`）。
 - **剩余阻塞：** 无。worker 严格按顺序执行 t005 → t007 → t010，在 t005/t007 里记录 run id 和只列名称的 secret 清单。
+
+## loopx w3 (2026-10-29): two findings before the live apply
+
+1. **Fixed — release tags.** `cli-release.yml` / `mobile-release.yml` run on `bex-cli/v*` / `bex-mobile/v*` tag pushes in `production-release`; a strict main-only policy would have refused every CLI and mobile release. `scripts/github-environments-drift.sh` now requires `production-release` = `main` + exactly those two tag rules (every other environment: exactly `main`), the self-test proves it and checks the allowed tags equal the workflows' `tags:` triggers, and ADR083 obligation 5 records the exception (their unprivileged `authorize` job already refuses a tag not on `main`). t005 step 2 therefore sets `production-release`'s policy to `main` + those two tag rules.
+2. **New gate — secret values.** GitHub secrets are write-only, and no local `.env` holds them all (names-only check, 2026-10-29): `ARGOCD_REPO_SSH_KEY` and `BEX_TAP_PUSH_KEY` exist in no `.env`; the rest are split across `bex3`/`bex5`/`bex6` and may be **stale** — e.g. the CP nodes were replaced 2026-10-29, so a local `BEX_SSH_KNOWN_HOSTS` can differ from the live one. An environment secret overrides the repository one of the same name, so pushing a stale value would break production jobs. Options needing the user's choice: **(A)** a temporary main-only `workflow_dispatch` workflow, one job per environment (passes check 9), encrypts the values it already sees to a one-off local public key, uploads them as a 1-day artifact, and is deleted right after; the values are decrypted locally and pushed with `gh secret set --env` — exact live values, never plaintext anywhere new; **(B)** the user supplies a complete, current `.env` (or `*_FILE` paths) and confirms it is current; **(C)** move only the secrets whose local value can be verified against the live cluster (hash comparison) and leave the rest at repository scope (DoD not met).
