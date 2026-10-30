@@ -31,6 +31,12 @@ case "$node_version" in
   *) exit 0 ;;
 esac
 
+. /etc/os-release
+if [ "$VERSION_CODENAME" != bullseye ]; then
+  echo "Node backports must compile on the Bullseye companion baseline" >&2
+  exit 1
+fi
+
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 cd "$work_dir"
@@ -83,3 +89,5 @@ mkdir -p /usr/share/bex-node-brotli
 printf 'Node %s; source sha256:%s; Brotli %s; source sha256:%s\n' \
   "$node_version" "$node_sha" "$brotli_version" "$brotli_sha" \
   > /usr/share/bex-node-brotli/sources.txt
+printf 'Compiler baseline: Debian %s; %s\n' "$VERSION_CODENAME" "$(getconf GNU_LIBC_VERSION)" \
+  >> /usr/share/bex-node-brotli/sources.txt

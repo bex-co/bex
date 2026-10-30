@@ -377,7 +377,9 @@
       "resolved_at": "2026-10-22T20:10:00Z",
       "source": "Docker Hub library/node:14-bullseye multi-arch index (14.21.3; w8/173 Render-supported version line)",
       "files": [
-        "lego/operator/internal/build/native.go"
+        "lego/operator/internal/build/native.go",
+        "deploy/native-base/Dockerfile",
+        "deploy/native-base/check.Dockerfile"
       ]
     },
     {
