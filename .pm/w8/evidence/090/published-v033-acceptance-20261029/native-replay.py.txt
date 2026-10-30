@@ -1,0 +1,54 @@
+import pathlib,sys,os,pty,fcntl,termios,struct,subprocess,time,select,errno,json,re,shutil
+p=pathlib.Path(sys.argv[1]);grant=subprocess.check_output(['yq','-r','.api.key',str(p/'auth/cli.yaml')],text=True).strip();assert len(grant)>20
+base={next(iter(x.values()))['id'] for x in json.loads((p/'baseline-services.json').read_text())};depbase={x['id'] for x in json.loads((p/'baseline-deploys.json').read_text())};results=[]
+for variant in ['missing','version','empty','slashless','port','hostcase','stored','renderoverride','alias-missing','control','deploy-missing','deploy-stored']:
+ cfgdir=p/('case-'+variant);cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\n');cfg.chmod(0o600)
+ if 'missing' in variant:cfg.unlink()
+ if variant=='empty':cfg.write_text('')
+ if 'stored' in variant:cfg.write_text('version: 1\napi:\n  host: https://api.bex.co:443/v1/\n')
+ if variant=='control':cfg.write_text('version: 1\ndashboard_url: https://dashboard.bex.co\n')
+ capture=p/('open-'+variant+'.json');env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({'BEX_HOST':('https://api.bex.co:443/v1/' if variant=='port' else 'https://API.BEX.CO/v1/' if variant=='hostcase' else 'https://api.bex.co/v1' if variant=='slashless' else 'https://api.bex.co/v1/'),'BEX_CLI_CONFIG_DIR':str(cfgdir),'BEX_CLI_CONFIG_PATH':str(cfg),'BEX_WORKSPACE':'tea-daif693dqjvc73e7as3g','BEX_NO_UPDATE_NOTIFIER':'1','DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','TERM':'xterm-256color','PATH':str(p/'bin')+os.pathsep+os.environ['PATH'],'QA_DASHBOARD_CAPTURE':str(capture),'BEX_ACCESS_TOKEN':grant})
+ if variant=='renderoverride':env['BEX_HOST']='https://custom.example.test/v1/';env['RENDER_HOST']='https://api.bex.co/v1'
+ deploy=variant.startswith('deploy');args=[str(p/'release/bex'),*(['deploys','list','srv-daif6dsmg29s73d1umvg'] if deploy else ['service' if 'alias' in variant else 'services']),'--confirm','-o','interactive'];m,s=pty.openpty();fcntl.ioctl(s,termios.TIOCSWINSZ,struct.pack('HHHH',28,155,0,0));data=b'';events=[];start=time.monotonic();stage=0;last=start;offset=0;timed=False;proc=None
+ def setup():os.setsid();fcntl.ioctl(s,termios.TIOCSCTTY,0)
+ try:
+  proc=subprocess.Popen(args,env=env,stdin=s,stdout=s,stderr=s,preexec_fn=setup);os.close(s);s=None
+  while time.monotonic()-start<20:
+   ready,_,_=select.select([m],[],[],.1)
+   if ready:
+    try:z=os.read(m,65536)
+    except OSError as e:
+     if e.errno==errno.EIO:break
+     raise
+    if not z:break
+    data+=z
+    if b'\x1b[6n' in z:os.write(m,b'\x1b[1;1R')
+    if b'\x1b]11;?' in z:os.write(m,b'\x1b]11;rgb:0000/0000/0000\x07')
+   if proc.poll() is not None:break
+   age=time.monotonic()-last
+   if stage==0 and ((b'dep-' in data) if deploy else any(x.encode() in data for x in base)):
+    offset=len(data);os.write(m,b'\r');stage=1;last=time.monotonic();events.append('Enter first existing metadata row')
+   elif stage==1 and b'dashboard' in data[offset:] and b'Command' in data[offset:] and age>.4:
+    os.write(m,(b'\x1b[B\r' if deploy else b'\r'));stage=2;last=time.monotonic();events.append('Select only dashboard palette action')
+   elif stage==2 and capture.exists():
+    v=json.loads(capture.read_text());url=v['argv'][0];parts=url.split('/');assert url.startswith('https://dashboard.bex.co/'),url
+    if deploy:assert parts[-1] in depbase and 'srv-daif6dsmg29s73d1umvg' in parts
+    else:assert parts[-1] in base,url
+    os.write(m,b'\x03');stage=3;last=time.monotonic()
+  if proc.poll() is None:
+   timed=stage!=3
+   try:os.write(m,b'\x03')
+   except OSError:pass
+   try:proc.wait(timeout=2)
+   except subprocess.TimeoutExpired:proc.terminate();proc.wait(timeout=2)
+ finally:
+  if s is not None:os.close(s)
+  if proc is not None and proc.poll() is None:proc.kill();proc.wait(timeout=2)
+  os.close(m)
+  content=cfg.read_text() if cfg.exists() else '';assert grant not in content
+  saved_origin=subprocess.check_output(['yq','-r','.dashboard_url',str(cfg)],text=True).strip() if cfg.exists() else None
+  shutil.rmtree(cfgdir)
+ output=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',data.decode(errors='replace'));output=re.sub(r'\x1b\][^\x07]*\x07','',output);assert grant not in output
+ r={'case':variant,'command':['bex',*args[1:]],'host':env.get('RENDER_HOST',env['BEX_HOST']),'exit':proc.returncode,'timeout':timed,'elapsed_seconds':round(time.monotonic()-start,3),'stage':stage,'events':events,'captured_opener':json.loads(capture.read_text()) if capture.exists() else None,'saved_dashboard_url':saved_origin,'environment_grant_persisted':False,'terminal':output,'cleanup':'own config removed and PTY reaped'};results.append(r);(p/'native-results.json').write_text(json.dumps(results,indent=2));print(json.dumps({k:v for k,v in r.items() if k!='terminal'}),flush=True)
+ if stage!=3:raise RuntimeError('Native replay failed: '+variant)
+ time.sleep(.25)

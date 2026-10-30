@@ -1,0 +1,330 @@
+[
+  {
+    "case": "missing",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.414,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "version",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.517,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "empty",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.853,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "slashless",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.38,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "port",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co:443/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.72,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "hostcase",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://API.BEX.CO/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.669,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "stored",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.29,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "renderoverride",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.36,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "alias-missing",
+    "command": [
+      "bex",
+      "service",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.385,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "control",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 2.28,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/d/dpg-db9r654flioc739mcpbg"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "deploy-missing",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-daif6dsmg29s73d1umvg",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.672,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg/deploys/dep-dbbacgabpdss73ci0od0"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  },
+  {
+    "case": "deploy-stored",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-daif6dsmg29s73d1umvg",
+      "--confirm",
+      "-o",
+      "interactive"
+    ],
+    "host": "https://api.bex.co/v1/",
+    "exit": 0,
+    "timeout": false,
+    "elapsed_seconds": 1.714,
+    "stage": 3,
+    "events": [
+      "Enter first existing metadata row",
+      "Select only dashboard palette action"
+    ],
+    "captured_opener": {
+      "argv": [
+        "https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg/deploys/dep-dbbacgabpdss73ci0od0"
+      ]
+    },
+    "saved_dashboard_url": "https://dashboard.bex.co",
+    "environment_grant_persisted": false,
+    "cleanup": "own config removed and PTY reaped"
+  }
+]
