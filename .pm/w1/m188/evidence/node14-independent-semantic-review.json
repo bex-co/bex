@@ -1,0 +1,274 @@
+{
+  "schema": "bex.independent-cached-candidate-semantic-review/v1",
+  "checked_at": "2026-10-30T10:23:13.134812+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "scope": "Read cached already crypto-verified DSSE envelopes; independently checked raw/statement SHA256. Later root authorized anonymous child/config metadata only. No crypto rerun, file-system pulls, signature publication or repository/verifier/adoption writes.",
+  "candidate_approved": false,
+  "complete": false,
+  "per_arch": {
+    "amd64": {
+      "signed_subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "primary_node": {
+        "name": "node",
+        "version": "14.21.3",
+        "source_info": "acquired package info from the following paths: /usr/local/bin/node",
+        "purls": [
+          "pkg:generic/node@14.21.3"
+        ]
+      },
+      "private_tool_node": {
+        "name": "node",
+        "version": "24.22.1",
+        "source_info": "acquired package info from the following paths: /opt/bex/native-node-tools/node",
+        "purls": [
+          "pkg:generic/node@24.22.1"
+        ]
+      },
+      "system_brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "source_info": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:amd64.md5sums",
+          "purls": [
+            "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+          ]
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "source_info": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:amd64.md5sums",
+          "purls": [
+            "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+          ]
+        }
+      ],
+      "spdx_binding": {
+        "root_version_info": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "root_checksum_purl_digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+        "actual_index_platform_manifest_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+        "root_checksum_matches_actual_child": false,
+        "arch_qualified_root_purl": [
+          "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa?arch=amd64"
+        ]
+      },
+      "trivy_binding": {
+        "ArtifactName": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "Reference": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "RepoDigests": [
+          "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        ],
+        "ImageID": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+        "actual_child_config_digest": "sha256:bc286a0e8e1100e67b187c8cb571ebbf68258ad0211cc4ebfa5083b28f60e386",
+        "ImageID_matches_child_config": true,
+        "architecture": "amd64",
+        "os": "linux",
+        "runtime_env": [
+          "NODE_VERSION=14.21.3"
+        ],
+        "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "all_signed_config_fields_match_actual": true,
+        "actual_extra_fields_omitted_by_trivy": [
+          "moby.buildkit.cache.v0"
+        ]
+      },
+      "brotli_findings": [
+        {
+          "id": "CVE-2026-111497",
+          "package": "brotli",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        },
+        {
+          "id": "CVE-2026-111497",
+          "package": "libbrotli-dev",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        },
+        {
+          "id": "CVE-2026-111497",
+          "package": "libbrotli1",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        }
+      ],
+      "brotli_node_specific_finding": false
+    },
+    "arm64": {
+      "signed_subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-cnb-run",
+          "digest": {
+            "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+          }
+        }
+      ],
+      "primary_node": {
+        "name": "node",
+        "version": "14.21.3",
+        "source_info": "acquired package info from the following paths: /usr/local/bin/node",
+        "purls": [
+          "pkg:generic/node@14.21.3"
+        ]
+      },
+      "private_tool_node": {
+        "name": "node",
+        "version": "24.22.1",
+        "source_info": "acquired package info from the following paths: /opt/bex/native-node-tools/node",
+        "purls": [
+          "pkg:generic/node@24.22.1"
+        ]
+      },
+      "system_brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "source_info": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli-dev/copyright, /var/lib/dpkg/info/libbrotli-dev:arm64.md5sums",
+          "purls": [
+            "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+          ]
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1+bex11u1",
+          "source_info": "acquired package info from DPKG DB: /var/lib/dpkg/status, /usr/share/doc/libbrotli1/copyright, /var/lib/dpkg/info/libbrotli1:arm64.md5sums",
+          "purls": [
+            "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+          ]
+        }
+      ],
+      "spdx_binding": {
+        "root_version_info": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "root_checksum_purl_digest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+        "actual_index_platform_manifest_digest": "sha256:26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3",
+        "root_checksum_matches_actual_child": true,
+        "arch_qualified_root_purl": [
+          "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A26f3b9d64c7c9cb2c55c4e5444534a843b7e3c5f531234aee566d82fb20114e3?arch=arm64"
+        ]
+      },
+      "trivy_binding": {
+        "ArtifactName": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "Reference": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+        "RepoDigests": [
+          "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        ],
+        "ImageID": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+        "actual_child_config_digest": "sha256:7d2b057ee7b500e75e3eeb97b7c73e6550d25f5bfc8986aa98d531310afcd1b5",
+        "ImageID_matches_child_config": true,
+        "architecture": "arm64",
+        "os": "linux",
+        "runtime_env": [
+          "NODE_VERSION=14.21.3"
+        ],
+        "revision": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "all_signed_config_fields_match_actual": true,
+        "actual_extra_fields_omitted_by_trivy": [
+          "moby.buildkit.cache.v0"
+        ]
+      },
+      "brotli_findings": [
+        {
+          "id": "CVE-2026-111497",
+          "package": "brotli",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        },
+        {
+          "id": "CVE-2026-111497",
+          "package": "libbrotli-dev",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        },
+        {
+          "id": "CVE-2026-111497",
+          "package": "libbrotli1",
+          "installed_version": "1.0.9-2+deb12u1+bex11u1",
+          "status": "affected",
+          "fixed_version": null,
+          "source": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "result_type": "debian"
+        }
+      ],
+      "brotli_node_specific_finding": false
+    }
+  },
+  "system_backport_evidence": {
+    "recipe": "deploy/native-base/patch-system-brotli.sh",
+    "debian_security_source": "1.0.9-2+deb12u1",
+    "custom_bullseye_version": "1.0.9-2+deb12u1+bex11u1",
+    "dsc_sha256": "942ab3bccf28fa76d2c98a4e4a3a13390ee4484a2250d95a9ca46e6fbe0d6240",
+    "source_tar_sha256": "f9e8d81d0405ba66d181529af42a3354f838c939095ff99930da6aa9cdf6fe46",
+    "debian_patch_tar_sha256": "110534b0960a4d013942f48c5dcdee34d39501fcb40cd24106e160ad233cc8be",
+    "probe": "check-brotli.py requires canonical malformed block-switch decoder error -17 for whole input and byte streaming, healthy roundtrip, then invokes both primary/private Node probes.",
+    "disposition": "Signed reports retain CVE-2026-111497 for brotli, libbrotli-dev and libbrotli1 as affected/without fixed version on Debian11. Backport version/purls match reviewed recipe; classify only with exact source and successful digest-bound behavioral gates. No ignore rule or scan-clean claim."
+  },
+  "node_backport_evidence": {
+    "recipe": "deploy/native-base/node-brotli/patch.sh",
+    "primary_node_version": "14.21.3",
+    "brotli_security_release": "1.0.10",
+    "brotli_release_sha256": "b517ebdb5266b963d28d6e639b973479874ec72086deb6ee4a2d639e1b13606b",
+    "node_source_sha256": "458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e",
+    "limit": "Signed SBOM establishes binary path/version, not process.versions.brotli; release/source proof and digest-bound primary/private/Bullseye decoder probes remain separate required evidence."
+  },
+  "open_binding_issue": {
+    "architecture": "amd64",
+    "sbom_manifest_digest": "sha256:99158bec34086e055e5f14a60cdb13f612bea6aa34efd12c9ad778cad2c97afa",
+    "registry_get_status": 404,
+    "actual_manifest_digest": "sha256:933cdebee53c071bc17d297f8dcd104ef90e6ed313ed88474f27ef150ab5c088",
+    "standard_oci_docker_media_conversion_json_variants_match": false,
+    "upstream_source_explanation": "Syft1.51.1 rootSPDX checksum/purl uses source.ImageMetadata.ManifestDigest. Stereoscope0.3.1 Docker-save provider synthesizes manifest from raw config + uncompressed rootfs diffIDs and tar-member sizes. This may explain unresolvable synthetic digests, but the exact99158-to933c mapping is unproven with current metadata.",
+    "source_links": [
+      "https://github.com/anchore/syft/blob/v1.51.1/syft/format/common/spdxhelpers/to_format_model.go",
+      "https://github.com/anchore/stereoscope/blob/v0.3.1/pkg/image/docker/manifest.go",
+      "https://github.com/anchore/stereoscope/blob/v0.3.1/pkg/image/docker/tarball_provider.go"
+    ],
+    "recommended_handling": "Keep acceptance held. Force publisher Syft registry:$REF provider and rerun same digest through complete verification/signing; retain strict per-platform root/config binding. No acceptance exemption."
+  }
+}
