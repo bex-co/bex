@@ -1,6 +1,6 @@
 # w3 · m244 — Dashboard requests survive a dropped browser connection to api.bex.co
 
-**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** todo
+**Worker:** worker3 **Goal:** find why the browser occasionally sees `ERR_CONNECTION_CLOSED` on `api.bex.co/graphql` with no error at the edge or the origin, fix it at the edge if it is an edge behavior, and make sure a mutation lost that way is never shown to the user as "did nothing" **Status:** in progress — t004 done (2026-10-30)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Capture a failing request at the socket level (Chrome net-log during a long dashboard session) | 1h | — |
 | t002 | HTTP/2 idle, GOAWAY and connection-churn probe against the edge; compare Traefik entrypoint timeouts and LB behavior | 45m | — |
 | t003 | Fix the edge behavior t001/t002 identify (or record why it is not edge-side) | 1h | t001, t002 |
-| t004 | A mutation that fails on the network shows an error the user can act on | 45m | — |
+| t004 | A mutation that fails on the network shows an error the user can act on — **DONE** | 45m | — |
 | t005 | Render parity | 20m | t004 |
 | t006 | Simplify | 15m | t003, t004 |
 | t007 | Test coverage | 30m | t003, t004 |

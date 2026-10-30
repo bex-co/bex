@@ -36,6 +36,11 @@ vi.mock("@/features/workspaces/hooks/use-workspace-creation-billing", () => ({
   }),
 }));
 
+const toastError = vi.fn();
+vi.mock("sonner", () => ({
+  toast: { error: (...args: unknown[]) => toastError(...args) },
+}));
+
 const setCurrentWorkspaceId = vi.fn();
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({
@@ -163,6 +168,32 @@ describe("NewWorkspacePage", () => {
     expect(router.state.location.pathname).toBe("/new/workspace");
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Workspace slug")).toHaveValue("acme");
+  });
+
+  it("stays on the page and says so when cancelling the attempt fails", async () => {
+    cancel.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    const { router } = renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        "Couldn't cancel workspace creation. Try again.",
+      ),
+    );
+    expect(router.state.location.pathname).toBe("/new/workspace");
+  });
+
+  it("leaves the page once the attempt is cancelled", async () => {
+    cancel.mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    const { router } = renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("always shows Payment Method and allows optional Hobby creation", async () => {

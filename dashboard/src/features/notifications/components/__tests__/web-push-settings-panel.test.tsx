@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WebPushSettingsPanel } from "@/features/notifications/components/web-push-settings-panel";
+import type { WebPushAction } from "@/features/notifications/hooks/use-web-push-subscription";
 
 const queryState = {
   webPushAvailable: true,
@@ -25,6 +26,7 @@ const webPush = {
     | "subscribed"
     | "busy"
     | "error",
+  failedAction: null as WebPushAction | null,
   subscribe: vi.fn(),
   unsubscribe: vi.fn(),
 };
@@ -38,6 +40,7 @@ beforeEach(() => {
   queryState.vapidPublicKey = "BKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   queryState.loading = false;
   webPush.status = "prompt";
+  webPush.failedAction = null;
   webPush.subscribe.mockReset();
   webPush.unsubscribe.mockReset();
   webPush.subscribe.mockResolvedValue(true);
@@ -84,5 +87,22 @@ describe("WebPushSettingsPanel", () => {
       screen.getByRole("button", { name: /Disable in this browser/ }),
     );
     expect(webPush.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the failed disable again instead of a dead end", async () => {
+    webPush.status = "error";
+    webPush.failedAction = "unsubscribe";
+    render(<WebPushSettingsPanel />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /disable/i }));
+    expect(webPush.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the failed enable again", async () => {
+    webPush.status = "error";
+    webPush.failedAction = "subscribe";
+    render(<WebPushSettingsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: /enable/i }));
+    expect(webPush.subscribe).toHaveBeenCalledTimes(1);
   });
 });

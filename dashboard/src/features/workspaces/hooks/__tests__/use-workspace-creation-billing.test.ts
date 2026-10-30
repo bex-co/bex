@@ -2,6 +2,7 @@ import { useLayoutEffect } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CancelWorkspaceCreationDocument,
   PrepareWorkspaceCreationDocument,
   WorkspaceCreationAttemptDocument,
 } from "@/graphql/definitions";
@@ -48,18 +49,24 @@ const resolvedPolicy = {
 let policyRead: { data?: unknown; loading: boolean; error?: Error };
 let resumeRead: { data?: unknown; loading: boolean };
 const prepareMutation = vi.fn();
+const cancelMutation = vi.fn();
 
 beforeEach(() => {
   policyRead = resolvedPolicy;
   resumeRead = { data: undefined, loading: true };
   prepareMutation.mockReset();
+  cancelMutation.mockReset();
   mockUseQuery.mockReset();
   mockUseQuery.mockImplementation((document: unknown) =>
     document === WorkspaceCreationAttemptDocument ? resumeRead : policyRead,
   );
   mockUseMutation.mockReset();
   mockUseMutation.mockImplementation((document: unknown) => [
-    document === PrepareWorkspaceCreationDocument ? prepareMutation : vi.fn(),
+    document === PrepareWorkspaceCreationDocument
+      ? prepareMutation
+      : document === CancelWorkspaceCreationDocument
+        ? cancelMutation
+        : vi.fn(),
   ]);
 });
 
@@ -104,6 +111,32 @@ describe("useWorkspaceCreationBilling", () => {
       },
     });
     expect(result.current.attempt?.state).toBe("setup_pending");
+  });
+
+  it("keeps the attempt and rejects when cancelling it fails, clears it once cancelled", async () => {
+    resumeRead = {
+      data: { workspaceCreationAttempt: attemptRow() },
+      loading: false,
+    };
+    const { result } = renderHook(() =>
+      useWorkspaceCreationBilling("hobby", "wca-1"),
+    );
+    expect(result.current.attempt?.id).toBe("wca-1");
+
+    cancelMutation.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      await expect(result.current.cancel()).rejects.toThrow("Failed to fetch");
+    });
+    expect(result.current.attempt?.id).toBe("wca-1");
+
+    cancelMutation.mockResolvedValueOnce({});
+    await act(async () => {
+      await result.current.cancel();
+    });
+    expect(cancelMutation).toHaveBeenLastCalledWith({
+      variables: { attemptId: "wca-1" },
+    });
+    expect(result.current.attempt).toBeNull();
   });
 
   it("drops the previous plan's error as soon as the plan changes", async () => {

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { WorkspaceCreatePageSkeleton } from "@/common/components/route-skeletons";
@@ -106,7 +108,12 @@ export function NewWorkspacePage() {
   }
 
   async function handleCancel() {
-    await creation.cancel();
+    try {
+      await creation.cancel();
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("workspaces.createCancelError")));
+      return;
+    }
     await navigate({ to: "/" });
   }
 
