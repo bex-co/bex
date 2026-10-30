@@ -675,6 +675,27 @@ disk_sc_shape="$(yq -N '
 expected_disk_sc_shape='csi.hetzner.cloud|true|${pvc.name}-luks|${pvc.namespace}'
 [ "$disk_sc_shape" = "$expected_disk_sc_shape" ] \
   || { echo "FAIL: $DISK_SC LUKS class shape is '$disk_sc_shape' (want '$expected_disk_sc_shape' — provisioner|expansion|secret-name template|secret-namespace template)" >&2; fail=1; }
+# Preserve the legacy class for existing claims and require exact bounded
+# ext4 plus both LUKS Secret references for all new production claims.
+BOUNDED_DISK_SC="deploy/gitops/base/disk-bounded-storageclass.yaml"
+bounded_disk_sc_name="$(yq '.metadata.name' "$BOUNDED_DISK_SC")"
+[ "$bounded_disk_sc_name" = "hcloud-volumes-luks-bounded" ] \
+  || { echo "FAIL: bounded disk class name changed" >&2; fail=1; }
+bounded_disk_sc_shape="$(yq -N '
+  .provisioner + "|" +
+  (.allowVolumeExpansion | tostring) + "|" +
+  .volumeBindingMode + "|" +
+  .reclaimPolicy + "|" +
+  .parameters."csi.storage.k8s.io/fstype" + "|" +
+  .parameters.boundedFilesystem + "|" +
+  .parameters."csi.storage.k8s.io/node-publish-secret-name" + "|" +
+  .parameters."csi.storage.k8s.io/node-publish-secret-namespace" + "|" +
+  .parameters."csi.storage.k8s.io/node-expand-secret-name" + "|" +
+  .parameters."csi.storage.k8s.io/node-expand-secret-namespace"' "$BOUNDED_DISK_SC")"
+expected_bounded_disk_sc_shape='csi.hetzner.cloud|true|WaitForFirstConsumer|Delete|ext4|ext4-v1|${pvc.name}-luks|${pvc.namespace}|${pvc.name}-luks|${pvc.namespace}'
+[ "$bounded_disk_sc_shape" = "$expected_bounded_disk_sc_shape" ] \
+  || { echo "FAIL: bounded disk class geometry or Secret references changed" >&2; fail=1; }
+bash scripts/install-hcloud-csi.sh validate-pin >/dev/null || fail=1
 # Production provisions disks on the encrypted class; the local/default render
 # must NOT name it (the class cannot exist without the hcloud CSI driver, and a
 # nonexistent class strands every mock disk PVC Pending).
@@ -683,8 +704,8 @@ prod_disk_class="$(yq -N '
   .spec.template.spec.containers[] | select(.name == "manager") |
   [.env[] | select(.name == "BEX_DISK_STORAGE_CLASS") | .value] | .[0] // ""' \
   - <<<"$prod_operator_render" | tr -d '\n')"
-[ "$prod_disk_class" = "$disk_sc_name" ] \
-  || { echo "FAIL: prod operator BEX_DISK_STORAGE_CLASS is '$prod_disk_class' (want '$disk_sc_name' — encryption at rest must stay on)" >&2; fail=1; }
+[ "$prod_disk_class" = "$bounded_disk_sc_name" ] \
+  || { echo "FAIL: prod operator BEX_DISK_STORAGE_CLASS is '$prod_disk_class' (want '$bounded_disk_sc_name' — encryption and requested-size bounds must stay on)" >&2; fail=1; }
 if yq -e '
   select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
   .spec.template.spec.containers[] | select(.name == "manager") |

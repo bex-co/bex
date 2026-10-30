@@ -42,3 +42,8 @@ The [strengthened activation preview](evidence/class-activation-preview-20261030
 ## Read-only fixture baseline refresh — 2026-10-30
 
 The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-20261030/README.md) records a fresh own QA login and GET-only baseline: the unrelated m162 fixture is confirmed deleted, the existing service stays protected, and no owned fixture/create intent exists. The last complete baseline is 07:58:14 UTC; later TLS failures remain failed reads. Historical IDs stay in the rejection checks, and any missing prepared ID requires a fresh exact 404. No class activation, root create gate or disk lifecycle acceptance is claimed; those gates remain open.
+
+
+## Bounded-class activation source checkpoint — 2026-10-30
+
+[Actual signed Ready preflight and activation validation](evidence/class-activation-20261030/README.md) confirm the new capacity writer, both class contracts and unchanged original bindings. The production source now selects the bounded encrypted class globally for subsequent creates, with full GitOps validation and the prior three-review patch intact. Live effective-class convergence and the owned production lifecycle walkthrough remain required; no fixture or task is closed by this source checkpoint.
