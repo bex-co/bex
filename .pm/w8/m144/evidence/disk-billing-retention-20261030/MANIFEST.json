@@ -1,0 +1,95 @@
+{
+  "scope": "Real local Postgres source/regression evidence only; receipt explicitly identifies transcribed completed-tool logs, initial excerpts, baseline checks and no production claim. Credentials/connection URLs are excluded.",
+  "files": {
+    "ADR082-D9-review.txt": {
+      "bytes": 583,
+      "sha256": "fc93b1030d0d18284db3fa671365f41b9e8c7c195299671cf8a80420143f8572",
+      "original_bytes": 583,
+      "original_sha256": "fc93b1030d0d18284db3fa671365f41b9e8c7c195299671cf8a80420143f8572"
+    },
+    "README.txt": {
+      "bytes": 1018,
+      "sha256": "3a3efdc1779bda92186e46505e3c218b994d3fd1ed442a158ba4607c26295b5b",
+      "original_bytes": 1018,
+      "original_sha256": "3a3efdc1779bda92186e46505e3c218b994d3fd1ed442a158ba4607c26295b5b"
+    },
+    "artifact-sha256.txt": {
+      "bytes": 1233,
+      "sha256": "5bda9b49a40b309dbb31806bc3a8731ed431592b468d5841e540aae6a89d23e8",
+      "original_bytes": 1233,
+      "original_sha256": "5bda9b49a40b309dbb31806bc3a8731ed431592b468d5841e540aae6a89d23e8"
+    },
+    "baseline-full.log.gz": {
+      "bytes": 79,
+      "sha256": "132be7cacf51fbca8065ea7c7f7f1731b10332282fca9597a06fde1cf7c8d284",
+      "original_bytes": 63,
+      "original_sha256": "6c65f8ccb78c44d49379f9f0c2946fca40d7cb133ab769d88977ff7211c7cc1a"
+    },
+    "baseline-isolated.log.gz": {
+      "bytes": 261,
+      "sha256": "c58d2937a4748ce73b132b35d3968a77d3b5f087511c16d061480118e210699a",
+      "original_bytes": 919,
+      "original_sha256": "b9f01bb6f812dc0b08d924eb44b607cdd56d753a5f2cf5199fa65178b2294a66"
+    },
+    "final-focused.log.gz": {
+      "bytes": 385,
+      "sha256": "a18a52c9dc6df6a64e350dd5ffc2c44c24068c0f7e01427d387fc727f8e3ec96",
+      "original_bytes": 1473,
+      "original_sha256": "d07805b38b01aff782ab4595c294c7cfde247961dcadd37274ef57f046978b17"
+    },
+    "final-full-store-usage.log.gz": {
+      "bytes": 94,
+      "sha256": "86a03e5da56433bd17eb78534fd7656a926854ffa30e2911aa75b92881463284",
+      "original_bytes": 125,
+      "original_sha256": "5552cd8ccfc1ca6957f17ab1f5d7412f8388ea0aa7142e74325dabeb176b3478"
+    },
+    "harness-shutdown.log.gz": {
+      "bytes": 190,
+      "sha256": "f1d8bd3e85f13c448bcbbaa56707f55256959bab93ed4e85d6948b46d4f24bdb",
+      "original_bytes": 226,
+      "original_sha256": "96eae070b123c39cc18b7744e747944d8ff1e69309630873f2ddc800dd6c7cdd"
+    },
+    "initial-focused.log.gz": {
+      "bytes": 371,
+      "sha256": "b5e7031c8332bd9e8e94b99f05097f624901c430636649d5517e1b1c13b82956",
+      "original_bytes": 1359,
+      "original_sha256": "56da5d489b2b5936fc5f404af39c2c70a2436fb9c515219c1eb638f32b15e674"
+    },
+    "initial-full.failure-excerpt.log.gz": {
+      "bytes": 279,
+      "sha256": "fa59393634bb8b9dabbc8996daf8ec3391c358dc21a363739387f0edfd036fcc",
+      "original_bytes": 474,
+      "original_sha256": "598f98ce22f9619556b0ececd63c74f36f5bc79bcd0acbdf788dbd2764440d85"
+    },
+    "old-guard-counterproof-protocol.txt": {
+      "bytes": 1859,
+      "sha256": "b1d88d046ae5e0414be9b78f3281db1e73453d4c84f3875d3ba22944cf28d23a",
+      "original_bytes": 1859,
+      "original_sha256": "b1d88d046ae5e0414be9b78f3281db1e73453d4c84f3875d3ba22944cf28d23a"
+    },
+    "old-guard-counterproof.log.gz": {
+      "bytes": 115,
+      "sha256": "db01e44f67b5efc0373d7d87eda586ddf1dfe0e4e64bba471d6da826345f4ad6",
+      "original_bytes": 110,
+      "original_sha256": "4dddc22a271a501b9d43949138cb454b3269a816e0c17179d6adbb46e367b552"
+    },
+    "pre-tenant-fix-full.log.gz": {
+      "bytes": 95,
+      "sha256": "b1a413fe07d577e74e3dd7e1a6112d5281334d76817d939a8d246483007f62d2",
+      "original_bytes": 125,
+      "original_sha256": "9431b4090c3e7d635fb9a05858f39c2cdab61fe3cec0e8648f30c6f928265ea6"
+    },
+    "receipt.json": {
+      "bytes": 7405,
+      "sha256": "321388847353fbc7d1b2682de4787a07baa1ce87ce4d2197449df94bef1931c8",
+      "original_bytes": 7405,
+      "original_sha256": "321388847353fbc7d1b2682de4787a07baa1ce87ce4d2197449df94bef1931c8"
+    },
+    "source-sha256.txt": {
+      "bytes": 620,
+      "sha256": "e3589a66d23f502a08d4e4a58f381401bbeec60713c495921a813a49b33f2c17",
+      "original_bytes": 620,
+      "original_sha256": "e3589a66d23f502a08d4e4a58f381401bbeec60713c495921a813a49b33f2c17"
+    }
+  }
+}

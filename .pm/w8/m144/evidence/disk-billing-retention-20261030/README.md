@@ -1,0 +1,7 @@
+# Retain requested disk billing after service deletion
+
+Service deletion previously cascaded the disk and all size periods before the last closed-hour rollup. Migration 0175 retains closed periods under the existing immutable service/workspace identity, stops future allocation at deletion, and keeps deleted disks outside live inventory. Failed creation removes provisional rows. The existing requested-size integration and pricing stay unchanged.
+
+Independent review found a tenant/App lock inversion in the initial guard. A private-schema counterproof reproduced SQLSTATE 40P01. The final guard locks workspace before service; a deterministic real Postgres regression observes the waiting attachment, verifies that it holds no App lock, commits raw workspace deletion and requires the attachment to return the existing not-found classification. Service-deletion races, 1→5 weighted history, future zero, sibling/recreation, rollback, tenant cascade and downgrade refusal pass.
+
+Focused and full store/usage suites pass against real dependencies. Earlier expiry/audit failures did not recur in isolated baseline, full baseline or final patched runs; clock skew remained a hypothesis, not a diagnosis. The source agent's receipt explicitly identifies logs transcribed from completed tool outputs and the initial failure excerpt. The parent complete-backend pre-push gate remains required. No production meter, invoice, fixture or lifecycle acceptance is established here; the owned test stack and temporary proof schemas are removed.

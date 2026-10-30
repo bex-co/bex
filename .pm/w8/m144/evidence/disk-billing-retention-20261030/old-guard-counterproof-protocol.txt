@@ -1,0 +1,23 @@
+Recorded old-guard counterproof protocol (not a new execution)
+
+The completed temporary Go/pgx program created a dedicated schema m144_old_guard_<process-id> on the checkout-owned test Postgres. All three dedicated connections set search_path to this schema.
+
+CREATE TABLE tenants (id text PRIMARY KEY);
+CREATE TABLE apps (id text PRIMARY KEY, tenant_id text REFERENCES tenants(id) ON DELETE CASCADE);
+CREATE TABLE service_disks (id text PRIMARY KEY, tenant_id text REFERENCES tenants(id) ON DELETE CASCADE, app_id text);
+CREATE FUNCTION old_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM 1 FROM apps WHERE id=NEW.app_id AND tenant_id=NEW.tenant_id FOR KEY SHARE;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER old_guard BEFORE INSERT ON service_disks FOR EACH ROW EXECUTE FUNCTION old_guard();
+INSERT INTO tenants VALUES ('tenant');
+INSERT INTO apps VALUES ('app', 'tenant');
+
+Holder transaction: SELECT id FROM tenants WHERE id='tenant' FOR UPDATE.
+Concurrent writer: INSERT INTO service_disks VALUES ('disk','tenant','app'). It acquires the App key-share lock in old_guard, then waits for the tenant FK lock.
+Observer: pg_backend_pid() on holder and writer, then SELECT holder_pid = ANY(pg_blocking_pids(writer_pid)) until actual blocking is observed.
+Holder transaction: DELETE FROM tenants WHERE id='tenant'. This needs the App lock while the writer holds App and waits for Tenant.
+Postgres deadlock detector chose the CREATE as victim: SQLSTATE 40P01 (see old-guard-counterproof.log). Holder transaction then completed. The program dropped its private schema on exit; a subsequent fresh harness reset and final shutdown also removed the database.
+
+This minimal-schema counterproof demonstrated the old lock inversion. The final source regression separately exercised the actual migrated store and proved the fixed Tenant-before-App ordering.

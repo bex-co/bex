@@ -1,0 +1,6 @@
+Read-only documentation review: ADR082 D9 already promises deterministic integration and lossless closed-hour catch-up. No pricing or public API changes are needed.
+
+Suggested minimal root-owned addition after the Quantity/Rollup bullets:
+Deleting a service closes its disk size periods but retains them for later hourly rollup and audit. Failed service creation removes its provisional periods; retained deleted disks stay outside live disk inventory. The existing workspace-deletion cascade remains unchanged.
+
+No ADR or repository documentation was edited by this reporting step.
