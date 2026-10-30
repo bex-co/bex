@@ -1,0 +1,18 @@
+{
+  "run_id": "41063720126",
+  "url": "https://github.com/bex-co/bex/actions/runs/41063720126",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "job_id": 124090465681,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41063720126/job/124090465681",
+  "job_name": "build (python-3.9-bookworm, python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe9...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "skipped",
+  "recovery_selection_conclusion": "success"
+}

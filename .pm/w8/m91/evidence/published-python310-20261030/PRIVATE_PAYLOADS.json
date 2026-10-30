@@ -1,0 +1,77 @@
+{
+  "scope": "Complete public signed bundles and predicates stay outside Git. Gzip round trips and immutable SHA/size checks passed; public OCI descriptors permit independent retrieval.",
+  "raw_output": "/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "frozen_receipt_sha256": "f30536d4a49329ab3173ab4d49039b9708f28a66765c291ac12c0e2e46bb6a83",
+  "payloads": [
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:68af4bd8e20fc0e17211780aae7e8791f7086e9ab931a50ea890962d797dcd0a",
+      "bundle_digest": "sha256:996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044",
+      "bundle_bytes": 30542027,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/996b8f20bf6fca2e1d91ebdd85c6b725746180341897946e15ccfd559ed8e044.bundle.json.gz",
+      "full_bundle_gzip_sha256": "c1d9dd363ec13441ca42f0cb560d2ba98c4b83726cb59be72cf6ab73faa52a05",
+      "full_bundle_gzip_bytes": 4518166,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/sbom-arm64-996b8f20bf6f.predicate.json.gz",
+      "full_predicate_gzip_sha256": "9a1d61fd4baeeaf7fe753c9be4e1f04259d93368e8379d66154404ca41318b30",
+      "decoded_predicate_sorted_json_sha256": "94d737f06fec2b7f97366081aaec9bb04a25caabdf92109979c8a1ee2185f562",
+      "decoded_predicate_sorted_json_bytes": 22472112
+    },
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "manifest_digest": "sha256:9d24c9ab1fcf359ef560e2d33ea06b64182961756b52617398e47b35561343c4",
+      "bundle_digest": "sha256:04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7",
+      "bundle_bytes": 9747,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/04b2bd8bc7235b99a2635f087761904808db5426eb5e23bf5e027150da2ba8c7.bundle.json.gz",
+      "full_bundle_gzip_sha256": "88ff89bee65ca68babd183b678a8e6c8325b0c1c106ed01f953df6a8454049c4",
+      "full_bundle_gzip_bytes": 6315,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/image-signature-None-04b2bd8bc723.predicate.json.gz",
+      "full_predicate_gzip_sha256": "f411df997a9c4d574d32f3329a6393d6febf67823d041ee46651dacafe9f806c",
+      "decoded_predicate_sorted_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "decoded_predicate_sorted_json_bytes": 2
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:acb63f745a58e064d01e214eedb497ebb635129704be0178157d8ba629735a24",
+      "bundle_digest": "sha256:4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76",
+      "bundle_bytes": 30529667,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/4435ab133a3cbdfe1407793a741ae9e9b64f39b374e9d544154e65d1c40eaa76.bundle.json.gz",
+      "full_bundle_gzip_sha256": "99b99e301c40f8336ad4b28cee85170a8798e5318fde3220dc174d2635db1058",
+      "full_bundle_gzip_bytes": 4515579,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/sbom-amd64-4435ab133a3c.predicate.json.gz",
+      "full_predicate_gzip_sha256": "b6eb92aafa92a6a769a020d1178d3a134202f9c5bd5bb025531759c622d14ca9",
+      "decoded_predicate_sorted_json_sha256": "1fa0443131d168ebc099e56aa349246f0541572a6d27586ed707413092c76371",
+      "decoded_predicate_sorted_json_bytes": 22462809
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "manifest_digest": "sha256:bfccfbc3223e93944303276dc3d8d222da2630fdc3db34f93419a0af970d97a9",
+      "bundle_digest": "sha256:2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f",
+      "bundle_bytes": 29879179,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/2abc486ae11fa447982aec10960c52d339abd33d6d63797ff80b9b74bb33b17f.bundle.json.gz",
+      "full_bundle_gzip_sha256": "62395aba4a9c8b59d5b6b263bdcca0ea0ab7fa958432b6474aeda1274ef08ed5",
+      "full_bundle_gzip_bytes": 6084353,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/vulnerability-amd64-2abc486ae11f.predicate.json.gz",
+      "full_predicate_gzip_sha256": "5f106ea88094099e1c1f6070ca87bec022f795ccff26f68d133f97a7d2eed625",
+      "decoded_predicate_sorted_json_sha256": "91cb37ae4a523c544632e42f70fbd4563e1c82679ce1ff5cc108d827cefdf0c9",
+      "decoded_predicate_sorted_json_bytes": 22050614
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "manifest_digest": "sha256:d492352711f426ba27f91597d64dcda6d3ea73aa3904db48034ea8994a30fac1",
+      "bundle_digest": "sha256:e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e",
+      "bundle_bytes": 29883967,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/e4615722f77f4588c263147db5a145a3f3d3a7bb975dc0eda3f012c85a5da16e.bundle.json.gz",
+      "full_bundle_gzip_sha256": "e5f3ec69c353b6b87e91562afed35f6cb1b9c37e5f5c79819ddeb40e452c1cee",
+      "full_bundle_gzip_bytes": 6090403,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-review-python310-peer-fd358/native-python-3.10-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/vulnerability-arm64-e4615722f77f.predicate.json.gz",
+      "full_predicate_gzip_sha256": "0b2f191e44d458600ae91667422df0c157a0f8fdc431ae7bbbf767d2de2416e7",
+      "decoded_predicate_sorted_json_sha256": "545498e0a42f90ffad318a92f8a44170a814cf0e334d37cd89929e532dc29b47",
+      "decoded_predicate_sorted_json_bytes": 22054152
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "bex.native-published-supplier-evidence/v1",
+  "reviewed_at": "2026-10-30T15:24:44.738273+00:00",
+  "scope": "Published supplier identity/runtime/report evidence only. All findings retained; no zero-CVE claim or security waiver. Complete catalog adoption, generated exact-image replay and original hosted acceptance remain separate. No production pin/resource changed.",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "official_base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+  "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "workflow_run": 41063720126,
+  "job_id": 124090465681,
+  "cosign_version": "3.1.4",
+  "verified_darwin_arm64_binary_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+  "certificate_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+  "subject_digest_algorithm": "sha256",
+  "subject_digest": "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+  "source_policy": "Actual green verification job; exact producer/ref/base with unchanged non-documentation recipe blobs/modes. OCI labels bind producer; every accepted certificate binds verification SHA.",
+  "crypto_policy": "All 5 complete accepted bundles pass exact subject/issuer/workflow/source, Rekor v2 inclusion and signed RFC3161 timestamps. Both actual negative controls reject. No ignore flags.",
+  "report_policy": "Each registry-source SPDX root independently names its actual architecture/config/child. Trivy independently binds its actual config, OS, architecture and full DiffID list. No architecture-union acceptance.",
+  "manual_decompressed_layer_hashing_performed": false,
+  "Docker_export_root_aliases_needed": false,
+  "production_catalog_changed": false,
+  "remaining": "Complete 27 supplier review/adoption, exact generated-image replay and hosted acceptance remain separate.",
+  "architecture_findings": {
+    "amd64": {
+      "packages": 719,
+      "findings": 12638,
+      "critical": 184,
+      "brotli_findings": []
+    },
+    "arm64": {
+      "packages": 717,
+      "findings": 12638,
+      "critical": 184,
+      "brotli_findings": []
+    }
+  }
+}

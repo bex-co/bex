@@ -1,0 +1,390 @@
+{
+  "accepted_bundles": [
+    "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+    "sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+    "sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+    "sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+    "sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999"
+  ],
+  "results": [
+    {
+      "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+        "--type",
+        "https://sigstore.dev/cosign/sign/v1",
+        "--digest",
+        "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+            "--type",
+            "https://sigstore.dev/cosign/sign/v1",
+            "--digest",
+            "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0.bundle.json",
+            "--type",
+            "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+            "--digest",
+            "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843.bundle.json",
+            "--type",
+            "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+            "--digest",
+            "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json",
+        "--type",
+        "https://spdx.dev/Document",
+        "--digest",
+        "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6.bundle.json",
+            "--type",
+            "https://spdx.dev/Document",
+            "--digest",
+            "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stderr.log"
+        }
+      ]
+    },
+    {
+      "bundle_digest": "sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json",
+        "--type",
+        "https://spdx.dev/Document",
+        "--digest",
+        "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stderr.log",
+      "attempts": [
+        {
+          "bundle_digest": "sha256:ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999",
+          "exit_code": 0,
+          "command": [
+            "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+            "verify-blob-attestation",
+            "--bundle",
+            "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999.bundle.json",
+            "--type",
+            "https://spdx.dev/Document",
+            "--digest",
+            "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+            "--digestAlg",
+            "sha256",
+            "--certificate-identity",
+            "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
+            "--certificate-github-workflow-sha",
+            "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+            "--use-signed-timestamps",
+            "--timeout",
+            "5m"
+          ],
+          "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stderr.log"
+        }
+      ]
+    }
+  ],
+  "wrong_source": {
+    "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+    "exit_code": 1,
+    "command": [
+      "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+      "verify-blob-attestation",
+      "--bundle",
+      "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+      "--type",
+      "https://sigstore.dev/cosign/sign/v1",
+      "--digest",
+      "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "--digestAlg",
+      "sha256",
+      "--certificate-identity",
+      "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "--certificate-oidc-issuer",
+      "https://token.actions.githubusercontent.com",
+      "--certificate-github-workflow-sha",
+      "0000000000000000000000000000000000000000",
+      "--use-signed-timestamps",
+      "--timeout",
+      "5m"
+    ],
+    "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stderr.log",
+    "attempts": [
+      {
+        "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+        "exit_code": 1,
+        "command": [
+          "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+          "verify-blob-attestation",
+          "--bundle",
+          "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+          "--type",
+          "https://sigstore.dev/cosign/sign/v1",
+          "--digest",
+          "6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+          "--digestAlg",
+          "sha256",
+          "--certificate-identity",
+          "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+          "--certificate-oidc-issuer",
+          "https://token.actions.githubusercontent.com",
+          "--certificate-github-workflow-sha",
+          "0000000000000000000000000000000000000000",
+          "--use-signed-timestamps",
+          "--timeout",
+          "5m"
+        ],
+        "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stderr.log"
+      }
+    ]
+  },
+  "wrong_subject": {
+    "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+    "exit_code": 1,
+    "command": [
+      "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+      "verify-blob-attestation",
+      "--bundle",
+      "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+      "--type",
+      "https://sigstore.dev/cosign/sign/v1",
+      "--digest",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "--digestAlg",
+      "sha256",
+      "--certificate-identity",
+      "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "--certificate-oidc-issuer",
+      "https://token.actions.githubusercontent.com",
+      "--certificate-github-workflow-sha",
+      "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "--use-signed-timestamps",
+      "--timeout",
+      "5m"
+    ],
+    "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stderr.log",
+    "attempts": [
+      {
+        "bundle_digest": "sha256:754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f",
+        "exit_code": 1,
+        "command": [
+          "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+          "verify-blob-attestation",
+          "--bundle",
+          "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f.bundle.json",
+          "--type",
+          "https://sigstore.dev/cosign/sign/v1",
+          "--digest",
+          "0000000000000000000000000000000000000000000000000000000000000000",
+          "--digestAlg",
+          "sha256",
+          "--certificate-identity",
+          "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+          "--certificate-oidc-issuer",
+          "https://token.actions.githubusercontent.com",
+          "--certificate-github-workflow-sha",
+          "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+          "--use-signed-timestamps",
+          "--timeout",
+          "5m"
+        ],
+        "stderr": "/private/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stderr.log"
+      }
+    ]
+  },
+  "candidate_approved": false
+}

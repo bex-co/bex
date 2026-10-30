@@ -121,3 +121,7 @@ The signed scans retain 229 critical findings per architecture, with no Brotli f
 ## Corrected current publication scheduling — 2026-10-30
 
 [The current queue receipts](evidence/current-publication-queue-20261030/README.md) retain the guarded retirement of an entirely queued obsolete full matrix and exactly16 targeted dispatches on the HTTP1/complete-retry source. The old full matrix had latent rows, not missing definitions; no running build was interrupted. Four approved suppliers and seven already-active targets were excluded. Catalog/adoption and all original hosted acceptance remain pending.
+
+## Six suppliers independently verified — 2026-10-30
+
+[Python 3.9](evidence/published-python39-20261030/README.md) and [Python 3.10](evidence/published-python310-20261030/README.md) passed complete strict review on the corrected fd358 workflow, including all five signed bundles, independent architecture reports and fresh complete public blob reads. Their 12,638/7,477 findings per architecture remain retained. These join Node 14/16 and Python 3.7/3.8 for six of 27 approved suppliers. [Fresh discovery checks](evidence/recovery-python39-python310-retirement-20261030/README.md) confirm the already-shipped temporary recovery retirement. The catalog remains empty; 21 suppliers, complete adoption and all original hosted acceptance remain pending.

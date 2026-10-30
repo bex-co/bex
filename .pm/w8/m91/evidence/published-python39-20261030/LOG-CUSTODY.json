@@ -1,0 +1,101 @@
+{
+  "scope": "All small execution/crypto logs copied byte-identically to.txt so repository*.log ignores cannot hide evidence.",
+  "files": [
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/v8-attempt1.log",
+      "archived_file": "execution-logs/v8-attempt1.txt",
+      "bytes": 16147,
+      "sha256": "f01ef9d20a31105340b74fb14cb34580f936db70882a98dafdebf132674a3312"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stderr.log",
+      "archived_file": "crypto/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stderr.log",
+      "archived_file": "crypto/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stderr.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stderr.txt",
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stdout.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stderr.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stderr.txt",
+      "bytes": 467,
+      "sha256": "61150d122f6e7b7b5be05646dd2afb3f18f78161bc9088ffc020c94872186a13"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stderr.log",
+      "archived_file": "crypto/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stdout.log",
+      "archived_file": "crypto/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stdout.log",
+      "archived_file": "crypto/b03d9b9038b88416938eb7ece607d02bd500bb381ad0ca6701a05cdd36a97dc0-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stdout.log",
+      "archived_file": "crypto/ac509a65be12739790bba357a53bf9e9a48186124e6f4764b8d991bfe09a3999-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stderr.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stdout.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-subject-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stderr.log",
+      "archived_file": "crypto/98693dc72e01d90bf88affbc0214a3be05e790d700b106643c7cd9cb44cd12d6-positive-attempt1.stderr.txt",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stdout.log",
+      "archived_file": "crypto/5aeb8c3c6b55e1e5409f40a016cb4a43c69f8b4954798c0f0e385b1c2dbb1843-positive-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/native-python-3.9-bookworm-fd358d2010f8b5e2715250d7148a505ba12c1cb6/bundles/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stdout.log",
+      "archived_file": "crypto/754d6f1c7e89080666ae15ffcf3314b5d75716056c87cfc8cc440a75bf2cc32f-wrong-source-attempt1.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_private_path": "/tmp/loopx-w8-native-review-python39-fd358/retrieval-helper-image-smoke-attempt1.log",
+      "archived_file": "crypto/retrieval-helper-image-smoke.txt",
+      "bytes": 1894,
+      "sha256": "07cd0ec29ccf3388cd0f3d7f35140361e1707ab6352cf9669aedd1a5980b3ef8"
+    }
+  ]
+}

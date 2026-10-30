@@ -1,0 +1,12 @@
+{
+  "scope": "This selected case began only after actual whole job success. Archive preserves executed source, full raw logs and all per-command attempts. No failed attempt receives approval.",
+  "outer_attempts": [
+    {
+      "attempt": 1,
+      "actual_exit_code": 0,
+      "process_receipt": "engineering/process-exit.json",
+      "log": "execution-logs/v8-attempt1.txt"
+    }
+  ],
+  "internal_attempts": "Exact full execution log and per-command result/stdout/stderr files retained, including actual negative controls. No absence-of-retry claim is inferred."
+}
