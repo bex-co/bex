@@ -1,0 +1,28 @@
+{
+  "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "files_sha256": {
+    ".github/workflows/native-base-image.yml": "211af74254ed41960d2d995ed295b2e7c5d418934266e5302cbc5d93a97bf4fc",
+    ".github/native-base-recovery.json": "7df01c0860425fefaa48de2621c18353034a9296659ec2178c14bcf6587a394c",
+    "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "deploy/native-base/matrix.py": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+  },
+  "modern_signing": "Cosign3.1.4 + TUFRekor2 explicitconfig with boundedretries",
+  "rows": {
+    "node-14-bullseye": {
+      "digest": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "recipe_files": 22,
+      "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"
+    },
+    "node-16-bookworm": {
+      "digest": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "recipe_files": 22,
+      "base": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6"
+    },
+    "python-3.7-bullseye": {
+      "digest": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "recipe_files": 22,
+      "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a"
+    }
+  },
+  "candidate_approved": false
+}

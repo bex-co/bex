@@ -1,0 +1,10 @@
+{
+  "schema": "bex.native-compressed-and-diffid-proof/v1",
+  "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+  "compressed_digest": "sha256:71f2b4941cbd038e07371597a38804648a05fcb67edaca7699f56378c5fa3f8b",
+  "compressed_bytes": 1145,
+  "uncompressed_digest": "sha256:f0b7191523d43e55a81e643364a6230ba9e54ff0a6b9546a55bfe83e0bc4cc24",
+  "uncompressed_bytes": 4096,
+  "anonymous_full_get_at": "2026-10-30T09:38:13.383951+00:00",
+  "manual_decompressed_layer_hashing_performed": true
+}

@@ -1,0 +1,5 @@
+{
+  "label": "image-wrong-source-negative",
+  "expected_source_sha": "0000000000000000000000000000000000000000",
+  "exit_code": 1
+}

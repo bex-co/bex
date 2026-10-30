@@ -1,0 +1,18 @@
+{
+  "scope": "Guard tests using captured real source metadata; no candidate approval or fabricated SBOM.",
+  "guard_rejections": [
+    "wrong-exact-digest",
+    "unauthorized-base",
+    "missing-authorization",
+    "changed-recipe",
+    "wrong-producer-source",
+    "original-build-failed",
+    "original-runtime-failed",
+    "selection-not-green",
+    "actual-queued-verification-job"
+  ],
+  "fresh_build_identity_compatibility": "pass",
+  "real_source_preflight": "22 non-documentation recipe blobs/modes and exact per-row official bases match BF/d956; producer build/runtime API steps passed",
+  "current_candidate_approved": false,
+  "verifier_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+}
