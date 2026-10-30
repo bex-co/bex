@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "name": "qa-20261030-w8-predeploy-72a314da",
+    "namespace": "dev-8",
+    "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+    "resourceVersion": "1000",
+    "generation": 3,
+    "labels": {
+      "app.bex.co/workspace": "dev-8"
+    }
+  },
+  "spec": {
+    "repo": "https://github.com/bex-co/git-fixtures",
+    "externalRegistryPullSecret": "qa-20261030-w8-predeploy-72a314da-pull",
+    "runtime": "node",
+    "builder": "native",
+    "env": [
+      {
+        "name": "QA_LITERAL",
+        "value": "literal $(QA_SECRET_MARKER) $HOME; \"雪\"\ntrailing\n"
+      },
+      {
+        "name": "QA_EMPTY"
+      },
+      {
+        "name": "QA_OVERRIDE",
+        "value": "literal-wins"
+      }
+    ],
+    "envFromSecret": "qa-20261030-w8-predeploy-72a314da-env-files",
+    "filesFromSecrets": [
+      "qa-20261030-w8-predeploy-72a314da-files"
+    ],
+    "preDeployCommand": "exec /usr/bin/python3 - \u003c\u003c'BEX_DEV8_QA_PY'\nimport base64,contextlib,hashlib,io,json,os,runpy,subprocess,sys\nfrom pathlib import Path\nr=Path('/opt/render/project/src');os.chdir(r)\nliteral='literal $(QA_SECRET_MARKER) $HOME; \"雪\"\\ntrailing\\n'\nassert os.environ['QA_LITERAL']==literal\nassert os.environ['QA_EMPTY']==''\nassert os.environ['QA_SECRET_MARKER']=='own-synthetic-only'\nassert os.environ['QA_OVERRIDE']=='literal-wins'\nassert os.environ['PORT']=='10000'\nassert not Path('/var/run/secrets/kubernetes.io/serviceaccount/token').exists()\npayload=Path('/etc/secrets/proof.txt').read_bytes()\nassert payload==b'own-dev8-file\\x00\\xff\\n'\ntry:Path('/etc/secrets/proof.txt').write_bytes(b'bad')\nexcept OSError:pass\nelse:raise AssertionError('secret-file mount writable')\nassert not Path('/etc/secrets/.dockerconfigjson').exists()\nassert all('dockerconfigjson' not in k.lower() for k in os.environ)\nprint('BEX_DEV8_ENV_FILE '+json.dumps({'pass':True,'literal_sha256':hashlib.sha256(literal.encode()).hexdigest(),'secret_file_sha256':hashlib.sha256(payload).hexdigest(),'empty_preserved':True,'envFrom':True,'env_precedence':True,'port_precedence':True,'read_only_secret_file':True,'serviceaccount_token_absent':True,'pull_credential_not_projected':True}),flush=True)\n# Authored driver is unchanged. Its historic Docker-network field is explicitly\n# removed from the current Job receipt; it is not evidence for this execution.\ncap=io.StringIO()\nwith contextlib.redirect_stdout(cap):\n sys.argv=['extended-checks.py','predeploy']\n runpy.run_path(str(r/'extended-checks.py'),run_name='__main__')\nsummary=json.loads(cap.getvalue());summary.pop('network',None);summary.pop('scope',None)\nsummary['actual_execution_scope']='Kubernetes dev-8 Job; canonical userns/hardening; own deny-egress NetworkPolicy; loopback consumers; companion Python3.11; no Docker-network-none claim'\nprint('BEX_DEV8_UTILITIES '+json.dumps(summary,ensure_ascii=False),flush=True)\nproofs={}\nfor f in sorted((r/'qa-output').glob('runtime-*-predeploy.json')):\n proofs[f.name]=json.loads(f.read_text())\nassert len(proofs)==13 and all(len(x)==3 and all(q['pass'] for q in x) for x in proofs.values())\nprint('BEX_DEV8_HTTP_PROOFS '+json.dumps(proofs,ensure_ascii=False),flush=True)\nidentities={}\nfor f in sorted((r/'fixtures').rglob('*')):\n if f.is_file() and '__pycache__' not in f.parts:\n  b=f.read_bytes();identities[str(f.relative_to(r))]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\nfor n in ['extended-checks.py','local-specs.json','pg18.dump.b64','pg18-rows.txt','png-decoder.py']:\n b=(r/n).read_bytes();identities[n]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\nprint('BEX_DEV8_IDENTITIES '+json.dumps(identities,sort_keys=True),flush=True)\nprint('BEX_DEV8_PASS',flush=True)\nBEX_DEV8_QA_PY\n",
+    "tier": "starter"
+  },
+  "status": {
+    "phase": "Deploying",
+    "preDeploy": {
+      "job": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3",
+      "generation": 3,
+      "startedAt": "2026-10-30T05:39:05Z",
+      "status": "Running"
+    },
+    "conditions": [
+      {
+        "type": "Ready",
+        "status": "False",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-30T05:39:05Z",
+        "reason": "PreDeploy",
+        "message": "running pre-deploy command"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7
+FROM python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e
+COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"
+ENV FORWARDED_ALLOW_IPS="*"
+WORKDIR /opt/render/project/src
+COPY . .
+COPY <<'BEX_LOAD_ENV' /opt/bex/load-env
+: bex-native-env-rev=none
+decoder="$(command -v base64)" || exit 1
+eval "bex_decode() { '$decoder' -d; }"
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
+  case $key in ''|[0-9]*|*[!A-Za-z0-9_]*) continue ;; esac # a dotted name reaches the container, not the shell
+  export "$key=${value%.}"
+done < /run/secrets/render-env
+BEX_LOAD_ENV
+ARG RENDER_GIT_COMMIT
+RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build"]
+ENV PORT=10000
+ENTRYPOINT []
+CMD ["/bin/bash","-c","/usr/local/bin/python3 /opt/render/project/src/check-runtime.py runtime"]

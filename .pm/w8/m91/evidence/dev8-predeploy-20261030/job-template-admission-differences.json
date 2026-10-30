@@ -1,0 +1,52 @@
+[
+  {
+    "path": "/metadata/labels/batch.kubernetes.io/controller-uid",
+    "requested": null,
+    "actual": "b25686b3-2ab4-4066-a5ec-5c62eee33115"
+  },
+  {
+    "path": "/metadata/labels/batch.kubernetes.io/job-name",
+    "requested": null,
+    "actual": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3"
+  },
+  {
+    "path": "/metadata/labels/controller-uid",
+    "requested": null,
+    "actual": "b25686b3-2ab4-4066-a5ec-5c62eee33115"
+  },
+  {
+    "path": "/metadata/labels/job-name",
+    "requested": null,
+    "actual": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3"
+  },
+  {
+    "path": "/spec/containers/0/terminationMessagePath",
+    "requested": null,
+    "actual": "/dev/termination-log"
+  },
+  {
+    "path": "/spec/containers/0/terminationMessagePolicy",
+    "requested": null,
+    "actual": "File"
+  },
+  {
+    "path": "/spec/dnsPolicy",
+    "requested": null,
+    "actual": "ClusterFirst"
+  },
+  {
+    "path": "/spec/schedulerName",
+    "requested": null,
+    "actual": "default-scheduler"
+  },
+  {
+    "path": "/spec/terminationGracePeriodSeconds",
+    "requested": null,
+    "actual": 30
+  },
+  {
+    "path": "/spec/volumes/0/projected/defaultMode",
+    "requested": null,
+    "actual": 420
+  }
+]

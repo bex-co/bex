@@ -1,0 +1,90 @@
+[
+  {
+    "kind": "Job",
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:36:28.342024+00:00",
+    "request_sha256": "c25e9a093137fd7fe1348a9abd5321253553cf90d45ea27ed28fa8b8fa4596cd",
+    "uid": "9d2b2661-f62b-40b8-b091-2b6807cff614",
+    "api_created_at": "2026-10-30T05:36:28Z",
+    "cleanup": "already-absent",
+    "verified_absent_at": "2026-10-30T05:42:05.056253+00:00"
+  },
+  {
+    "kind": "Job",
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:39:06.276992+00:00",
+    "request_sha256": "c798d43207551c8705fe3ff8bd0608f4d72b2b427630df688c58d9c04da6bb00",
+    "uid": "b25686b3-2ab4-4066-a5ec-5c62eee33115",
+    "api_created_at": "2026-10-30T05:39:06Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:05.161833+00:00"
+  },
+  {
+    "kind": "Job",
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:39:43.182229+00:00",
+    "request_sha256": "1f54ab89719473c15857d480843940b54cc0a761779414c7bbccca38d75f23e4",
+    "uid": "a7f4594d-6c72-41d7-91b1-ce23252723af",
+    "api_created_at": "2026-10-30T05:39:43Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.310880+00:00"
+  },
+  {
+    "kind": "Secret",
+    "name": "qa-20261030-w8-predeploy-72a314da-env-files",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:36:07.404243+00:00",
+    "request_sha256": "0f2673b5fb34eacd286beff22d22fdd37db6ed2f14e5a443b36e1460debc13d9",
+    "uid": "7c4aa9df-2187-4899-b555-9993b8e243af",
+    "api_created_at": "2026-10-30T05:36:07Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.377718+00:00"
+  },
+  {
+    "kind": "Secret",
+    "name": "qa-20261030-w8-predeploy-72a314da-pull",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:36:07.523717+00:00",
+    "request_sha256": "361e0bc94fa134d72abf61c77bee3621fd3d6835a95bbe0fc9f7fef523cab81f",
+    "uid": "76cb4477-1eaf-492f-9201-551784616f8a",
+    "api_created_at": "2026-10-30T05:36:07Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.444349+00:00"
+  },
+  {
+    "kind": "NetworkPolicy",
+    "name": "qa-20261030-w8-predeploy-72a314da-deny-egress",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:36:07.636843+00:00",
+    "request_sha256": "1947a84b44e594f7a04cd35b6b2bd186427ccfe31b260a201cd642540d399e59",
+    "uid": "19f71cd8-4840-4cd2-acc8-b0a0f48a8364",
+    "api_created_at": "2026-10-30T05:36:07Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.512959+00:00"
+  },
+  {
+    "kind": "Secret",
+    "name": "qa-20261030-w8-predeploy-72a314da-files",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:38:58.168407+00:00",
+    "request_sha256": "d59d630ed137101c5242db297600446bf0cfe9d5c12a7b7c702eb09c8754e5c0",
+    "uid": "8e023fc6-f783-4a9f-af99-8ddb63fcc1ba",
+    "api_created_at": "2026-10-30T05:38:58Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.577834+00:00"
+  },
+  {
+    "kind": "ConfigMap",
+    "name": "qa-20261030-w8-predeploy-72a314da",
+    "namespace": "dev-8",
+    "created_at": "2026-10-30T05:35:08.454190+00:00",
+    "request_sha256": "4018c02cb5b9f8a674304c4a0fd2a4e862a0b74dbf660ff717f61ef8feb4d6f9",
+    "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+    "api_created_at": "2026-10-30T05:35:08Z",
+    "cleanup": "UID-precondition-delete-accepted",
+    "verified_absent_at": "2026-10-30T05:42:06.644011+00:00"
+  }
+]

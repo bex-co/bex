@@ -1,0 +1,602 @@
+{
+  "descriptor": {
+    "name": "syft",
+    "version": "1.55.0",
+    "configuration": {
+      "catalogers": {
+        "requested": {
+          "default": [
+            "image",
+            "file"
+          ]
+        },
+        "used": [
+          "alpm-db-cataloger",
+          "apk-db-cataloger",
+          "apple-app-bundle-cataloger",
+          "binary-classifier-cataloger",
+          "bitnami-cataloger",
+          "cargo-auditable-binary-cataloger",
+          "conan-info-cataloger",
+          "dotnet-deps-binary-cataloger",
+          "dotnet-packages-lock-cataloger",
+          "dpkg-db-cataloger",
+          "elf-binary-package-cataloger",
+          "file-content-cataloger",
+          "file-digest-cataloger",
+          "file-executable-cataloger",
+          "file-metadata-cataloger",
+          "gguf-cataloger",
+          "go-module-binary-cataloger",
+          "graalvm-native-image-cataloger",
+          "homebrew-cataloger",
+          "java-archive-cataloger",
+          "java-jvm-cataloger",
+          "javascript-package-cataloger",
+          "linux-kernel-cataloger",
+          "lua-rock-cataloger",
+          "nix-cataloger",
+          "pe-binary-package-cataloger",
+          "perl-cpan-installed-cataloger",
+          "php-composer-installed-cataloger",
+          "php-interpreter-cataloger",
+          "php-pear-serialized-cataloger",
+          "portage-cataloger",
+          "python-installed-package-cataloger",
+          "r-package-cataloger",
+          "rpm-db-cataloger",
+          "ruby-installed-gemspec-cataloger",
+          "safetensors-cataloger",
+          "snap-cataloger",
+          "wordpress-plugins-cataloger"
+        ]
+      },
+      "data-generation": {
+        "generate-cpes": true
+      },
+      "files": {
+        "content": {
+          "globs": null,
+          "skip-files-above-size": 0
+        },
+        "hashers": [
+          "sha-1",
+          "sha-256"
+        ],
+        "selection": "owned-by-package"
+      },
+      "licenses": {
+        "coverage": 75,
+        "include-content": "none"
+      },
+      "packages": {
+        "binary": [
+          "python-binary",
+          "python-binary-lib",
+          "pypy-binary-lib",
+          "go-binary",
+          "julia-binary",
+          "julia-binary",
+          "helm",
+          "redis-binary",
+          "valkey-binary",
+          "nodejs-binary",
+          "busybox-binary",
+          "util-linux-binary",
+          "haproxy-binary",
+          "perl-binary",
+          "php-composer-binary",
+          "httpd-binary",
+          "memcached-binary",
+          "traefik-binary",
+          "arangodb-binary",
+          "postgresql-binary",
+          "mysql-binary",
+          "mysql-binary",
+          "mysql-binary",
+          "mysqld-mysql-cluster-legacy-binary",
+          "mysqld-binary",
+          "ndbd-binary",
+          "ndbmtd-binary",
+          "ndb_mgmd-binary",
+          "xtrabackup-binary",
+          "mariadb-binary",
+          "rust-standard-library-linux",
+          "rust-standard-library-macos",
+          "ruby-binary",
+          "erlang-binary",
+          "erlang-alpine-binary",
+          "erlang-library",
+          "swipl-binary",
+          "dart-binary",
+          "deno-binary",
+          "bun-binary",
+          "haskell-ghc-binary",
+          "haskell-cabal-binary",
+          "haskell-stack-binary",
+          "consul-binary",
+          "hashicorp-vault-binary",
+          "nginx-binary",
+          "bash-binary",
+          "openssl-binary",
+          "openldap-search-binary",
+          "qt-qtbase-lib",
+          "gcc-binary",
+          "fluent-bit-binary",
+          "wordpress-cli-binary",
+          "curl-binary",
+          "lighttpd-binary",
+          "proftpd-binary",
+          "zstd-binary",
+          "xz-binary",
+          "gzip-binary",
+          "sqlcipher-binary",
+          "jq-binary",
+          "chrome-binary",
+          "firefox-binary",
+          "ffmpeg-binary",
+          "ffmpeg-library",
+          "ffmpeg-library",
+          "elixir-binary",
+          "elixir-library",
+          "istio-binary",
+          "istio-binary",
+          "grafana-binary",
+          "grafana-binary",
+          "envoy-binary",
+          "mongodb-binary",
+          "ingress-nginx-binary",
+          "filebeat-binary",
+          "metricbeat-binary",
+          "heartbeat-binary",
+          "packetbeat-binary",
+          "auditbeat-binary",
+          "elastic-agent-binary",
+          "krb5-library",
+          "heimdal-krb5-library",
+          "java-binary",
+          "java-jdb-binary"
+        ],
+        "cpp": {
+          "vcpkg-allow-git-clone": false
+        },
+        "dotnet": {
+          "dep-packages-must-claim-dll": true,
+          "dep-packages-must-have-dll": false,
+          "exclude-project-references": true,
+          "propagate-dll-claims-to-parents": true,
+          "relax-dll-claims-when-bundling-detected": true
+        },
+        "golang": {
+          "capture-symbols": "none",
+          "local-mod-cache-dir": "/Users/tianpan/go/pkg/mod",
+          "local-vendor-dir": "",
+          "main-module-version": {
+            "from-build-settings": true,
+            "from-contents": false,
+            "from-ld-flags": true
+          },
+          "proxies": [
+            "https://proxy.golang.org",
+            "direct"
+          ],
+          "search-local-mod-cache-licenses": false,
+          "search-local-vendor-licenses": false,
+          "search-remote-licenses": false,
+          "use-packages-lib": true
+        },
+        "java-archive": {
+          "include-indexed-archives": true,
+          "include-unindexed-archives": false,
+          "maven-base-url": "https://repo1.maven.org/maven2",
+          "maven-localrepository-dir": "/Users/tianpan/.m2/repository",
+          "max-parent-recursive-depth": 0,
+          "resolve-transitive-dependencies": false,
+          "use-maven-localrepository": false,
+          "use-network": false
+        },
+        "javascript": {
+          "include-dev-dependencies": false,
+          "npm-base-url": "https://registry.npmjs.org",
+          "search-remote-licenses": false
+        },
+        "linux-kernel": {
+          "catalog-modules": true
+        },
+        "nix": {
+          "capture-owned-files": false
+        },
+        "python": {
+          "guess-unpinned-requirements": false,
+          "pypi-base-url": "https://pypi.org/pypi",
+          "search-remote-licenses": false
+        }
+      },
+      "relationships": {
+        "exclude-binary-packages-with-file-ownership-overlap": true,
+        "package-file-ownership": true,
+        "package-file-ownership-overlap": true
+      },
+      "search": {
+        "scope": "squashed"
+      }
+    }
+  },
+  "source_image_id": "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da",
+  "source_manifest_digest": "sha256:fe8d82966807e6792ad9c030fb3ec9e049c6b02c0dc165f2e31e9772b2f17036",
+  "source_architecture": "amd64",
+  "artifact_count": 1030,
+  "selected_packages": [
+    {
+      "id": "d52d25912aba3a2c",
+      "name": "libbrotli1",
+      "version": "1.0.9-2+deb12u1",
+      "type": "deb",
+      "foundBy": "dpkg-db-cataloger",
+      "locations": [
+        {
+          "path": "/var/lib/dpkg/status",
+          "layerID": "sha256:a9fd9e9396943705ac45f149bf68bc6d037a65805907603e0b6e49cf9b191303",
+          "accessPath": "/var/lib/dpkg/status",
+          "annotations": {
+            "evidence": "primary"
+          }
+        },
+        {
+          "path": "/usr/share/doc/libbrotli1/copyright",
+          "layerID": "sha256:8ce3aa3b3f608dc75a56272e1ea1f5d40e6682f05bf7cfe49059b3926b633086",
+          "accessPath": "/usr/share/doc/libbrotli1/copyright",
+          "annotations": {
+            "evidence": "supporting"
+          }
+        },
+        {
+          "path": "/var/lib/dpkg/info/libbrotli1:amd64.md5sums",
+          "layerID": "sha256:8ce3aa3b3f608dc75a56272e1ea1f5d40e6682f05bf7cfe49059b3926b633086",
+          "accessPath": "/var/lib/dpkg/info/libbrotli1:amd64.md5sums",
+          "annotations": {
+            "evidence": "supporting"
+          }
+        }
+      ],
+      "licenses": [
+        {
+          "value": "MIT",
+          "spdxExpression": "MIT",
+          "type": "declared",
+          "urls": [],
+          "locations": [
+            {
+              "path": "/usr/share/doc/libbrotli1/copyright",
+              "layerID": "sha256:8ce3aa3b3f608dc75a56272e1ea1f5d40e6682f05bf7cfe49059b3926b633086",
+              "accessPath": "/usr/share/doc/libbrotli1/copyright"
+            }
+          ]
+        }
+      ],
+      "language": "",
+      "cpes": [
+        {
+          "cpe": "cpe:2.3:a:libbrotli1:libbrotli1:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        }
+      ],
+      "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli",
+      "metadataType": "dpkg-db-entry",
+      "metadata": {
+        "package": "libbrotli1",
+        "source": "brotli",
+        "version": "1.0.9-2+deb12u1",
+        "sourceVersion": "",
+        "architecture": "amd64",
+        "maintainer": "Tomasz Buchert <tomasz@debian.org>",
+        "installedSize": 783,
+        "depends": [
+          "libc6 (>= 2.29)"
+        ],
+        "files": [
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1.0.9",
+            "digest": {
+              "algorithm": "md5",
+              "value": "2b71a5418ed7bb6024b9219165f75985"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.0.9",
+            "digest": {
+              "algorithm": "md5",
+              "value": "758871fb886b8b85ca661250da8360de"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlienc.so.1.0.9",
+            "digest": {
+              "algorithm": "md5",
+              "value": "466c321134943269da98ab253c460d08"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/share/doc/libbrotli1/changelog.Debian.gz",
+            "digest": {
+              "algorithm": "md5",
+              "value": "b3a191a782e5910734ad9d58de1f2fa3"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/share/doc/libbrotli1/copyright",
+            "digest": {
+              "algorithm": "md5",
+              "value": "88a64abee92ba0e2810574d815fa4900"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/share/lintian/overrides/libbrotli1",
+            "digest": {
+              "algorithm": "md5",
+              "value": "45a863a88b8a62194767671f7d666eab"
+            },
+            "isConfigFile": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "3bb63a261bb18356",
+      "name": "libbrotli-dev",
+      "version": "1.0.9-2+deb12u1",
+      "type": "deb",
+      "foundBy": "dpkg-db-cataloger",
+      "locations": [
+        {
+          "path": "/var/lib/dpkg/status",
+          "layerID": "sha256:a9fd9e9396943705ac45f149bf68bc6d037a65805907603e0b6e49cf9b191303",
+          "accessPath": "/var/lib/dpkg/status",
+          "annotations": {
+            "evidence": "primary"
+          }
+        },
+        {
+          "path": "/usr/share/doc/libbrotli-dev/copyright",
+          "layerID": "sha256:1c381b6b4719cbbbf63bce1d83ace1f4a50601c94b6334811303500e88393801",
+          "accessPath": "/usr/share/doc/libbrotli-dev/copyright",
+          "annotations": {
+            "evidence": "supporting"
+          }
+        },
+        {
+          "path": "/var/lib/dpkg/info/libbrotli-dev:amd64.md5sums",
+          "layerID": "sha256:1c381b6b4719cbbbf63bce1d83ace1f4a50601c94b6334811303500e88393801",
+          "accessPath": "/var/lib/dpkg/info/libbrotli-dev:amd64.md5sums",
+          "annotations": {
+            "evidence": "supporting"
+          }
+        }
+      ],
+      "licenses": [
+        {
+          "value": "MIT",
+          "spdxExpression": "MIT",
+          "type": "declared",
+          "urls": [],
+          "locations": [
+            {
+              "path": "/usr/share/doc/libbrotli-dev/copyright",
+              "layerID": "sha256:1c381b6b4719cbbbf63bce1d83ace1f4a50601c94b6334811303500e88393801",
+              "accessPath": "/usr/share/doc/libbrotli-dev/copyright"
+            }
+          ]
+        }
+      ],
+      "language": "",
+      "cpes": [
+        {
+          "cpe": "cpe:2.3:a:libbrotli-dev:libbrotli-dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        },
+        {
+          "cpe": "cpe:2.3:a:libbrotli-dev:libbrotli_dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        },
+        {
+          "cpe": "cpe:2.3:a:libbrotli_dev:libbrotli-dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        },
+        {
+          "cpe": "cpe:2.3:a:libbrotli_dev:libbrotli_dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        },
+        {
+          "cpe": "cpe:2.3:a:libbrotli:libbrotli-dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        },
+        {
+          "cpe": "cpe:2.3:a:libbrotli:libbrotli_dev:1.0.9-2\\+deb12u1:*:*:*:*:*:*:*",
+          "source": "syft-generated"
+        }
+      ],
+      "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli",
+      "metadataType": "dpkg-db-entry",
+      "metadata": {
+        "package": "libbrotli-dev",
+        "source": "brotli",
+        "version": "1.0.9-2+deb12u1",
+        "sourceVersion": "",
+        "architecture": "amd64",
+        "maintainer": "Tomasz Buchert <tomasz@debian.org>",
+        "installedSize": 900,
+        "depends": [
+          "libbrotli1 (= 1.0.9-2+deb12u1)"
+        ],
+        "files": [
+          {
+            "path": "/usr/include/brotli/decode.h",
+            "digest": {
+              "algorithm": "md5",
+              "value": "ed8e19a07c2a9152a40d46e5ee1a88fc"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/include/brotli/encode.h",
+            "digest": {
+              "algorithm": "md5",
+              "value": "67ebfdf08ace3f56671fdd2d32a4dfea"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/include/brotli/port.h",
+            "digest": {
+              "algorithm": "md5",
+              "value": "40989c8f42ff3fa0efdeea3fe2060dfa"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/include/brotli/types.h",
+            "digest": {
+              "algorithm": "md5",
+              "value": "4d772e4c18afe1d9051a92b0ea1aefab"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlicommon.a",
+            "digest": {
+              "algorithm": "md5",
+              "value": "695898adb3f74dc6a695df13a5c6e527"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlidec.a",
+            "digest": {
+              "algorithm": "md5",
+              "value": "9f93531da6a0f8200b8a26a746e4afd5"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/libbrotlienc.a",
+            "digest": {
+              "algorithm": "md5",
+              "value": "e79af8b8a91e7292c3be7d02a5d66012"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/pkgconfig/libbrotlicommon.pc",
+            "digest": {
+              "algorithm": "md5",
+              "value": "719feb2aae70b9c3ef553a2a4bf53206"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/pkgconfig/libbrotlidec.pc",
+            "digest": {
+              "algorithm": "md5",
+              "value": "910666d03d9aa07768e4967867682879"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/lib/x86_64-linux-gnu/pkgconfig/libbrotlienc.pc",
+            "digest": {
+              "algorithm": "md5",
+              "value": "6cb7280c05b6d995acd4a7fe3f765bca"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/share/doc/libbrotli-dev/changelog.Debian.gz",
+            "digest": {
+              "algorithm": "md5",
+              "value": "96880889bd55420a02e74a2153598321"
+            },
+            "isConfigFile": false
+          },
+          {
+            "path": "/usr/share/doc/libbrotli-dev/copyright",
+            "digest": {
+              "algorithm": "md5",
+              "value": "88a64abee92ba0e2810574d815fa4900"
+            },
+            "isConfigFile": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "f4894e88d9341e12",
+      "name": "python",
+      "version": "3.14.8",
+      "type": "binary",
+      "foundBy": "binary-classifier-cataloger",
+      "locations": [
+        {
+          "path": "/usr/local/bin/python3.14",
+          "layerID": "sha256:f4dd1b15dbd4700af0e70a8bf3064d4396c88618fa0853d7b64ebf3641db4c7b",
+          "accessPath": "/usr/local/bin/python3.14",
+          "annotations": {
+            "evidence": "primary"
+          }
+        },
+        {
+          "path": "/usr/local/lib/libpython3.14.so.1.0",
+          "layerID": "sha256:f4dd1b15dbd4700af0e70a8bf3064d4396c88618fa0853d7b64ebf3641db4c7b",
+          "accessPath": "/usr/local/lib/libpython3.14.so.1.0",
+          "annotations": {
+            "evidence": "supporting"
+          }
+        }
+      ],
+      "licenses": [],
+      "language": "",
+      "cpes": [
+        {
+          "cpe": "cpe:2.3:a:python_software_foundation:python:3.14.8:*:*:*:*:*:*:*",
+          "source": "nvd-cpe-dictionary"
+        },
+        {
+          "cpe": "cpe:2.3:a:python:python:3.14.8:*:*:*:*:*:*:*",
+          "source": "nvd-cpe-dictionary"
+        }
+      ],
+      "purl": "pkg:generic/python@3.14.8",
+      "metadataType": "binary-signature",
+      "metadata": {
+        "matches": [
+          {
+            "classifier": "python-binary",
+            "location": {
+              "path": "/usr/local/bin/python3.14",
+              "layerID": "sha256:f4dd1b15dbd4700af0e70a8bf3064d4396c88618fa0853d7b64ebf3641db4c7b",
+              "accessPath": "/usr/local/bin/python3.14",
+              "annotations": {
+                "evidence": "primary"
+              }
+            }
+          },
+          {
+            "classifier": "python-binary",
+            "location": {
+              "path": "/usr/local/lib/libpython3.14.so.1.0",
+              "layerID": "sha256:f4dd1b15dbd4700af0e70a8bf3064d4396c88618fa0853d7b64ebf3641db4c7b",
+              "accessPath": "/usr/local/lib/libpython3.14.so.1.0",
+              "annotations": {
+                "evidence": "supporting"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

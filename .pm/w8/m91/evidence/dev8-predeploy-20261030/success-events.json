@@ -1,0 +1,170 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-30T05:39:06.374456Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+        "namespace": "dev-8",
+        "resourceVersion": "23265797",
+        "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned dev-8/predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95 to bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:06Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95.18e338169b981dd4",
+        "namespace": "dev-8",
+        "resourceVersion": "23265801",
+        "uid": "799a43d4-e75d-425e-b22d-2c28a8fdc2dc"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-bex-kpwfg-98bls",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:06Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+        "namespace": "dev-8",
+        "resourceVersion": "23265800",
+        "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:39:06Z",
+      "message": "Pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:06Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95.18e33816b95c9f47",
+        "namespace": "dev-8",
+        "resourceVersion": "23265806",
+        "uid": "17b262ee-0ffd-45e2-9608-f3cf2ff9d489"
+      },
+      "reason": "Pulling",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:06Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+        "namespace": "dev-8",
+        "resourceVersion": "23265800",
+        "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:39:06Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 97ms (97ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:06Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95.18e33816bf2885d3",
+        "namespace": "dev-8",
+        "resourceVersion": "23265808",
+        "uid": "0d7a33b1-6182-45d3-b38e-14af4cf4ad94"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:07Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+        "namespace": "dev-8",
+        "resourceVersion": "23265800",
+        "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:39:07Z",
+      "message": "Container created",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:07Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95.18e33816c1d20918",
+        "namespace": "dev-8",
+        "resourceVersion": "23265809",
+        "uid": "236d5baf-333a-4c0e-ad09-eb70492ec719"
+      },
+      "reason": "Created",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:07Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+        "namespace": "dev-8",
+        "resourceVersion": "23265800",
+        "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:39:07Z",
+      "message": "Container started",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:07Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95.18e33816c5b246de",
+        "namespace": "dev-8",
+        "resourceVersion": "23265810",
+        "uid": "25f3112c-1390-4e56-950b-8704cebc7732"
+      },
+      "reason": "Started",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

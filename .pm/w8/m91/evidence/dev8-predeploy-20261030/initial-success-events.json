@@ -1,0 +1,302 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-30T05:36:28.403719Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263882",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned dev-8/predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk to bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:36:28Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f1d3cdf08b",
+        "namespace": "dev-8",
+        "resourceVersion": "23263886",
+        "uid": "fd454920-c69f-4c2f-bc54-141165f294a4"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-bex-kpwfg-98bls",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 6,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:36:29Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:40Z",
+      "message": "Pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:36:29Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f201c2a30b",
+        "namespace": "dev-8",
+        "resourceVersion": "23264717",
+        "uid": "7bc9d73b-22d0-4901-b062-4d62d907e6dc"
+      },
+      "reason": "Pulling",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:36:50Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:36:50Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 21.753s (21.753s including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:36:50Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f712622e81",
+        "namespace": "dev-8",
+        "resourceVersion": "23264109",
+        "uid": "721829c0-b8b7-41a5-b510-092e7eef7937"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 6,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:36:50Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:40Z",
+      "message": "Error: grpc: error while marshaling: string field contains invalid UTF-8",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:36:50Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f71306a056",
+        "namespace": "dev-8",
+        "resourceVersion": "23264719",
+        "uid": "5362de80-3af2-4b5b-8af9-4f3ce9496514"
+      },
+      "reason": "Failed",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Warning"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:36:51Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:36:51Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 100ms (100ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:36:51Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f73b8f9395",
+        "namespace": "dev-8",
+        "resourceVersion": "23264116",
+        "uid": "d1bcf010-79d2-4f65-bdf7-609c3ec32319"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:37:03Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:03Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 70ms (70ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:37:03Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337f9e6d7e77e",
+        "namespace": "dev-8",
+        "resourceVersion": "23264263",
+        "uid": "32d0040a-83b1-4c17-a17a-e64634f83b96"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:37:16Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:16Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 132ms (918ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:37:16Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337fd207e166c",
+        "namespace": "dev-8",
+        "resourceVersion": "23264443",
+        "uid": "056022b5-e367-4f1b-b7f8-9462ab623966"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:37:28Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:28Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 80ms (80ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:37:28Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e337ffb9a13866",
+        "namespace": "dev-8",
+        "resourceVersion": "23264573",
+        "uid": "3c7abeb2-c6d2-40b6-910f-87e9cb1b6e41"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:37:40Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk",
+        "namespace": "dev-8",
+        "resourceVersion": "23263883",
+        "uid": "9dfe7f76-79b4-4c0b-8420-19735de13876"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:37:40Z",
+      "message": "Successfully pulled image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\" in 88ms (88ms including waiting). Image size: 757552775 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:37:40Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1-9gcmk.18e3380285563d51",
+        "namespace": "dev-8",
+        "resourceVersion": "23264718",
+        "uid": "011fffad-723c-468b-93ea-9518f41db387"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

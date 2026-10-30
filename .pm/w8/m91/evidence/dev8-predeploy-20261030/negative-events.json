@@ -1,0 +1,203 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-30T05:39:43.254830Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266249",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned dev-8/predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v to bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f31d5ea9f",
+        "namespace": "dev-8",
+        "resourceVersion": "23266253",
+        "uid": "7d71de44-fe94-4629-b90a-3f07b47bf3a7"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-bex-kpwfg-98bls",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:43Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266251",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:41:06Z",
+      "message": "Pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f4d3fc70f",
+        "namespace": "dev-8",
+        "resourceVersion": "23267281",
+        "uid": "d27e2722-b683-48f7-a777-a070007ebced"
+      },
+      "reason": "Pulling",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:43Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266251",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:41:06Z",
+      "message": "Failed to pull image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": failed to pull and unpack image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": failed to resolve reference \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": pull access denied, repository does not exist or may require authorization: authorization failed: no basic auth credentials",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f4ef5bed4",
+        "namespace": "dev-8",
+        "resourceVersion": "23267282",
+        "uid": "87f5013c-d166-4a18-a627-4d1ec7ecd7c1"
+      },
+      "reason": "Failed",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Warning"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:43Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266251",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:41:06Z",
+      "message": "Error: ErrImagePull",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f4ef70b31",
+        "namespace": "dev-8",
+        "resourceVersion": "23267283",
+        "uid": "025da662-a081-4bdc-a56d-bb22f06205ae"
+      },
+      "reason": "Failed",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Warning"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 9,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:43Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266251",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:41:58Z",
+      "message": "Back-off pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f5a1b5723",
+        "namespace": "dev-8",
+        "resourceVersion": "23267949",
+        "uid": "8d22517a-8953-46b3-843f-180722ba10ea"
+      },
+      "reason": "BackOff",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 9,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-30T05:39:43Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{predeploy}",
+        "kind": "Pod",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v",
+        "namespace": "dev-8",
+        "resourceVersion": "23266251",
+        "uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-30T05:41:58Z",
+      "message": "Error: ImagePullBackOff",
+      "metadata": {
+        "creationTimestamp": "2026-10-30T05:39:43Z",
+        "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-4-6rg7v.18e3381f5a1bc677",
+        "namespace": "dev-8",
+        "resourceVersion": "23267950",
+        "uid": "9c4ed670-015f-4a63-a7d0-16ef1bcd5c7f"
+      },
+      "reason": "Failed",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+      "source": {
+        "component": "kubelet",
+        "host": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+      },
+      "type": "Warning"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

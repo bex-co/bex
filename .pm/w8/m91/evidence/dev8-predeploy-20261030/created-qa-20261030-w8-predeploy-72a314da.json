@@ -1,0 +1,18 @@
+{
+  "apiVersion": "v1",
+  "data": {
+    "expires_at": "2026-10-30T06:33:15.270491+00:00",
+    "purpose": "scratch canonical dev-8 predeploy Job; not an App CR"
+  },
+  "kind": "ConfigMap",
+  "metadata": {
+    "creationTimestamp": "2026-10-30T05:35:08Z",
+    "labels": {
+      "bex.co/qa-owner": "qa-20261030-w8-predeploy-72a314da"
+    },
+    "name": "qa-20261030-w8-predeploy-72a314da",
+    "namespace": "dev-8",
+    "resourceVersion": "23262976",
+    "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d"
+  }
+}

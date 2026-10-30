@@ -1,0 +1,14 @@
+{
+  "pass": true,
+  "job_uid": "a7f4594d-6c72-41d7-91b1-ce23252723af",
+  "pod_uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf",
+  "same_image_manifest": "sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+  "previous_success_cached_image": true,
+  "omitted_pull_secret": true,
+  "PullAlways": true,
+  "observed_reason": "ImagePullBackOff",
+  "observed_error": "Back-off pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": ErrImagePull: failed to pull and unpack image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": failed to resolve reference \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": pull access denied, repository does not exist or may require authorization: authorization failed: no basic auth credentials",
+  "container_never_started": true,
+  "restart_count": 0,
+  "scope": "bounded authentication-denial observation; canceled by UID, not a terminal Job-failure/deadline proof"
+}

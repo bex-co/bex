@@ -1,0 +1,12 @@
+{
+  "ref": "localhost:32828/native-python314-amd64-qa@sha256:1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+  "manifest_sha256_verified": "sha256:1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+  "config_digest": "sha256:c9e31815300eda8f7d8c48619146989fb60983550798133dc98c923eb05ef904",
+  "architecture": "amd64",
+  "python_primary": "3.14.10",
+  "official_base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+  "recipe": "unchanged current deploy/native-base snapshot",
+  "protected_container": "bex-w8-222-python314-amd64-supplier-proof",
+  "source_snapshot_receipt": "setup-receipt.json",
+  "scope": "local pre-publication supplier; no production adoption pin"
+}

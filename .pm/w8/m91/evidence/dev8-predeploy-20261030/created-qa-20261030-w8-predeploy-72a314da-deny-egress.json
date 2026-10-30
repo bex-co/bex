@@ -1,0 +1,34 @@
+{
+  "apiVersion": "networking.k8s.io/v1",
+  "kind": "NetworkPolicy",
+  "metadata": {
+    "creationTimestamp": "2026-10-30T05:36:07Z",
+    "generation": 1,
+    "labels": {
+      "bex.co/qa-owner": "qa-20261030-w8-predeploy-72a314da"
+    },
+    "name": "qa-20261030-w8-predeploy-72a314da-deny-egress",
+    "namespace": "dev-8",
+    "ownerReferences": [
+      {
+        "apiVersion": "v1",
+        "controller": true,
+        "kind": "ConfigMap",
+        "name": "qa-20261030-w8-predeploy-72a314da",
+        "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d"
+      }
+    ],
+    "resourceVersion": "23263613",
+    "uid": "19f71cd8-4840-4cd2-acc8-b0a0f48a8364"
+  },
+  "spec": {
+    "podSelector": {
+      "matchLabels": {
+        "app.bex.co/app-uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d"
+      }
+    },
+    "policyTypes": [
+      "Egress"
+    ]
+  }
+}

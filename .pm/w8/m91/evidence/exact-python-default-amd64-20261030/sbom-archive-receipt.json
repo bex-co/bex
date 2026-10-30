@@ -1,0 +1,16 @@
+{
+  "generated-image.syft.json": {
+    "archive": "generated-image.syft.json.gz",
+    "uncompressed_sha256": "196c9277e07108dceeaa681f9548c93cb82b7666893ccb4a5333b63c3be5a764",
+    "gzip_sha256": "34b2c8c88187318f87cf1257f0c7c88ee51229d6cc0f062bb8a76892b80b226b",
+    "uncompressed_bytes": 23509734,
+    "gzip_bytes": 4083283
+  },
+  "generated-image.spdx.json": {
+    "archive": "generated-image.spdx.json.gz",
+    "uncompressed_sha256": "72733154d0c6c12238e112d43bcd7b4013408fcff75ec8334bbadfb461785c62",
+    "gzip_sha256": "830e49706399f5d19cbc74eee7b72da774f4b72b968895d3c0ad3da2dee2cfc0",
+    "uncompressed_bytes": 23418941,
+    "gzip_bytes": 3349655
+  }
+}

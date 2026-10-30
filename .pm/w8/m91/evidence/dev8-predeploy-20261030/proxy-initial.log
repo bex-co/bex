@@ -1,0 +1,21 @@
+time="2026-10-30T05:35:08.88230414Z" level=debug msg="using \"text\" logging formatter"
+time="2026-10-30T05:35:08.883990666Z" level=info msg="redis not configured" environment=development go.version=go1.26.8 instance.id=01a18b4e-0652-71dd-9219-dd74ee24744f service=registry version=3.1.2
+time="2026-10-30T05:35:08.884027667Z" level=info msg="using inmemory blob descriptor cache" environment=development go.version=go1.26.8 instance.id=01a18b4e-0652-71dd-9219-dd74ee24744f service=registry version=3.1.2
+time="2026-10-30T05:35:08.884036792Z" level=info msg="Starting upload purge in 53m0s" environment=development go.version=go1.26.8 instance.id=01a18b4e-0652-71dd-9219-dd74ee24744f service=registry version=3.1.2
+panic: unable to configure authorization (htpasswd): open /tmp/qa-htpasswd: permission denied
+
+goroutine 1 [running]:
+github.com/distribution/distribution/v3/registry/handlers.NewApp({0x1b106c0?, 0x6d0d931b5c80?}, 0x6d0d931cc508)
+	github.com/distribution/distribution/v3/registry/handlers/app.go:353 +0x1738
+github.com/distribution/distribution/v3/registry.NewRegistry({0x1b106c0?, 0x6d0d931b4e70?}, 0x6d0d931cc508)
+	github.com/distribution/distribution/v3/registry/registry.go:147 +0x38
+github.com/distribution/distribution/v3/registry.init.func1(0x31d0fa0, {0x6d0d93150be0, 0x1, 0x1})
+	github.com/distribution/distribution/v3/registry/registry.go:116 +0xcc
+github.com/spf13/cobra.(*Command).execute(0x31d0fa0, {0x6d0d93150ba0, 0x1, 0x1})
+	github.com/spf13/cobra@v1.10.2/command.go:1019 +0x7fc
+github.com/spf13/cobra.(*Command).ExecuteC(0x31d1280)
+	github.com/spf13/cobra@v1.10.2/command.go:1148 +0x350
+github.com/spf13/cobra.(*Command).Execute(0x30f3b28?)
+	github.com/spf13/cobra@v1.10.2/command.go:1071 +0x1c
+main.main()
+	github.com/distribution/distribution/v3/cmd/registry/main.go:26 +0x24

@@ -1,0 +1,7 @@
+{
+  "reason": "binary file key incorrectly shared with envFrom caused pre-execution CRI invalid-UTF8",
+  "initial_job_uid": "9d2b2661-f62b-40b8-b091-2b6807cff614",
+  "initial_job_deleted_and_pods_absent": true,
+  "own_secret_uid_test_patch": "7c4aa9df-2187-4899-b555-9993b8e243af",
+  "correction": "own separate binary file Secret, text-only env Secret; canonical PodTemplate generated anew; no security relaxation"
+}

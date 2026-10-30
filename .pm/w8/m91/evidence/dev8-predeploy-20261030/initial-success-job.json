@@ -1,0 +1,193 @@
+{
+  "kind": "Job",
+  "apiVersion": "batch/v1",
+  "metadata": {
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-1",
+    "namespace": "dev-8",
+    "labels": {
+      "app.bex.co/app": "qa-20261030-w8-predeploy-72a314da",
+      "app.bex.co/app-uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+      "app.bex.co/component": "predeploy",
+      "app.bex.co/predeploy": "qa-20261030-w8-predeploy-72a314da",
+      "app.bex.co/workspace": "dev-8"
+    },
+    "ownerReferences": [
+      {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "name": "qa-20261030-w8-predeploy-72a314da",
+        "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+        "controller": true
+      }
+    ]
+  },
+  "spec": {
+    "activeDeadlineSeconds": 600,
+    "backoffLimit": 0,
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.bex.co/app": "qa-20261030-w8-predeploy-72a314da",
+          "app.bex.co/app-uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+          "app.bex.co/component": "predeploy",
+          "app.bex.co/predeploy": "qa-20261030-w8-predeploy-72a314da",
+          "app.bex.co/workspace": "dev-8"
+        },
+        "annotations": {
+          "app.bex.co/generation": "1"
+        }
+      },
+      "spec": {
+        "volumes": [
+          {
+            "name": "bex-secret-files",
+            "projected": {
+              "sources": [
+                {
+                  "secret": {
+                    "name": "qa-20261030-w8-predeploy-72a314da-env-files",
+                    "optional": true
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "predeploy",
+            "image": "localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+            "command": [
+              "/bin/sh",
+              "-c",
+              "exec /usr/bin/python3 - <<'BEX_DEV8_QA_PY'\nimport base64,contextlib,hashlib,io,json,os,runpy,subprocess,sys\nfrom pathlib import Path\nr=Path('/opt/render/project/src');os.chdir(r)\nliteral='literal $$(QA_SECRET_MARKER) $$HOME; \"雪\"\\ntrailing\\n'\nassert os.environ['QA_LITERAL']==literal\nassert os.environ['QA_EMPTY']==''\nassert os.environ['QA_SECRET_MARKER']=='own-synthetic-only'\nassert os.environ['QA_OVERRIDE']=='literal-wins'\nassert os.environ['PORT']=='10000'\nassert not Path('/var/run/secrets/kubernetes.io/serviceaccount/token').exists()\npayload=Path('/etc/secrets/proof.txt').read_bytes()\nassert payload==b'own-dev8-file\\x00\\xff\\n'\ntry:Path('/etc/secrets/proof.txt').write_bytes(b'bad')\nexcept OSError:pass\nelse:raise AssertionError('secret-file mount writable')\nassert not Path('/etc/secrets/.dockerconfigjson').exists()\nassert all('dockerconfigjson' not in k.lower() for k in os.environ)\nprint('BEX_DEV8_ENV_FILE '+json.dumps({'pass':True,'literal_sha256':hashlib.sha256(literal.encode()).hexdigest(),'secret_file_sha256':hashlib.sha256(payload).hexdigest(),'empty_preserved':True,'envFrom':True,'env_precedence':True,'port_precedence':True,'read_only_secret_file':True,'serviceaccount_token_absent':True,'pull_credential_not_projected':True}),flush=True)\n# Authored driver is unchanged. Its historic Docker-network field is explicitly\n# removed from the current Job receipt; it is not evidence for this execution.\ncap=io.StringIO()\nwith contextlib.redirect_stdout(cap):\n sys.argv=['extended-checks.py','predeploy']\n runpy.run_path(str(r/'extended-checks.py'),run_name='__main__')\nsummary=json.loads(cap.getvalue());summary.pop('network',None);summary.pop('scope',None)\nsummary['actual_execution_scope']='Kubernetes dev-8 Job; canonical userns/hardening; own deny-egress NetworkPolicy; loopback consumers; companion Python3.11; no Docker-network-none claim'\nprint('BEX_DEV8_UTILITIES '+json.dumps(summary,ensure_ascii=False),flush=True)\nproofs={}\nfor f in sorted((r/'qa-output').glob('runtime-*-predeploy.json')):\n proofs[f.name]=json.loads(f.read_text())\nassert len(proofs)==13 and all(len(x)==3 and all(q['pass'] for q in x) for x in proofs.values())\nprint('BEX_DEV8_HTTP_PROOFS '+json.dumps(proofs,ensure_ascii=False),flush=True)\nidentities={}\nfor f in sorted((r/'fixtures').rglob('*')):\n if f.is_file() and '__pycache__' not in f.parts:\n  b=f.read_bytes();identities[str(f.relative_to(r))]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\nfor n in ['extended-checks.py','local-specs.json','pg18.dump.b64','pg18-rows.txt','png-decoder.py']:\n b=(r/n).read_bytes();identities[n]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\nprint('BEX_DEV8_IDENTITIES '+json.dumps(identities,sort_keys=True),flush=True)\nprint('BEX_DEV8_PASS',flush=True)\nBEX_DEV8_QA_PY\n"
+            ],
+            "envFrom": [
+              {
+                "secretRef": {
+                  "name": "qa-20261030-w8-predeploy-72a314da-env-files"
+                }
+              }
+            ],
+            "env": [
+              {
+                "name": "QA_LITERAL",
+                "value": "literal $$(QA_SECRET_MARKER) $$HOME; \"雪\"\ntrailing\n"
+              },
+              {
+                "name": "QA_EMPTY"
+              },
+              {
+                "name": "QA_OVERRIDE",
+                "value": "literal-wins"
+              },
+              {
+                "name": "RENDER",
+                "value": "true"
+              },
+              {
+                "name": "IS_PULL_REQUEST",
+                "value": "false"
+              },
+              {
+                "name": "RENDER_CPU_COUNT",
+                "value": "0.5"
+              },
+              {
+                "name": "RENDER_SERVICE_ID",
+                "value": "qa-20261030-w8-predeploy-72a314da"
+              },
+              {
+                "name": "RENDER_SERVICE_NAME",
+                "value": "qa-20261030-w8-predeploy-72a314da"
+              },
+              {
+                "name": "RENDER_SERVICE_TYPE",
+                "value": "web"
+              },
+              {
+                "name": "RENDER_DISCOVERY_SERVICE",
+                "value": "qa-20261030-w8-predeploy-72a314da-discovery"
+              },
+              {
+                "name": "RENDER_GIT_BRANCH",
+                "value": "main"
+              },
+              {
+                "name": "RENDER_GIT_REPO_SLUG",
+                "value": "bex-co/git-fixtures"
+              },
+              {
+                "name": "RENDER_WEB_CONCURRENCY",
+                "value": "1"
+              },
+              {
+                "name": "RENDER_INSTANCE_ID",
+                "valueFrom": {
+                  "fieldRef": {
+                    "apiVersion": "v1",
+                    "fieldPath": "metadata.name"
+                  }
+                }
+              },
+              {
+                "name": "PORT",
+                "value": "10000"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "500m",
+                "ephemeral-storage": "2Gi",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "500m",
+                "ephemeral-storage": "2Gi",
+                "memory": "512Mi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "bex-secret-files",
+                "readOnly": true,
+                "mountPath": "/etc/secrets"
+              }
+            ],
+            "imagePullPolicy": "Always",
+            "securityContext": {
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "allowPrivilegeEscalation": false,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            }
+          }
+        ],
+        "restartPolicy": "Never",
+        "nodeSelector": {
+          "bex.co/pool": "tenant"
+        },
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "imagePullSecrets": [
+          {
+            "name": "qa-20261030-w8-predeploy-72a314da-pull"
+          }
+        ],
+        "enableServiceLinks": false,
+        "hostUsers": false
+      }
+    },
+    "ttlSecondsAfterFinished": 3600
+  },
+  "status": {}
+}

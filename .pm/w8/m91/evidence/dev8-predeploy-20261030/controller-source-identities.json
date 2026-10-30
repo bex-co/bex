@@ -1,0 +1,30 @@
+{
+  "lego/operator/internal/controller/app_controller.go": {
+    "bytes": 366601,
+    "sha256": "4c174e9f6e7e807f28cb8fabeea1bd1e57faf8e8caec27c10e66de83a5ca482f"
+  },
+  "lego/operator/internal/controller/shell_command.go": {
+    "bytes": 6186,
+    "sha256": "1701be0f1491541408967236d3f9bb870041c7796b86baec7d952a63cd842365"
+  },
+  "lego/operator/internal/controller/deployment_projection.go": {
+    "bytes": 30287,
+    "sha256": "fe00a6fc3deac657ec2687c15b9bbb08dea36c12c3b7f368dffeec361feccb23"
+  },
+  "lego/operator/internal/controller/container_policy.go": {
+    "bytes": 4134,
+    "sha256": "2c3841633148787f3e86997c959718e9dc50f8074e9f13321361ca18618ae9d5"
+  },
+  "lego/operator/internal/predeploy/predeploy.go": {
+    "bytes": 18984,
+    "sha256": "58733801fc517ec0b15abe2969a99b76f527c6371bcca82b6f392346f557b95c"
+  },
+  "lego/operator/internal/execution/security.go": {
+    "bytes": 5430,
+    "sha256": "52051249d74093d426e0054b1e5ad7a0acd77c3e86f6930ea228b79cb728a04c"
+  },
+  "lego/operator/internal/controller/predeploy_pull_secret_test.go": {
+    "bytes": 4819,
+    "sha256": "aba5d02731083634a34d7c5d16b1c2e3aba510742051af99dbd5864ba96c4d12"
+  }
+}

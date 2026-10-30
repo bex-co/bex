@@ -1,0 +1,45 @@
+[
+  {
+    "path": "/nodeName",
+    "requested": null,
+    "actual": "bex-tenant-0-2kq5n-8m7cl-q7pxt"
+  },
+  {
+    "path": "/preemptionPolicy",
+    "requested": null,
+    "actual": "PreemptLowerPriority"
+  },
+  {
+    "path": "/priority",
+    "requested": null,
+    "actual": 0
+  },
+  {
+    "path": "/serviceAccount",
+    "requested": null,
+    "actual": "default"
+  },
+  {
+    "path": "/serviceAccountName",
+    "requested": null,
+    "actual": "default"
+  },
+  {
+    "path": "/tolerations",
+    "requested": null,
+    "actual": [
+      {
+        "effect": "NoExecute",
+        "key": "node.kubernetes.io/not-ready",
+        "operator": "Exists",
+        "tolerationSeconds": 300
+      },
+      {
+        "effect": "NoExecute",
+        "key": "node.kubernetes.io/unreachable",
+        "operator": "Exists",
+        "tolerationSeconds": 300
+      }
+    ]
+  }
+]
