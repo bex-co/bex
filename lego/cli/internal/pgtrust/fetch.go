@@ -52,8 +52,9 @@ func NewFetcher() func(ctx context.Context, idOrName string) (string, error) {
 			if err := json.Unmarshal(body, &info); err != nil {
 				return "", err
 			}
-			// Absent for an internal-only database: no external endpoint, so no
-			// verify-full string and nothing to trust.
+			// Absent for an internal-only database (no external endpoint) and
+			// for one serving a publicly trusted certificate (w2/m245, a
+			// Render-shaped URL with no sslmode): nothing to trust either way.
 			return info.ServerCACertificate, nil
 		case http.StatusServiceUnavailable:
 			return "", fmt.Errorf("%w (%s)", ErrCAUnavailable, refusalDetail(body))

@@ -111,6 +111,8 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
 
 /**
  * The private server CA an external verify-full client must trust (w4/m95).
+ * Shown only while the API returns one: a database serving a publicly trusted
+ * certificate (w2/m245) needs no download, exactly as on Render.
  * Certificate-only public material: downloading writes exactly the PEM the API
  * returned, and the instructions keep sslmode=verify-full rather than ever
  * suggesting a weaker mode.
