@@ -1,0 +1,22 @@
+{
+  "observed_at": "2026-10-30T19:19:22.084867+00:00",
+  "run": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/completion-run-3.json",
+    "sha256": "b03bfe05a7f3127d5b796b32d4154b0281822333870b2dfa40abde161c2ea50e",
+    "requested_at": "2026-10-30T19:19:21.656733+00:00",
+    "received_at": "2026-10-30T19:19:22.084806+00:00"
+  },
+  "status": "in_progress",
+  "conclusion": null,
+  "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "run_attempt": 1,
+  "request": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/cancel-request.json",
+    "sha256": "dcb16b7ebbcf95cbf862ce38eb4381ee4e783fb3b9347e95bb0586488cce2381"
+  },
+  "review": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/review.json",
+    "sha256": "a9982f61e74c24308dc0419c56731ef2e20253e28510c0873aa71849d11eeb27"
+  },
+  "other_runs_modified": false
+}

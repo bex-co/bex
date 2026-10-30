@@ -1,0 +1,14 @@
+{
+  "source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+  "base": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+  "ancestor": true,
+  "at": "2026-10-30T19:12:40.338993+00:00",
+  "eligible": true,
+  "non_pm_paths": [],
+  "all_paths_allowed": true,
+  "normalized_files": {},
+  "file_modes_unchanged": true,
+  "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+  "catalog_sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+  "base_catalog_sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39"
+}

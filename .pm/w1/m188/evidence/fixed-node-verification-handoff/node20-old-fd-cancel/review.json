@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-30T19:20:41.470642+00:00",
+  "tag": "node-20-bookworm",
+  "replacement_run": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/replacement-run.json",
+    "sha256": "4c724f3a3840c914ddf9d56eb3fb42eafade00590cf4a21f4651b59f9e11a56f",
+    "requested_at": "2026-10-30T19:20:40.209414+00:00",
+    "received_at": "2026-10-30T19:20:40.820761+00:00"
+  },
+  "replacement_job": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/replacement-native-job.json",
+    "sha256": "e31faeceeb614e45f67dc1ba79cd252793e205f79acb86916ddd9e8aeff04c67",
+    "requested_at": "2026-10-30T19:20:40.210484+00:00",
+    "received_at": "2026-10-30T19:20:40.757559+00:00"
+  },
+  "replacement_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "replacement_native_job_id": 124263887574,
+  "source_admission": {
+    "file": "/tmp/bex-m188-6fd4-source-admission.json",
+    "sha256": "a61e8e502d812ff75b028ba5ba3cac9b0091e7c45903c8321348ae2bd9575b1c"
+  },
+  "old_run": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/fresh-old-run.json",
+    "sha256": "76c3b317ce283ddfe25ca7ce1ea650462fa8a8f3d563a3e8c7dc5f6a14db5799",
+    "requested_at": "2026-10-30T19:20:40.821391+00:00",
+    "received_at": "2026-10-30T19:20:41.324264+00:00"
+  },
+  "old_jobs": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node20-old-fd-cancel/fresh-old-jobs.json",
+    "sha256": "343dfd490b1b57adbfe1a2fd8d5f0be64d2e962624bfe1d8cd53264426eb1334",
+    "requested_at": "2026-10-30T19:20:40.821589+00:00",
+    "received_at": "2026-10-30T19:20:41.470245+00:00"
+  },
+  "old_status": "queued",
+  "old_attempt": 1,
+  "old_native_jobs": [
+    {
+      "id": 124090565938,
+      "status": "queued",
+      "runner_id": 0,
+      "started_steps": [],
+      "step_count": 0
+    }
+  ],
+  "zero_start_condition_met": true,
+  "scope": "Only oldFDNode20 after admitted6fd4 actualreplacement nativejob binding",
+  "other_runs_modified": false
+}

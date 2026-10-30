@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-10-30T19:13:52.566112+00:00",
+  "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "dispatch_summary": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/dispatch-summary.json",
+    "sha256": "02c2eb1260926847a73a4ea6e95e5b35de33ed7a830ab4722ddbaf4254e9ce0c"
+  },
+  "actual_run_ids": [
+    41113367877,
+    41113373387
+  ],
+  "requested_inputs": [
+    "node-18-bookworm",
+    "node-20-bookworm"
+  ],
+  "each_actual_run_head_verified": true,
+  "runtime_to_run_mapping_pending_actual_native_jobs": true,
+  "source_registered_without_alias": true,
+  "old_runs_modified": false,
+  "aggregate_written": false
+}

@@ -1,0 +1,14 @@
+{
+  "requested_at": "2026-10-30T19:19:13.904386+00:00",
+  "finished_at": "2026-10-30T19:19:14.608699+00:00",
+  "old_run_id": 41063711572,
+  "tag": "node-18-bookworm",
+  "review": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node18-old-fd-cancel/review.json",
+    "sha256": "a9982f61e74c24308dc0419c56731ef2e20253e28510c0873aa71849d11eeb27"
+  },
+  "exit_code": 0,
+  "http_status": 202,
+  "response_sha256": "047322b64398c77b8edf9fd2cee9f561b3c2c7597e6e6f8542eb801e250c3793",
+  "other_runs_modified": false
+}

@@ -1,0 +1,25 @@
+{
+  "runtime": "node-20-bookworm",
+  "requested_at": "2026-10-30T19:12:43.803450+00:00",
+  "ref": "main",
+  "preflight_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "head_evidence": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/before-node-20-bookworm-main.json",
+    "sha256": "12aa5cac6f01fc5b7aab3b1149177b1362ac5242e5c39174059aa48f2e1f02f7",
+    "requested_at": "2026-10-30T19:12:43.211049+00:00",
+    "received_at": "2026-10-30T19:12:43.802789+00:00"
+  },
+  "source_equivalence_evidence": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/source-6fd4f45536a2574c404b05539dacb6aaafb781f8.json",
+    "sha256": "68bffa87b6f1f080588bc0c2da226906f80e062d2810894ac53c8d2fa1303bd8"
+  },
+  "body": {
+    "file": "/tmp/bex-m188-fixed-nodes-digest-pins-handoff/node-20-bookworm-request-body.json",
+    "sha256": "265c310004eb99c17878832b9f8fecc0da9d4011c17def873a36e3f3e80e6eb4"
+  },
+  "status": "accepted",
+  "finished_at": "2026-10-30T19:12:45.535670+00:00",
+  "exit_code": 0,
+  "http_status": 204,
+  "response_sha256": "d69a4b47482fb0667b2a378f3439321e5346382d0461459c9db1132464d998fa"
+}
