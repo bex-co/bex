@@ -1,0 +1,39 @@
+{
+  "observedAt": "2026-10-30T00:32:33.161853+00:00",
+  "mailpitDelete": {
+    "method": "DELETE",
+    "path": "/api/v1/messages",
+    "body": {
+      "IDs": [
+        "568sH6bZNAcotne5hykUTk",
+        "47gn7hnW3J3dZb4DhGHRLw"
+      ]
+    },
+    "status": 200
+  },
+  "remainingOwnedMessages": 0,
+  "productionSession": "own qa-login.sh session revoked successfully; own jar and storage-state removed",
+  "databaseRemainingOwnedRows": {
+    "tenants": 0,
+    "apps": 0,
+    "usage_hourly": 0,
+    "free_hours_notices": 0
+  },
+  "deletedWorkspaceNamespaces": [
+    {
+      "id": "tea-dbhu2m29086jm8587fu0",
+      "get": "404 NotFound"
+    },
+    {
+      "id": "tea-dbhu48i9086kkidc57mg",
+      "get": "404 NotFound"
+    },
+    {
+      "id": "tea-dbhu7jq9086o74vvn7pg",
+      "get": "404 NotFound"
+    }
+  ],
+  "helperProcesses": "namespace-scoped reconciler exited during test cleanup; own loopback Kubernetes proxy, Prometheus and manual DB/Mailpit port-forward sessions stopped",
+  "temporaryRepoSources": "acceptance test and reconciler sources removed after copying exact programs to evidence",
+  "completedAt": "2026-10-30T00:34:53.795613+00:00"
+}

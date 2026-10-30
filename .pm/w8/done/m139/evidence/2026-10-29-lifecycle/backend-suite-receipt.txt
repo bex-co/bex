@@ -1,0 +1,79 @@
+ok  	github.com/bex-co/bex/lego/backend/cmd/api	0.516s
+?   	github.com/bex-co/bex/lego/backend/cmd/idgen	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/cmd/ssh-gateway	1.602s
+ok  	github.com/bex-co/bex/lego/backend/internal/accounts	2.352s
+ok  	github.com/bex-co/bex/lego/backend/internal/agentsession	1.602s
+ok  	github.com/bex-co/bex/lego/backend/internal/agentsessions	1.534s
+ok  	github.com/bex-co/bex/lego/backend/internal/agentsessionticket	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/agenttranscript	(cached)
+?   	github.com/bex-co/bex/lego/backend/internal/agenttranscript/uimessagetest	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/api	12.384s
+ok  	github.com/bex-co/bex/lego/backend/internal/apikeys	1.066s
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	15.415s
+ok  	github.com/bex-co/bex/lego/backend/internal/audit	1.128s
+ok  	github.com/bex-co/bex/lego/backend/internal/authz	0.583s
+ok  	github.com/bex-co/bex/lego/backend/internal/billing	0.603s
+?   	github.com/bex-co/bex/lego/backend/internal/billing/cmd/webhookcontract	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/cliauth	1.375s
+ok  	github.com/bex-co/bex/lego/backend/internal/clitelemetry	0.493s
+ok  	github.com/bex-co/bex/lego/backend/internal/core	1.134s
+?   	github.com/bex-co/bex/lego/backend/internal/core/coretest	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/datastorelogs	0.586s
+ok  	github.com/bex-co/bex/lego/backend/internal/deploys	2.429s
+ok  	github.com/bex-co/bex/lego/backend/internal/drivergrant	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/egressquery	0.718s
+ok  	github.com/bex-co/bex/lego/backend/internal/email	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/envgroups	2.122s
+?   	github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/environments	1.033s
+ok  	github.com/bex-co/bex/lego/backend/internal/events	1.520s
+?   	github.com/bex-co/bex/lego/backend/internal/eventvocab	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/freehours	1.238s
+ok  	github.com/bex-co/bex/lego/backend/internal/github	4.106s
+ok  	github.com/bex-co/bex/lego/backend/internal/gqlutil	2.598s
+ok  	github.com/bex-co/bex/lego/backend/internal/hmacticket	1.062s
+ok  	github.com/bex-co/bex/lego/backend/internal/id	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/identityclaims	1.871s
+ok  	github.com/bex-co/bex/lego/backend/internal/jobs	2.020s
+ok  	github.com/bex-co/bex/lego/backend/internal/keyvalue	2.846s
+ok  	github.com/bex-co/bex/lego/backend/internal/logs	9.862s
+ok  	github.com/bex-co/bex/lego/backend/internal/mailer	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/mcputil	1.127s
+ok  	github.com/bex-co/bex/lego/backend/internal/members	0.703s
+ok  	github.com/bex-co/bex/lego/backend/internal/metrics	1.328s
+ok  	github.com/bex-co/bex/lego/backend/internal/notifications	0.821s
+ok  	github.com/bex-co/bex/lego/backend/internal/notifications/push	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/opsrole	1.053s
+ok  	github.com/bex-co/bex/lego/backend/internal/postgres	4.412s
+ok  	github.com/bex-co/bex/lego/backend/internal/pricing	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/projects	2.443s
+ok  	github.com/bex-co/bex/lego/backend/internal/proxyproto	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/registrycreds	2.593s
+ok  	github.com/bex-co/bex/lego/backend/internal/resourcemeta	2.740s
+ok  	github.com/bex-co/bex/lego/backend/internal/rollout	1.703s
+ok  	github.com/bex-co/bex/lego/backend/internal/router	2.129s
+ok  	github.com/bex-co/bex/lego/backend/internal/sandbox	1.541s
+ok  	github.com/bex-co/bex/lego/backend/internal/sandboxexec	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/sandboxfiles	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/secrets	5.413s
+ok  	github.com/bex-co/bex/lego/backend/internal/serve	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/sessionegress	1.287s
+ok  	github.com/bex-co/bex/lego/backend/internal/shellticket	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/snapshotticket	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway	0.840s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach	0.973s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred	1.145s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/dbrole	0.910s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/egressproxy	1.965s
+?   	github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest	[no test files]
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy	12.745s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh	2.028s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxfiles	1.528s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse	0.878s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell	1.027s
+ok  	github.com/bex-co/bex/lego/backend/internal/sshkeys	0.557s
+ok  	github.com/bex-co/bex/lego/backend/internal/store	2.666s
+ok  	github.com/bex-co/bex/lego/backend/internal/testenv	(cached)
+ok  	github.com/bex-co/bex/lego/backend/internal/usage	1.542s
+ok  	github.com/bex-co/bex/lego/backend/internal/webhooks	2.119s
+ok  	github.com/bex-co/bex/lego/backend/internal/workspaces	1.933s

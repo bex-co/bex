@@ -1,0 +1,71 @@
+{
+  "capturedAt": "2026-10-30T00:31:11.165205+00:00",
+  "recipient": "tea-dbhu7jq9086o74vvn7pg@m139.local",
+  "count": 2,
+  "messages": [
+    {
+      "ID": "568sH6bZNAcotne5hykUTk",
+      "MessageID": "dcF7t8gEpzMmid6i4aSbVF@mailpit",
+      "From": {
+        "Name": "bex dev-8",
+        "Address": "no-reply@dev-8.local"
+      },
+      "To": [
+        {
+          "Name": "",
+          "Address": "tea-dbhu7jq9086o74vvn7pg@m139.local"
+        }
+      ],
+      "Cc": [],
+      "Bcc": [],
+      "ReplyTo": [],
+      "ReturnPath": "no-reply@dev-8.local",
+      "Subject": "[bex] Your workspace has used all its Free instance hours",
+      "ListUnsubscribe": {
+        "Header": "",
+        "Links": [],
+        "Errors": "",
+        "HeaderPost": ""
+      },
+      "Date": "2026-10-30T00:29:55.247Z",
+      "Tags": [],
+      "Text": "Your workspace has used its 0 Free instance hours for this month, so its Free web services are suspended until the start of next month. Upgrade a service to a paid plan to run it now.\r\n\r\nSee your monthly included usage:\r\nhttp://localhost:50080/usage\r\n",
+      "HTML": "<!doctype html>\r\n<html lang=\"en\">\r\n  <head>\r\n    <meta charset=\"utf-8\" />\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n    <meta name=\"color-scheme\" content=\"light\" />\r\n    <meta name=\"format-detection\" content=\"telephone=no, date=no, address=no, email=no\" />\r\n    <title>Your workspace has used all its Free instance hours</title>\r\n  </head>\r\n  <body style=\"margin:0;padding:0;background-color:#f8f8fa;\">\r\n    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f8f8fa;\">\r\n      <tr>\r\n        <td align=\"center\" style=\"padding:32px 16px;\">\r\n          <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:520px;\">\r\n            <tr>\r\n              <td style=\"background-color:#ffffff;border:1px solid #d4d8dd;border-radius:10px;padding:32px;text-align:left;\">\r\n                <p style=\"margin:0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:22px;font-weight:700;color:#090b0f;\">bex<span style=\"color:#307d03;\">&#8203;.co</span></p>\r\n                <p style=\"margin:24px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:18px;font-weight:600;color:#090b0f;\">Your workspace has used all its Free instance hours</p>\r\n                <p style=\"margin:16px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;color:#090b0f;\">Your workspace has used its 0 Free instance hours for this month, so its Free web services are suspended until the start of next month. Upgrade a service to a paid plan to run it now.</p>\r\n                \r\n                \r\n                \r\n                <p style=\"margin:16px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;color:#090b0f;\">See your monthly included usage:</p>\r\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0 0;\">\r\n                  <tr>\r\n                    <td style=\"background-color:#307d03;border-radius:10px;\">\r\n                      <a href=\"http://localhost:50080/usage\" style=\"display:inline-block;padding:10px 20px;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#f8f8f8;text-decoration:none;\">Open usage</a>\r\n                    </td>\r\n                  </tr>\r\n                </table>\r\n                <p style=\"margin:12px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;color:#575e69;word-break:break-all;\">Or open this link: <a href=\"http://localhost:50080/usage\" style=\"color:#307d03;\">http://localhost:50080/usage</a></p>\r\n                \r\n                \r\n              </td>\r\n            </tr>\r\n            <tr>\r\n              <td style=\"padding:16px 8px 0;text-align:center;\">\r\n                <p style=\"margin:0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:12px;color:#575e69;\">Sent by bex&#8203;.co</p>\r\n              </td>\r\n            </tr>\r\n          </table>\r\n        </td>\r\n      </tr>\r\n    </table>\r\n  </body>\r\n</html>\r\n",
+      "Size": 4433,
+      "Inline": [],
+      "Attachments": []
+    },
+    {
+      "ID": "47gn7hnW3J3dZb4DhGHRLw",
+      "MessageID": "ZHb2KyhXHUnNw8mhGhXg45@mailpit",
+      "From": {
+        "Name": "bex dev-8",
+        "Address": "no-reply@dev-8.local"
+      },
+      "To": [
+        {
+          "Name": "",
+          "Address": "tea-dbhu7jq9086o74vvn7pg@m139.local"
+        }
+      ],
+      "Cc": [],
+      "Bcc": [],
+      "ReplyTo": [],
+      "ReturnPath": "no-reply@dev-8.local",
+      "Subject": "[bex] Your workspace is nearly out of Free instance hours",
+      "ListUnsubscribe": {
+        "Header": "",
+        "Links": [],
+        "Errors": "",
+        "HeaderPost": ""
+      },
+      "Date": "2026-10-30T00:26:36.719Z",
+      "Tags": [],
+      "Text": "Your workspace has used 0 of its 0 Free instance hours this month. When they run out, your Free web services are suspended until the start of next month. Upgrade a service to a paid plan to keep it running.\r\n\r\nSee your monthly included usage:\r\nhttp://localhost:50080/usage\r\n",
+      "HTML": "<!doctype html>\r\n<html lang=\"en\">\r\n  <head>\r\n    <meta charset=\"utf-8\" />\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n    <meta name=\"color-scheme\" content=\"light\" />\r\n    <meta name=\"format-detection\" content=\"telephone=no, date=no, address=no, email=no\" />\r\n    <title>Your workspace is nearly out of Free instance hours</title>\r\n  </head>\r\n  <body style=\"margin:0;padding:0;background-color:#f8f8fa;\">\r\n    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f8f8fa;\">\r\n      <tr>\r\n        <td align=\"center\" style=\"padding:32px 16px;\">\r\n          <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:520px;\">\r\n            <tr>\r\n              <td style=\"background-color:#ffffff;border:1px solid #d4d8dd;border-radius:10px;padding:32px;text-align:left;\">\r\n                <p style=\"margin:0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:22px;font-weight:700;color:#090b0f;\">bex<span style=\"color:#307d03;\">&#8203;.co</span></p>\r\n                <p style=\"margin:24px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:18px;font-weight:600;color:#090b0f;\">Your workspace is nearly out of Free instance hours</p>\r\n                <p style=\"margin:16px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;color:#090b0f;\">Your workspace has used 0 of its 0 Free instance hours this month. When they run out, your Free web services are suspended until the start of next month. Upgrade a service to a paid plan to keep it running.</p>\r\n                \r\n                \r\n                \r\n                <p style=\"margin:16px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;color:#090b0f;\">See your monthly included usage:</p>\r\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0 0;\">\r\n                  <tr>\r\n                    <td style=\"background-color:#307d03;border-radius:10px;\">\r\n                      <a href=\"http://localhost:50080/usage\" style=\"display:inline-block;padding:10px 20px;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:14px;font-weight:600;color:#f8f8f8;text-decoration:none;\">Open usage</a>\r\n                    </td>\r\n                  </tr>\r\n                </table>\r\n                <p style=\"margin:12px 0 0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;color:#575e69;word-break:break-all;\">Or open this link: <a href=\"http://localhost:50080/usage\" style=\"color:#307d03;\">http://localhost:50080/usage</a></p>\r\n                \r\n                \r\n              </td>\r\n            </tr>\r\n            <tr>\r\n              <td style=\"padding:16px 8px 0;text-align:center;\">\r\n                <p style=\"margin:0;font-family:system-ui, Avenir, Helvetica, Arial, sans-serif;font-size:12px;color:#575e69;\">Sent by bex&#8203;.co</p>\r\n              </td>\r\n            </tr>\r\n          </table>\r\n        </td>\r\n      </tr>\r\n    </table>\r\n  </body>\r\n</html>\r\n",
+      "Size": 4479,
+      "Inline": [],
+      "Attachments": []
+    }
+  ]
+}
