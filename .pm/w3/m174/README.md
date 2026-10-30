@@ -1,6 +1,6 @@
 # w3 · m174 — Alerting and backups stop failing silently
 
-**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** todo — t001–t006, t008, t009 done; 2026-10-29 unblock: new t011 fixes the heartbeat (it has reported FAIL every hour since 2026-10-21), then t007 drill on a rebuilt mock cluster + production checks, t010 closeout
+**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** todo — t001–t006, t008, t009, t011 done (heartbeat green in production, #99 closed 2026-10-30); t007 drill on the rebuilt mock cluster; t010 closeout
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Alert on Postgres base-backup age — **DONE** | 1h | — |
 | t005 | Alert on unschedulable tenant pods and a full serving pool — **DONE** | 40m | — |
 | t006 | Panels, coverage inventory and runbook links for the new alerts — **DONE** | 40m | t001, t003, t004, t005 |
-| t011 | Heartbeat actually reaches Alertmanager/Prometheus in production | 1h | t002 |
+| t011 | Heartbeat actually reaches Alertmanager/Prometheus in production — **DONE** | 1h | t002 |
 | t007 | Fault-injection proof on the mock cluster | 1h | t002, t006, t011 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 30m | t007 |
