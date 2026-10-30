@@ -1,7 +1,7 @@
 {
-  "checked_at": "2026-10-30T08:48:54.758083+00:00",
+  "checked_at": "2026-10-30T10:30:57.275463+00:00",
   "method": "Actual complete workflow signing shell extracted and executed with recording external-command stubs; real cosign/registry not called",
-  "step_sha256": "d0e40507206308c61064cfb5dfefc479af81fdfdb62d0fc758dd4f6c43e3eb07",
+  "step_sha256": "9b217bfe723f84b629c2305d8b38d556c26f3f356fafc39d5d675e9d2cedfc77",
   "cases": [
     {
       "case": "first_success",

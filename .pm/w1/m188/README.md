@@ -139,3 +139,9 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 
 - Node20 的正式双架构编译完成，原版本20.20.2、Bullseye companion、系统/自带 Brotli、离线工具及两架构扫描均通过；第一份 SPDX 仍由旧 Rekor v1 流程上传失败。已核实精确 `2c69d3...` index 与 producer/base/gate 日志，加入同一受限恢复，见 [证据](evidence/node20-publisher-signing-failure.json)。生产 pin 继续等待完整验收。
 - Ship gate 指出的 main 失败41027077470 已以 `c8ca76473` 单独修复测试 fixture 的相等截止时间竞争：测试服务端保持到完整 scan 预算之后。十次重复、race 包检查和 operator/codegen/envtest 全套通过，见 [诊断与实际验证](evidence/red-main-41027077470.json)。修复已推送后恢复发布工作，未等待远程绿灯。
+
+### 发布后独立核对发现 SBOM 子镜像绑定差异 — 2026-10-30
+
+- Node14 新版发布工作流成功，五份完整 bundle 的证书、精确 workflow SHA、透明日志和可信时间戳均通过；独立内容复核发现 amd64 SPDX root `99158...` 与实际 registry 子 manifest `933c...` 不一致，见 [独立检查](evidence/node14-independent-semantic-review.json)。Trivy 的两架构 config 与原 index 子镜像均吻合；不能仅以共同 index subject 或版本相同放过 SPDX 差异。该候选继续 held，不计入验收。
+- Syft 自动选源支持 Docker-save 合成 manifest；现有 metadata 尚未证明该临时摘要与目标子镜像等价，不添加放宽规则。发布改为明确 `syft registry:$REF`，同一已编译 index 重新走全部发布门槛。
+- [已有真实 registry 来源 Node14 预检](evidence/node14-registry-source-preflight.json) 的 amd64 root 与实际 `933c...` 一致，语言与补丁包版本正确；这份 Node14 记录使用 Syft1.55.0，不能冒充1.51.1 实测。另有同一 prefix 的真实 Syft1.51.1 Python3.7 扫描记录。正式新签名仍需实际重放后独立核对。
