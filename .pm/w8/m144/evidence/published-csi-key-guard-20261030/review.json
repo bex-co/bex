@@ -1,0 +1,293 @@
+{
+  "status": "qualified new CSI artifact for root pin review; not rolled out",
+  "recorded_at": "2026-10-30T15:49:15.253344+00:00",
+  "factory": {
+    "conclusion": "success",
+    "created_at": "2026-10-30T14:26:24Z",
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41071547850",
+    "id": 41071547850,
+    "run_attempt": 1,
+    "status": "completed",
+    "updated_at": "2026-10-30T15:31:57Z"
+  },
+  "factory_job_id": 124116733298,
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "digest": "sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+  "source_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+  "patch_sha256": "035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec",
+  "kernel": {
+    "conclusion": "success",
+    "actual_TestBoundedExt4Kernel_PASS": true,
+    "started_at": "2026-10-30T15:15:45Z",
+    "completed_at": "2026-10-30T15:16:07Z",
+    "selected_log": "actual-kernel-step.log"
+  },
+  "all_raw_metadata_hash_checks": [
+    {
+      "file": "candidate-index.json",
+      "digest": "sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c"
+    },
+    {
+      "file": "candidate-amd64-manifest.json",
+      "digest": "sha256:70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f"
+    },
+    {
+      "file": "candidate-amd64-config.json",
+      "digest": "sha256:b5bd2dd0f9bca3832958ed602bd1a6bf4302cda9554855a3711824436e9a798c"
+    },
+    {
+      "file": "candidate-arm64-manifest.json",
+      "digest": "sha256:dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e"
+    },
+    {
+      "file": "candidate-arm64-config.json",
+      "digest": "sha256:1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e"
+    },
+    {
+      "file": "official-csi-index.json",
+      "digest": "sha256:459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664"
+    },
+    {
+      "file": "official-csi-amd64-manifest.json",
+      "digest": "sha256:e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e"
+    },
+    {
+      "file": "official-csi-amd64-config.json",
+      "digest": "sha256:148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24"
+    },
+    {
+      "file": "official-csi-arm64-manifest.json",
+      "digest": "sha256:2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5"
+    },
+    {
+      "file": "official-csi-arm64-config.json",
+      "digest": "sha256:17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa"
+    }
+  ],
+  "platforms": {
+    "amd64": {
+      "manifest": "sha256:70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f",
+      "config": "sha256:b5bd2dd0f9bca3832958ed602bd1a6bf4302cda9554855a3711824436e9a798c",
+      "architecture": "amd64",
+      "os": "linux",
+      "labels": {
+        "org.opencontainers.image.revision": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+        "org.opencontainers.image.source": "https://github.com/bex-co/bex",
+        "org.opencontainers.image.version": "2.22.0-bex-bounded-ext4-v1"
+      },
+      "diff_ids": [
+        "sha256:34884abbe92863fce933ed7c39c0e045631af0ed86d5cc0dfbdf9fdca426ce3c",
+        "sha256:f940970fb9448545d41359ce02e3abbbcefa222fb158c561f401be23a8f5f4e7",
+        "sha256:f838fec15ce27df3cb63c73898646fa65f719cae64350bb65787abd56603c521",
+        "sha256:012aa28b1f1db44a79d3435f46c99ea3da522f937fafed3cb325029c4fabde45",
+        "sha256:4e5a59a89ab203b18f431c616af01108b6f3a7981c6aa6a41a055057d56e223d"
+      ],
+      "layer_count": 5
+    },
+    "arm64": {
+      "manifest": "sha256:dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e",
+      "config": "sha256:1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e",
+      "architecture": "arm64",
+      "os": "linux",
+      "labels": {
+        "org.opencontainers.image.revision": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+        "org.opencontainers.image.source": "https://github.com/bex-co/bex",
+        "org.opencontainers.image.version": "2.22.0-bex-bounded-ext4-v1"
+      },
+      "diff_ids": [
+        "sha256:b2848c02ac6ff53d265469b5b30f649f335e546a83330cd8916d54e65e640409",
+        "sha256:3283a8870581e5387f9d6d9bee541abe3c290d834e2a139729d7e93c02ca37e4",
+        "sha256:98f3af52e9df9d90b939c4cbe0ce0e5436aa46f6822c0fc6df5b7b2f62cfe875",
+        "sha256:0a4b41db921b0923b96295ca8ab754865b5e9dbee2fc746d35267ff7b467793d",
+        "sha256:ddb1c55cb8c54cff62a3ea65c4acfd15918dafe0997c4620b2622587879511c5"
+      ],
+      "layer_count": 5
+    }
+  },
+  "source_version_base_prefix_checks": {
+    "amd64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    },
+    "arm64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    }
+  },
+  "strict_crypto": {
+    "reference": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+    "source": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+    "cosign_version": "v3.1.4",
+    "strict_identity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+    "strict_issuer": "https://token.actions.githubusercontent.com",
+    "strict_workflow_sha": "15ed18b94a75d5d7705f6ce195cb6caae80cb5fe",
+    "signature_verified": true,
+    "spdx_attestation_verified": true,
+    "verified_signature_count": 2,
+    "sbom_summaries": [
+      {
+        "spdx_version": "SPDX-2.3",
+        "subject": [
+          {
+            "name": "ghcr.io/bex-co/bex-operator",
+            "digest": {
+              "sha256": "e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c"
+            }
+          }
+        ],
+        "package_count": 84,
+        "package_architecture_qualifiers": [
+          "amd64",
+          "x86_64"
+        ],
+        "filesystem_packages": [
+          {
+            "name": "blkid",
+            "version": "2.42.1-r0"
+          },
+          {
+            "name": "cryptsetup",
+            "version": "2.8.6-r0"
+          },
+          {
+            "name": "device-mapper-libs",
+            "version": "2.03.35-r3"
+          },
+          {
+            "name": "e2fsprogs",
+            "version": "1.47.4-r0"
+          },
+          {
+            "name": "e2fsprogs-extra",
+            "version": "1.47.4-r0"
+          },
+          {
+            "name": "libblkid",
+            "version": "2.42.1-r0"
+          },
+          {
+            "name": "libuuid",
+            "version": "2.42.1-r0"
+          }
+        ]
+      }
+    ],
+    "sbom_scope": "Factory invokes Syft once for the multiarch index without a --platform argument; architecture qualifiers above describe the actual package inventory. Two runtime child manifests are separately verified and probed."
+  },
+  "anonymous_child_execution": {
+    "reference": "ghcr.io/bex-co/bex-operator@sha256:e9516afe323745061edebf8e075a8922b904f9e412e29448b136c227e34b0a7c",
+    "platforms": {
+      "amd64": {
+        "anonymous_engine_auth_config": {},
+        "reference": "ghcr.io/bex-co/bex-operator@sha256:70fb8a0c35c468e5a1b5b6d1a177a147e19224efaf6e1329c11feaf51623e87f",
+        "preexisting_local_image": false,
+        "pull_elapsed_seconds": 67.846,
+        "execution_results": [
+          {
+            "name": "driver-help",
+            "argv": [
+              "/bin/hcloud-csi-driver",
+              "--help"
+            ],
+            "exit_code": 0,
+            "output_bytes": 284
+          },
+          {
+            "name": "cryptsetup-version",
+            "argv": [
+              "cryptsetup",
+              "--version"
+            ],
+            "exit_code": 0,
+            "output_bytes": 64
+          },
+          {
+            "name": "blkid-help",
+            "argv": [
+              "blkid",
+              "--help"
+            ],
+            "exit_code": 0,
+            "output_bytes": 2047
+          },
+          {
+            "name": "dumpe2fs-version",
+            "argv": [
+              "dumpe2fs",
+              "-V"
+            ],
+            "exit_code": 0,
+            "output_bytes": 66
+          }
+        ],
+        "owned_image_cleanup_exit": 0,
+        "free_bytes_after": 9453793280
+      },
+      "arm64": {
+        "anonymous_engine_auth_config": {},
+        "reference": "ghcr.io/bex-co/bex-operator@sha256:dcfc04ca03445df8fc4e70c9473b595860e408b51068bd195375a2fb32eeb03e",
+        "preexisting_local_image": false,
+        "pull_elapsed_seconds": 64.956,
+        "execution_results": [
+          {
+            "name": "driver-help",
+            "argv": [
+              "/bin/hcloud-csi-driver",
+              "--help"
+            ],
+            "exit_code": 0,
+            "output_bytes": 284
+          },
+          {
+            "name": "cryptsetup-version",
+            "argv": [
+              "cryptsetup",
+              "--version"
+            ],
+            "exit_code": 0,
+            "output_bytes": 64
+          },
+          {
+            "name": "blkid-help",
+            "argv": [
+              "blkid",
+              "--help"
+            ],
+            "exit_code": 0,
+            "output_bytes": 2047
+          },
+          {
+            "name": "dumpe2fs-version",
+            "argv": [
+              "dumpe2fs",
+              "-V"
+            ],
+            "exit_code": 0,
+            "output_bytes": 66
+          }
+        ],
+        "owned_image_cleanup_exit": 0,
+        "free_bytes_after": 9457053696
+      }
+    },
+    "compressed_unique_layer_bytes": 82518703,
+    "global_free_reserve_bytes": 2147483648,
+    "minimum_observed_free_bytes": 9430736896,
+    "docker_endpoint_kind": "existing local Unix socket",
+    "no_provider_or_cluster_access": true,
+    "no_host_mounts_or_network_in_probe_containers": true
+  },
+  "qualified_for_pin_review": true,
+  "production_rollout_performed": false,
+  "platform_new_source_ready_observed": false,
+  "paid_fixture_gate": "still requires root rollout and new qualified Ready platform source; no fixture action performed",
+  "proof_files": "MANIFEST.json",
+  "child_actions": "public read-only APIs/registry checks and owned bounded local artifact probes only; no pin/source/Git/CI/production mutation"
+}
