@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-10-30T07:06:04.286809+00:00",
+  "run_id": 41000570846,
+  "job_id": 123925180265,
+  "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "log_gzip": "/tmp/bex-m188-node18-login-timeout/job-123925180265.log.gz",
+  "log_sha256": "5ba5a901af8f38aa70532fb4dc10af5a2ab265df470942c7079df9fcc311e5b8",
+  "evidence": "/tmp/bex-m188-node18-login-timeout/evidence.txt",
+  "adoptable": false,
+  "failure_step": "docker/login-action",
+  "failure": "GHCR token HTTP request timed out awaiting headers",
+  "build_started": false,
+  "credential_rejection": false
+}

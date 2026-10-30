@@ -1,0 +1,164 @@
+{
+  "checked_at": "2026-10-30T05:11:17.264226+00:00",
+  "scope": "Read-only nonsecret runtime version/OS/libbrotli package queries; no environment dumps, application files, source or secrets read",
+  "results": [
+    {
+      "service": "agentmarketcap-1",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "pod": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1-bfb6d798-n9557",
+      "returncode": 0,
+      "nonsecret_runtime_os_packages": "{\"node\":\"22.23.2\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}\nNAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.1\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\n",
+      "stderr": "",
+      "system_brotli_package_ownership_and_installed_list": "",
+      "libbrotli_package_version_conclusion": "Not established: no installed ownership/version output obtained; package descriptions or empty output establish neither installed fix status nor absence."
+    },
+    {
+      "service": "beancount-cms-v2",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "pod": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2-6844cc7cb5-zvft2",
+      "returncode": 0,
+      "nonsecret_runtime_os_packages": "{\"node\":\"22.23.4\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}\nNAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.3\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\nbrotli: Generic lossless compressor\nbrotli: https://github.com/google/brotli\nbrotli: 33 KiB\nbrotli-libs: Generic lossless compressor (libraries)\nbrotli-libs: https://github.com/google/brotli\nbrotli-libs: 957 KiB\n",
+      "stderr": "",
+      "system_brotli_package_ownership_and_installed_list": "",
+      "libbrotli_package_version_conclusion": "Not established: no installed ownership/version output obtained; package descriptions or empty output establish neither installed fix status nor absence."
+    },
+    {
+      "service": "eden-cms-v2",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "pod": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2-866f7cbb56-998p4",
+      "returncode": 0,
+      "nonsecret_runtime_os_packages": "{\"node\":\"22.23.3\",\"brotli\":\"1.1.0\",\"modules\":\"127\"}\nNAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.2\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\nbrotli: Generic lossless compressor\nbrotli: https://github.com/google/brotli\nbrotli: 33 KiB\nbrotli-libs: Generic lossless compressor (libraries)\nbrotli-libs: https://github.com/google/brotli\nbrotli-libs: 957 KiB\n",
+      "stderr": "",
+      "system_brotli_package_ownership_and_installed_list": "",
+      "libbrotli_package_version_conclusion": "Not established: no installed ownership/version output obtained; package descriptions or empty output establish neither installed fix status nor absence."
+    }
+  ],
+  "apps": [
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "metadata.generation": "233",
+      "spec.runtime": "",
+      "spec.builder": "auto",
+      "spec.type": "",
+      "status.phase": "Running",
+      "status.releaseGeneration": "230",
+      "status.image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "status.buildRun": null
+    },
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "metadata.generation": "1448",
+      "spec.runtime": "",
+      "spec.builder": "auto",
+      "spec.type": "",
+      "status.phase": "Running",
+      "status.releaseGeneration": "1448",
+      "status.image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "status.buildRun": {
+        "finishedAt": "2026-10-24T09:05:54Z",
+        "generation": 1444,
+        "startedAt": "2026-10-24T08:35:25Z"
+      }
+    },
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "metadata.generation": "724",
+      "spec.runtime": "",
+      "spec.builder": "auto",
+      "spec.type": "",
+      "status.phase": "Running",
+      "status.releaseGeneration": "724",
+      "status.image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "status.buildRun": {
+        "finishedAt": "2026-09-17T08:36:50Z",
+        "generation": 512,
+        "startedAt": "2026-09-17T08:30:39Z"
+      }
+    }
+  ],
+  "active_pods": [
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1-bfb6d798-n9557",
+      "metadata.labels.app\\.bex\\.co/app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "metadata.labels.app\\.bex\\.co/revision": "rev-230",
+      "status.phase": "Running",
+      "spec.containers[0].image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "status.containerStatuses[0].imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "status.containerStatuses[0].ready": "true"
+    },
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2-6844cc7cb5-zvft2",
+      "metadata.labels.app\\.bex\\.co/app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "metadata.labels.app\\.bex\\.co/revision": "rev-1448",
+      "status.phase": "Running",
+      "spec.containers[0].image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "status.containerStatuses[0].imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "status.containerStatuses[0].ready": "true"
+    },
+    {
+      "metadata.namespace": "tea-d98210cbbpdc73dcrkvg",
+      "metadata.name": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2-866f7cbb56-998p4",
+      "metadata.labels.app\\.bex\\.co/app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "metadata.labels.app\\.bex\\.co/revision": "rev-723",
+      "status.phase": "Running",
+      "spec.containers[0].image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-723@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+      "status.containerStatuses[0].imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+      "status.containerStatuses[0].ready": "true"
+    }
+  ],
+  "retained_build_evidence": {
+    "matching_jobs_and_pods_in_bex_build": 0,
+    "all_current_kpack_images_and_builds": 0,
+    "note": "Historical build Jobs can have been garbage-collected; absence alone does not establish build strategy. status.buildRun contains timestamps+generation, not a strategy/resource reference."
+  },
+  "classification": {
+    "services": {
+      "agentmarketcap-1": "Inferred customer Dockerfile / BuildKit auto artifact: actual serving Alpine OS is consistent with current auto dispatch and excludes configured Debian native / Ubuntu Jammy CNB base families",
+      "beancount-cms-v2": "Inferred customer Dockerfile / BuildKit auto artifact: actual serving Alpine OS is consistent with current auto dispatch and excludes configured Debian native / Ubuntu Jammy CNB base families",
+      "eden-cms-v2": "Inferred customer Dockerfile / BuildKit auto artifact: actual serving Alpine OS is consistent with current auto dispatch and excludes configured Debian native / Ubuntu Jammy CNB base families"
+    },
+    "confidence": "High: actual serving immutable image OS/runtime plus existing dispatch contract; no retained build Job or OCI history available in this read-only scope. Not based only on empty spec.runtime.",
+    "current_source_proof": [
+      "lego/operator/internal/controller/app_controller.go:1584 effectiveBuilder leaves nonstatic empty-runtime auto unchanged",
+      "lego/operator/internal/build/build.go:628 only literal buildpack dispatches kpack; auto is BuildKit Dockerfile path",
+      "lego/operator/internal/build/build.go:975 non-native buildctlRecipeArgs uses repository Dockerfile",
+      "deploy/gitops/charts/kpack/platform.yaml:69 io.buildpacks.stacks.jammy sole configured CNB stack",
+      "lego/operator/internal/build/native.go reviewed native bases are Debian bullseye/bookworm/trixie"
+    ],
+    "no_platform_controlled_legacy_runtime_added_by_these_three": true,
+    "security_limit": "Node/Brotli version strings alone do not prove target decoder fixed/vulnerable; no malformed-stream probe or customer filesystem/source/secrets read under current authorized scope. Platform base rebuilds do not rewrite customer Dockerfile runtime.",
+    "no_legacy_node_added": "All three observed serving runtimes are modern Node22, not m188 legacy Node14/16/18/20.",
+    "history_limit": "No retained matching build Jobs and no current kpack Images/Builds; no immutable OCI history inspected. Build path classification combines actual serving OS/image identities with current dispatch/base contracts and is explicitly an inference."
+  },
+  "serving_windows": {
+    "agentmarketcap-1": {
+      "metadata_generation": 233,
+      "status_release_generation": 230,
+      "actual_pod_revision": 230,
+      "actual_image_sha256": "07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "meaning": "Metadata generation233 is not the active release; runtime observations belong to release230."
+    },
+    "beancount-cms-v2": {
+      "metadata_generation": 1448,
+      "status_release_generation": 1448,
+      "actual_pod_revision": 1448,
+      "actual_image_sha256": "f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "build_run_generation": 1444,
+      "meaning": "Active release1448 matches status image; stored buildRun window is older1444 and does not identify this artifact strategy."
+    },
+    "eden-cms-v2": {
+      "metadata_generation": 724,
+      "status_release_generation": 724,
+      "status_image_sha256": "65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "actual_pod_revision": 723,
+      "actual_image_sha256": "f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+      "build_run_generation": 512,
+      "meaning": "Runtime observations belong only to active723; do not count status724 as serving or inherit ancient512 buildRun as current strategy evidence."
+    }
+  }
+}

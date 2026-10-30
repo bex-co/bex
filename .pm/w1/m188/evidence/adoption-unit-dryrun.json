@@ -1,0 +1,17 @@
+{
+  "scope": "Synthetic unit data only; no registry verification or adoption claim",
+  "head": "65bb3145efa073c4678d4583c54145ffb30d2b78",
+  "worktree": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-adoption-unit-jqrdrtry",
+  "inventory_entries": 55,
+  "source_rows": 11,
+  "test_log": "/tmp/bex-m188-adoption-unit-suite.log",
+  "command": "env -u BEX_BUILDKIT_INTEGRATION GOWORK=off go test ./internal/build -count=1",
+  "exit_code": 0,
+  "elapsed_seconds": 6.425,
+  "checked_at": "2026-10-30T04:52:39.054933+00:00",
+  "temporary_changes": [
+    " M lego/operator/internal/build/native.go",
+    " M lego/operator/internal/build/toolchain-freshness.json"
+  ],
+  "temporary_worktree_removed": true
+}
