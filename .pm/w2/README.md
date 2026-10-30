@@ -19,6 +19,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m170** — [Grafana analytics keep trusting `bex-db` across CA renewals](done/m170/README.md) (8 tasks) — **DONE 2026-10-21**: both analytics datasources healthy with `sslmode: require` (user decision: internal read-only readers do not pin the CNPG CA) and password-only Secrets; `analytics-datasource-probe` + `AnalyticsDatasourceProbeStale` + `bex-data-plane` panel live; CA renewals need no human step. ← `/pm-brainstorm for w2` 2026-10-19 #3; absorbed `w7/060`.
 - [ ] **m171** — [Postgres plans large enough for high availability](blocked/m171/README.md) (12 tasks; absorbs `047`) — **BLOCKED (the user/Stripe admin authorizes or runs `scripts/stripe-billing-setup.py` in live mode to create the 5 new prices and retire the 2 old ones; then t011 closes on production)**. t001, t002, t004–t010 done; t003/t012 code shipped (`8b09490a3` … `ad77aa065`); `bex-tenant-0` max 8 live; HA acceptance passed on `dev-2`. ← `/pm-brainstorm for w2` 2026-10-19 #4; Render parity included.
 - [ ] **m245** — [Public Postgres URLs verify against system roots, as on Render](m245/README.md) (10 tasks) ← promoted from `w2/049` 2026-10-29 (`/unblock` decision: publicly trusted per-database certificates); Render parity included
+- [ ] **m247** — [High-availability Postgres fits in any workspace, as on Render](m247/README.md) (9 tasks) ← promoted from `w2/054` 2026-10-30 (found in m245 t005); Render parity included
 
 - [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
@@ -154,7 +155,6 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [051 — The beancount forum (Discourse multisite) answers 404 for every host](done/051.md) — **CLOSED 2026-10-29: false alarm** (the forum lives under `/forum`; every entry point returns 200; Redis blips are the single-replica gap owned by `w1/m186`) ← found during w2/035's health check
 - [x] [052 — Delete bare-name Zot repos that no live App owns](done/052.md) — **DONE 2026-10-30**: 25 unreferenced bare repos deleted after a digest-verified backup; the 2 platform images kept; App deletion already purges its own repos
 - [x] [053 — Tenant Postgres cannot initialize on the local cluster: no CNPG → API-server egress under Calico](done/053.md) — **DONE 2026-10-30**: `mock-cluster.sh` applies a Calico GlobalNetworkPolicy equivalent; a fresh local tenant Postgres became healthy with no manual policy
-- [ ] [054 — A Hobby workspace cannot run a high-availability Postgres: the tenant quota and the barman sidecar's limits refuse the standby](054.md) ← found during w2/m245 t005, 2026-10-30; Render parity
 
 _(2026-09-15: `036` resolved — the three product-dead dashboard env components, plus a fourth their deletion exposed, deleted with their tests; moved to `done/036.md`.)_
 

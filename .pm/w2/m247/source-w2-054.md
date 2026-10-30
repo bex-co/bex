@@ -20,3 +20,5 @@ Found 2026-10-30 in w2/m245 t005, in production workspace `bex-canary` (Hobby).
 ## Acceptance
 
 - [ ] A Hobby workspace can create and run a `2c-4g` HA Postgres (two healthy instances), and an instance Pod's quota charge matches its plan plus a bounded sidecar.
+
+**Promoted 2026-10-30 → [`w2/m247`](README.md).**
