@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+image=/tmp/w8-disk.img
+mapping=w8quota-$$
+loop=
+cleanup() {
+ umount /disk 2>/dev/null || true
+ cryptsetup close "$mapping" 2>/dev/null || true
+ [ -z "$loop" ] || losetup -d "$loop"
+}
+trap cleanup EXIT
+truncate -s 10G "$image"
+loop=$(losetup --find --show "$image")
+printf 'temporary-disposable-test-passphrase' | cryptsetup luksFormat --type luks1 --batch-mode --key-file=- "$loop"
+printf 'temporary-disposable-test-passphrase' | cryptsetup open --key-file=- "$loop" "$mapping"
+mkfs.ext4 -q -F -O project,quota "/dev/mapper/$mapping"
+mkdir /disk
+mount -o prjquota "/dev/mapper/$mapping" /disk
+/quota-proof /disk 1073741824
+chattr -p 1 +P /disk/lost+found
+lsattr -p /disk
+stat -f /disk
+setpriv --bounding-set=-sys_admin,-sys_resource dd if=/dev/zero of=/disk/full bs=1M count=1200 2>/tmp/write-error && { echo 'BAD: exceeded quota'; exit 1; }
+cat /tmp/write-error
+stat -c 'bytes=%s' /disk/full
+/quota-proof /disk 5368709120
+setpriv --bounding-set=-sys_admin,-sys_resource dd if=/dev/zero of=/disk/full bs=1M count=32 oflag=append conv=notrunc
+sync
+umount /disk
+mount -o prjquota "/dev/mapper/$mapping" /disk
+stat -c 'retained-bytes=%s' /disk/full
+# Drop SYS_ADMIN, then try clearing inheritance with the tenant capability set.
+setpriv --bounding-set=-all chattr -P /disk && echo 'TENANT CAN CLEAR INHERITANCE' || echo 'tenant inheritance protected'
+lsattr -pd /disk
+mkdir /disk/escape
+lsattr -pd /disk/escape
+
+/quota-proof /disk 1073741824
+setpriv --bounding-set=-all dd if=/dev/zero of=/disk/escape/outside-quota bs=1M count=64
+printf "PASS: capless root escaped the quota through project0\n"

@@ -1,0 +1,6 @@
+=== RUN   TestBoundedExt4Kernel
+    bounded_kernel_test.go:116: 1GiB bounded filesystem returned ENOSPC at 1003487232 bytes
+    bounded_kernel_test.go:162: 5GiB online grow, retained data, LUKS remount and file-level snapshot restore passed
+    bounded_kernel_test.go:168: whole-device resize control detected; no automatic shrink/reformat attempted
+--- PASS: TestBoundedExt4Kernel (26.47s)
+PASS

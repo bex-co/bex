@@ -1,0 +1,17 @@
+# m144 capacity evidence
+
+Captured 2026-10-29 local / 2026-10-30 UTC on Linux/arm64 (OrbStack kernel 7.2.9). See [design](../design.md) for chosen mechanism, exact source/archives, result boundaries and remaining acceptance. These records contain disposable local test data only; no credentials or tenant files.
+
+- `patched-kernel-test.txt`: actual patched CSI volume implementation, real LUKS/full/grow/remount/local snapshot restore and mutation control.
+- `upstream-linux-arm64-tests.txt`: Linux arm64 targeted upstream package regressions.
+- `bounded-node-prototype*`: earlier standalone node primitive and test harness; superseded by the actual patched-code kernel test.
+- `rejected-project-quota*`: negative proof explaining why a quota-only solution was not selected.
+- `proof-image.Dockerfile.txt`: local test dependency recipe; the maintained derivative Dockerfile and patch live under `deploy/hcloud-csi/`.
+
+- `pvc-admission-regressions.txt`: rejected quota/class growth and subsequent remount intent stay at the admitted size; accepted growth and refused creation are covered. The patched node also retries a briefly stale post-admission Secret with `Unavailable`.
+
+- `operator-test.txt`: full `make test` passed after the admission-order fix, including the controller/envtest suite (205.907s).
+
+- `scoped-installer-tests.txt` / `scoped-rollout-validator-tests.txt`: credential-free installer/pin and every-pod readiness regression results for the prepared scoped rollout path.
+- `scoped-rollout-workflow-validation.txt`: production environment/pool/ref/host-trust and credential cleanup guard validation.
+- `actual-chart-rendered-image-pins.txt`: both images extracted from actual Helm rendering of the checksum-authenticated hcloud-csi 2.22.0 archive using `official.values.json`; both match its exact image digest with empty tags. This validates chart expansion, not derivative publication or deployment.

@@ -1,0 +1,13 @@
+test_exact_reviewed_digest_for_both_roles (scripts.test_hcloud_csi.PinTests.test_exact_reviewed_digest_for_both_roles) ... ok
+test_rejects_tags_other_repositories_split_images_and_extra_settings (scripts.test_hcloud_csi.PinTests.test_rejects_tags_other_repositories_split_images_and_extra_settings) ... ok
+test_all_controller_and_node_pods_ready_on_reviewed_image (scripts.test_hcloud_csi.ReadyTests.test_all_controller_and_node_pods_ready_on_reviewed_image) ... ok
+test_rejects_incomplete_rollout_or_wrong_generation (scripts.test_hcloud_csi.ReadyTests.test_rejects_incomplete_rollout_or_wrong_generation) ... ok
+test_rejects_missing_pods_and_unready_driver (scripts.test_hcloud_csi.ReadyTests.test_rejects_missing_pods_and_unready_driver) ... ok
+test_rejects_one_old_node_image_even_when_workloads_say_ready (scripts.test_hcloud_csi.ReadyTests.test_rejects_one_old_node_image_even_when_workloads_say_ready) ... ok
+test_requires_both_driver_workloads (scripts.test_hcloud_csi.ReadyTests.test_requires_both_driver_workloads) ... ok
+test_terminating_old_driver_prevents_class_activation (scripts.test_hcloud_csi.ReadyTests.test_terminating_old_driver_prevents_class_activation) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.001s
+
+OK

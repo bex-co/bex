@@ -1,0 +1,28 @@
+old project=0 flags=0
+hard=1073741824 used=4096
+    1 --------------e----P-- /disk/lost+found
+  File: "/disk"
+    ID: 3247675423416f0a Namelen: 255     Type: ext2/ext3
+Block size: 4096      
+Blocks: Total: 262144     Free: 262139     Available: 262139
+Inodes: Total: 655360     Free: 655347
+dd: error writing '/disk/full': Quota exceeded
+1024+0 records in
+1023+0 records out
+1072693248 bytes (1023.0MB) copied, 0.814869 seconds, 1.2GB/s
+bytes=1072693248
+old project=1 flags=512
+hard=5368709120 used=1072717824
+32+0 records in
+32+0 records out
+33554432 bytes (32.0MB) copied, 0.050038 seconds, 639.5MB/s
+retained-bytes=1106247680
+TENANT CAN CLEAR INHERITANCE
+    1 --------------e------- /disk
+    0 --------------e------- /disk/escape
+old project=1 flags=0
+hard=1073741824 used=1106272256
+64+0 records in
+64+0 records out
+67108864 bytes (64.0MB) copied, 0.007962 seconds, 7.8GB/s
+PASS: capless root escaped the quota through project0

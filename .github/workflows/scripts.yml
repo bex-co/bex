@@ -9,6 +9,7 @@ on:
       - "dashboard/Dockerfile"
       - "dashboard/deploy/**"
       - "deploy/gitops/**"
+      - "deploy/hcloud-csi/**"
       - "infra/**"
       - "scripts/**"
       - "docs/**"
@@ -26,6 +27,7 @@ on:
       - "dashboard/Dockerfile"
       - "dashboard/deploy/**"
       - "deploy/gitops/**"
+      - "deploy/hcloud-csi/**"
       - "infra/**"
       - "scripts/**"
       - "docs/**"
@@ -62,6 +64,13 @@ jobs:
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       - name: Kubeconfig fetch mid-roll retry self-test
         run: bash scripts/fetch-app-kubeconfig.test.sh
+      - name: CSI reviewed pin and scoped rollout guards
+        run: |
+          bash scripts/install-hcloud-csi.test.sh
+          python3 -m unittest scripts/test_hcloud_csi.py -v
+          if [ -e deploy/hcloud-csi/reviewed.values.json ] || [ -L deploy/hcloud-csi/reviewed.values.json ]; then
+            bash scripts/install-hcloud-csi.sh validate-pin
+          fi
       # w3/m173: the live-settings reader behind production-secret confinement.
       - name: GitHub environment drift self-test
         run: bash scripts/github-environments-drift.test.sh

@@ -1,0 +1,52 @@
+#!/bin/sh
+# Disposable local Linux proof; owns only its allocated loop image and mapping.
+set -eu
+image=/tmp/w8-bounded-disk.img
+mapping=w8bounded-$$
+loop=
+cleanup() {
+ umount /disk 2>/dev/null || true
+ cryptsetup close "$mapping" 2>/dev/null || true
+ [ -z "$loop" ] || losetup -d "$loop"
+}
+trap cleanup EXIT
+truncate -s 10G "$image"
+loop=$(losetup --find --show "$image")
+printf 'temporary-disposable-test-passphrase' | cryptsetup luksFormat --type luks1 --batch-mode --key-file=- "$loop"
+printf 'temporary-disposable-test-passphrase' | cryptsetup open --key-file=- "$loop" "$mapping"
+device=/dev/mapper/$mapping
+# Explicit block count caps ext4 itself, independently of tenant UID/capabilities.
+/bounded-ext4 fresh "$device" 1073741824
+/bounded-ext4 check "$device" 1073741824
+mkdir /disk
+mount "$device" /disk
+printf 'owned-data-preservation-sentinel\n' >/disk/sentinel
+sha256sum /disk/sentinel >/tmp/sentinel.sha256
+stat -f /disk
+if dd if=/dev/zero of=/disk/full bs=1M count=1100 2>/tmp/write-error; then
+ echo 'FAIL: 1GiB filesystem accepted >1GiB write' >&2
+ exit 1
+fi
+cat /tmp/write-error
+stat -c 'full-bytes=%s' /disk/full
+sha256sum -c /tmp/sentinel.sha256
+# Grow the filesystem on the still-encrypted minimum-size volume while mounted.
+/bounded-ext4 grow "$device" 5368709120
+/bounded-ext4 check "$device" 5368709120
+if /bounded-ext4 grow "$device" 1073741824; then echo "FAIL: shrink accepted"; exit 1; fi
+stat -f /disk
+dd if=/dev/zero of=/disk/full bs=1M count=64 oflag=append conv=notrunc
+sync
+sha256sum -c /tmp/sentinel.sha256
+umount /disk
+cryptsetup close "$mapping"
+printf 'temporary-disposable-test-passphrase' | cryptsetup open --key-file=- "$loop" "$mapping"
+mount "$device" /disk
+sha256sum -c /tmp/sentinel.sha256
+stat -c 'retained-bytes=%s' /disk/full
+/bounded-ext4 check "$device" 5368709120
+stat -f /disk
+# Guard: the current CSI's unbounded resize expands to the whole underlying device.
+resize2fs "$device"
+stat -f /disk
+printf 'PASS: bounded full, online grow, LUKS remount and unbounded-resize control\n'

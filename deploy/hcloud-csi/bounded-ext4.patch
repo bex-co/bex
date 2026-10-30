@@ -1,0 +1,834 @@
+diff --git a/internal/csi/volume.go b/internal/csi/volume.go
+index 84862a4..73d9f67 100644
+--- a/internal/csi/volume.go
++++ b/internal/csi/volume.go
+@@ -4,7 +4,8 @@ package csi
+ type Volume struct {
+ 	ID          int64
+ 	Name        string
+-	Size        int // GB
++	Size        int  // GB
++	BoundedExt4 bool // opt-in logical filesystem capacity below the provider floor
+ 	Location    string
+ 	LinuxDevice string
+ 	Server      *Server
+diff --git a/internal/driver/bounded.go b/internal/driver/bounded.go
+new file mode 100644
+index 0000000..56a9e58
+--- /dev/null
++++ b/internal/driver/bounded.go
+@@ -0,0 +1,21 @@
++package driver
++
++import (
++	"fmt"
++	"github.com/hetznercloud/csi-driver/internal/volumes"
++	"strconv"
++)
++
++func boundedBytesFromSecret(secret map[string]string) (int64, error) {
++	if secret["boundedFilesystem"] != "ext4-v1" {
++		return 0, fmt.Errorf("bounded filesystem requires node capacity Secret")
++	}
++	bytes, err := strconv.ParseInt(secret["filesystemSizeBytes"], 10, 64)
++	if err != nil {
++		return 0, fmt.Errorf("invalid filesystemSizeBytes")
++	}
++	if err = volumes.ValidateFilesystemBytes(bytes); err != nil {
++		return 0, err
++	}
++	return bytes, nil
++}
+diff --git a/internal/driver/bounded_test.go b/internal/driver/bounded_test.go
+new file mode 100644
+index 0000000..e22e758
+--- /dev/null
++++ b/internal/driver/bounded_test.go
+@@ -0,0 +1,130 @@
++package driver
++
++import (
++	"context"
++	proto "github.com/container-storage-interface/spec/lib/go/csi"
++	"github.com/hetznercloud/csi-driver/internal/csi"
++	"github.com/hetznercloud/csi-driver/internal/mock"
++	"github.com/hetznercloud/csi-driver/internal/volumes"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
++	"testing"
++)
++
++func boundedCapability() *proto.VolumeCapability {
++	return &proto.VolumeCapability{AccessMode: &proto.VolumeCapability_AccessMode{Mode: proto.VolumeCapability_AccessMode_SINGLE_NODE_WRITER}, AccessType: &proto.VolumeCapability_Mount{Mount: &proto.VolumeCapability_MountVolume{FsType: "ext4"}}}
++}
++func TestBoundedCreateKeepsLogicalCapacityBelowPhysicalFloor(t *testing.T) {
++	env := newControllerServiceTestEnv()
++	env.volumeService.CreateFunc = func(_ context.Context, opts volumes.CreateOpts) (*csi.Volume, error) {
++		if opts.MinSize != 10 || opts.MaxSize != 0 {
++			t.Fatalf("provider request=%+v", opts)
++		}
++		if opts.Labels["bounded-ext4"] != "v1" {
++			t.Fatal("missing durable mode label")
++		}
++		return &csi.Volume{ID: 42, Size: 10, Location: "testloc", BoundedExt4: true}, nil
++	}
++	resp, err := env.service.CreateVolume(env.ctx, &proto.CreateVolumeRequest{Name: "one-gib", Parameters: map[string]string{"boundedFilesystem": "ext4-v1"}, CapacityRange: &proto.CapacityRange{RequiredBytes: 1 << 30, LimitBytes: 1 << 30}, VolumeCapabilities: []*proto.VolumeCapability{boundedCapability()}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if resp.Volume.CapacityBytes != 1<<30 || resp.Volume.VolumeId != "bounded-ext4-v1:42" || resp.Volume.VolumeContext["boundedFilesystem"] != "ext4-v1" {
++		t.Fatalf("response=%+v", resp.Volume)
++	}
++}
++func TestBoundedExpansionWithinProviderFloorRequiresNodeGrowth(t *testing.T) {
++	env := newControllerServiceTestEnv()
++	calls := 0
++	env.volumeService.ResizeFunc = func(_ context.Context, v *csi.Volume, size int) error {
++		calls++
++		if v.ID != 42 || size != 10 {
++			t.Fatalf("physical resize=%+v/%d", v, size)
++		}
++		return nil
++	}
++	env.volumeService.GetByIDFunc = func(context.Context, int64) (*csi.Volume, error) {
++		return &csi.Volume{ID: 42, Size: 10, BoundedExt4: true}, nil
++	}
++	resp, err := env.service.ControllerExpandVolume(env.ctx, &proto.ControllerExpandVolumeRequest{VolumeId: "bounded-ext4-v1:42", CapacityRange: &proto.CapacityRange{RequiredBytes: 5 << 30, LimitBytes: 5 << 30}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if calls != 1 || resp.CapacityBytes != 5<<30 || !resp.NodeExpansionRequired {
++		t.Fatalf("response=%+v calls=%d", resp, calls)
++	}
++}
++func TestBoundedInvalidCapacityHasNoProviderSideEffect(t *testing.T) {
++	env := newControllerServiceTestEnv()
++	// Unset provider callbacks panic if validation leaks into a side effect.
++	_, err := env.service.ControllerExpandVolume(env.ctx, &proto.ControllerExpandVolumeRequest{VolumeId: "bounded-ext4-v1:42", CapacityRange: &proto.CapacityRange{RequiredBytes: -1}})
++	if status.Code(err) != codes.InvalidArgument {
++		t.Fatalf("error=%v", err)
++	}
++}
++func TestBoundedPublishRequiresFreshNodeSecret(t *testing.T) {
++	env := newNodeServerTestEnv()
++	calls := 0
++	env.volumeMountService.PublishFunc = func(_ context.Context, _, _ string, opts volumes.MountOpts) error {
++		calls++
++		if opts.FilesystemBytes != 5<<30 || opts.EncryptionPassphrase != "retained" {
++			t.Fatalf("opts=%+v", opts)
++		}
++		return nil
++	}
++	req := &proto.NodePublishVolumeRequest{VolumeId: "bounded-ext4-v1:42", TargetPath: "target", PublishContext: map[string]string{"devicePath": "device"}, VolumeContext: map[string]string{"boundedFilesystem": "ext4-v1"}, VolumeCapability: boundedCapability()}
++	if _, err := env.service.NodePublishVolume(env.ctx, req); status.Code(err) != codes.InvalidArgument {
++		t.Fatalf("missing secret=%v", err)
++	}
++	req.Secrets = map[string]string{"boundedFilesystem": "ext4-v1", "filesystemSizeBytes": "5368709120", "encryption-passphrase": "retained"}
++	if _, err := env.service.NodePublishVolume(env.ctx, req); err != nil {
++		t.Fatal(err)
++	}
++	if calls != 1 {
++		t.Fatalf("publish calls=%d", calls)
++	}
++}
++
++type boundedResizeCapture struct {
++	*mock.VolumeResizeService
++	bytes int64
++}
++
++func (b *boundedResizeCapture) ResizeBounded(_ context.Context, _ string, bytes int64) error {
++	b.bytes = bytes
++	return nil
++}
++func TestBoundedNodeExpandCannotFallBackToWholeDevice(t *testing.T) {
++	env := newNodeServerTestEnv()
++	capture := &boundedResizeCapture{VolumeResizeService: env.volumeResizeService}
++	env.service.volumeResizeService = capture
++	env.volumeMountService.PathExistsFunc = func(string) (bool, error) { return true, nil }
++	req := &proto.NodeExpandVolumeRequest{VolumeId: "bounded-ext4-v1:42", VolumePath: "target", CapacityRange: &proto.CapacityRange{RequiredBytes: 5 << 30}, VolumeCapability: boundedCapability()}
++	if _, err := env.service.NodeExpandVolume(env.ctx, req); status.Code(err) != codes.InvalidArgument {
++		t.Fatalf("missing secret=%v", err)
++	}
++	req.Secrets = map[string]string{"boundedFilesystem": "ext4-v1", "filesystemSizeBytes": "1073741824"}
++	if _, err := env.service.NodeExpandVolume(env.ctx, req); status.Code(err) != codes.Unavailable {
++		t.Fatalf("stale secret=%v", err)
++	}
++	req.Secrets["filesystemSizeBytes"] = "5368709120"
++	if _, err := env.service.NodeExpandVolume(env.ctx, req); err != nil {
++		t.Fatal(err)
++	}
++	if capture.bytes != 5<<30 {
++		t.Fatalf("bytes=%d", capture.bytes)
++	}
++}
++func TestBoundedListNeverAdvertisesProviderFloor(t *testing.T) {
++	env := newControllerServiceTestEnv()
++	env.volumeService.AllFunc = func(context.Context) ([]*csi.Volume, error) {
++		return []*csi.Volume{{ID: 42, Size: 10, Location: "testloc", BoundedExt4: true}, {ID: 43, Size: 10, Location: "testloc"}}, nil
++	}
++	resp, err := env.service.ListVolumes(env.ctx, &proto.ListVolumesRequest{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if resp.Entries[0].Volume.CapacityBytes != 0 || resp.Entries[0].Volume.VolumeId != "bounded-ext4-v1:42" || resp.Entries[1].Volume.CapacityBytes != 10<<30 {
++		t.Fatalf("response=%+v", resp)
++	}
++}
+diff --git a/internal/driver/controller.go b/internal/driver/controller.go
+index 9496434..5bcf453 100644
+--- a/internal/driver/controller.go
++++ b/internal/driver/controller.go
+@@ -67,7 +67,31 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
+ 		return nil, status.Error(codes.InvalidArgument, "missing volume capabilities")
+ 	}
+ 
+-	minSize, maxSize, ok := volumeSizeFromCapacityRange(req.GetCapacityRange())
++	bounded := req.GetParameters()["boundedFilesystem"]
++	if bounded != "" && bounded != "ext4-v1" {
++		return nil, status.Error(codes.InvalidArgument, "unsupported boundedFilesystem")
++	}
++	if bounded != "" {
++		if req.GetParameters()["fsFormatOptions"] != "" {
++			return nil, status.Error(codes.InvalidArgument, "bounded ext4 refuses custom format options")
++		}
++		if err := volumes.ValidateFilesystemBytes(req.GetCapacityRange().GetRequiredBytes()); err != nil {
++			return nil, status.Error(codes.InvalidArgument, err.Error())
++		}
++		if limit := req.GetCapacityRange().GetLimitBytes(); limit != 0 && limit < req.GetCapacityRange().GetRequiredBytes() {
++			return nil, status.Error(codes.OutOfRange, "invalid logical capacity range")
++		}
++		for _, capability := range req.GetVolumeCapabilities() {
++			if capability.GetMount() == nil || (capability.GetMount().GetFsType() != "" && capability.GetMount().GetFsType() != "ext4") {
++				return nil, status.Error(codes.InvalidArgument, "bounded filesystem requires ext4 mount volumes")
++			}
++		}
++	}
++	physicalRange := req.GetCapacityRange()
++	if bounded != "" {
++		physicalRange = &proto.CapacityRange{RequiredBytes: req.GetCapacityRange().GetRequiredBytes()}
++	}
++	minSize, maxSize, ok := volumeSizeFromCapacityRange(physicalRange)
+ 	if !ok {
+ 		return nil, status.Error(codes.OutOfRange, "invalid capacity range")
+ 	}
+@@ -95,6 +119,8 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
+ 
+ 	for key, value := range req.GetParameters() {
+ 		switch strings.ToLower(key) {
++		case "boundedfilesystem", "fsformatoptions":
++			// Consumed by the node-side filesystem assembly.
+ 		case parameterKeyPVCName:
+ 			volumeLabels[labelKeyPVCName] = value
+ 		case parameterKeyPVCNamespace:
+@@ -112,6 +138,12 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
+ 		}
+ 	}
+ 
++	if bounded != "" {
++		volumeLabels["bounded-ext4"] = "v1"
++	} else if volumeLabels["bounded-ext4"] != "" {
++		return nil, status.Error(codes.InvalidArgument, "bounded-ext4 is a reserved mode label")
++	}
++
+ 	// Validate all labels before sending to the API.
+ 	for k, v := range volumeLabels {
+ 		// Truncate label values to fit API requirements
+@@ -186,10 +218,15 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
+ 				topology,
+ 			},
+ 			VolumeContext: map[string]string{
+-				"fsFormatOptions": req.GetParameters()["fsFormatOptions"],
++				"fsFormatOptions":   req.GetParameters()["fsFormatOptions"],
++				"boundedFilesystem": bounded,
+ 			},
+ 		},
+ 	}
++	if bounded != "" {
++		resp.Volume.CapacityBytes = req.GetCapacityRange().GetRequiredBytes()
++		resp.Volume.VolumeId = "bounded-ext4-v1:" + resp.Volume.VolumeId
++	}
+ 	return resp, nil
+ }
+ 
+@@ -382,6 +419,13 @@ func (s *ControllerService) ListVolumes(ctx context.Context, req *proto.ListVolu
+ 				},
+ 			},
+ 		}
++		if volume.BoundedExt4 {
++			// CSI permits 0 for unknown capacity. Never advertise the physical
++			// provider floor as the logical filesystem size. Create/expand
++			// responses and node filesystem stats carry authoritative capacity.
++			resp.Entries[i].Volume.CapacityBytes = 0
++			resp.Entries[i].Volume.VolumeId = "bounded-ext4-v1:" + resp.Entries[i].Volume.VolumeId
++		}
+ 	}
+ 
+ 	return resp, nil
+@@ -441,7 +485,18 @@ func (s *ControllerService) ControllerExpandVolume(ctx context.Context, req *pro
+ 	}
+ 	volume := &csi.Volume{ID: volumeID}
+ 
+-	minSize, _, ok := volumeSizeFromCapacityRange(req.GetCapacityRange())
++	bounded := strings.HasPrefix(req.GetVolumeId(), "bounded-ext4-v1:")
++	physicalRange := req.GetCapacityRange()
++	if bounded {
++		if err := volumes.ValidateFilesystemBytes(req.GetCapacityRange().GetRequiredBytes()); err != nil {
++			return nil, status.Error(codes.InvalidArgument, err.Error())
++		}
++		if limit := req.GetCapacityRange().GetLimitBytes(); limit != 0 && limit < req.GetCapacityRange().GetRequiredBytes() {
++			return nil, status.Error(codes.OutOfRange, "invalid logical capacity range")
++		}
++		physicalRange = &proto.CapacityRange{RequiredBytes: req.GetCapacityRange().GetRequiredBytes()}
++	}
++	minSize, _, ok := volumeSizeFromCapacityRange(physicalRange)
+ 	if !ok {
+ 		return nil, status.Error(codes.OutOfRange, "invalid capacity range")
+ 	}
+@@ -468,5 +523,8 @@ func (s *ControllerService) ControllerExpandVolume(ctx context.Context, req *pro
+ 		CapacityBytes:         volume.SizeBytes(),
+ 		NodeExpansionRequired: true,
+ 	}
++	if bounded {
++		resp.CapacityBytes = req.GetCapacityRange().GetRequiredBytes()
++	}
+ 	return resp, nil
+ }
+diff --git a/internal/driver/helper.go b/internal/driver/helper.go
+index 714620b..0424e88 100644
+--- a/internal/driver/helper.go
++++ b/internal/driver/helper.go
+@@ -3,12 +3,15 @@ package driver
+ import (
+ 	"math"
+ 	"strconv"
++	"strings"
+ 
+ 	proto "github.com/container-storage-interface/spec/lib/go/csi"
+ )
+ 
+-func parseVolumeID(id string) (int64, error) { return strconv.ParseInt(id, 10, 64) }
+-func parseNodeID(id string) (int64, error)   { return strconv.ParseInt(id, 10, 64) }
++func parseVolumeID(id string) (int64, error) {
++	return strconv.ParseInt(strings.TrimPrefix(id, "bounded-ext4-v1:"), 10, 64)
++}
++func parseNodeID(id string) (int64, error) { return strconv.ParseInt(id, 10, 64) }
+ 
+ func volumeSizeFromCapacityRange(cr *proto.CapacityRange) (int, int, bool) {
+ 	if cr == nil {
+diff --git a/internal/driver/node.go b/internal/driver/node.go
+index 8a5aef8..2f8f34f 100644
+--- a/internal/driver/node.go
++++ b/internal/driver/node.go
+@@ -4,6 +4,7 @@ import (
+ 	"context"
+ 	"fmt"
+ 	"log/slog"
++	"strings"
+ 
+ 	proto "github.com/container-storage-interface/spec/lib/go/csi"
+ 	"google.golang.org/grpc/codes"
+@@ -67,6 +68,9 @@ func (s *NodeService) NodePublishVolume(ctx context.Context, req *proto.NodePubl
+ 		return nil, status.Error(codes.InvalidArgument, "missing device path")
+ 	}
+ 
++	if req.GetVolumeContext()["boundedFilesystem"] != "" && !strings.HasPrefix(req.GetVolumeId(), "bounded-ext4-v1:") {
++		return nil, status.Error(codes.InvalidArgument, "bounded filesystem requires an opted-in volume id")
++	}
+ 	var opts volumes.MountOpts
+ 	switch {
+ 	case req.GetVolumeCapability().GetBlock() != nil:
+@@ -87,6 +91,19 @@ func (s *NodeService) NodePublishVolume(ctx context.Context, req *proto.NodePubl
+ 		return nil, status.Error(codes.InvalidArgument, "publish volume: unsupported volume capability")
+ 	}
+ 
++	if strings.HasPrefix(req.GetVolumeId(), "bounded-ext4-v1:") {
++		if req.GetVolumeContext()["boundedFilesystem"] != "ext4-v1" {
++			return nil, status.Error(codes.InvalidArgument, "missing bounded filesystem context")
++		}
++		if opts.BlockVolume {
++			return nil, status.Error(codes.InvalidArgument, "bounded ext4 requires mount volume")
++		}
++		bytes, err := boundedBytesFromSecret(req.GetSecrets())
++		if err != nil {
++			return nil, status.Error(codes.InvalidArgument, err.Error())
++		}
++		opts.FilesystemBytes = bytes
++	}
+ 	if err := s.volumeMountService.Publish(ctx, req.GetTargetPath(), devicePath, opts); err != nil {
+ 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to publish volume: %s", err))
+ 	}
+@@ -208,8 +225,30 @@ func (s *NodeService) NodeExpandVolume(ctx context.Context, req *proto.NodeExpan
+ 		return nil, status.Error(codes.NotFound, fmt.Sprintf("volume %s is not available on this node", req.GetVolumePath()))
+ 	}
+ 
++	if strings.HasPrefix(req.GetVolumeId(), "bounded-ext4-v1:") && req.GetVolumeCapability().GetBlock() != nil {
++		return nil, status.Error(codes.InvalidArgument, "bounded ext4 requires mount volume")
++	}
+ 	if req.GetVolumeCapability().GetBlock() == nil {
+-		if err := s.volumeResizeService.Resize(ctx, req.GetVolumePath()); err != nil {
++		var resizeErr error
++		if strings.HasPrefix(req.GetVolumeId(), "bounded-ext4-v1:") {
++			bytes, err := boundedBytesFromSecret(req.GetSecrets())
++			if err != nil {
++				return nil, status.Error(codes.InvalidArgument, err.Error())
++			}
++			if bytes < req.GetCapacityRange().GetRequiredBytes() {
++				return nil, status.Error(codes.Unavailable, "filesystem capacity Secret has not converged")
++			}
++			bounded, ok := s.volumeResizeService.(interface {
++				ResizeBounded(context.Context, string, int64) error
++			})
++			if !ok {
++				return nil, status.Error(codes.FailedPrecondition, "bounded filesystem resize unavailable")
++			}
++			resizeErr = bounded.ResizeBounded(ctx, req.GetVolumePath(), bytes)
++		} else {
++			resizeErr = s.volumeResizeService.Resize(ctx, req.GetVolumePath())
++		}
++		if err := resizeErr; err != nil {
+ 			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to resize volume: %s", err))
+ 		}
+ 	}
+diff --git a/internal/volsrv/helper.go b/internal/volsrv/helper.go
+index 5ff22ae..ef3a096 100644
+--- a/internal/volsrv/helper.go
++++ b/internal/volsrv/helper.go
+@@ -10,6 +10,7 @@ func toDomainVolume(hcloudVolume *hcloud.Volume) *csi.Volume {
+ 		ID:          hcloudVolume.ID,
+ 		Name:        hcloudVolume.Name,
+ 		Size:        hcloudVolume.Size,
++		BoundedExt4: hcloudVolume.Labels["bounded-ext4"] == "v1",
+ 		Location:    hcloudVolume.Location.Name,
+ 		LinuxDevice: hcloudVolume.LinuxDevice,
+ 		Server:      toDomainServer(hcloudVolume.Server),
+diff --git a/internal/volumes/bounded.go b/internal/volumes/bounded.go
+new file mode 100644
+index 0000000..a0f7e61
+--- /dev/null
++++ b/internal/volumes/bounded.go
+@@ -0,0 +1,93 @@
++package volumes
++
++import (
++	"context"
++	"encoding/binary"
++	"fmt"
++	"k8s.io/utils/exec"
++	"os"
++	"strconv"
++	"strings"
++)
++
++// ValidateFilesystemBytes bounds the opt-in ext4 contract before any node I/O.
++func ValidateFilesystemBytes(bytes int64) error {
++	if bytes < 1<<30 || bytes > 10000<<30 || bytes%4096 != 0 {
++		return fmt.Errorf("filesystem capacity must be 4KiB-aligned within 1..10000GiB")
++	}
++	return nil
++}
++
++// boundedExt4 works on the unlocked device selected by the trusted CSI node.
++// It never shrinks or reformats an existing filesystem. Empty-device formatting
++// is allowed only by the mount path, never by expansion or a read-only mount.
++func boundedExt4(ctx context.Context, executor exec.Interface, device string, bytes int64, allowFormat, readonly bool) error {
++	if err := ValidateFilesystemBytes(bytes); err != nil {
++		return err
++	}
++	physical, err := blockDeviceBytes(device)
++	if err != nil {
++		return err
++	}
++	// LUKS consumes a header inside the provider volume. Its mapping can be a
++	// little smaller than the logical request once the request reaches the floor.
++	if uint64(bytes) > physical && uint64(bytes)-physical > 16<<20 {
++		return fmt.Errorf("logical capacity exceeds unlocked block device beyond LUKS header overhead")
++	}
++	target := min(uint64(bytes), physical) / 4096 * 4096
++	if target == 0 {
++		return fmt.Errorf("empty block device")
++	}
++	output, inspectErr := executor.CommandContext(ctx, "blkid", "-p", "-s", "TYPE", "-o", "value", device).CombinedOutput()
++	if inspectErr != nil {
++		exit, ok := inspectErr.(exec.ExitError)
++		if !ok || exit.ExitStatus() != 2 || len(output) != 0 || !allowFormat || readonly {
++			return fmt.Errorf("refuse to format uninspectable or non-writable block device: %w", inspectErr)
++		}
++		_, err = executor.CommandContext(ctx, "mkfs.ext4", "-F", "-m0", "-b4096", device, strconv.FormatUint(target/4096, 10)).CombinedOutput()
++		return err
++	}
++	if strings.TrimSpace(string(output)) != "ext4" {
++		return fmt.Errorf("bounded filesystem requires ext4, found %q", output)
++	}
++	f, err := os.Open(device)
++	if err != nil {
++		return err
++	}
++	defer f.Close()
++	super := make([]byte, 1024)
++	if _, err = f.ReadAt(super, 1024); err != nil {
++		return err
++	}
++	current, err := ext4Bytes(super)
++	if err != nil {
++		return err
++	}
++	if current > target {
++		return fmt.Errorf("refuse filesystem shrink: current=%d target=%d; offline migration required", current, target)
++	}
++	if current == target || readonly {
++		return nil
++	}
++	_, err = executor.CommandContext(ctx, "resize2fs", device, strconv.FormatUint(target/1024, 10)+"K").CombinedOutput()
++	return err
++}
++
++func ext4Bytes(super []byte) (uint64, error) {
++	if len(super) < 1024 || binary.LittleEndian.Uint16(super[56:]) != 0xef53 {
++		return 0, fmt.Errorf("invalid ext4 superblock")
++	}
++	logBlock := binary.LittleEndian.Uint32(super[24:])
++	if logBlock > 6 {
++		return 0, fmt.Errorf("invalid ext4 block size")
++	}
++	blocks := uint64(binary.LittleEndian.Uint32(super[4:]))
++	if binary.LittleEndian.Uint32(super[96:])&0x80 != 0 {
++		blocks |= uint64(binary.LittleEndian.Uint32(super[336:])) << 32
++	}
++	blockSize := uint64(1024) << logBlock
++	if blocks == 0 || blocks > ^uint64(0)/blockSize {
++		return 0, fmt.Errorf("invalid ext4 block count")
++	}
++	return blocks * blockSize, nil
++}
+diff --git a/internal/volumes/bounded_kernel_test.go b/internal/volumes/bounded_kernel_test.go
+new file mode 100644
+index 0000000..715f6c8
+--- /dev/null
++++ b/internal/volumes/bounded_kernel_test.go
+@@ -0,0 +1,169 @@
++//go:build linux
++
++package volumes
++
++import (
++	"bytes"
++	"context"
++	"crypto/rand"
++	"crypto/sha256"
++	"errors"
++	"k8s.io/utils/exec"
++	"os"
++	osexec "os/exec"
++	"path/filepath"
++	"strings"
++	"syscall"
++	"testing"
++)
++
++// This deliberately uses a disposable local loop device, never a provider volume.
++// Run only in an explicitly authorized privileged test container.
++func TestBoundedExt4Kernel(t *testing.T) {
++	if os.Getenv("BEX_CSI_KERNEL_TEST") != "1" {
++		t.Skip("privileged disposable-container test")
++	}
++	if _, err := os.Stat("/.dockerenv"); err != nil {
++		t.Fatal("kernel test requires its disposable Docker container")
++	}
++	ctx := context.Background()
++	dir := t.TempDir()
++	image := filepath.Join(dir, "disk.img")
++	mountpoint := filepath.Join(dir, "mount")
++	f, err := os.Create(image)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err = f.Truncate(10 << 30); err != nil {
++		t.Fatal(err)
++	}
++	f.Close()
++	run := func(name string, args ...string) string {
++		t.Helper()
++		out, err := osexec.Command(name, args...).CombinedOutput()
++		if err != nil {
++			t.Fatalf("%s %v: %v: %s", name, args, err, out)
++		}
++		return strings.TrimSpace(string(out))
++	}
++	loop := run("losetup", "--find", "--show", image)
++	mapping := "bex-csi-test-" + rand.Text()
++	device := "/dev/mapper/" + mapping
++	mounted := false
++	opened := false
++	t.Cleanup(func() {
++		if mounted {
++			if out, err := osexec.Command("umount", mountpoint).CombinedOutput(); err != nil {
++				t.Errorf("cleanup unmount: %v %s", err, out)
++			}
++		}
++		if opened {
++			if out, err := osexec.Command("cryptsetup", "close", mapping).CombinedOutput(); err != nil {
++				t.Errorf("cleanup mapping: %v %s", err, out)
++			}
++		}
++		if out, err := osexec.Command("losetup", "-d", loop).CombinedOutput(); err != nil {
++			t.Errorf("cleanup loop: %v %s", err, out)
++		}
++	})
++	crypt := func(args ...string) {
++		t.Helper()
++		cmd := osexec.Command("cryptsetup", args...)
++		cmd.Stdin = strings.NewReader("disposable-kernel-test-only")
++		if out, err := cmd.CombinedOutput(); err != nil {
++			t.Fatalf("cryptsetup: %v %s", err, out)
++		}
++	}
++	crypt("luksFormat", "--type", "luks1", "--batch-mode", "--key-file=-", loop)
++	crypt("open", "--key-file=-", loop, mapping)
++	opened = true
++	if err := boundedExt4(ctx, exec.New(), device, 1<<30, true, false); err != nil {
++		t.Fatal(err)
++	}
++	if err = os.Mkdir(mountpoint, 0700); err != nil {
++		t.Fatal(err)
++	}
++	run("mount", device, mountpoint)
++	mounted = true
++	sentinel := []byte("bounded-filesystem-data-preservation\n")
++	sentinelPath := filepath.Join(mountpoint, "sentinel")
++	if err = os.WriteFile(sentinelPath, sentinel, 0600); err != nil {
++		t.Fatal(err)
++	}
++	fullPath := filepath.Join(mountpoint, "full")
++	full, err := os.Create(fullPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	chunk := make([]byte, 1<<20)
++	written := 0
++	fullErr := error(nil)
++	for written < 1100<<20 {
++		n, e := full.Write(chunk)
++		written += n
++		if e != nil {
++			fullErr = e
++			break
++		}
++	}
++	if err = full.Sync(); err != nil && fullErr == nil {
++		fullErr = err
++	}
++	full.Close()
++	if !errors.Is(fullErr, syscall.ENOSPC) || written > 1<<30 {
++		t.Fatalf("cap missing: written=%d error=%v", written, fullErr)
++	}
++	t.Logf("1GiB bounded filesystem returned ENOSPC at %d bytes", written)
++	if err = boundedExt4(ctx, exec.New(), device, 5<<30, false, false); err != nil {
++		t.Fatal(err)
++	}
++	full, err = os.OpenFile(fullPath, os.O_APPEND|os.O_WRONLY, 0600)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err = full.Write(bytes.Repeat([]byte("g"), 64<<20)); err != nil {
++		t.Fatal(err)
++	}
++	full.Close()
++	if err = boundedExt4(ctx, exec.New(), device, 1<<30, false, false); err == nil {
++		t.Fatal("accepted shrink")
++	}
++	check := func() {
++		t.Helper()
++		got, e := os.ReadFile(sentinelPath)
++		if e != nil || sha256.Sum256(got) != sha256.Sum256(sentinel) {
++			t.Fatalf("data changed: %v", e)
++		}
++	}
++	check()
++	run("umount", mountpoint)
++	mounted = false
++	run("cryptsetup", "close", mapping)
++	opened = false
++	crypt("open", "--key-file=-", loop, mapping)
++	opened = true
++	run("mount", device, mountpoint)
++	mounted = true
++	check()
++	// Ordinary file-level backup/restore leaves the filesystem boundary intact.
++	archive := filepath.Join(dir, "snapshot.tgz")
++	run("tar", "-czf", archive, "-C", mountpoint, ".")
++	if err = os.Remove(fullPath); err != nil {
++		t.Fatal(err)
++	}
++	if err = os.Remove(sentinelPath); err != nil {
++		t.Fatal(err)
++	}
++	run("tar", "-xzf", archive, "-C", mountpoint)
++	check()
++	if err = boundedExt4(ctx, exec.New(), device, 5<<30, false, true); err != nil {
++		t.Fatal(err)
++	}
++	t.Log("5GiB online grow, retained data, LUKS remount and file-level snapshot restore passed")
++	// The pre-patch resize command is a mutation control: it removes the bound.
++	run("resize2fs", device)
++	if err = boundedExt4(ctx, exec.New(), device, 5<<30, false, false); err == nil {
++		t.Fatal("unbounded resize control was not detected")
++	}
++	t.Log("whole-device resize control detected; no automatic shrink/reformat attempted")
++}
+diff --git a/internal/volumes/bounded_linux.go b/internal/volumes/bounded_linux.go
+new file mode 100644
+index 0000000..5ad43f8
+--- /dev/null
++++ b/internal/volumes/bounded_linux.go
+@@ -0,0 +1,29 @@
++package volumes
++
++import (
++	"fmt"
++	"golang.org/x/sys/unix"
++	"os"
++	"unsafe"
++)
++
++func blockDeviceBytes(device string) (uint64, error) {
++	f, err := os.Open(device)
++	if err != nil {
++		return 0, err
++	}
++	defer f.Close()
++	st, err := f.Stat()
++	if err != nil {
++		return 0, err
++	}
++	if st.Mode()&os.ModeDevice == 0 || st.Mode()&os.ModeCharDevice != 0 {
++		return 0, fmt.Errorf("expected block device")
++	}
++	var bytes uint64
++	_, _, errno := unix.Syscall(unix.SYS_IOCTL, f.Fd(), unix.BLKGETSIZE64, uintptr(unsafe.Pointer(&bytes)))
++	if errno != 0 {
++		return 0, errno
++	}
++	return bytes, nil
++}
+diff --git a/internal/volumes/bounded_other.go b/internal/volumes/bounded_other.go
+new file mode 100644
+index 0000000..bc1546c
+--- /dev/null
++++ b/internal/volumes/bounded_other.go
+@@ -0,0 +1,7 @@
++//go:build !linux
++
++package volumes
++
++import "fmt"
++
++func blockDeviceBytes(string) (uint64, error) { return 0, fmt.Errorf("bounded ext4 requires Linux") }
+diff --git a/internal/volumes/bounded_test.go b/internal/volumes/bounded_test.go
+new file mode 100644
+index 0000000..71c0ddd
+--- /dev/null
++++ b/internal/volumes/bounded_test.go
+@@ -0,0 +1,25 @@
++package volumes
++
++import (
++	"encoding/binary"
++	"testing"
++)
++
++func TestExt4BytesRejectsCorruptAndOverflowingMetadata(t *testing.T) {
++	s := make([]byte, 1024)
++	if _, err := ext4Bytes(s); err == nil {
++		t.Fatal("accepted bad magic")
++	}
++	binary.LittleEndian.PutUint16(s[56:], 0xef53)
++	binary.LittleEndian.PutUint32(s[24:], 2)
++	binary.LittleEndian.PutUint32(s[4:], 262144)
++	got, err := ext4Bytes(s)
++	if err != nil || got != 1<<30 {
++		t.Fatalf("bytes=%d error=%v", got, err)
++	}
++	binary.LittleEndian.PutUint32(s[96:], 0x80)
++	binary.LittleEndian.PutUint32(s[336:], 0xffffffff)
++	if _, err := ext4Bytes(s); err == nil {
++		t.Fatal("accepted overflowing block count")
++	}
++}
+diff --git a/internal/volumes/mount.go b/internal/volumes/mount.go
+index f773b6b..822bd9e 100644
+--- a/internal/volumes/mount.go
++++ b/internal/volumes/mount.go
+@@ -32,6 +32,7 @@ type MountOpts struct {
+ 	Additional           []string // Additional mount options/flags passed to /bin/mount
+ 	EncryptionPassphrase string
+ 	FsFormatOptions      string
++	FilesystemBytes      int64 // non-zero only for boundedFilesystem=ext4-v1
+ }
+ 
+ // MountService mounts volumes.
+@@ -160,6 +161,14 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
+ 		formatOptions = append(formatOptions, "-c", fmt.Sprintf("options=%s", XFSDefaultConfigPath))
+ 	}
+ 
++	if opts.FilesystemBytes != 0 {
++		if opts.FSType != "ext4" || len(formatOptions) != 0 {
++			return fmt.Errorf("bounded ext4 refuses other filesystems and custom format options")
++		}
++		if err := boundedExt4(ctx, s.mounter.Exec, devicePath, opts.FilesystemBytes, !opts.Readonly, opts.Readonly); err != nil {
++			return err
++		}
++	}
+ 	return s.mounter.FormatAndMountSensitiveWithFormatOptions(devicePath, targetPath, opts.FSType, mountOptions, opts.Additional, formatOptions)
+ }
+ 
+diff --git a/internal/volumes/resize.go b/internal/volumes/resize.go
+index 8647d0c..e8b4e5c 100644
+--- a/internal/volumes/resize.go
++++ b/internal/volumes/resize.go
+@@ -17,13 +17,15 @@ type ResizeService interface {
+ // LinuxResizeService resizes volumes on a Linux system.
+ type LinuxResizeService struct {
+ 	logger     *slog.Logger
++	executor   exec.Interface
+ 	resizer    *mount.ResizeFs
+ 	cryptSetup *CryptSetup
+ }
+ 
+ func NewLinuxResizeService(logger *slog.Logger) *LinuxResizeService {
+ 	return &LinuxResizeService{
+-		logger: logger,
++		logger:   logger,
++		executor: exec.New(),
+ 		resizer: mount.NewResizeFs(mount.SafeFormatAndMount{
+ 			Interface: mount.New(""),
+ 			Exec:      exec.New(),
+@@ -33,6 +35,18 @@ func NewLinuxResizeService(logger *slog.Logger) *LinuxResizeService {
+ }
+ 
+ func (l *LinuxResizeService) Resize(ctx context.Context, volumePath string) error {
++	return l.resize(ctx, volumePath, 0)
++}
++
++// ResizeBounded grows the filesystem only to the logical capacity.
++func (l *LinuxResizeService) ResizeBounded(ctx context.Context, volumePath string, bytes int64) error {
++	if err := ValidateFilesystemBytes(bytes); err != nil {
++		return err
++	}
++	return l.resize(ctx, volumePath, bytes)
++}
++
++func (l *LinuxResizeService) resize(ctx context.Context, volumePath string, bytes int64) error {
+ 	devicePath, _, err := mount.GetDeviceNameFromMount(mount.New(""), volumePath)
+ 	if err != nil {
+ 		return fmt.Errorf("failed to determine mount path for %s: %w", volumePath, err)
+@@ -57,6 +71,9 @@ func (l *LinuxResizeService) Resize(ctx context.Context, volumePath string) erro
+ 		devicePath = luksDevicePath
+ 	}
+ 
++	if bytes != 0 {
++		return boundedExt4(ctx, l.executor, devicePath, bytes, false, false)
++	}
+ 	if _, err := l.resizer.Resize(devicePath, volumePath); err != nil {
+ 		return err
+ 	}

@@ -1,0 +1,61 @@
+// Review-only trusted-node primitive for w8/m144. Not wired into any product path.
+package main
+
+import (
+ "context"
+ "encoding/binary"
+ "errors"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "strconv"
+ "syscall"
+ "time"
+ "unsafe"
+)
+
+const blockSize uint64 = 4096
+
+func main() {
+ if len(os.Args) != 4 { fail(errors.New("usage: bounded-ext4 {fresh|grow|check} /dev/mapper/<owned-device> <bytes>")) }
+ if err := apply(os.Args[1], os.Args[2], os.Args[3]); err != nil { fail(err) }
+}
+func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+func apply(mode, device, rawBytes string) error {
+ if mode != "fresh" && mode != "grow" && mode != "check" { return errors.New("invalid mode") }
+ size, err := strconv.ParseUint(rawBytes,10,64)
+ if err != nil || size < 1<<30 || size > 10000<<30 || size%blockSize != 0 { return errors.New("capacity must be an aligned 1..10000 GiB byte count") }
+ if filepath.Clean(device) != device || filepath.Dir(device) != "/dev/mapper" { return errors.New("expected one owned LUKS mapper device") }
+ f, err := os.Open(device); if err != nil { return err }; defer f.Close()
+ stat, err := f.Stat(); if err != nil { return err }
+ if stat.Mode()&os.ModeDevice == 0 || stat.Mode()&os.ModeCharDevice != 0 { return errors.New("target is not a block device") }
+ var physical uint64
+ _,_,errno:=syscall.Syscall(syscall.SYS_IOCTL,f.Fd(),0x80081272,uintptr(unsafe.Pointer(&physical)))
+ if errno != 0 { return fmt.Errorf("read block device size: %w",errno) }
+ if size > physical { return fmt.Errorf("requested bytes %d exceed unlocked device capacity %d",size,physical) }
+ ctx,cancel:=context.WithTimeout(context.Background(),2*time.Minute);defer cancel()
+ kind, kindErr := exec.CommandContext(ctx,"blkid","-p","-s","TYPE","-o","value",device).Output()
+ blocks:=strconv.FormatUint(size/blockSize,10)
+ if mode=="fresh" {
+  var exit *exec.ExitError
+  if !errors.As(kindErr,&exit) || exit.ExitCode()!=2 || len(kind)!=0 { return errors.New("fresh mode refuses an existing or uninspectable filesystem") }
+  return run(ctx,"mkfs.ext4","-q","-F","-m0","-b4096",device,blocks)
+ }
+ if kindErr != nil || string(kind)!="ext4\n" { return errors.New("grow/check requires existing ext4; it never reformats") }
+ super:=make([]byte,1024)
+ if _,err=f.ReadAt(super,1024);err!=nil{return err}
+ if binary.LittleEndian.Uint16(super[56:])!=0xef53 { return errors.New("invalid ext4 superblock") }
+ logBlock:=binary.LittleEndian.Uint32(super[24:]);if logBlock>6{return errors.New("invalid ext4 block size")}
+ currentBlocks:=uint64(binary.LittleEndian.Uint32(super[4:]))
+ if binary.LittleEndian.Uint32(super[96:])&0x80!=0 { currentBlocks|=uint64(binary.LittleEndian.Uint32(super[336:]))<<32 }
+ currentBytes:=currentBlocks*(1024<<logBlock)
+ if currentBytes > size { return fmt.Errorf("refuse filesystem shrink: current=%d target=%d; explicit offline migration required",currentBytes,size) }
+ if currentBytes==size{return nil}
+ if mode=="check"{return fmt.Errorf("filesystem growth pending: current=%d target=%d",currentBytes,size)}
+ return run(ctx,"resize2fs",device,blocks)
+}
+func run(ctx context.Context,name string,args ...string) error {
+ c:=exec.CommandContext(ctx,name,args...);c.Stdout=os.Stdout;c.Stderr=os.Stderr
+ if err:=c.Run();err!=nil{return fmt.Errorf("%s: %w",name,err)};return nil
+}

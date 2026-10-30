@@ -1,0 +1,6 @@
+package main
+import("os";"strconv";"syscall";"unsafe";"fmt")
+type fsxattr struct { Flags, Extsize, Nextents, Project, Cowextsize uint32; Pad [8]byte }
+type dqblk struct{ Hard, Soft, Space, IHard, ISoft, Inodes, BTime, ITime uint64; Valid uint32; Pad uint32 }
+func call(n uintptr,a ...uintptr){var args [6]uintptr;copy(args[:],a);_,_,err:=syscall.Syscall6(n,args[0],args[1],args[2],args[3],args[4],args[5]);if err!=0{panic(err)}}
+func main(){f,e:=os.Open(os.Args[1]);if e!=nil{panic(e)};defer f.Close();var a fsxattr;call(syscall.SYS_IOCTL,f.Fd(),0x801c581f,uintptr(unsafe.Pointer(&a)));fmt.Printf("old project=%d flags=%d\n",a.Project,a.Flags);a.Project=1;a.Flags|=0x200;call(syscall.SYS_IOCTL,f.Fd(),0x401c5820,uintptr(unsafe.Pointer(&a)));size,e:=strconv.ParseUint(os.Args[2],10,64);if e!=nil{panic(e)};q:=dqblk{Hard:size/1024,Soft:size/1024,Valid:1};call(443,f.Fd(),0x80000802,1,uintptr(unsafe.Pointer(&q)));call(443,f.Fd(),0x80000702,1,uintptr(unsafe.Pointer(&q)));fmt.Printf("hard=%d used=%d\n",q.Hard*1024,q.Space)}
