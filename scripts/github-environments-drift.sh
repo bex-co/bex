@@ -2,7 +2,9 @@
 # Verify the live GitHub environment gates match the shape w3/m173 set
 # (ADR083 obligation 5 as rewritten 2026-10-20, .pm/DO_NOT_DO.md #ENV-REVIEWERS):
 # every environment named in scripts/production-secrets.txt exists and allows
-# deployments from `main` only. That branch policy is what keeps a workflow on
+# deployments from `main` only — plus, for production-release alone, the
+# release tags its tag-triggered workflows push (cli-release.yml, mobile-release.yml),
+# whose `authorize` job refuses a tag that does not point at a main commit. That branch policy is what keeps a workflow on
 # any other branch from reaching an environment-scoped production secret, and it
 # lives in repository settings — invisible to github-actions-validate.sh — so a
 # settings change could silently remove it. It also reports any manual gate —
@@ -58,6 +60,16 @@ fetch() {
   fi
 }
 
+# allowed_tags <env> — the tag rules an environment may carry besides `main`,
+# comma-joined and sorted. Keep in step with the `on.push.tags` of the
+# workflows that deploy to that environment.
+allowed_tags() {
+  case "$1" in
+    production-release) echo "bex-cli/v*,bex-mobile/v*" ;;
+    *) echo "" ;;
+  esac
+}
+
 drift=0
 report() { echo "DRIFT: $1: $2"; drift=1; }
 
@@ -79,13 +91,14 @@ for env in $environments; do
   fi
   policies="$(fetch "$env" policies)"
   branches="$(printf '%s' "$policies" | jq -r '[.branch_policies[]? | select((.type // "branch") == "branch") | .name] | sort | join(",")')"
-  others="$(printf '%s' "$policies" | jq -r '[.branch_policies[]? | select((.type // "branch") != "branch") | .name] | join(",")')"
-  if [ "$branches" != main ] || [ -n "$others" ]; then
-    report "$env" "deployment branch policy is '${branches:-<none>}'${others:+ plus tag policies '$others'}, want exactly 'main'"
+  tags="$(printf '%s' "$policies" | jq -r '[.branch_policies[]? | select((.type // "branch") != "branch") | .name] | sort | join(",")')"
+  want_tags="$(allowed_tags "$env")"
+  if [ "$branches" != main ] || [ "$tags" != "$want_tags" ]; then
+    report "$env" "deployment branch policy is '${branches:-<none>}'${tags:+ plus tag policies '$tags'}, want exactly 'main'${want_tags:+ plus tag policies '$want_tags'}"
   fi
 done
 
 if [ "$drift" -eq 0 ]; then
-  echo "OK: every production environment ($(printf '%s' "$environments" | tr '\n' ' ' | sed 's/ $//')) allows deployments from main only, with no manual gate"
+  echo "OK: every production environment ($(printf '%s' "$environments" | tr '\n' ' ' | sed 's/ $//')) allows deployments from main only (production-release also its release tags), with no manual gate"
 fi
 exit "$drift"

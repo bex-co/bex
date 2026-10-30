@@ -57,6 +57,30 @@ fresh; with_rules '[{"type":"wait_timer","wait_timer":5}]' >"$dir/prod-a.json"
 case_run "wait timer drifts" 1 "'wait_timer'"
 fresh; with_rules '[{"type":"wait_timer","wait_timer":0},{"type":"branch_policy"}]' >"$dir/prod-a.json"
 case_run "zero wait timer and branch rule pass" 0 "with no manual gate"
+# production-release also carries the release tags its tag-triggered workflows
+# push — exactly those, and no other environment may carry any.
+printf '%s\n' 'TOKEN_R production-release' >"$tmp/release.txt"
+release_tags='{"branch_policies":[{"name":"main","type":"branch"},{"name":"bex-mobile/v*","type":"tag"},{"name":"bex-cli/v*","type":"tag"}]}'
+release_run() { # <label> <want-rc> <needle> <policies JSON>
+  dir="$tmp/r$RANDOM$RANDOM"; mkdir -p "$dir"
+  printf '%s' "$good_env" >"$dir/production-release.json"
+  printf '%s' "$4" >"$dir/production-release.policies.json"
+  local out got
+  set +e; out="$(BEX_PRODUCTION_SECRETS_FILE="$tmp/release.txt" BEX_ENV_DRIFT_FIXTURE_DIR="$dir" "$SCRIPT" 2>&1)"; got=$?; set -e
+  if [ "$got" -ne "$2" ] || ! printf '%s' "$out" | grep -qF "$3"; then echo "FAIL: $1 — exit $got, want $2, needle '$3': $out" >&2; fails=$((fails + 1)); return; fi
+  echo "ok: $1"
+}
+release_run "production-release with main + both release tags passes" 0 "allows deployments from main only" "$release_tags"
+release_run "production-release without its release tags drifts (releases would be refused)" 1 "want exactly 'main' plus tag policies 'bex-cli/v*,bex-mobile/v*'" "$main_only"
+release_run "production-release with a broader tag drifts" 1 "plus tag policies 'bex-cli/v*,v*'" '{"branch_policies":[{"name":"main","type":"branch"},{"name":"bex-cli/v*","type":"tag"},{"name":"v*","type":"tag"}]}'
+# The allowed tags must equal the tag triggers of the workflows that deploy to
+# production-release, or a new release workflow would be refused (or an old
+# pattern left open).
+wf_tags="$(grep -l 'environment: production-release' "$here"/../.github/workflows/*.yml \
+  | xargs sed -n 's/^ *tags: *\[\(.*\)\].*/\1/p' | tr ',' '\n' | tr -d ' "' | sed '/^$/d' | sort | paste -sd, -)"
+script_tags="$(sed -n 's/^ *production-release) echo "\(.*\)" ;;$/\1/p' "$SCRIPT")"
+if [ "$wf_tags" = "$script_tags" ]; then echo "ok: release tag rules match the production-release workflows' tag triggers ($wf_tags)"
+else echo "FAIL: allowed_tags production-release='$script_tags' but workflows trigger on '$wf_tags'" >&2; fails=$((fails + 1)); fi
 dir="$tmp/none"; mkdir -p "$dir"
 set +e; BEX_PRODUCTION_SECRETS_FILE="$tmp/absent.txt" BEX_ENV_DRIFT_FIXTURE_DIR="$dir" "$SCRIPT" >/dev/null 2>&1; rc=$?; set -e
 if [ "$rc" -eq 2 ]; then echo "ok: unreadable table is unusable (exit 2)"; else echo "FAIL: unreadable table exit $rc, want 2" >&2; fails=$((fails + 1)); fi
