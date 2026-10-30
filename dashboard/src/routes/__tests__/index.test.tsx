@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -16,6 +16,7 @@ import type {
 } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
+import { memoryStorage } from "@/test/mocks/storage";
 
 // The Overview page (Render parity: dashboard.render.com's workspace
 // homepage — a project card grid + an ungrouped-resources table) is a pure
@@ -344,6 +345,10 @@ beforeEach(() => {
   run.mockReset();
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("HomePage", () => {
   it("renders ungrouped resources together with a Type column", async () => {
     servicesState.services = [svc({ id: "hello-go", name: "hello-go" })];
@@ -500,6 +505,56 @@ describe("HomePage", () => {
       await screen.findByRole("link", { name: "Create a service" }),
     ).toHaveAttribute("href", "/services/new");
     expect(screen.getByTestId("getting-started-card")).toBeInTheDocument();
+  });
+
+  // AGENTS.md skeleton rule (w3/m176 t004): a workspace last seen empty
+  // previews the getting-started layout, not the resource list.
+  it("remembers an empty workspace and previews its layout while loading", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    const first = renderHomePage();
+    await screen.findByText("No resources yet");
+    expect(window.localStorage.getItem("bex.overviewShape.tea-test")).toBe(
+      "empty",
+    );
+    first.unmount();
+
+    servicesState.loading = true;
+    const { container } = renderHomePage();
+    await screen.findByText("Overview");
+    expect(
+      container.querySelector('[data-skeleton-region="getting-started"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-skeleton-region="empty-state"]'),
+    ).not.toBeNull();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("omits the card from the preview once the card was dismissed", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    window.localStorage.setItem("bex.overviewShape.tea-test", "empty");
+    window.localStorage.setItem("bex.gettingStarted.dismissed.tea-test", "1");
+    servicesState.loading = true;
+    const { container } = renderHomePage();
+    await screen.findByText("Overview");
+    expect(
+      container.querySelector('[data-skeleton-region="getting-started"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-skeleton-region="empty-state"]'),
+    ).not.toBeNull();
+  });
+
+  it("records a workspace with resources as populated", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    window.localStorage.setItem("bex.overviewShape.tea-test", "empty");
+    servicesState.services = [svc({ id: "hello-go", name: "hello-go" })];
+    renderHomePage();
+    await waitFor(() =>
+      expect(window.localStorage.getItem("bex.overviewShape.tea-test")).toBe(
+        "populated",
+      ),
+    );
   });
 });
 

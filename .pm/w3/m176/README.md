@@ -1,6 +1,6 @@
 # w3 · m176 — New workspaces get actionable empty states and a getting-started checklist (ADR075 D1+D2)
 
-**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** todo — t001–t003, t007, t008 done (shipped); 2026-10-29 unblock: rebuild mock cluster (pre-approved) → t004 screenshots + t005 dev-3 walk; t006 Render captures already taken with the user's login; t009 closeout follows
+**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** in progress — t001–t004, t007, t008 done; t005 dev-3 walk in progress (fresh account registered, checklist + first service verified); t006 Render comparison (captures taken); t009 closeout
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Give `EmptyState` an action slot and move the three new-user empties onto it — **DONE** | 30m | — |
 | t002 | Primary actions on the Overview, Blueprints and Env groups empty states — **DONE** | 45m | t001 |
 | t003 | Getting-started checklist on Overview for zero-resource workspaces — **DONE** | 1h30m | t001 |
-| t004 | Pending state that matches the ready layout at desktop and narrow mobile | 40m | t003 |
+| t004 | Pending state that matches the ready layout at desktop and narrow mobile — **DONE** | 40m | t003 |
 | t005 | Live first-run walk on dev-3 with a fresh account | 45m | t002, t004 |
 | t006 | Render parity | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |

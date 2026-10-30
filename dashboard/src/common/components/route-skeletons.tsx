@@ -20,6 +20,8 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { useWorkspace } from "@/features/workspaces/context";
+import { useGettingStartedDismissal } from "@/features/onboarding/hooks/use-getting-started-dismissal";
+import { useOverviewShape } from "@/features/onboarding/hooks/use-overview-shape";
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import {
   DatastorePlanPreview,
@@ -495,7 +497,51 @@ function ReservedCardSkeleton({
   );
 }
 
+/**
+ * The Overview body of a workspace with no resources: the getting-started card
+ * (unless dismissed) and the empty state with its Create action. Shared by the
+ * route's pending frame and the page's own first-load state.
+ */
+export function OverviewEmptySkeleton() {
+  const { currentWorkspaceId } = useWorkspace();
+  const { dismissed } = useGettingStartedDismissal(currentWorkspaceId);
+  return (
+    <>
+      {dismissed ? null : (
+        <Region
+          name="getting-started"
+          className="flex flex-col gap-4 rounded-xl border bg-card p-5"
+        >
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-4 w-36" />
+            <div className="flex h-5 items-center">
+              <Skeleton className="h-3.5 w-48" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            {/* The GitHub item wraps to two lines below `sm` (en). */}
+            <Skeleton className="h-5 w-72 max-w-full" />
+            <Skeleton className="h-10 w-72 max-w-full sm:h-5" />
+            <Skeleton className="h-5 w-72 max-w-full" />
+          </div>
+        </Region>
+      )}
+      <Region name="empty-state" className="flex flex-col items-center py-8">
+        <div className="flex h-6 items-center">
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="flex h-10 w-full items-center justify-center sm:h-5">
+          <Skeleton className="h-9 w-96 max-w-full sm:h-3.5" />
+        </div>
+        <Skeleton className="mt-4 h-8 w-36" />
+      </Region>
+    </>
+  );
+}
+
 export function OverviewPageSkeleton() {
+  const { currentWorkspaceId } = useWorkspace();
+  const shape = useOverviewShape(currentWorkspaceId);
   return (
     <PendingFrame route="overview" className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="w-full space-y-6">
@@ -506,18 +552,24 @@ export function OverviewPageSkeleton() {
           <Skeleton className="h-6 w-36" />
           <Skeleton className="h-8 w-24" />
         </Region>
-        <Region name="projects" className="space-y-3">
-          <Skeleton className="h-4 w-24" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-32 w-full rounded-xl" />
-            ))}
-          </div>
-        </Region>
-        <Region name="resources" className="space-y-3">
-          <Skeleton className="h-4 w-28" />
-          <TableRowsSkeleton rows={2} columns={4} />
-        </Region>
+        {shape === "empty" ? (
+          <OverviewEmptySkeleton />
+        ) : (
+          <>
+            <Region name="projects" className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <Skeleton key={index} className="h-32 w-full rounded-xl" />
+                ))}
+              </div>
+            </Region>
+            <Region name="resources" className="space-y-3">
+              <Skeleton className="h-4 w-28" />
+              <TableRowsSkeleton rows={2} columns={4} />
+            </Region>
+          </>
+        )}
       </div>
     </PendingFrame>
   );

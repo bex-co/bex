@@ -44,7 +44,15 @@ import { ResourceTable } from "@/features/projects/components/resource-table";
 import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
 import { ProjectCard } from "@/features/projects/components/project-card";
 import { NewProjectCard } from "@/features/projects/components/new-project-card";
-import { OverviewPageSkeleton } from "@/common/components/route-skeletons";
+import {
+  OverviewEmptySkeleton,
+  OverviewPageSkeleton,
+} from "@/common/components/route-skeletons";
+import {
+  rememberOverviewShape,
+  useOverviewShape,
+} from "@/features/onboarding/hooks/use-overview-shape";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export const Route = createFileRoute("/")({
   staticData: { chrome: true },
@@ -210,6 +218,15 @@ export function HomePage() {
   const showError = !loading && error && totalResources === 0;
   const showEmpty =
     !loading && !error && totalResources === 0 && projects.length === 0;
+  const { currentWorkspaceId } = useWorkspace();
+  const shape = useOverviewShape(currentWorkspaceId);
+  useEffect(() => {
+    if (loading || error) return;
+    rememberOverviewShape(
+      currentWorkspaceId,
+      showEmpty ? "empty" : "populated",
+    );
+  }, [currentWorkspaceId, loading, error, showEmpty]);
 
   function refetchAll() {
     void refetchServices();
@@ -254,6 +271,8 @@ export function HomePage() {
               <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
               <AlertDescription>{t("projects.errorBody")}</AlertDescription>
             </Alert>
+          ) : showSkeleton && shape === "empty" ? (
+            <OverviewEmptySkeleton />
           ) : showEmpty ? (
             <>
               <GettingStartedCard />
