@@ -1,0 +1,1 @@
+Running Trivy with options: /tmp/bex-m188-trivy-wrapper-merged-review/runner-temp/native-trivy image ghcr.io/bex-co/bex-cnb-run@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

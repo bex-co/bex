@@ -1,0 +1,212 @@
+{
+  "scope": "Merged actual workflow with existing HTTP/1.1 setting plus bounded retry hook, exercised through pinned official action environment generator and entrypoint using controlled command stubs; no real scans claimed.",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/actual-workflow-prepare.sh",
+      "file": "actual-workflow-prepare.sh",
+      "bytes": 549,
+      "sha256": "aef238575e70bd4e94e7bcf39cade70e6cae1bea19f5c12dbd9b7c864535e238"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/events.jsonl",
+      "file": "all-three-fail/events.jsonl",
+      "bytes": 2218,
+      "sha256": "0d2b95704a3bae3dc92512b22496cdd87e6d76ad2e469c84361b6c03ec6f89c1"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stderr.txt",
+      "file": "all-three-fail/stderr.txt",
+      "bytes": 84,
+      "sha256": "cffa7cdb6f606fbf71785f7b087f7e71ab43f5d91ba9a9badc3c25b80e1f4f77"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stdout.txt",
+      "file": "all-three-fail/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/trivy_envs.txt",
+      "file": "all-three-fail/trivy_envs.txt",
+      "bytes": 176,
+      "sha256": "3c1844c7b06ed0d8366443a8eae1e6383cd36c3f1c872f9be3d4054e03143efa"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/events.jsonl",
+      "file": "amd64-success/events.jsonl",
+      "bytes": 713,
+      "sha256": "d57604d6497f4e592ed93c20e8e5fef0b15654d25f8548e6241302776f62f37a"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/native-amd64.trivy.json",
+      "file": "amd64-success/native-amd64.trivy.json",
+      "bytes": 278,
+      "sha256": "bd202c91bc8ade1bb667b35bcf346f75f5d87da2e8564c33d4ce74e4ae0c3bd3"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stderr.txt",
+      "file": "amd64-success/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stdout.txt",
+      "file": "amd64-success/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/trivy_envs.txt",
+      "file": "amd64-success/trivy_envs.txt",
+      "bytes": 175,
+      "sha256": "22c44038dbad511b72bd77095dcf5717ae8498700ddfb9757453a747d225be59"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/events.jsonl",
+      "file": "arm64-success-spaced-output/events.jsonl",
+      "bytes": 728,
+      "sha256": "b434d66ac14088c63ebb49ea4eba95cd668dae03f1cbfdf1316397052297ea76"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/native arm64 report.json",
+      "file": "arm64-success-spaced-output/native arm64 report.json",
+      "bytes": 278,
+      "sha256": "95aba63cecbe0896d74443e6a1dab30988961497991188c50815f81a15968f07"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stderr.txt",
+      "file": "arm64-success-spaced-output/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stdout.txt",
+      "file": "arm64-success-spaced-output/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/trivy_envs.txt",
+      "file": "arm64-success-spaced-output/trivy_envs.txt",
+      "bytes": 192,
+      "sha256": "b39378fc611d818bf0ab19139391252e5a6f091df625d9abef739916394a0e37"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stderr.txt",
+      "file": "missing-report-path/stderr.txt",
+      "bytes": 115,
+      "sha256": "6759088720369768cc52f3aa79d635d7dbf07ce28c1da1099ff711b349f10c8a"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stdout.txt",
+      "file": "missing-report-path/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/trivy_envs.txt",
+      "file": "missing-report-path/trivy_envs.txt",
+      "bytes": 75,
+      "sha256": "b0fb48099b6e3bc7f6d44a71f4287ce05f1c79f6523230f97d62a556530dbbbf"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/events.jsonl",
+      "file": "outer-timeout-all-three/events.jsonl",
+      "bytes": 613,
+      "sha256": "19deac9641212d0f80f671679780718ee49306e46fc7bac6641c9ef1c0384f7f"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stderr.txt",
+      "file": "outer-timeout-all-three/stderr.txt",
+      "bytes": 84,
+      "sha256": "cffa7cdb6f606fbf71785f7b087f7e71ab43f5d91ba9a9badc3c25b80e1f4f77"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stdout.txt",
+      "file": "outer-timeout-all-three/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/trivy_envs.txt",
+      "file": "outer-timeout-all-three/trivy_envs.txt",
+      "bytes": 185,
+      "sha256": "ec7ffecaa199326eb30f956cfe07641d0605afa42cb56d5db34dafd15f5eb806"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/events.jsonl",
+      "file": "partial-failure-then-success/events.jsonl",
+      "bytes": 1493,
+      "sha256": "e5b6c3684b354b65b80ccd1619e13cb536fd7c356eec49e325d052f69dc20adb"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/native-amd64.trivy.json",
+      "file": "partial-failure-then-success/native-amd64.trivy.json",
+      "bytes": 278,
+      "sha256": "bd202c91bc8ade1bb667b35bcf346f75f5d87da2e8564c33d4ce74e4ae0c3bd3"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stderr.txt",
+      "file": "partial-failure-then-success/stderr.txt",
+      "bytes": 28,
+      "sha256": "027b58139d47adcc27eefab8a736de9ede05c3cd63685646aa891908156cc43e"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stdout.txt",
+      "file": "partial-failure-then-success/stdout.txt",
+      "bytes": 200,
+      "sha256": "cb17fb32abf4c28c2fa498e6bd7d8cfa5bd989f636fe0b4d36a75f82aa56b22c"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/trivy_envs.txt",
+      "file": "partial-failure-then-success/trivy_envs.txt",
+      "bytes": 190,
+      "sha256": "51b45782e46f831e4daf440bab7412c30fe6cc571b0f969fe97ceb14b5b2890f"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/receipt.json",
+      "file": "receipt.json",
+      "bytes": 6048,
+      "sha256": "c80af776b15d40b7b20fcadcd2e1fa723d0b96824dd3ee3b47eb3434bb393035"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/runner-temp/native-trivy",
+      "file": "runner-temp/native-trivy",
+      "bytes": 343,
+      "sha256": "8d183bcc774c07dda5dc2a7e25da4e8a434319ee2e6edbdd9ffe284be1e7ac65"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/stubs/sleep",
+      "file": "stubs/sleep",
+      "bytes": 1384,
+      "sha256": "5030d38ade66c9aecbbd5cba05dd71401dc50fb00e4410212683a60b156cb096"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/stubs/timeout",
+      "file": "stubs/timeout",
+      "bytes": 1384,
+      "sha256": "5030d38ade66c9aecbbd5cba05dd71401dc50fb00e4410212683a60b156cb096"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/stubs/trivy",
+      "file": "stubs/trivy",
+      "bytes": 1384,
+      "sha256": "5030d38ade66c9aecbbd5cba05dd71401dc50fb00e4410212683a60b156cb096"
+    },
+    {
+      "source": "/tmp/bex-m188-trivy-wrapper-merged-review/test.py",
+      "file": "test.py",
+      "bytes": 9419,
+      "sha256": "ab4e1c2073d20c1f791980d246e99dae78597968e03b6f97517a4dab76c78f7c"
+    }
+  ],
+  "official_sources": {
+    "official_action_commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "official_entrypoint_source": "https://raw.githubusercontent.com/aquasecurity/trivy-action/ed142fd0673e97e23eac54620cfb913e5ce36c25/entrypoint.sh",
+    "official_entrypoint_sha256": "5d35de70292a3461e55874ca658b3d8f6a56acc4d7098c64e546d965c34a0067",
+    "official_action_source": "https://raw.githubusercontent.com/aquasecurity/trivy-action/ed142fd0673e97e23eac54620cfb913e5ce36c25/action.yaml",
+    "official_action_sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73",
+    "official_hook": "entrypoint TRIVY_CMD defaults to trivy then invokes quoted cmd array; action input environment generator exports exact output/timeout/exit-code before entrypoint; inherited TRIVY_CMD and platform are preserved"
+  },
+  "reproduction": "Archived test.py preserves original executed paths. Fetch exact official action.yaml and entrypoint.sh from recorded pinned URLs and verify SHA256 before rerun. Stub JSON is not real scan evidence."
+}

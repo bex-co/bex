@@ -1,0 +1,4 @@
+export TRIVY_EXIT_CODE=0
+export TRIVY_FORMAT=json
+export TRIVY_OUTPUT=/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/native-amd64.trivy.json
+export TRIVY_TIMEOUT=20m

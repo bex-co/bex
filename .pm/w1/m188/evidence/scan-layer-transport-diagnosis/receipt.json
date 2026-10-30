@@ -1,0 +1,409 @@
+{
+  "schema": "bex.native-full-scan-layer-transport-diagnosis/v1",
+  "checked_at": "2026-10-30T13:05:15.026943+00:00",
+  "read_only": true,
+  "remote_mutations": false,
+  "filesystem_layers_pulled": false,
+  "jobs": [
+    {
+      "runtime": "node-14-bullseye",
+      "exact_job_id": 124022951658,
+      "run_id": 41043547006,
+      "run_attempt": 1,
+      "source": "5e89a6076905a91b4496fe36a476774c3f50585c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41043547006/job/124022951658",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "runtime_gate": {
+        "name": "verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-30T12:30:32Z",
+        "completed_at": "2026-10-30T12:44:47Z"
+      },
+      "failed_scan": {
+        "name": "scan amd64 candidate",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 10,
+        "started_at": "2026-10-30T12:44:47Z",
+        "completed_at": "2026-10-30T12:57:49Z"
+      },
+      "remaining_scan": {
+        "name": "scan arm64 candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11,
+        "started_at": "2026-10-30T12:57:49Z",
+        "completed_at": "2026-10-30T12:57:49Z"
+      },
+      "signing": {
+        "name": "sign and attest the immutable candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 14,
+        "started_at": "2026-10-30T12:57:49Z",
+        "completed_at": "2026-10-30T12:57:49Z"
+      },
+      "terminal_error": {
+        "line_number": 3414,
+        "line": "2026-10-30T12:57:49.0956969Z 2026-10-30T12:57:49Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: analyze error: pipeline error: failed to analyze layer (sha256:ae56c0c5405b3d38a59b5ec5dfe5db36e8b6ff6ca8595851f903cde13e709282): walk error: failed to extract the archive: stream error: stream ID 9; PROTOCOL_ERROR; received from peer",
+        "context": [
+          {
+            "line_number": 3409,
+            "line": "2026-10-30T12:57:49.0954169Z \ud83d\udce3 \u001b[34mNotices:\u001b[0m"
+          },
+          {
+            "line_number": 3410,
+            "line": "2026-10-30T12:57:49.0954656Z   - Version 0.76.1 of Trivy is now available, current version is 0.70.0"
+          },
+          {
+            "line_number": 3411,
+            "line": "2026-10-30T12:57:49.0954927Z "
+          },
+          {
+            "line_number": 3412,
+            "line": "2026-10-30T12:57:49.0955157Z To suppress version checks, run Trivy scans with the --skip-version-check flag"
+          },
+          {
+            "line_number": 3413,
+            "line": "2026-10-30T12:57:49.0955491Z "
+          },
+          {
+            "line_number": 3414,
+            "line": "2026-10-30T12:57:49.0956969Z 2026-10-30T12:57:49Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: analyze error: pipeline error: failed to analyze layer (sha256:ae56c0c5405b3d38a59b5ec5dfe5db36e8b6ff6ca8595851f903cde13e709282): walk error: failed to extract the archive: stream error: stream ID 9; PROTOCOL_ERROR; received from peer"
+          },
+          {
+            "line_number": 3415,
+            "line": "2026-10-30T12:57:49.1153057Z ##[error]Process completed with exit code 1."
+          },
+          {
+            "line_number": 3416,
+            "line": "2026-10-30T12:57:49.1166185Z ##[end-action id=__aquasecurity_trivy-action.__run_4;outcome=failure;conclusion=failure;duration_ms=614934]"
+          },
+          {
+            "line_number": 3417,
+            "line": "2026-10-30T12:57:49.1172806Z ##[start-action display=Remove Trivy Envs file;id=__aquasecurity_trivy-action.__run_5]"
+          }
+        ],
+        "layer_digest": "sha256:ae56c0c5405b3d38a59b5ec5dfe5db36e8b6ff6ca8595851f903cde13e709282",
+        "stream_id": 9
+      },
+      "scan_binding_configuration": [
+        {
+          "line_number": 3098,
+          "line": "2026-10-30T12:44:47.9002926Z   image-ref: ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        },
+        {
+          "line_number": 3101,
+          "line": "2026-10-30T12:44:47.9003607Z   timeout: 20m"
+        },
+        {
+          "line_number": 3115,
+          "line": "2026-10-30T12:44:47.9007781Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3127,
+          "line": "2026-10-30T12:44:47.9148942Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3135,
+          "line": "2026-10-30T12:44:47.9190888Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3165,
+          "line": "2026-10-30T12:44:47.9342265Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3260,
+          "line": "2026-10-30T12:44:51.4932348Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3273,
+          "line": "2026-10-30T12:47:34.1906346Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3285,
+          "line": "2026-10-30T12:47:34.1996107Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3296,
+          "line": "2026-10-30T12:47:34.2082687Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3307,
+          "line": "2026-10-30T12:47:34.2129626Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3363,
+          "line": "2026-10-30T12:47:34.2214706Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3390,
+          "line": "2026-10-30T12:47:34.2342208Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 3423,
+          "line": "2026-10-30T12:57:49.1206064Z   TRIVY_PLATFORM: linux/amd64"
+        }
+      ],
+      "classification": "HTTP/2 image-layer read/extraction transport failure, same observed class as21ed Node16 PROTOCOL_ERROR. This terminal error is not20m deadline/CPU timeout, vulnerability-policy failure, or native runtime-test failure.",
+      "fetch_command": [
+        "gh",
+        "api",
+        "repos/bex-co/bex/actions/jobs/124022951658/logs"
+      ],
+      "raw_log": "/tmp/bex-m188-node14-canonical-job124022951658.log",
+      "raw_log_bytes": 340044,
+      "raw_log_sha256": "c0298acd7f201130e88ee98dbe3419a91440ac2f100f1bd0770133b7cff8b602",
+      "gzip_log": "/tmp/bex-m188-scan-layer-transport-diagnosis/node14-canonical-job124022951658.log.gz",
+      "gzip_bytes": 52955,
+      "gzip_sha256": "4a16f65c436172f72c33e0dda9bf234d5acc2da9b8f99520eae7f728c81d9ba9",
+      "job_api_file": "/tmp/bex-m188-node14-canonical-job124022951658.json",
+      "job_api_sha256": "6de8f139552255533ec46fd2f4131b030808ceb3eaf43397fc65263382c20170",
+      "negative_archive_checks_note": "Any earlier pg_restore invalid-input error is an intentional negative control; the full dual-architecture runtime step succeeded."
+    },
+    {
+      "runtime": "node-20-bookworm",
+      "exact_job_id": 124006161240,
+      "run_id": 41038700463,
+      "run_attempt": 1,
+      "source": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41038700463/job/124006161240",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "runtime_gate": {
+        "name": "verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-30T10:53:28Z",
+        "completed_at": "2026-10-30T12:11:19Z"
+      },
+      "failed_scan": {
+        "name": "scan amd64 candidate",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 10,
+        "started_at": "2026-10-30T12:11:19Z",
+        "completed_at": "2026-10-30T12:26:14Z"
+      },
+      "remaining_scan": {
+        "name": "scan arm64 candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11,
+        "started_at": "2026-10-30T12:26:14Z",
+        "completed_at": "2026-10-30T12:26:14Z"
+      },
+      "signing": {
+        "name": "sign and attest the immutable candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 14,
+        "started_at": "2026-10-30T12:26:14Z",
+        "completed_at": "2026-10-30T12:26:14Z"
+      },
+      "terminal_error": {
+        "line_number": 9667,
+        "line": "2026-10-30T12:26:14.5626927Z 2026-10-30T12:26:14Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: analyze error: pipeline error: failed to analyze layer (sha256:86bd231047278cf2e1c03ca7a574c89e63e569fc386b26ccf3402366ec492fbf): walk error: failed to process the file: failed to analyze file: failed to analyze usr/lib/gcc/x86_64-linux-gnu/12/cc1plus: unable to open usr/lib/gcc/x86_64-linux-gnu/12/cc1plus: failed to open: unable to read the file: stream error: stream ID 3; PROTOCOL_ERROR; received from peer",
+        "context": [
+          {
+            "line_number": 9662,
+            "line": "2026-10-30T12:26:14.5622399Z \ud83d\udce3 \u001b[34mNotices:\u001b[0m"
+          },
+          {
+            "line_number": 9663,
+            "line": "2026-10-30T12:26:14.5623047Z   - Version 0.76.1 of Trivy is now available, current version is 0.70.0"
+          },
+          {
+            "line_number": 9664,
+            "line": "2026-10-30T12:26:14.5623462Z "
+          },
+          {
+            "line_number": 9665,
+            "line": "2026-10-30T12:26:14.5623759Z To suppress version checks, run Trivy scans with the --skip-version-check flag"
+          },
+          {
+            "line_number": 9666,
+            "line": "2026-10-30T12:26:14.5624506Z "
+          },
+          {
+            "line_number": 9667,
+            "line": "2026-10-30T12:26:14.5626927Z 2026-10-30T12:26:14Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: analyze error: pipeline error: failed to analyze layer (sha256:86bd231047278cf2e1c03ca7a574c89e63e569fc386b26ccf3402366ec492fbf): walk error: failed to process the file: failed to analyze file: failed to analyze usr/lib/gcc/x86_64-linux-gnu/12/cc1plus: unable to open usr/lib/gcc/x86_64-linux-gnu/12/cc1plus: failed to open: unable to read the file: stream error: stream ID 3; PROTOCOL_ERROR; received from peer"
+          },
+          {
+            "line_number": 9668,
+            "line": "2026-10-30T12:26:14.5909043Z ##[error]Process completed with exit code 1."
+          },
+          {
+            "line_number": 9669,
+            "line": "2026-10-30T12:26:14.5945193Z ##[end-action id=__aquasecurity_trivy-action.__run_4;outcome=failure;conclusion=failure;duration_ms=683799]"
+          },
+          {
+            "line_number": 9670,
+            "line": "2026-10-30T12:26:14.5952422Z ##[start-action display=Remove Trivy Envs file;id=__aquasecurity_trivy-action.__run_5]"
+          }
+        ],
+        "layer_digest": "sha256:86bd231047278cf2e1c03ca7a574c89e63e569fc386b26ccf3402366ec492fbf",
+        "stream_id": 3
+      },
+      "scan_binding_configuration": [
+        {
+          "line_number": 9351,
+          "line": "2026-10-30T12:11:19.7022403Z   image-ref: ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+        },
+        {
+          "line_number": 9354,
+          "line": "2026-10-30T12:11:19.7023515Z   timeout: 20m"
+        },
+        {
+          "line_number": 9368,
+          "line": "2026-10-30T12:11:19.7030693Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9380,
+          "line": "2026-10-30T12:11:19.7300034Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9388,
+          "line": "2026-10-30T12:11:19.7412406Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9418,
+          "line": "2026-10-30T12:11:19.7686369Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9513,
+          "line": "2026-10-30T12:11:23.2893120Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9526,
+          "line": "2026-10-30T12:14:50.7621455Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9538,
+          "line": "2026-10-30T12:14:50.7726870Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9549,
+          "line": "2026-10-30T12:14:50.7778394Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9560,
+          "line": "2026-10-30T12:14:50.7846136Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9616,
+          "line": "2026-10-30T12:14:50.7914175Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9643,
+          "line": "2026-10-30T12:14:50.7963790Z   TRIVY_PLATFORM: linux/amd64"
+        },
+        {
+          "line_number": 9676,
+          "line": "2026-10-30T12:26:14.5993237Z   TRIVY_PLATFORM: linux/amd64"
+        }
+      ],
+      "classification": "HTTP/2 image-layer read/extraction transport failure, same observed class as21ed Node16 PROTOCOL_ERROR. This terminal error is not20m deadline/CPU timeout, vulnerability-policy failure, or native runtime-test failure.",
+      "fetch_command": [
+        "gh",
+        "api",
+        "repos/bex-co/bex/actions/jobs/124006161240/logs"
+      ],
+      "raw_log": "/tmp/bex-m188-node20-c8b90-job124006161240.log",
+      "raw_log_bytes": 1082346,
+      "raw_log_sha256": "c49fc07664ebf92fc27388fdb7d4333ca262a59e45dde880a3828fe9b08de77b",
+      "gzip_log": "/tmp/bex-m188-scan-layer-transport-diagnosis/node20-c8b90-job124006161240.log.gz",
+      "gzip_bytes": 120206,
+      "gzip_sha256": "613fe8b357b26cc7c50f5f0946ebdffd13365b1208b2cc7ea36fea3d6074d3e5",
+      "job_api_file": "/tmp/bex-m188-node20-c8b90-job124006161240.json",
+      "job_api_sha256": "a6c82824ec4bcbb2d3515a88566c2564ab82ae35b604390d94c51869758fffd5",
+      "negative_archive_checks_note": "Any earlier pg_restore invalid-input error is an intentional negative control; the full dual-architecture runtime step succeeded."
+    }
+  ],
+  "prior_same_class": {
+    "receipt": "/tmp/bex-m188-node16-21ed-arm-scan-intake.json",
+    "receipt_sha256": "a330ddc5f4d669c0b1ba465174940a6841c97b6d758bf88278ffc647f9e94420",
+    "run_id": 41030129157,
+    "job_id": 123978338586,
+    "raw_log_sha256": "f383622a280ad31e621349689310929a103b0e68032322d02afabf08c14469da",
+    "observed_terminal": "usr/local/bin/node stream ID13 PROTOCOL_ERROR received from peer"
+  },
+  "known_same_index_scan_success_comparators": [
+    {
+      "path": "/Users/tianpan/projects/bex/.pm/w8/m91/evidence/published-node14-20261030/receipt.json",
+      "sha256": "0f873cca1449b304f5d552d22f58d14a38b2c03713386e9e68717e974fa42f84",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "successful_scan_evidence": {
+        "run_id": "41029596739",
+        "url": "https://github.com/bex-co/bex/actions/runs/41029596739",
+        "run_status": "completed",
+        "run_conclusion": "success",
+        "job_id": 123976756119,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41029596739/job/123976756119",
+        "job_name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+        "job_conclusion": "success",
+        "verified_steps": [
+          "scan amd64 candidate",
+          "scan arm64 candidate",
+          "sign and attest the immutable candidate",
+          "verify real native tool transformations without network on both architectures"
+        ],
+        "primary_build_conclusion": "skipped",
+        "recovery_selection_conclusion": "success"
+      }
+    },
+    {
+      "path": "/tmp/bex-m188-node20-producer-intake/receipt.json",
+      "sha256": "488a200597e0d711a875300be967e234a3fde7a37d597301b2c98ecb43d5b29b",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "successful_scan_evidence": [
+        {
+          "completed_at": "2026-10-30T09:49:00Z",
+          "conclusion": "success",
+          "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+          "number": 6,
+          "started_at": "2026-10-30T06:56:40Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-10-30T09:49:51Z",
+          "conclusion": "success",
+          "name": "verify real native tool transformations without network on both architectures",
+          "number": 7,
+          "started_at": "2026-10-30T09:49:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-10-30T09:54:20Z",
+          "conclusion": "success",
+          "name": "scan amd64 candidate",
+          "number": 8,
+          "started_at": "2026-10-30T09:49:51Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-10-30T09:55:16Z",
+          "conclusion": "success",
+          "name": "scan arm64 candidate",
+          "number": 9,
+          "started_at": "2026-10-30T09:54:20Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-10-30T09:57:35Z",
+          "conclusion": "failure",
+          "name": "sign and attest the immutable candidate",
+          "number": 12,
+          "started_at": "2026-10-30T09:55:32Z",
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "conclusion": "Both exact-job terminal errors match the prior HTTP/2 PROTOCOL_ERROR layer-transport class. Both current AMD scans failed; ARM scans/signing skipped. Do not claim the failed scans passed or suppress their findings.",
+  "minimal_recovery_direction": "A bounded retry of each identical full scan can address this transient transport class. Preserve full20m scan timeout, unchanged exact image/platform/format/scanners/severity and fail-closed behavior after all attempts; delete partial output before retry and never attest incomplete output. No skip-files/dirs/scanners, tlog bypass or timeout-as-success. The source of the peer reset is not proven by these logs."
+}

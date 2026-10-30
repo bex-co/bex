@@ -1,0 +1,67 @@
+{
+  "checked_at": "2026-10-30T12:15:32.639825+00:00",
+  "run": 41030129157,
+  "job": 123978338586,
+  "raw_log_sha256": "f383622a280ad31e621349689310929a103b0e68032322d02afabf08c14469da",
+  "bytes": 316278,
+  "findings": [
+    [
+      469,
+      "2026-10-30T10:31:17.0936850Z \u001b[36;1m  if printf '%s' \"$GHCR_TOKEN\" | timeout 60s docker login ghcr.io --username \"$GITHUB_ACTOR\" --password-stdin; then\u001b[0m"
+    ],
+    [
+      1537,
+      "2026-10-30T10:35:24.9527225Z #24 1.074 pg_restore: error: input file is too short (read 0, expected 5)"
+    ],
+    [
+      1590,
+      "2026-10-30T10:35:30.7481844Z #33 0.178 pg_restore: error: input file is too short (read 0, expected 5)"
+    ],
+    [
+      2242,
+      "2026-10-30T10:35:39.0857732Z   timeout: 20m"
+    ],
+    [
+      2493,
+      "2026-10-30T10:35:55.8880585Z \u001b[36;1mset_env_var_if_provided \"TRIVY_TIMEOUT\" \"$INPUT_TIMEOUT\" \"\"\u001b[0m"
+    ],
+    [
+      2515,
+      "2026-10-30T10:35:55.8892661Z   INPUT_TIMEOUT: 20m"
+    ],
+    [
+      2582,
+      "2026-10-30T10:39:15.1427695Z   timeout: 20m"
+    ],
+    [
+      2703,
+      "2026-10-30T10:41:56.5196908Z ##[error]fatal: unable to access 'https://github.com/aquasecurity/trivy/': gnutls_handshake() failed: The TLS connection was non-properly terminated."
+    ],
+    [
+      2834,
+      "2026-10-30T10:44:54.8195785Z \u001b[36;1mset_env_var_if_provided \"TRIVY_TIMEOUT\" \"$INPUT_TIMEOUT\" \"\"\u001b[0m"
+    ],
+    [
+      2856,
+      "2026-10-30T10:44:54.8207353Z   INPUT_TIMEOUT: 20m"
+    ],
+    [
+      2892,
+      "2026-10-30T10:51:55.9025700Z 2026-10-30T10:51:55Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: analyze error: pipeline error: failed to analyze layer (sha256:0cbb78e460457f9a652c8d5baa0bc0b17f5b9a0e3bedf6e3ee96ac8a49d3ebf7): walk error: failed to process the file: failed to analyze file: failed to analyze usr/local/bin/node: unable to open usr/local/bin/node: failed to open: unable to read the file: stream error: stream ID 13; PROTOCOL_ERROR; received from peer"
+    ]
+  ],
+  "classification": "Image-layer transport failure: HTTP/2 PROTOCOL_ERROR received from peer while Trivy read usr/local/bin/node; not scanner timeout or runtime-probe failure.",
+  "negative_pg_restore_messages": "Expected invalid archive controls; not gate failure.",
+  "same_digest_comparator": {
+    "run": 41029599983,
+    "job": 123977276970,
+    "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "outcome": "Both scans succeeded, signed SPDX architecture binding separately held."
+  },
+  "corrective_path": {
+    "run": 41043547006,
+    "runtime": "node-16-bookworm",
+    "workflow_source": "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "action": "Canonical registry-source replay remains queued, redoing all gates/scans/signatures. No obsolete whole-run rerun/cancellation."
+  }
+}

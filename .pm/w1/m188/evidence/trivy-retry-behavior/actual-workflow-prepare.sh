@@ -1,0 +1,18 @@
+# The pinned action supports TRIVY_CMD. Keep its 20m scan budget;
+# the outer deadline adds only a minute for CLI teardown.
+cat > "$RUNNER_TEMP/native-trivy" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TRIVY_OUTPUT:?missing scan report path}"
+for attempt in 1 2 3; do
+  rm -f -- "$TRIVY_OUTPUT"
+  if timeout --kill-after=10s 21m trivy "$@"; then
+    exit 0
+  fi
+  echo "Trivy scan attempt $attempt failed" >&2
+  rm -f -- "$TRIVY_OUTPUT"
+  [ "$attempt" -lt 3 ] || exit 1
+  sleep "$((attempt * 5))"
+done
+SH
+chmod 755 "$RUNNER_TEMP/native-trivy"

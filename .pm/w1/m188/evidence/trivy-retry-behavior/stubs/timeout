@@ -1,0 +1,17 @@
+#!/opt/homebrew/opt/python@3.14/bin/python3.14
+
+import os,sys,json,subprocess,pathlib
+name=pathlib.Path(sys.argv[0]).name;args=sys.argv[1:];events=pathlib.Path(os.environ['OWN_TASK_EVENTS']);prior=[json.loads(x) for x in events.read_text().splitlines()] if events.exists() else []
+def log(x):
+ with events.open('a') as f:f.write(json.dumps(dict(command=name,args=args,**x))+'\n')
+if name=='sleep': log({});sys.exit(0)
+if name=='timeout':
+ log({});assert args[:2]==['--kill-after=10s','21m'] and args[2]=='trivy'
+ if os.environ.get('OWN_TASK_FORCE_TIMEOUT')=='yes':
+  pathlib.Path(os.environ['TRIVY_OUTPUT']).write_text('partial timeout report');sys.exit(124)
+ sys.exit(subprocess.run(args[2:]).returncode)
+assert name=='trivy'
+out=pathlib.Path(os.environ['TRIVY_OUTPUT']);calls=sum(x['command']=='trivy' for x in prior);seq=json.loads(os.environ['OWN_TASK_SCAN_EXITS']);code=seq[min(calls,len(seq)-1)];log({'existing_report_before_scan':out.exists(),'scan_environment':{k:v for k,v in os.environ.items() if k.startswith('TRIVY_') or k=='GODEBUG'},'exit_code':code})
+if code:out.write_text('partial failed report '+str(calls))
+else:out.write_text(json.dumps({'ArtifactName':args[1],'Metadata':{'ImageConfig':{'architecture':os.environ['TRIVY_PLATFORM'].split('/')[1]}},'Results':[{'Vulnerabilities':[{'VulnerabilityID':'CVE-test-retained','Status':'will_not_fix'}]}]}))
+sys.exit(code)

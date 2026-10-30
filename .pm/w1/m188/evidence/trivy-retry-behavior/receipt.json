@@ -1,0 +1,120 @@
+{
+  "schema": "bex.independent-pinned-trivy-wrapper-integration-test/v1",
+  "at": "2026-10-30T13:20:33.187262+00:00",
+  "result": "PASS all6 cases through actual pinned official environment generator and entrypoint; no workflow defects found in reviewed delta",
+  "workflow": "/Users/tianpan/projects/bex/.github/workflows/native-base-image.yml",
+  "workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+  "http2_workaround_env_forwarded": "GODEBUG=http2client=0 verified at actual scanner stub for both architectures and every retry",
+  "wrapper_sha256": "8d183bcc774c07dda5dc2a7e25da4e8a434319ee2e6edbdd9ffe284be1e7ac65",
+  "actual_prepare_step_sha256": "aef238575e70bd4e94e7bcf39cade70e6cae1bea19f5c12dbd9b7c864535e238",
+  "official_action_commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+  "official_entrypoint_source": "https://raw.githubusercontent.com/aquasecurity/trivy-action/ed142fd0673e97e23eac54620cfb913e5ce36c25/entrypoint.sh",
+  "official_entrypoint_sha256": "5d35de70292a3461e55874ca658b3d8f6a56acc4d7098c64e546d965c34a0067",
+  "official_action_source": "https://raw.githubusercontent.com/aquasecurity/trivy-action/ed142fd0673e97e23eac54620cfb913e5ce36c25/action.yaml",
+  "official_action_sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73",
+  "official_hook": "entrypoint TRIVY_CMD defaults to trivy then invokes quoted cmd array; action input environment generator exports exact output/timeout/exit-code before entrypoint; inherited TRIVY_CMD and platform are preserved",
+  "tests": [
+    {
+      "case": "amd64-success",
+      "architecture": "amd64",
+      "action_entrypoint_exit": 0,
+      "scanner_calls": 1,
+      "outer_deadline_calls": 1,
+      "backoff_seconds": [],
+      "report_exists_after": true,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/amd64-success/stderr.txt"
+    },
+    {
+      "case": "arm64-success-spaced-output",
+      "architecture": "arm64",
+      "action_entrypoint_exit": 0,
+      "scanner_calls": 1,
+      "outer_deadline_calls": 1,
+      "backoff_seconds": [],
+      "report_exists_after": true,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/arm64-success-spaced-output/stderr.txt"
+    },
+    {
+      "case": "partial-failure-then-success",
+      "architecture": "amd64",
+      "action_entrypoint_exit": 0,
+      "scanner_calls": 2,
+      "outer_deadline_calls": 2,
+      "backoff_seconds": [
+        5
+      ],
+      "report_exists_after": true,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/partial-failure-then-success/stderr.txt"
+    },
+    {
+      "case": "all-three-fail",
+      "architecture": "arm64",
+      "action_entrypoint_exit": 1,
+      "scanner_calls": 3,
+      "outer_deadline_calls": 3,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "report_exists_after": false,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/all-three-fail/stderr.txt"
+    },
+    {
+      "case": "missing-report-path",
+      "architecture": "amd64",
+      "action_entrypoint_exit": 1,
+      "scanner_calls": 0,
+      "outer_deadline_calls": 0,
+      "backoff_seconds": [],
+      "report_exists_after": false,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/missing-report-path/stderr.txt"
+    },
+    {
+      "case": "outer-timeout-all-three",
+      "architecture": "amd64",
+      "action_entrypoint_exit": 1,
+      "scanner_calls": 0,
+      "outer_deadline_calls": 3,
+      "backoff_seconds": [
+        5,
+        10
+      ],
+      "report_exists_after": false,
+      "all_entry_scan_reports_absent": true,
+      "args_and_full_scan_environment_preserved": true,
+      "result": "PASS",
+      "event_log": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/events.jsonl",
+      "stdout": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stdout.txt",
+      "stderr": "/tmp/bex-m188-trivy-wrapper-merged-review/outer-timeout-all-three/stderr.txt"
+    }
+  ],
+  "quality_findings": [],
+  "limits": "Controlled scanner/timeout/sleep stubs verify integration, cleanup, argv/environment, retry count/backoff and exit propagation. No real scan, image pull, vulnerability engine result, actual21-minute wall clock or remote workflow execution claimed. Full20m scan behavior and unchanged findings are preserved by identical forwarded environment/arguments; only successful scanner exit permits success.",
+  "repository_edits": false,
+  "remote_mutations": false
+}

@@ -1,0 +1,3 @@
+export TRIVY_EXIT_CODE=0
+export TRIVY_FORMAT=json
+export TRIVY_TIMEOUT=20m
