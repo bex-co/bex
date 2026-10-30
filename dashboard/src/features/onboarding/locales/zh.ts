@@ -115,6 +115,11 @@ const zh: Record<string, TranslationEntry> = {
     message: "邀请团队成员",
     description: "Checklist item linking to workspace settings (team)",
   },
+  "onboarding.gettingStarted.upgradeToInvite": {
+    message: "升级套餐以邀请团队成员",
+    description:
+      "Checklist item shown instead of Invite a teammate while every seat is used (Hobby); opens the plan change",
+  },
 };
 
 export default zh;

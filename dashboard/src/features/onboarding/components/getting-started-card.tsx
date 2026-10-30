@@ -18,6 +18,7 @@ interface ChecklistItem {
   done: boolean;
   to: string;
   hash?: string;
+  search?: Record<string, string>;
 }
 
 /**
@@ -27,6 +28,28 @@ interface ChecklistItem {
  * absent: both are hard gates before the dashboard (w2/m168, w6/m42), so a
  * user who can see this card has already done them.
  */
+/**
+ * A Hobby workspace has one seat, so inviting dead-ends in "Your plan can't
+ * take this invite" (as on Render). While no seat is free, the item offers the
+ * plan change that makes inviting possible instead.
+ */
+function inviteItem(team: ReturnType<typeof useTeam>): ChecklistItem {
+  const done = team.members.length > 1 || team.invites.length > 0;
+  const seatsFull =
+    team.seats != null &&
+    team.seats.limit > 0 &&
+    team.seats.used >= team.seats.limit;
+  if (seatsFull && !done) {
+    return {
+      key: "upgradeToInvite",
+      done: false,
+      to: "/workspace/settings",
+      search: { plan: "change" },
+    };
+  }
+  return { key: "inviteTeammate", done, to: "/workspace/settings" };
+}
+
 export function GettingStartedCard() {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
@@ -44,11 +67,7 @@ export function GettingStartedCard() {
       to: "/settings",
       hash: "integrations",
     },
-    {
-      key: "inviteTeammate",
-      done: team.members.length > 1 || team.invites.length > 0,
-      to: "/workspace/settings",
-    },
+    inviteItem(team),
   ];
 
   return (
@@ -92,6 +111,7 @@ export function GettingStartedCard() {
                 <Link
                   to={item.to}
                   hash={item.hash}
+                  search={item.search}
                   className="text-sm font-medium underline-offset-4 hover:underline"
                 >
                   {t(`onboarding.gettingStarted.${item.key}`)}
