@@ -1,0 +1,1177 @@
+{
+  "reviewed_at": "2026-10-30T10:37:44.757832+00:00",
+  "approved_supplier_candidate": true,
+  "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a",
+  "verification_workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "producer_workflow_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "producer_verification_provenance": {
+    "mode": "reviewed-immutable-recovery",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "verification_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "authorized_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+    "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "producer_run_id": 41000570846,
+    "producer_job_id": 123936350542,
+    "producer_job_conclusion": "failure",
+    "producer_evidence_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+    "producer_successful_steps": [
+      "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "verify real native tool transformations without network on both architectures"
+    ],
+    "recovery_authorization_sha256": "7df01c0860425fefaa48de2621c18353034a9296659ec2178c14bcf6587a394c",
+    "identical_non_documentation_recipe_file_count": 22,
+    "recipe_git_blob_mode_manifest_sha256": "edace24925e09ea935a3835fc8cc5a59b1a518787a16ac90f58ee04a87cd30d9",
+    "producer_verifier_matrix_base_equal": true,
+    "approval_rule": "Old producer overall failure does not approve this artifact. Current verification job, both-arch probes/scans/SBOM, strict current-source keyless signatures and anonymous blob hashes are still independently required."
+  },
+  "ci_runtime_scan_signing_evidence": {
+    "run_id": "41029603442",
+    "url": "https://github.com/bex-co/bex/actions/runs/41029603442",
+    "run_status": "completed",
+    "run_conclusion": "success",
+    "job_id": 123977642604,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41029603442/job/123977642604",
+    "job_name": "build (python-3.7-bullseye, python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d62...",
+    "job_conclusion": "success",
+    "verified_steps": [
+      "scan amd64 candidate",
+      "scan arm64 candidate",
+      "sign and attest the immutable candidate",
+      "verify real native tool transformations without network on both architectures"
+    ],
+    "primary_build_conclusion": "skipped",
+    "recovery_selection_conclusion": "success"
+  },
+  "platforms": {
+    "amd64": {
+      "manifest_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "official_base_ancestry": {
+        "method": "verified-config-diff-id-prefix/v1",
+        "official_layer_count": 8,
+        "candidate_layer_count": 18,
+        "verified_config_diff_id_prefix_matches": true,
+        "official_base_diff_ids": [
+          "sha256:8a5350ad66cbc3e11338f19e88a58df039b8539c8121b52662dee70b221162ff",
+          "sha256:dcbfd799de9c4b56539f3ebe5b9048af95dd6b8d214b51dc6d7f6e3232d31dea",
+          "sha256:b237bc5a2ac83b24ca6e6ecdc2a44cce4e2bf827595584811483c514af6111fd",
+          "sha256:172b321076115b39fcb2af113451bbfa4c707b35a2dd8a5300096b9957faeddd",
+          "sha256:6db4cf9c31a6996c1029568d655647e81f4e8f4595a23bf0447162f47eaf37b8",
+          "sha256:76dcb2737999392775218baf537678a198ffb478ec68656a084daf4ce3477d6e",
+          "sha256:63158ac63485fc1fc42ed6933aba7ed12b41f97a282ab530ab501aa9b050d2ca",
+          "sha256:716638664778fcdc9ff4e154a01e23f7f8d998a35114564b70a5f0cd989a8ba1"
+        ],
+        "compressed_descriptor_prefix_matches": false,
+        "compressed_descriptor_variance": [
+          {
+            "layer_index": 0,
+            "uncompressed_diff_id": "sha256:8a5350ad66cbc3e11338f19e88a58df039b8539c8121b52662dee70b221162ff",
+            "official_descriptor": {
+              "digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+              "size": 55056714,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+              "size": 55056714,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 1,
+            "uncompressed_diff_id": "sha256:dcbfd799de9c4b56539f3ebe5b9048af95dd6b8d214b51dc6d7f6e3232d31dea",
+            "official_descriptor": {
+              "digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+              "size": 15760408,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+              "size": 15760408,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 2,
+            "uncompressed_diff_id": "sha256:b237bc5a2ac83b24ca6e6ecdc2a44cce4e2bf827595584811483c514af6111fd",
+            "official_descriptor": {
+              "digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+              "size": 54584790,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+              "size": 54584790,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 3,
+            "uncompressed_diff_id": "sha256:172b321076115b39fcb2af113451bbfa4c707b35a2dd8a5300096b9957faeddd",
+            "official_descriptor": {
+              "digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+              "size": 196842512,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+              "size": 196842512,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 4,
+            "uncompressed_diff_id": "sha256:6db4cf9c31a6996c1029568d655647e81f4e8f4595a23bf0447162f47eaf37b8",
+            "official_descriptor": {
+              "digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+              "size": 6291084,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+              "size": 6291084,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 5,
+            "uncompressed_diff_id": "sha256:76dcb2737999392775218baf537678a198ffb478ec68656a084daf4ce3477d6e",
+            "official_descriptor": {
+              "digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+              "size": 14974156,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+              "size": 14974156,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 6,
+            "uncompressed_diff_id": "sha256:63158ac63485fc1fc42ed6933aba7ed12b41f97a282ab530ab501aa9b050d2ca",
+            "official_descriptor": {
+              "digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+              "size": 243,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+              "size": 243,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 7,
+            "uncompressed_diff_id": "sha256:716638664778fcdc9ff4e154a01e23f7f8d998a35114564b70a5f0cd989a8ba1",
+            "official_descriptor": {
+              "digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+              "size": 2850048,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+              "size": 2850048,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          }
+        ],
+        "compressed_base_prefix_byte_delta": 0,
+        "recompression_compatible_variance_observed": true,
+        "manual_decompressed_layer_hashing_performed": true,
+        "usability_evidence": "Actual per-architecture candidate CI runtime gates pull and execute this immutable image; raw compressed blob SHA/size checks remain independently required."
+      }
+    },
+    "arm64": {
+      "manifest_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+      "official_base_ancestry": {
+        "method": "verified-config-diff-id-prefix/v1",
+        "official_layer_count": 8,
+        "candidate_layer_count": 18,
+        "verified_config_diff_id_prefix_matches": true,
+        "official_base_diff_ids": [
+          "sha256:9d533cca42e9e09cb70dc9d686b4d5e18b66684d2a3225eddadd70ea00a85c00",
+          "sha256:4e0557d2e5d5832fd9c3296d92d240b6ada5c5768d9e59f429771508dde3f52f",
+          "sha256:84c343f91d2bece54a4fde884570165bc08ccc4d4c51201ff0011da47cbd0292",
+          "sha256:4999429a67a40e1815feab822582d21e1cea8ed80af031d36f3ea51a03e4428e",
+          "sha256:2087edace1d86d6b546185f409ab33b234149d15577d75a7c86ee73cc04260b9",
+          "sha256:2616a94469f71044935788630d340fe1c10a4c0af5997a4c279cc630cac48446",
+          "sha256:53366e3427f222ea8c9c9f74cd3190cdc4ca1f740af1fbb632ce56e33864f8bc",
+          "sha256:5a44855179d284a6ac6b500db62f42c72def2d877c36c914e28a2a8313dfa2d9"
+        ],
+        "compressed_descriptor_prefix_matches": false,
+        "compressed_descriptor_variance": [
+          {
+            "layer_index": 0,
+            "uncompressed_diff_id": "sha256:9d533cca42e9e09cb70dc9d686b4d5e18b66684d2a3225eddadd70ea00a85c00",
+            "official_descriptor": {
+              "digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76",
+              "size": 53704892,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76",
+              "size": 53704892,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 1,
+            "uncompressed_diff_id": "sha256:4e0557d2e5d5832fd9c3296d92d240b6ada5c5768d9e59f429771508dde3f52f",
+            "official_descriptor": {
+              "digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee",
+              "size": 15746671,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee",
+              "size": 15746671,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 2,
+            "uncompressed_diff_id": "sha256:84c343f91d2bece54a4fde884570165bc08ccc4d4c51201ff0011da47cbd0292",
+            "official_descriptor": {
+              "digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573",
+              "size": 54676309,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573",
+              "size": 54676309,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 3,
+            "uncompressed_diff_id": "sha256:4999429a67a40e1815feab822582d21e1cea8ed80af031d36f3ea51a03e4428e",
+            "official_descriptor": {
+              "digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044",
+              "size": 189778334,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044",
+              "size": 189778334,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 4,
+            "uncompressed_diff_id": "sha256:2087edace1d86d6b546185f409ab33b234149d15577d75a7c86ee73cc04260b9",
+            "official_descriptor": {
+              "digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4",
+              "size": 6405066,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4",
+              "size": 6405066,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 5,
+            "uncompressed_diff_id": "sha256:2616a94469f71044935788630d340fe1c10a4c0af5997a4c279cc630cac48446",
+            "official_descriptor": {
+              "digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef",
+              "size": 14739252,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef",
+              "size": 14739252,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 6,
+            "uncompressed_diff_id": "sha256:53366e3427f222ea8c9c9f74cd3190cdc4ca1f740af1fbb632ce56e33864f8bc",
+            "official_descriptor": {
+              "digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4",
+              "size": 244,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4",
+              "size": 244,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          },
+          {
+            "layer_index": 7,
+            "uncompressed_diff_id": "sha256:5a44855179d284a6ac6b500db62f42c72def2d877c36c914e28a2a8313dfa2d9",
+            "official_descriptor": {
+              "digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef",
+              "size": 2850059,
+              "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            },
+            "candidate_descriptor": {
+              "digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef",
+              "size": 2850059,
+              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+            }
+          }
+        ],
+        "compressed_base_prefix_byte_delta": 0,
+        "recompression_compatible_variance_observed": true,
+        "manual_decompressed_layer_hashing_performed": true,
+        "usability_evidence": "Actual per-architecture candidate CI runtime gates pull and execute this immutable image; raw compressed blob SHA/size checks remain independently required."
+      }
+    }
+  },
+  "anonymous_manifest_bytes_sha_verified": true,
+  "anonymous_pull": {
+    "all_unique_config_and_layer_bytes_fully_hashed": true,
+    "unique_blob_count": 37,
+    "bytes_hashed_this_finalization": 36551,
+    "bytes_reused_from_prior_verified_full_read": 1163553052,
+    "prior_receipts_also_rechecked_by_anonymous_head": true,
+    "blob_receipts": [
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "bytes_hashed": 18275,
+        "anonymous_full_get_at": "2026-10-30T10:37:27.999047+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:ddf874abf16cc990e0fd75a154a34ca0a03ee310ad895a18fb62ae15bf4171fb",
+        "bytes_hashed": 55056714,
+        "anonymous_full_get_at": "2026-10-30T10:36:29.348746+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:28.237917+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:5c1459d3ab8b5e46ac1a0a00134fe2f7b693474eb6d75ace97ecbe811a6f5b0e",
+        "bytes_hashed": 15760408,
+        "anonymous_full_get_at": "2026-10-30T10:36:36.187629+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:28.501629+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:29ab00e7798a04602c3f6e2dc445a994d75e96c45533cd44701f58509982a8c5",
+        "bytes_hashed": 54584790,
+        "anonymous_full_get_at": "2026-10-30T10:36:27.473437+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:28.850599+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:7883a473306cf6632abe7e913e0f1a21ac2fed038a4116473b25738b8b88b294",
+        "bytes_hashed": 196842512,
+        "anonymous_full_get_at": "2026-10-30T10:33:07.214942+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:29.221761+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:c3ab175b762c07a73f43bc078229d225d45a4810a8f4e8cb19602122986eadb5",
+        "bytes_hashed": 6291084,
+        "anonymous_full_get_at": "2026-10-30T10:37:05.677897+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:29.595093+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:21b51321978c23cb7cbac8759f8d26bbfa94a76474325d62554523fc9c0803df",
+        "bytes_hashed": 14974156,
+        "anonymous_full_get_at": "2026-10-30T10:36:48.154337+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:30.043242+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:8453a421dd691b094c396c98d8b8770c571e2d8de5f95f62d791cb90cd2db850",
+        "bytes_hashed": 243,
+        "anonymous_full_get_at": "2026-10-30T10:37:22.882197+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:30.456547+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:29c5b32ee95b3af3ebe1cb61a8197d22e8959e91e33ed27c04f000b57e9a01ce",
+        "bytes_hashed": 2850048,
+        "anonymous_full_get_at": "2026-10-30T10:37:15.887545+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:30.953457+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "bytes_hashed": 32,
+        "anonymous_full_get_at": "2026-10-30T09:38:14.327440+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:31.536498+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:ffbe35d433df83e05652535c3ba083a7fb7d63bbc4fef4c0129fc172d04ba16d",
+        "bytes_hashed": 1056,
+        "anonymous_full_get_at": "2026-10-30T10:37:19.938994+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:32.118755+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:9e12219c57184e6642087a5f1bb1cd833b5abc125566b4451357d4eaccf16a43",
+        "bytes_hashed": 62634886,
+        "anonymous_full_get_at": "2026-10-30T10:34:45.796619+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:32.340065+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3103c7d9972838974e994f2cd10ae50de7e67cf700fe1b8f6cf7c4a8a7e1b54e",
+        "bytes_hashed": 263,
+        "anonymous_full_get_at": "2026-10-30T10:37:21.487026+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:32.720894+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:50c1fa0215140ef525ea9e0e1dd5f1d69032825fc2dd7f48ddbaf9b62b389ca5",
+        "bytes_hashed": 2895,
+        "anonymous_full_get_at": "2026-10-30T10:37:16.601498+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:33.108325+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:2a9655868638dd471ab2ac6baef84fe71b32cef61ce45a63f571bf8bf1507b18",
+        "bytes_hashed": 360,
+        "anonymous_full_get_at": "2026-10-30T10:37:20.710369+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:33.369994+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:e86ea87b7281b51774a25af69f2963f38395b6af74d4d11de4c28e72325e549a",
+        "bytes_hashed": 1143,
+        "anonymous_full_get_at": "2026-10-30T10:37:19.740011+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:34.077586+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:035cf11b8387aff086bf6a3aef66eeba748a559d3b26d39882e83ebe8751eae5",
+        "bytes_hashed": 1393,
+        "anonymous_full_get_at": "2026-10-30T10:37:18.885200+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:34.420108+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:958f021f24e4a40d47b6f24ad15332142dafbd804d9d5fb1961fe8539883e32d",
+        "bytes_hashed": 171767998,
+        "anonymous_full_get_at": "2026-10-30T10:35:41.430728+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:34.692300+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:a6d739680a5ae71b53ab66c49886342596c59e1d5e8d2efc5c8e4df3623a6a31",
+        "bytes_hashed": 3762366,
+        "anonymous_full_get_at": "2026-10-30T10:37:08.641001+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:34.996528+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "bytes_hashed": 18276,
+        "anonymous_full_get_at": "2026-10-30T10:37:35.513821+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:31f5dc1f52c865588c43d8ec718f14d430e149b28f0b28232da825da7ae28f76",
+        "bytes_hashed": 53704892,
+        "anonymous_full_get_at": "2026-10-30T10:37:18.259959+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:35.807896+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:bb60045eb75c62e890b95d28e4893132a6c7d61ec9979104ee4ff6e86c4badee",
+        "bytes_hashed": 15746671,
+        "anonymous_full_get_at": "2026-10-30T10:36:41.919912+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:36.087148+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:292737ab468ef80c6f78bdde4896157b8953d1e5556e1e526f40aeadcb547573",
+        "bytes_hashed": 54676309,
+        "anonymous_full_get_at": "2026-10-30T10:36:00.746253+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:36.384057+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:0d93979d624211374be152eee1c99ed4ca9e6bae68694135fc440ab6c8fd2044",
+        "bytes_hashed": 189778334,
+        "anonymous_full_get_at": "2026-10-30T10:32:11.559090+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:36.715614+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:5a9f8670f1b8c5bf3a5389568c9f40d95526c380daa5b707640ce7a9be9076c4",
+        "bytes_hashed": 6405066,
+        "anonymous_full_get_at": "2026-10-30T10:36:59.194606+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:37.337066+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:cd0152b2afe3cde66bd1e37924fc244416060200dbb98a28d7f927e798a986ef",
+        "bytes_hashed": 14739252,
+        "anonymous_full_get_at": "2026-10-30T10:36:55.711052+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:37.634540+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:5770af76823a69fe2a26a898be87d3e75a4751400bbb032d94ce3c36103628c4",
+        "bytes_hashed": 244,
+        "anonymous_full_get_at": "2026-10-30T10:37:22.239772+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:37.992674+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:023d3e7bc423088f8e39b5a770340f0449a2fb5f61f5ac2c42cce8ce39bad4ef",
+        "bytes_hashed": 2850059,
+        "anonymous_full_get_at": "2026-10-30T10:37:12.338397+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:38.356366+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:55c37cf8efcbeab30c7800e43a909985e9c3be8d8f294bc88358cf060a76c36d",
+        "bytes_hashed": 1055,
+        "anonymous_full_get_at": "2026-10-30T10:37:20.494191+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:39.049392+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:fc6974789e92babbc8bf4e3275ffa6ede84ab1d670967415cc15df0189e1fdb2",
+        "bytes_hashed": 61851456,
+        "anonymous_full_get_at": "2026-10-30T10:35:35.038792+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:39.502283+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:9e0066427b0dee613291b7817c0df0bf1b9c08ff87f8251f1a398176bbc24314",
+        "bytes_hashed": 263,
+        "anonymous_full_get_at": "2026-10-30T10:37:22.087023+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:39.805687+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:05d37386d0aede26f19c16e9ff7318f3686dfb1c70d1ec50b627b5952efefa3f",
+        "bytes_hashed": 2893,
+        "anonymous_full_get_at": "2026-10-30T10:37:17.285659+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:40.164505+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:6c4123de96c13cedbb00cf4a30dc14f123aaa3ffcfb9dd447e2c3a2e6dd56b50",
+        "bytes_hashed": 360,
+        "anonymous_full_get_at": "2026-10-30T10:37:21.328231+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:40.534515+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:d3a52a0e79554d2ee05c99cc5227adc010a4482dbca88a847bb90f99245344cf",
+        "bytes_hashed": 1146,
+        "anonymous_full_get_at": "2026-10-30T10:37:19.259849+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:40.920614+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:63a5755fccd219c02fc8aec4ed599e39563588b7a7fe451e4f0c7ebcf340237a",
+        "bytes_hashed": 1396,
+        "anonymous_full_get_at": "2026-10-30T10:37:17.900237+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:41.478431+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:88b8140f2226d65044ed386f3c8e2125756ff1e2bcec93ab0361aadcd6b01c06",
+        "bytes_hashed": 175498970,
+        "anonymous_full_get_at": "2026-10-30T10:34:27.542072+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:41.810053+00:00"
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:93b4b86aaa6df2ca0c24eccc78ab30e03a51ef64b4a8c7f12af78d2973d4d0dc",
+        "bytes_hashed": 3762339,
+        "anonymous_full_get_at": "2026-10-30T10:37:10.706815+00:00",
+        "reused_prior_full_read": true,
+        "current_anonymous_head_at": "2026-10-30T10:37:42.048493+00:00"
+      }
+    ]
+  },
+  "new_manual_layer_reads": 34,
+  "spdx_additional_verified_root_bindings": [
+    {
+      "architecture": "amd64",
+      "spdx_root_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+      "actual_registry_child_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "actual_registry_config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 18,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "1d16149a3bfaea8b3911a052b8c0d8f365b0751f581afcf64937a0d504b7ffd1",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/actual-layer-proof"
+    },
+    {
+      "architecture": "arm64",
+      "spdx_root_digest": "sha256:7c8ed47e2690d5c92e38882c6ee4753a88c2c2a2993f2909faaccb24141e7abe",
+      "actual_registry_child_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "actual_registry_config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+      "method": "stereoscope-v0.3.1-docker-export-manifest-from-verified-config-and-layer-diffids-sizes/v1",
+      "verified_layer_count": 18,
+      "manual_decompressed_layer_hashing_performed": true,
+      "proof_receipt_sha256": "1d16149a3bfaea8b3911a052b8c0d8f365b0751f581afcf64937a0d504b7ffd1",
+      "proof_directory": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/actual-layer-proof"
+    }
+  ],
+  "strict_keyless_signature_and_sbom_and_vulnerability_attestations_verified": true,
+  "strict_actual_Rekor_v2_and_RFC3161_TSA_verified": true,
+  "wrong_source_and_subject_negative_checks_rejected": true,
+  "signed_payloads": [
+    {
+      "manifest_digest": "sha256:0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2",
+      "bundle_digest": "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "bundle_bytes": 9507,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "b50d27d7f09ec347250fdcd25752c6057269db75b2c38884eb1550063530a9f5",
+      "kind": "image-signature",
+      "architecture": null,
+      "decoded_predicate_sorted_json_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "decoded_predicate_sorted_json_bytes": 2,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/image-signature-None-6550f13a128b.predicate.json.gz",
+      "full_predicate_gzip_sha256": "b977cfffb3f68c9fd753359821f9c92aa57d293b3a773f112f10b119d22e3528",
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json.gz",
+      "full_bundle_gzip_sha256": "57f2004b0a03d12fa827191ed7192314971546406f0fb0b481bc2b262897eda3",
+      "full_bundle_gzip_bytes": 6136,
+      "full_bundle_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json",
+        "raw_bytes": 9507,
+        "raw_sha256": "6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.bundle.json.gz",
+        "gzip_bytes": 6136,
+        "gzip_sha256": "57f2004b0a03d12fa827191ed7192314971546406f0fb0b481bc2b262897eda3",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      }
+    },
+    {
+      "manifest_digest": "sha256:4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837",
+      "bundle_digest": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "bundle_bytes": 33210519,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "4c3bf49c1fc12168f9638224abe3e26c442b16fb1d552905ef401f5e43e85a75",
+      "kind": "sbom",
+      "architecture": "arm64",
+      "decoded_predicate_sorted_json_sha256": "63c3d9c7583f792309ba255b2d9e778e548d1de0b24c2aa3cecc9bdf06b984a4",
+      "decoded_predicate_sorted_json_bytes": 24436541,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/sbom-arm64-f4d91e938902.predicate.json.gz",
+      "full_predicate_gzip_sha256": "ad027097b353fd918e4afc0fd51fdb094995905527d3c93d6777f87e7d59dcc8",
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json.gz",
+      "full_bundle_gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+      "full_bundle_gzip_bytes": 4942896,
+      "full_bundle_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json",
+        "raw_bytes": 33210519,
+        "raw_sha256": "f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.bundle.json.gz",
+        "gzip_bytes": 4942896,
+        "gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      }
+    },
+    {
+      "manifest_digest": "sha256:8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758",
+      "bundle_digest": "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "bundle_bytes": 86996735,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "3b064aa73c8a8584c506bcf5f68f9ac0646e32dae47207bcc72bdebbf2e0815c",
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "decoded_predicate_sorted_json_sha256": "6e318a030354f9f64d47df00799dc81e3b0487f80e26a7fadc506e82d71fd492",
+      "decoded_predicate_sorted_json_bytes": 64209863,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/vulnerability-arm64-479faaf7930f.predicate.json.gz",
+      "full_predicate_gzip_sha256": "3539cf11e59a95e9aa88492eb60e9cfcaf72d934f5559017b79692ce909d1891",
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json.gz",
+      "full_bundle_gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+      "full_bundle_gzip_bytes": 17287704,
+      "full_bundle_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json",
+        "raw_bytes": 86996735,
+        "raw_sha256": "479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.bundle.json.gz",
+        "gzip_bytes": 17287704,
+        "gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      }
+    },
+    {
+      "manifest_digest": "sha256:d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788",
+      "bundle_digest": "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "bundle_bytes": 86999443,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "fecb29287f7e0498ff2e7be43e5277d0981c2e5a2e57cd0e525ac0619d917235",
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "decoded_predicate_sorted_json_sha256": "fa1f53d8f85431ee91364e8b61aa2e544159cd9b8e8b17484074de1428337a3c",
+      "decoded_predicate_sorted_json_bytes": 64211866,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/vulnerability-amd64-882463fa09b7.predicate.json.gz",
+      "full_predicate_gzip_sha256": "b8ab91fd5888e6ed55ae0c670eff64238b5d90b41543e876315d8864923ebe25",
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json.gz",
+      "full_bundle_gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+      "full_bundle_gzip_bytes": 17285335,
+      "full_bundle_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json",
+        "raw_bytes": 86999443,
+        "raw_sha256": "882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.bundle.json.gz",
+        "gzip_bytes": 17285335,
+        "gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      }
+    },
+    {
+      "manifest_digest": "sha256:e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561",
+      "bundle_digest": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "bundle_bytes": 33232391,
+      "path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "1e1cc450be8dc3d01c06550787502593277c8f87d4a3d5b9323c7f4846961e83",
+      "kind": "sbom",
+      "architecture": "amd64",
+      "decoded_predicate_sorted_json_sha256": "c47594e9e687f83a9d4eea942d60eb8cda7d1956b3b0b60c8657c26f46e7ba83",
+      "decoded_predicate_sorted_json_bytes": 24452588,
+      "full_predicate_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/sbom-amd64-8d3ef79f2dfe.predicate.json.gz",
+      "full_predicate_gzip_sha256": "2eec34142bd0c2ef1a3de4ddb8bc13cedb11c9330b2958dfe6d150d354e6cd27",
+      "tlog_kind_versions": [
+        {
+          "kind": "hashedrekord",
+          "version": "0.0.2"
+        }
+      ],
+      "tsa_timestamp_count": 1,
+      "full_bundle_gzip": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json.gz",
+      "full_bundle_gzip_sha256": "63efb540e54a3e07ea9a30a0224ece46077a95ff76d21d4085c530d0788b7b3c",
+      "full_bundle_gzip_bytes": 4949113,
+      "full_bundle_archive": {
+        "raw_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json",
+        "raw_bytes": 33232391,
+        "raw_sha256": "8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+        "gzip_path": "/private/tmp/loopx-w8-native-supplier-reviews/native-python-3.7-bullseye-4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.bundle.json.gz",
+        "gzip_bytes": 4949113,
+        "gzip_sha256": "63efb540e54a3e07ea9a30a0224ece46077a95ff76d21d4085c530d0788b7b3c",
+        "raw_retained_for_replay": false,
+        "restore_instruction": "Restore gzip to raw_path and verify SHA/size, or fetch the immutable public OCI blob."
+      }
+    }
+  ],
+  "package_summaries_by_architecture": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "root_identities": [
+          "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1"
+        ],
+        "package_count": 714,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-4"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "9.53.3~dfsg-7+deb11u11"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb11u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.10.5-2+deb11u1"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.9.2.1-1+deb11u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg11+2"
+          },
+          {
+            "name": "python",
+            "version": "3.7.17"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.9.2-3"
+          },
+          {
+            "name": "python3-pip",
+            "version": "20.3.4-4+deb11u2"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "52.0.0-4+deb11u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.3-4+deb11u4"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.34.1-3+deb11u1"
+          },
+          {
+            "name": "swig",
+            "version": "4.0.2-1"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-12"
+          }
+        ]
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "root_identities": [
+          "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d"
+        ],
+        "package_count": 717,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-4"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "9.53.3~dfsg-7+deb11u11"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb11u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.10.5-2+deb11u1"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.9.2.1-1+deb11u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg11+2"
+          },
+          {
+            "name": "python",
+            "version": "3.7.17"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.9.2-3"
+          },
+          {
+            "name": "python3-pip",
+            "version": "20.3.4-4+deb11u2"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "52.0.0-4+deb11u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.3-4+deb11u4"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.34.1-3+deb11u1"
+          },
+          {
+            "name": "swig",
+            "version": "4.0.2-1"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-12"
+          }
+        ]
+      }
+    ]
+  },
+  "trivy_summaries_by_architecture": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-30T09:58:34.45563821Z",
+        "os": {
+          "EOSL": true,
+          "Family": "debian",
+          "Name": "11.7"
+        },
+        "result_count": 4,
+        "vulnerability_count": 17654,
+        "severity_counts": {
+          "LOW": 5023,
+          "HIGH": 3082,
+          "CRITICAL": 249,
+          "MEDIUM": 9102,
+          "UNKNOWN": 198
+        },
+        "brotli_findings": [
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "brotli",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli-dev",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli1",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          }
+        ],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-30T09:57:37.732895795Z",
+        "os": {
+          "EOSL": true,
+          "Family": "debian",
+          "Name": "11.7"
+        },
+        "result_count": 4,
+        "vulnerability_count": 17655,
+        "severity_counts": {
+          "LOW": 5024,
+          "HIGH": 3082,
+          "CRITICAL": 249,
+          "MEDIUM": 9102,
+          "UNKNOWN": 198
+        },
+        "brotli_findings": [
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "brotli",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli-dev",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          },
+          {
+            "VulnerabilityID": "CVE-2026-111497",
+            "PkgName": "libbrotli1",
+            "InstalledVersion": "1.0.9-2+deb12u1+bex11u1",
+            "FixedVersion": null,
+            "Status": "affected",
+            "Severity": "CRITICAL"
+          }
+        ],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ]
+  },
+  "bundle_discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:0b397d15e087a5017924a96b5a5806a46cdd2d0c396375fa612ff20f2a2bd972",
+    "native_API_404": true,
+    "unselected_descriptor_count": 1
+  },
+  "unaccepted_attachment_results": [],
+  "verification_method": "Immutable manifest/blob SHA and size verification; official Cosign3.1.4 verify-blob-attestation with exact source/issuer/workflow identity/subject/tlog/explicit TSA. No ignore flags. Canonical strict per-architecture image/report binders and actual decompressed-byte proof where necessary.",
+  "scope": "Published supplier identity/runtime/report evidence only. All findings retained; no zero-CVE claim or security waiver. Complete catalog adoption, generated exact-image replay and original hosted acceptance remain separate. No production pin/resource changed.",
+  "evidence_tool_sha256": {
+    "/tmp/loopx-w8-native-review-v2.py": "278dcb063b4c1c571932e8f358056d5abe9154b48cb057365e67242865d27a36",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  }
+}

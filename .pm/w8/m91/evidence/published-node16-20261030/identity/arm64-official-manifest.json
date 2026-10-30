@@ -1,0 +1,51 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+   "config": {
+      "mediaType": "application/vnd.docker.container.image.v1+json",
+      "size": 7258,
+      "digest": "sha256:17647f2bba1444309dc179724f4aca8b6c28657e3243a09318a82ae199236ab9"
+   },
+   "layers": [
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 49590783,
+         "digest": "sha256:fa34261389f3dee2ecffe9bfe38ae7fd05a1908e98a7486354905aee0f648a6e"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 23570086,
+         "digest": "sha256:993525952a483617183655b735562fd3eee4b3a85a472e3dc3c79a258adca100"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 63988504,
+         "digest": "sha256:12916f73f9de8e251c4eb4f2d079fa6cd63205b7ba8a7bd88e1f9446105e9ef1"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 202390936,
+         "digest": "sha256:371506b77bb850df2c7768a7e0e38b6259d82a0e6cd2d287800c151aa7d771c4"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 3365,
+         "digest": "sha256:11a8ec249f38e533804a7c8de0165bf07f8a67f344ec070231bc43309be6ea0a"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 35027522,
+         "digest": "sha256:a9b5737654afadd77aec68777c0f26ddf19fa2d43a2a4ac674bc31b968a40b5e"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 2272612,
+         "digest": "sha256:6280d700dd4509d7a44f0bc3b354cc861ff8841eacb24ec725c077c5a1a858ea"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 450,
+         "digest": "sha256:acdfa848f141528c5cd10e0e985d7035efb67627f2bec40703b7add8c05407b5"
+      }
+   ]
+}

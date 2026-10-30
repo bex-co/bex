@@ -1,0 +1,16 @@
+{
+  "scope": "Argument/cache rejection guards using genuine prior byte receipts; no artifact approval or fabricated package inventory.",
+  "rejected_cases": [
+    "invalid-source-sha",
+    "invalid-run-identity",
+    "invalid-matrix-name",
+    "repository-full-payload-output",
+    "fixture-digest-injection",
+    "forged-compressed-size",
+    "foreign-config-diffid",
+    "unbounded-decompressed-size",
+    "foreign-registry-cache",
+    "missing-actual-decompression"
+  ],
+  "generic_driver_sha256": "278dcb063b4c1c571932e8f358056d5abe9154b48cb057365e67242865d27a36"
+}
