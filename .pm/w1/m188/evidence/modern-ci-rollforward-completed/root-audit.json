@@ -1,0 +1,94 @@
+{
+  "schema": "bex.m188.root-ci-handoff-raw-api-review/v1",
+  "at": "2026-10-30T21:36:44.893102+00:00",
+  "final_receipt_sha256": "3489d116fb3e4d0af14b703e9047775b29c6e709d7ccdeef06bcca0924d84c14",
+  "checks": [
+    {
+      "tag": "node-22-bookworm",
+      "old_run_id": 41067575985,
+      "new_run_id": 41128855169,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "node-26-bookworm",
+      "old_run_id": 41067583832,
+      "new_run_id": 41129008590,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "python-3.11-bookworm",
+      "old_run_id": 41067587985,
+      "new_run_id": 41129044087,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "python-3.12-bookworm",
+      "old_run_id": 41067592658,
+      "new_run_id": 41129082245,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "python-3.13-bookworm",
+      "old_run_id": 41067596835,
+      "new_run_id": 41129116273,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "python-3.14-bookworm",
+      "old_run_id": 41067601778,
+      "new_run_id": 41129176570,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "ruby-3.3-bookworm",
+      "old_run_id": 41067606635,
+      "new_run_id": 41129224760,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "ruby-3.4-bookworm",
+      "old_run_id": 41067612513,
+      "new_run_id": 41129277963,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "ruby-4.0-bookworm",
+      "old_run_id": 41067617284,
+      "new_run_id": 41129321189,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    },
+    {
+      "tag": "rust-1-bookworm",
+      "old_run_id": 41067622215,
+      "new_run_id": 41129372376,
+      "raw_run_job_source_binding_and_zero_start_terminal_verified": true
+    }
+  ],
+  "executed_helpers_already_in_request_archive": [
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/dispatch-authorized.py",
+      "sha256": "777026cd70724280dd7e9c22dfee0c692e1e0d4cf0c488c4b439c34d476de505",
+      "bytes": 11942
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/dispatch-authorized-v2.py",
+      "sha256": "b236e41dfb4f7684224fafee8e0a1070381b7c956f2e515dfbacd00351b1c236",
+      "bytes": 12987
+    },
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/bind-and-handoff.py",
+      "sha256": "62ff09dc04da6840df4a5691bbd715bad3c2cbb70be573ab5b254fb07d560930",
+      "bytes": 7195
+    }
+  ],
+  "additional_completion_helpers_to_archive": [
+    {
+      "file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/record-terminals.py",
+      "sha256": "e14dda1bd557abb2d31a7a17e3d1039cbb5b746bdcb149b7a77a92b1807309ff",
+      "bytes": 3572
+    }
+  ],
+  "request_manifest_sha256": "b76c2bb2e5583e870d9f2169edda359ed5a1686b011c01c2225c9770a66e57d7",
+  "no_new_api_action_performed_by_audit": true,
+  "no_artifact_approval_or_adoption": true
+}

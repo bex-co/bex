@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-30T21:23:16.382222+00:00",
+  "tag": "python-3.13-bookworm",
+  "old_run_id": 41067596835,
+  "old_job_id": 124105431823,
+  "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "run_attempt": 1,
+  "terminal_confirmed": true,
+  "conclusion": "cancelled",
+  "runner_id": 0,
+  "steps_count": 0,
+  "native_completed_at": "2026-10-30T21:22:19Z",
+  "evidence": [
+    {
+      "role": "run",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-read-20261030T212314880168/run.json",
+      "sha256": "b66990e4261d0233f0c4b57b00889081183335e77e91d515317fdb3d6670564f"
+    },
+    {
+      "role": "jobs",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/terminal-read-20261030T212314880168/jobs.json",
+      "sha256": "b697b5e16e529e8ea16f858b0177cf5d1cec405d2e91a27a39833414c7ca6099"
+    }
+  ],
+  "original_outcome": {
+    "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/python-3.13-bookworm/outcome.json",
+    "sha256": "0fe244e055c6407e359c41fcb915271beaccc77a1ec395b6ea7ada464504a47c"
+  },
+  "cancellation_repeated": false,
+  "remote_mutation_performed": false
+}

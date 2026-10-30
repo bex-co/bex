@@ -1,0 +1,158 @@
+{
+  "at": "2026-10-30T21:32:47.903821+00:00",
+  "observer_checked_at": "2026-10-30T21:32:12.725971+00:00",
+  "metadata_only": true,
+  "legacy_requests": [
+    {
+      "run_id": 41101339222,
+      "source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+      "run_attempt": 1,
+      "status": "queued",
+      "conclusion": null,
+      "run_metadata_observed_at": "2026-10-30T21:32:08.765148+00:00",
+      "observed_at": "2026-10-30T21:32:09.604928+00:00",
+      "jobs": [
+        {
+          "id": 124218928776,
+          "run_attempt": 1,
+          "tag": null,
+          "name": "matrix",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-30T17:45:51Z",
+          "completed_at": "2026-10-30T17:48:26Z",
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false,
+          "immutable_job_snapshot": {
+            "file": "/tmp/bex-m188-publisher-job-snapshots/124218928776-6f86dff7fcba839892ef5189d113d3496b0e099c64ea91e7e7fbfe64cff26101.json",
+            "sha256": "6f86dff7fcba839892ef5189d113d3496b0e099c64ea91e7e7fbfe64cff26101",
+            "retrieved_at": "2026-10-30T21:32:09.604928+00:00",
+            "job_id": 124218928776,
+            "run_id": 41101339222,
+            "head_sha": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+            "run_attempt": 1
+          }
+        },
+        {
+          "id": 124219760224,
+          "run_attempt": 1,
+          "tag": "ruby-3.2-bookworm",
+          "name": "build (ruby-3.2-bookworm, ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473...",
+          "status": "queued",
+          "conclusion": null,
+          "started_at": "2026-10-30T17:48:26Z",
+          "completed_at": null,
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false
+        }
+      ],
+      "observation_stale": false,
+      "observation_reused_immutable": false
+    },
+    {
+      "run_id": 41113367877,
+      "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "run_attempt": 1,
+      "status": "queued",
+      "conclusion": null,
+      "run_metadata_observed_at": "2026-10-30T21:32:08.765148+00:00",
+      "observed_at": "2026-10-30T21:32:10.218831+00:00",
+      "jobs": [
+        {
+          "id": 124261186278,
+          "run_attempt": 1,
+          "tag": null,
+          "name": "matrix",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-30T19:12:47Z",
+          "completed_at": "2026-10-30T19:16:59Z",
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false,
+          "immutable_job_snapshot": {
+            "file": "/tmp/bex-m188-publisher-job-snapshots/124261186278-5294848a39ed988a1e83ee6903d979c1159a4dc9752099df7b00e231ec7f5925.json",
+            "sha256": "5294848a39ed988a1e83ee6903d979c1159a4dc9752099df7b00e231ec7f5925",
+            "retrieved_at": "2026-10-30T21:32:10.218831+00:00",
+            "job_id": 124261186278,
+            "run_id": 41113367877,
+            "head_sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+            "run_attempt": 1
+          }
+        },
+        {
+          "id": 124263227234,
+          "run_attempt": 1,
+          "tag": "node-18-bookworm",
+          "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+          "status": "queued",
+          "conclusion": null,
+          "started_at": "2026-10-30T19:16:59Z",
+          "completed_at": null,
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false
+        }
+      ],
+      "observation_stale": false,
+      "observation_reused_immutable": false
+    },
+    {
+      "run_id": 41113373387,
+      "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "run_attempt": 1,
+      "status": "queued",
+      "conclusion": null,
+      "run_metadata_observed_at": "2026-10-30T21:32:08.765148+00:00",
+      "observed_at": "2026-10-30T21:32:10.278711+00:00",
+      "jobs": [
+        {
+          "id": 124261205969,
+          "run_attempt": 1,
+          "tag": null,
+          "name": "matrix",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-30T19:12:53Z",
+          "completed_at": "2026-10-30T19:18:27Z",
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false,
+          "immutable_job_snapshot": {
+            "file": "/tmp/bex-m188-publisher-job-snapshots/124261205969-1491cce3cc4768fdb8e2f39b2d4ad73dbbdfc8cee135936f4adf92193e77432c.json",
+            "sha256": "1491cce3cc4768fdb8e2f39b2d4ad73dbbdfc8cee135936f4adf92193e77432c",
+            "retrieved_at": "2026-10-30T21:32:10.278711+00:00",
+            "job_id": 124261205969,
+            "run_id": 41113373387,
+            "head_sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+            "run_attempt": 1
+          }
+        },
+        {
+          "id": 124263887574,
+          "run_attempt": 1,
+          "tag": "node-20-bookworm",
+          "name": "build (node-20-bookworm, node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde...",
+          "status": "queued",
+          "conclusion": null,
+          "started_at": "2026-10-30T19:18:27Z",
+          "completed_at": null,
+          "active_steps": [],
+          "failed_steps": [],
+          "source_build_completed": false,
+          "dual_arch_runtime_gate_passed": false
+        }
+      ],
+      "observation_stale": false,
+      "observation_reused_immutable": false
+    }
+  ],
+  "mutated_by_handoff": false
+}

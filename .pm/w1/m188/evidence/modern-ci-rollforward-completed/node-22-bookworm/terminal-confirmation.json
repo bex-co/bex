@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-30T21:23:00.130871+00:00",
+  "tag": "node-22-bookworm",
+  "old_run_id": 41067575985,
+  "old_job_id": 124104723836,
+  "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+  "run_attempt": 1,
+  "terminal_confirmed": true,
+  "conclusion": "cancelled",
+  "runner_id": 0,
+  "steps_count": 0,
+  "native_completed_at": "2026-10-30T21:17:13Z",
+  "evidence": [
+    {
+      "role": "run",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-read-20261030T212258461153/run.json",
+      "sha256": "361138f5230ca41ef4db81726269091e2c207a30cfbafc8fa25a6112b6969110"
+    },
+    {
+      "role": "jobs",
+      "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/terminal-read-20261030T212258461153/jobs.json",
+      "sha256": "f36ed842474ae7cbe037a34dfd0fca99f93db1e013ab347dface0e291f36eb6f"
+    }
+  ],
+  "original_outcome": {
+    "file": "/private/tmp/bex-m188-modern-rollforward-plan-20261030T2101/handoffs/node-22-bookworm/outcome.json",
+    "sha256": "398ab4e924711b4323e48c3f852fd69f3b5080242a3a8945938a6ca9a3ab12ad"
+  },
+  "cancellation_repeated": false,
+  "remote_mutation_performed": false
+}

@@ -1,0 +1,18 @@
+{
+  "began_at": "2026-10-30T21:22:15.777357+00:00",
+  "tag": "python-3.13-bookworm",
+  "old_run_id": 41067596835,
+  "old_job_id": 124105431823,
+  "replacement_run_id": 41129116273,
+  "cancel_post_performed": false,
+  "replacement_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "replacement_job_id": 124319435370,
+  "replacement_status": "pending",
+  "replacement_run_attempt": 1,
+  "replacement_binding_observed_at": "2026-10-30T21:22:17.142056+00:00",
+  "old_fresh_status": "queued",
+  "old_fresh_conclusion": null,
+  "old_fresh_runner_id": 0,
+  "old_fresh_steps_count": 0,
+  "old_fresh_observed_at": "2026-10-30T21:22:18.216590+00:00"
+}

@@ -265,3 +265,11 @@ Node18旧FD请求随后也已确认cancelled，原生job仍为runner0、零步�
 十个替代请求均实际使用83c/main/attempt1，每项只POST一次；[21:13Z请求收据](evidence/modern-ci-rollforward-requests/request-heads.json) 如实记录当时尚未取消旧任务。后续每项须先确认正确替代原生job已存在，再新鲜核对旧job仍queued/runner0/零步骤，才请求取消旧项；任何已开始工作继续保留。原生绑定、取消请求及真实终态另行追加，不回写这份请求阶段快照。不保证GitHub队列优先顺序。
 
 这次CI交接保留w8/m91全部现代运行时义务，其独立镜像验收仍归该工作流；w1正式验收仍为8/11。较大API原文仅做无损压缩，[目录清单](evidence/modern-ci-rollforward-requests/MANIFEST.json) 同时记录存储与原文字节的SHA/大小；发布请求不计作镜像接入或应用验收。
+
+### CI排队交接完成 — 2026-10-30（UTC 21:32Z）
+
+[完成收据](evidence/modern-ci-rollforward-completed/final-receipt.json) 逐项关联十个实际83c原生job、十次新鲜旧job零步骤检查、十次HTTP202和十个最终completed/cancelled且runner0/零步骤的确认；没有重复派发、强制取消或中断已开始工作。先前的Node22索引延迟、Python3.11终态查询HTTP502及pending观察均保留原文。
+
+[根复核](evidence/modern-ci-rollforward-completed/root-audit.json) 再次读取十组原始run/jobs，核对源码、attempt、runtime、旧任务检查及最终零步骤状态。请求阶段三个执行helper已在原归档中保持原哈希；之后新增的终态读取helper随完成阶段单独归档。所有365项请求记录与156项完成记录保持各自观察时间，不回写21:13时的零取消快照。
+
+w8/m91的十项现代运行时工作全部保留并继续在修复流程上执行，镜像独立验收仍归该工作流。本项Node18/20、Ruby3.2三个请求保持原样；正式验收仍为8/11，继续等待其产物、接入及真实应用/线上验证。
