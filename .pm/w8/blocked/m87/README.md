@@ -28,3 +28,10 @@ Fresh published Bex and unchanged pinned Render on the served fix open ordinary 
 - **Expected outcome:** Ctrl+C ends the chosen active statement promptly while keeping the SQL session usable on the shared external endpoint.
 - **Why now:** Both normal clients report a cancellation dispatch while their actual queries run to completion. A documented modern API succeeds on the same database, isolating a concrete legacy ingress gap. The shared TLS passthrough cannot recover the missing route with a one-line header change, so this needs a reviewed design plus multi-instance and consumer verification.
 - **Render parity:** Included for tenant-facing cancellation and all exposed connection-info/trust consumers. Eight tasks todo; scheduling only; no product implementation or new ship.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m87/t002–t008。
+- **结论来源：** 当前 pg-sni-proxy passthrough 与设计复核。legacy CancelRequest 不带 SNI，当前密文 relay 无法取得 BackendKeyData；设计改为共享 ingress 终止 TLS。
+- **真正待决定：** 用户是否接受共享公网 proxy 持有全部 tenant DB 的 server 私钥，并在内存看到明文 SQL。普通 libpq Ctrl+C 将因此可路由，但这改变了 ADR009 的 TLS passthrough 信任边界，不能把它作为 routine refactor 自动采用。需专门讨论；当前没有新授权。
+- **worker 下一步：** 获准后先同步 design 和 t002：design 要保留真实 PID/key，t002 旧文仍说 replace BackendKeyData，两者冲突；统一为审阅后的方案，再做跨实例/精确 backend/证书轮换/PLUS/资源和安全验收。原全部 DoD 保留。

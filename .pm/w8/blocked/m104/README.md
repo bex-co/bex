@@ -26,3 +26,11 @@ Compatible reviewed immutable SQL-only pg_partman supply for PostgreSQL14..18 pe
 - **Expected outcome:** Partition-management migrations and maintenance run without server-file workarounds or changed app authority.
 - **Why now:** Two original failures and actual missing catalog entry establish a distinct supply gap; no existing pg_partman work was found. Coordinate the shared image rollout with [m92](../m92/README.md); The m92 plan does not establish pg_partman supply in its future candidate images.
 - **Render parity:** Included because shared database image supply reaches native/REST/GraphQL/MCP/Blueprint/dashboard consumers. No extension-management product or automatic background-worker service is introduced.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m104；共用 m92/design.md 的供应与上线门槛。
+- **结论来源：** 现有 Render parity 规则和官方 postgresql-extensions 表复核。按各 major 支持范围提供扩展、普通 owner 按需 `CREATE EXTENSION` 是既定目标；不能以只提供 PostGIS 或默认全预装作为无签字的替代。
+- **工程方案：** 采用 m92/design.md 的 1(b)+2(b)：按 major 维护兼容 CNPG 的共享 operand，受限 allowlist 激活并保留现有权限边界。pg_similarity 仅 13–15、pg_duckdb 16+、pg_partman 14+ 且无后台 worker、TimescaleDB 仅 Apache 功能；每项原真实 SQL/恢复/版本验收保留。
+- **真正剩余门槛：** 新 operand / preload 会重启既有数据库，这是需要用户接受的生产影响；待单独讨论全库滚动切换及窗口。w7/m156 已把 CNPG manager 升级为 1.30.1 且原地更新，不应再声称可以顺带等待尚未发生的 m65 升级。
+- **worker 下一步：** 用户明确 rollout 后，先在隔离环境验证各 major、扩展权限/备份恢复和数据保留，再分批 rollout 并逐项验收。当前没有新 rollout 授权，继续 blocked；不把推荐写成用户决定。

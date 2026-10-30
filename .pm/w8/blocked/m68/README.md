@@ -37,3 +37,10 @@ Severity minor. The private upstream/backend diagnostics are research material; 
 [Focused source/live evidence](evidence/cli-sweep299/README.md) verifies41 named source-test passes at f497ddab6, but an actual raw API-created Free Node fixture still stores a shortened pre-deploy command and executes hex7461696c5c. Build/start controls execute the authored hex7461696c20. Both actual native clients read the same one program output from build history and exit0. Exact deployed revisions are unobserved; this is the existing live defect, not proof of a source regression or a new deploy-lag issue. No compound update/manual-deploy or fixed-release acceptance is claimed after this failure.
 
 Fresh upstream main remains28b233e, with the six inspected hosting files byte-identical to the pin. Upstream authorization/release/adoption and actual deployed backend/dashboard acceptance remain separate gates. The own Free parent/one child are fully cleaned, baseline6/quota6/terminating0. QA changed no product source and performed no external submission, release or new ship.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m68；D2 上游提交批次共 19 项，完整映射见 workstream README 本次复核表。
+- **结论来源：** 本次只读 PR 去重和原已准备补丁记录。2026-10-29 `render-oss/cli` 最近 100 条全状态 PR 返回 28 条；没有发现本批补丁的对应提交，#54–#57 仍 open。PR 索引不是最新源码已修复/未修复的充分证据。 本次还对全部 19 份补丁执行 `git apply --check`，均可应用于当前 pin `af9bdd180e90`（Render v2.29.0）；这不是最新 upstream main 已审核或完整测试通过的声明。
+- **剩余门槛：** D2 待用户明确允许以其 GitHub 身份公开提交这些已准备的最小补丁；本次没有对外消息、PR、push 或跟进。提交前由 worker 逐项重查 upstream main / issue、刷新与重测补丁；已被上游修复的应按证据收敛，不重复提交。
+- **后续：** 即使允许提交，也仍需 upstream 接受/发布、Bex 审阅 pin 更新及单独授权 CLI release，之后逐项执行原 native / shared-surface / cleanup 验收。不 fork、不修请求来掩盖客户端缺陷。本项继续 blocked，不把允许提交当成已合并或已交付。

@@ -29,3 +29,10 @@ Six tasks,160m total.
 - **Expected outcome:** compressible web responses transfer fewer bytes while exact content and streaming behavior are preserved.
 - **Why now:** both native services are healthy, all16 payload checks pass, but10 normal encoding offers stay at full size; authored gzip proves the transfer saving and source projection lacks a compressor. No matching repair is on fresh main.
 - **Render parity included:** Render documents load-balancer Brotli/gzip for app responses. Identity is legal HTTP; this is a minor hosting/performance gap, distinct from completed static-handler m79.
+
+## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
+
+- **涉及 ID：** w8/m83。
+- **结论来源：** 当前固定 Traefik 3.7.5 配置与既有真实代理测量复核。裸 compress 违反 no-transform / ETag，Brotli 大 Range 也有错误；现有 guard 的 Yaegi wrapper 又会缓冲 streaming。
+- **处理：** 不能为了移出 blocked 删除这些未达成的验收，或让用户替 worker 选择破坏 HTTP 邻居。优先在保持原 DoD 的前提下修复/升级供应方；worker 先核实最新官方修复是否可用，再准备具体最小变更。本批 D2 的 19 份 render-oss/cli 补丁不包括本项尚未准备的 Traefik/Yaegi PR。
+- **剩余门槛：** 若仍需对外提交，具体补丁可评审后另取授权；若仅已有官方修复可用，按真实代理回归自行恢复。未证实可用修复，本项继续 blocked。
