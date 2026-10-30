@@ -1,0 +1,1 @@
+golangci-lint has version v2.15.0-custom-gcl-SjCB8hSnJBRAw95oKMCvNM0WKlY5ax9keJfboQHiRFs built with go1.27.2 from ? on 2026-10-30 10:47:38.845315 +0000 UTC

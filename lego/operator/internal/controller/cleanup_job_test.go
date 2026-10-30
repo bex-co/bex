@@ -29,6 +29,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func cleanupFixture(uid types.UID) (*corev1.ConfigMap, *batchv1.Job) {
@@ -47,7 +48,14 @@ func TestCleanupJobCompletionSurvivesManagerRestartAndWaitsForAbsence(t *testing
 	parent, desired := cleanupFixture("uid-one")
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(parent).WithStatusSubresource(&batchv1.Job{}).Build()
+	podDeletes := 0
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(parent).WithStatusSubresource(&batchv1.Job{}).
+		WithInterceptorFuncs(interceptor.Funcs{Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if _, ok := obj.(*corev1.Pod); ok {
+				podDeletes++
+			}
+			return c.Delete(ctx, obj, opts...)
+		}}).Build()
 
 	if done, err := reconcileCleanupJob(ctx, cl, parent, desired, "test/complete"); err != nil || done {
 		t.Fatalf("dispatch = done %v err %v", done, err)
@@ -72,8 +80,28 @@ func TestCleanupJobCompletionSurvivesManagerRestartAndWaitsForAbsence(t *testing
 	if restartedParent.Annotations["test/complete"] != "uid-one" {
 		t.Fatalf("completion marker = %v", restartedParent.Annotations)
 	}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "held-purge-pod", Namespace: desired.Namespace,
+		UID: "held-purge-pod", Labels: desired.Spec.Template.Labels, Finalizers: []string{"test/hold"}}}
+	if err := cl.Create(ctx, pod); err != nil {
+		t.Fatal(err)
+	}
 	if done, err := reconcileCleanupJob(ctx, cl, restartedParent, desired, "test/complete"); err != nil || done {
 		t.Fatalf("delete terminal Job = done %v err %v", done, err)
+	}
+	for range 3 {
+		if done, err := reconcileCleanupJob(ctx, cl, restartedParent, desired, "test/complete"); err != nil || done {
+			t.Fatalf("held Pod barrier = done %v err %v", done, err)
+		}
+	}
+	if podDeletes != 1 {
+		t.Fatalf("Pod delete requests = %d, want one while its finalizer holds deletion", podDeletes)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+		t.Fatal(err)
+	}
+	pod.Finalizers = nil
+	if err := cl.Update(ctx, pod); err != nil {
+		t.Fatal(err)
 	}
 	if done, err := reconcileCleanupJob(ctx, cl, restartedParent, desired, "test/complete"); err != nil || !done {
 		t.Fatalf("verified absence = done %v err %v", done, err)

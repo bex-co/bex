@@ -107,7 +107,7 @@ Disk *DiskSpec `json:"disk,omitempty"`
 type DiskSpec struct {
     Name      string `json:"name"`      // any string; Render does not display it
     MountPath string `json:"mountPath"` // absolute; denylist below
-    SizeGB    int32  `json:"sizeGB"`    // default 10; min 10 at the API (CRD keeps 1); max 10000; grow-only
+    SizeGB    int32  `json:"sizeGB"`    // default 10; min 1; max 10000; grow-only
 }
 ```
 
@@ -177,7 +177,7 @@ Hetzner offers no block snapshots, so Render's snapshot semantics are reproduced
 - **Retention**: 7 daily objects per disk, oldest pruned — Render's "at least seven days" exactly (and the existing `keyValueBackupRetention` constant).
 - **List/restore**: `GET /v1/disks/{id}/snapshots` returns Render's `{createdAt, snapshotKey, instanceId}` shape; `snapshotKey` is an HMAC-signed object reference valid 24 h (Render's key expiry, via the existing `hmacticket` envelope). `POST …/snapshots/restore` scales the App to 0, runs a restore Job (wipe + extract onto the PVC), then redeploys — "restoring restarts your service", full-disk only, post-snapshot writes lost.
 - **Consistency**: a file-level copy of a live filesystem is fuzzy, not application-consistent. bex adopts Render's own warning verbatim in the dashboard and API docs: do not use disk restore for database recovery; use application-level dumps. (Render's block snapshots have the same caveat — they warn identically.)
-- **Lifecycle**: snapshots are deleted with the disk (purge Job + annotation, the KV pattern). Render leaves this undocumented; bex chooses deletion as the privacy-preserving default and documents it as bex-defined.
+- **Lifecycle**: detaching the disk or deleting its service stops and observes the owned snapshot/restore writers gone before running a UID-bound purge Job. The Job succeeds only after an unfiltered object-store listing proves its prefix empty, including failure records. The App finalizer or detach barrier remains until successful completion is persisted and the purge Job and Pods are observed absent. A missing cleanup credential or an ambiguous foreign resource lifetime blocks cleanup; it never silently skips the purge or adopts that resource. Workspace-shared credentials remain. Render leaves snapshot deletion undocumented; bex chooses deletion as the privacy-preserving default and documents it as bex-defined.
 - Snapshot storage is **not billed** to the tenant (parity); the cost is internalized (§ Pricing).
 
 ### D6 — API surface

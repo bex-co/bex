@@ -17,9 +17,57 @@ limitations under the License.
 package disksnapshot
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestPurgeAllRequiresUnfilteredEmptyPrefix(t *testing.T) {
+	for _, residual := range []string{"", "snapshot" + SnapshotSuffix, FailureRecordPrefix + FailureUpload, "unexpected-object", "list-denied"} {
+		t.Run(residual, func(t *testing.T) {
+			t.Setenv("AWS_ACCESS_KEY_ID", "test")
+			t.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+			t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+			verified := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodDelete {
+					w.WriteHeader(http.StatusNoContent) // ACK without deleting anything
+					return
+				}
+				if got := r.URL.Query().Get("prefix"); got != "backups/tea/app/" {
+					t.Errorf("list prefix = %q", got)
+				}
+				key := "snapshot" + SnapshotSuffix
+				if r.URL.Query().Get("max-keys") == "1" {
+					verified = true
+					if residual == "list-denied" {
+						http.Error(w, "denied", http.StatusForbidden)
+						return
+					}
+					key = residual
+				}
+				w.Header().Set("Content-Type", "application/xml")
+				_, _ = fmt.Fprint(w, `<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated>`)
+				if key != "" {
+					_, _ = fmt.Fprintf(w, "<Contents><Key>backups/tea/app/%s</Key><Size>1</Size></Contents>", key)
+				}
+				_, _ = fmt.Fprint(w, "</ListBucketResult>")
+			}))
+			defer server.Close()
+			store := Store{Endpoint: server.URL, Bucket: "test-bucket", Prefix: "backups"}
+			_, err := store.PurgeAll(t.Context(), "tea/app/")
+			if !verified || (err != nil) != (residual != "") {
+				t.Fatalf("verified=%v error=%v residual=%q", verified, err, residual)
+			}
+			if residual != "" && residual != "list-denied" && !strings.Contains(err.Error(), "not empty") {
+				t.Fatalf("residual object was not reported: %v", err)
+			}
+		})
+	}
+}
 
 // Snapshot names must sort lexically in time order: List and Prune decide what
 // to delete from names alone, so an ordering that disagreed with time would

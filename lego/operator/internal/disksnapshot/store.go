@@ -203,8 +203,25 @@ func (s Store) PurgeAll(ctx context.Context, prefix string) (int, error) {
 			return i, err
 		}
 	}
-	// A deleted disk keeps nothing behind, its failure record included.
-	return len(objects), s.ClearFailures(ctx, prefix)
+	// A deleted disk keeps nothing behind, its failure record included. A
+	// successful delete response alone is not proof that the prefix is empty.
+	if err := s.ClearFailures(ctx, prefix); err != nil {
+		return len(objects), err
+	}
+	client, err := s.client(ctx)
+	if err != nil {
+		return len(objects), err
+	}
+	remaining, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.Bucket), Prefix: aws.String(s.join(prefix)), MaxKeys: aws.Int32(1),
+	})
+	if err != nil {
+		return len(objects), fmt.Errorf("verify empty snapshot prefix %s: %w", prefix, err)
+	}
+	if len(remaining.Contents) != 0 || aws.ToInt32(remaining.KeyCount) != 0 || aws.ToBool(remaining.IsTruncated) {
+		return len(objects), fmt.Errorf("snapshot prefix %s is not empty after purge", prefix)
+	}
+	return len(objects), nil
 }
 
 func (s Store) join(key string) string {

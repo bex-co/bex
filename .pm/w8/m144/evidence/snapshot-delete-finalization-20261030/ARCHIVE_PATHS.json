@@ -1,0 +1,12 @@
+{
+  "operator-change.patch.txt": {
+    "stored": "operator-change.patch.txt.gz",
+    "original_bytes": 62869,
+    "original_sha256": "52bd78d47e6c08aef6907651e56bda4146c4837be1d7fe9db7bab93821d1de4e"
+  },
+  "pre-simplify/operator-change.patch.txt": {
+    "stored": "pre-simplify/operator-change.patch.txt.gz",
+    "original_bytes": 56899,
+    "original_sha256": "fdad2a2b3d3e92636df998000708676aa302f781ab0bd201bcd6ebb9ffc7ade4"
+  }
+}

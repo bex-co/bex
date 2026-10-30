@@ -383,6 +383,9 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 		// started in a manager that has no other reason to watch them.
 		return nil
 	}
+	if done, err := r.reconcileDiskSnapshotCleanup(ctx, app); err != nil || !done {
+		return err
+	}
 	// Blind deletes rather than the usual get-then-delete: this path runs a
 	// handful of times per detach, so one round trip each beats populating a
 	// cluster-wide PVC cache to check.
@@ -402,19 +405,15 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 			return err
 		}
 	}
-	// The snapshots outlive the volume unless something removes them: they are
-	// a full copy of the tenant's filesystem in a third-party bucket, still
-	// costing storage and still holding data the tenant asked to delete.
-	if err := r.deleteDiskSnapshotChildren(ctx, app); err != nil {
-		return err
-	}
-	if err := r.purgeDiskSnapshots(ctx, app); err != nil {
-		return err
-	}
 	// Clear the marker last: while it is set the cleanup is idempotent and
 	// retried, so a delete that failed halfway is finished by the next pass
 	// instead of leaving a volume nobody is looking for.
-	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotDiskProvisioned) }); err != nil {
+	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		delete(meta.Annotations, annotDiskProvisioned)
+		delete(meta.Annotations, annotDiskSnapshots)
+		delete(meta.Annotations, annotDiskPurgeComplete)
+		delete(meta.Annotations, annotDiskPurgePending)
+	}); err != nil {
 		return err
 	}
 	app.Status.Disk = nil

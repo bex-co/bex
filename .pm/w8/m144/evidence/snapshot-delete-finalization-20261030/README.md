@@ -1,0 +1,5 @@
+# Snapshot deletion finalization — 2026-10-30
+
+App deletion and disk detach now stop owned backup/restore writers, hold a UID-bound purge barrier until its unfiltered object prefix is empty, and observe the purge Job/Pods gone before releasing cleanup. Foreign resource lifetimes and forged workspace scopes fail closed; workspace-shared credentials remain. Two real envtest detach/reattach cycles under the same App UID, writer/purge Pod barriers, false S3 delete acknowledgments and encrypted local MinIO purge are covered.
+
+Three simplify reviews led to shared AWS credential/UID validation and avoiding repeated deletes of terminating Pods. Final focused tests, full normal operator `make test` and complete four-module `make lint` pass on the twelve archived Go file hashes; all 91 codegen files remain identical. [The receipt](receipt.json) separates final gates, prior real MinIO checks and explicit infra-failed disk-space attempts. Raw logs are losslessly stored as gzip with original/stored hashes; earlier validated evidence remains under `pre-simplify/`. No production snapshot purge, provider cleanup or owned lifecycle acceptance is claimed.

@@ -12,7 +12,7 @@ on:
         type: choice
         required: true
         default: inventory
-        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup]
+        options: [inventory, rollout, fixture-bind, fixture-inspect, fixture-backup, fixture-backup-status, fixture-backup-cleanup, fixture-cleanup-observe]
       fixture_phase:
         description: Fixture evidence phase (ignored by inventory and rollout)
         type: choice
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hcloud-csi-rollout
+  group: ${{ inputs.operation == 'fixture-cleanup-observe' && 'hcloud-csi-fixture-observer' || 'hcloud-csi-rollout' }}
   cancel-in-progress: false
 
 jobs:
@@ -44,6 +44,7 @@ jobs:
             rollout) bash scripts/install-hcloud-csi.sh validate-pin ;;
             fixture-backup-cleanup) python3 scripts/disk_fixture.py validate-cleanup ;;
             fixture-backup-status) python3 scripts/disk_fixture.py validate-status ;;
+            fixture-cleanup-observe) python3 scripts/disk_fixture.py validate-observer ;;
             fixture-bind|fixture-inspect|fixture-backup)
               python3 scripts/disk_fixture.py validate ;;
             *) echo 'unknown scoped CSI operation' >&2; exit 1 ;;
@@ -54,7 +55,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     environment: production-cluster
-    timeout-minutes: 40
+    timeout-minutes: ${{ inputs.operation == 'fixture-cleanup-observe' && 110 || 40 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -97,10 +98,14 @@ jobs:
         env:
           OPERATION: ${{ inputs.operation }}
           FIXTURE_PHASE: ${{ inputs.fixture_phase }}
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
           case "$OPERATION" in
             fixture-bind|fixture-inspect|fixture-backup|fixture-backup-status|fixture-backup-cleanup)
               python3 scripts/disk_fixture.py "${OPERATION#fixture-}" --phase "$FIXTURE_PHASE" ;;
+            fixture-cleanup-observe)
+              set -o pipefail
+              python3 scripts/disk_fixture.py cleanup-observe --phase "$FIXTURE_PHASE" | tee "$RUNNER_TEMP/fixture-cleanup.jsonl" ;;
             *) echo 'unknown fixed fixture operation' >&2; exit 1 ;;
           esac
       - name: scrub kubeconfig

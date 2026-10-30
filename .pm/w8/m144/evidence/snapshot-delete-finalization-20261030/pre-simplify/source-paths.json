@@ -1,0 +1,68 @@
+{
+  "lego/operator/cmd/disk-snapshot/main.go": {
+    "bytes": 9123,
+    "sha256": "6ef45323a6b0e35e84b3a98388b724ff1e493296952715a30dc75706b1ca6512",
+    "stored": "source/lego/operator/cmd/disk-snapshot/main.go.txt.gz",
+    "stored_sha256": "ba3eed838fd4de1fdf97ab2ada573a65d3fd18f05443da3f051d0ab5d50b8290"
+  },
+  "lego/operator/internal/controller/app_controller.go": {
+    "bytes": 367437,
+    "sha256": "e67ae5f3f66f2aed2cf31737127d8242087b95bf7b885b70af18873fa91cde66",
+    "stored": "source/lego/operator/internal/controller/app_controller.go.txt.gz",
+    "stored_sha256": "d9dc157cead920a51519a4dc1db1cb7c4df4a53ce5e7c7ce0de4c789b73c195b"
+  },
+  "lego/operator/internal/controller/cleanup_job.go": {
+    "bytes": 6792,
+    "sha256": "ad8ecd003521a96d5e80c1d98d9ebc5a9cd6550d653e3fc7a854ce2eec51f4a8",
+    "stored": "source/lego/operator/internal/controller/cleanup_job.go.txt.gz",
+    "stored_sha256": "d3c39fb43bd0c83032a74db10a0f3533c8d6b7477b0327c50ad5c16a3153c4c6"
+  },
+  "lego/operator/internal/controller/disk.go": {
+    "bytes": 20351,
+    "sha256": "06beeecbe8d2edae6458aafb39d601715e2ac66feed80b357ebf4330fb104fff",
+    "stored": "source/lego/operator/internal/controller/disk.go.txt.gz",
+    "stored_sha256": "8a395a30387d214619bcadc485b67557580b9f35239e94416eec923409eb6fff"
+  },
+  "lego/operator/internal/controller/disk_backup.go": {
+    "bytes": 34999,
+    "sha256": "6019ae67f024fb0d6ea9fad534da6702ab75409ccc6c95af30484419d67461f1",
+    "stored": "source/lego/operator/internal/controller/disk_backup.go.txt.gz",
+    "stored_sha256": "26eaef97302475e1a6eee47bff5c5eeaed86949759c63976231171d9ee5de381"
+  },
+  "lego/operator/internal/controller/disk_deletion_envtest_test.go": {
+    "bytes": 10395,
+    "sha256": "cfa202798581e47c97ea40f6c275ff67db1de2e5da1f9b14502b4280ca3ddc1a",
+    "stored": "source/lego/operator/internal/controller/disk_deletion_envtest_test.go.txt.gz",
+    "stored_sha256": "54a673573b8795037f99770dedd13b1027327eeae3d8280aec5dd697f767f74e"
+  },
+  "lego/operator/internal/controller/disk_deletion_test.go": {
+    "bytes": 15326,
+    "sha256": "6ffdcc76f96ac4ed22fbf91cd2b0af7934aed7e39b92c01829d4d431dff9c140",
+    "stored": "source/lego/operator/internal/controller/disk_deletion_test.go.txt.gz",
+    "stored_sha256": "6683a8beedbdaf94aaa49c1b26fd3b59329d73dcbfd912b7616e52eb85fd4ca3"
+  },
+  "lego/operator/internal/controller/disk_envtest_test.go": {
+    "bytes": 43215,
+    "sha256": "b6ba5a3d4a6cda9cf543354dc44e161e6ea8d686d5292d8492b11efc2a07bdf2",
+    "stored": "source/lego/operator/internal/controller/disk_envtest_test.go.txt.gz",
+    "stored_sha256": "461d40ec59c22589f9df8ce325c859f7fbba799e5b95d3265144035b0e77f77e"
+  },
+  "lego/operator/internal/disksnapshot/store.go": {
+    "bytes": 9321,
+    "sha256": "8cbba164202b7f26f776ad5f8a1a8091bcbe3159239e53bec000490b7dfd671a",
+    "stored": "source/lego/operator/internal/disksnapshot/store.go.txt.gz",
+    "stored_sha256": "f529d6909317691975ecfb80d38425902f7266e3bfa9fd2c220616ac831bd619"
+  },
+  "lego/operator/internal/disksnapshot/store_integration_test.go": {
+    "bytes": 10859,
+    "sha256": "fee7b2e98ab4e3834f915c7067a31576bc25c8421bed45b6fee9533756223337",
+    "stored": "source/lego/operator/internal/disksnapshot/store_integration_test.go.txt.gz",
+    "stored_sha256": "7b74c6c379af481c3a87d9c279a31e1f5d8e8e3071d084ebf38de680b66f93d2"
+  },
+  "lego/operator/internal/disksnapshot/store_test.go": {
+    "bytes": 5029,
+    "sha256": "dbc7ad48f122bd81825c5f81248b5dd377a95f8249ac59bd13930b94d047551e",
+    "stored": "source/lego/operator/internal/disksnapshot/store_test.go.txt.gz",
+    "stored_sha256": "9c3f0ef821d0e87601b7545ee8b80bc4c35b09ea5c930d26004f0a30a724d33e"
+  }
+}

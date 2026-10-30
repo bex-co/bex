@@ -1,0 +1,10 @@
+Building custom golangci-lint with plugins...
+0 issues.
+cmd/ssh-gateway/main.go:1: : # github.com/bex-co/bex/lego/backend/cmd/ssh-gateway [github.com/bex-co/bex/lego/backend/cmd/ssh-gateway.test]
+compile: writing output: write $WORK/b1290/_pkg_.a: no space left on device (typecheck)
+/*
+1 issues:
+* typecheck: 1
+0 issues.
+0 issues.
+make: *** [lint] Error 1
