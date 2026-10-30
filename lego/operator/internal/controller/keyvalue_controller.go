@@ -506,9 +506,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 		"secretName":     tlsSecretName,
 		"secretTemplate": map[string]any{"labels": map[string]any{execution.LabelKeyValueUID: string(kv.UID)}},
 		"dnsNames":       []any{host},
-		"issuerRef": map[string]any{
-			"name": r.ClusterIssuer, "kind": "ClusterIssuer",
-		},
+		"issuerRef":      clusterIssuerRef(r.ClusterIssuer),
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, certificate, func() error {
 		if certificate.GetResourceVersion() != "" && !metav1.IsControlledBy(certificate, kv) {

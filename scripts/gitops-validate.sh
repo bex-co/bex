@@ -692,6 +692,24 @@ if yq -e '
   echo "FAIL: default/local operator config must not set BEX_DISK_STORAGE_CLASS (the CAPD mock has no hcloud class)" >&2
   fail=1
 fi
+# w2/m245: public Postgres serves Let's Encrypt certificates in production
+# only. Prod must name the HTTP-01 ClusterIssuer the chart installs; the
+# local/default render must not, or a mock cluster orders certificates for
+# production *.db.bex.co names it cannot validate.
+prod_db_issuer="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  [.env[] | select(.name == "BEX_DB_CLUSTER_ISSUER") | .value] | .[0] // ""' \
+  - <<<"$prod_operator_render" | tr -d '\n')"
+[ "$prod_db_issuer" = "letsencrypt-prod" ] && grep -q '^  name: letsencrypt-prod$' deploy/gitops/charts/cert-manager-issuers/clusterissuers.yaml \
+  || { echo "FAIL: prod operator BEX_DB_CLUSTER_ISSUER is '$prod_db_issuer' (want the installed letsencrypt-prod ClusterIssuer)" >&2; fail=1; }
+if yq -e '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  .env[] | select(.name == "BEX_DB_CLUSTER_ISSUER")' - <<<"$default_operator_render" >/dev/null 2>&1; then
+  echo "FAIL: default/local operator config must not set BEX_DB_CLUSTER_ISSUER (a mock cluster cannot answer HTTP-01 for production names)" >&2
+  fail=1
+fi
 
 # w7/026: BEX_BASE_DOMAIN is one conceptual setting read by three separately
 # configured Deployments — the operator decides whether a platform-host Ingress
