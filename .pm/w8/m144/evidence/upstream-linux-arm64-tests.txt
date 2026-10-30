@@ -1,0 +1,3 @@
+ok  	github.com/hetznercloud/csi-driver/internal/driver	0.877s
+ok  	github.com/hetznercloud/csi-driver/internal/volumes	0.882s
+ok  	github.com/hetznercloud/csi-driver/internal/volsrv	0.831s

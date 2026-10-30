@@ -1,0 +1,12 @@
+=== RUN   TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth
+=== RUN   TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/quota_refusal
+=== RUN   TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/nonexpandable_class
+=== RUN   TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/accepted_grow_inside_provider_floor
+--- PASS: TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth (0.04s)
+    --- PASS: TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/quota_refusal (0.03s)
+    --- PASS: TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/nonexpandable_class (0.00s)
+    --- PASS: TestDiskFilesystemIntentUsesOnlyAdmittedPVCGrowth/accepted_grow_inside_provider_floor (0.00s)
+=== RUN   TestDiskCreateRefusedByQuotaPublishesNoFilesystemIntent
+--- PASS: TestDiskCreateRefusedByQuotaPublishesNoFilesystemIntent (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/controller	0.751s

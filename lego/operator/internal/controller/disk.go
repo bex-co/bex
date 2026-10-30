@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -50,6 +51,11 @@ const (
 	// in lego/types, because bex-api must derive the same claim name to graph
 	// the disk's usage.
 	diskLUKSSecretKey = "encryption-passphrase"
+	// These non-secret fields carry current logical intent only to the CSI node.
+	// The bounded-ext4 StorageClass opts in; old classes ignore both fields.
+	diskFilesystemModeKey  = "boundedFilesystem"
+	diskFilesystemMode     = "ext4-v1"
+	diskFilesystemBytesKey = "filesystemSizeBytes"
 	// diskSafeToEvictAnnotation keeps the cluster-autoscaler from bin-packing a
 	// disk-bearing pod's node away. Same annotation, same reason as the managed
 	// KeyValue StatefulSet: for a single-instance stateful pod an eviction is
@@ -147,7 +153,7 @@ func (r *AppReconciler) reconcileDisk(ctx context.Context, app *appv1alpha1.App)
 }
 
 // ensureDiskPassphrase mints the disk's LUKS passphrase once, on first
-// reconcile. It is never rewritten: the passphrase is the only thing that can
+// reconcile. The passphrase is never rewritten: it is the only thing that can
 // unlock the volume, so regenerating it would lock the tenant out of their own
 // data. Kubernetes garbage-collects it with the App via the owner reference.
 //
@@ -161,6 +167,9 @@ func (r *AppReconciler) ensureDiskPassphrase(ctx context.Context, app *appv1alph
 	secret := &corev1.Secret{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}
 	if err := secrets.Get(ctx, key, secret); err == nil {
+		if len(secret.Data[diskLUKSSecretKey]) == 0 && secret.StringData[diskLUKSSecretKey] == "" {
+			return fmt.Errorf("disk passphrase Secret %s is missing its encryption key; refusing to replace or use it", key)
+		}
 		return nil
 	} else if !apierrors.IsNotFound(err) {
 		return err
@@ -189,6 +198,50 @@ func (r *AppReconciler) ensureDiskPassphrase(ctx context.Context, app *appv1alph
 	return nil
 }
 
+// syncDiskFilesystemIntent authorizes only a request admitted by the PVC API.
+// App spec/status can name a grow refused by quota or the StorageClass, and the
+// expander mutates its in-memory PVC even when its patch fails. Neither is
+// proof that the node may enlarge the filesystem.
+func (r *AppReconciler) syncDiskFilesystemIntent(ctx context.Context, app *appv1alpha1.App, admittedGB int32) error {
+	secrets := r.uncachedSecretClient()
+	secret := &corev1.Secret{}
+	if err := secrets.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}, secret); err != nil {
+		return err
+	}
+	return updateDiskFilesystemIntent(ctx, secrets, secret, admittedGB)
+}
+
+// updateDiskFilesystemIntent preserves the passphrase and the high-water bound
+// of previously admitted requests, including across stale reconciles.
+func updateDiskFilesystemIntent(ctx context.Context, secrets client.Client, secret *corev1.Secret, admittedGB int32) error {
+	currentMode := string(secret.Data[diskFilesystemModeKey])
+	if currentMode != "" && currentMode != diskFilesystemMode {
+		return fmt.Errorf("unsupported disk filesystem mode %q", currentMode)
+	}
+	if admittedGB < 1 || admittedGB > 10000 {
+		return fmt.Errorf("invalid admitted disk filesystem capacity")
+	}
+	desired := int64(admittedGB) << 30
+	current := int64(0)
+	if raw := string(secret.Data[diskFilesystemBytesKey]); raw != "" {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || value < 1<<30 || value > 10000<<30 || value%(1<<30) != 0 {
+			return fmt.Errorf("invalid existing disk filesystem capacity")
+		}
+		current = value
+	}
+	desired = max(desired, current)
+	if currentMode == diskFilesystemMode && current == desired {
+		return nil
+	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+	secret.Data[diskFilesystemModeKey] = []byte(diskFilesystemMode)
+	secret.Data[diskFilesystemBytesKey] = []byte(strconv.FormatInt(desired, 10))
+	return secrets.Update(ctx, secret)
+}
+
 func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App) error {
 	sizeGB := max(app.Spec.Disk.SizeGB, diskAllocatedGB(app))
 	pvc := &corev1.PersistentVolumeClaim{
@@ -214,12 +267,22 @@ func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App)
 	if err := controllerutil.SetControllerReference(app, pvc, r.Scheme); err != nil {
 		return err
 	}
-	if err := r.Create(ctx, pvc); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := r.Create(ctx, pvc); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			// A competing reconcile created it. Its request, which can differ from
+			// this attempted create, will authorize the bound on the next read.
+			return nil
+		}
 		if isQuotaExceeded(err) {
 			setDiskCondition(app, false, "StorageBlockedByQuota",
 				fmt.Sprintf("namespace storage quota has no room for a %dGB disk: %v", sizeGB, err))
 			return nil
 		}
+		return err
+	}
+	// Publish the bound only after PVC creation passed admission. A node that
+	// races this write fails closed and retries with the converged Secret.
+	if err := r.syncDiskFilesystemIntent(ctx, app, sizeGB); err != nil {
 		return err
 	}
 	setDiskStatus(app, sizeGB, 0)
@@ -233,17 +296,26 @@ func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App)
 // a spec that somehow regressed cannot shrink a live volume.
 func (r *AppReconciler) growDiskPVC(ctx context.Context, app *appv1alpha1.App, pvc *corev1.PersistentVolumeClaim) error {
 	requestedGB := pvcRequestedStorageGB(pvc)
+	// Capture admitted intent before the expansion helper can mutate this PVC.
+	if err := r.syncDiskFilesystemIntent(ctx, app, requestedGB); err != nil {
+		return err
+	}
 	capacityGB := pvcCapacityStorageGB(pvc)
 	// The allocation is what bex asked for, never the physical capacity: a
 	// provider floor (Hetzner's 10 GB minimum volume) backs a 1 GB disk with a
 	// 10 GB volume, and folding that in recorded the disk as 10 GB (w8/215, the
 	// same rule growOnlyIntent states for datastores). A grow the volume
-	// already holds (1 → 5 GB on a 10 GB volume) still raises the request; the
-	// resizer has nothing to do until the request passes the capacity.
+	// already holds (1 → 5 GB on a 10 GB volume) still raises the request. The
+	// bounded CSI class reports logical capacity, so its node-only filesystem
+	// growth runs even while the physical provider volume remains unchanged.
 	allocatedGB := max(app.Spec.Disk.SizeGB, requestedGB, diskAllocatedGB(app))
 
 	if allocatedGB > requestedGB {
 		if blocked, err := r.expandDiskPVC(ctx, app, pvc, allocatedGB); err != nil || blocked {
+			return err
+		}
+		// Only pvcExpanded with no error proves the API admitted this request.
+		if err := r.syncDiskFilesystemIntent(ctx, app, allocatedGB); err != nil {
 			return err
 		}
 	}

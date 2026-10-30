@@ -1,0 +1,18 @@
+{
+  "controller": {
+    "image": {
+      "hcloudCSIDriver": {
+        "name": "docker.io/hetznercloud/hcloud-csi-driver@sha256:459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+        "tag": ""
+      }
+    }
+  },
+  "node": {
+    "image": {
+      "hcloudCSIDriver": {
+        "name": "docker.io/hetznercloud/hcloud-csi-driver@sha256:459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+        "tag": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+  File: "/disk"
+    ID: 5919e2f4bd5235ab Namelen: 255     Type: ext2/ext3
+Block size: 4096      
+Blocks: Total: 249195     Free: 249124     Available: 245028
+Inodes: Total: 65536      Free: 65523
+dd: error writing '/disk/full': No space left on device
+958+0 records in
+957+0 records out
+1003487232 bytes (957.0MB) copied, 2.575066 seconds, 371.6MB/s
+full-bytes=1003487232
+/disk/sentinel: OK
+resize2fs 1.47.3 (8-Jul-2025)
+Filesystem at /dev/mapper/w8bounded-1 is mounted on /disk; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 1
+The filesystem on /dev/mapper/w8bounded-1 is now 1310720 (4k) blocks long.
+
+refuse filesystem shrink: current=5368709120 target=1073741824; explicit offline migration required
+  File: "/disk"
+    ID: 5919e2f4bd5235ab Namelen: 255     Type: ext2/ext3
+Block size: 4096      
+Blocks: Total: 1280936    Free: 1035872    Available: 1031776
+Inodes: Total: 327680     Free: 327666
+64+0 records in
+64+0 records out
+67108864 bytes (64.0MB) copied, 0.010373 seconds, 6.0GB/s
+/disk/sentinel: OK
+/disk/sentinel: OK
+retained-bytes=1070596096
+  File: "/disk"
+    ID: 5919e2f4bd5235ab Namelen: 255     Type: ext2/ext3
+Block size: 4096      
+Blocks: Total: 1280936    Free: 1019488    Available: 1015392
+Inodes: Total: 327680     Free: 327666
+resize2fs 1.47.3 (8-Jul-2025)
+Filesystem at /dev/mapper/w8bounded-1 is mounted on /disk; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 2
+The filesystem on /dev/mapper/w8bounded-1 is now 2620928 (4k) blocks long.
+
+  File: "/disk"
+    ID: 5919e2f4bd5235ab Namelen: 255     Type: ext2/ext3
+Block size: 4096      
+Blocks: Total: 2570455    Free: 2309007    Available: 2304911
+Inodes: Total: 655360     Free: 655346
+PASS: bounded full, online grow, LUKS remount and unbounded-resize control

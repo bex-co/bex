@@ -1,0 +1,1 @@
+PASS: CSI installer pins, preserves bootstrap, scopes upgrade, verifies all pods and refuses unreviewed input

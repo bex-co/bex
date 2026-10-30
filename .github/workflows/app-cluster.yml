@@ -293,16 +293,7 @@ jobs:
       # the controller is not bootstrap-critical (PVs are first needed by the platform
       # charts, by which time the platform pool is Ready) → platform pool.
       - name: install hcloud CSI
-        run: |
-          chart_dir=$(mktemp -d)
-          trap 'rm -rf -- "$chart_dir"' EXIT
-          chart=$(bash scripts/helm-artifact.sh pull hcloud-csi "$chart_dir")
-          helm upgrade --install hcloud-csi "$chart" -n kube-system \
-            --set 'controller.nodeSelector.bex\.co/pool=platform' \
-            --set 'controller.tolerations[0].key=bex.co/platform' \
-            --set 'controller.tolerations[0].operator=Equal' \
-            --set-string 'controller.tolerations[0].value=true' \
-            --set 'controller.tolerations[0].effect=NoSchedule'
+        run: bash scripts/install-hcloud-csi.sh bootstrap
 
       - name: wait for app cluster nodes Ready
         run: |
