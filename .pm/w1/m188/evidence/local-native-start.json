@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-10-30T02:03:00Z",
+  "scope": "local arm64 component assembly and generated native application; not signed publication, source pin adoption, or production rollout",
+  "component_inputs": {
+    "node14": "sha256:038005cf52053b649ec15eec02d238e4780f6c52041fa1035a7465984dbb76cb",
+    "node20": "sha256:fdb7cd99076f7eb1f54fa3cf8e0d17de4b7510c0be3ade1b2ba6341b6fd8c3c7"
+  },
+  "combined_candidates": {
+    "node14": "sha256:a57849d495377fb8c4474e6022cd8ac6f9259ce2f35daf73a7dbe9b781c7123c",
+    "node20": "sha256:12c19a95ecdcc78afbb293f2b98f3dfc68b7216aa312c1b598d85e87e379b399"
+  },
+  "assembly": "current Dockerfile with only compiler RUN replaced by assertions for the already-compiled same-version component; utility/system recipe unchanged",
+  "utility_checks": "unmodified check.Dockerfile, real PG18 archive rows and invalid archive rejection, all tool transformations, system and both Node decoder probes without network: passed for both",
+  "native_generator": "new TestNativeBackportsBuildAndStart exercised actual native resolver/Dockerfile, authored build, persistent HTTP start with one-minute bound and named-container cleanup; only temporary Go overlay substituted local candidates for reviewed Node14/20 image fields and retained original upstream; production pins unchanged",
+  "results": {
+    "node14": {
+      "node": "14.21.3",
+      "brotli": "1.0.10",
+      "build_and_http_start": "passed",
+      "system_and_bundled_decoder_build_and_runtime": "passed"
+    },
+    "node20": {
+      "node": "20.20.2",
+      "brotli": "1.1.1",
+      "build_and_http_start": "passed",
+      "system_and_bundled_decoder_build_and_runtime": "passed"
+    }
+  },
+  "remaining": [
+    "Node16/18 and amd64 publishing gates",
+    "signed published digests and anonymous pull",
+    "native source/inventory adoption",
+    "actual operator rollout and final live census"
+  ]
+}

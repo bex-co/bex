@@ -1,0 +1,34 @@
+{
+  "versions": {
+    "node": "14.21.3",
+    "v8": "8.4.371.23-node.88",
+    "uv": "1.42.0",
+    "zlib": "1.2.11",
+    "brotli": "1.0.10",
+    "ares": "1.18.1",
+    "modules": "83",
+    "nghttp2": "1.42.0",
+    "napi": "8",
+    "llhttp": "2.1.6",
+    "openssl": "1.1.1t",
+    "cldr": "40.0",
+    "icu": "70.1",
+    "tz": "2022f",
+    "unicode": "14.0"
+  },
+  "npm": "6.14.18",
+  "sources": "Node 14.21.3; source sha256:458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e; Brotli 1.0.10; source sha256:b517ebdb5266b963d28d6e639b973479874ec72086deb6ee4a2d639e1b13606b",
+  "architecture": "arm64",
+  "platform": "linux/arm64",
+  "local_image": "sha256:038005cf52053b649ec15eec02d238e4780f6c52041fa1035a7465984dbb76cb",
+  "tests_passed": [
+    "same Node/modules/N-API/V8/libuv/OpenSSL/zlib/ICU versions",
+    "same npm version",
+    "sync malformed block-switch rejects errno-17 ERR_BLOCK_SWITCH",
+    "one-byte streaming malformed block-switch rejects errno-17",
+    "healthy Brotli round trip",
+    "network-free probe on candidate"
+  ],
+  "scope": "local compiled component candidate, not a signed published native utility image; clean publisher gates on both architectures still required",
+  "compile_seconds": 1102.6
+}

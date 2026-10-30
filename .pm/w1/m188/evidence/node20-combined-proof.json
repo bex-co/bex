@@ -1,0 +1,30 @@
+{
+  "node": "20.20.2",
+  "bundled_brotli": "1.1.1",
+  "npm": "10.8.2",
+  "system_brotli": "1.0.9-2+deb12u1",
+  "static_brotli": "1.0.9-2+deb12u1",
+  "private_node": "24.22.1",
+  "verified_at": "2026-10-30T02:01:00.416341+00:00",
+  "platform": "linux/arm64",
+  "candidate": "sha256:12c19a95ecdcc78afbb293f2b98f3dfc68b7216aa312c1b598d85e87e379b399",
+  "check_image": "sha256:4ef6da10fe256a57472ef29a313620d458eb65322a7b10ef1e1793e55a2115e2",
+  "build_log": "/tmp/bex-m188-node20-combined.log",
+  "check_log": "/tmp/bex-m188-node20-combined-check.log",
+  "checks_passed": [
+    "Exact unmodified deploy/native-base/check.Dockerfile",
+    "PG18 real archive restores exact expected rows; invalid archive rejected",
+    "All native utility transformations without network",
+    "System Brotli malformed-stream and healthy round-trip probes",
+    "Primary Node20 and private Node24 bundled Brotli probes"
+  ],
+  "assembly_scope": "Uses already-compiled Node20 component as BASE_IMAGE and replaces only redundant compile RUN with Node20.20.2/Brotli1.1.1 assertions. All remaining current utility/system recipe is unchanged. Local integration only, not signed published digest or production readiness.",
+  "inputs_sha256": {
+    "/tmp/bex-m188-node20-combined.Dockerfile": "f4fc39dc82cdc5f81f5821e0cd591477a134d4b1d083153505dc222e6a187f80",
+    "deploy/native-base/check.Dockerfile": "d7bbbd9cdac0248e031c0cb2ffcd81048a680cf5e5d0c434d576c0a57d4be930",
+    "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "deploy/native-base/patch-system-brotli.sh": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+    "deploy/native-base/check-brotli.py": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+    "deploy/native-base/node-brotli/check.js": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e"
+  }
+}
