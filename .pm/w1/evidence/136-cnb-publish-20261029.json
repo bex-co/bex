@@ -1,0 +1,70 @@
+{
+  "verified_at": "2026-10-30T01:07:30Z",
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:c737a6661e034d564a934c424f01f18b3f139c7beb0d107aa04ca37b59843192",
+  "source_revision": "63fd10231c81cdc71a75da373cb8f811f8de95aa",
+  "publish_run": "https://github.com/bex-co/bex/actions/runs/40790621050",
+  "publish_completed_at": "2026-10-29T00:10:14Z",
+  "node_startup_gate": {
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "conclusion": "success",
+    "completed_at": "2026-10-29T00:07:01Z"
+  },
+  "signature": {
+    "identity": "https://github.com/bex-co/bex/.github/workflows/cnb-run-image.yml@refs/heads/main",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "image_signature_and_spdx_attestation": "claims, certificate chain and transparency log independently verified with cosign3.1.4"
+  },
+  "platforms": {
+    "amd64": {
+      "layer": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:9456a88c2af6cfed5b6af9c8c0e9ba8cd87186d3e54c01b33aa81eb4577accf9",
+        "size": 76868
+      },
+      "packages": {
+        "libatomic1": {
+          "Version": "12.3.0-1ubuntu1~22.04.3",
+          "Architecture": "amd64",
+          "Status": "install ok installed"
+        },
+        "libbrotli1": {
+          "Version": "1.0.9-2ubuntu0.1",
+          "Architecture": "amd64",
+          "Status": "install ok installed"
+        }
+      }
+    },
+    "arm64": {
+      "layer": {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:05534fee2f8f89fcc71d9b259b1714f36631a1fd591aa7c0c101ae0134cbfff8",
+        "size": 78065
+      },
+      "packages": {
+        "libatomic1": {
+          "Version": "12.3.0-1ubuntu1~22.04.3",
+          "Architecture": "arm64",
+          "Status": "install ok installed"
+        },
+        "libbrotli1": {
+          "Version": "1.0.9-2ubuntu0.1",
+          "Architecture": "arm64",
+          "Status": "install ok installed"
+        }
+      }
+    }
+  },
+  "production_before_new_pin": {
+    "operator_image": "ghcr.io/bex-co/bex-operator@sha256:2e9286ad4080f0ff1f607fd1e77515556c9e8f04b60c37956caf4e1d4a964538",
+    "operator_source_revision": "2ac6fd95402e",
+    "operator_ready_at": "2026-10-29T21:24:28Z",
+    "stack_generation": 8,
+    "stack_ready_at": "2026-10-29T00:00:38Z",
+    "builder_ready_at": "2026-10-29T00:00:49Z",
+    "run_image": "ghcr.io/bex-co/bex-cnb-run@sha256:b2ec0fa5b6f5e6bf2e4f427eeb3db09b7573ebe6e789cf1676b6f717a5e95423"
+  },
+  "remaining": "Ship new pin, verify Argo ClusterStack new generation Ready and ClusterBuilder observes it, then use latest actual readiness as platform-rebuild since; plan/apply and running-image acceptance remain unperformed."
+}
