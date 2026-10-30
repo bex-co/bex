@@ -115,6 +115,8 @@ One admission helper checks creates and merged updates, including dry runs, plan
 
 Eligible named readers add one CNPG instance each to the plan/HA baseline; readiness waits for that total. Autoscale quota uses the change in aggregate provisioned storage, including readers that become eligible when storage grows to 10 GB. Ineligible legacy declarations add no instances and preserve already declared or observed instance capacity; explicitly clearing the list permits removal. Reader names remain aliases to one shared CNPG `-ro` pool, not independent per-name clusters. The previous projection published aliases without creating readers when HA was off; w8/m50 corrects that missing mechanism.
 
+**Shipped plan ladder (w2/m171, 2026-10-29).** `lego/types/tiers/tiers.yaml` carries `free`, `basic-256mb` (0.1 CPU), `basic-1gb` (0.5 CPU), `1c-2g` (1 CPU / 2 GiB, $28.00/mo), `pro-4gb` (alias `1c-4g`, `pro_4gb`; 1 CPU / 4 GiB, $38.50) and `basic-4gb` (alias `2c-4g`, `basic_4gb`; 2 CPU / 4 GiB, $52.50), priced at Render × 0.70 (small tiers corrected to $4.20 / $13.30; [ADR030](ADR030-pricing.md)). High availability is available only on plans with at least 1 CPU, so on the last three; see [HA](#high-availability). Live Stripe catalog provisioning for the new prices is still pending.
+
 ### 6. Lifecycle (create → URLs → connect → delete)
 
 1. **Create** `Database{metadata.name: dpg-<xid>, spec: {name, plan, version, storage, databaseName?, databaseUser?}}`; the API validates explicit physical identifiers and the CRD makes them immutable.
@@ -321,6 +323,9 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 - `spec.highAvailability` (Render's `enableHighAvailability`) provisions a replicated CNPG cluster. When `true`, the operator raises `spec.instances` to `max(plan.Instances, 2)` and adds **required** pod anti-affinity (`enablePodAntiAffinity: true, podAntiAffinityType: required, topologyKey: kubernetes.io/hostname`) so primary and standby always land on different nodes; with no free node the standby stays Pending until the autoscaler adds one rather than sharing the primary's node (w2/m171). The ready-gate waits for both instances before reporting `Ready`.
 - `status.highAvailabilityEnabled` (Render's read field) is `true` only when HA is on _and_ ≥2 instances are actually ready — it reflects the operator's observed state, not just the spec intent.
+- Available only on plans with ≥1 CPU (`1c-2g`, `pro-4gb`, `basic-4gb`); the standby is billed like the primary (two instances metered). A plan change to a <1-CPU plan while HA stays on is refused with `POSTGRES_HA_PLAN_UNSUPPORTED` unless the same request disables HA (w2/m171).
+- HA can be toggled on an existing database: REST `PATCH /v1/postgres/{id}` `enableHighAvailability`, GraphQL `updateDatabaseHighAvailability`, MCP `update_postgres.enableHighAvailability`, and the dashboard create dialog + HA panel (w2/m171).
+- Each promotion emits one `postgres_cluster_leader_changed` event (`{"leaderId": ...}`, webhook-subscribable). Live acceptance on dev-2 (2026-10-30): failover ~5s, internal URL unchanged.
 - Independent of `readReplicas`: a DB can have read replicas without HA and vice versa (Render's documented independence).
 
 ### Failover
