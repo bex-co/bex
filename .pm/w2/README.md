@@ -21,7 +21,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m245** — [Public Postgres URLs verify against system roots, as on Render](done/m245/README.md) (10 tasks) — **DONE 2026-10-30**: every public database serves a per-database Let's Encrypt certificate; the copied URL (`host:5432/db`, no `sslmode`) connects from a CA-less machine and survives renewal; HA replication and failover verified on production ← promoted from `w2/049`
 - [ ] **m247** — [High-availability Postgres fits in any workspace, as on Render](m247/README.md) (9 tasks) ← promoted from `w2/054` 2026-10-30 (found in m245 t005); Render parity included
 - [ ] [055 — Bound the barman-cloud sidecar's resources in a planned window](blocked/055.md) — **BLOCKED (the user picks a maintenance window, or accepts a staggered rollout with a few seconds of downtime per single-instance tenant Postgres; the code is ready in `8685c0a79`)** ← moved out of w2/m247 t002, 2026-10-30
-- [ ] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](056.md) ← found in w2/m247, 2026-10-30
+- [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
+- [ ] [057 — Datastore backup and export Jobs are charged to the services' compute quota](057.md) ← found in w2/056, 2026-10-30
 
 - [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
