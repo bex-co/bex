@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-10-30T07:36:59.209012+00:00",
+  "source_head": "a984ac53ffabfa55c5596e30fecbd8b7500804ed",
+  "command": "make test",
+  "working_directory": "/Users/tianpan/projects/bex7/lego/operator",
+  "go_flags": "-overlay=/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/overlay.json",
+  "image_integration_gate": "unset",
+  "unset_environment_names": [],
+  "catalog_entries": 27,
+  "source_native_go_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+  "source_nativebases_go_sha256": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+  "overlay_file": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/overlay.json",
+  "overlay_sha256": "7be9d0276c22ac3f33d3871f827bbb1a5e0a80c1ab962aea25bc4271e321b66b",
+  "replacement_sha256": "951263b6b9adb61e895efacdf3e0c08647236d786ac1f4e56c04275c433e6770",
+  "checked_source_codegen_files": 550,
+  "scope": "Synthetic complete catalog compile/unit/controller/envtest only. No candidate pin, image pull/execution, hosted acceptance, class activation, auth or production resource action.",
+  "finished_at": "2026-10-30T07:40:54.120439+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 234.906,
+  "production_catalog_bytes_unchanged": true,
+  "source_codegen_drift": {},
+  "log_sha256": "c583564f0561704d1d92c6f6ef781ea3f7cc8399caeb84e1622f895f1b02122f"
+}

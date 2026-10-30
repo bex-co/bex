@@ -1,0 +1,80 @@
+{
+  "recorded_at": "2026-10-30T07:50:51.579534+00:00",
+  "source_head": "a984ac53ffabfa55c5596e30fecbd8b7500804ed",
+  "scope": "Synthetic complete-catalog compile/unit/controller/envtest suite only. No published native-supplier review, pull/execution of synthetic catalog images, actual adoption, hosted acceptance, authentication or production resource action.",
+  "verified_catalog_entries": 27,
+  "verified_before_after_source_codegen_hashes": 550,
+  "verified_current_sources_still_match_recorded_hashes": true,
+  "command": "make test",
+  "exit_code": 0,
+  "elapsed_seconds": 234.906,
+  "image_integration_gate": "unset",
+  "production_catalog_unchanged": true,
+  "files": [
+    {
+      "archive_path": "receipt.json",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/receipt.json",
+      "bytes": 1354,
+      "sha256": "94e6c77c9c7095fc2e80401b2f1915061861a2f815790805a5854eb56f102d4d",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "overlay.json",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/overlay.json",
+      "bytes": 182,
+      "sha256": "7be9d0276c22ac3f33d3871f827bbb1a5e0a80c1ab962aea25bc4271e321b66b",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "catalog-rows.json",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/catalog-rows.json",
+      "bytes": 10245,
+      "sha256": "8c75c12d25c5aee5974c4c1b2030c38f83c4a72bf26c28214606d942984695e9",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "before-source-codegen-hashes.json",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/before-source-codegen-hashes.json",
+      "bytes": 69586,
+      "sha256": "61d17cd688695b12fcb8f91051ef9fc651d4e8172acd1b53f86d9ce6333c8119",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "after-source-codegen-hashes.json",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/after-source-codegen-hashes.json",
+      "bytes": 69586,
+      "sha256": "61d17cd688695b12fcb8f91051ef9fc651d4e8172acd1b53f86d9ce6333c8119",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "nativebases-synthetic.go.txt",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/nativebases-synthetic.go",
+      "bytes": 13702,
+      "sha256": "951263b6b9adb61e895efacdf3e0c08647236d786ac1f4e56c04275c433e6770",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "native.go.txt",
+      "original_path": "git:a984ac53ffabfa55c5596e30fecbd8b7500804ed:lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "nativebases.go.txt",
+      "original_path": "git:a984ac53ffabfa55c5596e30fecbd8b7500804ed:lego/operator/internal/build/nativebases.go",
+      "bytes": 7738,
+      "sha256": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+      "encoding": "raw"
+    },
+    {
+      "archive_path": "make-test.log.gz",
+      "original_path": "/private/tmp/bex-w8-complete-catalog-suite-mv3u6cle/make-test.log",
+      "bytes": 977,
+      "sha256": "7bd9d488b6da9d5044a6a126c9b5882d854dbe7285b1ddd6e79f40ee98c2b7d8",
+      "encoding": "gzip",
+      "uncompressed_bytes": 4674,
+      "uncompressed_sha256": "c583564f0561704d1d92c6f6ef781ea3f7cc8399caeb84e1622f895f1b02122f"
+    }
+  ]
+}

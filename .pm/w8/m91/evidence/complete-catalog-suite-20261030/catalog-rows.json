@@ -1,0 +1,137 @@
+[
+  {
+    "reviewed_image": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+    "upstream_key": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-01@sha256:3514ff19b9b0730e39eb6cb4e8793bee1d089b94f355a63c4e6746a38349a1c5"
+  },
+  {
+    "reviewed_image": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+    "upstream_key": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-02@sha256:c284154473e4c6dfa308e3da72a4f2f6523b383f53fdffc2ca9eb8a72d74f3a0"
+  },
+  {
+    "reviewed_image": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+    "upstream_key": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-03@sha256:7fa9cf024b49711529cbf14ae807439ea2c5ee7bb6ff7b36dff274bddb823f19"
+  },
+  {
+    "reviewed_image": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+    "upstream_key": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-04@sha256:124857f3a39b20c63c29eeddcb5ca0a458ee39c0382ae9d0b25be692f16ad57f"
+  },
+  {
+    "reviewed_image": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+    "upstream_key": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-05@sha256:759a5235f491ddd635a6cb363ee8a9c431fc12be11127b4375e2cb93cd2f38b4"
+  },
+  {
+    "reviewed_image": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+    "upstream_key": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-06@sha256:8ca6fa82a4ea95102a4d88fd8aaaf7505eaac9fd79ed8f0d35858e3f338203bd"
+  },
+  {
+    "reviewed_image": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+    "upstream_key": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-07@sha256:68fd6728da03645f7ab8c56c65cffd1a65a6ad220ceaea3c6f0bcc9d58544ddd"
+  },
+  {
+    "reviewed_image": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "upstream_key": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-08@sha256:5a87935e0dc77d95ea3b70ab6385655b2f8d95e802221182c47cd2945895423f"
+  },
+  {
+    "reviewed_image": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "upstream_key": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-09@sha256:3195985468fa94243649da63d1941dd3442d36ceb6f61dea324b4c1f48d8ef2c"
+  },
+  {
+    "reviewed_image": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+    "upstream_key": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-10@sha256:b02cda951f1e63cd27cf887926ddea70ea184ce66ad2806c636a78110c39b233"
+  },
+  {
+    "reviewed_image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+    "upstream_key": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-11@sha256:ec00dd60ec48e8a5e462f4a4f81345fa93bcedab348d0e4e09f413e22954de48"
+  },
+  {
+    "reviewed_image": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+    "upstream_key": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-12@sha256:f249db467b9fa2c06999eed44868f4bf986324d6cbe9847b243a16628d401309"
+  },
+  {
+    "reviewed_image": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "upstream_key": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-13@sha256:85c93c006cd6b84dc1c35f4a5b5c65ceb0fb077c700393e6c6fea047403af8b7"
+  },
+  {
+    "reviewed_image": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+    "upstream_key": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-14@sha256:6939d7fb1571bf7818b7af3e3b7a9e8948252ea7641d72610e0f4438679224a9"
+  },
+  {
+    "reviewed_image": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+    "upstream_key": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-15@sha256:bae2f168a432fe1eabd7caab668337418f29358f05479680c483c8b1391a38db"
+  },
+  {
+    "reviewed_image": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+    "upstream_key": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-16@sha256:85d07b40330f6ffd93f49a8d540d703872a660060241a7124fca3b0fba234841"
+  },
+  {
+    "reviewed_image": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+    "upstream_key": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-17@sha256:a1b894910187291687a4ae3ccf81e348af457765e04ce6ef9e660bdbddb040b6"
+  },
+  {
+    "reviewed_image": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+    "upstream_key": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-18@sha256:59518843d2e2855af4d63f5a6baebceae3c5512554df701518a126ec3c8c543e"
+  },
+  {
+    "reviewed_image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+    "upstream_key": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-19@sha256:11327db6414d8f2ba39c7b9498acdd6bfe9092b10b75430efc230ef03f6e0dc0"
+  },
+  {
+    "reviewed_image": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "upstream_key": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-20@sha256:80a3c3b655d7e2b4aa544c2f7fe966e940987a68f3e46e6f5e046dfa2f8cb1c9"
+  },
+  {
+    "reviewed_image": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+    "upstream_key": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-21@sha256:d62ce12ed9d76340255501c6e07f188210d5bb4fad02b01557040aa170ed55a0"
+  },
+  {
+    "reviewed_image": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+    "upstream_key": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-22@sha256:b7c95e076fade404c57f6cbc43e820154b8fe44a8b4119120d6b581a88779f40"
+  },
+  {
+    "reviewed_image": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+    "upstream_key": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-23@sha256:cb839e3787f53314f43179fba9635db01cbc2a8d18d0ec9f2e8c2c07b54c8d70"
+  },
+  {
+    "reviewed_image": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+    "upstream_key": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-24@sha256:49e512a96b5457bc8c49bea5cc9293132ee3a7d697878fe95865f093a7ebd097"
+  },
+  {
+    "reviewed_image": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+    "upstream_key": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-25@sha256:70d25603d1465190d16634b22a2c02d5783d526b73be6bd76e07807939b26e90"
+  },
+  {
+    "reviewed_image": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+    "upstream_key": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-26@sha256:2eb54bc3285cd864634e73e3070724034bc5c6afc9b515b751644a1745289776"
+  },
+  {
+    "reviewed_image": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+    "upstream_key": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+    "synthetic_image": "example.invalid/bex-synthetic/full-catalog-27@sha256:b9ee3b09a96b117af44b392b8bf6327171843105ea1947a7497c276c11cd60ec"
+  }
+]
