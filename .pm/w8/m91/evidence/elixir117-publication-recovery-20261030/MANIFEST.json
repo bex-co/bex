@@ -1,0 +1,149 @@
+{
+  "schema": "bex.w8.evidence-custody/v1",
+  "files": [
+    {
+      "path": "amd64-config.json.gz",
+      "bytes": 6568,
+      "sha256": "95f5db722df4b8759e0ddd1991a0499291b713832953d0a06c6a305bac0bf7b7",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/amd64-config.json",
+      "original_bytes": 17749,
+      "original_sha256": "853e016f9baf217c06ba52a325878a84807552ba995f7df092b832938c63cce0"
+    },
+    {
+      "path": "amd64-manifest.json.gz",
+      "bytes": 1022,
+      "sha256": "54b6131726d6f8fb4ebf7856107f01cb88eacddc8ab2b9600a3418ce4b4b8f7a",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/amd64-manifest.json",
+      "original_bytes": 3724,
+      "original_sha256": "0596b67ebfc002c1d5b1fdea852efc609784c798f2f676caeb82e4ccb3f23e3e"
+    },
+    {
+      "path": "arm64-config.json.gz",
+      "bytes": 6553,
+      "sha256": "fda442cac0434a29866cca1774a65eb8f2a426e95076501cfea4fa01f0862bf5",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/arm64-config.json",
+      "original_bytes": 17753,
+      "original_sha256": "a9d11560bd2e2ecef35850a62eb734deffff874468f58603f2bfdfaae6c5655e"
+    },
+    {
+      "path": "arm64-manifest.json.gz",
+      "bytes": 1019,
+      "sha256": "d679ea18bea0a2d7a324b3a218179b1a6928a04538703690ca8d8d6e74bc6480",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/arm64-manifest.json",
+      "original_bytes": 3724,
+      "original_sha256": "11be604bc809337a84a48c10aa64c185b2d2f51f7cf4aaa9acd3e9924ff5b878"
+    },
+    {
+      "path": "executed-recovery.py.gz",
+      "bytes": 767,
+      "sha256": "64ce1421ff9f9e5fb5fbbb4a168279854858433e63f0c488a7bee772d6f3d38d",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/executed-recovery.py",
+      "original_bytes": 1507,
+      "original_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901"
+    },
+    {
+      "path": "index.json.gz",
+      "bytes": 451,
+      "sha256": "7d4ab6c0d592e891657f31b21cdef0742b0afb917b1ed92d39b74b3c7a3c6a91",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/index.json",
+      "original_bytes": 1611,
+      "original_sha256": "7e8b843cdcca682f47f908e5811b6304385c8b47c135709dfe0c65a39fc7510f"
+    },
+    {
+      "path": "intake.json.gz",
+      "bytes": 999,
+      "sha256": "9f127275e6d7f76a0d59e03ff36b0a0ffcf49cfbab09bc2be397af66bdc47522",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/intake.json",
+      "original_bytes": 1854,
+      "original_sha256": "ccd6382a2471e0656628700fa553244a114647e01f0decf6015c895f25a7d86f"
+    },
+    {
+      "path": "job.json.gz",
+      "bytes": 1287,
+      "sha256": "310039af6934471a884f1ef1d9a53ba75661aeb7c9f92b2c724e91bd397d4134",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/job.json",
+      "original_bytes": 5322,
+      "original_sha256": "66774486dce3233fc6edc09eb7db770c298adda6ead7cbb2aa75c0329acf51c0"
+    },
+    {
+      "path": "job.log.gz",
+      "bytes": 189040,
+      "sha256": "344bed265430c179acd24196866ec62b1e576c2cc4789c4a2a1242aa47bf00fb",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/job.log",
+      "original_bytes": 1570680,
+      "original_sha256": "0c2e4c74f7b72f6b4931ea1726069ddc9a6a9b0ddc8dc02bf4d458f812728163"
+    },
+    {
+      "path": "job.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/job.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "log.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/log.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "receipt.json.gz",
+      "bytes": 1022,
+      "sha256": "481d131a212f038d9ef76aae8b0394961caa850681e12e30204b3a322391b63a",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/receipt.json",
+      "original_bytes": 2014,
+      "original_sha256": "dc624c69e6b215dfeca110c86cd85dafd10ebb6dffc0d3eb152322667c2742cb"
+    },
+    {
+      "path": "recovery-False.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/recovery-False.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recovery-True.log.gz",
+      "bytes": 181,
+      "sha256": "558ff39178072a86b96d4d1d1a9bc90edceb32815a934feab7aaf47afdaf5927",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/recovery-True.log",
+      "original_bytes": 206,
+      "original_sha256": "acb3dbe8483b7c57a3f298c709fc458288c62941c6277decea483a8e18c0e50f"
+    },
+    {
+      "path": "recovery-True.output.gz",
+      "bytes": 118,
+      "sha256": "ffeeb39bec7d30ebc6cbc46278dddd878aef4e8f8380e39d080d24b70ef87c7f",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/recovery-True.output",
+      "original_bytes": 129,
+      "original_sha256": "c65af35ffc274d90f2b11fcf16a85f0d699d266ace67e6888edaf70b5b4dea74"
+    },
+    {
+      "path": "recovery-controls.json.gz",
+      "bytes": 216,
+      "sha256": "c42a65a0ac008751d3118c45a226d05f16947cc75472fc2e89300d041d567618",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/recovery-controls.json",
+      "original_bytes": 325,
+      "original_sha256": "2efc6afc455ed19bfb56d065e38e474e6219fd783bcb51ac96bb9b78f5eac7e0"
+    },
+    {
+      "path": "run.json.gz",
+      "bytes": 1686,
+      "sha256": "151dbf360eb030314245c588c1edff069d16d966225cf04b2e68bee55360c3b8",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/run.json",
+      "original_bytes": 11449,
+      "original_sha256": "8fb40e94820e97913368159935e10979828e2b43295829632a61885f88350fb6"
+    },
+    {
+      "path": "run.stderr.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_path": "/private/tmp/bex-w8-elixir117-failure-20261030/run.stderr",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
