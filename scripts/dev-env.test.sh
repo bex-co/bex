@@ -328,6 +328,30 @@ EOF
   cleanup_probe
 fi
 
+echo "==> image staleness is keyed on this checkout's source, not build time (w3/m79)"
+eval "$(awk '/^source_fingerprint\(\)/,/^}$/' scripts/dev-env.sh)"
+eval "$(awk '/^image_stale\(\)/,/^}$/' scripts/dev-env.sh)"
+fp_repo="$tmp/fp-repo"
+mkdir -p "$fp_repo/src" && (
+  cd "$fp_repo" && git init -q && printf 'a\n' >src/a.txt && git add . &&
+    git -c user.name=t -c user.email=t@t commit -qm init
+)
+fp0=$(cd "$fp_repo" && source_fingerprint src)
+printf 'b\n' >"$fp_repo/src/a.txt"
+fp1=$(cd "$fp_repo" && source_fingerprint src)
+printf 'new\n' >"$fp_repo/src/new.txt"
+fp2=$(cd "$fp_repo" && source_fingerprint src)
+assert "an uncommitted edit changes the fingerprint" "[ '$fp0' != '$fp1' ]"
+assert "an untracked file changes the fingerprint" "[ '$fp1' != '$fp2' ]"
+# A fake docker answers the image's label; a newer build of OLDER source must
+# be stale even though its timestamp is newer than every source file.
+docker() { [ -n "${FAKE_LABEL+x}" ] || return 1; printf '%s\n' "$FAKE_LABEL"; }
+assert "a missing image is stale" "(cd '$fp_repo' && unset FAKE_LABEL; image_stale img src)"
+assert "an image built from other source is stale" "(cd '$fp_repo' && FAKE_LABEL='$fp0' image_stale img src)"
+assert "an image built from this source is fresh" "! (cd '$fp_repo' && FAKE_LABEL='$fp2' image_stale img src)"
+assert "AGENT_REBUILD=1 forces a rebuild" "(cd '$fp_repo' && FAKE_LABEL='$fp2' AGENT_REBUILD=1 image_stale img src)"
+unset -f docker
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "dev-env: all checks passed"
