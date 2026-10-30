@@ -3,6 +3,12 @@
   "existingUnitTests": 8,
   "existingUnitExit": 0,
   "installerProtocolExit": 0,
-  "fullGitOpsValidation": "run after committing tracked clean pin, before push",
+  "fullGitOpsValidation": {
+    "exit": 0,
+    "receipt": "full-gitops-receipt.json",
+    "optionalWarnings": [
+      "WARN: fga CLI not installed \u2014 skipping model.fga <-> model.json drift check"
+    ]
+  },
   "reviewedValuesSha256": "c93e682d158f356f87cd7d3cde3badbd5603cf4636d728025336b607b730e34c"
 }

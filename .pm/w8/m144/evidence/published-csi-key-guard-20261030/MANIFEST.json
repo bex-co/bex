@@ -8,6 +8,10 @@
       "bytes": 2558,
       "sha256": "1c6b12f3136772863d17a9befca6ae3ef0ed828d38a7da3085b1373854ec4d1e"
     },
+    "full-gitops.log.gz": {
+      "bytes": 5845,
+      "sha256": "96293eb3da4a4ab95bbac48eac496adef87d18b78fb43ce6df98d68002584cd4"
+    },
     "anonymous-arm64-driver-help.txt.gz": {
       "bytes": 163,
       "sha256": "9e667648cba803e5f682b4a59da653b4e56983c58f3fb36dd3dfef06023b30d4"
@@ -31,6 +35,10 @@
     "owned-image-cleanup-arm64.txt.gz": {
       "bytes": 315,
       "sha256": "3acf77a283f3e10606d77bed41bd25eab34456a6c99171c3d5b17731f8f4e89b"
+    },
+    "full-gitops-receipt.json": {
+      "bytes": 483,
+      "sha256": "df27056faa7cafc88c74ce5e2342a249c634a23dd4d6cd853fb455716006fc78"
     },
     "anonymous-amd64-dumpe2fs-version.txt.gz": {
       "bytes": 81,
@@ -77,8 +85,8 @@
       "sha256": "20cc8ffec79204d7f5c4b56e4444ab8ac69dd9a6220bc4465276d0ff615b1974"
     },
     "README.md": {
-      "bytes": 1353,
-      "sha256": "c5b3ecaec8f9903a87e1b04b5a30ba9a291991ec57a6430a3e4c3c2d14094a96"
+      "bytes": 1676,
+      "sha256": "1dc025e9849a566104cc2cd12603b4847487b458d36598ab666fbd1a7f83788f"
     },
     "sbom.stdout.jsonl.gz": {
       "bytes": 280556,
@@ -97,8 +105,8 @@
       "sha256": "3b596d6503521c696209a0749b2b2c10b6a0501ddbbdf3ce707b0ef4ad5b1897"
     },
     "pin-validation.json": {
-      "bytes": 289,
-      "sha256": "c90edd0a10cd10ec60494d1bf5d469fa4242add8db353e45906861f2ad4449e3"
+      "bytes": 420,
+      "sha256": "6a85b68dd1b0a401b30eb2e7e5b95b04094f2094bb98e940c56a362a8291dcc9"
     },
     "actual-kernel-step.log.gz": {
       "bytes": 1101,
