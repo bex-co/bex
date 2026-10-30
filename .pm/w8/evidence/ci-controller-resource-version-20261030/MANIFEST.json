@@ -1,0 +1,101 @@
+{
+  "scope": "Actual upstream test race diagnosis and local real envtest verification only; no product image, live cluster, credentials or private kubeconfig included.",
+  "files": {
+    "diagnosis.json": {
+      "bytes": 3306,
+      "sha256": "882e92fd782565f591ba50e37f1e71e6dc670201e59a3fdcf5b46ad951b97db4",
+      "original_bytes": 3306,
+      "original_sha256": "882e92fd782565f591ba50e37f1e71e6dc670201e59a3fdcf5b46ad951b97db4"
+    },
+    "fix-validation.json": {
+      "bytes": 6091,
+      "sha256": "e38bf47d2e26828afd8a54aa90f6407250a6a8a631b076fb7d3d2e98962a7d21",
+      "original_bytes": 6091,
+      "original_sha256": "e38bf47d2e26828afd8a54aa90f6407250a6a8a631b076fb7d3d2e98962a7d21"
+    },
+    "attempt1-controller.raw.log.gz": {
+      "bytes": 10990,
+      "sha256": "fb284716535600f1476ebf12a5f0caf694bf716b887ea0ac65983e78576dd840",
+      "original_bytes": 62924,
+      "original_sha256": "d592b1a57872349a8ace56eaafd5e0236bd863b1a1c9791f79863cb25869ffc3"
+    },
+    "vet.log.gz": {
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "forced-conflict.log.gz": {
+      "bytes": 5212,
+      "sha256": "a285a512bce449404eaf9f8d87903b335c2187e6fc426ddbfe93e94133899853",
+      "original_bytes": 63085,
+      "original_sha256": "440864ac99fadb64f600f35bc0d47be0288158e22e4c45b6364ec971d95315af"
+    },
+    "forced-conflict-concurrent-metrics-port.log.gz": {
+      "bytes": 4935,
+      "sha256": "cd05a6343d954c664cdc3ec980907aec3d981b049af8637017a271d0689bff53",
+      "original_bytes": 37267,
+      "original_sha256": "b37133c3cb2b29cb1c82fd8465f72db19d566b828194dd9caab23a5eb4be5eb0"
+    },
+    "focused-repeat-1.log.gz": {
+      "bytes": 4858,
+      "sha256": "7df9c1d528a5742500c1742b7b2ae97f5770578dd881b80e71a9c42284b83c66",
+      "original_bytes": 58047,
+      "original_sha256": "293d516c4b8e30c9c5cad0c21bd13685a857b144f1ea3f7b0a9ee01ce2e71b9f"
+    },
+    "focused-repeat-2.log.gz": {
+      "bytes": 4660,
+      "sha256": "8aba55e3510571e8e350d3f8417c2e69fb6344c554008e681dc0fa9382cf0c4a",
+      "original_bytes": 54918,
+      "original_sha256": "083cfe1f88febb87676501af3c2dffb098a557e7c8f01d40d199339377731f17"
+    },
+    "focused-repeat-3.log.gz": {
+      "bytes": 4860,
+      "sha256": "4c047f2ea6359fab19a83c3284e137f57eb7b44888409c1affe3256eb4817f61",
+      "original_bytes": 60709,
+      "original_sha256": "b2f1be7080648f771f6c37c97d053439061537c2dc8b7eb1e2522abf3b3c2093"
+    },
+    "focused-repeat-4.log.gz": {
+      "bytes": 5027,
+      "sha256": "d933b9e9efab044b9824928c21c3d0eb2421d86ce17026cf45616072fc320235",
+      "original_bytes": 60739,
+      "original_sha256": "5a0e514039e9a183d2a5433d7cced9067f154d3b144276c28f37a3d61eaaa0c3"
+    },
+    "focused-repeat-5.log.gz": {
+      "bytes": 4823,
+      "sha256": "752ebc20d047b0e115be0bfd9569ff42fc8c1b552b634c2f6c215aa529be04c6",
+      "original_bytes": 57599,
+      "original_sha256": "a0be8829b60ecbc51887ff11307e06e31ec1a8569ae1b677f50ad21e6ab24394"
+    },
+    "make-test.log.gz": {
+      "bytes": 596,
+      "sha256": "6cf0b93b112e528cd43919ce9c7931a355261f9e99515d80753c30d544f88b5c",
+      "original_bytes": 1661,
+      "original_sha256": "2f9efa70ceb25528af79300af3577402d39c2abba67f9422d743c1821039f1b9"
+    },
+    "make-test-localbin.log.gz": {
+      "bytes": 908,
+      "sha256": "d0202e064740a57d56a31d7d1672a171139395e08ecc98f7b0240c3ecf91e142",
+      "original_bytes": 5173,
+      "original_sha256": "8fc8e80e34e04b67dc7fcc4d65f0989adeeb4405f7b78843205570205a2f1359"
+    },
+    "golangci-lint.log.gz": {
+      "bytes": 30,
+      "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728",
+      "original_bytes": 10,
+      "original_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    "forced-conflict-overlay.json": {
+      "bytes": 228,
+      "sha256": "a0f1466fd95ea0043c2b70840372d94bed5952ddac911a1780f3a08c6eebb82a",
+      "original_bytes": 228,
+      "original_sha256": "a0f1466fd95ea0043c2b70840372d94bed5952ddac911a1780f3a08c6eebb82a"
+    },
+    "forced-controller-test.go.txt.gz": {
+      "bytes": 6610,
+      "sha256": "9fd11fecbc41eb1b2a511dd29c307f1514d4c516535c102a15db8498ff9411e3",
+      "original_bytes": 65652,
+      "original_sha256": "62586817df9247843fefaf58d59e61c14d106c55c03965e08ee1ec9420eb1500"
+    }
+  }
+}

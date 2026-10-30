@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "/private/tmp/bex-w8-controller-ci-41030129236/upstream/kubernetes/internal/controller/pool_controller_test.go": "/private/tmp/bex-w8-controller-ci-41030129236/pool_controller_forced_conflict_test.go"
+  }
+}
