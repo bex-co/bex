@@ -40,9 +40,9 @@
       "id": "cnb-run-image",
       "kind": "stack",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:b2ec0fa5b6f5e6bf2e4f427eeb3db09b7573ebe6e789cf1676b6f717a5e95423",
-      "resolved_at": "2026-10-16T10:31:28Z",
-      "source": "ghcr.io bex-co/bex-cnb-run:latest multi-arch index (linux/amd64 + linux/arm64), published by cnb-run-image.yml run 37171066271 from 158ea9fe; anonymous pull verified",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:c737a6661e034d564a934c424f01f18b3f139c7beb0d107aa04ca37b59843192",
+      "resolved_at": "2026-10-30T01:07:30Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 40790621050 from 63fd10231; both platforms passed Node 26 startup checks, libbrotli1 1.0.9-2ubuntu0.1 and libatomic1 12.3.0-1ubuntu1~22.04.3 verified from digest-authenticated dpkg layers; cosign workflow identity and transparency-log verification passed",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
