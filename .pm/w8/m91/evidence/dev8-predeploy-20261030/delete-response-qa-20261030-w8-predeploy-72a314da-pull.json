@@ -1,0 +1,58 @@
+{
+  "kind": "Secret",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "qa-20261030-w8-predeploy-72a314da-pull",
+    "namespace": "dev-8",
+    "uid": "76cb4477-1eaf-492f-9201-551784616f8a",
+    "resourceVersion": "23268077",
+    "creationTimestamp": "2026-10-30T05:36:07Z",
+    "deletionTimestamp": "2026-10-30T05:42:06Z",
+    "deletionGracePeriodSeconds": 0,
+    "labels": {
+      "bex.co/qa-owner": "qa-20261030-w8-predeploy-72a314da"
+    },
+    "ownerReferences": [
+      {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "name": "qa-20261030-w8-predeploy-72a314da",
+        "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+        "controller": true
+      }
+    ],
+    "finalizers": [
+      "foregroundDeletion"
+    ],
+    "managedFields": [
+      {
+        "manager": "kubectl-create",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2026-10-30T05:36:07Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:data": {
+            ".": {},
+            "f:.dockerconfigjson": {}
+          },
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:bex.co/qa-owner": {}
+            },
+            "f:ownerReferences": {
+              ".": {},
+              "k:{\"uid\":\"32cf625a-86de-43ab-94d3-27b50e67fb0d\"}": {}
+            }
+          },
+          "f:type": {}
+        }
+      }
+    ]
+  },
+  "type": "kubernetes.io/dockerconfigjson",
+  "data_keys": [
+    ".dockerconfigjson"
+  ]
+}

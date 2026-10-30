@@ -1,0 +1,8 @@
+{
+  "apiVersion": "v1",
+  "kind": "DeleteOptions",
+  "preconditions": {
+    "uid": "7c4aa9df-2187-4899-b555-9993b8e243af"
+  },
+  "propagationPolicy": "Foreground"
+}

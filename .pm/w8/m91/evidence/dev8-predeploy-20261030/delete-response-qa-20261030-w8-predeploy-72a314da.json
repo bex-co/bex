@@ -1,0 +1,45 @@
+{
+  "kind": "ConfigMap",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "qa-20261030-w8-predeploy-72a314da",
+    "namespace": "dev-8",
+    "uid": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+    "resourceVersion": "23268084",
+    "creationTimestamp": "2026-10-30T05:35:08Z",
+    "deletionTimestamp": "2026-10-30T05:42:06Z",
+    "deletionGracePeriodSeconds": 0,
+    "labels": {
+      "bex.co/qa-owner": "qa-20261030-w8-predeploy-72a314da"
+    },
+    "finalizers": [
+      "foregroundDeletion"
+    ],
+    "managedFields": [
+      {
+        "manager": "kubectl-create",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2026-10-30T05:35:08Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:data": {
+            ".": {},
+            "f:expires_at": {},
+            "f:purpose": {}
+          },
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:bex.co/qa-owner": {}
+            }
+          }
+        }
+      }
+    ]
+  },
+  "data": {
+    "expires_at": "2026-10-30T06:33:15.270491+00:00",
+    "purpose": "scratch canonical dev-8 predeploy Job; not an App CR"
+  }
+}

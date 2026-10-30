@@ -1,0 +1,10 @@
+[
+  "docker",
+  "run",
+  "--rm",
+  "--platform",
+  "linux/amd64",
+  "--network",
+  "none",
+  "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da"
+]

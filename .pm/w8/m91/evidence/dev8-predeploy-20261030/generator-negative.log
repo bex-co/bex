@@ -1,0 +1,4 @@
+=== RUN   TestScratchDev8PredeployTemplate
+--- PASS: TestScratchDev8PredeployTemplate (0.04s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/controller	1.460s

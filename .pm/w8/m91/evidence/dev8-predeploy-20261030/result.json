@@ -1,0 +1,120 @@
+{
+  "pass": true,
+  "source_commit": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+  "namespace": "dev-8",
+  "success_job": {
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3",
+    "uid": "b25686b3-2ab4-4066-a5ec-5c62eee33115",
+    "started_at": "2026-10-30T05:39:06Z",
+    "completed_at": "2026-10-30T05:39:15Z",
+    "canonical_controller_generator_overlay_passed": true,
+    "pod_template_metadata_only_owner_adjustment": true,
+    "documented_api_defaults_only": true,
+    "canonical_limits": {
+      "limits": {
+        "cpu": "500m",
+        "ephemeral-storage": "2Gi",
+        "memory": "512Mi"
+      },
+      "requests": {
+        "cpu": "500m",
+        "ephemeral-storage": "2Gi",
+        "memory": "512Mi"
+      }
+    },
+    "deadline_seconds": 600,
+    "backoff_limit": 0
+  },
+  "pod": {
+    "name": "predeploy-qa-20261030-w8-predeploy-72a314da-gen-3-fnp95",
+    "uid": "884537fd-390a-442a-88a8-62ee8d0aa2f6",
+    "node": "bex-tenant-0-2kq5n-8m7cl-q7pxt",
+    "imageID": "localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+    "exit_code": 0,
+    "restart_count": 0,
+    "hostUsers": false,
+    "automountServiceAccountToken": false,
+    "imagePullPolicy": "Always",
+    "command_prefix": [
+      "/bin/sh",
+      "-c"
+    ]
+  },
+  "image_manifest": "sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+  "image_config": "sha256:eadd5e424231bdefe94ae386c97aa599c73b2bafc96902b2140b7ea3de51ea3c",
+  "registry_alias_preserves_manifest_bytes": true,
+  "env_file_checks": {
+    "pass": true,
+    "literal_sha256": "2e718c42ec4cbb7a6c03585b78c6a2502eafe68c9d99140024d1a104dcdc414a",
+    "secret_file_sha256": "e40410ca292a4292be912af8f96461f7a9da2b0f68e6691831063c5806130c3d",
+    "empty_preserved": true,
+    "envFrom": true,
+    "env_precedence": true,
+    "port_precedence": true,
+    "read_only_secret_file": true,
+    "serviceaccount_token_absent": true,
+    "pull_credential_not_projected": true
+  },
+  "original_case_ids": [
+    91,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    107
+  ],
+  "independent_loopback_HTTP_proofs": 39,
+  "extra_behavior_groups": [
+    "original PG15 archive + genuine PG18 archive exact three rows, PG18client programs and malformed archive",
+    "libvips headers/pkg-config/C-link/pixels and invalid-image",
+    "Django original plurals + GNU extraction/merge/unique/catalog-format failure",
+    "original owned PDF + Helvetica/color PDF exact independent RGB and render failure",
+    "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure",
+    "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure",
+    "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics",
+    "SWIG runtime typemap/wrapper/C import + invalid interface failure",
+    "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure",
+    "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"
+  ],
+  "fixture_identity_matches": 85,
+  "negative": {
+    "pass": true,
+    "job_uid": "a7f4594d-6c72-41d7-91b1-ce23252723af",
+    "pod_uid": "9ec61387-47ec-4a71-92a9-35664d7af8cf",
+    "same_image_manifest": "sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+    "previous_success_cached_image": true,
+    "omitted_pull_secret": true,
+    "PullAlways": true,
+    "observed_reason": "ImagePullBackOff",
+    "observed_error": "Back-off pulling image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": ErrImagePull: failed to pull and unpack image \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": failed to resolve reference \"localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac\": pull access denied, repository does not exist or may require authorization: authorization failed: no basic auth credentials",
+    "container_never_started": true,
+    "restart_count": 0,
+    "scope": "bounded authentication-denial observation; canceled by UID, not a terminal Job-failure/deadline proof"
+  },
+  "cleanup_pass": true,
+  "initial_fixture_errors": {
+    "proxy": "copied synthetic htpasswd had host owner0600 with all capabilities dropped; corrected only copied hash-file readability and restarted same owned proxy",
+    "first_job": "binary proof.txt accidentally shared by file and envFrom Secret caused pre-execution CRI UTF8 marshal failure; initial Job deleted by UID before separating own text env/binary file Secrets and generating fresh revision3"
+  },
+  "bounds": {
+    "real_kubernetes_Job_pod_command_execution": true,
+    "real_controller_template_generation": true,
+    "live_operator_reconciliation_lifecycle": false,
+    "native_init_process": false,
+    "primary_python313": false,
+    "primary_python_actual": "system companion3.11.2 with historical explicit local alias",
+    "architecture": "local arm64 only",
+    "published_production_hosted": false,
+    "network": "own exact-AppUID-selected deny-egress NetworkPolicy; observed utility HTTP requests use loopback; no dedicated CNI enforcement/outbound denial probe; historic driver Docker-network claim removed from new receipt",
+    "terminal_negative_job_failure": false,
+    "negative_observation": "authentication-denied Pending Pod canceled by UID; not a deadline/failure-state proof",
+    "cache": "Kubelet image cache left intact; no shared image/content prune"
+  }
+}

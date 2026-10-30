@@ -1,0 +1,33 @@
+
+func TestScratchPythonDefaultRecipe(t *testing.T) {
+    dir := os.Getenv("BEX_NATIVE_QA_OUTPUT")
+    supplied := os.Getenv("BEX_NATIVE_QA_IMAGE")
+    if dir == "" || !strings.Contains(supplied, "@sha256:") { t.Fatal("missing output or actual supplied pin") }
+    original := nativeSuppliedBases
+    t.Cleanup(func() { nativeSuppliedBases = original })
+    reviewed, ok := nativeToolchains[nativePythonRuntime].find("3.14")
+    if !ok { t.Fatal("reviewed Python3.14 line absent") }
+    nativeSuppliedBases = map[string]string{reviewed.image: supplied}
+    o := nativeOptions()
+    o.Runtime = nativePythonRuntime
+    o.BuildCommand = "/usr/local/bin/python3 /opt/render/project/src/check-runtime.py build"
+    o.StartCommand = "/usr/local/bin/python3 /opt/render/project/src/check-runtime.py runtime"
+    bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+    initial, err := os.ReadFile(dockerfile)
+    must(t, err)
+    must(t, os.WriteFile(filepath.Join(dir, "before.Dockerfile"), initial, 0600))
+    created, err := time.Parse(time.RFC3339, "2026-10-29T12:00:00Z")
+    must(t, err)
+    choices, err := ResolveNativeBuildExact(t.Context(), NewDockerHubResolver(), created, nativePythonRuntime, bundle, dockerfile, src)
+    must(t, err)
+    if len(choices) == 0 || choices[0].Source != "" || !strings.HasPrefix(choices[0].Image,"python:3.14.8-bookworm@sha256:") { t.Fatalf("wrong no-signal post-cutoff choice: %+v", choices) }
+    resolved, err := os.ReadFile(dockerfile)
+    must(t, err)
+    if !strings.Contains(string(resolved), "FROM "+supplied+"\n") { t.Fatalf("supplier missing: %s", resolved) }
+    must(t, os.WriteFile(filepath.Join(dir, "generated-context", "Dockerfile"), resolved, 0600))
+    env, err := os.ReadFile(bundle)
+    must(t, err)
+    must(t, os.WriteFile(filepath.Join(dir, "render-env"), env, 0600))
+    must(t, os.WriteFile(filepath.Join(dir, "source-selection.txt"), []byte(fmt.Sprintf("created=%s\nno version env/files\n%+v\n%s\n", created.Format(time.RFC3339), choices[0], choices[0].Narration())), 0600))
+    t.Logf("created=%s no version signals; %s; actual exact source %s", created.Format(time.RFC3339), choices[0].Narration(), choices[0].Image)
+}

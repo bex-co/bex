@@ -1,0 +1,211 @@
+{
+  "work_item": "w8/222",
+  "checked_at": "2026-10-30T05:42:54.966343+00:00",
+  "result": "PASS: genuine linux/amd64 exact-default generated image, offline behavior and genuine compressed Syft/SPDX SBOM proof",
+  "scope": "Pre-publication architecture evidence only; published supplier replay, production adoption and hosted DoD remain pending.",
+  "architecture": {
+    "image": "linux/amd64",
+    "ELF_e_machine": 62,
+    "runtime_machine": "x86_64",
+    "execution": "real amd64 image/binaries executed under OrbStack emulation on an arm64 Mac; no physical amd64 host performance claim"
+  },
+  "service_selection": {
+    "created_at": "2026-10-29T12:00:00Z",
+    "version_env_bundle_bytes": 0,
+    "version_signal_files": [],
+    "narration": "==> Using Python 3.14.8 (default)",
+    "canonical_generator": "actual nativeDockerfile and ResolveNativeBuildExact through a scratch Go test overlay; repository unchanged"
+  },
+  "factory": {
+    "official_primary": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "snapshot_source_head": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+    "unchanged_recipe_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+    "snapshot_receipt": "setup-receipt.json",
+    "matches_current_public_factory_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd; git diff shows no deploy/native-base changes through current HEAD",
+    "primary_provenance": "actual reviewed Python3.14.10 Bookworm base; all7 original uncompressed base diffIDs independently match actual Docker image prefix",
+    "custom_overlay_or_added_distro_packages": false,
+    "offline_checks": "PASS: actual PG archive, native transformations, Brotli, primary packaging and C extension on supplier default3.14.10",
+    "compressed_blob_nuance": "Local push re-compressed the first base blob; its uncompressed diffID is unchanged. See supplier-official-base-layer-proof.json; this is not a wrong-base/product failure."
+  },
+  "official_source_pins": [
+    {
+      "role": "reviewed",
+      "official_index_ref": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "actual_amd64_child_ref": "python:3.14-bookworm@sha256:0bdd145eed30ab1466e8afbd51a595f5484aa874ac9df5283369ba508a025d2e",
+      "actual_amd64_config": "sha256:53512e676f8595b6ccb2c3e14dcda61400e8d10fbd58c08e237d8bfa103155bf",
+      "python_version": "3.14.10",
+      "architecture": "amd64",
+      "all_saved_manifest_and_config_bytes_sha_verified": true
+    },
+    {
+      "role": "exact",
+      "official_index_ref": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+      "actual_amd64_child_ref": "python:3.14.8-bookworm@sha256:36811ba1de0179e92a9537453e4ec8eb70b1af8dd926a9802c17a252f2c506ce",
+      "actual_amd64_config": "sha256:7f4eff8458e49dcd22833ede0c387881a083e62064f2039df8836826a4fec3e7",
+      "python_version": "3.14.8",
+      "architecture": "amd64",
+      "all_saved_manifest_and_config_bytes_sha_verified": true
+    }
+  ],
+  "actual_local_supplier": {
+    "ref": "localhost:32828/native-python314-amd64-qa@sha256:1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+    "manifest_sha256_verified": "sha256:1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+    "config_digest": "sha256:c9e31815300eda8f7d8c48619146989fb60983550798133dc98c923eb05ef904",
+    "architecture": "amd64",
+    "python_primary": "3.14.10",
+    "official_base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "recipe": "unchanged current deploy/native-base snapshot",
+    "protected_container": "bex-w8-222-python314-amd64-supplier-proof",
+    "source_snapshot_receipt": "setup-receipt.json",
+    "scope": "local pre-publication supplier; no production adoption pin"
+  },
+  "actual_generated_image": {
+    "ref": "localhost:32828/generated-python-default-amd64-qa@sha256:b8dffd5169bc66d13a734c5e4ea2baabcd84cd3962f0092033ac444b188769a1",
+    "manifest_sha256_verified": "sha256:b8dffd5169bc66d13a734c5e4ea2baabcd84cd3962f0092033ac444b188769a1",
+    "config_digest": "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da",
+    "architecture": "amd64",
+    "os": "linux",
+    "scope": "local pre-publication actual generated exact3.14.8 image"
+  },
+  "offline_runtime_command": [
+    "docker",
+    "run",
+    "--rm",
+    "--platform",
+    "linux/amd64",
+    "--network",
+    "none",
+    "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da"
+  ],
+  "offline_runtime_result": {
+    "phase": "runtime",
+    "machine": "x86_64",
+    "ELF_machine": 62,
+    "libpython_dlopen": "pass",
+    "python": "3.14.8 (main, Oct 21 2026, 03:34:39) [GCC 12.2.0]",
+    "executable": "/usr/local/bin/python3",
+    "PYTHON_VERSION": "3.14.8",
+    "openssl": "OpenSSL 3.0.22 25 Aug 2026",
+    "shared_objects_checked": 80,
+    "brotli_packages": "libbrotli-dev:amd64\t1.0.9-2+deb12u1\nlibbrotli1:amd64\t1.0.9-2+deb12u1\n",
+    "stdlib_roundtrips": "pass",
+    "packaging_C_extension": "pass",
+    "system_brotli_invalid_and_valid_streams": "pass"
+  },
+  "actual_behavior_passes": [
+    "exact3.14.8 executable, complete exact-source ENV and amd64 ELF identity",
+    "all80 primary/installed ELF shared objects resolve",
+    "actual libpython3.so dlopen and Py_GetVersion3.14.8",
+    "Unicode SQLite and bz2/lzma/zlib roundtrips, SHA256 and SSL context",
+    "primary setuptools/pkg_resources/distutils/wheel metadata and genuine C extension compile/import",
+    "offline helper idempotence, local import precedence, local no-index wheel install, invalid C/wheel refusal",
+    "system malformed Brotli rejection whole and in one-byte chunks plus healthy content roundtrip",
+    "current Node companion and supplied private Node bundled-Brotli probes"
+  ],
+  "sbom": {
+    "tool": "official authenticated Syft1.55.0; original signature/checksum receipt reused and binary SHA256 rechecked",
+    "verification_receipt": "reused-verified-syft.json",
+    "source_image_id": "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da",
+    "source_architecture": "amd64",
+    "artifact_count": 1030,
+    "packages": [
+      {
+        "name": "libbrotli1",
+        "version": "1.0.9-2+deb12u1",
+        "type": "deb",
+        "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli",
+        "foundBy": "dpkg-db-cataloger"
+      },
+      {
+        "name": "libbrotli-dev",
+        "version": "1.0.9-2+deb12u1",
+        "type": "deb",
+        "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli",
+        "foundBy": "dpkg-db-cataloger"
+      },
+      {
+        "name": "python",
+        "version": "3.14.8",
+        "type": "binary",
+        "purl": "pkg:generic/python@3.14.8",
+        "foundBy": "binary-classifier-cataloger"
+      }
+    ],
+    "outputs": [
+      "generated-image.syft.json.gz",
+      "generated-image.spdx.json.gz"
+    ],
+    "full_lossless_archives": {
+      "generated-image.syft.json": {
+        "archive": "generated-image.syft.json.gz",
+        "uncompressed_sha256": "196c9277e07108dceeaa681f9548c93cb82b7666893ccb4a5333b63c3be5a764",
+        "gzip_sha256": "34b2c8c88187318f87cf1257f0c7c88ee51229d6cc0f062bb8a76892b80b226b",
+        "uncompressed_bytes": 23509734,
+        "gzip_bytes": 4083283
+      },
+      "generated-image.spdx.json": {
+        "archive": "generated-image.spdx.json.gz",
+        "uncompressed_sha256": "72733154d0c6c12238e112d43bcd7b4013408fcff75ec8334bbadfb461785c62",
+        "gzip_sha256": "830e49706399f5d19cbc74eee7b72da774f4b72b968895d3c0ad3da2dee2cfc0",
+        "uncompressed_bytes": 23418941,
+        "gzip_bytes": 3349655
+      }
+    }
+  },
+  "evidence_files_sha256": {
+    "setup-receipt.json": "3c6d975999c1ea075b0ca0efa78edd65fd8cb6b36f61134725362c756da074a3",
+    "supplier-context/Dockerfile": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+    "supplier-context/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "supplier-context/python-tools.json": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+    "supplier-pinned-receipt.json": "c902a51e7a34bd076d8ca12e4ec2d3492bf7a39bd72e1a8257c1ceb0bcff4315",
+    "supplier-manifest.json": "1febfe694bcb239125307148bef47f3f57f636b618db233f18513a5c05fe0643",
+    "supplier-official-base-layer-proof.json": "6606613ce1eabb2af1aaf2a838ca4868729cef76721434466c0da3a9072b7f6a",
+    "source-selection.txt": "2b37b7f54b48904a9235357472b145b948abb8b1316f35d2d1a6bf919ccab61c",
+    "official-source-pins.json": "c1fa606ffbd1709a4843465f98b3d83d04ed497147c3de4d68f35c84af4c69b4",
+    "generated-context/Dockerfile": "a6f34bbee607bac57c1bf25333ec2b0be3345babcc9a7b1101c57db1370d5f9a",
+    "generated-context/check-runtime.py": "b09bbe057f00b2bc4297ed05eb65c83ad5a69eeb4fd78cba61524feeb00444b7",
+    "generated-context/check-primary-python.py": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+    "generated-context/check-brotli.py": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+    "generated-manifest.json": "b8dffd5169bc66d13a734c5e4ea2baabcd84cd3962f0092033ac444b188769a1",
+    "generated-image-inspect.json": "4c0ac9e807f8a3a9a6eb21c507056db44a1108c57f95d5a54aef9c3a04fbd149",
+    "offline-runtime.log": "9bf4b64bd71532947ec430aa5fe9a3e8a64b63b2b984e1b53bf77b4469f9eaed",
+    "generated-build.log": "7c8c2c0792e06184b9fd4798cc453ea1684b49b28fe1af76843932c276903e9e",
+    "supplier-offline-factory-check.log": "7976dc952fee6043e8b4c3085f748cdcf67e60be916f91d67f4a50824ddee4aa",
+    "generator-export.log": "b4668b40ae55f73253e9a9b43d06d22b204bcc5cc8c07519cc3648a293a899ed",
+    "syft-scan-command.json": "2ca4ed6f47cd4228b9cca3eb0bd2b43947d22d9f8d47a3339cd4eda04307b3af",
+    "sbom-selected-packages.json": "e42d87cc869e7b345d0fed94766b66afd3d66a9ee8d1226f70da230f29f61167",
+    "reused-verified-syft.json": "7a3cdf4c4ccbf18a652761c73e5532123a6320b0e0a1672b3963144d32ae09b7",
+    "supplier-config.json": "c9e31815300eda8f7d8c48619146989fb60983550798133dc98c923eb05ef904"
+  },
+  "previous_arm64_evidence": "/private/tmp/bex-w8-222-acceptance; prior bounded generic-supplier proof preserved unchanged by this task",
+  "unverified": [
+    "same exact3.14.8 generated proof using a reviewed published supplier index",
+    "arm64 replay from matching published Python supplier",
+    "production catalog and operator rollout",
+    "hosted newly created no-version Python service version/runtime/Brotli probe"
+  ],
+  "production_changes": "none; no factory-context, catalog, authentication, production-resource, repository-source, commit or push changes",
+  "cleanup": {
+    "own_proof_containers": [
+      "bex-w8-222-python314-amd64-supplier-proof",
+      "bex-w8-222-python-default-amd64-proof"
+    ],
+    "own_local_registry_repositories": [
+      "native-python314-amd64-qa",
+      "generated-python-default-amd64-qa"
+    ],
+    "own_image_tags": [
+      "bex-w8-222-python314-supplier:amd64",
+      "bex-w8-222-python-default:amd64"
+    ],
+    "shared_registry": "bex-loopx-w8-native-qa-registry; retained for parent/other acceptance",
+    "pending_tool_sessions": [],
+    "native_factory_watch": "not started or modified; root owns watcher"
+  },
+  "ancestry_verifier_regression": {
+    "actual_example_receipt": "/tmp/loopx-w8-native-verifier-real-ancestry-check.json",
+    "policy_tests": "/tmp/loopx-w8-native-verifier-policy-test.py",
+    "verifier_sha256": "dd6c479f0a1fe63e521a6b4626d6c9d4b16cfb3b1b4ea924bce51516d19d82d1",
+    "manual_decompressed_layer_hashing_performed": false
+  }
+}

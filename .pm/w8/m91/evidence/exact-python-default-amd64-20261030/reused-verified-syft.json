@@ -1,0 +1,7 @@
+{
+  "binary": "/private/tmp/bex-w8-222-acceptance/tools/syft",
+  "original_verification_receipt": "/private/tmp/bex-w8-222-acceptance/tools/syft-verification-receipt.json",
+  "binary_sha256_checked_now": "55a63db797b2a060aa56c7a03991bb11084e01ed4e3863df12370d74e84b4821",
+  "cosign_checksum_signature_exit": 0,
+  "scope": "reuse official Syft1.55.0 authenticated for earlier222 acceptance; binary bytes rechecked"
+}

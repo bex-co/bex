@@ -1,0 +1,15 @@
+{
+  "container_id": "e063b4cbf7490111e31814256305490385b2c892336d2b8688be08e483c0118c",
+  "name": "/qa-20261030-w8-predeploy-72a314da-registry",
+  "image_config": "sha256:0c922d46158ce6e7d062337afbef4367aa80e2601de34522171ad8de06fd5b87",
+  "image_manifest": "registry@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3",
+  "network_mode": "container:6420b1a7501d102fab7077312c885d375b3b078e4497caecda8198b2876664c1",
+  "loopback_port": 43829,
+  "no_host_bind_mounts": true,
+  "own_anonymous_volumes": [
+    "73a259ae343422b07987bd8c26b0e39a5bc238846fc543ee0b5b320ce9026b94"
+  ],
+  "started_at": "2026-10-30T05:35:51.678352939Z",
+  "registry_manifest_matches_source": true,
+  "synthetic_basic_auth_only": true
+}

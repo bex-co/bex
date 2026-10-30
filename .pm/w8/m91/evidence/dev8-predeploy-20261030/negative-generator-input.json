@@ -1,0 +1,10 @@
+{
+  "Name": "qa-20261030-w8-predeploy-72a314da",
+  "Namespace": "dev-8",
+  "AnchorUID": "32cf625a-86de-43ab-94d3-27b50e67fb0d",
+  "Image": "localhost:43829/native-node24-extended-qa@sha256:8b805178cee512a981e543ea558b0e697d3d5c1096851cf209f1e1badf0a1aac",
+  "PullSecret": "",
+  "EnvSecret": "qa-20261030-w8-predeploy-72a314da-env-files",
+  "FileSecret": "qa-20261030-w8-predeploy-72a314da-files",
+  "Generation": 4
+}

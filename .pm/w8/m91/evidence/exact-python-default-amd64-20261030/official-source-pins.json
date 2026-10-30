@@ -1,0 +1,20 @@
+[
+  {
+    "role": "reviewed",
+    "official_index_ref": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "actual_amd64_child_ref": "python:3.14-bookworm@sha256:0bdd145eed30ab1466e8afbd51a595f5484aa874ac9df5283369ba508a025d2e",
+    "actual_amd64_config": "sha256:53512e676f8595b6ccb2c3e14dcda61400e8d10fbd58c08e237d8bfa103155bf",
+    "python_version": "3.14.10",
+    "architecture": "amd64",
+    "all_saved_manifest_and_config_bytes_sha_verified": true
+  },
+  {
+    "role": "exact",
+    "official_index_ref": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+    "actual_amd64_child_ref": "python:3.14.8-bookworm@sha256:36811ba1de0179e92a9537453e4ec8eb70b1af8dd926a9802c17a252f2c506ce",
+    "actual_amd64_config": "sha256:7f4eff8458e49dcd22833ede0c387881a083e62064f2039df8836826a4fec3e7",
+    "python_version": "3.14.8",
+    "architecture": "amd64",
+    "all_saved_manifest_and_config_bytes_sha_verified": true
+  }
+]
