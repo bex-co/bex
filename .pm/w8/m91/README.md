@@ -167,3 +167,8 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 ## Eighth supplier independently verified — 2026-10-30
 
 [Fresh-build Ruby3.1](evidence/published-ruby31-20261030/README.md) passed a new complete V11 validation: all33 blobs/1.354GB, five strict signed bundles, independent architecture reports and actual negative controls. Twenty-one genuine prior complete reads retain custody and fresh HEAD checks; twelve new reads include both previously rejected blobs from zero. Root rechecked the full frozen chain and raw/gzip custody. Earlier failures remain rejected and the derived-gzip loss remains explicit. All13,690 findings/228critical per architecture are retained. Eight of27 suppliers are approved; the production catalog and original hosted acceptance remain pending.
+
+
+## Elixir1.17 publication recovery — 2026-10-30
+
+[Actual failed signing log and immutable recovery intake](evidence/elixir117-publication-recovery-20261030/README.md) show both architecture runtime/scan gates passed before old-source Syft's HTTP2 fault. The current workflow already contains the transport fixes; a minimal exact-index recovery row repeats all current gates without rebuilding or launching a full matrix. No new supplier approval or hosted acceptance is claimed; eight suppliers remain approved.
