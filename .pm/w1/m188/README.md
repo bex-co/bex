@@ -281,3 +281,11 @@ w8/m91的十项现代运行时工作全部保留并继续在修复流程上执�
 本次push自动全量请求`41142599053`在新鲜确认尚无原生构建后只取消一次，最终completed/cancelled，没有中断已开始工作。随后只派发一次Go1.27正常新建，实际绑定8af/main/attempt1的run`41142870861`、job`124361678277`；旧不完整Go索引没有恢复授权。Node18、Ruby3.2已开始各自原有完整恢复，Node20原队列保留。现代Go镜像的独立采用仍归w8/m91，不增加本项计数。
 
 当前树只增加了这一个安装token；旧八项镜像实际已通过同一真实解压门槛，签名/配方原文仍保留。采用守卫只批准完整旧、新`install.sh`哈希之间的精确兼容，限定原18个已准入历史producer，其他配方、文件集合与producer到verifier的一致性仍严格；没有向本项来源集合加入83c或8af。见[明确批准、策略与八项完整重放](evidence/unzip-exact-recipe-compatibility/MANIFEST.json)。隔离正例及四项拒绝控制、实际未满11项的采用拒绝均通过，60个原文件哈希经根复核不变；context保持8/11。最初[批准消息捕获](evidence/unzip-initial-approval-capture.json)与随后根批准的追加关联均保留，不回写先前记录。实际pin接入、六项应用验收与生产rollout继续开放。
+
+### 旧Elixir签名失败交接与接入准备回归 — 2026-10-30（UTC 23:33Z）
+
+旧99f的Elixir1.20完成构建、双架构运行验证及完整扫描，但ARM64 Syft读取层时收到HTTP/2 `PROTOCOL_ERROR`。日志只支持镜像签名、AMD SPDX/Trivy三个命令完成，不冒充五份密码学证明；其余两项与discovery未执行。当前流程已包含对应传输修复，但统一安装配方已增加显式unzip，因此没有为旧索引添加恢复授权。初次精确800派发在发现main更新时停止，实际POST为零；复核9cb仅增加PM记录、全部非PM字节与8af相同后，全来源排重并只派发一次正常新建，实际run`41144656779` / job`124367871533`绑定9cb/main/attempt1。见[原日志、完整排重、来源与原生绑定](evidence/elixir120-current-normal-build/MANIFEST.json)。现代Elixir验收仍归w8/m91，不增加本项计数；原始404观察与零POST预检均保留。
+
+当前采用准备工具的完整生成路径还存在两个未定义的局部变量；未满11项时的既有拒绝发生在该路径之前，因此先前没有执行到。仅在同一候选完成验证后显式读取其digest和jobURL，验证函数及全部安全/来源规则保持原字节。[明确标注的合成writer回归](evidence/SYNTHETIC-writer-locals-regression/MANIFEST.json)用同一fixture实际复现旧版NameError、新版11行/55项及各行独立digest/来源正确；只mock候选验证函数，不构成真实镜像或签名验收。真实八项收据仍拒绝生成，61项原文件哈希经根复核不变；guard为3fe1b2bd，context仍8/11且未增加现代来源角色。
+
+Ruby3.2已于23:30Z完成双架构运行验证并进入AMD全扫描；Node18继续运行验证，Node20保持队列。共享池空出的第三个runner已于23:21:44Z执行更早的生产部署；原始API观察随本节归档，不把排队当作任务失联，也不取消已开始工作。实际11项pin接入、六项应用测试和线上rollout仍未完成。

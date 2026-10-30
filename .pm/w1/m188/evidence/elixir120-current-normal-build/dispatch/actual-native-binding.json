@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-30T23:31:39.081015+00:00",
+  "run_id": 41144656779,
+  "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "run_attempt": 1,
+  "tag": "elixir-1.20",
+  "job_id": 124367871533,
+  "metadata_only": true,
+  "run": {
+    "file": "/private/tmp/bex-m188-elixir120-normal-dispatch/first-native-run.json",
+    "sha256": "10bc3df1aa54b7ba7d4a706f33a72fd41c96a6cfa55b6a61e8495b8998150b2a",
+    "bytes": 11470
+  },
+  "jobs": {
+    "file": "/private/tmp/bex-m188-elixir120-normal-dispatch/first-native-jobs.json",
+    "sha256": "af909136929cccb2c4b54c67a57d71f768073e238008c6e1f67c08d1d7215a3e",
+    "bytes": 2885
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T23:28:13.832220+00:00",
+  "maximum_total_e20_posts": 1,
+  "earlier_exact800_posts": 0,
+  "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "source_role": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/actual-prepost-source-role-receipt.json",
+    "sha256": "c2291e998b3e6bd211bdc045abe6d02378e757334059a12894ac9b69a10f7215"
+  },
+  "root_policy_sha256": "5dd8405b1d0c4fe42ea6e5af371a0c7eaf8a06818d3abd97c9731835935f445a"
+}

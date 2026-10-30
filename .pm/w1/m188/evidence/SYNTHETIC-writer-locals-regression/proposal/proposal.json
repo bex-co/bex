@@ -1,0 +1,16 @@
+{
+  "schema": "bex.m188.inactive-exact-prepare-writer-local-fix/v1",
+  "at": "2026-10-30T23:30:42.243969+00:00",
+  "old_guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "proposal": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+    "sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+    "diff_file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/guard.diff",
+    "diff_sha256": "d5881a2802969bde14a410d414b275e70210a8e3566fdb14319113c691c58ba1"
+  },
+  "exact_change": "After each validate_candidate call in main prepare loop bind digest and joburl from that exact validated candidate row.",
+  "only_function_changed": "main",
+  "validate_candidate_and_all_other_functions_ast_identical": true,
+  "source_roles_context_security_checks_unchanged": true,
+  "not_activated": true
+}

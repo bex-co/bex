@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-30T23:30:59.310621+00:00",
+  "approver": "root",
+  "approved_guard_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "prior_guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "approved_diff_sha256": "d5881a2802969bde14a410d414b275e70210a8e3566fdb14319113c691c58ba1",
+  "review": "Root read exact2line diff: bind digest and joburl from same alreadyvalidated candidate before writing its source/inventory entries. All validation/source/security functions unchanged.",
+  "activation_authorized_after_tests": [
+    "Actual oldmain synthetic11 writer reproduction fails NameError for missing digest",
+    "Exact newmain passes same synthetic11 isolated writer fixture with all11 distinct digests/jobURLs and55inventory entries",
+    "Actual8receipt still refuses prepare_dir and writes no adoptioncopies",
+    "All priorprotected hashes and real8receipt unchanged"
+  ],
+  "test_scope": "Synthetic writer-layer test mocks candidate validator only; no proof/security acceptance, realreceipt completion or source adoption authorized",
+  "no_repeat8_crypto_needed": "All validation functions are byte-identical; later actual11 adoption reruns real validators",
+  "scope": "Temp guard tool correction only; preserve frozenoldguard/context/proofs and source roles"
+}

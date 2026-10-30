@@ -1,0 +1,67 @@
+{
+  "schema": "bex.modern-elixir120.normal-build-dispatch-native-binding/v1",
+  "at": "2026-10-30T23:32:38.548261+00:00",
+  "run_id": 41144656779,
+  "job_id": 124367871533,
+  "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "run_attempt": 1,
+  "tag": "elixir-1.20",
+  "native_status_at_first_binding": "queued",
+  "normal_build_required_no_recovery_entry": true,
+  "actual_build_gate_signing_success_not_claimed": true,
+  "root_dispatch_source_policy": {
+    "file": "/tmp/bex-m188-elixir120-9cb-source-and-dispatch-policy.json",
+    "sha256": "5dd8405b1d0c4fe42ea6e5af371a0c7eaf8a06818d3abd97c9731835935f445a",
+    "bytes": 1631
+  },
+  "literal_prepost_source_role": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/actual-prepost-source-role-receipt.json",
+    "sha256": "c2291e998b3e6bd211bdc045abe6d02378e757334059a12894ac9b69a10f7215",
+    "bytes": 762
+  },
+  "raw_source_files": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/source-files.json",
+    "sha256": "13a34e9efa9db0d99a54a5ed94535636485ac16ee87ac892c517ce1ba5cac1a3",
+    "bytes": 937
+  },
+  "first_native_binding": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/actual-native-binding.json",
+    "sha256": "3b3a55b73523435beedfa1ae2f3bca7f080906ab018c8e5becb238a8a15a3779",
+    "bytes": 628
+  },
+  "actual_run_head": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/actual-run-head.json",
+    "sha256": "33f743b3934409d0aa4567187cf3e2ac6db606f5cd3b53be41b0d8ad47bea13f",
+    "bytes": 440
+  },
+  "dispatch_result": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/dispatch-result.json",
+    "sha256": "75c44cf3ef6dbdbdd8d2ad2b395313c606d601d26fd1406686de7e92e44c2674",
+    "bytes": 1887
+  },
+  "dispatch_input": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/dispatch-input.json",
+    "sha256": "7db329e0ac0d851529a395b1fef46341a89c72276f90ec7f8e616c1c17756bf1",
+    "bytes": 68
+  },
+  "all_source_known_dedupe": {
+    "file": "/tmp/bex-m188-elixir120-normal-dispatch/dedupe-summary.json",
+    "sha256": "01714b99dd7265de5949c2f4430e2e6d2a79128259022c63bfe81f1142229632",
+    "bytes": 6929
+  },
+  "executed_dispatcher": {
+    "file": "/tmp/bex-m188-elixir120-dispatch-authorized.py",
+    "sha256": "fd7dec1764a58b483b9d82f87f483bc9ca2e8f1dad59ae40dd9e3e1bc485a4d0",
+    "bytes": 7118
+  },
+  "prior_exact800_preflight_zero_posts": {
+    "file": "/tmp/bex-m188-elixir120-exact800-preflight/preflight.json",
+    "sha256": "bee5ef14b1ea5ba10855d1a3b1f2573432b41425ba3bab75403ed02dbd663a2b",
+    "bytes": 866
+  },
+  "total_dispatch_posts": 1,
+  "cancellations": 0,
+  "metadata_only_no_legacy_source_policy_append": true,
+  "legacy_aggregate_sha256_at_binding": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "mutable_observer_file_excluded_from_frozen_custody": "/tmp/bex-m188-elixir120-normal-dispatch/modern-elixir120-status.json"
+}

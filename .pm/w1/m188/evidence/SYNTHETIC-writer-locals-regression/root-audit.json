@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T23:32:46.609776+00:00",
+  "reviewer": "root",
+  "activation_sha256": "06a5b2203791ef18c19b6f09e318eb8bd18f002be344ceec6fa4133ea71ea06e",
+  "protected61_hashes_independently_recomputed": true,
+  "all_non_main_functions_source_bytes_independently_compared_identical": true,
+  "exact2line_writer_diff_reviewed": true,
+  "actual_oldNameError_new_synthetic11writer55inventory_and_real8refusal_report_read": true,
+  "synthetic_validation_mock_explicit_crypto_not_tested": true,
+  "actual_guard_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "actual_aggregate_sha256": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "no_adoption_or_candidate_promotion": true
+}

@@ -1,0 +1,342 @@
+{
+  "schema": "bex.m188.readonly-adoption-plan/v1",
+  "created_at": "2026-10-30T23:32:03.349993+00:00",
+  "repository": "/Users/tianpan/projects/bex",
+  "head": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "source_sha256": {
+    "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "lego/operator/internal/build/toolchain-freshness.json": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95"
+  },
+  "receipt": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-11-writer-receipt.json",
+  "receipt_checked_at": "2026-10-30T00:00:00Z",
+  "receipt_state": "complete",
+  "receipt_verified_count": 11,
+  "complete_receipt_available": true,
+  "required_portable_recipe_ancestor": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "required_source_model": "separate_image_producer_and_signature_verification/v2",
+  "approved_producer_sources": [
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+    "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+    "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "4462ee030984637bb765ae560b6ffe38c71f3af4",
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+    "99f95c17afd5709365869dfff1408265e5d514ec",
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "d94787bb4fb93751e485fe6d47946d82cc6da052",
+    "d95645e9f054238ec53a4932fac51560ffedd1f8",
+    "e47a2c6157339a3a786118866f28b4ee8b619774",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+  ],
+  "approved_verification_sources": [
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+    "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+    "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "4462ee030984637bb765ae560b6ffe38c71f3af4",
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+    "99f95c17afd5709365869dfff1408265e5d514ec",
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "d94787bb4fb93751e485fe6d47946d82cc6da052",
+    "d95645e9f054238ec53a4932fac51560ffedd1f8",
+    "e47a2c6157339a3a786118866f28b4ee8b619774",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+  ],
+  "producer_runtime_restrictions": {
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11": [
+      "node-18-bookworm"
+    ]
+  },
+  "current_reviewed_workflow_source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "current_reviewed_workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+  "current_workflow_matches_reviewed_recovery": true,
+  "source_binding": "Producer OCI labels/recipe/official inputs remain separate from verification workflow SHA/signature/gates. Recovered authorization is loaded from verification commit; Earlier approved normal candidates retain their source-pinned original verifier; recovered producer may be any explicitly approved producer only with exact source-pinned authorization.",
+  "local_green_proofs_verified": {
+    "portable-node20-compiler": {
+      "path": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-node20-compiler.json",
+      "sha256": "1df61ff850304884c6aade1130fc79a6cab8c77436be306d0c7f150f42b7eeaa",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    "companion-native-green": {
+      "path": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/companion-native-green.json",
+      "sha256": "259145659edd6435b9e298d69340572ef57c42d57b7f2bd8711dfcb2748bac76",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    "portable-node20-final-native": {
+      "path": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-node20-final-native.json",
+      "sha256": "a8b2aa02a8b1077c8ff2fe1a39b7b57dac985b4258d76c34b708aabfd615aa37",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    },
+    "portable-python-ruby-suppliers": {
+      "path": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-python-ruby-suppliers.json",
+      "sha256": "be27636357048f167a32ab1842e9ce11bd718274f071317c511b9139ebb9ea3d",
+      "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd"
+    }
+  },
+  "supported_targeted_proof_mode": "targeted_sigstore_bundles/v1",
+  "root_approved_layer_custody": {
+    "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/MANIFEST.json",
+    "sha256": "31c634c9ccc1ec493148162c187d19a3b512284ddca7b863527d2f7b7d9caf89"
+  },
+  "targeted_proof_requirements": "Digest-authenticated original gzip bundles/index/commands; unchanged derived DSSE; exact SPDX child or root-approved full-stream content reconstruction and exact Trivy config binding; no arbitrary alias or reconstructed signed DockerReference",
+  "published_node_portability_required": {
+    "receipt_field": "verified[node_tag].security.portable_companion_baseline",
+    "distribution": "Debian11 Bullseye",
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "header_major": "must equal selected 14/16/18/20 line",
+    "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+    "actual_per_architecture_log_lines_required": true
+  },
+  "adoption_only_matrix_equal": true,
+  "native_supplied_bases_empty": true,
+  "official_inventory_entries_retained_unchanged": true,
+  "mappings": [
+    {
+      "runtime": "node",
+      "line": "14",
+      "version": "14.21.3",
+      "receipt_key": "node-14-bullseye",
+      "official_inventory_id": "native-node-14",
+      "platform_inventory_id": "platform-native-node-14",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye@<verified-published-index-digest>",
+      "upstream": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "inventory_template": {
+        "id": "platform-native-node-14",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "node",
+      "line": "16",
+      "version": "16.20.2",
+      "receipt_key": "node-16-bookworm",
+      "official_inventory_id": "native-node-16",
+      "platform_inventory_id": "platform-native-node-16",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm@<verified-published-index-digest>",
+      "upstream": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+      "inventory_template": {
+        "id": "platform-native-node-16",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "node",
+      "line": "18",
+      "version": "18.20.8",
+      "receipt_key": "node-18-bookworm",
+      "official_inventory_id": "native-node-18",
+      "platform_inventory_id": "platform-native-node-18",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm@<verified-published-index-digest>",
+      "upstream": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "inventory_template": {
+        "id": "platform-native-node-18",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "node",
+      "line": "20",
+      "version": "20.20.2",
+      "receipt_key": "node-20-bookworm",
+      "official_inventory_id": "native-node-20",
+      "platform_inventory_id": "platform-native-node-20",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm@<verified-published-index-digest>",
+      "upstream": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "inventory_template": {
+        "id": "platform-native-node-20",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "python",
+      "line": "3.7",
+      "version": "3.7.17",
+      "receipt_key": "python-3.7-bullseye",
+      "official_inventory_id": "native-python-3-7",
+      "platform_inventory_id": "platform-native-python-3-7",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye@<verified-published-index-digest>",
+      "upstream": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "inventory_template": {
+        "id": "platform-native-python-3-7",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "python",
+      "line": "3.8",
+      "version": "3.8.20",
+      "receipt_key": "python-3.8-bookworm",
+      "official_inventory_id": "native-python-3-8",
+      "platform_inventory_id": "platform-native-python-3-8",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm@<verified-published-index-digest>",
+      "upstream": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "inventory_template": {
+        "id": "platform-native-python-3-8",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "python",
+      "line": "3.9",
+      "version": "3.9.25",
+      "receipt_key": "python-3.9-bookworm",
+      "official_inventory_id": "native-python-3-9",
+      "platform_inventory_id": "platform-native-python-3-9",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm@<verified-published-index-digest>",
+      "upstream": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+      "inventory_template": {
+        "id": "platform-native-python-3-9",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "python",
+      "line": "3.10",
+      "version": "3.10.22",
+      "receipt_key": "python-3.10-bookworm",
+      "official_inventory_id": "native-python-3-10",
+      "platform_inventory_id": "platform-native-python-3-10",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm@<verified-published-index-digest>",
+      "upstream": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+      "inventory_template": {
+        "id": "platform-native-python-3-10",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "ruby",
+      "line": "3.0",
+      "version": "3.0.7",
+      "receipt_key": "ruby-3.0-bullseye",
+      "official_inventory_id": "native-ruby-3-0",
+      "platform_inventory_id": "platform-native-ruby-3-0",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye@<verified-published-index-digest>",
+      "upstream": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+      "inventory_template": {
+        "id": "platform-native-ruby-3-0",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "ruby",
+      "line": "3.1",
+      "version": "3.1.7",
+      "receipt_key": "ruby-3.1-bookworm",
+      "official_inventory_id": "native-ruby-3-1",
+      "platform_inventory_id": "platform-native-ruby-3-1",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm@<verified-published-index-digest>",
+      "upstream": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+      "inventory_template": {
+        "id": "platform-native-ruby-3-1",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    },
+    {
+      "runtime": "ruby",
+      "line": "3.2",
+      "version": "3.2.11",
+      "receipt_key": "ruby-3.2-bookworm",
+      "official_inventory_id": "native-ruby-3-2",
+      "platform_inventory_id": "platform-native-ruby-3-2",
+      "image_template": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm@<verified-published-index-digest>",
+      "upstream": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+      "inventory_template": {
+        "id": "platform-native-ruby-3-2",
+        "kind": "native-base",
+        "upstream": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm",
+        "committed": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm@<verified-published-index-digest>",
+        "resolved_at": "<receipt checked_at UTC without fractions>",
+        "source": "<verified workflow/job/source, amd64+arm64 signature, SBOM, scan and behavioral receipts>",
+        "files": [
+          "lego/operator/internal/build/native.go"
+        ]
+      }
+    }
+  ],
+  "scope": "Data-only 11 reviewed native lines; preserve versions/defaults/official provenance. Other exact patches keep official lookup and existing reviewed fallback. No production deployment or repository writes."
+}

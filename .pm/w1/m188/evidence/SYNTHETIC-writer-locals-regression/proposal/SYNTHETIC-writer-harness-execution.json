@@ -1,0 +1,25 @@
+{
+  "schema": "bex.m188.SYNTHETIC-writer-harness-execution/v1",
+  "at": "2026-10-30T23:32:03.413668+00:00",
+  "argv": [
+    "python3",
+    "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4.writer-harness.py"
+  ],
+  "harness_sha256": "448d19bdc84d894237583187c7313d53a6a56b223047fbc6c52de2dbe8c648e4",
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/SYNTHETIC-writer-harness.stdout.log",
+    "sha256": "5fda1cd818fb047b7f84ded7d2e4c888fa70b8e45fcce9fc68374e69d52eafc7",
+    "bytes": 377
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-writer-locals-fix/SYNTHETIC-writer-harness.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "result": {
+    "file": "/tmp/bex-m188-SYNTHETIC-writer-only-yci9j3cg/SYNTHETIC-writer-regression.json",
+    "sha256": "0681eb365b04b1c9e3e571a7f74b0ba7486dd47652c984ccb31257c2dae7db44"
+  },
+  "synthetic_only_validator_mocked_no_crypto_claim": true
+}
