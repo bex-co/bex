@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-30T23:12:56.520641+00:00",
+  "reviewer": "root",
+  "activation_sha256": "53cba2c469de42d8c0f60f46d4046b010bd30e7b17dc461769740ed930a25d3e",
+  "regressions_sha256": "674a8f85f991cc335d796f6b8087dea895e6545bc2de1705c34fd07ae0f91680",
+  "protected60_hashes_independently_recomputed": true,
+  "actualguard_and_context_hashes_match": true,
+  "report8results_and5isolated_controls_and_real11refusal_read": true,
+  "source_and_exactcompatibility_diff_independently_reviewed": true,
+  "no_artifact_promotion_or_adoption": true
+}

@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-30T23:08:55.592337+00:00",
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "root_authorization": "Exact root message authorizes at most one cancel of own push/main native workflow only if every native build has no runner assigned and no started step. No other mutations; preserve core3 and every other request.",
+  "max_cancel_posts": 1
+}

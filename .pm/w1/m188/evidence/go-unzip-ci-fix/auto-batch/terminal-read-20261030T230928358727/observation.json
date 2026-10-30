@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-30T23:09:29.836359+00:00",
+  "run_id": 41142599053,
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "status": "completed",
+  "conclusion": "cancelled",
+  "native_jobs_count": 1,
+  "native_actual_started_ids": [],
+  "terminal_confirmed": true,
+  "evidence": [
+    {
+      "file": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/run.json",
+      "sha256": "cdce7ca4d485a59ef0aa099e636725d4460cee857d2f345066229768be0634ce"
+    },
+    {
+      "file": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/jobs.json",
+      "sha256": "845d50fd5e938ac00550f03b03359dab9e7060b50812193a1c28b767460d166f"
+    }
+  ],
+  "new_cancel_post_performed": false
+}

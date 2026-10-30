@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.root-guard-compatibility-approval/v1",
+  "at": "2026-10-30T23:10:41.824047+00:00",
+  "approver": "root",
+  "approved_guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "prior_guard_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+  "approved_diff_sha256": "ab49e21a9af72244c5c2c5a13764167c3c0f60b3ccc4926c75a0e09eb9d62275",
+  "source_fix_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "root_verified_non_pm_delta": "Only one explicit unzip apt dependency; all other files/matrix/workflow/catalog byte-identical83c",
+  "compatibility": "Exact fullold install d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8 to fullnew fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462, only frozen18 existing approved historical producers, producer-to-current-tree comparison only. Existing signed images passed unchanged real zip/unzip gate. Current Go failure remains rejected.",
+  "strict_checks_retained": [
+    "Producer-to-verifier recipe equality",
+    "All other current recipe files and file sets",
+    "All actual source roles and runtime restrictions",
+    "Official matrices and exact bases",
+    "All signatures, SBOM, scan, runtime, portability and discovery proof"
+  ],
+  "authorized": [
+    "Exact guard activation with frozen prior and new copies",
+    "Full8 candidate replays",
+    "Real incomplete11 copy refusal",
+    "Isolated negativecontrols for exact install/producer/otherfile scope"
+  ],
+  "not_authorized": [
+    "No legacy source-role additions",
+    "No proof or aggregate mutation",
+    "No artifact promotion",
+    "No old index reuse against changed verification recipe"
+  ]
+}

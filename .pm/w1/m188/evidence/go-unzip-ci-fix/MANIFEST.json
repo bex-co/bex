@@ -1,0 +1,386 @@
+{
+  "schema": "bex.m188.immutable-archive/v2",
+  "created_at": "2026-10-30T23:15:02.745691+00:00",
+  "scope": "Go1.27 actual unzip failure, exact source fix, one safe own automatic batch retirement and one normal rebuild dispatch. Frozen first native binding; mutable observer excluded. No candidate approval/adoption or task closure. Continuation helper retains original guard-control execution bytes.",
+  "files": [
+    {
+      "path": "auto-batch/authorization.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/authorization.json",
+      "bytes": 368,
+      "sha256": "5862930e20d7ccd9e0915a8b5aed3c24ded545d3c6a347c1d19703ecb6072666",
+      "encoding": "identity",
+      "original_bytes": 368,
+      "original_sha256": "5862930e20d7ccd9e0915a8b5aed3c24ded545d3c6a347c1d19703ecb6072666"
+    },
+    {
+      "path": "auto-batch/cancel-intent.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/cancel-intent.json",
+      "bytes": 244,
+      "sha256": "7cf951fe3f315025817ba046631a9a98e3efb81b6d7eaa40a4f784ebc01c10c1",
+      "encoding": "identity",
+      "original_bytes": 244,
+      "original_sha256": "7cf951fe3f315025817ba046631a9a98e3efb81b6d7eaa40a4f784ebc01c10c1"
+    },
+    {
+      "path": "auto-batch/cancel-result.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/cancel-result.json",
+      "bytes": 1626,
+      "sha256": "196eca0f3029b64d359e474379ef06a551e73464b8b9e188daa2444141f84e6b",
+      "encoding": "identity",
+      "original_bytes": 1626,
+      "original_sha256": "196eca0f3029b64d359e474379ef06a551e73464b8b9e188daa2444141f84e6b"
+    },
+    {
+      "path": "auto-batch/fresh-review.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/fresh-review.json",
+      "bytes": 258,
+      "sha256": "c6e37bf5ab0aaeb902b0b15c4ce7373dd5289db0d6fea0ac0227ed91c3aad89e",
+      "encoding": "identity",
+      "original_bytes": 258,
+      "original_sha256": "c6e37bf5ab0aaeb902b0b15c4ce7373dd5289db0d6fea0ac0227ed91c3aad89e"
+    },
+    {
+      "path": "auto-batch/precheck-1-jobs.request.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/precheck-1-jobs.request.json",
+      "bytes": 244,
+      "sha256": "a90c2492c52972c1db5f040cbc1d942d7bbffbbe9e8f257c92c08488332dc786",
+      "encoding": "identity",
+      "original_bytes": 244,
+      "original_sha256": "a90c2492c52972c1db5f040cbc1d942d7bbffbbe9e8f257c92c08488332dc786"
+    },
+    {
+      "path": "auto-batch/precheck-1-jobs.response.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/precheck-1-jobs.response.json",
+      "bytes": 1671,
+      "sha256": "138e548f3e410c51e419bab4a97abb019a31c7aab67079fde331060c5956b9ee",
+      "encoding": "identity",
+      "original_bytes": 1671,
+      "original_sha256": "138e548f3e410c51e419bab4a97abb019a31c7aab67079fde331060c5956b9ee"
+    },
+    {
+      "path": "auto-batch/precheck-1-run.request.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/precheck-1-run.request.json",
+      "bytes": 226,
+      "sha256": "802e7744b4b6d0004953a6affad21e9751482111d303f457dbcb284704b4fd61",
+      "encoding": "identity",
+      "original_bytes": 226,
+      "original_sha256": "802e7744b4b6d0004953a6affad21e9751482111d303f457dbcb284704b4fd61"
+    },
+    {
+      "path": "auto-batch/precheck-1-run.response.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/precheck-1-run.response.json",
+      "bytes": 11693,
+      "sha256": "75b0a066887b993a33e70aca75570a1fd620afe8fcbe3ea56cb0352e61380f13",
+      "encoding": "identity",
+      "original_bytes": 11693,
+      "original_sha256": "75b0a066887b993a33e70aca75570a1fd620afe8fcbe3ea56cb0352e61380f13"
+    },
+    {
+      "path": "auto-batch/terminal-confirmation.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-confirmation.json",
+      "bytes": 716,
+      "sha256": "2c6a8558b082ad09c582831d2795a89651561538f50c691228c2b8b1803542b4",
+      "encoding": "identity",
+      "original_bytes": 716,
+      "original_sha256": "2c6a8558b082ad09c582831d2795a89651561538f50c691228c2b8b1803542b4"
+    },
+    {
+      "path": "auto-batch/terminal-read-20261030T230928358727/jobs-request.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/jobs-request.json",
+      "bytes": 155,
+      "sha256": "253dec16f2572ca4efac510a01a939c084fdd66da513dd2cb7b32133fcbc34dd",
+      "encoding": "identity",
+      "original_bytes": 155,
+      "original_sha256": "253dec16f2572ca4efac510a01a939c084fdd66da513dd2cb7b32133fcbc34dd"
+    },
+    {
+      "path": "auto-batch/terminal-read-20261030T230928358727/jobs.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/jobs.json",
+      "bytes": 2822,
+      "sha256": "845d50fd5e938ac00550f03b03359dab9e7060b50812193a1c28b767460d166f",
+      "encoding": "identity",
+      "original_bytes": 2822,
+      "original_sha256": "845d50fd5e938ac00550f03b03359dab9e7060b50812193a1c28b767460d166f"
+    },
+    {
+      "path": "auto-batch/terminal-read-20261030T230928358727/observation.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/observation.json",
+      "bytes": 716,
+      "sha256": "2c6a8558b082ad09c582831d2795a89651561538f50c691228c2b8b1803542b4",
+      "encoding": "identity",
+      "original_bytes": 716,
+      "original_sha256": "2c6a8558b082ad09c582831d2795a89651561538f50c691228c2b8b1803542b4"
+    },
+    {
+      "path": "auto-batch/terminal-read-20261030T230928358727/run-request.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/run-request.json",
+      "bytes": 137,
+      "sha256": "e2905de99e37c828be85d67843b07618827212ab6220db053f103ec3893fc7fb",
+      "encoding": "identity",
+      "original_bytes": 137,
+      "original_sha256": "e2905de99e37c828be85d67843b07618827212ab6220db053f103ec3893fc7fb"
+    },
+    {
+      "path": "auto-batch/terminal-read-20261030T230928358727/run.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/terminal-read-20261030T230928358727/run.json",
+      "bytes": 11698,
+      "sha256": "cdce7ca4d485a59ef0aa099e636725d4460cee857d2f345066229768be0634ce",
+      "encoding": "identity",
+      "original_bytes": 11698,
+      "original_sha256": "cdce7ca4d485a59ef0aa099e636725d4460cee857d2f345066229768be0634ce"
+    },
+    {
+      "path": "auto-batch/watch-1.request.json",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/watch-1.request.json",
+      "bytes": 281,
+      "sha256": "7907cfdd38f6a13fedebda709ef76fa1fad23c100a9532e8009e81ec19a2387b",
+      "encoding": "identity",
+      "original_bytes": 281,
+      "original_sha256": "7907cfdd38f6a13fedebda709ef76fa1fad23c100a9532e8009e81ec19a2387b"
+    },
+    {
+      "path": "auto-batch/watch-1.response.json.gz",
+      "source_path": "/tmp/bex-m188-unzip-auto-8af93065/watch-1.response.json",
+      "bytes": 9148,
+      "sha256": "f2fee8d8a1d66b3df857e9b1b99f150bac666e2bf6f61fa9d40e172caaf7d065",
+      "encoding": "gzip",
+      "original_bytes": 265841,
+      "original_sha256": "21c3831a96277994265803a513a9746c452771856596c8e71458a4c23154d7d9"
+    },
+    {
+      "path": "executed-isolated-controls-continuation.py",
+      "source_path": "/tmp/bex-m188-resume-unzip-isolated-controls.py",
+      "bytes": 7743,
+      "sha256": "7a776c750fb118a2246b88e0978ff3fd37cba823719b733c2b85aa260312395c",
+      "encoding": "identity",
+      "original_bytes": 7743,
+      "original_sha256": "7a776c750fb118a2246b88e0978ff3fd37cba823719b733c2b85aa260312395c"
+    },
+    {
+      "path": "failure/download-receipt.json",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/download-receipt.json",
+      "bytes": 1431,
+      "sha256": "e97a755fbb98176a76d3d368a0faec3873f3477ca0b53ad83b93cdb909442a6a",
+      "encoding": "identity",
+      "original_bytes": 1431,
+      "original_sha256": "e97a755fbb98176a76d3d368a0faec3873f3477ca0b53ad83b93cdb909442a6a"
+    },
+    {
+      "path": "failure/download.stderr",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/download.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "failure/failure-intake.json",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/failure-intake.json",
+      "bytes": 9070,
+      "sha256": "18fcfb12265976bdbcdc9877073c063ae163710bf782e9dd9601a6e71bdd5e63",
+      "encoding": "identity",
+      "original_bytes": 9070,
+      "original_sha256": "18fcfb12265976bdbcdc9877073c063ae163710bf782e9dd9601a6e71bdd5e63"
+    },
+    {
+      "path": "failure/install-unzip.patch",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/install-unzip.patch",
+      "bytes": 505,
+      "sha256": "8d80b4621ec386a3fce11940135dc86ca8786f123e5d15ecfb230e8e4e9ddb93",
+      "encoding": "identity",
+      "original_bytes": 505,
+      "original_sha256": "8d80b4621ec386a3fce11940135dc86ca8786f123e5d15ecfb230e8e4e9ddb93"
+    },
+    {
+      "path": "failure/install.proposed.sh",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/install.proposed.sh",
+      "bytes": 2003,
+      "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "encoding": "identity",
+      "original_bytes": 2003,
+      "original_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462"
+    },
+    {
+      "path": "failure/job.log.raw.gz",
+      "source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw",
+      "stored_source_path": "/tmp/bex-m188-go127-runtime-failure-124104688590-4phevir8/job.log.raw.gz",
+      "bytes": 156826,
+      "sha256": "0af22418264a92296e7a4bb576e5d4cfdd82babd49482d937b5adc21624e6a91",
+      "encoding": "gzip",
+      "original_bytes": 1127411,
+      "original_sha256": "358de18a031de896553c2b738554b9bb4f3f90f60947e1e84c641486b9d7b704"
+    },
+    {
+      "path": "go-dispatch/actual-native-binding.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/actual-native-binding.json",
+      "bytes": 621,
+      "sha256": "e1b68387a51e9af92f7e92ecfcd471b46853e136033e91a794c4332d6dc1768b",
+      "encoding": "identity",
+      "original_bytes": 621,
+      "original_sha256": "e1b68387a51e9af92f7e92ecfcd471b46853e136033e91a794c4332d6dc1768b"
+    },
+    {
+      "path": "go-dispatch/actual-run-head.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/actual-run-head.json",
+      "bytes": 449,
+      "sha256": "2df93f07bbad52eb34e66688f1b14c8a77b9e9ad05e97d954cef2034c024199d",
+      "encoding": "identity",
+      "original_bytes": 449,
+      "original_sha256": "2df93f07bbad52eb34e66688f1b14c8a77b9e9ad05e97d954cef2034c024199d"
+    },
+    {
+      "path": "go-dispatch/dispatch-input.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/dispatch-input.json",
+      "bytes": 77,
+      "sha256": "5ff734d038cbc2c147a0bfd10257a5ab02a51aa3f37d0323b4dab85c025ef804",
+      "encoding": "identity",
+      "original_bytes": 77,
+      "original_sha256": "5ff734d038cbc2c147a0bfd10257a5ab02a51aa3f37d0323b4dab85c025ef804"
+    },
+    {
+      "path": "go-dispatch/dispatch-intent.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/dispatch-intent.json",
+      "bytes": 298,
+      "sha256": "df6c74d97b96b72b7b17be2f492ccd99f5f9145e0e0f102e35a6ed2d9789900a",
+      "encoding": "identity",
+      "original_bytes": 298,
+      "original_sha256": "df6c74d97b96b72b7b17be2f492ccd99f5f9145e0e0f102e35a6ed2d9789900a"
+    },
+    {
+      "path": "go-dispatch/dispatch-result.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/dispatch-result.json",
+      "bytes": 1851,
+      "sha256": "b84a589e2a91ff0e67dcdc571615e179fac5fc04c5428df35fdecd1e4d0abd00",
+      "encoding": "identity",
+      "original_bytes": 1851,
+      "original_sha256": "b84a589e2a91ff0e67dcdc571615e179fac5fc04c5428df35fdecd1e4d0abd00"
+    },
+    {
+      "path": "go-dispatch/first-native-jobs.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/first-native-jobs.json",
+      "bytes": 2885,
+      "sha256": "884c80ea0657dbeab6d6db9029483189e317c9d1fc1fc875d973940519388d33",
+      "encoding": "identity",
+      "original_bytes": 2885,
+      "original_sha256": "884c80ea0657dbeab6d6db9029483189e317c9d1fc1fc875d973940519388d33"
+    },
+    {
+      "path": "go-dispatch/first-native-run.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/first-native-run.json",
+      "bytes": 11682,
+      "sha256": "f00ba7db5aeab857bffe702f445edc42663560054637c8144119d80de450c28a",
+      "encoding": "identity",
+      "original_bytes": 11682,
+      "original_sha256": "f00ba7db5aeab857bffe702f445edc42663560054637c8144119d80de450c28a"
+    },
+    {
+      "path": "go-dispatch/fresh-dedupe-request.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/fresh-dedupe-request.json",
+      "bytes": 266,
+      "sha256": "bd7cfbd3a21cb95bb72beb384bd46ec1bbe8d39d88098f57fe3e8afbe460027f",
+      "encoding": "identity",
+      "original_bytes": 266,
+      "original_sha256": "bd7cfbd3a21cb95bb72beb384bd46ec1bbe8d39d88098f57fe3e8afbe460027f"
+    },
+    {
+      "path": "go-dispatch/fresh-dedupe.json.gz",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/fresh-dedupe.json",
+      "bytes": 20472,
+      "sha256": "ba2c02dbe22e2f6cb389100644ffb66e8702fcb847ff8be53dc34fc31083f786",
+      "encoding": "gzip",
+      "original_bytes": 911436,
+      "original_sha256": "3a87474a7cf5d0d265ff853035f0bb576679d33058ba531dc38c9f44991f2f7b"
+    },
+    {
+      "path": "go-dispatch/fresh-head-request.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/fresh-head-request.json",
+      "bytes": 215,
+      "sha256": "e04c019a6f3d7b3915cb5f67a60f5e0a01be1770e1b4f55cf9ca24d66f84850a",
+      "encoding": "identity",
+      "original_bytes": 215,
+      "original_sha256": "e04c019a6f3d7b3915cb5f67a60f5e0a01be1770e1b4f55cf9ca24d66f84850a"
+    },
+    {
+      "path": "go-dispatch/fresh-head.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/fresh-head.json",
+      "bytes": 318,
+      "sha256": "76112a7b9664d41804a6741a4e93e63091e3b8febd0fec01f7289126b5f94afd",
+      "encoding": "identity",
+      "original_bytes": 318,
+      "original_sha256": "76112a7b9664d41804a6741a4e93e63091e3b8febd0fec01f7289126b5f94afd"
+    },
+    {
+      "path": "go-dispatch/native-binding-receipt.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/native-binding-receipt.json",
+      "bytes": 1905,
+      "sha256": "d5565e585cdcf4ff0f93ee4ab69487caba86427606e0c22ecf2c5a8df6a116b0",
+      "encoding": "identity",
+      "original_bytes": 1905,
+      "original_sha256": "d5565e585cdcf4ff0f93ee4ab69487caba86427606e0c22ecf2c5a8df6a116b0"
+    },
+    {
+      "path": "go-dispatch/post-discovery-1.json.gz",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/post-discovery-1.json",
+      "bytes": 20649,
+      "sha256": "ce43ded4398454e62c197604a3854ee18fa33d15d113e3efdbf1cc44b7e57df1",
+      "encoding": "gzip",
+      "original_bytes": 923124,
+      "original_sha256": "6a9192728244ec2022c1aa7b8711af5331459f17e04d4260a82ba8a66d89a0f4"
+    },
+    {
+      "path": "go-dispatch/source-predicate.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/source-predicate.json",
+      "bytes": 1038,
+      "sha256": "7722d5002137b603118ef9100625d1ef21f640717633f51b7a138ae4d5483e01",
+      "encoding": "identity",
+      "original_bytes": 1038,
+      "original_sha256": "7722d5002137b603118ef9100625d1ef21f640717633f51b7a138ae4d5483e01"
+    },
+    {
+      "path": "go-dispatch/source-recovery-catalog.json",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/source-recovery-catalog.json",
+      "bytes": 6422,
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "encoding": "identity",
+      "original_bytes": 6422,
+      "original_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e"
+    },
+    {
+      "path": "go-dispatch/source-workflow.yml",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/source-workflow.yml",
+      "bytes": 14144,
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "encoding": "identity",
+      "original_bytes": 14144,
+      "original_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f"
+    },
+    {
+      "path": "go-dispatch/watch-modern-go.py",
+      "source_path": "/tmp/bex-m188-go-unzip-dispatch/watch-modern-go.py",
+      "bytes": 3687,
+      "sha256": "ac380c42cf33bb086c5eedda3aa78d2f61633cf8f2802bcdcdb0578dca253f42",
+      "encoding": "identity",
+      "original_bytes": 3687,
+      "original_sha256": "ac380c42cf33bb086c5eedda3aa78d2f61633cf8f2802bcdcdb0578dca253f42"
+    },
+    {
+      "path": "root-checkpoint.json",
+      "source_path": "/tmp/bex-m188-unzip-ci-root-checkpoint.json",
+      "bytes": 1441,
+      "sha256": "500a6dec62bb0b9934dff69ec16a432aeb319e8ff392d5abdf33ac6abaf68154",
+      "encoding": "identity",
+      "original_bytes": 1441,
+      "original_sha256": "500a6dec62bb0b9934dff69ec16a432aeb319e8ff392d5abdf33ac6abaf68154"
+    },
+    {
+      "path": "source-admission.json",
+      "source_path": "/tmp/bex-m188-unzip-fix-source-admission.json",
+      "bytes": 1223,
+      "sha256": "1d9dfd6132ea7b386d843f026a43fcfca68d07b02b0706a85d43a04441a0344f",
+      "encoding": "identity",
+      "original_bytes": 1223,
+      "original_sha256": "1d9dfd6132ea7b386d843f026a43fcfca68d07b02b0706a85d43a04441a0344f"
+    }
+  ]
+}

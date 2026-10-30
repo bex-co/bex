@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-30T23:13:49.011670+00:00",
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "target": "golang-1.27-bookworm",
+  "root_admission": {
+    "file": "/tmp/bex-m188-unzip-fix-source-admission.json",
+    "sha256": "1d9dfd6132ea7b386d843f026a43fcfca68d07b02b0706a85d43a04441a0344f",
+    "bytes": 1223
+  },
+  "immutable_source_files": {
+    ".github/workflows/native-base-image.yml": {
+      "file": "/tmp/bex-m188-go-unzip-dispatch/source-workflow.yml",
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "bytes": 14144
+    },
+    ".github/native-base-recovery.json": {
+      "file": "/tmp/bex-m188-go-unzip-dispatch/source-recovery-catalog.json",
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "bytes": 6422
+    }
+  },
+  "recovery_catalog_contains_target": false,
+  "normal_build_required_by_current_source": true,
+  "actual_build_success_not_claimed": true,
+  "metadata_only": true,
+  "legacy_source_role_or_context_changed": false
+}

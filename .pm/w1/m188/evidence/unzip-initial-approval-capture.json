@@ -1,0 +1,11 @@
+{
+  "schema": "bex.m188.explicit-root-guard-logic-approval/v1",
+  "recorded_at": "2026-10-30T23:10:30.270225+00:00",
+  "approved_guard_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+  "historical_guard_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+  "root_instruction": "Root read exactdiff/proposal, independently verified83c to8af onlynonPM oneaptunzip token and actual old/newfullhashes. Authorize activation ONLYexact0bfb proposal, contextaccepted_sourcesunchanged, no8af/83append; full8+actual11refusal and isolatedtree rejection controls. NOT candidatepromotion.",
+  "historical_install_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+  "reviewed_current_install_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+  "source_role_admission": false,
+  "candidate_promotion": false
+}

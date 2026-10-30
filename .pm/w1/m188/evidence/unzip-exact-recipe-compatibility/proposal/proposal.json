@@ -1,0 +1,63 @@
+{
+  "schema": "bex.m188.inactive-exact-install-compatibility-proposal/v1",
+  "at": "2026-10-30T23:09:08.854101+00:00",
+  "active_guard_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+  "proposal": {
+    "file": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+    "sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+    "diff_file": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/guard.diff",
+    "diff_sha256": "ab49e21a9af72244c5c2c5a13764167c3c0f60b3ccc4926c75a0e09eb9d62275"
+  },
+  "install": {
+    "path": "deploy/native-base/install.sh",
+    "historical_file": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/install.historical-old.sh",
+    "historical_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "reviewed_current_file": "/tmp/bex-m188-guard-proposals/exact-unzip-install-compatibility/install.reviewed-new.sh",
+    "reviewed_current_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+    "exact_delta": "add only unzip after swig zip on existing apt install line",
+    "frozen_historical_sources": [
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+      "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+      "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "4462ee030984637bb765ae560b6ffe38c71f3af4",
+      "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+      "5e89a6076905a91b4496fe36a476774c3f50585c",
+      "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+      "99f95c17afd5709365869dfff1408265e5d514ec",
+      "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+      "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+      "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+      "d94787bb4fb93751e485fe6d47946d82cc6da052",
+      "d95645e9f054238ec53a4932fac51560ffedd1f8",
+      "e47a2c6157339a3a786118866f28b4ee8b619774",
+      "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+    ],
+    "all18_historical_git_blobs_equal_old": true,
+    "actual_current_tree_equals_reviewed_new": true,
+    "root_reported_shipped_fix_source_not_admitted": "8af93065a6a83299e8db7977aaf6527a5bad3e5d"
+  },
+  "compatibility_scope": "Only producer-to-current-tree comparison. An identical blob still passes. A mismatch passes only exact install path+frozen18 historic producers+whole old producer bytes+whole reviewed new current bytes. All other recipe paths/file sets stay byte-exact. Not a producer-to-verification exception.",
+  "unchanged_checks": [
+    "producer-to-verifier nonMD recipe equality and source-pinned recovery catalog",
+    "current/producer/verifier official matrix equality",
+    "workflow canonical846/hash39b2",
+    "all source roles, receipt approval and49ee Node18-only restriction",
+    "all raw crypto/index/architecture/SBOM/scans/runtime/portability/source/certificate checks",
+    "incomplete11 refusal"
+  ],
+  "new_current_commit_source_handling": "The new CI-fix commit is not automatically admitted as producer/verifier. Go-only modern publication needs no m188 source-role/aggregate append. Any actual new legacy producer/verifier requires separate exact source admission. It is outside frozen historic set and passes ordinary source-current blob equality; old producer to new verification remains forbidden if install differs. Historical producer/verifier/certificate SHAs and proofs remain unchanged.",
+  "local_green_handling": "Existing immutable local green files pin only Dockerfile/check.Dockerfile/nodepatch, which are unchanged. install.sh is not part of their recipe_sha256 set. Those old records do not prove new unzip installation was executed; real new Go both-arch runtime checks/publication gates must do that.",
+  "activation_performed": false,
+  "aggregate_sha256_unchanged": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "no_source_alias_appended": true,
+  "eight_regressions_not_run": true,
+  "prerequisites": [
+    "Root reads/approves exact proposed diff/hash",
+    "Verify shipped current install fullsha fe880434 plus unchanged other recipe and official matrix",
+    "Root separately authorizes activation and full8 regression plus real incomplete11 copy refusal"
+  ],
+  "scope": "Temporary inactive proposal only; no active guard/context/proof/repository/board/remote mutation."
+}

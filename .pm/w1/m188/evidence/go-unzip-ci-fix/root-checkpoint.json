@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-30T23:14:43.291774+00:00",
+  "source_fix": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "local_checks": [
+    "sh -n deploy/native-base/install.sh: PASS",
+    "python3 -m unittest discover -s deploy/native-base -p matrix_test.py: 5 PASS",
+    "git diff --check: PASS",
+    "bash scripts/ship-gates.sh origin/main --fixes-red-main: PASS"
+  ],
+  "source_delta_independently_verified": "Only explicit unzip apt dependency, all remaining nonPM blobs identical root-reviewed83c",
+  "raw_auto_run_jobs_independently_reviewed": true,
+  "auto_run": 41142599053,
+  "auto_cancel_posts": 1,
+  "auto_completed_cancelled_no_started_native_work": true,
+  "raw_go_run_jobs_independently_reviewed": true,
+  "go_run": 41142870861,
+  "go_job": 124361678277,
+  "go_actual_source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "go_attempt": 1,
+  "go_dispatch_posts": 1,
+  "go_native_status_at_binding": "queued",
+  "go_normal_build_required_no_recovery": true,
+  "go_build_runtime_scan_sign_success_not_claimed": true,
+  "legacy_accepted_count": 8,
+  "legacy_context_unchanged": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1",
+  "parity_source": "https://render.com/docs/native-runtimes#tools-and-utilities",
+  "parity_fact_checked": "unzip is listed available both during builds and at runtime",
+  "scope": "CI repair and exact scheduling evidence; modern supplier acceptance remains w8/m91; m188 remains incomplete"
+}

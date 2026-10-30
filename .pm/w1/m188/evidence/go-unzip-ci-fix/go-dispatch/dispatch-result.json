@@ -1,0 +1,14 @@
+{
+  "started_at": "2026-10-30T23:10:45.314459+00:00",
+  "finished_at": "2026-10-30T23:10:46.833301+00:00",
+  "requested_source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "tag": "golang-1.27-bookworm",
+  "exit_code": 0,
+  "stdout": "HTTP/2.0 204 No Content\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Expose-Headers: ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset, Warning\r\nContent-Security-Policy: default-src 'none'\r\nDate: Fri, 30 Oct 2026 23:10:46 GMT\r\nDeprecation: Tue, 10 Mar 2026 00:00:00 GMT\r\nLink: <https://docs.github.com/en/rest/about-the-rest-api/api-versions>; rel=\"deprecation\"; type=\"text/html\"\r\nReferrer-Policy: origin-when-cross-origin, strict-origin-when-cross-origin\r\nServer: github.com\r\nStrict-Transport-Security: max-age=31536000; includeSubdomains; preload\r\nSunset: Fri, 10 Mar 2028 00:00:00 GMT\r\nVary: Accept-Encoding, Accept, X-Requested-With\r\nX-Accepted-Oauth-Scopes: \r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: deny\r\nX-Github-Api-Version-Selected: 2022-11-28\r\nX-Github-Edge-Region: westus3\r\nX-Github-Media-Type: github.v3; format=json\r\nX-Github-Request-Id: D189:335434:411219:45EE8B:6AE523F5\r\nX-Oauth-Client-Id: 178c6fc778ccc68e1d6a\r\nX-Oauth-Scopes: admin:public_key, gist, read:org, repo\r\nX-Ratelimit-Limit: 5000\r\nX-Ratelimit-Remaining: 4773\r\nX-Ratelimit-Reset: 1793404893\r\nX-Ratelimit-Resource: core\r\nX-Ratelimit-Used: 227\r\nX-Xss-Protection: 0\r\n\r\n",
+  "stderr": "",
+  "dispatch_posts": 1,
+  "normal_build_required": true,
+  "no_retry": true,
+  "artifact_promotion": false,
+  "legacy_context_guard_write": false
+}
