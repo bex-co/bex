@@ -192,17 +192,29 @@ jobs:
           timeout: "20m"
           exit-code: "0"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.4
       - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - name: sign and attest the immutable candidate
         env:
           REF: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
           PRODUCER: ${{ steps.candidate.outputs.producer }}
         run: |
-          cosign sign --yes --oidc-provider=github-actions "$REF"
+          retry_signing() {
+            for attempt in 1 2 3; do
+              if timeout --kill-after=10s 5m "$@"; then
+                return 0
+              fi
+              [ "$attempt" -lt 3 ] || return 1
+              sleep "$((attempt * 5))"
+            done
+          }
+          retry_signing cosign signing-config create --with-default-rekor-v2 --out "$RUNNER_TEMP/native-signing-config.json"
+          retry_signing cosign sign --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" "$REF"
           for arch in amd64 arm64; do
             syft "$REF" --platform "linux/$arch" -o spdx-json > "native-$arch.spdx.json"
-            cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
-            cosign attest --yes --oidc-provider=github-actions --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
+            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type spdxjson --predicate "native-$arch.spdx.json" "$REF"
+            retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config "$RUNNER_TEMP/native-signing-config.json" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate "native-$arch.trivy.json" "$REF"
           done
           # Only verified, scanned and signed candidates reach this discovery
           # tag. Adopting its immutable digest still requires a reviewed commit.

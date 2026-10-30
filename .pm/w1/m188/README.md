@@ -113,3 +113,20 @@ Ship gate 指出的 [main 失败 run 40968544989](https://github.com/bex-co/bex/
 - `.github/native-base-recovery.json` 仅授权已人工核实的同源 Node14/16 不可变索引：base/package/非 Markdown 配方必须保持，重命名也算变更；恢复会重做全部双架构检查、扫描、SBOM 与签名。原镜像 producer SHA 与新 verification SHA 分开记录。实际 source pin 仍未切换。验证后的 discovery tag 发布即删除对应授权；数据文件清理不会再触发全部发布。
 - 受限选择器 8 项实际隔离 Git 测试（含非 MD→MD 重命名）、登录脚本三种成功/失败路径、runtime 矩阵四种选择/注入数据路径通过，见 [恢复选择](evidence/recovery-selection-tests.json)、[登录](evidence/registry-login-retry-tests.json)、[矩阵](evidence/runtime-filter-tests.json)。Actions/image-pin/lint 守卫通过；修正还需 ship 后实际发布验收。
 - 接入的完整 build 包模拟 11 个平台 ref/55 项 inventory 通过，见 [仅单元数据预检](evidence/adoption-unit-dryrun.json)。扩大线上 census 核实三个旧 auto 配置实际为 Alpine/Node22，结合派发代码按客户 Dockerfile 路径排除；历史构建记录缺失被明确保留，不作 Brotli 安全结论，见 [来源分类](evidence/auto-runtime-classification.json)。当前仍未发现运行中的 11 个旧版平台运行时。
+
+### 签名传输失败与定向恢复 — 2026-10-30
+
+- Python3.7 的双架构构建、运行检查和扫描通过，但第一份 amd64 SPDX attestation 在向 Rekor POST 时耗尽客户端两次尝试；没有完成全部签名证明，不可采用。见 [诊断证据](evidence/python37-publisher-signing-failure.json)。为每次原有 cosign sign/attest 增加最多三次、每次 5m（另加 10s 强制终止宽限）、5/10s 退避，不跳过透明日志或任一架构证明。
+- 将该已核实索引加入现有 recovery 授权；保持 producer `bfdeb6221`，新 verification SHA 单独记录，重做全部检查、扫描及签名。验证后的 discovery tag 发布即移除授权。
+- 已在逐项确认全部构建任务未分配 runner、步骤为 0 后，将全 27 项恢复队列换为 Node14/16 定向恢复，并单独安排原登录失败的 Node18。原 Node20 与其他实际构建保留，避免重复长时间编译。
+- 实际完整签名 shell 的五种成功/失败路径通过，见 [重试行为](evidence/signing-retry-tests.json)；恢复选择器新增 Python3.7 同源路径，九项隔离 Git 行为检查通过，见 [恢复选择](evidence/recovery-selection-tests.json)。
+- 11 个版本尚未完成正式验收，source pin、接入与 live 验收仍未完成；t002–t008 保持开放。
+
+### 大型 SBOM 的现代透明日志路径 — 2026-10-30
+
+- Node14 定向恢复同样已通过双架构检查与扫描，但第一份 amd64 SPDX attestation 向 Rekor POST 失败；初始镜像签名已经完成，不能从整个 shell 步骤名误认失败命令。见 [Node14 证据](evidence/node14-recovery-spdx-failure.json)。
+- 同期部署构建用相同 cosign3.0.6/Syft1.51.1 完成五份 SPDX attestation，见 [成功对照](evidence/deploy-signing-comparator.json)。因此没有证据支持普遍服务中断。上游 [2808](https://github.com/sigstore/rekor/issues/2808)/[2813](https://github.com/sigstore/rekor/pull/2813) 说明过大请求也可能只返回同样的通用错误；当前日志未暴露 HTTP 状态或请求上限，不编造具体数值。
+- 发布改为固定 cosign3.1.4，生成 TUF 默认的 Rekor v2/Fulcio/TSA 配置，并用于所有原有 sign/attest；[Rekor v2.3.0](https://github.com/sigstore/rekor-tiles/releases/tag/v2.3.0) 与现代 SDK 对 DSSE PAE 提交摘要和签名，完整 SBOM/扫描谓词仍在签名 OCI bundle 中。保持透明日志、证书与 workflow 身份校验，验证端使用兼容的新客户端，不使用跳过 tlog 或自定义压缩谓词。
+- 配置生成及五次签名/证明均有界重试；实际 shell 的五种成功/失败路径验证配置、签名或最后一份证明失败时不会移动标签。真实新版签名和双架构证明仍需 ship 后执行，不以本地 stub 结果替代。
+
+- 固定 cosign3.1.4 的实际 CLI 预检通过：TUF signing-config 连续生成/覆盖两次 exit0、内容 hash 一致，sign/attest 参数帮助与固定源码吻合；见 [实际 CLI 预检](evidence/modern-signing-config-preflight.json)。没有在本地冒充 GitHub workflow 签名或向公开 Rekor 提交。

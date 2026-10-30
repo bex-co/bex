@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-10-30T08:42:30.317130+00:00",
+  "run_id": 41026764209,
+  "job_id": 123966807129,
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "both_arch_runtime_gate_passed": true,
+  "both_arch_scans_passed": true,
+  "failed_step": "sign and attest the immutable candidate",
+  "failed_command": "cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate native-amd64.spdx.json REF",
+  "initial_image_sign_completed_basis": "bash -e block progressed past initial sign and Syft to Using payload from native-amd64.spdx.json at08:38:11.643Z",
+  "failure": "Rekor v1 POST exhausted2attempts during FIRST amd64 SPDX attestation; lower-level cause under separate agent diagnosis",
+  "failed_at": "2026-10-30T08:38:14Z",
+  "signed_reports_complete": false,
+  "adoptable": false,
+  "log_gzip": "/tmp/bex-m188-node14-recovery-spdx-failure/job-123966807129.log.gz",
+  "log_sha256": "18add1f07d1ce389e55ca3271bd1c41ce33043d3a8d4a5b26cb9c78f82e8e2fb",
+  "evidence": "/tmp/bex-m188-node14-recovery-spdx-failure/evidence.txt",
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41026764209/job/123966807129"
+}

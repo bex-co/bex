@@ -1,0 +1,47 @@
+{
+  "schema": "bex.local-publisher-failure-proof/v1",
+  "job": 123936350542,
+  "run": 41000570846,
+  "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "conclusion": "failure",
+  "failed_step": "sign and attest the immutable candidate",
+  "first_failed_command": "cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate native-amd64.spdx.json \"$REF\"",
+  "failure": "POST https://rekor.sigstore.dev/api/v1/log/entries giving up after 2 attempt(s)",
+  "observed_utc": "2026-10-30T08:30:31Z",
+  "scope": "first amd64 SPDX attestation; initial cosign sign and syft amd64 completed under bash -e",
+  "http_status_exposed": false,
+  "recipe_changes_since_producer": [
+    "deploy/native-base/README.md"
+  ],
+  "warning": "No unsigned artifact adoption; no missing signatures/attestations are claimed.",
+  "gates": [
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    }
+  ],
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+  "log_sha256": "301660d1b6742d3c3441ef533e5b0191fa705af15bcb35efd013622b5bb69b8f",
+  "workflow_had_outer_cosign_retries_at_diagnosis": false
+}
