@@ -216,6 +216,10 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Name",
     description: "Workspace name field label (shared by create + settings)",
   },
+  "workspaces.fieldDisplayNamePlaceholder": {
+    message: "e.g. Acme Staging",
+    description: "/new/workspace freeform name placeholder",
+  },
   "workspaces.fieldNamePlaceholder": {
     message: "e.g. acme-staging",
     description: "Workspace name field placeholder",

@@ -148,7 +148,7 @@ describe("NewWorkspacePage", () => {
     const user = userEvent.setup();
     const { router } = renderPage();
 
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.type(await screen.findByLabelText("Name"), "acme");
     await user.click(screen.getByRole("button", { name: "Create Workspace" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
@@ -156,12 +156,31 @@ describe("NewWorkspacePage", () => {
     expect(router.history.location.pathname).toBe("/");
   });
 
+  // w3/m246: Render asks for a freeform name; the slug is derived from it and
+  // the name is applied once the workspace exists.
+  it("creates under the derived slug and names the workspace", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "Acme Corp");
+    expect(screen.getByLabelText("Workspace slug")).toHaveValue("acme-corp");
+    await user.click(screen.getByRole("button", { name: "Create Workspace" }));
+
+    await waitFor(() => expect(finalize).toHaveBeenCalled());
+    expect(prepare).toHaveBeenCalledWith(
+      "acme-corp",
+      expect.any(String),
+      false,
+    );
+    expect(finalize.mock.calls[0][1]).toBe("Acme Corp");
+  });
+
   it("does not switch or navigate when create fails", async () => {
     finalize.mockResolvedValueOnce(null);
     const user = userEvent.setup();
     const { router } = renderPage();
 
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.type(await screen.findByLabelText("Name"), "acme");
     await user.click(screen.getByRole("button", { name: "Create Workspace" }));
 
     await waitFor(() => expect(finalize).toHaveBeenCalled());
@@ -200,7 +219,7 @@ describe("NewWorkspacePage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.type(await screen.findByLabelText("Name"), "acme");
     expect(
       screen.getByRole("heading", { name: "Payment Method" }),
     ).toBeInTheDocument();
@@ -218,7 +237,7 @@ describe("NewWorkspacePage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.type(await screen.findByLabelText("Name"), "acme");
     await user.click(screen.getByRole("radio", { name: /Pro/ }));
     expect(
       screen.getByRole("heading", { name: "Payment Method" }),
@@ -238,7 +257,7 @@ describe("NewWorkspacePage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.type(await screen.findByLabelText("Name"), "acme");
     await user.click(screen.getByRole("radio", { name: /Pro/ }));
     expect(
       screen.getByRole("heading", { name: "Payment Method" }),
@@ -260,13 +279,19 @@ it("keeps the slug uneditable until hydration, then focuses it (w4/m219)", async
   const { hydrate, getByLabelText } = serverRendered(
     <RouterProvider router={router} />,
   );
+  const name = () => getByLabelText<HTMLInputElement>("Name");
   const slug = () => getByLabelText<HTMLInputElement>("Workspace slug");
+  expect(name().disabled).toBe(true);
   expect(slug().disabled).toBe(true);
   await hydrate();
   expect(slug().disabled).toBe(false);
-  expect(slug()).toHaveFocus();
-  await userEvent.type(slug(), "Acme-Prod");
+  expect(name()).toHaveFocus();
+  // w3/m246: the freeform name suggests the slug until the slug is edited.
+  await userEvent.type(name(), "Acme Prod");
   expect(slug().value).toBe("acme-prod");
+  await userEvent.type(slug(), "-2");
+  await userEvent.type(name(), "uction");
+  expect(slug().value).toBe("acme-prod-2");
 });
 
 it("hands focus to the slug only when nothing else holds it (w4/m219)", async () => {
