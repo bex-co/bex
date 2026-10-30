@@ -62,11 +62,11 @@ func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 	if est == nil {
 		t.Fatal("EstimatedPricing missing on a valid manifest")
 	}
-	// standard web $17.50 + basic-1gb db $14.00 + 5 GB × $0.21 + standard KV
+	// standard web $17.50 + basic-1gb db $13.30 + 5 GB × $0.21 + standard KV
 	// $21.00 + 5 GB × $0.21 (both datastores price their plan storage floor).
 	want := map[string]string{
 		"beancount-forum":       "17.50",
-		"beancount-forum-db":    "15.05",
+		"beancount-forum-db":    "14.35",
 		"beancount-forum-redis": "22.05",
 	}
 	if len(est.Lines) != len(want) {
@@ -77,8 +77,8 @@ func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 			t.Errorf("line %q = %s/mo, want %s", l.Name, l.MonthlyUSD, want[l.Name])
 		}
 	}
-	if est.TotalUSD != "54.60" {
-		t.Errorf("TotalUSD = %s, want 54.60", est.TotalUSD)
+	if est.TotalUSD != "53.90" {
+		t.Errorf("TotalUSD = %s, want 53.90", est.TotalUSD)
 	}
 	if len(est.Variable) != 0 {
 		t.Errorf("Variable = %+v, want empty", est.Variable)
@@ -86,8 +86,8 @@ func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 	// The database line carries the instance/storage breakdown the panel's
 	// tooltip renders.
 	for _, l := range est.Lines {
-		if l.Name == "beancount-forum-db" && (l.InstanceUSD != "14.00" || l.StorageUSD != "1.05" || l.StorageGB != 5) {
-			t.Errorf("db line breakdown = %+v, want instance 14.00 + storage 1.05 (5 GB)", l)
+		if l.Name == "beancount-forum-db" && (l.InstanceUSD != "13.30" || l.StorageUSD != "1.05" || l.StorageGB != 5) {
+			t.Errorf("db line breakdown = %+v, want instance 13.30 + storage 1.05 (5 GB)", l)
 		}
 	}
 }
@@ -127,7 +127,6 @@ func TestValidateBlueprintEstimatedPricingInvalidManifestHasNone(t *testing.T) {
 }
 
 func TestValidateBlueprintEstimatedPricingVariableCosts(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	manifest := `services:
   - name: nightly
@@ -144,7 +143,7 @@ func TestValidateBlueprintEstimatedPricingVariableCosts(t *testing.T) {
     numInstances: 3
 databases:
   - name: db
-    plan: basic-1gb
+    plan: 1c-2g
     diskSizeGB: 10
     highAvailability: {enabled: true}
     readReplicas:
@@ -156,7 +155,8 @@ databases:
 	}
 	est := v.EstimatedPricing
 	// cron: variable only. scaled: one base line + multi_instance variable.
-	// db: primary + standby + replica lines at $16.10 each.
+	// db: primary + standby + replica lines at $30.10 each ($28.00 + 10 GB ×
+	// $0.21) — the HA standby bills like the primary, as on Render (w2/m171).
 	wantVar := map[string]string{"nightly": pricing.VariableCron, "scaled": pricing.VariableMultiInstance}
 	if len(est.Variable) != len(wantVar) {
 		t.Fatalf("Variable = %+v, want %v", est.Variable, wantVar)
@@ -168,9 +168,9 @@ databases:
 	}
 	wantLines := []struct{ name, usd string }{
 		{"scaled", "4.90"},
-		{"db", "16.10"},
-		{"db (standby)", "16.10"},
-		{"db (replica)", "16.10"},
+		{"db", "30.10"},
+		{"db (standby)", "30.10"},
+		{"db (replica)", "30.10"},
 	}
 	if len(est.Lines) != len(wantLines) {
 		t.Fatalf("lines = %+v, want %d entries", est.Lines, len(wantLines))
@@ -180,8 +180,8 @@ databases:
 			t.Errorf("line %d = %+v, want %q at %s", i, est.Lines[i], w.name, w.usd)
 		}
 	}
-	if est.TotalUSD != "53.20" { // 4.90 + 3 × 16.10
-		t.Errorf("TotalUSD = %s, want 53.20", est.TotalUSD)
+	if est.TotalUSD != "95.20" { // 4.90 + 3 × 30.10
+		t.Errorf("TotalUSD = %s, want 95.20", est.TotalUSD)
 	}
 }
 
@@ -197,9 +197,9 @@ func TestValidateBlueprintEstimatedPricingExplicitDiskOverridesFloor(t *testing.
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
 	l := v.EstimatedPricing.Lines[0]
-	// 20 GB × $0.21 = $4.20 storage on top of the $14.00 instance.
-	if l.MonthlyUSD != "18.20" || l.StorageGB != 20 || l.StorageUSD != "4.20" {
-		t.Errorf("explicit-disk line = %+v, want 18.20 with 20 GB at 4.20", l)
+	// 20 GB × $0.21 = $4.20 storage on top of the $13.30 instance.
+	if l.MonthlyUSD != "17.50" || l.StorageGB != 20 || l.StorageUSD != "4.20" {
+		t.Errorf("explicit-disk line = %+v, want 17.50 with 20 GB at 4.20", l)
 	}
 }
 
@@ -237,8 +237,8 @@ func TestPreviewBlueprintCarriesEstimatedPricing(t *testing.T) {
 	if !p.Found || p.Validation == nil || p.Validation.EstimatedPricing == nil {
 		t.Fatalf("preview = %+v, want validation.estimatedPricing", p)
 	}
-	if p.Validation.EstimatedPricing.TotalUSD != "54.60" {
-		t.Errorf("preview TotalUSD = %s, want 54.60", p.Validation.EstimatedPricing.TotalUSD)
+	if p.Validation.EstimatedPricing.TotalUSD != "53.90" {
+		t.Errorf("preview TotalUSD = %s, want 53.90", p.Validation.EstimatedPricing.TotalUSD)
 	}
 }
 
@@ -256,8 +256,8 @@ func TestGraphQLValidateBlueprintEstimatedPricing(t *testing.T) {
 	if !ok {
 		t.Fatalf("estimatedPricing missing: %+v", v)
 	}
-	if est["totalUsd"] != "54.60" {
-		t.Errorf("totalUsd = %v, want 54.60", est["totalUsd"])
+	if est["totalUsd"] != "53.90" {
+		t.Errorf("totalUsd = %v, want 53.90", est["totalUsd"])
 	}
 	lines := est["lines"].([]any)
 	if len(lines) != 3 {
@@ -266,7 +266,7 @@ func TestGraphQLValidateBlueprintEstimatedPricing(t *testing.T) {
 	for _, raw := range lines {
 		l := raw.(map[string]any)
 		if l["name"] == "beancount-forum-db" {
-			if l["tier"] != "basic-1gb" || l["tierLabel"] != "Basic 1gb" || l["monthlyUsd"] != "15.05" || l["instanceUsd"] != "14.00" || l["storageUsd"] != "1.05" || l["storageGb"] != 5 {
+			if l["tier"] != "basic-1gb" || l["tierLabel"] != "Basic 1gb" || l["monthlyUsd"] != "14.35" || l["instanceUsd"] != "13.30" || l["storageUsd"] != "1.05" || l["storageGb"] != 5 {
 				t.Errorf("db line = %+v", l)
 			}
 		}
@@ -288,8 +288,8 @@ func TestRESTValidateBlueprintEstimatedPricing(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if out.EstimatedPricing == nil || out.EstimatedPricing.TotalUSD != "54.60" || len(out.EstimatedPricing.Lines) != 3 {
-		t.Fatalf("REST estimatedPricing = %+v, want 3 lines at 54.60", out.EstimatedPricing)
+	if out.EstimatedPricing == nil || out.EstimatedPricing.TotalUSD != "53.90" || len(out.EstimatedPricing.Lines) != 3 {
+		t.Fatalf("REST estimatedPricing = %+v, want 3 lines at 53.90", out.EstimatedPricing)
 	}
 	// The wire object matches the core shape byte-for-byte (one core, thin
 	// adapters): re-marshal and check the JSON field names the dashboard reads.
@@ -315,8 +315,8 @@ func TestMCPValidateBlueprintEstimatedPricing(t *testing.T) {
 	if !ok {
 		t.Fatalf("MCP estimatedPricing missing: %+v", result)
 	}
-	if est["totalUsd"] != "54.60" {
-		t.Errorf("MCP totalUsd = %v, want 54.60", est["totalUsd"])
+	if est["totalUsd"] != "53.90" {
+		t.Errorf("MCP totalUsd = %v, want 53.90", est["totalUsd"])
 	}
 	if lines, ok := est["lines"].([]any); !ok || len(lines) != 3 {
 		t.Errorf("MCP lines = %+v, want 3", est["lines"])

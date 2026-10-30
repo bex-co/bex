@@ -47,6 +47,9 @@ var wantPostgres = map[string]struct {
 	"free":        {"100m", "256Mi", 1, 1},
 	"basic-256mb": {"100m", "256Mi", 1, 1},
 	"basic-1gb":   {"500m", "1Gi", 5, 1},
+	"1c-2g":       {"1", "2Gi", 10, 1},
+	"pro-4gb":     {"1", "4Gi", 10, 1},
+	"basic-4gb":   {"2", "4Gi", 10, 1},
 }
 
 // wantValkey is the managed key-value ladder shipped in tiers.yaml — Render's
@@ -462,15 +465,19 @@ postgres:
 }
 
 // TestPostgresSupportsHighAvailability pins Render's "at least 1 CPU" HA rule
-// (w8/m43): every shipped sub-1-CPU rung refuses, and a ≥1-CPU rung accepts.
+// (w8/m43, w2/m171): every shipped sub-1-CPU rung refuses, and every ≥1-CPU
+// rung accepts.
 func TestPostgresSupportsHighAvailability(t *testing.T) {
-	for _, id := range []string{"free", "basic-256mb", "basic-1gb"} {
+	for id, want := range map[string]bool{
+		"free": false, "basic-256mb": false, "basic-1gb": false,
+		"1c-2g": true, "pro-4gb": true, "basic-4gb": true,
+	} {
 		tier, ok := Postgres.ByID(id)
 		if !ok {
 			t.Fatalf("plan %q missing from catalog", id)
 		}
-		if tier.SupportsHighAvailability() {
-			t.Errorf("%s (cpu %s) must not support HA", id, tier.CPU)
+		if got := tier.SupportsHighAvailability(); got != want {
+			t.Errorf("%s (cpu %s): SupportsHighAvailability = %v, want %v", id, tier.CPU, got, want)
 		}
 	}
 	for cpu, want := range map[string]bool{"999m": false, "1": true, "1000m": true, "2": true, "": false} {
@@ -490,6 +497,9 @@ func TestPostgresCapacityFeatures(t *testing.T) {
 		{"free", false, 1, 0},
 		{"basic-256mb", true, 16384, 0},
 		{"basic-1gb", true, 16384, 5},
+		{"1c-2g", true, 16384, 5},
+		{"pro-4gb", true, 16384, 5},
+		{"basic-4gb", true, 16384, 5},
 	} {
 		tier, ok := Postgres.ByID(tc.plan)
 		if !ok {

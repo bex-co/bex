@@ -32,21 +32,18 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// allowHighAvailabilityOnEveryPlan lets a test exercise the HA-enable path:
-// the shipped catalog has no ≥1-CPU Postgres plan yet (w8/m43).
-func allowHighAvailabilityOnEveryPlan(t *testing.T) {
-	t.Helper()
-	prev := PlanSupportsHighAvailability
-	PlanSupportsHighAvailability = func(tiers.PostgresTier) bool { return true }
-	t.Cleanup(func() { PlanSupportsHighAvailability = prev })
+// TestHACreate: every ≥1-CPU plan (w2/m171), by bex id or Render alias, is
+// admitted with enableHighAvailability and wires the CR spec intent.
+func TestHACreate(t *testing.T) {
+	for _, plan := range []string{"1c-2g", "pro-4gb", "1c-4g", "pro_4gb", "basic-4gb", "2c-4g"} {
+		t.Run(plan, func(t *testing.T) { testHACreate(t, plan) })
+	}
 }
 
-func TestHACreate(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
+func testHACreate(t *testing.T, plan string) {
 	svc, cl := newService()
-	// Create with enableHighAvailability — verify the CR spec intent is wired.
 	w := serveREST(svc, "POST", "/v1/postgres",
-		`{"name":"ha-db","plan":"basic-1gb","enableHighAvailability":true}`)
+		`{"name":"ha-db","plan":"`+plan+`","enableHighAvailability":true}`)
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
@@ -56,8 +53,8 @@ func TestHACreate(t *testing.T) {
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &cr); err != nil {
 		t.Fatalf("CR not created: %v", err)
 	}
-	if !cr.Spec.HighAvailability {
-		t.Error("spec.highAvailability want true")
+	if !cr.Spec.HighAvailability || cr.Spec.Plan != tiers.Postgres.CanonicalID(plan) {
+		t.Errorf("spec = plan %q HA %v, want plan %q with HA", cr.Spec.Plan, cr.Spec.HighAvailability, tiers.Postgres.CanonicalID(plan))
 	}
 }
 
@@ -145,6 +142,55 @@ func TestHAPlanChangeUnderHARefused(t *testing.T) {
 	}
 	if cr.Spec.Plan != "free" || cr.Spec.HighAvailability {
 		t.Errorf("downgrade + HA off => plan free HA false, got plan %q HA %v", cr.Spec.Plan, cr.Spec.HighAvailability)
+	}
+}
+
+// TestHAPlanChangesOnEligiblePlans walks the w2/m171 journeys with real ≥1-CPU
+// plans: upgrade basic-1gb → 1c-2g then enable HA; move between HA-eligible
+// plans with HA on (including by Render alias); a downgrade below 1 CPU under
+// HA is refused with POSTGRES_HA_PLAN_UNSUPPORTED and the remedy unless the same
+// request disables HA — nothing is silently turned off.
+func TestHAPlanChangesOnEligiblePlans(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "grow-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", StorageGB: 10}, false)
+	get := func() appv1alpha1.Database {
+		t.Helper()
+		var cr appv1alpha1.Database
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "grow-db"}, &cr); err != nil {
+			t.Fatal(err)
+		}
+		return cr
+	}
+
+	if w := serveREST(svc, "PATCH", "/v1/postgres/grow-db", `{"plan":"1c-2g"}`); w.Code != 200 {
+		t.Fatalf("upgrade to 1c-2g => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if w := serveREST(svc, "PATCH", "/v1/postgres/grow-db", `{"enableHighAvailability":true}`); w.Code != 200 {
+		t.Fatalf("enable HA on 1c-2g => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if _, err := svc.SetPlan(ctx, "grow-db", "2c-4g"); err != nil {
+		t.Fatalf("SetPlan 2c-4g under HA: %v", err)
+	}
+	if cr := get(); cr.Spec.Plan != "basic-4gb" || !cr.Spec.HighAvailability {
+		t.Fatalf("after alias upgrade: plan %q HA %v, want basic-4gb with HA", cr.Spec.Plan, cr.Spec.HighAvailability)
+	}
+	if w := serveREST(svc, "PATCH", "/v1/postgres/grow-db", `{"plan":"pro_4gb"}`); w.Code != 200 {
+		t.Fatalf("HA-eligible downgrade to pro_4gb under HA => 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w := serveREST(svc, "PATCH", "/v1/postgres/grow-db", `{"plan":"basic-1gb"}`)
+	if w.Code != 400 || !strings.Contains(w.Body.String(), "POSTGRES_HA_PLAN_UNSUPPORTED") || !strings.Contains(w.Body.String(), "disable high availability first") {
+		t.Errorf("downgrade below 1 CPU under HA => want 400 POSTGRES_HA_PLAN_UNSUPPORTED, got %d: %s", w.Code, w.Body.String())
+	}
+	if cr := get(); cr.Spec.Plan != "pro-4gb" || !cr.Spec.HighAvailability {
+		t.Fatalf("refused downgrade changed spec: plan %q HA %v", cr.Spec.Plan, cr.Spec.HighAvailability)
+	}
+	if w := serveREST(svc, "PATCH", "/v1/postgres/grow-db", `{"plan":"basic-1gb","enableHighAvailability":false}`); w.Code != 200 {
+		t.Fatalf("downgrade + HA off in one PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if cr := get(); cr.Spec.Plan != "basic-1gb" || cr.Spec.HighAvailability {
+		t.Errorf("downgrade + HA off: plan %q HA %v, want basic-1gb without HA", cr.Spec.Plan, cr.Spec.HighAvailability)
 	}
 }
 

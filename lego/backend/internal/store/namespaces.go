@@ -444,11 +444,11 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 // requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
 // autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
 // cannot inflate a namespace's storage — and its per-GB-second bill — without
-// limit. Derivation: the tier catalog's largest datastore floor (5 GB: postgres
-// basic-1gb / valkey standard) × the plan's Postgres+Key Value count caps, times
-// a generous autoscale-headroom factor, kept deliberately far below "every
+// limit. Derivation: the tier catalog's largest datastore floor (10 GB: the
+// ≥1-CPU postgres plans, w2/m171) × the plan's Postgres+Key Value count caps,
+// times a generous autoscale-headroom factor, kept deliberately far below "every
 // datastore at the 16 TiB disk-autoscale ceiling" (which would be ~400 TiB for a
-// paid namespace). paid: 50 datastores × 5 GB × ~20 ≈ 5 TiB; free: 2 × 1 GB × ~10
+// paid namespace). paid: 50 datastores × 10 GB × ~10 ≈ 5 TiB; free: 2 × 1 GB × ~10
 // = 20 GiB. persistentvolumeclaims covers each datastore's PVC (HA replicas
 // included) plus slack.
 //

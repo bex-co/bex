@@ -54,14 +54,24 @@ compute:
   - tier: pro-ultra
     usdPerSecond: 0.000119863013698630   # $315.00/mo (Render $450.00 × 0.70)
 
-# instance_seconds rates for managed Postgres (Database CR)
+# instance_seconds rates for managed Postgres (Database CR), per instance: a
+# high-availability database runs a primary + standby and meters two instances,
+# as Render bills its standby like the primary. Render prices fetched
+# 2026-10-19 (render.com/pricing: 0.1c-256mb $6, 0.5c-1g $19, 1c-2g $40, 1c-4g
+# $55, 2c-4g $75; w2/m171).
 postgres:
   - tier: free
     usdPerSecond: 0.0
   - tier: basic-256mb
-    usdPerSecond: 0.000001864535768645   # $4.90/mo  (Render $7.00 × 0.70)
+    usdPerSecond: 0.000001598173515982   # $4.20/mo  (Render $6.00 × 0.70)
   - tier: basic-1gb
-    usdPerSecond: 0.000005327245053272   # $14.00/mo (Render $20.00 × 0.70)
+    usdPerSecond: 0.000005060882800609   # $13.30/mo (Render $19.00 × 0.70)
+  - tier: 1c-2g
+    usdPerSecond: 0.000010654490106545   # $28.00/mo (Render $40.00 × 0.70)
+  - tier: pro-4gb
+    usdPerSecond: 0.000014649923896499   # $38.50/mo (Render $55.00 × 0.70; Render 1c-4g)
+  - tier: basic-4gb
+    usdPerSecond: 0.000019977168949772   # $52.50/mo (Render $75.00 × 0.70; Render 2c-4g)
 
 # instance_seconds rates for managed Key Value / Valkey (KeyValue CR)
 keyvalue:

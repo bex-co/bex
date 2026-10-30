@@ -37,7 +37,6 @@ import (
 // round-trip used hand-built Apps with explicit runtimes, which is how a
 // Dockerfile build with no spec.runtime failed its export (w4/193).
 func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	ctx := context.Background()
 	differs := map[string]bool{}
 	for _, req := range roundTripCreates(t) {

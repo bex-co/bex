@@ -85,7 +85,7 @@ func generateFixtureService() *Service {
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-abc123", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
-			Name: "app-db", Plan: "basic-1gb", StorageGB: 10, Version: "16",
+			Name: "app-db", Plan: "1c-2g", StorageGB: 20, Version: "16",
 			HighAvailability: true,
 		},
 	}
@@ -103,7 +103,6 @@ func generateFixtureService() *Service {
 }
 
 func TestGenerateBlueprintRoundTrip(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
 		ServiceIDs:  []string{"web"},
@@ -129,7 +128,7 @@ func TestGenerateBlueprintRoundTrip(t *testing.T) {
 		"fromService", "app-cache", "keyvalue",
 		"sync: false", "FOREIGN_SECRET", "SMTP_PASSWORD",
 		"plan: pro plus", "dockerContext: apps/web", "dockerCommand: bin/server",
-		"diskSizeGB: 10", "postgresMajorVersion: \"16\"", "highAvailability",
+		"diskSizeGB: 20", "postgresMajorVersion: \"16\"", "highAvailability",
 		"maxmemoryPolicy: allkeys-lru",
 	} {
 		if !strings.Contains(out.Manifest, want) {
@@ -262,7 +261,6 @@ func TestGenerateBlueprintEmptySelectionRejected(t *testing.T) {
 }
 
 func TestGenerateBlueprintEnvGroupsRoundTrip(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	web := &appv1alpha1.App{}
 	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, web); err != nil {
@@ -379,7 +377,6 @@ func TestGenerateBlueprintUnselectedTargetFallsBackToSyncFalse(t *testing.T) {
 }
 
 func TestGenerateBlueprintCrossSurface(t *testing.T) {
-	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	want, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
 		ServiceIDs: []string{"web"}, PostgresIDs: []string{"dpg-abc123"}, KeyValueIDs: []string{"red-xyz789"},
