@@ -1,0 +1,60 @@
+{
+  "observed_at": "2026-10-30T08:36:29.908328+00:00",
+  "scope": "Actual completed BF job failure diagnosis only. No recovery authorization, signature acceptance, approval or production pin.",
+  "candidate_approved": false,
+  "workflow_run_id": 41000570846,
+  "job_id": 123936350542,
+  "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "evidence_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542",
+  "name": "python-3.7-bullseye",
+  "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+  "built_immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+  "steps": {
+    "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a": {
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T07:05:26Z",
+      "completed_at": "2026-10-30T08:24:49Z"
+    },
+    "verify real native tool transformations without network on both architectures": {
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T08:24:49Z",
+      "completed_at": "2026-10-30T08:25:58Z"
+    },
+    "scan amd64 candidate": {
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T08:25:58Z",
+      "completed_at": "2026-10-30T08:28:08Z"
+    },
+    "scan arm64 candidate": {
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T08:28:08Z",
+      "completed_at": "2026-10-30T08:29:01Z"
+    },
+    "sign and attest the immutable candidate": {
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-30T08:29:10Z",
+      "completed_at": "2026-10-30T08:30:31Z"
+    }
+  },
+  "log": {
+    "path": "/tmp/loopx-w8-native-scan-failure/python37-job.log",
+    "bytes": 1206971,
+    "sha256": "301660d1b6742d3c3441ef533e5b0191fa705af15bcb35efd013622b5bb69b8f",
+    "selected_lines": {
+      "9096": "2026-10-30T08:24:46.1469467Z #54 pushing manifest for ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye-bfdeb62211ae5c4a875f5474a51c63c036e1d4dd@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "9097": "2026-10-30T08:24:48.8596647Z #54 pushing manifest for ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye-bfdeb62211ae5c4a875f5474a51c63c036e1d4dd@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0 2.7s done",
+      "11743": "2026-10-30T08:30:28.0209288Z Using payload from: native-amd64.spdx.json",
+      "11746": "2026-10-30T08:30:31.3635623Z Error: signing ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0: signing bundle: error signing bundle: Post \"https://rekor.sigstore.dev/api/v1/log/entries\": POST https://rekor.sigstore.dev/api/v1/log/entries giving up after 2 attempt(s)",
+      "11747": "2026-10-30T08:30:31.3640152Z error during command execution: signing ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0: signing bundle: error signing bundle: Post \"https://rekor.sigstore.dev/api/v1/log/entries\": POST https://rekor.sigstore.dev/api/v1/log/entries giving up after 2 attempt(s)",
+      "11748": "2026-10-30T08:30:31.4488237Z ##[error]Process completed with exit code 1."
+    }
+  },
+  "diagnosis": "External Rekor POST failure while submitting native-amd64.spdx.json attestation; cosign reports giving up after2attempts. No underlying HTTP status or timeout reason appears in the log. Recipe/build/runtime and both vulnerability scan gates passed.",
+  "minimal_proposed_recovery": "Review an explicit same-recipe/base recovery JSON entry for this exact digest and original run/job, then execute the targeted current full-gate recovery. Keep both runtime architectures, both scans, and all signature/attestation requirements.",
+  "actions": "Read-only API/log downloads and scratch receipt only; no source changes, dispatch, retry, cancel, commit or push."
+}
