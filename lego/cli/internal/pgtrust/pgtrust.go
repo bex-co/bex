@@ -225,8 +225,10 @@ func Provision(ctx context.Context, opts Options) (func(), error) {
 		return noop, nil
 	}
 	if strings.TrimSpace(certificate) == "" {
-		// An internal-only database serves no CA and no external string; its
-		// path must keep working untouched.
+		// No CA: an internal-only database (no external string), or a public
+		// one serving a publicly trusted certificate (w2/m245), whose
+		// Render-shaped URL verifies against system roots. Either path must
+		// keep working untouched.
 		return noop, nil
 	}
 

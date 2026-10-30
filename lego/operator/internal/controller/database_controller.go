@@ -563,11 +563,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"serverCASecret":  p.serverCASecret,
 		}
 	} else if len(p.serverAltDNSNames) > 0 {
-		names := make([]any, len(p.serverAltDNSNames))
-		for i, name := range p.serverAltDNSNames {
-			names[i] = name
-		}
-		spec["certificates"] = map[string]any{"serverAltDNSNames": names}
+		spec["certificates"] = map[string]any{"serverAltDNSNames": stringsAsAny(p.serverAltDNSNames)}
 	}
 	// Durability: load the Barman Cloud plugin as the sole WAL archiver when the
 	// plan opts in and the object-store contract is configured. Retention and S3
@@ -619,11 +615,16 @@ func poolerSpec(clusterName string) map[string]any {
 // cidrMiddlewareSpec is the flat-CIDR variant shared by the environment layer
 // (spec.environmentIPAllowList, w4/m28) on App HTTP ingress.
 func cidrMiddlewareSpec(cidrs []string) map[string]any {
-	ranges := make([]any, len(cidrs))
-	for i, c := range cidrs {
-		ranges[i] = c
+	return map[string]any{"ipAllowList": map[string]any{"sourceRange": stringsAsAny(cidrs)}}
+}
+
+// stringsAsAny converts a string list to the []any an unstructured spec holds.
+func stringsAsAny(values []string) []any {
+	out := make([]any, len(values))
+	for i, v := range values {
+		out[i] = v
 	}
-	return map[string]any{"ipAllowList": map[string]any{"sourceRange": ranges}}
+	return out
 }
 
 // deleteOptionalObject best-effort deletes an optional owned object (a Traefik
@@ -844,7 +845,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 	noteReservedRoles(&db, owner)
-	publicTLS := r.preparePublicTLS(ctx, &db, cluster)
+	publicNames := databaseServerAltDNSNames(&db, r.DBDomain)
+	publicTLS := r.preparePublicTLS(ctx, &db, cluster, publicNames)
 	serverTLSSecret, serverCASecret := "", ""
 	if publicTLS.wired {
 		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
@@ -858,7 +860,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		highAvailability:  db.Spec.HighAvailability,
 		readReplicas:      len(db.Spec.ReadReplicas),
 		parameters:        db.Spec.Parameters,
-		serverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),
+		serverAltDNSNames: publicNames,
 		serverTLSSecret:   serverTLSSecret,
 		serverCASecret:    serverCASecret,
 	}); err != nil {
