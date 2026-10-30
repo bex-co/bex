@@ -1,0 +1,111 @@
+{
+  "upstream_commit": "e95681e791b33b3893033940cbeaa5ab192bf21b",
+  "change": "Only carried CI test patch plus one workflow application line; existing upstream RetryOnConflict convention refetches BatchSandbox before reapplying release annotation. All existing release assertions preserved.",
+  "tests": {
+    "fresh_apply": "Existing2patches and new test-onlypatch passed git apply --check and apply on fresh pinned upstream.",
+    "format": "Patched upstream pool_controller_test.go is gofmt-clean; repository git diff --check passes.",
+    "workflow": "actionlint passes with only existing custom bex-ci label diagnostic excluded.",
+    "vet": "go vet ./internal/controller exit0",
+    "focused_real_envtest": [
+      {
+        "iteration": 1,
+        "exit_code": 0,
+        "log": "/private/tmp/bex-w8-controller-ci-41030129236/focused-repeat-1.log"
+      },
+      {
+        "iteration": 2,
+        "exit_code": 0,
+        "log": "/private/tmp/bex-w8-controller-ci-41030129236/focused-repeat-2.log"
+      },
+      {
+        "iteration": 3,
+        "exit_code": 0,
+        "log": "/private/tmp/bex-w8-controller-ci-41030129236/focused-repeat-3.log"
+      },
+      {
+        "iteration": 4,
+        "exit_code": 0,
+        "log": "/private/tmp/bex-w8-controller-ci-41030129236/focused-repeat-4.log"
+      },
+      {
+        "iteration": 5,
+        "exit_code": 0,
+        "log": "/private/tmp/bex-w8-controller-ci-41030129236/focused-repeat-5.log"
+      }
+    ],
+    "forced_real_api_conflict": "Scratch-only Go overlay uses direct real envtest API metadata mutation after cached GET to force HTTP409; asserts IsConflict then retryAttempts>=2; full original poolallocation-cleared and poddeletion assertions passed. 1/1 focused spec passed, exit0; no overlay instrumentation is part of carried patch.",
+    "forced_initial_attempt_limit": "First forced run overlapped a normal focused run and hit shared manager default metrics-port interference before reaching scenario; stopped only owned local processes and reran serially successfully. Original log retained.",
+    "full_make_test": {
+      "command": "make test ENVTEST_K8S_VERSION=1.33.0 LOCALBIN=/private/tmp/bex-w8-controller-ci-41030129236/envtest-bin",
+      "cwd": "/private/tmp/bex-w8-controller-ci-41030129236/upstream/kubernetes",
+      "exit_code": 0,
+      "result": "Full normal upstream suite PASS, including manifests/generate/fmt/vet + complete real envtest controller suite + all normal non-e2e package tests."
+    },
+    "golangci_lint": {
+      "command": "golangci-lint run ./internal/controller",
+      "config": "/private/tmp/bex-w8-controller-ci-41030129236/upstream/kubernetes/.golangci.yml",
+      "exit_code": 0
+    },
+    "full_make_initial_provisioning_limit": "First make invocation overrode ENVTEST to repository cached helper while LOCALBIN pointed into scratch; upstream go-install-tool recipe attempted to rename mismatched target and failed before tests. Only ignored cached setup-envtest symlink was removed; restored immediately to exact original release-0.25 target. Subsequent all-scratch LOCALBIN/default ENVTEST invocation passed full make."
+  },
+  "logs": {
+    "vet.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "forced-conflict.log": {
+      "bytes": 63085,
+      "sha256": "440864ac99fadb64f600f35bc0d47be0288158e22e4c45b6364ec971d95315af"
+    },
+    "forced-conflict-concurrent-metrics-port.log": {
+      "bytes": 37267,
+      "sha256": "b37133c3cb2b29cb1c82fd8465f72db19d566b828194dd9caab23a5eb4be5eb0"
+    },
+    "focused-repeat-1.log": {
+      "bytes": 58047,
+      "sha256": "293d516c4b8e30c9c5cad0c21bd13685a857b144f1ea3f7b0a9ee01ce2e71b9f"
+    },
+    "focused-repeat-2.log": {
+      "bytes": 54918,
+      "sha256": "083cfe1f88febb87676501af3c2dffb098a557e7c8f01d40d199339377731f17"
+    },
+    "focused-repeat-3.log": {
+      "bytes": 60709,
+      "sha256": "b2f1be7080648f771f6c37c97d053439061537c2dc8b7eb1e2522abf3b3c2093"
+    },
+    "focused-repeat-4.log": {
+      "bytes": 60739,
+      "sha256": "5a0e514039e9a183d2a5433d7cced9067f154d3b144276c28f37a3d61eaaa0c3"
+    },
+    "focused-repeat-5.log": {
+      "bytes": 57599,
+      "sha256": "a0be8829b60ecbc51887ff11307e06e31ec1a8569ae1b677f50ad21e6ab24394"
+    },
+    "make-test.log": {
+      "bytes": 1661,
+      "sha256": "2f9efa70ceb25528af79300af3577402d39c2abba67f9422d743c1821039f1b9"
+    },
+    "make-test-localbin.log": {
+      "bytes": 5173,
+      "sha256": "8fc8e80e34e04b67dc7fcc4d65f0989adeeb4405f7b78843205570205a2f1359"
+    },
+    "golangci-lint.log": {
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    }
+  },
+  "limits": "Local darwin/arm64 Go1.26.4 + real Kubernetes1.33.0 envtest, same pinned controller source/patches; CI uses Linux/ARM64 Go1.25.7. No product/runtime image change, no remote CI mutation, no commit/push; lego/go.work.sum left untouched/unstaged.",
+  "changed_repository_files": {
+    ".github/workflows/opensandbox-controller-test.yml": "03ea6401c1a1b2d059b8cbcb69f7c899df633e20cdbafdd1ddcb95f46439779b",
+    "deploy/opensandbox/patches/controller-pool-recycle-test-conflict.patch": "53e7cd63bd104dd7ddb6b118d8cc9fdb2545870c15b342a844cb442fd65802fe"
+  },
+  "scratch_codegen_drift": "None beyond exact existing2carriedpatches plus new pool test delta; full make introduced no new tracked/generated diff paths.",
+  "final_scratch_cleanup": {
+    "owned_test_processes_remaining": [],
+    "process_check_scope": "Only executables under this exact scratch root matching controller.test/controller-forced-conflict.test/kube-apiserver/etcd. No kill issued during final cleanup.",
+    "log_stability": "All receipt-listed logs have identical size, SHA256 and mtime across two snapshots one second apart.",
+    "previous_discrepancy": "The intentionally terminated overlapping forced attempt finished writing its failed log after the earlier receipt snapshot; final receipt now records its stable bytes/hash.",
+    "test_reruns": false,
+    "repository_edits": false
+  }
+}

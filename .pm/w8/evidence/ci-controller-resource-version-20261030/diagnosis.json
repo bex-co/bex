@@ -1,0 +1,57 @@
+{
+  "scope": "Read-only diagnosis of deploy run 41030129236 attempt 1 OpenSandbox controller test failure. No source edits, rerun, cancellation, commit, push, auth or production calls.",
+  "failed_job": 123978868444,
+  "failed_source": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+  "green_run": 41007766437,
+  "green_job": 123919987468,
+  "green_source": "dc80c29bf2bc9c37024358ff95dcb3ca26562879",
+  "error": {
+    "test": "Pool recycle / should create pool with Delete recycle strategy and release pods via deletion",
+    "source": "kubernetes/internal/controller/pool_controller_test.go:1112",
+    "kind": "Kubernetes HTTP 409 Conflict on one-shot BatchSandbox annotation Update",
+    "detail": "The test GET at line1107 races concurrent controller status patch before Update at line1112. It does not retry/refetch for normal optimistic concurrency conflicts.",
+    "failed_specs": 1,
+    "passed_specs": 35,
+    "all_specs": 36
+  },
+  "classification": "Unchanged pinned upstream test concurrency flake; no evidence of changed product behavior or resource timeout.",
+  "controller_input_sha256": {
+    ".github/workflows/opensandbox-controller-test.yml": {
+      "dc80c29bf2bc9c37024358ff95dcb3ca26562879": "a3d13fe793c854c061f3a840c7935579d0e0ad3a46fa4409984628a2b99f6120",
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": "a3d13fe793c854c061f3a840c7935579d0e0ad3a46fa4409984628a2b99f6120"
+    },
+    "deploy/opensandbox/controller.Dockerfile": {
+      "dc80c29bf2bc9c37024358ff95dcb3ca26562879": "d9b42b3246990c512d50104207864534b47fd44e3b774a52dcc3bba2959013c1",
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": "d9b42b3246990c512d50104207864534b47fd44e3b774a52dcc3bba2959013c1"
+    },
+    "deploy/opensandbox/patches/controller-snapshot-job-namespace.patch": {
+      "dc80c29bf2bc9c37024358ff95dcb3ca26562879": "500b4eecdd73bc1fbf1a9bf91d67ec8e230245de339886724bd0d140c2d2db84",
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": "500b4eecdd73bc1fbf1a9bf91d67ec8e230245de339886724bd0d140c2d2db84"
+    },
+    "deploy/opensandbox/patches/controller-terminal-pod-status.patch": {
+      "dc80c29bf2bc9c37024358ff95dcb3ca26562879": "ac3c85d791d9e2382219419fa6330c6a820fe342f7fa0fbb1509a79db428a224",
+      "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": "ac3c85d791d9e2382219419fa6330c6a820fe342f7fa0fbb1509a79db428a224"
+    }
+  },
+  "logs": {
+    "attempt1-controller.raw.log": {
+      "path": "/private/tmp/bex-w8-controller-ci-41030129236/attempt1-controller.raw.log",
+      "bytes": 62924,
+      "sha256": "d592b1a57872349a8ace56eaafd5e0236bd863b1a1c9791f79863cb25869ffc3"
+    },
+    "lastgreen-controller.raw.log": {
+      "path": "/private/tmp/bex-w8-controller-ci-41030129236/lastgreen-controller.raw.log",
+      "bytes": 30800,
+      "sha256": "1c66688c1095ea823c60d5eca74abd7cd9b642d96e870aec5d88ce1d45bd18c5"
+    }
+  },
+  "pinned_upstream_test_sha256": "e5b9f3d9728d2eb6af7a4083aa1ea2efc439fee2aac4130ae3e16b293e89a0d7",
+  "attempt2_last_observed": {
+    "status": "completed",
+    "conclusion": "cancelled",
+    "updatedAt": "2026-10-30T09:25:17Z",
+    "jobs": [],
+    "note": "Already scheduled by another actor before delegation; reviewer performed no rerun or cancellation."
+  },
+  "action": "No source patch made. Reported exact upstream test race and attempt2 terminal status to parent."
+}
