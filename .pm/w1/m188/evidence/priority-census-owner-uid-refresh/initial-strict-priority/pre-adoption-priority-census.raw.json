@@ -1,0 +1,807 @@
+{
+  "schema": "bex.final-legacy-runtime-census/v1",
+  "checked_at": "2026-10-31T00:21:37.370783+00:00",
+  "source_scope": {
+    "source_sha": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+    "native.go_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "nativeresolve.go_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+    "JS_companion_primaries": [
+      "elixir",
+      "go",
+      "python",
+      "ruby",
+      "rust"
+    ],
+    "primary_node_also_included": true
+  },
+  "total_apps": 29,
+  "rows": [
+    {
+      "namespace": "default",
+      "app": "hello-static",
+      "runtime": "",
+      "builder": "auto",
+      "type": "static_site",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "hello-static:demo1",
+      "candidate_artifact_image": "hello-static:demo1",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "static_build_only_no_serving_toolchain_claim"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "runtime": "",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-230",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1-bfb6d798-n9557",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+          "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-28T17:21:49Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "22.23.2",
+            "brotli": "1.1.0",
+            "os_id": "alpine",
+            "os_version_id": "3.24.1"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "runtime": "",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-1448",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2-6844cc7cb5-zvft2",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+          "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-30T18:10:32Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "22.23.4",
+            "brotli": "1.1.0",
+            "os_id": "alpine",
+            "os_version_id": "3.24.3"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-forum",
+      "runtime": "docker",
+      "builder": "dockerfile",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-136",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-forum:gen-136@sha256:d2f579a9f2787b803d72421e7f183c048878484298421d89148294651516806b",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-forum:gen-136@sha256:d2f579a9f2787b803d72421e7f183c048878484298421d89148294651516806b",
+      "workload_templates": [
+        {
+          "kind": "CronJob",
+          "name": "dskbak-tea-d98210cbbpdc73dcrkvg-beancount-forum",
+          "suspended": false,
+          "replicas": null,
+          "images": [
+            "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+          ],
+          "lastSuccessfulTime": "2026-10-30T02:50:05Z"
+        }
+      ],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-125",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-8495d76779-wp2c6",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono:gen-125@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+          "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono@sha256:6fccdbaeba98ebe636e881e999fa1a396c5a03047a8a68f655d5be48cdd1d053",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-30T17:03:41Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "24.22.1",
+            "brotli": "1.2.0",
+            "os_version_id": "12",
+            "os_id": "debian",
+            "system_brotli_package": "1.0.9-2+deb12u1"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1",
+      "runtime": "go",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-14",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-7f9ffb4f99-27wf4",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1:gen-14@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+          "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-block-eden-mono-1@sha256:14080e9e627daaa404e97b3a00fd32a675f6ced4e20b8932760e1be01687ef7f",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-30T17:01:46Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "24.22.1",
+            "brotli": "1.2.0",
+            "os_version_id": "12",
+            "os_id": "debian",
+            "system_brotli_package": "1.0.9-2+deb12u1"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-crypto-price",
+      "runtime": "docker",
+      "builder": "dockerfile",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-4",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-crypto-price@sha256:e18c28d20cf9299ea00f76732bf9e982f7ecce356378377969ce105374f05128",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-crypto-price@sha256:e18c28d20cf9299ea00f76732bf9e982f7ecce356378377969ce105374f05128",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-crypto-price-clickhouse",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "private_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-4",
+      "active_status_image": "docker.io/clickhouse/clickhouse-server:23.8",
+      "candidate_artifact_image": "docker.io/clickhouse/clickhouse-server:23.8",
+      "workload_templates": [
+        {
+          "kind": "CronJob",
+          "name": "dskbak-tea-d98210cbbpdc73dcrkvg-crypto-a990e2444e3b",
+          "suspended": false,
+          "replicas": null,
+          "images": [
+            "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+          ],
+          "lastSuccessfulTime": "2026-10-30T02:21:17Z"
+        }
+      ],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "runtime": "",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-723",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2-866f7cbb56-998p4",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-723@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+          "imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-26T22:08:51Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "22.23.3",
+            "brotli": "1.1.0",
+            "os_id": "alpine",
+            "os_version_id": "3.24.2"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Failed",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": null,
+      "candidate_artifact_image": null,
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [
+        "No running pod or active-image pointer; establish current active-release/no-live-deploy evidence. Failed/canceled phase alone is not exclusion."
+      ],
+      "classification": "candidate",
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-da2isimlm39c739m4ofg",
+      "app": "tea-da2isimlm39c739m4ofg-tianpan-v4-web",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-47",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+      "workload_templates": [],
+      "pods": [
+        {
+          "pod": "tea-da2isimlm39c739m4ofg-tianpan-v4-web-6bbd77c4d7-dwx8w",
+          "deleted_at": null,
+          "phase": "Running",
+          "container": "app",
+          "image": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web:gen-47@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+          "imageID": "zot.bex-registry.svc:5000/tea-da2isimlm39c739m4ofg/tea-da2isimlm39c739m4ofg-tianpan-v4-web@sha256:82a7861bf7ddcfd78864366bd0eb18571bcff207f7eb27252d225393a0902b0e",
+          "container_ready": true,
+          "Ready": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-30T01:24:58Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "probe_exit": 0,
+          "stderr_bytes": 0,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "versions": {
+            "node": "22.23.4",
+            "brotli": "1.1.0",
+            "os_version_id": "12",
+            "os_id": "debian",
+            "system_brotli_package": "1.0.9-2+deb12u1"
+          }
+        }
+      ],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "candidate"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-hello-go",
+      "runtime": "",
+      "builder": "dockerfile",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-6",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-hello-go:gen-6@sha256:dde64096d525ef00be77300846d911760a76cc05f2c201b9815e1c2060609903",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-hello-go:gen-6@sha256:dde64096d525ef00be77300846d911760a76cc05f2c201b9815e1c2060609903",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261003-c63833-zero-head",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "mendhak/http-https-echo:35",
+      "candidate_artifact_image": "mendhak/http-https-echo:35",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261003-f592c7-zero",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "mendhak/http-https-echo:35",
+      "candidate_artifact_image": "mendhak/http-https-echo:35",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261018-f4cfb1-echo",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-2",
+      "active_status_image": "docker.io/ealen/echo-server:0.9.2",
+      "candidate_artifact_image": "docker.io/ealen/echo-server:0.9.2",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-b5p1-a",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-2",
+      "active_status_image": "docker.io/traefik/whoami:v1.10.1",
+      "candidate_artifact_image": "docker.io/traefik/whoami:v1.10.1",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-b5p1-g",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-2",
+      "active_status_image": "docker.io/traefik/whoami:v1.10.1",
+      "candidate_artifact_image": "docker.io/traefik/whoami:v1.10.1",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-b5p1-s",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "docker.io/traefik/whoami:v1.10.1",
+      "candidate_artifact_image": "docker.io/traefik/whoami:v1.10.1",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-b5p1-web",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-6",
+      "active_status_image": "docker.io/traefik/whoami:v1.10.1",
+      "candidate_artifact_image": "docker.io/traefik/whoami:v1.10.1",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-d49292-web",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "docker.io/ealen/echo-server@sha256:006b92e1d6682442e29d1d0d73c34a61166d42f8a5bf1ea10c318f07ad4790e2",
+      "candidate_artifact_image": "docker.io/ealen/echo-server:0.9.2",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261025-d49292-web2",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "ealen/echo-server@sha256:006b92e1d6682442e29d1d0d73c34a61166d42f8a5bf1ea10c318f07ad4790e2",
+      "candidate_artifact_image": "ealen/echo-server:0.9.2",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-daif693dqjvc73e7as3g",
+      "app": "tea-daif693dqjvc73e7as3g-qa-20261026-l2-git",
+      "runtime": "docker",
+      "builder": "dockerfile",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": "rev-2",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261026-l2-git@sha256:340724e83d3ea8a8741d858fc3ef28b19f44a27bf60101940731a5a7b84fb8e8",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261026-l2-git@sha256:340724e83d3ea8a8741d858fc3ef28b19f44a27bf60101940731a5a7b84fb8e8",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "runtime": "node",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Canceled",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [
+        "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+      ],
+      "classification": "candidate",
+      "fallback_active_image_candidates": [
+        "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+      ]
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-klivzo",
+      "runtime": "docker",
+      "builder": "dockerfile",
+      "type": "web_service",
+      "phase": "Hibernated",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-16",
+      "active_status_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-klivzo:gen-16@sha256:40b5c3a2baf113aab6353be6975a4f00bdee8433e31e9b34612c44c3131bc501",
+      "candidate_artifact_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-klivzo:gen-16@sha256:40b5c3a2baf113aab6353be6975a4f00bdee8433e31e9b34612c44c3131bc501",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db9f0dkfcf2c73c2mq4g",
+      "app": "tea-db9f0dkfcf2c73c2mq4g-base-notebook2",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Failed",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": "quay.io/jupyter/base-notebook",
+      "candidate_artifact_image": "quay.io/jupyter/base-notebook",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db9f0dkfcf2c73c2mq4g",
+      "app": "tea-db9f0dkfcf2c73c2mq4g-nginxdhdh",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Canceled",
+      "suspended": true,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": "docker.io/library/nginx:latest",
+      "candidate_artifact_image": "docker.io/library/nginx:latest",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db9f0dkfcf2c73c2mq4g",
+      "app": "tea-db9f0dkfcf2c73c2mq4g-nginxhdjdjs",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Failed",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": "docker.io/library/nginx:latest",
+      "candidate_artifact_image": "docker.io/library/nginx:latest",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db9f0dkfcf2c73c2mq4g",
+      "app": "tea-db9f0dkfcf2c73c2mq4g-nginxtyey",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Canceled",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": "docker.io/library/nginx:latest",
+      "candidate_artifact_image": "docker.io/library/nginx:latest",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    },
+    {
+      "namespace": "tea-db9f0dkfcf2c73c2mq4g",
+      "app": "tea-db9f0dkfcf2c73c2mq4g-scipy-notebook",
+      "runtime": "image",
+      "builder": "auto",
+      "type": "web_service",
+      "phase": "Running",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": "rev-1",
+      "active_status_image": "quay.io/jupyter/scipy-notebook:latest",
+      "candidate_artifact_image": "quay.io/jupyter/scipy-notebook:latest",
+      "workload_templates": [],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [],
+      "classification": "customer_image_or_explicit_Dockerfile_excluded"
+    }
+  ],
+  "affected_signals": [],
+  "unresolved": [
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "reasons": [
+        "No running pod or active-image pointer; establish current active-release/no-live-deploy evidence. Failed/canceled phase alone is not exclusion."
+      ],
+      "active_status_image": null,
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "reasons": [
+        "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "workload_templates": [],
+      "fallback_active_image_candidates": [
+        "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+      ]
+    }
+  ],
+  "zero_affected_conclusion_allowed": false,
+  "no_apply_performed": true,
+  "limits": "Read-only version/OS/image-pointer census, not decoder/security acceptance. Static/build-only and customer Dockerfiles are explicitly scoped out, not declared patched. No-pod active cron/scale-zero releases require immutable-image/release evidence. Any unresolved eligible version blocks zero-target conclusion; root can resolve exact rows without broad fleet apply."
+}

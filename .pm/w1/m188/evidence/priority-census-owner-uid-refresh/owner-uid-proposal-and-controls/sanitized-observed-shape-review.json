@@ -1,0 +1,44 @@
+{
+  "schema": "bex.m188.inactive-census-v2-sanitized-shape-review/v1",
+  "at": "2026-10-31T00:33:26.064639+00:00",
+  "input": {
+    "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-authenticated-config-whitelist.json",
+    "sha256": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5",
+    "selected_field_only": "deployment_shape"
+  },
+  "observed_shape": {
+    "namespace": "tea-db3nth8gu8gc73cl11t0",
+    "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+    "metadata_generation": 5,
+    "labels": {},
+    "ownerReferences": [
+      {
+        "apiVersion": "app.bex.co/v1alpha1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "App",
+        "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+        "uid": "235b8621-095e-4814-8dff-a768ef56b95b"
+      }
+    ],
+    "replicas": 0,
+    "images": [
+      {
+        "name": "app",
+        "image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+      }
+    ],
+    "nodeSelector_OS_arch_only": {
+      "kubernetes.io/os": null,
+      "kubernetes.io/arch": null
+    }
+  },
+  "current_App_UID_basis": "Node agent sanitized observation explicitly established current App UID235b8621-095e-4814-8dff-a768ef56b95b; this review does not perform another cluster read.",
+  "new_predicate_accepts_same_namespace_current_UID_owner": true,
+  "old_metadata_label_filter_would_miss": true,
+  "generation_note": "Deployment metadata generation5 and retained image taggen3 are distinct facts; no claim image was served or current App runtime versions established.",
+  "no_production_census_or_network_calls_performed": true,
+  "schema_contract_source": "lego/types/v1alpha1/app_types.go:599 permits exactlydocker/elixir/go/image/node/python/ruby/rust; source_scope derived five companion primaries plusNode covers allsix language enums.",
+  "predicate_limits": "Eligible no-pod/unknown runtime evidence stays unresolved. Existing explicit customer/static scope exclusions are not declared patched; final zero-target census is not decoder/security acceptance. Ownership fix does not broaden version-based security claims.",
+  "old_helper_and_initial_report_unchanged": true
+}

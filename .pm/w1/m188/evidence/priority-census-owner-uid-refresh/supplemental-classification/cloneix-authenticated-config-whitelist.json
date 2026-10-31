@@ -1,0 +1,134 @@
+{
+  "scope": "Authorized exact-App registry credential in memory ONLY; own loopback Service port-forward; immutable manifest/selected child/small config metadata only; no layer, app-env or other Secret reads",
+  "started_at": "2026-10-31T00:31:09.196475+00:00",
+  "no_raw_config_or_credential_saved": true,
+  "filesystem_layer_downloads": 0,
+  "requests": [
+    {
+      "kind": "manifests",
+      "digest": "sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "bytes": 2395,
+      "body_sha256": "54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "digest_verified": true
+    },
+    {
+      "kind": "blobs",
+      "digest": "sha256:af0dfd0b4869a710bd1c4f6e24433b73fcb314107aeebe6ab612683d246eab1a",
+      "bytes": 6364,
+      "body_sha256": "af0dfd0b4869a710bd1c4f6e24433b73fcb314107aeebe6ab612683d246eab1a",
+      "digest_verified": true
+    }
+  ],
+  "deployment_shape": {
+    "namespace": "tea-db3nth8gu8gc73cl11t0",
+    "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+    "metadata_generation": 5,
+    "labels": {},
+    "ownerReferences": [
+      {
+        "apiVersion": "app.bex.co/v1alpha1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "App",
+        "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+        "uid": "235b8621-095e-4814-8dff-a768ef56b95b"
+      }
+    ],
+    "replicas": 0,
+    "images": [
+      {
+        "name": "app",
+        "image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+      }
+    ],
+    "nodeSelector_OS_arch_only": {
+      "kubernetes.io/os": null,
+      "kubernetes.io/arch": null
+    }
+  },
+  "credential_usage": {
+    "source": "exact App-owned Deployment referenced per-App imagePullSecret in same namespace",
+    "auth_host_matches_target_registry": true,
+    "credential_values_saved_or_printed": false
+  },
+  "root_manifest": {
+    "schemaVersion": 2,
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "config": {
+      "mediaType": "application/vnd.oci.image.config.v1+json",
+      "digest": "sha256:af0dfd0b4869a710bd1c4f6e24433b73fcb314107aeebe6ab612683d246eab1a",
+      "size": 6364
+    },
+    "layers": [
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:eaac70c68abdf6ffacf6de10d31ed9de4813505d1a794eb7393cb27fceb624a6",
+        "size": 48503440
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:7b2de2423ebd9d3290883175c0e46dccd6de955b08e6e9a5bd20909e3face240",
+        "size": 24056077
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:81578410df169380efec491bfdc60a7e586d4b48ef4c0aeb9b6ff085812d9a7d",
+        "size": 64424271
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:de9e8d0a007171cac57d643a3982902d45431cd860400eea55e18df75fc0b12a",
+        "size": 211707818
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:198cbc42a6590996f9df798ac097bdc605f7dcddae2a246c8352c64d77f3075f",
+        "size": 3325
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:ce128d9b45eda94d173f34366e48d7e524e2aa5d5f4e84cbd2b2b5b1375a2b0a",
+        "size": 64537808
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:98803031a6def7cdb7459479729e4aa6d6185861b9f7480ed3ac5743416cea94",
+        "size": 446
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:a6c580ba347500c2bca4e821747666ebeaf3622e787285845a2c27eb22eeaa54",
+        "size": 152
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:e05b6af68e2ebb9afcb29899c5c5dce0a374359854abc65920f8038b6df7ac67",
+        "size": 79005056
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:fa59f2646857dbd35c3deeb72078f62017e56d7d18c325b5999ded1a5d29b54a",
+        "size": 347
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:b7adfb751f018aaae61655dc0bfe553ee089985df3d14cbceb797078af68206c",
+        "size": 588020991
+      }
+    ]
+  },
+  "config_whitelist": {
+    "os": "linux",
+    "architecture": "amd64",
+    "Node_version": "26.10.0",
+    "NODE_VERSION_entries": 1,
+    "allowed_provenance_labels": {}
+  },
+  "retained_image_old11_Node": false,
+  "status": "metadata_verified",
+  "own_port_forward_terminated": true,
+  "own_port_forward_exit": -15,
+  "finished_at": "2026-10-31T00:31:14.570287+00:00",
+  "port_forward_log_bytes": 40,
+  "port_forward_log_sha256": "935b9bb6e35f5fec11f91db88ea933ab9e137ee749ea8dc91b0be2470a46ad77"
+}

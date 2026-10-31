@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-10-31T00:27:37.006640+00:00",
+  "scope": "Bounded immutable manifest metadata only via confirmed Service namedport; no layer/secret read",
+  "exit": 1,
+  "bytes": 0,
+  "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_bytes": 104,
+  "stderr_sha256": "87d55ccc06e8995dc170204afce3c6c7b72c24928d4ed14701ebb325364f3a5e",
+  "sanitized_error": "error: You must be logged in to the server (the server has asked for the client to provide credentials)\n"
+}

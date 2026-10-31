@@ -1,0 +1,101 @@
+{
+  "schema": "bex.pre-adoption-priority-census-assessment/v1",
+  "purpose": "PRE-ADOPTION PRIORITY ASSESSMENT ONLY; not final adopted/deployed-source/Ready rollout proof",
+  "started_at": "2026-10-31T00:21:13.925058+00:00",
+  "finished_at": "2026-10-31T00:21:37.383155+00:00",
+  "classification_source_sha": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+  "source_is_repo_head_not_verified_deployed_operator_source": true,
+  "helper_sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+  "helper_path": "/tmp/bex-m188-final-live-census.py",
+  "kubeconfig_path_only": "/tmp/bex-m188-assessment.opDi1L/prod.kubeconfig",
+  "kubeconfig_mode_octal": "0600",
+  "argv_redacted_private_path": [
+    "python3",
+    "/tmp/bex-m188-final-live-census.py",
+    "--source-sha",
+    "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+    "--kubeconfig",
+    "<existing-private-0600-kubeconfig>",
+    "--output",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json"
+  ],
+  "exit_code": 0,
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "6176a93308ee5401e7a689cd339029210fd3b967e80c055e49cc74c18e0d57c9",
+  "raw_report": {
+    "path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json",
+    "sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f"
+  },
+  "no_apply_build_rebuild_deploy_performed": true,
+  "note": "Raw helper schema retains its historical final-census naming; this enclosing receipt explicitly limits the observation to pre-adoption priority assessment. No no-pod or unresolved version is considered safe.",
+  "summary": {
+    "checked_at": "2026-10-31T00:21:37.370783+00:00",
+    "total_apps": 29,
+    "affected_signals": [],
+    "unresolved": [
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+        "reasons": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+        "workload_templates": [],
+        "fallback_active_image_candidates": []
+      },
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+        "reasons": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+        "workload_templates": [],
+        "fallback_active_image_candidates": []
+      },
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+        "reasons": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+        "workload_templates": [],
+        "fallback_active_image_candidates": []
+      },
+      {
+        "namespace": "tea-da1eg9gbiuuc73bd8uag",
+        "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+        "reasons": [
+          "No running pod or active-image pointer; establish current active-release/no-live-deploy evidence. Failed/canceled phase alone is not exclusion."
+        ],
+        "active_status_image": null,
+        "workload_templates": [],
+        "fallback_active_image_candidates": []
+      },
+      {
+        "namespace": "tea-db3nth8gu8gc73cl11t0",
+        "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+        "reasons": [
+          "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+        ],
+        "active_status_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+        "workload_templates": [],
+        "fallback_active_image_candidates": [
+          "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+        ]
+      }
+    ],
+    "zero_affected_conclusion_allowed": false,
+    "classification_counts": {
+      "candidate": 8,
+      "customer_image_or_explicit_Dockerfile_excluded": 20,
+      "static_build_only_no_serving_toolchain_claim": 1
+    }
+  },
+  "comparison": {
+    "path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/priority-comparison.json",
+    "sha256": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21"
+  }
+}

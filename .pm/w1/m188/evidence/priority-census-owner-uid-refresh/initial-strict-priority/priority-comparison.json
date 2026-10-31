@@ -1,0 +1,160 @@
+{
+  "schema": "bex.pre-adoption-priority-census-comparison/v1",
+  "created_at": "2026-10-31T00:22:47.186122+00:00",
+  "purpose": "Fresh PRE-ADOPTION in-use old11 priority assessment; not final acceptance, Ready rollout, decoder/security proof or platform-wide zero-target conclusion",
+  "baseline": {
+    "path": ".pm/w1/m188/evidence/pre-adoption-census-20261030-0911.json",
+    "sha256": "b824f0ea4a94833116fa75f48f27a27f409ee8574935f9848fabc0f38d7911b8",
+    "checked_at": "2026-10-30T09:11:19.761270+00:00",
+    "total_apps": 29
+  },
+  "fresh": {
+    "path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json",
+    "sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f",
+    "checked_at": "2026-10-31T00:21:37.370783+00:00",
+    "total_apps": 29,
+    "classification_source": {
+      "source_sha": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+      "native.go_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "nativeresolve.go_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "JS_companion_primaries": [
+        "elixir",
+        "go",
+        "python",
+        "ruby",
+        "rust"
+      ],
+      "primary_node_also_included": true
+    }
+  },
+  "candidate_comparison": {
+    "baseline_count": 8,
+    "fresh_count": 8,
+    "added": [],
+    "removed": [],
+    "changed_candidate_services": 0,
+    "changes": [],
+    "unchanged_candidate_services": [
+      "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "tea-d98210cbbpdc73dcrkvg-block-eden-mono",
+      "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1",
+      "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "tea-da2isimlm39c739m4ofg-tianpan-v4-web",
+      "tea-db3nth8gu8gc73cl11t0-cloneix"
+    ],
+    "pod_replacements_same_serving_images_and_versions": [
+      {
+        "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono",
+        "before": [
+          "tea-d98210cbbpdc73dcrkvg-block-eden-mono-8495d76779-j2ljk"
+        ],
+        "after": [
+          "tea-d98210cbbpdc73dcrkvg-block-eden-mono-8495d76779-wp2c6"
+        ],
+        "serving_images_and_versions_unchanged": true
+      },
+      {
+        "app": "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1",
+        "before": [
+          "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-7f9ffb4f99-9z6tq"
+        ],
+        "after": [
+          "tea-d98210cbbpdc73dcrkvg-block-eden-mono-1-7f9ffb4f99-27wf4"
+        ],
+        "serving_images_and_versions_unchanged": true
+      }
+    ]
+  },
+  "runtime_builder_type_class_counts": {
+    "before_normalized": {
+      "runtime=;builder=auto;type=static_site": 1,
+      "runtime=;builder=auto;type=web_service": 3,
+      "runtime=docker;builder=dockerfile;type=web_service": 4,
+      "runtime=node;builder=native;type=web_service": 4,
+      "runtime=go;builder=native;type=web_service": 1,
+      "runtime=image;builder=auto;type=private_service": 1,
+      "runtime=;builder=dockerfile;type=web_service": 1,
+      "runtime=image;builder=auto;type=web_service": 14
+    },
+    "after": {
+      "runtime=;builder=auto;type=static_site": 1,
+      "runtime=;builder=auto;type=web_service": 3,
+      "runtime=docker;builder=dockerfile;type=web_service": 4,
+      "runtime=node;builder=native;type=web_service": 4,
+      "runtime=go;builder=native;type=web_service": 1,
+      "runtime=image;builder=auto;type=private_service": 1,
+      "runtime=;builder=dockerfile;type=web_service": 1,
+      "runtime=image;builder=auto;type=web_service": 14
+    },
+    "equal_after_empty_type_web_service_normalization": true
+  },
+  "observed_running_candidate_pods": 6,
+  "observed_in_use_affected_old11_signals": [],
+  "unresolved": [
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "reasons": [
+        "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "reasons": [
+        "No running pod or active-image pointer; establish current active-release/no-live-deploy evidence. Failed/canceled phase alone is not exclusion."
+      ],
+      "active_status_image": null,
+      "workload_templates": [],
+      "fallback_active_image_candidates": []
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "reasons": [
+        "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+      ],
+      "active_status_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+      "workload_templates": [],
+      "fallback_active_image_candidates": [
+        "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+      ]
+    }
+  ],
+  "strict_zero_affected_conclusion_allowed": false,
+  "priority_result": "No newly observed running old11 exposure or candidate runtime/serving-image change. Preserve current legacy publisher priority;5unresolved rows still require exact strategy/no-live-release/immutable-image evidence before any zero-target conclusion.",
+  "limits": [
+    "Excluded customer-image/Dockerfile/static classes are outside managed runtime priority scope, not declared patched.",
+    "Baseline retains individual data only for8candidate services, so no claim of individual identity stability across20excludedcustomer Apps+1staticApp. Aggregate29Apps and normalized class counts unchanged.",
+    "Three auto rows have fresh Alpine/Node22 observations but builder strategy remains unresolved in raw helper; auto alone is never classified as native or CNB.",
+    "market-size has no running Pod and no active image pointer; Failed alone is not exclusion.",
+    "cloneix has no running Pod, Canceled+suspended but retains gen3 status image; no-pod is not safe.",
+    "Current repo SHA85de is classification input only and is not asserted to be deployed operator source."
+  ],
+  "mutations": "No build/rebuild/deploy/production apply, repo/pin/board/source edits, credential printing or secret/environment content export."
+}

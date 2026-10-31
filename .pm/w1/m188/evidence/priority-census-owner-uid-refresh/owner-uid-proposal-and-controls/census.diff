@@ -1,0 +1,26 @@
+--- OLD-c06ec446
++++ INACTIVE-v2-02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913
+@@ -11,6 +11,14 @@
+   k,v=entry.strip().split(':',1);assert v.strip() in ('true','false');name=json.loads(k) if k.startswith('"') else constants[k]
+   if v.strip()=='true':values.append(name)
+  return set(values),{'source_sha':revision,'native.go_sha256':sha(native),'nativeresolve.go_sha256':sha(resolve),'JS_companion_primaries':sorted(values),'primary_node_also_included':True}
++def workload_matches_app(workload,app):
++ wm=workload['metadata'];am=app['metadata']
++ if wm.get('namespace')!=am.get('namespace'):return False
++ owners=[owner for owner in wm.get('ownerReferences',[]) if owner.get('kind')=='App']
++ if owners:
++  return bool(am.get('uid')) and all(owner.get('apiVersion','').split('/',1)[0]=='app.bex.co' and owner.get('uid')==am['uid'] and owner.get('name')==am['name'] for owner in owners)
++ return wm.get('labels',{}).get('app.bex.co/app')==am['name']
++
+ def main():
+  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source-sha',required=True);p.add_argument('--kubeconfig');p.add_argument('--output',type=Path);p.add_argument('--describe-scope',action='store_true');a=p.parse_args();assert re.fullmatch(r'[0-9a-f]{40}',a.source_sha),'Exact deployed source SHA required';companions,scope=source_scope(a.source_sha)
+  if a.describe_scope:print(json.dumps(scope,indent=2));return
+@@ -21,7 +29,7 @@
+  for app in apps:
+   s=app.get('spec',{});st=app.get('status',{});m=app['metadata'];rt=s.get('runtime','').strip().lower();builder=s.get('builder','').strip().lower();typ=s.get('type','web_service');ns=m['namespace'];name=m['name'];own=[x for x in pods if x['metadata']['namespace']==ns and x['metadata'].get('labels',{}).get('app.bex.co/app')==name];templates=[]
+   for x in workloads:
+-   if x['metadata']['namespace']!=ns or x['metadata'].get('labels',{}).get('app.bex.co/app')!=name:continue
++   if not workload_matches_app(x,app):continue
+    podspec=x['spec']['jobTemplate']['spec']['template']['spec'] if x['kind']=='CronJob' else x['spec']['template']['spec'];templates.append({'kind':x['kind'],'name':x['metadata']['name'],'suspended':x['spec'].get('suspend'),'replicas':x['spec'].get('replicas'),'images':[c['image'] for c in podspec.get('containers',[])],'lastSuccessfulTime':x.get('status',{}).get('lastSuccessfulTime')})
+   row={'namespace':ns,'app':name,'runtime':rt,'builder':builder,'type':typ,'phase':st.get('phase'),'suspended':s.get('suspended',False),'deleting':bool(m.get('deletionTimestamp')),'activeRevision':st.get('activeRevision'),'active_status_image':st.get('image'),'candidate_artifact_image':st.get('artifactImage'),'workload_templates':templates,'pods':[],'affected_signals':[],'unresolved':[]}
+   explicit_customer=(rt in ('docker','image')) or (not rt and builder=='dockerfile')

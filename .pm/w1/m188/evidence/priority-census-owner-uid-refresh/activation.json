@@ -1,0 +1,39 @@
+{
+  "schema": "bex.m188.separate-census-v2-helper-activation/v1",
+  "activated_at": "2026-10-31T00:34:29.203612+00:00",
+  "root_approval": {
+    "file": "/tmp/bex-m188-census-v2-root-approval.json",
+    "sha256": "722b1f5c707ff8bb29ee8b482de607ad72605bfa79eaae533d69c75b60c28581"
+  },
+  "inactive_proposal": {
+    "file": "/tmp/bex-m188-census-v2-proposal/02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+  },
+  "separate_active_v2_helper": {
+    "file": "/tmp/bex-m188-final-live-census-v2.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+  },
+  "local13controls": {
+    "file": "/tmp/bex-m188-census-v2-proposal/isolated-controls.json",
+    "sha256": "5585102af2f8213706b3a27303bc6f4c10d13eed67b6c75004c8838d89901f28"
+  },
+  "plan_addendum": {
+    "file": "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json",
+    "sha256": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e"
+  },
+  "protected_hashes": {
+    "/tmp/bex-m188-final-live-census.py": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+    "/tmp/bex-m188-final-t004-plan.json": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/priority-comparison.json": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/assessment-receipt.json": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956",
+    "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/authenticated-image-addendum.json": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213",
+    "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-authenticated-config-whitelist.json": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5",
+    "/tmp/bex-m188-prepare-adoption.py": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+    "/tmp/bex-m188-published-acceptance.json": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1"
+  },
+  "all_preserved_unchanged": true,
+  "old_helper_not_replaced": true,
+  "production_census_not_run": true,
+  "scope": "Create exact separately approved v2 helper and add-only future plan only; no8crypto/sourcealias/context/proof/repository/board/API mutations or final acceptance."
+}

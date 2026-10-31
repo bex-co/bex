@@ -1,0 +1,56 @@
+{
+  "checked_at": "2026-10-31T00:26:16.102176+00:00",
+  "no_pod_reprobe": true,
+  "workload_queries": [
+    {
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "workloads": [],
+      "response_sha256_not_body": "7a779468a2dde976a9b896541df1e4ef805e813093bd5edb40ef1a6eea588edf",
+      "stderr_bytes": 0
+    },
+    {
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "workloads": [
+        {
+          "kind": "Deployment",
+          "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+          "owners": [
+            {
+              "kind": "App",
+              "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+              "uid": "235b8621-095e-4814-8dff-a768ef56b95b",
+              "controller": true
+            }
+          ],
+          "replicas": 0,
+          "suspend": null,
+          "container_images": [
+            {
+              "name": "app",
+              "image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6"
+            }
+          ],
+          "replicas_status": {
+            "replicas": null,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "observedGeneration": 5,
+            "lastSuccessfulTime": null
+          }
+        }
+      ],
+      "response_sha256_not_body": "3e381fb86042054d7626e51e9abc76f4bec32b7a0febb1335786dce081d29b3a",
+      "stderr_bytes": 0
+    }
+  ],
+  "cloneix_gen3_manifest": {
+    "request_kind": "GET immutable image manifest via existing Service proxy",
+    "exit": 1,
+    "bytes": 0,
+    "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_bytes": 104,
+    "stderr_sha256": "87d55ccc06e8995dc170204afce3c6c7b72c24928d4ed14701ebb325364f3a5e"
+  }
+}

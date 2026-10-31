@@ -1,0 +1,466 @@
+{
+  "schema": "bex.m188.immutable-archive/v2",
+  "created_at": "2026-10-31T00:36:42.003182+00:00",
+  "scope": "PRE-ADOPTION priority assessment, preserved initial strict5unresolved plus separately authenticated retained-image config declaration, noexecutedbinary/safety/future-safe claim. OwnerUID v2 matches retainedscale-zero workloads with13 isolatedmocked controls; fresh actual-deployed-source postReady finalcensus remains pending. No credentials/rawconfigEnv persisted.",
+  "files": [
+    {
+      "path": "activation.json",
+      "source_path": "/tmp/bex-m188-census-v2-activation.json",
+      "bytes": 2650,
+      "sha256": "facc12869cfbb2468f650457aa10d465e46461081d194a217b15d3c638cbbf6b",
+      "encoding": "identity",
+      "original_bytes": 2650,
+      "original_sha256": "facc12869cfbb2468f650457aa10d465e46461081d194a217b15d3c638cbbf6b"
+    },
+    {
+      "path": "final-t004-plan-addendum.json",
+      "source_path": "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json",
+      "bytes": 4268,
+      "sha256": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e",
+      "encoding": "identity",
+      "original_bytes": 4268,
+      "original_sha256": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e"
+    },
+    {
+      "path": "historical-final-live-census-v1.py",
+      "source_path": "/tmp/bex-m188-final-live-census.py",
+      "bytes": 9933,
+      "sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+      "encoding": "identity",
+      "original_bytes": 9933,
+      "original_sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff"
+    },
+    {
+      "path": "historical-original-t004-plan.json",
+      "source_path": "/tmp/bex-m188-final-t004-plan.json",
+      "bytes": 10112,
+      "sha256": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086",
+      "encoding": "identity",
+      "original_bytes": 10112,
+      "original_sha256": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086"
+    },
+    {
+      "path": "initial-strict-priority/assessment-receipt.json",
+      "source_path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/assessment-receipt.json",
+      "bytes": 5251,
+      "sha256": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956",
+      "encoding": "identity",
+      "original_bytes": 5251,
+      "original_sha256": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956"
+    },
+    {
+      "path": "initial-strict-priority/pre-adoption-priority-census.raw.json",
+      "source_path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json",
+      "bytes": 33972,
+      "sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f",
+      "encoding": "identity",
+      "original_bytes": 33972,
+      "original_sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f"
+    },
+    {
+      "path": "initial-strict-priority/priority-comparison.json",
+      "source_path": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/priority-comparison.json",
+      "bytes": 7952,
+      "sha256": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21",
+      "encoding": "identity",
+      "original_bytes": 7952,
+      "original_sha256": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21"
+    },
+    {
+      "path": "operator-ready-helper.py",
+      "source_path": "/tmp/bex-m188-final-operator-ready.py",
+      "bytes": 6435,
+      "sha256": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a",
+      "encoding": "identity",
+      "original_bytes": 6435,
+      "original_sha256": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913.py",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913.py",
+      "bytes": 10356,
+      "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+      "encoding": "identity",
+      "original_bytes": 10356,
+      "original_sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.old.json",
+      "bytes": 2244,
+      "sha256": "cdb4240c3fbac0770d4b80c0cf4aad1355211e97ecfb2a9cf95843023c3c9748",
+      "encoding": "identity",
+      "original_bytes": 2244,
+      "original_sha256": "cdb4240c3fbac0770d4b80c0cf4aad1355211e97ecfb2a9cf95843023c3c9748"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.v2.json",
+      "bytes": 2244,
+      "sha256": "3afa51901d59305b5a12bf98464450699253ff7f8ad35bedc02c2d459fcf6f4d",
+      "encoding": "identity",
+      "original_bytes": 2244,
+      "original_sha256": "3afa51901d59305b5a12bf98464450699253ff7f8ad35bedc02c2d459fcf6f4d"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.old.json",
+      "bytes": 2129,
+      "sha256": "b1bd14361560a8bcdee3ac8ddfd789d444f868bae047f12538195225d57b5caa",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "b1bd14361560a8bcdee3ac8ddfd789d444f868bae047f12538195225d57b5caa"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "fe520a367eb1960aeefdb1fb4f695590127a48426bc502c8205b787b8bb15461",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "fe520a367eb1960aeefdb1fb4f695590127a48426bc502c8205b787b8bb15461"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/foreign_App_API_group_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/foreign_App_API_group_refused.old.json",
+      "bytes": 3163,
+      "sha256": "f614fb54d40c777965099962c586224901da006b04d3ab925bc112ec7c083a89",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "f614fb54d40c777965099962c586224901da006b04d3ab925bc112ec7c083a89"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/foreign_App_API_group_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/foreign_App_API_group_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "f1166fb41e63d9a87501827f2b86adad0132cc99b98b5a036cb2a0b23cadd96b",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "f1166fb41e63d9a87501827f2b86adad0132cc99b98b5a036cb2a0b23cadd96b"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_and_current_owner_preserved.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_and_current_owner_preserved.old.json",
+      "bytes": 3163,
+      "sha256": "ecc90a7efdc2cb1ca786de2173dc1d2224e1a888406ee671c8e18a698652b781",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "ecc90a7efdc2cb1ca786de2173dc1d2224e1a888406ee671c8e18a698652b781"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_and_current_owner_preserved.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_and_current_owner_preserved.v2.json",
+      "bytes": 3163,
+      "sha256": "0cfb202fdacf339285def7ad333ea206467048d23d3a12a1602eb07402288b1d",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "0cfb202fdacf339285def7ad333ea206467048d23d3a12a1602eb07402288b1d"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.old.json",
+      "bytes": 2129,
+      "sha256": "8f815c72df28cb4f0d85821735f1a5b223c25dfcd17418dd324b145b5e1a79be",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "8f815c72df28cb4f0d85821735f1a5b223c25dfcd17418dd324b145b5e1a79be"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.v2.json",
+      "bytes": 3163,
+      "sha256": "c2233ff4f67496771260302f061ccd453522efcfd0b2cd92e25524c749f07afc",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "c2233ff4f67496771260302f061ccd453522efcfd0b2cd92e25524c749f07afc"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.old.json",
+      "bytes": 2129,
+      "sha256": "2b230218d9217fbd6937261e6947aaf16b738022d8198cefa6cc874981f88137",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "2b230218d9217fbd6937261e6947aaf16b738022d8198cefa6cc874981f88137"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.v2.json",
+      "bytes": 3163,
+      "sha256": "fb5d9b30599a9378aa0ce8f65874994e76785cbae3f734f94376dda94abaa878",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "fb5d9b30599a9378aa0ce8f65874994e76785cbae3f734f94376dda94abaa878"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.old.json",
+      "bytes": 3163,
+      "sha256": "acb9aeaf8d7249906d72a603a6a0af04056c0023b4c58601695752b846624fce",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "acb9aeaf8d7249906d72a603a6a0af04056c0023b4c58601695752b846624fce"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.v2.json",
+      "bytes": 3163,
+      "sha256": "efad9f94ed0ccc4834f935612e025931335807fdb209e9bd70235053042ee38c",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "efad9f94ed0ccc4834f935612e025931335807fdb209e9bd70235053042ee38c"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.old.json",
+      "bytes": 3163,
+      "sha256": "605c41d628b4eefde520d58e19c44be90b6ccddeb5b4c1a50550b7957e06b153",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "605c41d628b4eefde520d58e19c44be90b6ccddeb5b4c1a50550b7957e06b153"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "b2e6eeb0f3c6bdc9efffdee55930d38f2b3c68af979c03c78a2bb225a0658148",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "b2e6eeb0f3c6bdc9efffdee55930d38f2b3c68af979c03c78a2bb225a0658148"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/other_namespace_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/other_namespace_refused.old.json",
+      "bytes": 2129,
+      "sha256": "1ad35db485e3be44d7400fe957df6f3ca84889677d836064446c5147a475f226",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "1ad35db485e3be44d7400fe957df6f3ca84889677d836064446c5147a475f226"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/other_namespace_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/other_namespace_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "d1fce88b8e921bc9090c716c0253063d10719e0180efd0e2c5fd6640584305bf",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "d1fce88b8e921bc9090c716c0253063d10719e0180efd0e2c5fd6640584305bf"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.old.json",
+      "bytes": 2487,
+      "sha256": "c0afbd7a4b9d3e2374f37d1a725b2c90fa8514dfa8e0c3dbb2dd58cba11d0e7b",
+      "encoding": "identity",
+      "original_bytes": 2487,
+      "original_sha256": "c0afbd7a4b9d3e2374f37d1a725b2c90fa8514dfa8e0c3dbb2dd58cba11d0e7b"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.v2.json",
+      "bytes": 3183,
+      "sha256": "65952a0e2f00c21b31b7177e46aa7a6c7f2df79c91f8e46adaba4afa18af1041",
+      "encoding": "identity",
+      "original_bytes": 3183,
+      "original_sha256": "65952a0e2f00c21b31b7177e46aa7a6c7f2df79c91f8e46adaba4afa18af1041"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.old.json",
+      "bytes": 3163,
+      "sha256": "03e3aa87c48224cb297160affad2046fded9f6e56ba9efbb3e07ea73ad3a4da0",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "03e3aa87c48224cb297160affad2046fded9f6e56ba9efbb3e07ea73ad3a4da0"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "d55295866ccd8f5e4405834243c674b1d64046c1c30960461f9477f623743e6c",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "d55295866ccd8f5e4405834243c674b1d64046c1c30960461f9477f623743e6c"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.old.json",
+      "bytes": 3163,
+      "sha256": "0b99b1be770193f4c7c6f70586a3237c7d8085523015e0a6bab353a8f40061d1",
+      "encoding": "identity",
+      "original_bytes": 3163,
+      "original_sha256": "0b99b1be770193f4c7c6f70586a3237c7d8085523015e0a6bab353a8f40061d1"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.v2.json",
+      "bytes": 2129,
+      "sha256": "d10ed8728d59d9923934fa92171907c7c9d19f69ada2cd40c461b936bc88df07",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "d10ed8728d59d9923934fa92171907c7c9d19f69ada2cd40c461b936bc88df07"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/wrong_UID_same_App_name.old.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_same_App_name.old.json",
+      "bytes": 2129,
+      "sha256": "28c1760c159b9440cc74d59e507f3d9f58d74ec3d21e4a1daa297c3360019cc0",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "28c1760c159b9440cc74d59e507f3d9f58d74ec3d21e4a1daa297c3360019cc0"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/SYNTHETIC-fixture-results/wrong_UID_same_App_name.v2.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_same_App_name.v2.json",
+      "bytes": 2129,
+      "sha256": "bb2729b789f0ae92f4c7e29038676b60b2d3a7bcc3080a62f408ea53bf8a3561",
+      "encoding": "identity",
+      "original_bytes": 2129,
+      "original_sha256": "bb2729b789f0ae92f4c7e29038676b60b2d3a7bcc3080a62f408ea53bf8a3561"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/census.diff",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/census.diff",
+      "bytes": 2843,
+      "sha256": "3f1b6b0f29aef23cbc121ee0b2a161388a419c63df5d481a1812eca9905a8b33",
+      "encoding": "identity",
+      "original_bytes": 2843,
+      "original_sha256": "3f1b6b0f29aef23cbc121ee0b2a161388a419c63df5d481a1812eca9905a8b33"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/isolated-controls.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/isolated-controls.json",
+      "bytes": 16146,
+      "sha256": "5585102af2f8213706b3a27303bc6f4c10d13eed67b6c75004c8838d89901f28",
+      "encoding": "identity",
+      "original_bytes": 16146,
+      "original_sha256": "5585102af2f8213706b3a27303bc6f4c10d13eed67b6c75004c8838d89901f28"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/proposal.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/proposal.json",
+      "bytes": 1411,
+      "sha256": "5aff7cc4b6b4f26af8f5f33cad4db9e5765f2d2d22f7ed61a3bc5bbc50c71f31",
+      "encoding": "identity",
+      "original_bytes": 1411,
+      "original_sha256": "5aff7cc4b6b4f26af8f5f33cad4db9e5765f2d2d22f7ed61a3bc5bbc50c71f31"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/sanitized-observed-shape-review.json",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/sanitized-observed-shape-review.json",
+      "bytes": 2302,
+      "sha256": "f430287eec9eb842bf46cb2269fb5c1b5ff8b1e2f791cdef0b94b0ab003bdd0c",
+      "encoding": "identity",
+      "original_bytes": 2302,
+      "original_sha256": "f430287eec9eb842bf46cb2269fb5c1b5ff8b1e2f791cdef0b94b0ab003bdd0c"
+    },
+    {
+      "path": "owner-uid-proposal-and-controls/test-isolated-census.py",
+      "source_path": "/tmp/bex-m188-census-v2-proposal/test-isolated-census.py",
+      "bytes": 9511,
+      "sha256": "de159828d71032f689ee4ea7b60e2f08c38d803176ab6193ae1eb4f5c254295c",
+      "encoding": "identity",
+      "original_bytes": 9511,
+      "original_sha256": "de159828d71032f689ee4ea7b60e2f08c38d803176ab6193ae1eb4f5c254295c"
+    },
+    {
+      "path": "preferred-final-live-census-v2.py",
+      "source_path": "/tmp/bex-m188-final-live-census-v2.py",
+      "bytes": 10356,
+      "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+      "encoding": "identity",
+      "original_bytes": 10356,
+      "original_sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+    },
+    {
+      "path": "root-approval.json",
+      "source_path": "/tmp/bex-m188-census-v2-root-approval.json",
+      "bytes": 1388,
+      "sha256": "722b1f5c707ff8bb29ee8b482de607ad72605bfa79eaae533d69c75b60c28581",
+      "encoding": "identity",
+      "original_bytes": 1388,
+      "original_sha256": "722b1f5c707ff8bb29ee8b482de607ad72605bfa79eaae533d69c75b60c28581"
+    },
+    {
+      "path": "root-audit.json",
+      "source_path": "/tmp/bex-m188-priority-census-v2-root-audit.json",
+      "bytes": 1070,
+      "sha256": "a717f0dde8439d473994525bcaaddcfd7fbd7e0d7660f67a3e5f3f8c5113b957",
+      "encoding": "identity",
+      "original_bytes": 1070,
+      "original_sha256": "a717f0dde8439d473994525bcaaddcfd7fbd7e0d7660f67a3e5f3f8c5113b957"
+    },
+    {
+      "path": "supplemental-classification/authenticated-image-addendum.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/authenticated-image-addendum.json",
+      "bytes": 5183,
+      "sha256": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213",
+      "encoding": "identity",
+      "original_bytes": 5183,
+      "original_sha256": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213"
+    },
+    {
+      "path": "supplemental-classification/bounded-registry-and-source-metadata.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/bounded-registry-and-source-metadata.json",
+      "bytes": 57732,
+      "sha256": "25694c9a768de862a1f5405a4fe2de0f8623694246e4223329c073a2ba7ed2d4",
+      "encoding": "identity",
+      "original_bytes": 57732,
+      "original_sha256": "25694c9a768de862a1f5405a4fe2de0f8623694246e4223329c073a2ba7ed2d4"
+    },
+    {
+      "path": "supplemental-classification/cloneix-authenticated-config-whitelist.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-authenticated-config-whitelist.json",
+      "bytes": 4991,
+      "sha256": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5",
+      "encoding": "identity",
+      "original_bytes": 4991,
+      "original_sha256": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5"
+    },
+    {
+      "path": "supplemental-classification/cloneix-confirmed-service-manifest-attempt.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-confirmed-service-manifest-attempt.json",
+      "bytes": 520,
+      "sha256": "574d8dc6643a98422e01c39693cb8b6e5efbb92c6d818baa550b2646d5eb3336",
+      "encoding": "identity",
+      "original_bytes": 520,
+      "original_sha256": "574d8dc6643a98422e01c39693cb8b6e5efbb92c6d818baa550b2646d5eb3336"
+    },
+    {
+      "path": "supplemental-classification/current-app-whitelist.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/current-app-whitelist.json",
+      "bytes": 17669,
+      "sha256": "8e42928b94541114633c029388c387446a1105ad01dcfbebf55b544e16008b6b",
+      "encoding": "identity",
+      "original_bytes": 17669,
+      "original_sha256": "8e42928b94541114633c029388c387446a1105ad01dcfbebf55b544e16008b6b"
+    },
+    {
+      "path": "supplemental-classification/public-source-version-signals.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/public-source-version-signals.json",
+      "bytes": 4206,
+      "sha256": "fdc477f90e5f3f4debb5691ae46b6037c8790dc0afead26fed13f8533a9b11bb",
+      "encoding": "identity",
+      "original_bytes": 4206,
+      "original_sha256": "fdc477f90e5f3f4debb5691ae46b6037c8790dc0afead26fed13f8533a9b11bb"
+    },
+    {
+      "path": "supplemental-classification/supplemental-findings.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/supplemental-findings.json",
+      "bytes": 13877,
+      "sha256": "cd99f5c2f11f5d81b318fd3ee5b9003b3331e556bf027cb6d74fea0fe7359d92",
+      "encoding": "identity",
+      "original_bytes": 13877,
+      "original_sha256": "cd99f5c2f11f5d81b318fd3ee5b9003b3331e556bf027cb6d74fea0fe7359d92"
+    },
+    {
+      "path": "supplemental-classification/workload-and-manifest-metadata.json",
+      "source_path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/workload-and-manifest-metadata.json",
+      "bytes": 1898,
+      "sha256": "843e9c583ff49526eb22770d9edb8560c6268673c3ea3f5e032b54e232bedb36",
+      "encoding": "identity",
+      "original_bytes": 1898,
+      "original_sha256": "843e9c583ff49526eb22770d9edb8560c6268673c3ea3f5e032b54e232bedb36"
+    }
+  ]
+}

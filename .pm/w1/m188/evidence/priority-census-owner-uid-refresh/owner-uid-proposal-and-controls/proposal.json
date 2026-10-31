@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.inactive-census-current-app-uid-proposal/v1",
+  "at": "2026-10-31T00:31:12.201184+00:00",
+  "old_helper": {
+    "file": "/tmp/bex-m188-final-live-census.py",
+    "sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff"
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-census-v2-proposal/02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+    "diff_file": "/tmp/bex-m188-census-v2-proposal/census.diff",
+    "diff_sha256": "3f1b6b0f29aef23cbc121ee0b2a161388a419c63df5d481a1812eca9905a8b33"
+  },
+  "ownership_rule": "Same namespace first. If ANY App-kind owner exists, every such owner must have current App UID+name and app.bex.co API group; any conflicting App UID/name/group rejects even matching labels. With no App owner, retain original app.bex.co/app label match. No workload-name fallback.",
+  "source_pointers": [
+    "lego/operator/internal/controller/app_controller.go:2648 creates app-named Deployment via applyServingDeployment",
+    "lego/operator/internal/controller/app_controller.go:4718 SetControllerReference(app,cj)",
+    "Deployment ownership helper source pointer will be recorded with fixture audit"
+  ],
+  "scope": "Inactive temporary helper proposal only; preserve original strictreport/helper. No production census or active helper change."
+}

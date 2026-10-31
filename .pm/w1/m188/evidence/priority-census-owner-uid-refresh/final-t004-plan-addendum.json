@@ -1,0 +1,52 @@
+{
+  "schema": "bex.m188.add-only-final-t004-census-v2-plan/v1",
+  "at": "2026-10-31T00:34:29.202910+00:00",
+  "original_plan": {
+    "file": "/tmp/bex-m188-final-t004-plan.json",
+    "sha256": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086",
+    "preserved_unchanged": true
+  },
+  "root_approval": {
+    "file": "/tmp/bex-m188-census-v2-root-approval.json",
+    "sha256": "722b1f5c707ff8bb29ee8b482de607ad72605bfa79eaae533d69c75b60c28581"
+  },
+  "preferred_future_census_helper": {
+    "file": "/tmp/bex-m188-final-live-census-v2.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+    "old_helper_retained": "/tmp/bex-m188-final-live-census.py"
+  },
+  "future_command_NOT_EXECUTED": "python3 /tmp/bex-m188-final-live-census-v2.py --source-sha \"$M188_DEPLOY_SOURCE\" --kubeconfig \"$M188_PRIVATE_KUBECONFIG\" --output \"$M188_FINAL_DIR/final-census.json\"",
+  "future_source_binding": "M188_DEPLOY_SOURCE must be the actual adopted operator source bound through its completed signed deploy job, immutable operator image and Ready current pods. Use that exact40hex in source_scope. No fixed historical fixture/source SHA substitutes for this binding.",
+  "fixture_source_qualification": {
+    "fixture_argument": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+    "meaning": "Only actual git/source_scope execution inside synthetic isolated fixtures. The isolated-controls field named exact_deployed_source_for_scope describes that fixture argument; it is NOT proof of any actual deployedsource, adoption, rollout orReady.",
+    "no_production_calls_in_fixture": true
+  },
+  "change": "Same namespace then exact current App UID/name/API group ownership, or existing owner-less app label association. Reject conflicting App owners; no exact-name fallback.",
+  "unmodified_predicates": [
+    "All eligible no-running-pod cases unresolved whether templates/status have retained image, replicas0, suspended, deleting or Failed/Canceled.",
+    "Retained template metadata is only an active-image pointer requiring explicit release/registry/runtime followup. It is not served/healthy/safe or actual runtime execution.",
+    "Unknown required running runtime probe blocks zero conclusion.",
+    "Final zero conclusion remains notaffected AND notunresolved; explicitcustomer/static exclusions do not mean patched."
+  ],
+  "initial_strict_snapshot": {
+    "file": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json",
+    "sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f",
+    "unresolved_count_unchanged": 5,
+    "not_rewritten_by_followup": true
+  },
+  "separate_retained_cloneix_metadata_followup": {
+    "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/authenticated-image-addendum.json",
+    "sha256": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213",
+    "config_evidence": {
+      "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-authenticated-config-whitelist.json",
+      "sha256": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5"
+    },
+    "interpretation": "Authenticated retainedgen3 image config declares Node26.10.0 Linux/amd64; no executedbinary/runtime/serving or security acceptance. Deploymentmetadata generation5 is distinct from imagegen3. This addendum preserves initial strictunresolved5 and does not turn it into zerotarget.",
+    "historical_plan_limit": "The original plan historical no-live-commit note for cloneix is not a current no-active-image exclusion; newer retainedimage evidence must be reviewed separately."
+  },
+  "final_t004_acceptance_still_pending": "Root must combine fresh post-adoption expected-image Ready/deploy binding, fresh v2 census and exact current row-level active-image/version resolution afterReady. Any unresolved eligible image/noPod/runtime still prevents zero-target. All11 sourceadoption/sixfixtures/signature/rollout prerequisites of original plan remain.",
+  "no_production_census_or_ready_check_executed": true,
+  "no_task_completion_or_safety_claim": true,
+  "scope": "Add-only future tool selection/interpretation supplement. No guard/source/context/proof/board/remote changes."
+}

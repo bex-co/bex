@@ -1,0 +1,83 @@
+{
+  "schema": "bex.final-legacy-runtime-census/v1",
+  "checked_at": "2026-10-31T00:32:10.757330+00:00",
+  "source_scope": {
+    "source_sha": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+    "native.go_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "nativeresolve.go_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+    "JS_companion_primaries": [
+      "elixir",
+      "go",
+      "python",
+      "ruby",
+      "rust"
+    ],
+    "primary_node_also_included": true
+  },
+  "total_apps": 1,
+  "rows": [
+    {
+      "namespace": "fixture-team",
+      "app": "fixture-app",
+      "runtime": "python",
+      "builder": "native",
+      "type": "web_service",
+      "phase": "Failed",
+      "suspended": false,
+      "deleting": false,
+      "activeRevision": null,
+      "active_status_image": null,
+      "candidate_artifact_image": null,
+      "workload_templates": [
+        {
+          "kind": "CronJob",
+          "name": "fixture-app",
+          "suspended": true,
+          "replicas": null,
+          "images": [
+            "registry.invalid/SYNTHETIC-retained:unknown@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          ],
+          "lastSuccessfulTime": null
+        }
+      ],
+      "pods": [],
+      "affected_signals": [],
+      "unresolved": [
+        "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+      ],
+      "classification": "candidate",
+      "fallback_active_image_candidates": [
+        "registry.invalid/SYNTHETIC-retained:unknown@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      ]
+    }
+  ],
+  "affected_signals": [],
+  "unresolved": [
+    {
+      "namespace": "fixture-team",
+      "app": "fixture-app",
+      "reasons": [
+        "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+      ],
+      "active_status_image": null,
+      "workload_templates": [
+        {
+          "kind": "CronJob",
+          "name": "fixture-app",
+          "suspended": true,
+          "replicas": null,
+          "images": [
+            "registry.invalid/SYNTHETIC-retained:unknown@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          ],
+          "lastSuccessfulTime": null
+        }
+      ],
+      "fallback_active_image_candidates": [
+        "registry.invalid/SYNTHETIC-retained:unknown@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      ]
+    }
+  ],
+  "zero_affected_conclusion_allowed": false,
+  "no_apply_performed": true,
+  "limits": "Read-only version/OS/image-pointer census, not decoder/security acceptance. Static/build-only and customer Dockerfiles are explicitly scoped out, not declared patched. No-pod active cron/scale-zero releases require immutable-image/release evidence. Any unresolved eligible version blocks zero-target conclusion; root can resolve exact rows without broad fleet apply."
+}

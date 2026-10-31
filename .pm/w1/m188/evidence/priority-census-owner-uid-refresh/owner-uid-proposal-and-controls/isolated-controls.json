@@ -1,0 +1,374 @@
+{
+  "schema": "bex.m188.INACTIVE-census-owner-UID-isolated-controls/v1",
+  "at": "2026-10-31T00:32:10.816081+00:00",
+  "synthetic_fixture_only": true,
+  "actual_production_kubectl_calls": 0,
+  "actual_main_and_source_scope_executed": true,
+  "exact_deployed_source_for_scope": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+  "old_helper": {
+    "file": "/tmp/bex-m188-final-live-census.py",
+    "sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff"
+  },
+  "inactive_proposal": {
+    "file": "/tmp/bex-m188-census-v2-proposal/02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+  },
+  "harness": {
+    "file": "/tmp/bex-m188-census-v2-proposal/test-isolated-census.py",
+    "sha256": "de159828d71032f689ee4ea7b60e2f08c38d803176ab6193ae1eb4f5c254295c"
+  },
+  "controls": [
+    {
+      "case": "label_less_current_UID_scale_zero",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 1,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.old.json",
+        "sha256": "2b230218d9217fbd6937261e6947aaf16b738022d8198cefa6cc874981f88137",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_current_UID_scale_zero.v2.json",
+        "sha256": "fb5d9b30599a9378aa0ce8f65874994e76785cbae3f734f94376dda94abaa878",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "wrong_UID_same_App_name",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_same_App_name.old.json",
+        "sha256": "28c1760c159b9440cc74d59e507f3d9f58d74ec3d21e4a1daa297c3360019cc0",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_same_App_name.v2.json",
+        "sha256": "bb2729b789f0ae92f4c7e29038676b60b2d3a7bcc3080a62f408ea53bf8a3561",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "wrong_UID_matching_label_refused",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.old.json",
+        "sha256": "0b99b1be770193f4c7c6f70586a3237c7d8085523015e0a6bab353a8f40061d1",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/wrong_UID_matching_label_refused.v2.json",
+        "sha256": "d10ed8728d59d9923934fa92171907c7c9d19f69ada2cd40c461b936bc88df07",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "other_namespace_refused",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/other_namespace_refused.old.json",
+        "sha256": "1ad35db485e3be44d7400fe957df6f3ca84889677d836064446c5147a475f226",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/other_namespace_refused.v2.json",
+        "sha256": "d1fce88b8e921bc9090c716c0253063d10719e0180efd0e2c5fd6640584305bf",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "legacy_label_only_match_preserved",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 1,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.old.json",
+        "sha256": "acb9aeaf8d7249906d72a603a6a0af04056c0023b4c58601695752b846624fce",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/legacy_label_only_match_preserved.v2.json",
+        "sha256": "efad9f94ed0ccc4834f935612e025931335807fdb209e9bd70235053042ee38c",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "label_and_current_owner_preserved",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 1,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_and_current_owner_preserved.old.json",
+        "sha256": "ecc90a7efdc2cb1ca786de2173dc1d2224e1a888406ee671c8e18a698652b781",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_and_current_owner_preserved.v2.json",
+        "sha256": "0cfb202fdacf339285def7ad333ea206467048d23d3a12a1602eb07402288b1d",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "exact_name_without_owner_or_label_refused",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.old.json",
+        "sha256": "b1bd14361560a8bcdee3ac8ddfd789d444f868bae047f12538195225d57b5caa",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/exact_name_without_owner_or_label_refused.v2.json",
+        "sha256": "fe520a367eb1960aeefdb1fb4f695590127a48426bc502c8205b787b8bb15461",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "multiple_App_owners_with_conflict_refused",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.old.json",
+        "sha256": "605c41d628b4eefde520d58e19c44be90b6ccddeb5b4c1a50550b7957e06b153",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/multiple_App_owners_with_conflict_refused.v2.json",
+        "sha256": "b2e6eeb0f3c6bdc9efffdee55930d38f2b3c68af979c03c78a2bb225a0658148",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "foreign_App_API_group_refused",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/foreign_App_API_group_refused.old.json",
+        "sha256": "f614fb54d40c777965099962c586224901da006b04d3ab925bc112ec7c083a89",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/foreign_App_API_group_refused.v2.json",
+        "sha256": "f1166fb41e63d9a87501827f2b86adad0132cc99b98b5a036cb2a0b23cadd96b",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "same_UID_wrong_owner_name_refused",
+      "passed": true,
+      "old_templates": 1,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.old.json",
+        "sha256": "03e3aa87c48224cb297160affad2046fded9f6e56ba9efbb3e07ea73ad3a4da0",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/same_UID_wrong_owner_name_refused.v2.json",
+        "sha256": "d55295866ccd8f5e4405834243c674b1d64046c1c30960461f9477f623743e6c",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "label_less_UID_owned_suspended_CronJob_retained",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 1,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.old.json",
+        "sha256": "8f815c72df28cb4f0d85821735f1a5b223c25dfcd17418dd324b145b5e1a79be",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/label_less_UID_owned_suspended_CronJob_retained.v2.json",
+        "sha256": "c2233ff4f67496771260302f061ccd453522efcfd0b2cd92e25524c749f07afc",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "candidate_artifact_is_not_active_release_evidence",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 0,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.old.json",
+        "sha256": "cdb4240c3fbac0770d4b80c0cf4aad1355211e97ecfb2a9cf95843023c3c9748",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/candidate_artifact_is_not_active_release_evidence.v2.json",
+        "sha256": "3afa51901d59305b5a12bf98464450699253ff7f8ad35bedc02c2d459fcf6f4d",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch"
+        ]
+      }
+    },
+    {
+      "case": "running_unknown_runtime_probe_remains_unresolved",
+      "passed": true,
+      "old_templates": 0,
+      "new_templates": 1,
+      "zero_conclusion_remains_false": true,
+      "old": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.old.json",
+        "sha256": "c0afbd7a4b9d3e2374f37d1a725b2c90fa8514dfa8e0c3dbb2dd58cba11d0e7b",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch",
+          "FIXTURE-exec:empty-public-runtime-result"
+        ]
+      },
+      "proposed": {
+        "file": "/tmp/bex-m188-census-v2-proposal/SYNTHETIC-fixture-results/running_unknown_runtime_probe_remains_unresolved.v2.json",
+        "sha256": "65952a0e2f00c21b31b7177e46aa7a6c7f2df79c91f8e46adaba4afa18af1041",
+        "mocked_kubectl_calls": [
+          "FIXTURE-get:apps.app.bex.co",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:deployments.apps,cronjobs.batch",
+          "FIXTURE-exec:empty-public-runtime-result"
+        ]
+      }
+    }
+  ],
+  "all13_controls_passed": true,
+  "predicate_audit": [
+    "Same namespace precedes ownership and label checks.",
+    "Current App owner UID/name/API group required if any App owner exists; any conflict rejects even matching labels.",
+    "No exact-workload-name fallback added; existing owner-less app label match retained.",
+    "No-running-pod branch always adds unresolved regardless replicas0/suspended/Failed/Canceled/deleting; active template/status image only becomes a pointer to investigate.",
+    "Retained image/no-pod does not imply served, healthy, patched, safe, or excluded. No artifact metadata resolution is performed.",
+    "Candidate-only artifactImage is not promoted to active status image evidence.",
+    "Running pod with unknown/incomplete required runtime probe remains unresolved.",
+    "Global zero predicate remains not affected AND not unresolved, with existing explicit customer/static exclusions and not-a-security-acceptance limits unchanged.",
+    "Pod label matching, runtime scope/probes and final zero predicate are unchanged by this narrowly scoped workload ownership fix."
+  ],
+  "source_ownership_pointers": [
+    "lego/operator/internal/controller/release_config_snapshot.go:732 SetControllerReference(app,dep)",
+    "lego/operator/internal/controller/app_controller.go:4718 SetControllerReference(app,cj)"
+  ],
+  "preserved_hashes": {
+    "/tmp/bex-m188-final-live-census.py": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f",
+    "/tmp/bex-m188-prepare-adoption.py": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+    "/tmp/bex-m188-published-acceptance.json": "eae0050dbd22e9c5b329ae38f5b1aa19fd868dbec31a123d4fcac606f7f630a1"
+  },
+  "old_strict_report_unresolved_count": 5,
+  "proposal_not_activated": true,
+  "scope": "Only TEMP inactive proposal and synthetic local read fixtures. No production census, credential/secret/Appenv access, old helper/report/activeguard/aggregate/source/board/remote mutation."
+}

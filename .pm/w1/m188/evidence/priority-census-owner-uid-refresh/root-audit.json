@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-31T00:36:05.006180+00:00",
+  "reviewer": "root",
+  "activation_sha256": "facc12869cfbb2468f650457aa10d465e46461081d194a217b15d3c638cbbf6b",
+  "protected_hashes_independently_recomputed": 9,
+  "exact_owner_matching_diff_and13_isolatedcontrols_reviewed": true,
+  "strict_initial5unresolvedsnapshot_preserved": true,
+  "priority29Apps6runningunchanged_no_old11_signal_not_finalReadycensus": true,
+  "three_auto_customerDocker_origin_remains_inference": true,
+  "market_size_no_active_artifact_or_workload": true,
+  "cloneix_gen3_config_declares_Node26_only_not_executed_binary_or_safety": true,
+  "cloneix_future_rebuild_version_unresolved_source_and_env_not_assumed": true,
+  "metadata_fetch_scoped_existing_App_pullcredential_inmemory_nocredentialpersist_or_headerforward": true,
+  "new_v2_retained_zero_image_remains_unresolved": true,
+  "old_c06_helper_and_original_b43plan_preserved": true,
+  "future_final_census_requires_actual_deployed_source_and_fresh_postReady_observation": true,
+  "no_prod_mutation_target_rebuild_or_task_completion": true
+}

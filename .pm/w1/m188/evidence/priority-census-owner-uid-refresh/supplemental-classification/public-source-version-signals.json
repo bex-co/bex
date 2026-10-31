@@ -1,0 +1,101 @@
+{
+  "scope": "Public source version-signal metadata only; exact pinnedCloneix commit and independently resolved Market-Size main (spec not pinned); no app files/Secrets/env values/builds",
+  "checked_at": "2026-10-31T00:26:07.020208+00:00",
+  "results": {
+    "cloneix": {
+      "repo": "rajmavani19-wq/Cloneix",
+      "pinned_spec_commit": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+      "files": [
+        {
+          "file": "package.json",
+          "ref": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".node-version",
+          "ref": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".nvmrc",
+          "ref": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".tool-versions",
+          "ref": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        }
+      ]
+    },
+    "market_size": {
+      "repo": "marketsizeforecast/Market-Size",
+      "ref_endpoint_exit": 0,
+      "ref_response_sha256": "914eede12eece5b9665d85343a7b7c495c4cbfc5d657888dd1ebdff276d03414",
+      "ref_stderr_bytes": 0,
+      "resolved_main_sha": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+      "files": [
+        {
+          "file": "package.json",
+          "ref": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".node-version",
+          "ref": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".nvmrc",
+          "ref": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        },
+        {
+          "file": ".tool-versions",
+          "ref": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+          "exit": 1,
+          "response_bytes": 127,
+          "response_sha256": "e45906ce02e79f16fb87a838d86bb4e497e37a9591f97608fa013bbcd8b9cbc2",
+          "stderr_bytes": 25,
+          "stderr_sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "http_status_from_stderr": 404
+        }
+      ]
+    }
+  }
+}

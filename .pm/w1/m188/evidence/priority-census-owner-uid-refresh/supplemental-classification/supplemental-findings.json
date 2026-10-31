@@ -1,0 +1,199 @@
+{
+  "schema": "bex.pre-adoption-priority-classification-supplement/v1",
+  "checked_at": "2026-10-31T00:29:55.083733+00:00",
+  "scope": "Supplement only; initial strict5unresolved raw snapshot/receipts preserved byte-identically. Not final adoption/Ready/deployed-source acceptance. No build/rebuild/resume/deploy action.",
+  "initial_immutable_files": {
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/priority-comparison.json": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/assessment-receipt.json": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956",
+    "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f"
+  },
+  "prior_customer_classification": {
+    "path": ".pm/w1/m188/evidence/auto-runtime-classification.json",
+    "sha256": "6d1a0f236b215cb4265694dd7427d21ad7d24ec6494e209b3c93ef7f996b7009",
+    "checked_at": "2026-10-30T05:11:17.264226+00:00",
+    "qualification": "Prior evidence itself explicitly calls customer-Docker origin an inference; carry that qualification, never upgrade it to signed build-strategy provenance."
+  },
+  "carried_customer_auto": [
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "identity_checks": {
+        "metadata_generation_matches": true,
+        "runtime_empty_matches": true,
+        "builder_auto_matches": true,
+        "status_release_generation_matches": true,
+        "status_image_matches": true,
+        "serving_pod_name_matches": true,
+        "serving_image_matches": true,
+        "serving_imageID_matches": true,
+        "fresh_alpine": true
+      },
+      "actual_serving_versions": {
+        "node": "22.23.2",
+        "brotli": "1.1.0",
+        "os_id": "alpine",
+        "os_version_id": "3.24.1"
+      },
+      "actual_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "actual_serving_revision": "rev-230",
+      "status_image_revision_label": {
+        "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d"
+      },
+      "requested_buildCommit": null,
+      "classification": "Carried high-confidence inference of customer repository Dockerfile/BuildKit origin from unchanged exact serving image, Alpine OS, unchanged generation/auto spec and current dispatch contract. Not a retained-buildJob/OCI-history proof.",
+      "old11_platform_native_scope": "Excluded as customer-origin serving artifact; observed Node22 adds no old11 running signal. No decoder fixed/vulnerable claim.",
+      "commit_custody_limit": "Prior archive does not bind a Git commit. Same immutable image preserves its bytes; current cached imageRevision applies ONLY to its exact image field. For eden status gen724 commit is NOT asserted for serving gen723. agentmarketcap has no cached commit.",
+      "status_not_serving_mismatch_preserved": false
+    },
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "identity_checks": {
+        "metadata_generation_matches": true,
+        "runtime_empty_matches": true,
+        "builder_auto_matches": true,
+        "status_release_generation_matches": true,
+        "status_image_matches": true,
+        "serving_pod_name_matches": true,
+        "serving_image_matches": true,
+        "serving_imageID_matches": true,
+        "fresh_alpine": true
+      },
+      "actual_serving_versions": {
+        "node": "22.23.4",
+        "brotli": "1.1.0",
+        "os_id": "alpine",
+        "os_version_id": "3.24.3"
+      },
+      "actual_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "actual_serving_revision": "rev-1448",
+      "status_image_revision_label": {
+        "commit": "2b2f6442e7eb76d3f354e7e42b54a8107da3ad03",
+        "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1"
+      },
+      "requested_buildCommit": "2b2f6442e7eb76d3f354e7e42b54a8107da3ad03",
+      "classification": "Carried high-confidence inference of customer repository Dockerfile/BuildKit origin from unchanged exact serving image, Alpine OS, unchanged generation/auto spec and current dispatch contract. Not a retained-buildJob/OCI-history proof.",
+      "old11_platform_native_scope": "Excluded as customer-origin serving artifact; observed Node22 adds no old11 running signal. No decoder fixed/vulnerable claim.",
+      "commit_custody_limit": "Prior archive does not bind a Git commit. Same immutable image preserves its bytes; current cached imageRevision applies ONLY to its exact image field. For eden status gen724 commit is NOT asserted for serving gen723. agentmarketcap has no cached commit.",
+      "status_not_serving_mismatch_preserved": false
+    },
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "identity_checks": {
+        "metadata_generation_matches": true,
+        "runtime_empty_matches": true,
+        "builder_auto_matches": true,
+        "status_release_generation_matches": true,
+        "status_image_matches": true,
+        "serving_pod_name_matches": true,
+        "serving_image_matches": true,
+        "serving_imageID_matches": true,
+        "fresh_alpine": true
+      },
+      "actual_serving_versions": {
+        "node": "22.23.3",
+        "brotli": "1.1.0",
+        "os_id": "alpine",
+        "os_version_id": "3.24.2"
+      },
+      "actual_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+      "actual_serving_revision": "rev-723",
+      "status_image_revision_label": {
+        "commit": "ef60afbfe03dfe8fe29665a22da1849f30d207a5",
+        "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15"
+      },
+      "requested_buildCommit": "ef60afbfe03dfe8fe29665a22da1849f30d207a5",
+      "classification": "Carried high-confidence inference of customer repository Dockerfile/BuildKit origin from unchanged exact serving image, Alpine OS, unchanged generation/auto spec and current dispatch contract. Not a retained-buildJob/OCI-history proof.",
+      "old11_platform_native_scope": "Excluded as customer-origin serving artifact; observed Node22 adds no old11 running signal. No decoder fixed/vulnerable claim.",
+      "commit_custody_limit": "Prior archive does not bind a Git commit. Same immutable image preserves its bytes; current cached imageRevision applies ONLY to its exact image field. For eden status gen724 commit is NOT asserted for serving gen723. agentmarketcap has no cached commit.",
+      "status_not_serving_mismatch_preserved": true
+    }
+  ],
+  "market_size": {
+    "current_requested_strategy": "native Node: explicit spec.runtime=node and builder=native; repo source, not image/Dockerfile mode",
+    "current_runtime_state": "No activeRevision, image, artifactImage or matching Deployment/CronJob; no currently running Pod in original snapshot. ReadyFalse BuildFailedUserError at release1, not merely noPod exclusion.",
+    "resume": "No existing image/workload to resume; a new successful source build/deploy is required. No claim it was patched or safe by Failed status alone.",
+    "rebuild_current_source": {
+      "requested_commit_pinned": false,
+      "observed_main_commit": "87b6ec2e422cb925660bc356130981c8d9416f3a",
+      "source_tree_response_bytes": 96993,
+      "source_tree_truncated": false,
+      "version_file_paths": [],
+      "literal_env_count": 0,
+      "secret_refs_present": false,
+      "resolver_inference": "At observed main87b6ec2\u2026, no root Node version signals/package.json and no configured environment overrides; current85de resolver first() falls back reviewed default Node24. This is a conditional version-selection inference, not an executed build, future branch guarantee, or deployed-operator-source assertion."
+    },
+    "current_in_use_old11_signal": false
+  },
+  "cloneix": {
+    "current_requested_strategy": "native Node: explicit runtime=node/builder=native, pinned spec.buildCommit c9b04900c4cdabf9b568d46413efa797b7e18369; not customer Dockerfile mode",
+    "current_runtime_state": "Canceled+suspended; canceled-release3/release3, activeRevision empty. UID-owned Deployment retained at replicas0 with immutable gen3/54b849\u2026 image; original snapshot has no current Pod. No healthy previously serving release evidenced.",
+    "retained_image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+    "resume_source_contract": "Current repo backend Resume\u2192setSuspended changes suspended flag only (service.go3989,5088\u20135126); cancellation marker stays. Controller canceled branch688\u2192settleCanceledRelease and releaseHasServed(emptyActiveRevision=false) keeps never-served canceled Deployment0 (app_controller.go797\u2013867;release_identity.go548). This is read-only source reasoning, not a live resume experiment or proof current operator source is85de.",
+    "retained_image_node_version": "UNRESOLVED: bounded anonymous Service-proxy manifest metadata denied401; no full layers or registry credential/Secret read",
+    "future_rebuild_version": "UNRESOLVED: pinned publicGitHub source version queries404; Secret refs exist and contents were not read. Could select an old11 Node line; do not assume default or safe from absent Pod.",
+    "current_serving_old11_signal": false,
+    "latent_resume_rebuild_old11_risk": "Unknown, retained explicitly; no current active-release claim and no image-safe/zero-lifetime-exposure claim."
+  },
+  "source_contract": {
+    "classification_source_sha": "85de1ac8d60951d9b9fde8d75e44fe8769de7155",
+    "is_verified_current_deployed_operator_source": false,
+    "file_sha256": {
+      "lego/operator/internal/controller/app_controller.go": "0eb118a30874866e67eca8ee887452b4b8f9c55f8200c4a47e9ff271466df757",
+      "lego/operator/internal/controller/release_identity.go": "32003339def15792977fc42f438a1bd42cee52a93f6189febbe2b831c30e4115",
+      "lego/backend/internal/apps/service.go": "4c190e8af8495fc3c4955d0004bf3d5069950b897ae419760da95721eef61e1b",
+      "lego/operator/internal/build/build.go": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061",
+      "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "lego/operator/internal/build/nativeversion.go": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "deploy/gitops/charts/kpack/platform.yaml": "99e47ad293002fdc08b5548b0fe9bbecb5bf0fa749a573d500a118c67e5861ef"
+    },
+    "pointers": [
+      "app_types.go595\u2013624:runtime/native and legacyauto Dockerfile contract",
+      "app_controller.go1584\u20131600:effectiveBuilder leaves nonstatic empty-runtimeauto unchanged",
+      "build.go628\u2013635:only explicit buildpack dispatches kpack; native validated separately",
+      "build.go975\u2013981:non-native recipe uses repository Dockerfile",
+      "nativeversion.go96\u201399,198\u2013199,327\u2013332:Node version precedence then default",
+      "native.go104:default Node24",
+      "platform.yaml69:configured CNB stack Jammy; reviewed native bases Debian"
+    ]
+  },
+  "future_helper_gap": {
+    "observed": "Initial helper app-label-only workload filter omitted actual cloneix exact-name/UID-owned scale0Deployment. Its strict unresolved status remained correct.",
+    "minimum_followup": "Future census workload matching should include App ownerUID or exactAppname in addition to metadata app label; no helper edit made here."
+  },
+  "remaining_version_residuals": [
+    {
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "question": "Actual retained gen3image Node version and effective requested rebuild version; metadata/source access currently insufficient",
+      "next_bounded_action": "Use an already approved authenticated registry-metadata path for exact gen3 manifest/config, or retained exact build/source metadata. No user decision is inherently required; do not trigger resume/build merely to inspect."
+    }
+  ],
+  "summary": {
+    "fresh_running_old11_signals": 0,
+    "three_customer_auto_origin_inferences_carried": 3,
+    "market_size_current_active_release": false,
+    "cloneix_current_active_release": false,
+    "cloneix_retained_image_and_future_version_resolved": false,
+    "zero_affected_all_latent_versions_conclusion_allowed": false
+  },
+  "artifacts": {
+    "bounded-registry-and-source-metadata.json": {
+      "sha256": "25694c9a768de862a1f5405a4fe2de0f8623694246e4223329c073a2ba7ed2d4",
+      "bytes": 57732
+    },
+    "cloneix-confirmed-service-manifest-attempt.json": {
+      "sha256": "574d8dc6643a98422e01c39693cb8b6e5efbb92c6d818baa550b2646d5eb3336",
+      "bytes": 520
+    },
+    "current-app-whitelist.json": {
+      "sha256": "8e42928b94541114633c029388c387446a1105ad01dcfbebf55b544e16008b6b",
+      "bytes": 17669
+    },
+    "public-source-version-signals.json": {
+      "sha256": "fdc477f90e5f3f4debb5691ae46b6037c8790dc0afead26fed13f8533a9b11bb",
+      "bytes": 4206
+    },
+    "workload-and-manifest-metadata.json": {
+      "sha256": "843e9c583ff49526eb22770d9edb8560c6268673c3ea3f5e032b54e232bedb36",
+      "bytes": 1898
+    }
+  }
+}
