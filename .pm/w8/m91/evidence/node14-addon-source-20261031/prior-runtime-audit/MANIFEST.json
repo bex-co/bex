@@ -1,0 +1,50 @@
+{
+  "files": [
+    {
+      "path": "all27-assembly-and-coverage.json",
+      "bytes": 15557,
+      "sha256": "ad90122051490b183cdc9dc6ef6712468119812d76fc0df3b5055aff85f25d96"
+    },
+    {
+      "path": "audit-and-next-slice.md",
+      "bytes": 8651,
+      "sha256": "6032d6e86b3c951ecc3d3f249b4d4c90922a9761da99f920486b3adfb7a395ce"
+    },
+    {
+      "path": "current-source-manifest.json",
+      "bytes": 12268,
+      "sha256": "db9e56cd3dfeaf53eb469890b281ecb053c6d03dc50fc8e7728389866dac456c"
+    },
+    {
+      "path": "node14-find-python.js",
+      "bytes": 11145,
+      "sha256": "53831c0a095229a397e6b3aba18c0fb4644bb2bdc4f8be31f6dd69e06061c5d7"
+    },
+    {
+      "path": "node14-modern-python-source-probe.json",
+      "bytes": 516,
+      "sha256": "ece87fbcfe3eb20fb60c8b1a393d109ad562b49fd4eb809210c428d551bae594"
+    },
+    {
+      "path": "node14-modern-python-source-probe.py",
+      "bytes": 1487,
+      "sha256": "80349e006656817001242b0cee1d8494984c2bb1639536a4cea45d7201301210"
+    },
+    {
+      "path": "node14-node-gyp-package.json",
+      "bytes": 2125,
+      "sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3"
+    },
+    {
+      "path": "node14-vendored-gyp-input.py",
+      "bytes": 116375,
+      "sha256": "6da501baff9f94c937b2cb44924db43222af56ee64a7aa0c71e4ecbcb4203ae6"
+    },
+    {
+      "path": "reviewed-python39-relocation-source-evidence.json",
+      "bytes": 976,
+      "sha256": "482a661d84b71ba8170ad7dab669f34f4f23f84f95caf1ba1eb49a21c2097f16"
+    }
+  ],
+  "file_count": 9
+}

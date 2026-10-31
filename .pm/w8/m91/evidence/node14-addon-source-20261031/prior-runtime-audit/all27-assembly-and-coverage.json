@@ -1,0 +1,258 @@
+{
+  "at": "2026-10-31T17:10:22.323192+00:00",
+  "rows": [
+    {
+      "name": "node-14-bullseye",
+      "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "reviewed_patch": "14.21.3",
+      "assembly": "same-version repaired Node executable/original npm/headers on common; optional exact approved tree, otherwise Bookworm source stage",
+      "specific_limit": "Node14 tenant npm/node-gyp5.1.1 still lacks compatible default build Python; separate source repair assigned",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-16-bookworm",
+      "base": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+      "reviewed_patch": "16.20.2",
+      "assembly": "same-version repaired Node executable/original npm/headers on common; optional exact approved tree, otherwise Bookworm source stage",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-18-bookworm",
+      "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "reviewed_patch": "18.20.8",
+      "assembly": "same-version repaired Node executable/original npm/headers on common; optional exact approved tree, otherwise Bookworm source stage",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-20-bookworm",
+      "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "reviewed_patch": "20.20.2",
+      "assembly": "same-version repaired Node executable/original npm/headers on common; optional exact approved tree, otherwise Bookworm source stage",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.7-bullseye",
+      "base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "reviewed_patch": "3.7.17",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "distinct legacy libssl1.1/libffi7 plus private system-Python defaultPoetry dependency closure; actual project/seed behavior unexecuted",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.8-bookworm",
+      "base": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "reviewed_patch": "3.8.20",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "defaultPoetry system bootstrap and project/seed proof unexecuted",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.9-bookworm",
+      "base": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+      "reviewed_patch": "3.9.25",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.10-bookworm",
+      "base": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+      "reviewed_patch": "3.10.22",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-3.0-bullseye",
+      "base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+      "reviewed_patch": "3.0.7",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "Ruby3.0 Bullseye distinct-SONAME runtime/dev closure and native gems require actual proof",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-3.1-bookworm",
+      "base": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+      "reviewed_patch": "3.1.7",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "actual Ruby/native gem/linker/companion proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-3.2-bookworm",
+      "base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+      "reviewed_patch": "3.2.11",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "actual Ruby/native gem/linker/companion proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "elixir-1.17",
+      "base": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+      "reviewed_patch": "1.17.3",
+      "assembly": "Bookworm full /usr/local directly",
+      "specific_limit": "actual exact OTP/features/native helpers/wx/ssl/NIF/Elixir/rebar proof missing; source inventory comparison is not execution",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "elixir-1.18",
+      "base": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+      "reviewed_patch": "1.18.4",
+      "assembly": "same exact Bookworm OTP donor or checksum-bound source fallback, selected Elixir BEAM tree/rebar restored",
+      "specific_limit": "actual exact OTP/features/native helpers/wx/ssl/NIF/Elixir/rebar proof missing; source inventory comparison is not execution",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "elixir-1.19",
+      "base": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+      "reviewed_patch": "1.19.6",
+      "assembly": "same exact Bookworm OTP donor or checksum-bound source fallback, selected Elixir BEAM tree/rebar restored",
+      "specific_limit": "actual exact OTP/features/native helpers/wx/ssl/NIF/Elixir/rebar proof missing; source inventory comparison is not execution",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "elixir-1.20",
+      "base": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+      "reviewed_patch": "1.20.4",
+      "assembly": "same exact Bookworm OTP donor or checksum-bound source fallback, selected Elixir BEAM tree/rebar restored",
+      "specific_limit": "actual exact OTP/features/native helpers/wx/ssl/NIF/Elixir/rebar proof missing; source inventory comparison is not execution",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "golang-1.27-bookworm",
+      "base": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+      "reviewed_patch": null,
+      "assembly": "full /usr/local/go plus original ENV/GOTOOLCHAIN and Node companion",
+      "specific_limit": "actual compiler/cgo/linker/runtime common image proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-22-bookworm",
+      "base": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "reviewed_patch": "22.23.4",
+      "assembly": "full selected /usr/local tree on common",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-24-bookworm",
+      "base": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "reviewed_patch": "24.22.1",
+      "assembly": "full selected /usr/local tree on common",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": true,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "node-26-bookworm",
+      "base": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "reviewed_patch": "26.12.1",
+      "assembly": "full selected /usr/local tree on common",
+      "specific_limit": "actual Node/npm/header/addon/companion behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.11-bookworm",
+      "base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "reviewed_patch": "3.11.18",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.12-bookworm",
+      "base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+      "reviewed_patch": "3.12.16",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.13-bookworm",
+      "base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "reviewed_patch": "3.13.18",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": true,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "python-3.14-bookworm",
+      "base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "reviewed_patch": "3.14.10",
+      "assembly": "selected full /usr/local, ldconfig, exact ENV, offline primary wheel hook, Poetry/optional uv/Node/Bun after primary",
+      "specific_limit": "native headers/extensions, loader and interpreter/tool behavior unexecuted on common",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-3.3-bookworm",
+      "base": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
+      "reviewed_patch": "3.3.13",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "actual Ruby/native gem/linker/companion proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-3.4-bookworm",
+      "base": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
+      "reviewed_patch": "3.4.12",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "actual Ruby/native gem/linker/companion proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "ruby-4.0-bookworm",
+      "base": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
+      "reviewed_patch": "4.0.9",
+      "assembly": "selected complete interpreter/stdlib/native headers/gems tree, exact ENV, loader then Node/Bun",
+      "specific_limit": "actual Ruby/native gem/linker/companion proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    },
+    {
+      "name": "rust-1-bookworm",
+      "base": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
+      "reviewed_patch": null,
+      "assembly": "complete /usr/local cargo/rustup/toolchains plus original ENV and Node companion",
+      "specific_limit": "actual rustup signal/compiler/native linker/runtime common image proof missing",
+      "initial_qualification_source_case": false,
+      "actual_common_generated_image_qualification": "UNEXECUTED by this source audit"
+    }
+  ],
+  "count": 27,
+  "initial_source_cases_are_only_2_table_entries_plus_separate_exact_default_3_14_8": true,
+  "exact_defaults_and_edges": [
+    "Python no-version/date default3.14.8 separate from line3.14.10",
+    "Ruby creation-default3.4.4 separate from line3.4.12",
+    "Node14 exact14.21.2 distinct source fallback",
+    "OTP28.0 Bookworm vs selected defaults28.5.0.8 and29.1.2",
+    "applicable Node exact/Ruby Gemfile static/Bun/uv companions"
+  ],
+  "scope": "source inventory only; no image/CI/hosted result inferred"
+}

@@ -1,0 +1,22 @@
+{
+  "started_at": "2026-10-31T17:20:39.011479+00:00",
+  "completed_at": "2026-10-31T17:20:41.043398+00:00",
+  "command": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "-overlay",
+    "/private/tmp/bex-w8-node14-addon-source-20261031-vmwxia0l/negative-overlay.json",
+    "./internal/build",
+    "-run",
+    "^TestCommonNode14AddonPythonIsPrivateForPrimaryAndCompanion$",
+    "-count=1"
+  ],
+  "exit_code": 1,
+  "stop": null,
+  "start_free_bytes": 3256152064,
+  "minimum_observed_free_bytes": 3255181312,
+  "maximum_owned_tmp_bytes": 24576,
+  "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+}

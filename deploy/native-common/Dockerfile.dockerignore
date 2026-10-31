@@ -18,5 +18,6 @@
 !native-common/check-common.py
 !native-common/build-otp
 !native-common/otp-features.py
+!native-common/prepare-node14-tools.py
 !native-common/legacy-libs.sources
 !native-common/legacy-libs.preferences

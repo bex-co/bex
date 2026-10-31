@@ -465,3 +465,9 @@ Render's free-plan recipe runs `migrate` at the end of the build command, so a b
 4. **D1 async state machine** (the structural change; lands with envtest coverage of adopt/advance/cancel/restart paths), then the D6 gate tightening + global ceiling.
 5. **D3 registry cache** behind an env gate (`BEX_BUILD_CACHE=registry`), with the retention exemption landing in the same change.
 6. Deferred, trigger-gated: per-workspace persistent cache volumes with sticky scheduling → warm recycled builder cells; Kueue; Zot HA/pull-through tier; interruptible build capacity.
+
+### Common Node14 native-addon interpreter — 2026-10-31
+
+Common Node14 assembly retains the exact selected Node/npm tree and supplies its bundled node-gyp with the reviewed Bookworm Python3.9 tree under a private `/opt` prefix. The bundled finder prefers this default only after explicit npm/config/PYTHON choices and preserves FORCE behavior. It leaves app/companion Python, PATH and global loader settings intact. First and last tagged Node14 finders match; their vendored GYP uses the `rU` file mode [removed in Python3.11](https://docs.python.org/3.11/whatsnew/3.11.html#porting-to-python-3-11). The relocated interpreter/import preflight must pass during an actual build.
+
+Full operator/codegen/envtest, source/finder/omission controls and scoped lint pass. The separate offline addon fixture and the prior all27/phase audit retain their bounded scope: actual relocation, addon compilation/import, same-release source fallback, architectures/companions and original hosted acceptance remain open. This source change does not adopt an image or close m91.

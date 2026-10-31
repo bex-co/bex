@@ -1,0 +1,314 @@
+{
+  "root-full-operator.log.gz": {
+    "bytes": 1114,
+    "sha256": "e88fa842ff671f54dee6222a9e9d6188434d9e3ffe90b633b06118596c82661c"
+  },
+  "README.md": {
+    "bytes": 1848,
+    "sha256": "b4951646c4b33e33195d7cf991cdf15efed2ab993b8eda2fea51bee3fdfc6102"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 23309,
+    "sha256": "2a2919f9276bf91a6ec7d65e783aa66e7b01a02a0947c90052587fbd35cac36e"
+  },
+  "node14-source/scoped-test-final.log.gz": {
+    "bytes": 80,
+    "sha256": "4225baf230e7d6e4a656f5a8e7a7ca550d21b976355e287fecb77f062eca68d5"
+  },
+  "node14-source/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "40de8265c1c75e5d270bdda7316675737fd61a58a8b3853f721d13a96a833adf"
+  },
+  "node14-source/check-upstream.py.gz": {
+    "bytes": 1035,
+    "sha256": "da042cb0a632a999ebd6ed79c3c0a6128e2c93e0025a06bee918e53330c9aab8"
+  },
+  "node14-source/scoped-negative-routing-result.json": {
+    "bytes": 629,
+    "sha256": "cfde7297962f810b1fc230ae1a5bf3857e512898095f00b0f038502a7319943f"
+  },
+  "node14-source/negative-overlay.json": {
+    "bytes": 181,
+    "sha256": "208f2d12eab4b416d6412348a45c7c587c00664067c712cc7b7fb5f44dc00374"
+  },
+  "node14-source/SOURCE.json": {
+    "bytes": 2952,
+    "sha256": "f192d57003121fdf63b5aa02fc787dda6b10f3a0d9808c294ef679d6ede3e1d5"
+  },
+  "node14-source/scoped-lint-final.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "node14-source/handoff.md.gz": {
+    "bytes": 700,
+    "sha256": "50ea68769bdd280f62e6f4773b20c151f3ba459e1d73360acfddd9fc23bb2a0b"
+  },
+  "node14-source/run-scoped.py.gz": {
+    "bytes": 1058,
+    "sha256": "c4a94dee99474b9d2d4ab42076abadc556689f6adbb6f6bbf22291706d73c767"
+  },
+  "node14-source/source.patch.gz": {
+    "bytes": 9162,
+    "sha256": "18831cea8485eef7ea8e453dfe2af0a8359696f6a22fba7042bba2ff333a07c9"
+  },
+  "node14-source/nativecommon-addon-omitted.go": {
+    "bytes": 7628,
+    "sha256": "175ca8e0018b8dc547e319d397cd9d51243d4edba5c14b983a3f18a52dab4670"
+  },
+  "node14-source/scoped-test-result.json": {
+    "bytes": 446,
+    "sha256": "a2abcbed8811896d35b3486d4413cc04ad95a2d21088bf63bcb9a971a1691362"
+  },
+  "node14-source/tagged-upstream-finder-control.json": {
+    "bytes": 1074,
+    "sha256": "44c2f2777fbfd374047521d9b1b0d42bbd5bd191ae67c66fa7978266104ee82b"
+  },
+  "node14-source/nativecommon-before.go": {
+    "bytes": 7218,
+    "sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce"
+  },
+  "node14-source/scoped-lint-result.json": {
+    "bytes": 466,
+    "sha256": "7e09a40f114de651de36b259118effdadbbb82ad35b3e71a1c4db5d83eec7f61"
+  },
+  "node14-source/scoped-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "node14-source/source-context.json": {
+    "bytes": 1005,
+    "sha256": "5ae8f1e9af8e494c9a6c5b6fe083d50fcfb2a0979ca7f535e7b8e2c861322ace"
+  },
+  "node14-source/run-negative.py.gz": {
+    "bytes": 1128,
+    "sha256": "08315669beec4ee5936ca68a767d6d0e4a22373aabcdb9e68d1e573e302713bf"
+  },
+  "node14-source/MANIFEST.json": {
+    "bytes": 10912,
+    "sha256": "62ef7de36590665037a59405924ef302f8e70065456a7057d5f2cd34492cabf5"
+  },
+  "node14-source/source-checks.json": {
+    "bytes": 1802,
+    "sha256": "fa28b78b4c6b048a6b96d0dc58ccd16a061876d8af1be5e028c5d04d588b5db7"
+  },
+  "node14-source/negative-setup-overlay.json": {
+    "bytes": 174,
+    "sha256": "0ab0118b09cf72a9726809d5263ba51939131aa1bf95f935eda85c221a1f89e2"
+  },
+  "node14-source/run-source-checks.py.gz": {
+    "bytes": 797,
+    "sha256": "2141c05f098725c658e18e6c48c864efc89db3b730f13fbe0b96ed25d83456c0"
+  },
+  "node14-source/scoped-test-final-result.json": {
+    "bytes": 446,
+    "sha256": "04527b0df4050cf54d3ce063cd308f3eb424f8b40826353bfdb2e176b30c8345"
+  },
+  "node14-source/negative-control-policy.json": {
+    "bytes": 590,
+    "sha256": "079bf5c9cdce78fde1ef19cbc15b6491b5e8fd9203370ee9eccfacaaba010ec0"
+  },
+  "node14-source/scoped-test.log.gz": {
+    "bytes": 80,
+    "sha256": "175fb171c64f4120a4f10c71935767ae02ce465729b3a70b7c59825501dd41cf"
+  },
+  "node14-source/run-negative-setup.py.gz": {
+    "bytes": 1133,
+    "sha256": "ac029bee524fc6a5d9d007d79e132ecd529e6c1da3e4c2d6d7c9f37ce6d9d22a"
+  },
+  "node14-source/negative-setup-compile-failure-result.json": {
+    "bytes": 626,
+    "sha256": "c95ef83f23fe7e6e843628af6d851f4c1c5f0aaa34201a0ca7ac4c5a1928132b"
+  },
+  "node14-source/scoped-lint-final-result.json": {
+    "bytes": 464,
+    "sha256": "de3ed46bae6a5aeb498ddb17f7269e601f7b9d895953c255e950c572c2f17162"
+  },
+  "node14-source/negative-setup-compile-failure.log.gz": {
+    "bytes": 159,
+    "sha256": "99fad8facc2c0ae0d82c1229fc447ca42f63b7417bcea748b992d3414003d27e"
+  },
+  "node14-source/receipt.json": {
+    "bytes": 7624,
+    "sha256": "8693e68b85dde597a746bf5ffd25841f7beda3c68498dd6d504931eb590973de"
+  },
+  "node14-source/scoped-negative-routing.log.gz": {
+    "bytes": 2334,
+    "sha256": "809dacda061021140b28cf4bd4059f4a12d69f71a21ae9053664877e672a3904"
+  },
+  "node14-source/pm-checkpoint-proposal.md.gz": {
+    "bytes": 453,
+    "sha256": "69ff41c0963b5a4c2cc9c11aa7f9cdf70c7c1f36fdfb26ed684e1c2c68be32d0"
+  },
+  "prior-runtime-audit/current-source-manifest.json": {
+    "bytes": 12268,
+    "sha256": "db9e56cd3dfeaf53eb469890b281ecb053c6d03dc50fc8e7728389866dac456c"
+  },
+  "prior-runtime-audit/node14-find-python.js.gz": {
+    "bytes": 3269,
+    "sha256": "b5dfa914b6a5d5f6914131477c586e169ede1c02fddaca6eb40fd91ea985c60b"
+  },
+  "prior-runtime-audit/node14-modern-python-source-probe.py.gz": {
+    "bytes": 854,
+    "sha256": "e2e30c2f7738f814f1e4b958b48cf60fd129aa5adaea71b61bb92664807da967"
+  },
+  "prior-runtime-audit/audit-and-next-slice.md.gz": {
+    "bytes": 3846,
+    "sha256": "215fc4a8a127fbd618519d18bc505e3a673e5223627da0ee9694cfdd89c3a660"
+  },
+  "prior-runtime-audit/reviewed-python39-relocation-source-evidence.json": {
+    "bytes": 976,
+    "sha256": "482a661d84b71ba8170ad7dab669f34f4f23f84f95caf1ba1eb49a21c2097f16"
+  },
+  "prior-runtime-audit/node14-node-gyp-package.json": {
+    "bytes": 2125,
+    "sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3"
+  },
+  "prior-runtime-audit/all27-assembly-and-coverage.json": {
+    "bytes": 15557,
+    "sha256": "ad90122051490b183cdc9dc6ef6712468119812d76fc0df3b5055aff85f25d96"
+  },
+  "prior-runtime-audit/MANIFEST.json": {
+    "bytes": 1540,
+    "sha256": "d63c2fa3beeaeb3f522f4bc588369162b19dad5310fb174cda914890f619190a"
+  },
+  "prior-runtime-audit/node14-vendored-gyp-input.py.gz": {
+    "bytes": 31423,
+    "sha256": "66aaeb56408c292624067eed40d9409ee4dc1fef5f5c188209fb6bd3ea1a47df"
+  },
+  "prior-runtime-audit/node14-modern-python-source-probe.json": {
+    "bytes": 516,
+    "sha256": "ece87fbcfe3eb20fb60c8b1a393d109ad562b49fd4eb809210c428d551bae594"
+  },
+  "node14-source/checks/common-python.log.gz": {
+    "bytes": 613,
+    "sha256": "9b7515dedefef67c0110c0454d280ada20875c7ca1aab07f7a2ec2ba53936bc2"
+  },
+  "node14-source/checks/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "node14-source/checks/actions-guard.log.gz": {
+    "bytes": 221,
+    "sha256": "a6dda6ad2049863b3bd52cff889de55be55061a296b0589ea29194efdfeed723"
+  },
+  "node14-source/checks/production-catalog-diff.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "node14-source/checks/workflow-python.log.gz": {
+    "bytes": 57,
+    "sha256": "075d45b1c0b973eb5db5b4654f9fc681eb0af5bced3b4ad25c70a263579d273b"
+  },
+  "node14-source/checks/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "node14-source/checks/original-replays-unchanged.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "node14-source/upstream/v14.0.0-find-python.js.gz": {
+    "bytes": 3269,
+    "sha256": "b5dfa914b6a5d5f6914131477c586e169ede1c02fddaca6eb40fd91ea985c60b"
+  },
+  "node14-source/upstream/amd64-python39-official-config.json": {
+    "bytes": 6278,
+    "sha256": "894dd9cb78e93e3c9ef81902619dcda7aeb78ef721ef92abcea9297eea7b293b"
+  },
+  "node14-source/upstream/node14-modern-python-source-probe.py.gz": {
+    "bytes": 854,
+    "sha256": "e2e30c2f7738f814f1e4b958b48cf60fd129aa5adaea71b61bb92664807da967"
+  },
+  "node14-source/upstream/reviewed-python39-relocation-source-evidence.json": {
+    "bytes": 976,
+    "sha256": "482a661d84b71ba8170ad7dab669f34f4f23f84f95caf1ba1eb49a21c2097f16"
+  },
+  "node14-source/upstream/node14-node-gyp-package.json": {
+    "bytes": 2125,
+    "sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3"
+  },
+  "node14-source/upstream/v14.21.3-find-python.js.gz": {
+    "bytes": 3269,
+    "sha256": "b5dfa914b6a5d5f6914131477c586e169ede1c02fddaca6eb40fd91ea985c60b"
+  },
+  "node14-source/upstream/node14-vendored-gyp-input.py.gz": {
+    "bytes": 31423,
+    "sha256": "66aaeb56408c292624067eed40d9409ee4dc1fef5f5c188209fb6bd3ea1a47df"
+  },
+  "node14-source/upstream/node14-modern-python-source-probe.json": {
+    "bytes": 516,
+    "sha256": "ece87fbcfe3eb20fb60c8b1a393d109ad562b49fd4eb809210c428d551bae594"
+  },
+  "node14-source/upstream/arm64-python39-official-config.json": {
+    "bytes": 6293,
+    "sha256": "da17a6150873109736e048e4117d18165c28977169f11089c1aac60f3b9d8210"
+  },
+  "node14-source/source/lego/operator/internal/build/nativecommon_node14_test.go": {
+    "bytes": 7057,
+    "sha256": "8aa9f2699faf2e51687173a0d18710a10a49ad57ddd6df5f9dad4424d47f2489"
+  },
+  "node14-source/source/lego/operator/internal/build/nativecommon.go": {
+    "bytes": 8178,
+    "sha256": "dd7b9366271f0832e0eec4c577897fb25715943e462d9eb7c3d5522bbdd37f03"
+  },
+  "node14-source/source/lego/operator/internal/build/testdata/native-node14-addon/addon.c.gz": {
+    "bytes": 311,
+    "sha256": "71361f1095835d7a21f4932baec31578e898da81ef807e3c51d2c1509d869377"
+  },
+  "node14-source/source/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp.gz": {
+    "bytes": 73,
+    "sha256": "296f69e0cb82708d24c9150d819fea8247a89e36b38cfbc7691885baa030e4fd"
+  },
+  "node14-source/source/lego/operator/internal/build/testdata/native-node14-addon/check.js.gz": {
+    "bytes": 309,
+    "sha256": "b5c01677a35827fe2fcb5b1bc4792f3af362d4982654056e29e4709b5da56c1a"
+  },
+  "node14-source/source/lego/operator/internal/build/testdata/native-node14-addon/package.json": {
+    "bytes": 92,
+    "sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e"
+  },
+  "node14-source/source/lego/operator/internal/build/testdata/native-node14-addon/check-build.py.gz": {
+    "bytes": 808,
+    "sha256": "841cb05fabd82ed3958a3127407c9f6b938b16a23f843968ffeb7a6a6b3d17e3"
+  },
+  "node14-source/source/deploy/native-common/node14_tools_test.py.gz": {
+    "bytes": 1830,
+    "sha256": "3631029d841baf95c9884bcdecf48fe5e42cfe54af957d1eb438b33cd993bb8c"
+  },
+  "node14-source/source/deploy/native-common/Dockerfile.gz": {
+    "bytes": 1134,
+    "sha256": "f1071c98c19e7650ac9c4224cc5fee8defe89d6d3d05634c5196577e16f947ef"
+  },
+  "node14-source/source/deploy/native-common/prepare-node14-tools.py.gz": {
+    "bytes": 1190,
+    "sha256": "c9f24e5c4e5897697409f8238d04cb3d3a3dec6b35113caaf301f09d56a7350e"
+  },
+  "node14-source/source/deploy/native-common/Dockerfile.dockerignore.gz": {
+    "bytes": 226,
+    "sha256": "51262bc1d9f5e8b2a2f6f606b89f9513472c20cb586db4b43c8b7f39037c6810"
+  },
+  "node14-source/source/deploy/native-common/testdata/node14-find-python.js.gz": {
+    "bytes": 1009,
+    "sha256": "310cf75f0c61b631452005356d2dccaa0057fa6e67da68d49f79ca4038a48c49"
+  },
+  "node14-source/source/deploy/native-common/testdata/LICENSE.node-gyp.gz": {
+    "bytes": 706,
+    "sha256": "ae4e66888d70693a5f7cde26648617f3500f5bf0cd03e2c5e10b236c5727ba6c"
+  },
+  "node14-source/source-context/lego/operator/internal/build/native.go": {
+    "bytes": 25979,
+    "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+  },
+  "node14-source/source-context/lego/operator/internal/build/nativebases.go": {
+    "bytes": 10006,
+    "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+  },
+  "node14-source/source-context/lego/operator/internal/build/nativeresolve.go": {
+    "bytes": 19222,
+    "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af"
+  },
+  "node14-source/source-context/lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 14819,
+    "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b"
+  }
+}

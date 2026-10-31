@@ -1,0 +1,10 @@
+{
+  "source_version": "Node14.21.3/npm bundled node-gyp5.1.1",
+  "function": "LoadOneBuildFile",
+  "upstream_source_sha256": "6da501baff9f94c937b2cb44924db43222af56ee64a7aa0c71e4ecbcb4203ae6",
+  "executed_host_python": "3.14.3",
+  "actual_result": "ValueError",
+  "actual_error": "invalid mode: 'rU'",
+  "control_exit": 0,
+  "scope": "Exact source-extracted function file-open path with real host builtins; no npm/addon/compiler/common-image execution. Python3.11 removal established separately by official docs."
+}
