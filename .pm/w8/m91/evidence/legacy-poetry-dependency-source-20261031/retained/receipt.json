@@ -1,0 +1,29 @@
+{
+  "frozen_at": "2026-10-31T17:04:08.762419+00:00",
+  "result": "SOURCE_FIX_RESOLVER_CONTROLS_AND_FOCUSED_REVIEW_PASS_RUNTIME_PROJECT_UNEXECUTED",
+  "owned_paths": [
+    "lego/operator/internal/build/nativeresolve.go",
+    "lego/operator/internal/build/nativepoetry_test.go"
+  ],
+  "scope": "Only common system-interpreter bootstrap of defaultPoetry2.1.3 beside appPython3.7/3.8 receives quoted virtualenv<20.33.0 in samepip solve",
+  "preserved": "Selected app andPoetryversions; explicitPoetry requests including incompatible explicit2.1.3; modern3.9/3.13/exact3.14.8, historicalroute, uv, companion/literalENV/PATH/authored command bytes",
+  "source_finding": "TaggedPoetry2.1.3 allowsvirtualenv>=20.26.6,<21; tagged2.1.4 imposes<20.33 to avoid wrongprojectPython. This is upstream/source-supported reachable incompatibility, not dynamically reproduced Bexproject failure.",
+  "checks": {
+    "negative_overlay": "Oldruntime source fails exactly7legacy-defaultcap cases, expectedexit1",
+    "full_resolver_case_table": "14cases:7legacycap positives and7explicit/modern/historical negatives",
+    "go_test_build_registry_cmd": "PASS5.429s/3.351s/0.430s",
+    "scoped_lint_three_packages": "PASS0issues",
+    "diff_check": "PASS"
+  },
+  "source_manifest_sha256": "fc4625e8fe05cb242f1677837a6ede409438e84a64fca20c17702fb044614453",
+  "source_patch_sha256": "2e0493d24705a6fff7dc83fb5ec0cb606b5467f0bfb3797e2829d21d4ccd2578",
+  "unexecuted": [
+    "Actual common factory/image library closure",
+    "Actual oldPythonPoetry project interpreter selection, installs/imports and seed modes",
+    "botharchitecture legacy generatedbuild/predeploy/runtime/hosted acceptance"
+  ],
+  "future_legacy_offline_wheel_contract": "Use the same systemPython toolinterpreter and same solve poetry==2.1.3 plus virtualenv<20.33.0; recordtargetarch/toolPython/realwheelhashes. Do not reuse the initialPy313/.8 closure as evidence for legacyprojects. Existing firstcohort wheel recipes are unchanged.",
+  "resources_Docker_CI_Git_pins_frozen_program_mutation": false,
+  "independent_trigger_fix": "frozen separately and root shipped2d0a5c5a4; not included here",
+  "third_Node14_slice": "not edited before this freeze"
+}

@@ -1,0 +1,4 @@
+[
+  "lego/operator/internal/build/nativeresolve.go",
+  "lego/operator/internal/build/nativepoetry_test.go"
+]

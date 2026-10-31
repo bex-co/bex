@@ -1,0 +1,9 @@
+{
+  "reviewer": "/root/common_review",
+  "result": "CLEAN exact two-file source, tagged upstream metadata/reason and14resolver controls",
+  "reviewed_source_sha256": {
+    "lego/operator/internal/build/nativeresolve.go": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+    "lego/operator/internal/build/nativepoetry_test.go": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9"
+  },
+  "qualification_caveat": "The virtualenv cap is the tagged upstream wrong-interpreter workaround, not proof all Python3.7 projects/seed modes work; Poetry normally requests no-pip/no-setuptools/no-wheel project environments. Actual project/image execution remains unexecuted."
+}

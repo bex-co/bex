@@ -1,0 +1,19 @@
+{
+  "frozen_at": "2026-10-31T17:04:08.762419+00:00",
+  "head": "72999a4e34a874475b162d9f4fad811e1acd1f5a",
+  "files": [
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 19222,
+      "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+      "head_sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+    },
+    {
+      "path": "lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7970,
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9",
+      "head_sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a"
+    }
+  ],
+  "source_unchanged_through_checks": true
+}

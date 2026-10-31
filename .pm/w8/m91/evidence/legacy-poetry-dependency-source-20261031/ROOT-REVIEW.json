@@ -1,0 +1,189 @@
+{
+  "reviewed_at": "2026-10-31T17:06:10.762622+00:00",
+  "approved_for_source_ship": true,
+  "frozen_payloads_verified": 24,
+  "live_source_files_verified": 2,
+  "independent_focused_review": "common_review FINAL CLEAN on frozen/live exact bytes",
+  "root_targeted_controls": "14resolvercases PASS0.590s; exact selected versions/env/PATH/authored commands preserved",
+  "frozen_checks": "old-source overlay fails exactly7affected cases; build/registry/cmd tests and scoped lint pass",
+  "actual_project_failure_reproduced": false,
+  "actual_legacy_project_seed_image_or_hosted_qualification": "UNEXECUTED",
+  "production_pins_changed": false,
+  "custody": [
+    {
+      "original": "MANIFEST.json",
+      "retained": "retained/MANIFEST.json",
+      "bytes": 3974,
+      "sha256": "2dced53557d505c56b02397165c457746b613252b5d5b51e3eb69648e87e1ce5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "SOURCE-MANIFEST.json",
+      "retained": "retained/SOURCE-MANIFEST.json",
+      "bytes": 711,
+      "sha256": "fc4625e8fe05cb242f1677837a6ede409438e84a64fca20c17702fb044614453",
+      "lossless_gzip": false
+    },
+    {
+      "original": "before-checks.json",
+      "retained": "retained/before-checks.json",
+      "bytes": 245,
+      "sha256": "3eebb63a5c3d85a6911815c03aaa952e3418091c8740768bcf1dc92543dbe065",
+      "lossless_gzip": false
+    },
+    {
+      "original": "before-nativeresolve.go",
+      "retained": "retained/before-nativeresolve.go",
+      "bytes": 18838,
+      "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac",
+      "lossless_gzip": false
+    },
+    {
+      "original": "diff-check.log",
+      "retained": "retained/diff-check.log.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-lint-result.json",
+      "retained": "retained/final-scoped-lint-result.json",
+      "bytes": 516,
+      "sha256": "f5fa88a79935001106517f554a8bd611d08650ae32bffa1c1cbee4e7bff97d63",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-lint.log",
+      "retained": "retained/final-scoped-lint.log.gz",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-negative-result.json",
+      "retained": "retained/final-scoped-negative-result.json",
+      "bytes": 627,
+      "sha256": "b86d74c0c64370582b9264a2de5efb01f50b5c54d133ed41b02b2dea93654f94",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-negative.log",
+      "retained": "retained/final-scoped-negative.log.gz",
+      "bytes": 3082,
+      "sha256": "03ab418b214856cda49119a20159346030e90c631bf7359dfebf9955388f5277",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-tests-result.json",
+      "retained": "retained/final-scoped-tests-result.json",
+      "bytes": 501,
+      "sha256": "7cef8de039643bd413ed91116170d477eec144938d036024809373c4ddd0b9aa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-tests.log",
+      "retained": "retained/final-scoped-tests.log.gz",
+      "bytes": 196,
+      "sha256": "20872d345701ac8a6fe739930fff183798ae7782c25501dabb6b05be0f81fcdb",
+      "lossless_gzip": true
+    },
+    {
+      "original": "focused-review.json",
+      "retained": "retained/focused-review.json",
+      "bytes": 698,
+      "sha256": "375ad93be4477c368b002de9884c3058a30eba63ddc7e0ba6949738ed27bf719",
+      "lossless_gzip": false
+    },
+    {
+      "original": "head-source/lego/operator/internal/build/nativepoetry_test.go",
+      "retained": "retained/head-source/lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7313,
+      "sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "head-source/lego/operator/internal/build/nativeresolve.go",
+      "retained": "retained/head-source/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18838,
+      "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac",
+      "lossless_gzip": false
+    },
+    {
+      "original": "negative-overlay.json",
+      "retained": "retained/negative-overlay.json",
+      "bytes": 201,
+      "sha256": "00840bf14332de1105626e5e03df24d2b378d1a579e00c55e280ce6d58d433d0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "owned-paths.json",
+      "retained": "retained/owned-paths.json",
+      "bytes": 109,
+      "sha256": "e92de6296315643344ba94bdcd9040b7d7ed75fce9f3012f61224ce42524780e",
+      "lossless_gzip": false
+    },
+    {
+      "original": "receipt.json",
+      "retained": "retained/receipt.json",
+      "bytes": 2201,
+      "sha256": "ec969acfde13c414da207b912005a31cc777b2b55cc7225d51bb89b0a4a632a7",
+      "lossless_gzip": false
+    },
+    {
+      "original": "run-source-checks.py",
+      "retained": "retained/run-source-checks.py.gz",
+      "bytes": 2251,
+      "sha256": "f0e4b8a9f76510bd789c2d49d40585b801a94da62760bdd9f565bf0e40e4adb2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source/lego/operator/internal/build/nativepoetry_test.go",
+      "retained": "retained/source/lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7970,
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source/lego/operator/internal/build/nativeresolve.go",
+      "retained": "retained/source/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 19222,
+      "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source.patch",
+      "retained": "retained/source.patch.gz",
+      "bytes": 4804,
+      "sha256": "2e0493d24705a6fff7dc83fb5ec0cb606b5467f0bfb3797e2829d21d4ccd2578",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream-compatibility-evidence.json",
+      "retained": "retained/upstream-compatibility-evidence.json",
+      "bytes": 1086,
+      "sha256": "dcc8258b12141d24200797aaefaad64f18459780a4dae4acd5278b192e6e60eb",
+      "lossless_gzip": false
+    },
+    {
+      "original": "upstream-poetry-2.1.3-pyproject.toml",
+      "retained": "retained/upstream-poetry-2.1.3-pyproject.toml.gz",
+      "bytes": 6311,
+      "sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream-poetry-2.1.4-changelog.md",
+      "retained": "retained/upstream-poetry-2.1.4-changelog.md.gz",
+      "bytes": 180402,
+      "sha256": "62c30749c63f3cbdd12a4216cefdba386236c7884b8b3e94077388140becf213",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream-poetry-2.1.4-pyproject.toml",
+      "retained": "retained/upstream-poetry-2.1.4-pyproject.toml.gz",
+      "bytes": 6397,
+      "sha256": "cf6ccc4d72e76a360cde6a8b730a105e52a68580c4e38c74b615b21ed2e0480a",
+      "lossless_gzip": true
+    }
+  ]
+}

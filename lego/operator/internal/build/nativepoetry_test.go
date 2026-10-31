@@ -48,6 +48,7 @@ func TestCommonLegacyPythonDefaultPoetryBootstrap(t *testing.T) {
 		{name: "explicit-compatibility-contract", line: "3.7", poetry: "2.1.3", interpreter: "/usr/local/bin/python"},
 		{name: "python39-unchanged", line: "3.9", interpreter: "/usr/local/bin/python"},
 		{name: "python313-unchanged", line: "3.13", interpreter: "/usr/local/bin/python"},
+		{name: "python3148-unchanged", line: "3.14", exact: "3.14.8", interpreter: "/usr/local/bin/python"},
 		{name: "historical-route-unchanged", line: "3.7", historical: true, interpreter: "/usr/local/bin/python"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -101,11 +102,7 @@ func TestCommonLegacyPythonDefaultPoetryBootstrap(t *testing.T) {
 				(choices[1].Source == "") != (strings.TrimSpace(tc.poetry) == "") {
 				t.Fatalf("Poetry version or default/explicit meaning changed: %+v", choices[1])
 			}
-			layer := resolvedPythonToolLayer(t, recipe, "poetry")
-			if !strings.HasPrefix(layer, "RUN "+tc.interpreter+" -m venv /opt/bex/poetry && ") ||
-				!strings.Contains(layer, "--no-input poetry=="+poetry+" && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry") {
-				t.Fatalf("wrong private tool interpreter or exact Poetry release: %s", layer)
-			}
+			assertPoetryToolInstall(t, recipe, tc.interpreter, poetry)
 			if !tc.historical {
 				assertCommonPrimaryOrder(t, recipe, primary, "PYTHON_VERSION", version, true)
 			}
@@ -119,11 +116,29 @@ func TestCommonLegacyPythonDefaultPoetryBootstrap(t *testing.T) {
 					t.Fatalf("Poetry bootstrap lost a companion: %q", retained)
 				}
 			}
-			if tc.uv && !strings.HasPrefix(resolvedPythonToolLayer(t, recipe, "uv"), "RUN /usr/local/bin/python -m venv /opt/bex/uv && ") {
-				t.Fatal("Poetry tool interpreter leaked into uv")
+			if tc.uv {
+				uvLayer := resolvedPythonToolLayer(t, recipe, "uv")
+				if !strings.HasPrefix(uvLayer, "RUN /usr/local/bin/python -m venv /opt/bex/uv && ") || strings.Contains(uvLayer, "virtualenv<") {
+					t.Fatal("Poetry tool interpreter or dependency constraint leaked into uv")
+				}
 			}
 			assertPoetryRecipeCommands(t, recipe, o)
 		})
+	}
+}
+
+func assertPoetryToolInstall(t *testing.T, recipe, interpreter, poetry string) {
+	t.Helper()
+	layer := resolvedPythonToolLayer(t, recipe, "poetry")
+	requirement := "poetry==" + poetry
+	if interpreter == "/usr/bin/python3" {
+		requirement += " 'virtualenv<20.33.0'"
+	} else if strings.Contains(layer, "virtualenv<") {
+		t.Fatalf("legacy-default dependency constraint leaked into another Poetry route: %s", layer)
+	}
+	if !strings.HasPrefix(layer, "RUN "+interpreter+" -m venv /opt/bex/poetry && ") ||
+		!strings.Contains(layer, "--no-input "+requirement+" && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry") {
+		t.Fatalf("wrong private tool interpreter, exact Poetry release or project-interpreter dependency closure: %s", layer)
 	}
 }
 

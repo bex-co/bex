@@ -1,0 +1,125 @@
+{
+  "files": [
+    {
+      "path": "SOURCE-MANIFEST.json",
+      "bytes": 711,
+      "sha256": "fc4625e8fe05cb242f1677837a6ede409438e84a64fca20c17702fb044614453"
+    },
+    {
+      "path": "before-checks.json",
+      "bytes": 245,
+      "sha256": "3eebb63a5c3d85a6911815c03aaa952e3418091c8740768bcf1dc92543dbe065"
+    },
+    {
+      "path": "before-nativeresolve.go",
+      "bytes": 18838,
+      "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+    },
+    {
+      "path": "diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-scoped-lint-result.json",
+      "bytes": 516,
+      "sha256": "f5fa88a79935001106517f554a8bd611d08650ae32bffa1c1cbee4e7bff97d63"
+    },
+    {
+      "path": "final-scoped-lint.log",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    {
+      "path": "final-scoped-negative-result.json",
+      "bytes": 627,
+      "sha256": "b86d74c0c64370582b9264a2de5efb01f50b5c54d133ed41b02b2dea93654f94"
+    },
+    {
+      "path": "final-scoped-negative.log",
+      "bytes": 3082,
+      "sha256": "03ab418b214856cda49119a20159346030e90c631bf7359dfebf9955388f5277"
+    },
+    {
+      "path": "final-scoped-tests-result.json",
+      "bytes": 501,
+      "sha256": "7cef8de039643bd413ed91116170d477eec144938d036024809373c4ddd0b9aa"
+    },
+    {
+      "path": "final-scoped-tests.log",
+      "bytes": 196,
+      "sha256": "20872d345701ac8a6fe739930fff183798ae7782c25501dabb6b05be0f81fcdb"
+    },
+    {
+      "path": "focused-review.json",
+      "bytes": 698,
+      "sha256": "375ad93be4477c368b002de9884c3058a30eba63ddc7e0ba6949738ed27bf719"
+    },
+    {
+      "path": "head-source/lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7313,
+      "sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a"
+    },
+    {
+      "path": "head-source/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18838,
+      "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+    },
+    {
+      "path": "negative-overlay.json",
+      "bytes": 201,
+      "sha256": "00840bf14332de1105626e5e03df24d2b378d1a579e00c55e280ce6d58d433d0"
+    },
+    {
+      "path": "owned-paths.json",
+      "bytes": 109,
+      "sha256": "e92de6296315643344ba94bdcd9040b7d7ed75fce9f3012f61224ce42524780e"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 2201,
+      "sha256": "ec969acfde13c414da207b912005a31cc777b2b55cc7225d51bb89b0a4a632a7"
+    },
+    {
+      "path": "run-source-checks.py",
+      "bytes": 2251,
+      "sha256": "f0e4b8a9f76510bd789c2d49d40585b801a94da62760bdd9f565bf0e40e4adb2"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7970,
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 19222,
+      "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af"
+    },
+    {
+      "path": "source.patch",
+      "bytes": 4804,
+      "sha256": "2e0493d24705a6fff7dc83fb5ec0cb606b5467f0bfb3797e2829d21d4ccd2578"
+    },
+    {
+      "path": "upstream-compatibility-evidence.json",
+      "bytes": 1086,
+      "sha256": "dcc8258b12141d24200797aaefaad64f18459780a4dae4acd5278b192e6e60eb"
+    },
+    {
+      "path": "upstream-poetry-2.1.3-pyproject.toml",
+      "bytes": 6311,
+      "sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1"
+    },
+    {
+      "path": "upstream-poetry-2.1.4-changelog.md",
+      "bytes": 180402,
+      "sha256": "62c30749c63f3cbdd12a4216cefdba386236c7884b8b3e94077388140becf213"
+    },
+    {
+      "path": "upstream-poetry-2.1.4-pyproject.toml",
+      "bytes": 6397,
+      "sha256": "cf6ccc4d72e76a360cde6a8b730a105e52a68580c4e38c74b615b21ed2e0480a"
+    }
+  ],
+  "file_count": 24
+}
