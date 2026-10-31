@@ -25,9 +25,7 @@ import (
 )
 
 func TestNativePythonBackportBuildAndStart(t *testing.T) {
-	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed Python backport")
-	}
+	requireNativeBackportCommonFoundation(t)
 	line, ok := nativeToolchains[nativePythonRuntime].find("3.7")
 	if !ok {
 		t.Fatal("missing reviewed Python 3.7 line")

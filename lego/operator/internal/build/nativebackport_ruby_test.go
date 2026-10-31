@@ -25,9 +25,7 @@ import (
 )
 
 func TestNativeRubyBackportBuildAndStart(t *testing.T) {
-	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed Ruby backport")
-	}
+	requireNativeBackportCommonFoundation(t)
 	line, ok := nativeToolchains[nativeRubyRuntime].find("3.0")
 	if !ok {
 		t.Fatal("missing reviewed Ruby 3.0 line")
