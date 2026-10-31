@@ -154,7 +154,7 @@ func nativeCommonSourceGuard(source string, legacy, reset bool) string {
 
 func commonNativeJSToolLines(choice NativeChoice) string {
 	image := cmp.Or(choice.primaryImage, choice.Image)
-	return nativeCommonSourceGuard(image, choice.legacySource, false) + nativeJSToolLines(image) + commonRuntimeProvenance(choice) + "COPY --link --from=" + image + " /usr/local/include/node /usr/local/include/node\n" + choice.runtimeCheck
+	return nativeCommonSourceGuard(image, choice.legacySource, false) + nativeJSToolLines(image, choice.Line) + commonRuntimeProvenance(choice) + "COPY --link --from=" + image + " /usr/local/include/node /usr/local/include/node\n" + choice.runtimeCheck
 }
 
 func commonNativeRubyToolLines(choice NativeChoice) string {
@@ -180,5 +180,5 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 	if runtime == nativeRubyRuntime {
 		return choice, nativeRubyToolLines(choice.Image), nil
 	}
-	return choice, nativeJSToolLines(choice.Image), nil
+	return choice, nativeJSToolLines(choice.Image, choice.Line), nil
 }

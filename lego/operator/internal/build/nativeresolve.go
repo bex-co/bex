@@ -94,7 +94,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	if err != nil {
 		return nil, fmt.Errorf("read generated Dockerfile: %w", err)
 	}
-	rewritten, err := rewriteNativeBase(string(dockerfile), nativeToolchains[runtime].defaultImage(), choice.Image)
+	rewritten, err := rewriteNativePrimaryBase(string(dockerfile), runtime, choice)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +176,20 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	return choices, nil
 }
 
+// rewriteNativePrimaryBase points the generated Dockerfile at the selected
+// primary line. The generator wrote the default Node line's pnpm; Node 14/16
+// get the standalone instead (w8/226).
+func rewriteNativePrimaryBase(dockerfile, runtime string, choice NativeChoice) (string, error) {
+	rewritten, err := rewriteNativeBase(dockerfile, nativeToolchains[runtime].defaultImage(), choice.Image)
+	if err != nil || runtime != nativeNodeRuntime || !nativeLegacyPnpmLine(choice.Line) {
+		return rewritten, err
+	}
+	if strings.Count(rewritten, nativePnpmInstall()) != 1 {
+		return "", fmt.Errorf("generated Node build lacks its unique pnpm layers")
+	}
+	return strings.Replace(rewritten, nativePnpmInstall(), nativeLegacyPnpmInstall(), 1), nil
+}
+
 // addNativeBun copies the chosen Bun binary into the toolchain image right
 // after its FROM, before the source and the authored build, so the build, the
 // pre-deploy step and the started service all find bun and bunx on the image
@@ -212,19 +226,19 @@ func nativeYarnInstall() string {
 
 // addNativeJSTools copies the selected Node line's node binary and its global
 // node_modules (npm, plus Corepack where the line has it) out of that line's
-// pinned image, then adds Yarn and the pinned pnpm — right after the primary
+// pinned image, then adds Yarn and the pinned pnpm for that line — right after the primary
 // FROM, before the source and the authored build, with the links the official
 // node images use. The Node images are Debian bookworm; every primary image is
 // bookworm or (Elixir 1.18/1.19) trixie, whose glibc and libstdc++ are newer
 // and backward compatible, so the copied binary runs on the primary image's own
 // libraries — the real-image gate executes it on every line. --link keeps these
 // layers cached when the primary line changes.
-func nativeJSToolLines(nodeImage string) string {
+func nativeJSToolLines(nodeImage, line string) string {
 	return "COPY --link --from=" + nodeImage + " /usr/local/bin/node /usr/local/bin/node\n" +
 		"COPY --link --from=" + nodeImage + " /usr/local/lib/node_modules /usr/local/lib/node_modules\n" +
 		"RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm" +
 		" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n" +
-		nativeYarnInstall() + nativePnpmInstall()
+		nativeYarnInstall() + nativePnpmFor(line)
 }
 
 // nativeRubyToolLines copies the selected Ruby line's /usr/local — the

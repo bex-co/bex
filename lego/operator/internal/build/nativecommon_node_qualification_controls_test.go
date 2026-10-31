@@ -77,7 +77,7 @@ func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
 			if reversed != string(canonical) {
 				t.Fatal("test overlay changed canonical payload, authored command or runtime")
 			}
-			for _, required := range []string{"\nFROM " + commonFixtureImage + "\n", o.BuildCommand, o.StartCommand, nativePnpmInstall()} {
+			for _, required := range []string{"\nFROM " + commonFixtureImage + "\n", o.BuildCommand, o.StartCommand, nativePnpmFor(nodeVersion)} {
 				if !strings.Contains(string(canonical), required) {
 					t.Fatalf("canonical profile lost %q", required)
 				}
