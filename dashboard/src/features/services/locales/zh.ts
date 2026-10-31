@@ -1576,7 +1576,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Custom-domains status badge: DNS or certificate is not complete",
   },
   "services.domainActionsMenu": {
-    message: "打开域名操作菜单",
+    message: "{domain} 的操作",
     description: "Accessible label for the per-domain actions trigger",
   },
   "services.domainDelete": {
@@ -1676,7 +1676,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Toast description after a custom-domain add (async convergence)",
   },
   "services.domainDnsToggle": {
-    message: "显示 DNS 配置",
+    message: "显示 {domain} 的 DNS 配置",
     description:
       "aria-label for the per-domain DNS-instructions disclosure toggle",
   },
@@ -2824,7 +2824,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Route type: redirect",
   },
   "services.routeRemove": {
-    message: "删除规则",
+    message: "删除规则 {n}",
     description: "Remove a route rule (aria-label)",
   },
   "services.routesSave": {
@@ -2867,7 +2867,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.staticRulePathTooLong": {
     message: "最多 2048 个字符",
-    description: "Inline error under an over-long static-site rule path (w4/402)",
+    description:
+      "Inline error under an over-long static-site rule path (w4/402)",
   },
   "services.staticRuleHeaderNameTooLong": {
     message: "最多 256 个字符",
@@ -2925,7 +2926,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Header value column",
   },
   "services.headerRemove": {
-    message: "删除响应头",
+    message: "删除响应头 {n}",
     description: "Remove a header (aria-label)",
   },
   "services.headersSave": {
@@ -3893,19 +3894,23 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "A disk's most recent nightly snapshot attempt failed",
   },
   "services.diskSnapshotsFailedReadBody": {
-    message: "此磁盘的部分内容无法读取，因此未生成快照，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
+    message:
+      "此磁盘的部分内容无法读取，因此未生成快照，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
     description: "Failed snapshot: the volume could not be read",
   },
   "services.diskSnapshotsFailedUploadBody": {
-    message: "快照无法保存到存储，最近的更改未被备份。已有快照不受影响；下一次夜间任务会重试。",
+    message:
+      "快照无法保存到存储，最近的更改未被备份。已有快照不受影响；下一次夜间任务会重试。",
     description: "Failed snapshot: the object store did not accept it",
   },
   "services.diskSnapshotsFailedConfigBody": {
-    message: "快照任务无法正确启动，最近的更改未被备份。已有快照不受影响。请联系支持。",
+    message:
+      "快照任务无法正确启动，最近的更改未被备份。已有快照不受影响。请联系支持。",
     description: "Failed snapshot: the job was misconfigured",
   },
   "services.diskSnapshotsFailedOtherBody": {
-    message: "上一次快照尝试失败，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
+    message:
+      "上一次快照尝试失败，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
     description: "Failed snapshot: an unrecognized stage",
   },
   "services.diskSnapshotsOverdueTitle": {

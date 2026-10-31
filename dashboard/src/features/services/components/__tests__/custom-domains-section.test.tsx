@@ -328,7 +328,9 @@ describe("CustomDomainsSection", () => {
       ]),
     );
     render(<CustomDomainsSection serviceId="web" />);
-    expect(screen.getByText(/No ALIAS\/ANAME or CNAME flattening/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No ALIAS\/ANAME or CNAME flattening/),
+    ).toBeInTheDocument();
     expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
     expect(screen.getByText("203.0.113.11")).toBeInTheDocument();
     expect(screen.getAllByText("A")).toHaveLength(2);
@@ -407,6 +409,24 @@ describe("CustomDomainsSection", () => {
     expect(within(dialog).getByText("www")).toBeInTheDocument();
   });
 
+  // w4/436: each row's controls name their own domain, so a screen-reader or
+  // voice-control user can pick the domain to inspect or delete.
+  it("names each row's DNS toggle and actions menu after its domain", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+
+    for (const name of ["foo.com", "www.foo.com"]) {
+      expect(
+        screen.getByRole("button", { name: `Show DNS setup for ${name}` }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: `Actions for ${name}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
   it("marks the redirecting sibling and canonical rows (w6/m30)", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([apexDomain, wwwSiblingDomain]),
@@ -425,7 +445,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getByRole("button", { name: "Open domain actions menu" }),
+      screen.getByRole("button", { name: "Actions for api.example.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -443,7 +463,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+      screen.getByRole("button", { name: "Actions for foo.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -458,7 +478,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getByRole("button", { name: "Open domain actions menu" }),
+      screen.getByRole("button", { name: "Actions for www.example.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -481,7 +501,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+      screen.getByRole("button", { name: "Actions for foo.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -503,7 +523,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Open domain actions menu" })[1],
+      screen.getByRole("button", { name: "Actions for www.foo.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -523,7 +543,7 @@ describe("CustomDomainsSection", () => {
     render(<CustomDomainsSection serviceId="web" />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+      screen.getByRole("button", { name: "Actions for foo.com" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");

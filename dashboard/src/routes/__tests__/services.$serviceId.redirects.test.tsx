@@ -317,7 +317,7 @@ describe("static rule editors before hydration (w4/m219)", () => {
     expect(source()).toBeDisabled();
     expect(add()).toBeDisabled();
     expect(getByRole("combobox", { name: "Type" })).toBeDisabled();
-    expect(getByRole("button", { name: "Remove rule" })).toBeDisabled();
+    expect(getByRole("button", { name: "Remove rule 1" })).toBeDisabled();
     await hydrate();
     expect(source()).toBeEnabled();
     expect(getByRole("combobox", { name: "Type" })).toBeEnabled();
