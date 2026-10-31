@@ -1,0 +1,16 @@
+{
+  "path": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff",
+  "manifest": {
+    "sha256": "7f9fb5c654e2c7a871946168fe04407efd41ef074244889edf776e82680eeabd",
+    "bytes": 3964
+  },
+  "source_manifest": {
+    "sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "bytes": 1420
+  },
+  "findings": [
+    "cleanup log artifact t.Fatal before exact rm/absence inspection",
+    "valid returned create ID artifact t.Fatal before cleanup registration"
+  ],
+  "source_v2_unmodified": true
+}

@@ -1,0 +1,27 @@
+{
+  "status": "CLEAN corrected focused source review",
+  "date_utc": "2026-10-31T19:19:05.322472+00:00",
+  "reviewed_source": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff",
+  "source_manifest_sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+  "source_paths": 8,
+  "all_frozen_live_bytes_modes_equal": true,
+  "resolved_finding": "capture-env.js records exact base primary/ENV before the launch-specific shell exec. Runtime retains raw child ENV/PATH, verifies every non-PATH donor value, and direct Node keeps exact PATH. Exact base ENV capture proves image environment independently of manager script PATH augmentation.",
+  "pid1_identity": "runtime now binds actual /proc/1/cmdline exactly to /native-init,/bin/bash,-c,launch-specific capture&&exec command; ELF SHA/machine/executable and PID1 executable checks retained",
+  "unchanged_boundaries": "held HTTP request, exact oneSIGTERM/event order/response, wrapper0or143/direct0 status, explicit127.0.0.1 ephemeral bridge, resource bounds, returned-ID log/removal/absence checks unchanged",
+  "checks": {
+    "independent_scoped_lint": {
+      "command": "bin/golangci-lint run ./internal/build",
+      "status": "PASS;0issues",
+      "log": "v2-scoped-lint.log"
+    },
+    "source_unit_tests": "Author reports exact v2 fullbuildpkgPASS5.261s and4JSsyntax-onlyPASS; not duplicated by reviewer",
+    "actual_execution": "No JS, image, Docker, compiler/crosscompile, PID1/drain/cleanup execution by reviewer"
+  },
+  "limits": [
+    "Source changes resolve the statically reachable PATH false failure; actual target wrapper behavior remains unexecuted",
+    "Exact proc/PID1 behavior and staged binary execution must be qualified on both actual target platforms; ELF hashes/static machine checks alone are not runtime proof",
+    "Parent separate both-architecture production compiler proof is separate from this generated-image/wrapper/drain acceptance",
+    "Kubernetes/predeploy/hosted/original28/adoption remain open"
+  ],
+  "prior_finding": "INITIAL-REVIEW.json and upstream/ in same review directory remain intact"
+}

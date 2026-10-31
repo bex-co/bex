@@ -1,0 +1,22 @@
+{
+  "scope": "source and local readonly controls; actual CI pre/post observation not yet executed",
+  "semantics": "raw visible filesystem/memory readings plus observational headroom hint, no allocatable capacity bound/reservation/threshold/expanded-family approval",
+  "review_corrections": [
+    "Existing negative test lines accidentally displaced by first new-test insertion caused a local NameError; restored exact original function, raw failure retained.",
+    "Independent review corrected upper-bound wording because memory.current includes reclaimable pagecache; numeric formula unchanged, field renamed observed_headroom_hint_bytes.",
+    "Post-test observation bounded to one minute before unchanged always-run cleanup."
+  ],
+  "primary_source": "https://docs.kernel.org/admin-guide/cgroup-v2.html",
+  "preserved": [
+    "original source/ref/owner/platform gates",
+    "original first-cohort selector and both arch jobs",
+    "publication/Syft/full-report binding/cleanup/upload behavior",
+    "no Docker/subprocess calls in capacity observer"
+  ],
+  "limits": [
+    "runner filesystem readings do not observe daemon filesystem or builder cache",
+    "same-device rows cannot be added",
+    "ancestor/reclaim/future competing allocations not modeled",
+    "expanded-family measured thresholds and execution remain open"
+  ]
+}

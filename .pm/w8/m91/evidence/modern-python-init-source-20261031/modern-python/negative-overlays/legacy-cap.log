@@ -1,0 +1,24 @@
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.9
+    nativemodern_python_controls_test.go:84: modern wheels require selected-app Python/default Poetry without the legacy cap
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.10
+    nativemodern_python_controls_test.go:84: modern wheels require selected-app Python/default Poetry without the legacy cap
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.11
+    nativemodern_python_controls_test.go:84: modern wheels require selected-app Python/default Poetry without the legacy cap
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.12
+    nativemodern_python_controls_test.go:84: modern wheels require selected-app Python/default Poetry without the legacy cap
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.14
+    nativemodern_python_controls_test.go:84: modern wheels require selected-app Python/default Poetry without the legacy cap
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.7
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.8
+--- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix (0.01s)
+    --- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.9 (0.00s)
+    --- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.10 (0.00s)
+    --- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.11 (0.00s)
+    --- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.12 (0.00s)
+    --- FAIL: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.14 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.7 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.8 (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.535s
+FAIL

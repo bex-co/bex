@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-run",
+    "^(TestNativeInitQualification.*|TestCommonNativeInitQualification|TestNativeNodeServiceStartsUnderNativeInit|TestStageNativeInit)$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "wall_seconds": 4.881443417000001,
+  "initial_free_bytes": 2896769024,
+  "final_free_bytes": 2882129920,
+  "floor_tripped": false,
+  "scope": "Go source/unit only; new profile opt-in unset; existing actual Docker tests not selected; no crosscompile or JS fixture execution"
+}

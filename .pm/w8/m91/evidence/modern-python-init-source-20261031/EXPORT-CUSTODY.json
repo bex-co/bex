@@ -1,0 +1,2312 @@
+[
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/BASELINE.json",
+    "exported": "modern-python/BASELINE.json",
+    "raw_bytes": 2092,
+    "raw_sha256": "ffab4fd6f92efb5de13cce736e99dead2e3d19c291a8b397ef46baec4849ab7e",
+    "encoding": "identity",
+    "export_bytes": 2092,
+    "export_sha256": "ffab4fd6f92efb5de13cce736e99dead2e3d19c291a8b397ef46baec4849ab7e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/CHECKS.json",
+    "exported": "modern-python/CHECKS.json",
+    "raw_bytes": 3143,
+    "raw_sha256": "2a34ff7a8a8098d4abd3b56c199226d6e165938d9af65ebde4a2ebf8cd187c9d",
+    "encoding": "identity",
+    "export_bytes": 3143,
+    "export_sha256": "2a34ff7a8a8098d4abd3b56c199226d6e165938d9af65ebde4a2ebf8cd187c9d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/FUTURE-EXECUTION.json",
+    "exported": "modern-python/FUTURE-EXECUTION.json",
+    "raw_bytes": 5300,
+    "raw_sha256": "05f36ca2985dc650211239da0e85ab9620afc6f4c5b84d43506356bcd7e65ba1",
+    "encoding": "identity",
+    "export_bytes": 5300,
+    "export_sha256": "05f36ca2985dc650211239da0e85ab9620afc6f4c5b84d43506356bcd7e65ba1",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/SOURCE-MANIFEST.json",
+    "exported": "modern-python/SOURCE-MANIFEST.json",
+    "raw_bytes": 1190,
+    "raw_sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a",
+    "encoding": "identity",
+    "export_bytes": 1190,
+    "export_sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/UNCHANGED.json",
+    "exported": "modern-python/UNCHANGED.json",
+    "raw_bytes": 9874,
+    "raw_sha256": "081382a4468376c93b7cf3ad14eb4d6ba4725e87d3390b6ffb78a810f6645e5e",
+    "encoding": "identity",
+    "export_bytes": 9874,
+    "export_sha256": "081382a4468376c93b7cf3ad14eb4d6ba4725e87d3390b6ffb78a810f6645e5e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/UPSTREAM.json",
+    "exported": "modern-python/UPSTREAM.json",
+    "raw_bytes": 354,
+    "raw_sha256": "f06380d10d1c38558ae3f8c9fde690bda006ff03c508f7ff99a5c24fb6c4f30d",
+    "encoding": "identity",
+    "export_bytes": 354,
+    "export_sha256": "f06380d10d1c38558ae3f8c9fde690bda006ff03c508f7ff99a5c24fb6c4f30d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/.github/scripts/native-common-qualify.py",
+    "exported": "modern-python/baseline/.github/scripts/native-common-qualify.py",
+    "raw_bytes": 10568,
+    "raw_sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728",
+    "encoding": "identity",
+    "export_bytes": 10568,
+    "export_sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/.github/workflows/native-common-image.yml",
+    "exported": "modern-python/baseline/.github/workflows/native-common-image.yml",
+    "raw_bytes": 4675,
+    "raw_sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9",
+    "encoding": "identity",
+    "export_bytes": 4675,
+    "export_sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/nativelegacy_python_test.go",
+    "exported": "modern-python/baseline/lego/operator/internal/build/nativelegacy_python_test.go",
+    "raw_bytes": 9689,
+    "raw_sha256": "10edf34e3c2dc0db463e0ca96406f49cfa11b084a8f2241e20390d57c817833b",
+    "encoding": "identity",
+    "export_bytes": 9689,
+    "export_sha256": "10edf34e3c2dc0db463e0ca96406f49cfa11b084a8f2241e20390d57c817833b",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/nativeutility_integration_test.go",
+    "exported": "modern-python/baseline/lego/operator/internal/build/nativeutility_integration_test.go",
+    "raw_bytes": 16556,
+    "raw_sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+    "encoding": "identity",
+    "export_bytes": 16556,
+    "export_sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/nativeutility_qualification_test.go",
+    "exported": "modern-python/baseline/lego/operator/internal/build/nativeutility_qualification_test.go",
+    "raw_bytes": 15080,
+    "raw_sha256": "0d18824de5fca1b6d23258eb6b4332d9dc55728ee237f57b883bc0bee5a2ef74",
+    "encoding": "identity",
+    "export_bytes": 15080,
+    "export_sha256": "0d18824de5fca1b6d23258eb6b4332d9dc55728ee237f57b883bc0bee5a2ef74",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/check-tool.py",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check-tool.py",
+    "raw_bytes": 1025,
+    "raw_sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+    "encoding": "identity",
+    "export_bytes": 1025,
+    "export_sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/check.py",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check.py",
+    "raw_bytes": 5960,
+    "raw_sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+    "encoding": "identity",
+    "export_bytes": 5960,
+    "export_sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/check_test.py",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check_test.py",
+    "raw_bytes": 4201,
+    "raw_sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345",
+    "encoding": "identity",
+    "export_bytes": 4201,
+    "export_sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c",
+    "raw_bytes": 548,
+    "raw_sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+    "encoding": "identity",
+    "export_bytes": 548,
+    "export_sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml",
+    "raw_bytes": 259,
+    "raw_sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c",
+    "encoding": "identity",
+    "export_bytes": 259,
+    "export_sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/baseline/lego/operator/internal/build/testdata/native-legacy-python/setup.py",
+    "exported": "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/setup.py",
+    "raw_bytes": 165,
+    "raw_sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e",
+    "encoding": "identity",
+    "export_bytes": 165,
+    "export_sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/legacy-extraction-controls.log",
+    "exported": "modern-python/legacy-extraction-controls.log",
+    "raw_bytes": 1363,
+    "raw_sha256": "10d336825d9465c8e118ea779796c69dde4fa99bcd9e5cff79ec3c8e0c95b5a6",
+    "encoding": "identity",
+    "export_bytes": 1363,
+    "export_sha256": "10d336825d9465c8e118ea779796c69dde4fa99bcd9e5cff79ec3c8e0c95b5a6",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/lint-final.log",
+    "exported": "modern-python/lint-final.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/lint-init-args-failure.log",
+    "exported": "modern-python/lint-init-args-failure.log",
+    "raw_bytes": 400,
+    "raw_sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56",
+    "encoding": "identity",
+    "export_bytes": 400,
+    "export_sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/lint-initial.log",
+    "exported": "modern-python/lint-initial.log",
+    "raw_bytes": 168,
+    "raw_sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9",
+    "encoding": "identity",
+    "export_bytes": 168,
+    "export_sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-controls.json",
+    "exported": "modern-python/negative-controls.json",
+    "raw_bytes": 2107,
+    "raw_sha256": "2ee50f0ac868089e298d104fedc73b89628e545d4559a330f9f4ac37ba7a66cd",
+    "encoding": "identity",
+    "export_bytes": 2107,
+    "export_sha256": "2ee50f0ac868089e298d104fedc73b89628e545d4559a330f9f4ac37ba7a66cd",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/legacy-cap.go",
+    "exported": "modern-python/negative-overlays/legacy-cap.go",
+    "raw_bytes": 7527,
+    "raw_sha256": "a409ff931d357d74cd351ea8bb467b5b5982d9fcc878108390777f3cf95cb307",
+    "encoding": "identity",
+    "export_bytes": 7527,
+    "export_sha256": "a409ff931d357d74cd351ea8bb467b5b5982d9fcc878108390777f3cf95cb307",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/legacy-cap.json",
+    "exported": "modern-python/negative-overlays/legacy-cap.json",
+    "raw_bytes": 196,
+    "raw_sha256": "6d697c0e242b6927fc93c4174b320fd6b3ba08b64d6cc4282e3319dfe3f01902",
+    "encoding": "identity",
+    "export_bytes": 196,
+    "export_sha256": "6d697c0e242b6927fc93c4174b320fd6b3ba08b64d6cc4282e3319dfe3f01902",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/legacy-cap.log",
+    "exported": "modern-python/negative-overlays/legacy-cap.log",
+    "raw_bytes": 2022,
+    "raw_sha256": "9611c46804f833ed2a8a55ae5c3f17e6b361031e7492d41fcca0b47089305cb0",
+    "encoding": "identity",
+    "export_bytes": 2022,
+    "export_sha256": "9611c46804f833ed2a8a55ae5c3f17e6b361031e7492d41fcca0b47089305cb0",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/system-wheel-interpreter.go",
+    "exported": "modern-python/negative-overlays/system-wheel-interpreter.go",
+    "raw_bytes": 7501,
+    "raw_sha256": "45012581c8ca923b2e0a1500c82c5b7af7f01f422afc3b18de5336fdfef13e9c",
+    "encoding": "identity",
+    "export_bytes": 7501,
+    "export_sha256": "45012581c8ca923b2e0a1500c82c5b7af7f01f422afc3b18de5336fdfef13e9c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/system-wheel-interpreter.json",
+    "exported": "modern-python/negative-overlays/system-wheel-interpreter.json",
+    "raw_bytes": 210,
+    "raw_sha256": "ee75a282d81787bee05e36e05d8033fe4bf629ad77df451550fd93bb895f405d",
+    "encoding": "identity",
+    "export_bytes": 210,
+    "export_sha256": "ee75a282d81787bee05e36e05d8033fe4bf629ad77df451550fd93bb895f405d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/system-wheel-interpreter.log",
+    "exported": "modern-python/negative-overlays/system-wheel-interpreter.log.gz",
+    "raw_bytes": 24153,
+    "raw_sha256": "25975c262f2bdd86433cd4a07fbfd509ff243db372391103e34bb4a016746e58",
+    "encoding": "gzip",
+    "export_bytes": 2026,
+    "export_sha256": "9203390d506ad68ec20bd29d59763c8731917fd574391fdeb4c213bbaa63de75",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/wrong-metadata-python.go",
+    "exported": "modern-python/negative-overlays/wrong-metadata-python.go",
+    "raw_bytes": 7478,
+    "raw_sha256": "7a39dff98bef4a37783644709d920544c2b9a8006d4941a423c7e633585342d7",
+    "encoding": "identity",
+    "export_bytes": 7478,
+    "export_sha256": "7a39dff98bef4a37783644709d920544c2b9a8006d4941a423c7e633585342d7",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/wrong-metadata-python.json",
+    "exported": "modern-python/negative-overlays/wrong-metadata-python.json",
+    "raw_bytes": 207,
+    "raw_sha256": "c7cd5ec1cabe79dc8e10d948ec9897e61b4581a9f4944c7e32fba4b5c44d1ea2",
+    "encoding": "identity",
+    "export_bytes": 207,
+    "export_sha256": "c7cd5ec1cabe79dc8e10d948ec9897e61b4581a9f4944c7e32fba4b5c44d1ea2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/wrong-metadata-python.log",
+    "exported": "modern-python/negative-overlays/wrong-metadata-python.log",
+    "raw_bytes": 326,
+    "raw_sha256": "65ac76f8bdff45ede79e315cb30e8c211a7c4722ba28ade0f34f89109fc917a5",
+    "encoding": "identity",
+    "export_bytes": 326,
+    "export_sha256": "65ac76f8bdff45ede79e315cb30e8c211a7c4722ba28ade0f34f89109fc917a5",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/poetry-2.1.3-pyproject.toml",
+    "exported": "modern-python/poetry-2.1.3-pyproject.toml",
+    "raw_bytes": 6311,
+    "raw_sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1",
+    "encoding": "identity",
+    "export_bytes": 6311,
+    "export_sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/python-oracles-final.log",
+    "exported": "modern-python/python-oracles-final.log",
+    "raw_bytes": 958,
+    "raw_sha256": "481e35b6e6b2a98c89e415668cc594efee31bfd31d62d353bed295d0d9f5f95e",
+    "encoding": "identity",
+    "export_bytes": 958,
+    "export_sha256": "481e35b6e6b2a98c89e415668cc594efee31bfd31d62d353bed295d0d9f5f95e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source-controls-final.log",
+    "exported": "modern-python/source-controls-final.log",
+    "raw_bytes": 3855,
+    "raw_sha256": "d68d63de250ac152ebb6b6efaacbadfea6274231c9054d050e97751ca0094d4e",
+    "encoding": "identity",
+    "export_bytes": 3855,
+    "export_sha256": "d68d63de250ac152ebb6b6efaacbadfea6274231c9054d050e97751ca0094d4e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source-controls-initial.log",
+    "exported": "modern-python/source-controls-initial.log",
+    "raw_bytes": 3855,
+    "raw_sha256": "c98337c968125469780f1159b7335cd52e34e60f308c8ee15162841b8caa6ed4",
+    "encoding": "identity",
+    "export_bytes": 3855,
+    "export_sha256": "c98337c968125469780f1159b7335cd52e34e60f308c8ee15162841b8caa6ed4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/nativelegacy_python_test.go",
+    "exported": "modern-python/source/lego/operator/internal/build/nativelegacy_python_test.go",
+    "raw_bytes": 6537,
+    "raw_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "encoding": "identity",
+    "export_bytes": 6537,
+    "export_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/nativemodern_python_controls_test.go",
+    "exported": "modern-python/source/lego/operator/internal/build/nativemodern_python_controls_test.go",
+    "raw_bytes": 9519,
+    "raw_sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b",
+    "encoding": "identity",
+    "export_bytes": 9519,
+    "export_sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/nativemodern_python_test.go",
+    "exported": "modern-python/source/lego/operator/internal/build/nativemodern_python_test.go",
+    "raw_bytes": 7506,
+    "raw_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "encoding": "identity",
+    "export_bytes": 7506,
+    "export_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/nativepython_qualification_test.go",
+    "exported": "modern-python/source/lego/operator/internal/build/nativepython_qualification_test.go",
+    "raw_bytes": 4911,
+    "raw_sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d",
+    "encoding": "identity",
+    "export_bytes": 4911,
+    "export_sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/testdata/native-modern-python/check-tool.py",
+    "exported": "modern-python/source/lego/operator/internal/build/testdata/native-modern-python/check-tool.py",
+    "raw_bytes": 1757,
+    "raw_sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac",
+    "encoding": "identity",
+    "export_bytes": 1757,
+    "export_sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/source/lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py",
+    "exported": "modern-python/source/lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py",
+    "raw_bytes": 4655,
+    "raw_sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f",
+    "encoding": "identity",
+    "export_bytes": 4655,
+    "export_sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/MANIFEST.json",
+    "exported": "modern-python/MANIFEST.json",
+    "raw_bytes": 6510,
+    "raw_sha256": "9410b0b45231d230c198de9ba0c5c890e850f3589271e97ee9cbeeb3c50e2dc9",
+    "encoding": "identity",
+    "export_bytes": 6510,
+    "export_sha256": "9410b0b45231d230c198de9ba0c5c890e850f3589271e97ee9cbeeb3c50e2dc9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/REVIEW-FINDING.json",
+    "exported": "init/initial/REVIEW-FINDING.json",
+    "raw_bytes": 721,
+    "raw_sha256": "8b01cf3c7c5468de7e3957ca22b4461b2935e670124b0d570d918b7d6332fda5",
+    "encoding": "identity",
+    "export_bytes": 721,
+    "export_sha256": "8b01cf3c7c5468de7e3957ca22b4461b2935e670124b0d570d918b7d6332fda5",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/SOURCE-MANIFEST.json",
+    "exported": "init/initial/SOURCE-MANIFEST.json",
+    "raw_bytes": 1237,
+    "raw_sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+    "encoding": "identity",
+    "export_bytes": 1237,
+    "export_sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/final-build-package-receipt.json",
+    "exported": "init/initial/final-build-package-receipt.json",
+    "raw_bytes": 379,
+    "raw_sha256": "3c8deba780bb4a42d9ceb747a5301de5fa86ea9b9e400fd8e9030d5a7e5539fa",
+    "encoding": "identity",
+    "export_bytes": 379,
+    "export_sha256": "3c8deba780bb4a42d9ceb747a5301de5fa86ea9b9e400fd8e9030d5a7e5539fa",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/final-build-package.log",
+    "exported": "init/initial/final-build-package.log",
+    "raw_bytes": 63,
+    "raw_sha256": "44b46ee39e60506fba4bfbcf242909f32eb96c975165448d8cc88bea658aa15e",
+    "encoding": "identity",
+    "export_bytes": 63,
+    "export_sha256": "44b46ee39e60506fba4bfbcf242909f32eb96c975165448d8cc88bea658aa15e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/full-build-package-receipt.json",
+    "exported": "init/initial/full-build-package-receipt.json",
+    "raw_bytes": 356,
+    "raw_sha256": "1d2a58b01f4eeaa7568056f0c04763bc4dbf7881aa5a0bcd5f819fe6bfd693eb",
+    "encoding": "identity",
+    "export_bytes": 356,
+    "export_sha256": "1d2a58b01f4eeaa7568056f0c04763bc4dbf7881aa5a0bcd5f819fe6bfd693eb",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/full-build-package.log",
+    "exported": "init/initial/full-build-package.log",
+    "raw_bytes": 63,
+    "raw_sha256": "f223eae4cd1fe413ad4bab407fa28f75957b41b0098ddc052ee1d6271612f3fe",
+    "encoding": "identity",
+    "export_bytes": 63,
+    "export_sha256": "f223eae4cd1fe413ad4bab407fa28f75957b41b0098ddc052ee1d6271612f3fe",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/future-execution-plan.json",
+    "exported": "init/initial/future-execution-plan.json",
+    "raw_bytes": 6149,
+    "raw_sha256": "8f5903d19f5a80630d00a905ec0f003633292a8c3956ca48a6f36dc27a2f6b86",
+    "encoding": "identity",
+    "export_bytes": 6149,
+    "export_sha256": "8f5903d19f5a80630d00a905ec0f003633292a8c3956ca48a6f36dc27a2f6b86",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/javascript-parse.json",
+    "exported": "init/initial/javascript-parse.json",
+    "raw_bytes": 706,
+    "raw_sha256": "42debaf2fb3aa70702741bd202338c60a15d4e189fdf20cb92417226e7114b85",
+    "encoding": "identity",
+    "export_bytes": 706,
+    "export_sha256": "42debaf2fb3aa70702741bd202338c60a15d4e189fdf20cb92417226e7114b85",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/nativeinit_test.go.before",
+    "exported": "init/initial/nativeinit_test.go.before",
+    "raw_bytes": 11934,
+    "raw_sha256": "5b221f7b5eb7d715ebe44a613e87b9ed65083c3dd05d330603efad53b7b98b0d",
+    "encoding": "identity",
+    "export_bytes": 11934,
+    "export_sha256": "5b221f7b5eb7d715ebe44a613e87b9ed65083c3dd05d330603efad53b7b98b0d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/preservation.json",
+    "exported": "init/initial/preservation.json",
+    "raw_bytes": 1276,
+    "raw_sha256": "a2677f24ba77e2a0ac86ce3d7d93acda67a467771e4d16804bdbdd2cdc024331",
+    "encoding": "identity",
+    "export_bytes": 1276,
+    "export_sha256": "a2677f24ba77e2a0ac86ce3d7d93acda67a467771e4d16804bdbdd2cdc024331",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/preserved-before.json",
+    "exported": "init/initial/preserved-before.json",
+    "raw_bytes": 8508,
+    "raw_sha256": "4a74d9f169a3c687600cb249d561adfa971aacecfbe2a00825d8b9ac0725cfdb",
+    "encoding": "identity",
+    "export_bytes": 8508,
+    "export_sha256": "4a74d9f169a3c687600cb249d561adfa971aacecfbe2a00825d8b9ac0725cfdb",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/scoped-unit-receipt.json",
+    "exported": "init/initial/scoped-unit-receipt.json",
+    "raw_bytes": 550,
+    "raw_sha256": "6a5c416235ce3eec394f3ecb71bc970c975d09d89b4fa580d66ab2215a5d49fe",
+    "encoding": "identity",
+    "export_bytes": 550,
+    "export_sha256": "6a5c416235ce3eec394f3ecb71bc970c975d09d89b4fa580d66ab2215a5d49fe",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/scoped-unit.log",
+    "exported": "init/initial/scoped-unit.log",
+    "raw_bytes": 1144,
+    "raw_sha256": "d84c32ed8daffeb4cb9f87d60244893ee2d14b84e1f49ed181249c2ca26d4d98",
+    "encoding": "identity",
+    "export_bytes": 1144,
+    "export_sha256": "d84c32ed8daffeb4cb9f87d60244893ee2d14b84e1f49ed181249c2ca26d4d98",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source.patch",
+    "exported": "init/initial/source.patch",
+    "raw_bytes": 33345,
+    "raw_sha256": "e9cd90b612e44031fae5aba8fd6681de4a9741ea3b589c5bea47ea58d0f26603",
+    "encoding": "identity",
+    "export_bytes": 33345,
+    "export_sha256": "e9cd90b612e44031fae5aba8fd6681de4a9741ea3b589c5bea47ea58d0f26603",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/nativeinit_test.go",
+    "exported": "init/initial/source/lego/operator/internal/build/nativeinit_test.go",
+    "raw_bytes": 12243,
+    "raw_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "encoding": "identity",
+    "export_bytes": 12243,
+    "export_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "exported": "init/initial/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "raw_bytes": 27200,
+    "raw_sha256": "f271796c3a575e2f51bcdfd592273d17ef679a073bc00951c3feb55ab966febb",
+    "encoding": "identity",
+    "export_bytes": 27200,
+    "export_sha256": "f271796c3a575e2f51bcdfd592273d17ef679a073bc00951c3feb55ab966febb",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "exported": "init/initial/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "raw_bytes": 3,
+    "raw_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "encoding": "identity",
+    "export_bytes": 3,
+    "export_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "exported": "init/initial/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "raw_bytes": 315,
+    "raw_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "encoding": "identity",
+    "export_bytes": 315,
+    "export_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "exported": "init/initial/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "raw_bytes": 1468,
+    "raw_sha256": "b5b1e3c8bf75ee3359a1990d43d73b0be3a3d7e0956e2489e1e007d4d83cc5e9",
+    "encoding": "identity",
+    "export_bytes": 1468,
+    "export_sha256": "b5b1e3c8bf75ee3359a1990d43d73b0be3a3d7e0956e2489e1e007d4d83cc5e9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "exported": "init/initial/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "raw_bytes": 144,
+    "raw_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "encoding": "identity",
+    "export_bytes": 144,
+    "export_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "exported": "init/initial/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "raw_bytes": 1550,
+    "raw_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "encoding": "identity",
+    "export_bytes": 1550,
+    "export_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt/MANIFEST.json",
+    "exported": "init/initial/MANIFEST.json",
+    "raw_bytes": 3169,
+    "raw_sha256": "b010c71ea3e61eb7a603b025d8221cc5d6497c133a3ac345eb47985315564c7e",
+    "encoding": "identity",
+    "export_bytes": 3169,
+    "export_sha256": "b010c71ea3e61eb7a603b025d8221cc5d6497c133a3ac345eb47985315564c7e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/FROZEN-REVIEW.json",
+    "exported": "init/v2/FROZEN-REVIEW.json",
+    "raw_bytes": 1777,
+    "raw_sha256": "8a07bbc5c07dc5eaa3beb2d4b2c2b05a5acce234692f9a4609486045fada42e9",
+    "encoding": "identity",
+    "export_bytes": 1777,
+    "export_sha256": "8a07bbc5c07dc5eaa3beb2d4b2c2b05a5acce234692f9a4609486045fada42e9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/SOURCE-MANIFEST.json",
+    "exported": "init/v2/SOURCE-MANIFEST.json",
+    "raw_bytes": 1420,
+    "raw_sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "encoding": "identity",
+    "export_bytes": 1420,
+    "export_sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/compiler-delta.patch",
+    "exported": "init/v2/compiler-delta.patch",
+    "raw_bytes": 1359,
+    "raw_sha256": "64ce8a5c16b56f783ea34ae968c2dd0fe154e19806d6485934a0f5f29d15de98",
+    "encoding": "identity",
+    "export_bytes": 1359,
+    "export_sha256": "64ce8a5c16b56f783ea34ae968c2dd0fe154e19806d6485934a0f5f29d15de98",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/exact-v2-package-lint-receipt.json",
+    "exported": "init/v2/exact-v2-package-lint-receipt.json",
+    "raw_bytes": 312,
+    "raw_sha256": "35e188d0c45ea20680604cfc73c03636961ad4a42dfc21377d0df60fa57f57d9",
+    "encoding": "identity",
+    "export_bytes": 312,
+    "export_sha256": "35e188d0c45ea20680604cfc73c03636961ad4a42dfc21377d0df60fa57f57d9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/exact-v2-package-lint.log",
+    "exported": "init/v2/exact-v2-package-lint.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/full-build-package-receipt.json",
+    "exported": "init/v2/full-build-package-receipt.json",
+    "raw_bytes": 341,
+    "raw_sha256": "55d828f29de1ee1122613dd2e29d869b413bc3b0dc7f9cd59c5983dab99a4c74",
+    "encoding": "identity",
+    "export_bytes": 341,
+    "export_sha256": "55d828f29de1ee1122613dd2e29d869b413bc3b0dc7f9cd59c5983dab99a4c74",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/full-build-package.log",
+    "exported": "init/v2/full-build-package.log",
+    "raw_bytes": 63,
+    "raw_sha256": "850b616b0346767634ba918f8d5cf54a1b8167ae0b3f41ddeeb5da04967953f5",
+    "encoding": "identity",
+    "export_bytes": 63,
+    "export_sha256": "850b616b0346767634ba918f8d5cf54a1b8167ae0b3f41ddeeb5da04967953f5",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/future-execution-plan.json",
+    "exported": "init/v2/future-execution-plan.json",
+    "raw_bytes": 8036,
+    "raw_sha256": "167305e2456251fba7c25523859891777b0d7d3a9fec7e884476a65e1a59f324",
+    "encoding": "identity",
+    "export_bytes": 8036,
+    "export_sha256": "167305e2456251fba7c25523859891777b0d7d3a9fec7e884476a65e1a59f324",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/independent-lint-final.log",
+    "exported": "init/v2/independent-lint-final.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/independent-lint-init-args-failure.log",
+    "exported": "init/v2/independent-lint-init-args-failure.log",
+    "raw_bytes": 400,
+    "raw_sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56",
+    "encoding": "identity",
+    "export_bytes": 400,
+    "export_sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/independent-lint-initial.log",
+    "exported": "init/v2/independent-lint-initial.log",
+    "raw_bytes": 168,
+    "raw_sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9",
+    "encoding": "identity",
+    "export_bytes": 168,
+    "export_sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/independent-v2-review.json",
+    "exported": "init/v2/independent-v2-review.json",
+    "raw_bytes": 2117,
+    "raw_sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9",
+    "encoding": "identity",
+    "export_bytes": 2117,
+    "export_sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/independent-v2-scoped-lint.log",
+    "exported": "init/v2/independent-v2-scoped-lint.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/javascript-parse.json",
+    "exported": "init/v2/javascript-parse.json",
+    "raw_bytes": 877,
+    "raw_sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52",
+    "encoding": "identity",
+    "export_bytes": 877,
+    "export_sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/modern-python-independent-review.json",
+    "exported": "init/v2/modern-python-independent-review.json",
+    "raw_bytes": 1088,
+    "raw_sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3",
+    "encoding": "identity",
+    "export_bytes": 1088,
+    "export_sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/preservation.json",
+    "exported": "init/v2/preservation.json",
+    "raw_bytes": 594,
+    "raw_sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34",
+    "encoding": "identity",
+    "export_bytes": 594,
+    "export_sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/previous-freeze.json",
+    "exported": "init/v2/previous-freeze.json",
+    "raw_bytes": 428,
+    "raw_sha256": "a4130bd93441b15cff66ed8c852388bca40eed4c5d5b309078a083cf17332854",
+    "encoding": "identity",
+    "export_bytes": 428,
+    "export_sha256": "a4130bd93441b15cff66ed8c852388bca40eed4c5d5b309078a083cf17332854",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/root-crosscompile-binding.json",
+    "exported": "init/v2/root-crosscompile-binding.json",
+    "raw_bytes": 2143,
+    "raw_sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c",
+    "encoding": "identity",
+    "export_bytes": 2143,
+    "export_sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/nativeinit_test.go",
+    "exported": "init/v2/source/lego/operator/internal/build/nativeinit_test.go",
+    "raw_bytes": 12243,
+    "raw_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "encoding": "identity",
+    "export_bytes": 12243,
+    "export_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "exported": "init/v2/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "raw_bytes": 29686,
+    "raw_sha256": "c81508266455a7b19aa8f6a385a82d96a488358bbb41145ed268bce1b89363ee",
+    "encoding": "identity",
+    "export_bytes": 29686,
+    "export_sha256": "c81508266455a7b19aa8f6a385a82d96a488358bbb41145ed268bce1b89363ee",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "raw_bytes": 3,
+    "raw_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "encoding": "identity",
+    "export_bytes": 3,
+    "export_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "raw_bytes": 315,
+    "raw_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "encoding": "identity",
+    "export_bytes": 315,
+    "export_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "raw_bytes": 367,
+    "raw_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "encoding": "identity",
+    "export_bytes": 367,
+    "export_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "raw_bytes": 2232,
+    "raw_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "encoding": "identity",
+    "export_bytes": 2232,
+    "export_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "raw_bytes": 144,
+    "raw_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "encoding": "identity",
+    "export_bytes": 144,
+    "export_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "exported": "init/v2/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "raw_bytes": 1550,
+    "raw_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "encoding": "identity",
+    "export_bytes": 1550,
+    "export_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff/MANIFEST.json",
+    "exported": "init/v2/MANIFEST.json",
+    "raw_bytes": 3964,
+    "raw_sha256": "7f9fb5c654e2c7a871946168fe04407efd41ef074244889edf776e82680eeabd",
+    "encoding": "identity",
+    "export_bytes": 3964,
+    "export_sha256": "7f9fb5c654e2c7a871946168fe04407efd41ef074244889edf776e82680eeabd",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/CHECKS.json",
+    "exported": "capacity/CHECKS.json",
+    "raw_bytes": 671,
+    "raw_sha256": "62be2a49c5d3db306966f3d7b8deee53aa2fd17151cd1ba648c43efc97a93990",
+    "encoding": "identity",
+    "export_bytes": 671,
+    "export_sha256": "62be2a49c5d3db306966f3d7b8deee53aa2fd17151cd1ba648c43efc97a93990",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/SCOPE.json",
+    "exported": "capacity/SCOPE.json",
+    "raw_bytes": 1337,
+    "raw_sha256": "0150e8d977b05202072320cf63cf680b2ce2ea614c666db868f9985d21f14fd0",
+    "encoding": "identity",
+    "export_bytes": 1337,
+    "export_sha256": "0150e8d977b05202072320cf63cf680b2ce2ea614c666db868f9985d21f14fd0",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/SOURCE.json",
+    "exported": "capacity/SOURCE.json",
+    "raw_bytes": 629,
+    "raw_sha256": "b9e4a298a40c37c98996a7bd47841cfa7d079635fab102f5507c7854e991c675",
+    "encoding": "identity",
+    "export_bytes": 629,
+    "export_sha256": "b9e4a298a40c37c98996a7bd47841cfa7d079635fab102f5507c7854e991c675",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/bex-w8-capacity-final-actionlint-20261031.log",
+    "exported": "capacity/bex-w8-capacity-final-actionlint-20261031.log",
+    "raw_bytes": 0,
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "identity",
+    "export_bytes": 0,
+    "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/bex-w8-capacity-final-actions-20261031.log",
+    "exported": "capacity/bex-w8-capacity-final-actions-20261031.log",
+    "raw_bytes": 290,
+    "raw_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+    "encoding": "identity",
+    "export_bytes": 290,
+    "export_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/bex-w8-capacity-final-all-controls-20261031.log",
+    "exported": "capacity/bex-w8-capacity-final-all-controls-20261031.log",
+    "raw_bytes": 10857,
+    "raw_sha256": "068b6fa4aaf08d6792d4100e7e63edea0128fd821733063982880a6c8e21bd79",
+    "encoding": "identity",
+    "export_bytes": 10857,
+    "export_sha256": "068b6fa4aaf08d6792d4100e7e63edea0128fd821733063982880a6c8e21bd79",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/bex-w8-capacity-observation-initial-controls-20261031.log",
+    "exported": "capacity/bex-w8-capacity-observation-initial-controls-20261031.log",
+    "raw_bytes": 2271,
+    "raw_sha256": "91e5924a0407c9f731509fb0d0b7672843de4b35cffcf6e2f3d2993203737b59",
+    "encoding": "identity",
+    "export_bytes": 2271,
+    "export_sha256": "91e5924a0407c9f731509fb0d0b7672843de4b35cffcf6e2f3d2993203737b59",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/source/.github/scripts/native-common-qualify.py",
+    "exported": "capacity/source/.github/scripts/native-common-qualify.py",
+    "raw_bytes": 13398,
+    "raw_sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4",
+    "encoding": "identity",
+    "export_bytes": 13398,
+    "export_sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/source/.github/scripts/test_native_oci_common_qualification.py",
+    "exported": "capacity/source/.github/scripts/test_native_oci_common_qualification.py",
+    "raw_bytes": 13736,
+    "raw_sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07",
+    "encoding": "identity",
+    "export_bytes": 13736,
+    "export_sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/source/.github/workflows/native-common-image.yml",
+    "exported": "capacity/source/.github/workflows/native-common-image.yml",
+    "raw_bytes": 5001,
+    "raw_sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912",
+    "encoding": "identity",
+    "export_bytes": 5001,
+    "export_sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-observation-source-20261031-rf21vk99/MANIFEST.json",
+    "exported": "capacity/MANIFEST.json",
+    "raw_bytes": 1510,
+    "raw_sha256": "cf95f0e72bdc6ae81523c753a7749bf4adeeee0f807234e502f5ec3953065627",
+    "encoding": "identity",
+    "export_bytes": 1510,
+    "export_sha256": "cf95f0e72bdc6ae81523c753a7749bf4adeeee0f807234e502f5ec3953065627",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/SOURCE-MANIFEST.json",
+    "exported": "pnpm/research/SOURCE-MANIFEST.json",
+    "raw_bytes": 8849,
+    "raw_sha256": "6fdb8582d5d6e8abd51dc14ee718b398c6280b607fcd4c3931c00c680ba72a78",
+    "encoding": "identity",
+    "export_bytes": 8849,
+    "export_sha256": "6fdb8582d5d6e8abd51dc14ee718b398c6280b607fcd4c3931c00c680ba72a78",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/proposal.json",
+    "exported": "pnpm/research/proposal.json",
+    "raw_bytes": 7426,
+    "raw_sha256": "9f7735d5d6a77ca5e161a150e27c9748e967acecfa28839a05e0c9728588fa69",
+    "encoding": "identity",
+    "export_bytes": 7426,
+    "export_sha256": "9f7735d5d6a77ca5e161a150e27c9748e967acecfa28839a05e0c9728588fa69",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/node-14.21.3-node-gyp-package.json",
+    "exported": "pnpm/research/sources/node-14.21.3-node-gyp-package.json",
+    "raw_bytes": 2125,
+    "raw_sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3",
+    "encoding": "identity",
+    "export_bytes": 2125,
+    "export_sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/node-16.20.2-node-gyp-package.json",
+    "exported": "pnpm/research/sources/node-16.20.2-node-gyp-package.json",
+    "raw_bytes": 1122,
+    "raw_sha256": "66b5afd83332bd267ef72d7987ecde2fd6bb5437dbccc54e6af37375e60380a1",
+    "encoding": "identity",
+    "export_bytes": 1122,
+    "export_sha256": "66b5afd83332bd267ef72d7987ecde2fd6bb5437dbccc54e6af37375e60380a1",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0/package/index.js",
+    "exported": "pnpm/research/sources/npm-lifecycle-1001.0.0/package/index.js",
+    "raw_bytes": 13773,
+    "raw_sha256": "c5f9e6dc736b07015893df6ef599e34f0c5dee326672de83d24ef7473da39a02",
+    "encoding": "identity",
+    "export_bytes": 13773,
+    "export_sha256": "c5f9e6dc736b07015893df6ef599e34f0c5dee326672de83d24ef7473da39a02",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0/package/lib/extendPath.js",
+    "exported": "pnpm/research/sources/npm-lifecycle-1001.0.0/package/lib/extendPath.js",
+    "raw_bytes": 2343,
+    "raw_sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4",
+    "encoding": "identity",
+    "export_bytes": 2343,
+    "export_sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0/package/node-gyp-bin/node-gyp",
+    "exported": "pnpm/research/sources/npm-lifecycle-1001.0.0/package/node-gyp-bin/node-gyp",
+    "raw_bytes": 172,
+    "raw_sha256": "7d8db08dc7f9d6d9f74341cf838a2d3532b4dec44aa0131ab8ec8076843c0c40",
+    "encoding": "identity",
+    "export_bytes": 172,
+    "export_sha256": "7d8db08dc7f9d6d9f74341cf838a2d3532b4dec44aa0131ab8ec8076843c0c40",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0/package/package.json",
+    "exported": "pnpm/research/sources/npm-lifecycle-1001.0.0/package/package.json",
+    "raw_bytes": 1756,
+    "raw_sha256": "bfc5372abab20e49dba4fb757f3901302cf476207f798c49398cfaf69d262786",
+    "encoding": "identity",
+    "export_bytes": 1756,
+    "export_sha256": "bfc5372abab20e49dba4fb757f3901302cf476207f798c49398cfaf69d262786",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0.tgz",
+    "exported": "pnpm/research/sources/npm-lifecycle-1001.0.0.tgz",
+    "raw_bytes": 10913,
+    "raw_sha256": "a1c72494c7c947ed39f289d988920b285b2eb2faa3dd3b6132c9690ab2bad524",
+    "encoding": "identity",
+    "export_bytes": 10913,
+    "export_sha256": "a1c72494c7c947ed39f289d988920b285b2eb2faa3dd3b6132c9690ab2bad524",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/cli/cli-meta/src/index.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/cli/cli-meta/src/index.ts",
+    "raw_bytes": 2115,
+    "raw_sha256": "d37d84f5f7fae8dad899a19f5f535deebd572f80bdb72c8e248fc229686665b6",
+    "encoding": "identity",
+    "export_bytes": 2115,
+    "export_sha256": "d37d84f5f7fae8dad899a19f5f535deebd572f80bdb72c8e248fc229686665b6",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/config/config/src/index.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/config/config/src/index.ts",
+    "raw_bytes": 28941,
+    "raw_sha256": "8f4936bc966e0e9cf1c09f0734ddc9f513769fde283b2dbf2a360acc4e1ec205",
+    "encoding": "identity",
+    "export_bytes": 28941,
+    "export_sha256": "8f4936bc966e0e9cf1c09f0734ddc9f513769fde283b2dbf2a360acc4e1ec205",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/config/package-is-installable/src/index.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/config/package-is-installable/src/index.ts",
+    "raw_bytes": 2330,
+    "raw_sha256": "7256eac6474ebce362a829d0a37cd016279524cbffb2191d06cf14eb69189091",
+    "encoding": "identity",
+    "export_bytes": 2330,
+    "export_sha256": "7256eac6474ebce362a829d0a37cd016279524cbffb2191d06cf14eb69189091",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/env/system-node-version/src/index.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/env/system-node-version/src/index.ts",
+    "raw_bytes": 500,
+    "raw_sha256": "dc6f7ac94d0ca3df9e81fea91027a3a90291f2fe426a3a90e80f5bfc4eae2d31",
+    "encoding": "identity",
+    "export_bytes": 500,
+    "export_sha256": "dc6f7ac94d0ca3df9e81fea91027a3a90291f2fe426a3a90e80f5bfc4eae2d31",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/exec/lifecycle/src/runLifecycleHook.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/exec/lifecycle/src/runLifecycleHook.ts",
+    "raw_bytes": 6785,
+    "raw_sha256": "200b2af31f24a94cdf4e132919936a79061192ce2b8a879d9d018b74a2473166",
+    "encoding": "identity",
+    "export_bytes": 6785,
+    "export_sha256": "200b2af31f24a94cdf4e132919936a79061192ce2b8a879d9d018b74a2473166",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/exec.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/exec.ts",
+    "raw_bytes": 13499,
+    "raw_sha256": "75d4e59116f16c1ad88b273dc5bf27f3b332af3cd4da41ceaf0b1f8826aa57bd",
+    "encoding": "identity",
+    "export_bytes": 13499,
+    "export_sha256": "75d4e59116f16c1ad88b273dc5bf27f3b332af3cd4da41ceaf0b1f8826aa57bd",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/makeEnv.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/makeEnv.ts",
+    "raw_bytes": 956,
+    "raw_sha256": "7c442aab698375e8f211282d1cea05daf1d75dca5002843b215a2530f3d6eec8",
+    "encoding": "identity",
+    "export_bytes": 956,
+    "export_sha256": "7c442aab698375e8f211282d1cea05daf1d75dca5002843b215a2530f3d6eec8",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pkg-manager/plugin-commands-installation/src/nodeExecPath.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pkg-manager/plugin-commands-installation/src/nodeExecPath.ts",
+    "raw_bytes": 960,
+    "raw_sha256": "19aeafbedf3e86228ebd27fb91ac4c084e2a238b43b846c9edb24598fd6deb05",
+    "encoding": "identity",
+    "export_bytes": 960,
+    "export_sha256": "19aeafbedf3e86228ebd27fb91ac4c084e2a238b43b846c9edb24598fd6deb05",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/artifacts/exe/scripts/build-artifacts.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/artifacts/exe/scripts/build-artifacts.ts.gz",
+    "raw_bytes": 873,
+    "raw_sha256": "e2f6a120fd3e9d5f229d9c9af68644b5d570b03ed329bb69bfa0235b2cee75a7",
+    "encoding": "gzip",
+    "export_bytes": 447,
+    "export_sha256": "d3c74832d386c60ebabf530f35243dd4b3662513fe4545d7eb0f82c89457f7d5",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/bin/pnpm.cjs",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/bin/pnpm.cjs",
+    "raw_bytes": 1102,
+    "raw_sha256": "b276da51dc8ca5b0d3ee3371695b50fc8b3244b281b091c63a3f082a88dadeb9",
+    "encoding": "identity",
+    "export_bytes": 1102,
+    "export_sha256": "b276da51dc8ca5b0d3ee3371695b50fc8b3244b281b091c63a3f082a88dadeb9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/bin/pnpx.cjs",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/bin/pnpx.cjs",
+    "raw_bytes": 122,
+    "raw_sha256": "907715e8c1a40838de62c59f87082036937356df91d976777be21cfad62d6029",
+    "encoding": "identity",
+    "export_bytes": 122,
+    "export_sha256": "907715e8c1a40838de62c59f87082036937356df91d976777be21cfad62d6029",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/bundle.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/bundle.ts",
+    "raw_bytes": 1247,
+    "raw_sha256": "b6d574d80f5c94c953cdfe9cbd8ad542e99cb59c263cf7829c0b1035038a0bc3",
+    "encoding": "identity",
+    "export_bytes": 1247,
+    "export_sha256": "b6d574d80f5c94c953cdfe9cbd8ad542e99cb59c263cf7829c0b1035038a0bc3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/package-linux-arm64.json",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/package-linux-arm64.json",
+    "raw_bytes": 210,
+    "raw_sha256": "b416df1aa84b358a277bdf998791eb0fb83c9d252051c6e29634759f4b8355ed",
+    "encoding": "identity",
+    "export_bytes": 210,
+    "export_sha256": "b416df1aa84b358a277bdf998791eb0fb83c9d252051c6e29634759f4b8355ed",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/package-linux-x64.json",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/package-linux-x64.json",
+    "raw_bytes": 206,
+    "raw_sha256": "e4827af0b52b3d5ac921a0c82cb144c0967a014c988b4c0a6c0831fbf01a01b0",
+    "encoding": "identity",
+    "export_bytes": 206,
+    "export_sha256": "e4827af0b52b3d5ac921a0c82cb144c0967a014c988b4c0a6c0831fbf01a01b0",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/package.json",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/package.json",
+    "raw_bytes": 8553,
+    "raw_sha256": "0f1964f308cbb2d055bf413e4351e026da20b28f5fafd24f850890ed0fda6d7b",
+    "encoding": "identity",
+    "export_bytes": 8553,
+    "export_sha256": "0f1964f308cbb2d055bf413e4351e026da20b28f5fafd24f850890ed0fda6d7b",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm/src/switchCliVersion.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm/src/switchCliVersion.ts",
+    "raw_bytes": 3300,
+    "raw_sha256": "e8ab38599703066215cde88589ba2c5cbde57268bbaa0cc4086c0a5c8067593d",
+    "encoding": "identity",
+    "export_bytes": 3300,
+    "export_sha256": "e8ab38599703066215cde88589ba2c5cbde57268bbaa0cc4086c0a5c8067593d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/pnpm-lock.yaml",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/pnpm-lock.yaml",
+    "raw_bytes": 819702,
+    "raw_sha256": "a2e53df389fcbc48ba088733a5668603c32ae3f2266a35c7fff02b35890a4229",
+    "encoding": "identity",
+    "export_bytes": 819702,
+    "export_sha256": "a2e53df389fcbc48ba088733a5668603c32ae3f2266a35c7fff02b35890a4229",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm-v10.34.7/tools/plugin-commands-self-updater/src/installPnpmToTools.ts",
+    "exported": "pnpm/research/sources/pnpm-v10.34.7/tools/plugin-commands-self-updater/src/installPnpmToTools.ts",
+    "raw_bytes": 11892,
+    "raw_sha256": "be8a7106b95d46b3ac1b07216f208e80b6573bef35a2bea5fff41ca17760d0d2",
+    "encoding": "identity",
+    "export_bytes": 11892,
+    "export_sha256": "be8a7106b95d46b3ac1b07216f208e80b6573bef35a2bea5fff41ca17760d0d2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/pnpm10-installation.md",
+    "exported": "pnpm/research/sources/pnpm10-installation.md.gz",
+    "raw_bytes": 7039,
+    "raw_sha256": "2768cdadf1d49b3f5161fa1ea11dfd3664582cd48e70076eb39eb72b01ca0b83",
+    "encoding": "gzip",
+    "export_bytes": 2714,
+    "export_sha256": "f8d545505bff4d8957aed8f734f660a99cfce7361f7e2abbf413a2fec4b39250",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/registry-exe.json",
+    "exported": "pnpm/research/sources/registry-exe.json",
+    "raw_bytes": 1985,
+    "raw_sha256": "dee8d80c1c6842a73cf218976852e984c74da83d844b8d66f9852943e51474fe",
+    "encoding": "identity",
+    "export_bytes": 1985,
+    "export_sha256": "dee8d80c1c6842a73cf218976852e984c74da83d844b8d66f9852943e51474fe",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/registry-linux-arm64.json",
+    "exported": "pnpm/research/sources/registry-linux-arm64.json",
+    "raw_bytes": 1809,
+    "raw_sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302",
+    "encoding": "identity",
+    "export_bytes": 1809,
+    "export_sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/registry-linux-x64.json",
+    "exported": "pnpm/research/sources/registry-linux-x64.json",
+    "raw_bytes": 1788,
+    "raw_sha256": "78c290230951b529f395dae2c52c8f1b2ea9cb3e0fdfb4ddc7dc344176bd4319",
+    "encoding": "identity",
+    "export_bytes": 1788,
+    "export_sha256": "78c290230951b529f395dae2c52c8f1b2ea9cb3e0fdfb4ddc7dc344176bd4319",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/registry-pnpm.json",
+    "exported": "pnpm/research/sources/registry-pnpm.json",
+    "raw_bytes": 6190,
+    "raw_sha256": "25518e74b2d59a7d26b5e4f1f4e176d278153c907a00423838cccc4f143dbefa",
+    "encoding": "identity",
+    "export_bytes": 6190,
+    "export_sha256": "25518e74b2d59a7d26b5e4f1f4e176d278153c907a00423838cccc4f143dbefa",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/render-native-runtimes.html",
+    "exported": "pnpm/research/sources/render-native-runtimes.html",
+    "raw_bytes": 342997,
+    "raw_sha256": "9f05c6a444fbb9525e869177007f18b865e4157752f9d71c482a6543ab1d1a46",
+    "encoding": "identity",
+    "export_bytes": 342997,
+    "export_sha256": "9f05c6a444fbb9525e869177007f18b865e4157752f9d71c482a6543ab1d1a46",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/render-node-version.html",
+    "exported": "pnpm/research/sources/render-node-version.html",
+    "raw_bytes": 305908,
+    "raw_sha256": "4101764f6534601fa068bb29d1172818620e75982cd29186315c65426912e1ce",
+    "encoding": "identity",
+    "export_bytes": 305908,
+    "export_sha256": "4101764f6534601fa068bb29d1172818620e75982cd29186315c65426912e1ce",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/MANIFEST.json",
+    "exported": "pnpm/research/MANIFEST.json",
+    "raw_bytes": 5413,
+    "raw_sha256": "47383b62a27fa23aaf3d296de073d1af62e20d89153f0d320b979f538e7c0902",
+    "encoding": "identity",
+    "export_bytes": 5413,
+    "export_sha256": "47383b62a27fa23aaf3d296de073d1af62e20d89153f0d320b979f538e7c0902",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/execution-plan.json",
+    "exported": "pnpm/plan/execution-plan.json",
+    "raw_bytes": 9757,
+    "raw_sha256": "f92e23e1f395b1f4ae3f26f0ccf951ba8a9174a3f9c2acbb466f92fc3d996084",
+    "encoding": "identity",
+    "export_bytes": 9757,
+    "export_sha256": "f92e23e1f395b1f4ae3f26f0ccf951ba8a9174a3f9c2acbb466f92fc3d996084",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/input-identity.json",
+    "exported": "pnpm/plan/input-identity.json",
+    "raw_bytes": 6171,
+    "raw_sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213",
+    "encoding": "identity",
+    "export_bytes": 6171,
+    "export_sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/14.21.3-bullseye-slim.arm64.config.json",
+    "exported": "pnpm/plan/inputs/14.21.3-bullseye-slim.arm64.config.json",
+    "raw_bytes": 6813,
+    "raw_sha256": "64a1be796b5d471eb8a7ba1662e9e4673faa3df54f51d5d0281a335ece311f11",
+    "encoding": "identity",
+    "export_bytes": 6813,
+    "export_sha256": "64a1be796b5d471eb8a7ba1662e9e4673faa3df54f51d5d0281a335ece311f11",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/14.21.3-bullseye-slim.arm64.manifest.json",
+    "exported": "pnpm/plan/inputs/14.21.3-bullseye-slim.arm64.manifest.json",
+    "raw_bytes": 1367,
+    "raw_sha256": "59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c",
+    "encoding": "identity",
+    "export_bytes": 1367,
+    "export_sha256": "59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/14.21.3-bullseye-slim.index.json",
+    "exported": "pnpm/plan/inputs/14.21.3-bullseye-slim.index.json",
+    "raw_bytes": 1206,
+    "raw_sha256": "0f5b374fae506741ff14db84daff2937ae788e88fb48a6c66d15de5ee808ccd3",
+    "encoding": "identity",
+    "export_bytes": 1206,
+    "export_sha256": "0f5b374fae506741ff14db84daff2937ae788e88fb48a6c66d15de5ee808ccd3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/16.20.2-bullseye-slim.arm64.config.json",
+    "exported": "pnpm/plan/inputs/16.20.2-bullseye-slim.arm64.config.json",
+    "raw_bytes": 7033,
+    "raw_sha256": "e233eabde65b256d5b981e8663f613ea8d7bd9bcc2095ee5391a6cf055236f12",
+    "encoding": "identity",
+    "export_bytes": 7033,
+    "export_sha256": "e233eabde65b256d5b981e8663f613ea8d7bd9bcc2095ee5391a6cf055236f12",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/16.20.2-bullseye-slim.arm64.manifest.json",
+    "exported": "pnpm/plan/inputs/16.20.2-bullseye-slim.arm64.manifest.json",
+    "raw_bytes": 1367,
+    "raw_sha256": "6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971",
+    "encoding": "identity",
+    "export_bytes": 1367,
+    "export_sha256": "6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/16.20.2-bullseye-slim.index.json",
+    "exported": "pnpm/plan/inputs/16.20.2-bullseye-slim.index.json",
+    "raw_bytes": 1206,
+    "raw_sha256": "503446c15c6236291222f8192513c2eb56a02a8949cbadf4fe78cce19815c734",
+    "encoding": "identity",
+    "export_bytes": 1206,
+    "export_sha256": "503446c15c6236291222f8192513c2eb56a02a8949cbadf4fe78cce19815c734",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/pnpm-linux-arm64-10.34.7.registry.json",
+    "exported": "pnpm/plan/inputs/pnpm-linux-arm64-10.34.7.registry.json",
+    "raw_bytes": 1809,
+    "raw_sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302",
+    "encoding": "identity",
+    "export_bytes": 1809,
+    "export_sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/pnpm-release-v10.34.7-selected-assets.json",
+    "exported": "pnpm/plan/inputs/pnpm-release-v10.34.7-selected-assets.json",
+    "raw_bytes": 362,
+    "raw_sha256": "0c8b7c51aa42a118776eadfda7e78b829a09facfddfe21c61d1e4d807a3e7049",
+    "encoding": "identity",
+    "export_bytes": 362,
+    "export_sha256": "0c8b7c51aa42a118776eadfda7e78b829a09facfddfe21c61d1e4d807a3e7049",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/pnpm-tarball-head.json",
+    "exported": "pnpm/plan/inputs/pnpm-tarball-head.json",
+    "raw_bytes": 303,
+    "raw_sha256": "5dd5dcc10bec314b92832bd4e28dc6f2290a1f37b23fe51dac19eb0fbb0f13c3",
+    "encoding": "identity",
+    "export_bytes": 303,
+    "export_sha256": "5dd5dcc10bec314b92832bd4e28dc6f2290a1f37b23fe51dac19eb0fbb0f13c3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/inputs/pnpm-v10.34.7-LICENSE",
+    "exported": "pnpm/plan/inputs/pnpm-v10.34.7-LICENSE",
+    "raw_bytes": 1170,
+    "raw_sha256": "4b8e2a57502758b2d034ece9cabf19dd098c5609003ed8dbdafd085274f25bd9",
+    "encoding": "identity",
+    "export_bytes": 1170,
+    "export_sha256": "4b8e2a57502758b2d034ece9cabf19dd098c5609003ed8dbdafd085274f25bd9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/MANIFEST.json",
+    "exported": "pnpm/plan/MANIFEST.json",
+    "raw_bytes": 1812,
+    "raw_sha256": "b5f8a520382d095382d8e82f1f58e59eb67e34c4258dc153ae724938eebe518c",
+    "encoding": "identity",
+    "export_bytes": 1812,
+    "export_sha256": "b5f8a520382d095382d8e82f1f58e59eb67e34c4258dc153ae724938eebe518c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/execution-receipt.json",
+    "exported": "pnpm/size-preflight/execution-receipt.json",
+    "raw_bytes": 3399,
+    "raw_sha256": "de8d961e4a2448891c0a11e6450c0d2ded5861a52b643ce44dbe5641556e44a2",
+    "encoding": "identity",
+    "export_bytes": 3399,
+    "export_sha256": "de8d961e4a2448891c0a11e6450c0d2ded5861a52b643ce44dbe5641556e44a2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/frozen-input-identity.json",
+    "exported": "pnpm/size-preflight/frozen-input-identity.json",
+    "raw_bytes": 6171,
+    "raw_sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213",
+    "encoding": "identity",
+    "export_bytes": 6171,
+    "export_sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/local-controls.json",
+    "exported": "pnpm/size-preflight/local-controls.json",
+    "raw_bytes": 571,
+    "raw_sha256": "1d198d6bb58b374c508df71b6e3eed16f645cb61da07afa4cba7dd4739f96f5e",
+    "encoding": "identity",
+    "export_bytes": 571,
+    "export_sha256": "1d198d6bb58b374c508df71b6e3eed16f645cb61da07afa4cba7dd4739f96f5e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/preflight.py",
+    "exported": "pnpm/size-preflight/preflight.py",
+    "raw_bytes": 15103,
+    "raw_sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67",
+    "encoding": "identity",
+    "export_bytes": 15103,
+    "export_sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/progress.jsonl",
+    "exported": "pnpm/size-preflight/progress.jsonl",
+    "raw_bytes": 5012,
+    "raw_sha256": "9966679bf77351aaafcf7c6cbdd360c5f248302cc7297934c82bb7323e9c7104",
+    "encoding": "identity",
+    "export_bytes": 5012,
+    "export_sha256": "9966679bf77351aaafcf7c6cbdd360c5f248302cc7297934c82bb7323e9c7104",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/result.json",
+    "exported": "pnpm/size-preflight/result.json",
+    "raw_bytes": 12836,
+    "raw_sha256": "0f4d41c6e368eab8aec842c3324f0152d6e04cfe428ed464b9f5b44c3fc79785",
+    "encoding": "identity",
+    "export_bytes": 12836,
+    "export_sha256": "0f4d41c6e368eab8aec842c3324f0152d6e04cfe428ed464b9f5b44c3fc79785",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/source-input-custody.json",
+    "exported": "pnpm/size-preflight/source-input-custody.json",
+    "raw_bytes": 800,
+    "raw_sha256": "f82b9c8747dba40e2ee82f24c94bc494f63884e2c8c59743e5fa474715f12d4f",
+    "encoding": "identity",
+    "export_bytes": 800,
+    "export_sha256": "f82b9c8747dba40e2ee82f24c94bc494f63884e2c8c59743e5fa474715f12d4f",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-pnpm-size-preflight-20261031-5f7v0449/MANIFEST.json",
+    "exported": "pnpm/size-preflight/MANIFEST.json",
+    "raw_bytes": 923,
+    "raw_sha256": "d4a467230f9f3aec065ca8f52f96b6cd2e31e62dbc8211bad80c1fc9952064d2",
+    "encoding": "identity",
+    "export_bytes": 923,
+    "export_sha256": "d4a467230f9f3aec065ca8f52f96b6cd2e31e62dbc8211bad80c1fc9952064d2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/CLEANUP.json",
+    "exported": "root-crosscompile/CLEANUP.json",
+    "raw_bytes": 166,
+    "raw_sha256": "53b2bee3add0c24238f1b67538575e843d5d52a6ad258df7b25fcf74456caeab",
+    "encoding": "identity",
+    "export_bytes": 166,
+    "export_sha256": "53b2bee3add0c24238f1b67538575e843d5d52a6ad258df7b25fcf74456caeab",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/PLAN.json",
+    "exported": "root-crosscompile/PLAN.json",
+    "raw_bytes": 260,
+    "raw_sha256": "11099afaf8435a06710217e61cc4cbaac2f8469b879f22e37478fbe274d0c8dc",
+    "encoding": "identity",
+    "export_bytes": 260,
+    "export_sha256": "11099afaf8435a06710217e61cc4cbaac2f8469b879f22e37478fbe274d0c8dc",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/RESULT.json",
+    "exported": "root-crosscompile/RESULT.json",
+    "raw_bytes": 3185,
+    "raw_sha256": "be8810a62df53875b7fb3fa00148a39d949803551b1194d74a86cb7374fa566b",
+    "encoding": "identity",
+    "export_bytes": 3185,
+    "export_sha256": "be8810a62df53875b7fb3fa00148a39d949803551b1194d74a86cb7374fa566b",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/amd64.log",
+    "exported": "root-crosscompile/amd64.log",
+    "raw_bytes": 0,
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "identity",
+    "export_bytes": 0,
+    "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/arm64.log",
+    "exported": "root-crosscompile/arm64.log",
+    "raw_bytes": 0,
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "identity",
+    "export_bytes": 0,
+    "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-amd64",
+    "exported": "root-crosscompile/native-init-amd64.gz",
+    "raw_bytes": 1753250,
+    "raw_sha256": "01c59e90ed4225d9017940d3345765d36d03f7018800de5f4a980c5abd9dddf4",
+    "encoding": "gzip",
+    "export_bytes": 780760,
+    "export_sha256": "daa937df820d6997a34d15c296f006fe67ab9b2ec96f2de9bae502ad3581fc79",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-arm64",
+    "exported": "root-crosscompile/native-init-arm64.gz",
+    "raw_bytes": 1704098,
+    "raw_sha256": "3531abf12bfd6f31525653f57d1a3800e608165259b238cfcab4a81a23f50402",
+    "encoding": "gzip",
+    "export_bytes": 711754,
+    "export_sha256": "cd7a0095c950daefd0752f61a453db070d68a7df9e40d9b77dfca76940373937",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/MANIFEST.json",
+    "exported": "root-crosscompile/MANIFEST.json",
+    "raw_bytes": 876,
+    "raw_sha256": "5806fa62b2a590e421deb28fb3db0368a7a44f88e9da8249f060c948c6c47995",
+    "encoding": "identity",
+    "export_bytes": 876,
+    "export_sha256": "5806fa62b2a590e421deb28fb3db0368a7a44f88e9da8249f060c948c6c47995",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/INITIAL-REVIEW.json",
+    "exported": "reviews/init/INITIAL-REVIEW.json",
+    "raw_bytes": 2984,
+    "raw_sha256": "c42d7add4ccda5b67f52dec1f90fb8b3df3e3e24117aa1586d13a7a1e6662687",
+    "encoding": "identity",
+    "export_bytes": 2984,
+    "export_sha256": "c42d7add4ccda5b67f52dec1f90fb8b3df3e3e24117aa1586d13a7a1e6662687",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V2-ADDITIONAL-FINDINGS.json",
+    "exported": "reviews/init/V2-ADDITIONAL-FINDINGS.json",
+    "raw_bytes": 1446,
+    "raw_sha256": "0371b656f584fa9d6c15de3c9ae5dc03b810794e34bd96b11d67b9c6c00acd3a",
+    "encoding": "identity",
+    "export_bytes": 1446,
+    "export_sha256": "0371b656f584fa9d6c15de3c9ae5dc03b810794e34bd96b11d67b9c6c00acd3a",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V2-REVIEW.json",
+    "exported": "reviews/init/V2-REVIEW.json",
+    "raw_bytes": 2117,
+    "raw_sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9",
+    "encoding": "identity",
+    "export_bytes": 2117,
+    "export_sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/upstream/npm-run-script-v10.0.0-set-path.js",
+    "exported": "reviews/init/upstream/npm-run-script-v10.0.0-set-path.js",
+    "raw_bytes": 1501,
+    "raw_sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2",
+    "encoding": "identity",
+    "export_bytes": 1501,
+    "export_sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/upstream/npm-run-script-v9.1.0-set-path.js",
+    "exported": "reviews/init/upstream/npm-run-script-v9.1.0-set-path.js",
+    "raw_bytes": 1501,
+    "raw_sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2",
+    "encoding": "identity",
+    "export_bytes": 1501,
+    "export_sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/upstream/pnpm-npm-lifecycle-1001.0.0-extendPath.js",
+    "exported": "reviews/init/upstream/pnpm-npm-lifecycle-1001.0.0-extendPath.js",
+    "raw_bytes": 2343,
+    "raw_sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4",
+    "encoding": "identity",
+    "export_bytes": 2343,
+    "export_sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/upstream/yarn-v1.22.22-execute-lifecycle-script.js",
+    "exported": "reviews/init/upstream/yarn-v1.22.22-execute-lifecycle-script.js",
+    "raw_bytes": 11621,
+    "raw_sha256": "465a0e0b75e66d3192a3417ec4860d2da2ae9e6c361b817232ca989ff2eb88ae",
+    "encoding": "identity",
+    "export_bytes": 11621,
+    "export_sha256": "465a0e0b75e66d3192a3417ec4860d2da2ae9e6c361b817232ca989ff2eb88ae",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v2-scoped-lint.log",
+    "exported": "reviews/init/v2-scoped-lint.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/MANIFEST.json",
+    "exported": "reviews/capacity/MANIFEST.json",
+    "raw_bytes": 748,
+    "raw_sha256": "b4feb79f6e2a59b007382e69b8d315d60bc71bca878986f846fc2aaba9b2f806",
+    "encoding": "identity",
+    "export_bytes": 748,
+    "export_sha256": "b4feb79f6e2a59b007382e69b8d315d60bc71bca878986f846fc2aaba9b2f806",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/REVIEW.json",
+    "exported": "reviews/capacity/REVIEW.json",
+    "raw_bytes": 2884,
+    "raw_sha256": "efa299bfae3ee614cbe4e5c29719d30e9e25cd13f5c117ff56a3f33667d59a01",
+    "encoding": "identity",
+    "export_bytes": 2884,
+    "export_sha256": "efa299bfae3ee614cbe4e5c29719d30e9e25cd13f5c117ff56a3f33667d59a01",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/SOURCE.json",
+    "exported": "reviews/capacity/SOURCE.json",
+    "raw_bytes": 540,
+    "raw_sha256": "d323bc195b50a3ccc5bf7970b291a83d0f81674f2b59e144c159c6834ff3784d",
+    "encoding": "identity",
+    "export_bytes": 540,
+    "export_sha256": "d323bc195b50a3ccc5bf7970b291a83d0f81674f2b59e144c159c6834ff3784d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/source/.github/scripts/native-common-qualify.py",
+    "exported": "reviews/capacity/source/.github/scripts/native-common-qualify.py",
+    "raw_bytes": 13398,
+    "raw_sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4",
+    "encoding": "identity",
+    "export_bytes": 13398,
+    "export_sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/source/.github/scripts/test_native_oci_common_qualification.py",
+    "exported": "reviews/capacity/source/.github/scripts/test_native_oci_common_qualification.py",
+    "raw_bytes": 13736,
+    "raw_sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07",
+    "encoding": "identity",
+    "export_bytes": 13736,
+    "export_sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-capacity-independent-review-20261031-tz5dopd0/source/.github/workflows/native-common-image.yml",
+    "exported": "reviews/capacity/source/.github/workflows/native-common-image.yml",
+    "raw_bytes": 5001,
+    "raw_sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912",
+    "encoding": "identity",
+    "export_bytes": 5001,
+    "export_sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/FROZEN-REVIEW.json",
+    "exported": "init/v3/FROZEN-REVIEW.json",
+    "raw_bytes": 2186,
+    "raw_sha256": "2933c55d7da86f56cd0c1a26d83c2c285c7c4b6a616315953b98f3a7c600fdc8",
+    "encoding": "identity",
+    "export_bytes": 2186,
+    "export_sha256": "2933c55d7da86f56cd0c1a26d83c2c285c7c4b6a616315953b98f3a7c600fdc8",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/PRE-LINT-SOURCE-MANIFEST.json",
+    "exported": "init/v3/PRE-LINT-SOURCE-MANIFEST.json",
+    "raw_bytes": 1420,
+    "raw_sha256": "e738a953eb359b7a35c87329e81da0a4918c14bd26619bbccc81f27176e0405f",
+    "encoding": "identity",
+    "export_bytes": 1420,
+    "export_sha256": "e738a953eb359b7a35c87329e81da0a4918c14bd26619bbccc81f27176e0405f",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/SOURCE-MANIFEST.json",
+    "exported": "init/v3/SOURCE-MANIFEST.json",
+    "raw_bytes": 1420,
+    "raw_sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+    "encoding": "identity",
+    "export_bytes": 1420,
+    "export_sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/artifact-failure-controls-receipt.json",
+    "exported": "init/v3/artifact-failure-controls-receipt.json",
+    "raw_bytes": 489,
+    "raw_sha256": "3d410f9c095013f585ef775f100abdce1e07142c1b91d09e8eaa5e34dfb0cb9e",
+    "encoding": "identity",
+    "export_bytes": 489,
+    "export_sha256": "3d410f9c095013f585ef775f100abdce1e07142c1b91d09e8eaa5e34dfb0cb9e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/artifact-failure-controls.log",
+    "exported": "init/v3/artifact-failure-controls.log.gz",
+    "raw_bytes": 2687,
+    "raw_sha256": "64a09b8fbcff5182a285e038a1bb7d944fc09a72423f3201e91ff868011c3e37",
+    "encoding": "gzip",
+    "export_bytes": 640,
+    "export_sha256": "bf146e37d33c8436bf3d61be0f11d8daa79e115dc4e6597285919fcd80a78c36",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-artifact-failure-controls-receipt.json",
+    "exported": "init/v3/final-artifact-failure-controls-receipt.json",
+    "raw_bytes": 457,
+    "raw_sha256": "592248ae8def788050b10caae2c0955252ae37a507da71896e609a0e44f1b99d",
+    "encoding": "identity",
+    "export_bytes": 457,
+    "export_sha256": "592248ae8def788050b10caae2c0955252ae37a507da71896e609a0e44f1b99d",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-artifact-failure-controls.log",
+    "exported": "init/v3/final-artifact-failure-controls.log.gz",
+    "raw_bytes": 2689,
+    "raw_sha256": "e06b5be91050350a9d816c35fc43924d55be48b9dfa9bc7ea23aa11c18ce5b8b",
+    "encoding": "gzip",
+    "export_bytes": 640,
+    "export_sha256": "36c00d84cd3ced3616c29b4f89fe68e98139f7ba82001264312c900b3f5c3844",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-build-package-receipt.json",
+    "exported": "init/v3/final-build-package-receipt.json",
+    "raw_bytes": 366,
+    "raw_sha256": "0b764b987532ba35b47d31cc003cf927a54bbd48a9b21c13e26b59c936763bd8",
+    "encoding": "identity",
+    "export_bytes": 366,
+    "export_sha256": "0b764b987532ba35b47d31cc003cf927a54bbd48a9b21c13e26b59c936763bd8",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-build-package.log",
+    "exported": "init/v3/final-build-package.log",
+    "raw_bytes": 63,
+    "raw_sha256": "170bb9c502a80c50c6b667759c252d7c076cf8f4972ef7b209f4270c01fdcf01",
+    "encoding": "identity",
+    "export_bytes": 63,
+    "export_sha256": "170bb9c502a80c50c6b667759c252d7c076cf8f4972ef7b209f4270c01fdcf01",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-package-lint-receipt.json",
+    "exported": "init/v3/final-package-lint-receipt.json",
+    "raw_bytes": 372,
+    "raw_sha256": "1313b9a38fff9814f3084804bf7c323ff7468935f4b4635b7792583b6d1c034e",
+    "encoding": "identity",
+    "export_bytes": 372,
+    "export_sha256": "1313b9a38fff9814f3084804bf7c323ff7468935f4b4635b7792583b6d1c034e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/final-package-lint.log",
+    "exported": "init/v3/final-package-lint.log",
+    "raw_bytes": 10,
+    "raw_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "identity",
+    "export_bytes": 10,
+    "export_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/full-build-package-receipt.json",
+    "exported": "init/v3/full-build-package-receipt.json",
+    "raw_bytes": 384,
+    "raw_sha256": "9975c1077e407d4860e7f4b5e7cf2adaa9734a91caf8557aee7b2eed43850ed4",
+    "encoding": "identity",
+    "export_bytes": 384,
+    "export_sha256": "9975c1077e407d4860e7f4b5e7cf2adaa9734a91caf8557aee7b2eed43850ed4",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/full-build-package.log",
+    "exported": "init/v3/full-build-package.log",
+    "raw_bytes": 63,
+    "raw_sha256": "3017da1d068e7b0502f5af6ad166351919339873b0aa350fc702c6c91b3655a9",
+    "encoding": "identity",
+    "export_bytes": 63,
+    "export_sha256": "3017da1d068e7b0502f5af6ad166351919339873b0aa350fc702c6c91b3655a9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/future-execution-plan.json",
+    "exported": "init/v3/future-execution-plan.json",
+    "raw_bytes": 8929,
+    "raw_sha256": "4207d2b9abc1a36ad8eebc47266330569a78c9c3166f25ed957506f3ef81af39",
+    "encoding": "identity",
+    "export_bytes": 8929,
+    "export_sha256": "4207d2b9abc1a36ad8eebc47266330569a78c9c3166f25ed957506f3ef81af39",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/independent-v3-controls.json",
+    "exported": "init/v3/independent-v3-controls.json",
+    "raw_bytes": 762,
+    "raw_sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2",
+    "encoding": "identity",
+    "export_bytes": 762,
+    "export_sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/independent-v3-controls.log",
+    "exported": "init/v3/independent-v3-controls.log.gz",
+    "raw_bytes": 2690,
+    "raw_sha256": "b3387157d0438928cf9b36c1f8ecadbaf65be75705532fef5737103645bf3175",
+    "encoding": "gzip",
+    "export_bytes": 635,
+    "export_sha256": "a9be2c99786ff1b37923c7fd89cb52fd7eed5531715fe45e68e390f38e1a7e97",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/independent-v3-review.json",
+    "exported": "init/v3/independent-v3-review.json",
+    "raw_bytes": 3442,
+    "raw_sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712",
+    "encoding": "identity",
+    "export_bytes": 3442,
+    "export_sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/javascript-parse.json",
+    "exported": "init/v3/javascript-parse.json",
+    "raw_bytes": 877,
+    "raw_sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52",
+    "encoding": "identity",
+    "export_bytes": 877,
+    "export_sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/modern-python-independent-review.json",
+    "exported": "init/v3/modern-python-independent-review.json",
+    "raw_bytes": 1088,
+    "raw_sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3",
+    "encoding": "identity",
+    "export_bytes": 1088,
+    "export_sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/package-lint-receipt.json",
+    "exported": "init/v3/package-lint-receipt.json",
+    "raw_bytes": 388,
+    "raw_sha256": "781ec53ad25f8770c0a95a7252c04c2d98f471d9708f77052376c8d7a78cff84",
+    "encoding": "identity",
+    "export_bytes": 388,
+    "export_sha256": "781ec53ad25f8770c0a95a7252c04c2d98f471d9708f77052376c8d7a78cff84",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/package-lint.log",
+    "exported": "init/v3/package-lint.log",
+    "raw_bytes": 785,
+    "raw_sha256": "e03cd470ebd61ec496a6e745a100580050e45486ad1b73fb3217fdf1bced3ea0",
+    "encoding": "identity",
+    "export_bytes": 785,
+    "export_sha256": "e03cd470ebd61ec496a6e745a100580050e45486ad1b73fb3217fdf1bced3ea0",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/nativeinit_test.go",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/nativeinit_test.go",
+    "raw_bytes": 12243,
+    "raw_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "encoding": "identity",
+    "export_bytes": 12243,
+    "export_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/nativequalification_init_test.go",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/nativequalification_init_test.go",
+    "raw_bytes": 33515,
+    "raw_sha256": "cc434b2fcee83f7219a6e3efd3459474091e7d731db99fdb8335a1856132aeaf",
+    "encoding": "identity",
+    "export_bytes": 33515,
+    "export_sha256": "cc434b2fcee83f7219a6e3efd3459474091e7d731db99fdb8335a1856132aeaf",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "raw_bytes": 3,
+    "raw_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "encoding": "identity",
+    "export_bytes": 3,
+    "export_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "raw_bytes": 315,
+    "raw_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "encoding": "identity",
+    "export_bytes": 315,
+    "export_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "raw_bytes": 367,
+    "raw_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "encoding": "identity",
+    "export_bytes": 367,
+    "export_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "raw_bytes": 2232,
+    "raw_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "encoding": "identity",
+    "export_bytes": 2232,
+    "export_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "raw_bytes": 144,
+    "raw_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "encoding": "identity",
+    "export_bytes": 144,
+    "export_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "exported": "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "raw_bytes": 1550,
+    "raw_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "encoding": "identity",
+    "export_bytes": 1550,
+    "export_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/pre-lint-v2-to-v3.diff",
+    "exported": "init/v3/pre-lint-v2-to-v3.diff.gz",
+    "raw_bytes": 7460,
+    "raw_sha256": "677e8ff9ee5f51345703f72aadb567c2dfc9aae744fee26c996ace1c6fdd697b",
+    "encoding": "gzip",
+    "export_bytes": 2519,
+    "export_sha256": "1d6737e6ef5cbaeaf881bd6ee64646e33b3a0ea90b2561ef6fa566e924aa85b7",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/preparation-history.json",
+    "exported": "init/v3/preparation-history.json",
+    "raw_bytes": 1082,
+    "raw_sha256": "c94130b06dfca195afc9a8d538d225cedf9cafe4c84cb89c46e8e62fa4c6f883",
+    "encoding": "identity",
+    "export_bytes": 1082,
+    "export_sha256": "c94130b06dfca195afc9a8d538d225cedf9cafe4c84cb89c46e8e62fa4c6f883",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/preservation.json",
+    "exported": "init/v3/preservation.json",
+    "raw_bytes": 594,
+    "raw_sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34",
+    "encoding": "identity",
+    "export_bytes": 594,
+    "export_sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/previous-freeze.json",
+    "exported": "init/v3/previous-freeze.json",
+    "raw_bytes": 525,
+    "raw_sha256": "a0d53e59a78834080ed586ddb4d3d727567e9e39d7131827cd1528a76742e61f",
+    "encoding": "identity",
+    "export_bytes": 525,
+    "export_sha256": "a0d53e59a78834080ed586ddb4d3d727567e9e39d7131827cd1528a76742e61f",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/root-crosscompile-binding.json",
+    "exported": "init/v3/root-crosscompile-binding.json",
+    "raw_bytes": 2143,
+    "raw_sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c",
+    "encoding": "identity",
+    "export_bytes": 2143,
+    "export_sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/nativeinit_test.go",
+    "exported": "init/v3/source/lego/operator/internal/build/nativeinit_test.go",
+    "raw_bytes": 12243,
+    "raw_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "encoding": "identity",
+    "export_bytes": 12243,
+    "export_sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "exported": "init/v3/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "raw_bytes": 33494,
+    "raw_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "encoding": "identity",
+    "export_bytes": 33494,
+    "export_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "raw_bytes": 3,
+    "raw_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "encoding": "identity",
+    "export_bytes": 3,
+    "export_sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/build.js",
+    "raw_bytes": 315,
+    "raw_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "encoding": "identity",
+    "export_bytes": 315,
+    "export_sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "raw_bytes": 367,
+    "raw_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "encoding": "identity",
+    "export_bytes": 367,
+    "export_sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "raw_bytes": 2232,
+    "raw_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "encoding": "identity",
+    "export_bytes": 2232,
+    "export_sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/package.json",
+    "raw_bytes": 144,
+    "raw_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "encoding": "identity",
+    "export_bytes": 144,
+    "export_sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "exported": "init/v3/source/lego/operator/internal/build/testdata/native-common-init/server.js",
+    "raw_bytes": 1550,
+    "raw_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "encoding": "identity",
+    "export_bytes": 1550,
+    "export_sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/unchanged-inputs.json",
+    "exported": "init/v3/unchanged-inputs.json",
+    "raw_bytes": 848,
+    "raw_sha256": "bc6e6a55af6da19bacce25fe0098d5be0c8ce8db1ad833781fd5de45dc05417e",
+    "encoding": "identity",
+    "export_bytes": 848,
+    "export_sha256": "bc6e6a55af6da19bacce25fe0098d5be0c8ce8db1ad833781fd5de45dc05417e",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/v2-to-v3.diff",
+    "exported": "init/v3/v2-to-v3.diff.gz",
+    "raw_bytes": 7436,
+    "raw_sha256": "9ac4760d50740c01cd8c77c0628568fe640059db51de853025fb1e2171476820",
+    "encoding": "gzip",
+    "export_bytes": 2510,
+    "export_sha256": "224b9bfae163499039219ad4f86593dbdc5b9f1309bec22d8399b390c21efbaf",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881/MANIFEST.json",
+    "exported": "init/v3/MANIFEST.json",
+    "raw_bytes": 6894,
+    "raw_sha256": "07eede0fac2a7be1fc4a060554dfdf08a61ccd5ee4ccfb752a9bba5749c1b0f7",
+    "encoding": "identity",
+    "export_bytes": 6894,
+    "export_sha256": "07eede0fac2a7be1fc4a060554dfdf08a61ccd5ee4ccfb752a9bba5749c1b0f7",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V3-CONTROLS.json",
+    "exported": "reviews/init/V3-CONTROLS.json",
+    "raw_bytes": 762,
+    "raw_sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2",
+    "encoding": "identity",
+    "export_bytes": 762,
+    "export_sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V3-REVIEW.json",
+    "exported": "reviews/init/V3-REVIEW.json",
+    "raw_bytes": 3442,
+    "raw_sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712",
+    "encoding": "identity",
+    "export_bytes": 3442,
+    "export_sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V3-SETUP-HISTORY.json",
+    "exported": "reviews/init/V3-SETUP-HISTORY.json",
+    "raw_bytes": 359,
+    "raw_sha256": "72d2cfa9afdbb97900efdeaa6ab598453973db37f86371be6e7d211d3f9b91ff",
+    "encoding": "identity",
+    "export_bytes": 359,
+    "export_sha256": "72d2cfa9afdbb97900efdeaa6ab598453973db37f86371be6e7d211d3f9b91ff",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v3-focused-controls.log",
+    "exported": "reviews/init/v3-focused-controls.log.gz",
+    "raw_bytes": 2690,
+    "raw_sha256": "b3387157d0438928cf9b36c1f8ecadbaf65be75705532fef5737103645bf3175",
+    "encoding": "gzip",
+    "export_bytes": 635,
+    "export_sha256": "a9be2c99786ff1b37923c7fd89cb52fd7eed5531715fe45e68e390f38e1a7e97",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v3-focused-overlay.json",
+    "exported": "reviews/init/v3-focused-overlay.json",
+    "raw_bytes": 239,
+    "raw_sha256": "c7e28f14cd936622bbf079e244b45ad9ce9b1ab8f6800b63bd68b15804f2dee9",
+    "encoding": "identity",
+    "export_bytes": 239,
+    "export_sha256": "c7e28f14cd936622bbf079e244b45ad9ce9b1ab8f6800b63bd68b15804f2dee9",
+    "lossless_roundtrip": true
+  },
+  {
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v3-premature-overlay-setup-failure.log",
+    "exported": "reviews/init/v3-premature-overlay-setup-failure.log",
+    "raw_bytes": 139,
+    "raw_sha256": "78b57314b055b08dfd7c4c6fbac83638e5375442a8cd1665d060794b96d53f95",
+    "encoding": "identity",
+    "export_bytes": 139,
+    "export_sha256": "78b57314b055b08dfd7c4c6fbac83638e5375442a8cd1665d060794b96d53f95",
+    "lossless_roundtrip": true
+  }
+]

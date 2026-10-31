@@ -1,0 +1,68 @@
+{
+  "scope": "source-only Go overlay mutations; live source unchanged; no actual Docker/Python/Poetry runtime",
+  "cases": [
+    {
+      "name": "system-wheel-interpreter",
+      "argv": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "-overlay",
+        "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/system-wheel-interpreter.json",
+        "./internal/build",
+        "-run",
+        "^TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix$",
+        "-count=1",
+        "-v"
+      ],
+      "exit_code": 1,
+      "seconds": 5.391,
+      "expected_failure_observed": true,
+      "mutated_source_sha256": "45012581c8ca923b2e0a1500c82c5b7af7f01f422afc3b18de5336fdfef13e9c",
+      "log": "negative-overlays/system-wheel-interpreter.log"
+    },
+    {
+      "name": "legacy-cap",
+      "argv": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "-overlay",
+        "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/legacy-cap.json",
+        "./internal/build",
+        "-run",
+        "^TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix$",
+        "-count=1",
+        "-v"
+      ],
+      "exit_code": 1,
+      "seconds": 2.508,
+      "expected_failure_observed": true,
+      "mutated_source_sha256": "a409ff931d357d74cd351ea8bb467b5b5982d9fcc878108390777f3cf95cb307",
+      "log": "negative-overlays/legacy-cap.log"
+    },
+    {
+      "name": "wrong-metadata-python",
+      "argv": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "-overlay",
+        "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh/negative-overlays/wrong-metadata-python.json",
+        "./internal/build",
+        "-run",
+        "^TestNativeModernWheelMetadataRejectsWrongRuntimeOrArchitecture$",
+        "-count=1",
+        "-v"
+      ],
+      "exit_code": 1,
+      "seconds": 2.462,
+      "expected_failure_observed": true,
+      "mutated_source_sha256": "7a39dff98bef4a37783644709d920544c2b9a8006d4941a423c7e633585342d7",
+      "log": "negative-overlays/wrong-metadata-python.log"
+    }
+  ]
+}

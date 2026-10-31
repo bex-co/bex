@@ -1,0 +1,29 @@
+{
+  "baseline_files": 46,
+  "only_changed": [
+    "lego/operator/internal/build/nativeinit_test.go"
+  ],
+  "existing_nativeinit_tests_before_compiler_unchanged_except_context_import": true,
+  "existing_nativeinit_tests_after_compiler_unchanged": true,
+  "daemon_default": "still queries docker Server.Arch and trims it before same CGO0/GOOSlinux build arguments; shared explicit compiler now bounds execution5min",
+  "native_init_production_source": {
+    "lego/operator/cmd/native-init/main.go": {
+      "sha256": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+      "bytes": 4775
+    },
+    "lego/operator/cmd/native-init/main_test.go": {
+      "sha256": "4dc65be110ab503ae431c3d6b7dd2cd6ca48b78614f01dc53b3d4a0988dace59",
+      "bytes": 7585
+    },
+    "lego/operator/cmd/native-init/subreaper_linux.go": {
+      "sha256": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564",
+      "bytes": 786
+    },
+    "lego/operator/cmd/native-init/subreaper_other.go": {
+      "sha256": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002",
+      "bytes": 734
+    }
+  },
+  "production_diff": "",
+  "scope": "original13/28 programs, first cohort, generator/native-init production behavior/pins/maps/workflows untouched by this task"
+}

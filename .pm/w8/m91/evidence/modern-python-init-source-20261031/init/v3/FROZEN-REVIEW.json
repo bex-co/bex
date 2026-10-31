@@ -1,0 +1,41 @@
+{
+  "status": "FROZEN_V3_SOURCE_AND_NO_REAL_DOCKER_CONTROLS",
+  "at_utc": "2026-10-31T19:40:29.189446+00:00",
+  "source_manifest_schema": "direct8 repo-relative path->{sha256,bytes}; source/ exactcopies",
+  "source_manifest": {
+    "sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+    "bytes": 1420
+  },
+  "only_source_change_from_frozen_v2": "lego/operator/internal/build/nativequalification_init_test.go",
+  "new_go": {
+    "bytes": 33494,
+    "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96"
+  },
+  "fixes": [
+    "exact returnedCID cleanup callback registered before creation artifact writes",
+    "bounded exactID rm+absence observation always precede cleanup artifact/error reporting; write failures remain test failures"
+  ],
+  "tests": {
+    "final_focused": "final-artifact-failure-controls-receipt.json",
+    "final_full_build_package": "final-build-package-receipt.json",
+    "final_lint": "final-package-lint-receipt.json"
+  },
+  "independent_review": {
+    "verdict": "CLEAN",
+    "receipt": "independent-v3-review.json",
+    "metadata": {
+      "sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712",
+      "bytes": 3442
+    },
+    "controls": "independent-v3-controls.json",
+    "actual_command_trace": "independent-v3-controls.log"
+  },
+  "synthetic_scope": "Expected failing child unit cases with exact validated fake Docker only; no actual daemon/container/image/native-init or JS program executed. Never use synthetic absence receipts as production cleanup proof.",
+  "history": "V2 freeze unchanged; priorV3 high-complexity draft and initiallint logs retained separately; earlier PATH finding remains in original priorfreeze.",
+  "unchanged": "all7 other source inputs, Node programs/data, compiler extraction, original13/28, firstcohort, runtime/pins/workflows",
+  "actual_runtime_execution": false,
+  "actual_crosscompile": "only previously bound separate root direct proof; no repeated/helper compile in V3",
+  "modern_review": "unchanged prior modern Python source CLEAN receipt copied for rootcustody",
+  "source_quiescent": true,
+  "root_approval_or_completed_acceptance": false
+}

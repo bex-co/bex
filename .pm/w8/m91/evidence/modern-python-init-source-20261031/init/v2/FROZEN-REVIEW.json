@@ -1,0 +1,39 @@
+{
+  "at_utc": "2026-10-31T19:20:00.488088+00:00",
+  "status": "FROZEN_CORRECTED_SOURCE_UNIT_ONLY",
+  "source_manifest_schema": "direct map repo-relative path->{sha256,bytes}; source/ exact copies, all8currentbytes verified",
+  "source_manifest": {
+    "sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "bytes": 1420
+  },
+  "source_paths": 8,
+  "source_bytes": 46540,
+  "independent_review": {
+    "verdict": "CLEAN",
+    "receipt": "independent-v2-review.json",
+    "original": "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/V2-REVIEW.json",
+    "metadata": {
+      "sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9",
+      "bytes": 2117
+    }
+  },
+  "tests": {
+    "full_current_build_package": "full-build-package-receipt.json",
+    "own_exact_v2_lint": "exact-v2-package-lint-receipt.json",
+    "independent_scoped_lint": "independent-v2-scoped-lint.log",
+    "JS_syntax_only": "javascript-parse.json"
+  },
+  "first_source_and_finding_retained": {
+    "path": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt",
+    "manifest": {
+      "sha256": "b010c71ea3e61eb7a603b025d8221cc5d6497c133a3ac345eb47985315564c7e",
+      "bytes": 3169
+    },
+    "no_actual_image_failure": "PATH overassumption found during independent source review before any fixture execution"
+  },
+  "actual_crosscompile": "Separate root direct actualamd64+arm64 compilation source/ELF hashes bound by root-crosscompile-binding.json; no invocation of profile/helper, no repeat compile here",
+  "actual_profile_image_or_runtime_execution": false,
+  "modern_python_independent_review": "modern-python-independent-review.json CLEAN; source only",
+  "source_quiescent": true,
+  "root_approval_or_completed_acceptance": false
+}

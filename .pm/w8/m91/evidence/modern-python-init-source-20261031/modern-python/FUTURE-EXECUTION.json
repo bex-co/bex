@@ -1,0 +1,94 @@
+{
+  "status": "SOURCE_ONLY; no target wheel/project/compiler/image execution",
+  "cases": [
+    {
+      "line": "3.9",
+      "version": "3.9.25"
+    },
+    {
+      "line": "3.10",
+      "version": "3.10.22"
+    },
+    {
+      "line": "3.11",
+      "version": "3.11.18"
+    },
+    {
+      "line": "3.12",
+      "version": "3.12.16"
+    },
+    {
+      "line": "3.14",
+      "version": "3.14.10"
+    }
+  ],
+  "excluded_existing_cohorts": [
+    "Python3.7.17/3.8.20 legacy-system tool profile",
+    "Python3.13.18 original utility/Django/pyvips replay",
+    "exact creation-default3.14.8, separate from reviewed table3.14.10"
+  ],
+  "input_contract": {
+    "common": "ONE qualified immutable common ref@sha256 digest; same candidate for both architectures",
+    "owner_builder": "explicit existing owned Buildx builder, builder name equals owner",
+    "target_platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "selection": "full-patch PYTHON_VERSION env equals selected image metadata; new modern fixtures also select Node24 via .node-version",
+    "creation_time": "unknown/zero with explicit version; no creation-default substitution"
+  },
+  "future_invocation": {
+    "cwd": "lego/operator",
+    "env": {
+      "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE": "1",
+      "BEX_BUILDKIT_INTEGRATION": "1",
+      "BEX_NATIVE_TEST_COMMON_IMAGE": "qualified immutable common candidate",
+      "BEX_NATIVE_TEST_BUILDER": "existing owned builder name",
+      "BEX_NATIVE_TEST_OWNER": "same builder name",
+      "BEX_NATIVE_TEST_PLATFORM": "linux/amd64 OR linux/arm64, separate runs",
+      "BEX_NATIVE_TEST_OUTPUT": "owned retained evidence directory"
+    },
+    "argv": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "-run",
+      "^TestNativeModernPythonGeneratedImages$",
+      "-count=1",
+      "-v",
+      "-timeout=8h"
+    ],
+    "first_measurement": "After original first cohort succeeds, use existing Go subtest filter to execute3.9 and table3.14 separately, recording actual wheel source-build footprint/time/cache/memory/disk. Then choose a bounded full-family run within measured runner headroom. No current resource or duration estimate is asserted."
+  },
+  "prerequisites": {
+    "canonical": "retain selected runtime/environment/ldconfig/Python hook/companion/private Poetry bootstrap prefix",
+    "network": "only inserted selected-app Python pip wheel acquisition RUN has network=default; default Poetry2.1.3 only plus its dependency closure; source builds of dependency wheels permitted as canonical pip install permits",
+    "interpreter": "selected target /usr/local/bin/python, not system3.11; actual export metadata binds exact Python version and Linux target architecture",
+    "tools": "unchanged default Poetry2.1.3, private /opt/bex/poetry, pip check of real installed requirements; no added legacy virtualenv cap or forced project interpreter",
+    "cache": "new real wheel export for every version+architecture; never reuse legacy system-Python or cp313/cp314-original utility closure",
+    "custody": "retain canonical+executed/prerequisite recipes, wheel filename/size/SHA manifests, actual tool metadata, command logs, image config/platform/network receipts, build/runtime app+automatic Poetry project outputs before owned cleanup",
+    "limits": "existing128MiB flat wheelhouse limit,30-minute wheel-export/build/run contexts; worst-case process bounds are not measured runtime or proof of capacity"
+  },
+  "preserved": [
+    "Legacy application fixture files byte-identical, shared by both profiles; qa-output/legacy-* names retained and explicitly recorded",
+    "Existing nativeUtilityWheelRecipe and exporter helper file byte-identical; original Django/pyvips/Poetry closure behavior unchanged",
+    "Runtime code, production/artifact maps, original13/28 programs/data, first-cohort selector/workflow, publisher/Syft gates, PM/DoDs unchanged",
+    "Old private legacy/Ruby/other evidence freezes unchanged"
+  ],
+  "limits": [
+    "Actual wheels/Poetry dependency solve/source-build prerequisites/project creation/C header compile-import/SSL/FFI/libpython/generated image ABI unexecuted.",
+    "Both target architectures and current immutable common image require actual evidence; source/unit oracles use synthetic metadata/results.",
+    "Selected app Python, modern private tool Python and newly created automatic project environment must each match exactly; no forced poetry env use or project interpreter setting.",
+    "App observer checks build and runtime; the runtime may reuse its genuine build-created project venv, so no claim of fresh runtime-only environment creation.",
+    "No native-init, Kubernetes pre-deploy/rollout, hosted or original28 acceptance. This standalone profile does not close those gates.",
+    "Private pip check ensures Poetry upstream metadata requirements, without imposing the legacy virtualenv cap. Actual automatic modern project compatibility remains a red-capable qualification."
+  ],
+  "primary_upstream": [
+    {
+      "url": "https://raw.githubusercontent.com/python-poetry/poetry/2.1.3/pyproject.toml",
+      "facts": "defaultPoetry2.1.3 supports Python>=3.9,<4; declared virtualenv>=20.26.6,<21.0.0; actual pip check enforces installed metadata without adding custom cap"
+    }
+  ]
+}

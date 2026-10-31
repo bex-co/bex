@@ -1,0 +1,53 @@
+{
+  "root_proof": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4",
+  "referenced_receipts": {
+    "PLAN.json": {
+      "sha256": "11099afaf8435a06710217e61cc4cbaac2f8469b879f22e37478fbe274d0c8dc",
+      "bytes": 260
+    },
+    "RESULT.json": {
+      "sha256": "be8810a62df53875b7fb3fa00148a39d949803551b1194d74a86cb7374fa566b",
+      "bytes": 3185
+    },
+    "CLEANUP.json": {
+      "sha256": "53b2bee3add0c24238f1b67538575e843d5d52a6ad258df7b25fcf74456caeab",
+      "bytes": 166
+    },
+    "amd64.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "arm64.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "source_equal_to_current_production": {
+    "lego/operator/cmd/native-init/main.go": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+    "lego/operator/cmd/native-init/subreaper_linux.go": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564",
+    "lego/operator/cmd/native-init/subreaper_other.go": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002"
+  },
+  "actual_output_bindings": [
+    {
+      "arch": "amd64",
+      "path": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-amd64",
+      "sha256": "01c59e90ed4225d9017940d3345765d36d03f7018800de5f4a980c5abd9dddf4",
+      "bytes": 1753250,
+      "machine": 62,
+      "mode": "0o755",
+      "root_actual_compile_exit": 0
+    },
+    {
+      "arch": "arm64",
+      "path": "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-arm64",
+      "sha256": "3531abf12bfd6f31525653f57d1a3800e608165259b238cfcab4a81a23f50402",
+      "bytes": 1704098,
+      "machine": 183,
+      "mode": "0o755",
+      "root_actual_compile_exit": 0
+    }
+  ],
+  "peak_owned_bytes": 80503327,
+  "minimum_free_bytes": 2656239616,
+  "scope": "separate ROOT actual direct crosscompile/ELF proof only. No invocation of compileNativeInitForArch or StageNativeInit/profile build/drain by this proof; no Docker. Current agent only read/hashed these outputs, did not compile again."
+}

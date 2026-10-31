@@ -17,16 +17,12 @@ limitations under the License.
 package build
 
 import (
-	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 const legacyPoetrySolve = "poetry==2.1.3 'virtualenv<20.33.0'"
@@ -139,61 +135,14 @@ func TestNativeLegacyPythonGeneratedImages(t *testing.T) {
 
 func legacyPythonGeneratedCase(t *testing.T, docker nativeUtilityDocker, common, version, output string, wheelExport *string) {
 	t.Helper()
-	evidence := filepath.Join(output, version)
-	must(t, os.Mkdir(evidence, 0o700))
-	o := nativeOptions()
-	o.Runtime = nativePythonRuntime
-	o.BuildCommand, o.StartCommand = "/usr/local/bin/python3 check.py build "+version, "/usr/local/bin/python3 check.py runtime "+version
-	files := nativeLegacyPythonFiles(t, version)
-	bundle, path, source := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": version}, files)
-	choices, err := ResolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
-	must(t, err)
-	canonical, err := os.ReadFile(path)
-	must(t, err)
-	must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), canonical, 0o600))
-	prepared, err := nativeLegacyPythonWheelRecipe(string(canonical), common)
+	q := prepareNativePythonQualification(t, "legacy", version, output, nativeLegacyPythonFiles(t, version))
+	prepared, err := nativeLegacyPythonWheelRecipe(string(q.canonical), common)
 	must(t, err)
 	if *wheelExport == "" {
-		*wheelExport = nativeUtilityExportWheels(t, docker, prepared, bundle, source, evidence)
-	}
-	actualPrerequisite, err := os.ReadFile(filepath.Join(filepath.Dir(*wheelExport), "Dockerfile.prerequisites"))
-	must(t, err)
-	if string(actualPrerequisite) != prepared {
-		t.Fatal("shared legacy wheel closure was prepared with another common/tool solve")
+		*wheelExport = nativeUtilityExportWheels(t, docker, prepared, q.bundle, q.source, q.evidence)
 	}
 	metadata, err := os.ReadFile(filepath.Join(*wheelExport, "tool-python.json"))
 	must(t, err)
 	must(t, nativeLegacyWheelPlatform(metadata, docker.platform))
-	must(t, os.WriteFile(filepath.Join(evidence, "tool-python.json"), metadata, 0o600))
-	copyNativeUtilityWheels(t, filepath.Join(*wheelExport, "wheels"), source, evidence)
-	wheelManifest, err := os.ReadFile(filepath.Join(evidence, "test-wheelhouse.json"))
-	must(t, err)
-	const overlay = "COPY .bex-test-wheels/ /opt/bex-test-wheels/\nENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n"
-	recipe, err := afterNativeBase(string(canonical), common, overlay)
-	must(t, err)
-	must(t, os.WriteFile(filepath.Join(source, "Dockerfile"), []byte(recipe), 0o600))
-	fileHashes := map[string]string{}
-	for name, content := range files {
-		fileHashes[name] = fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
-	}
-	receipt, err := json.MarshalIndent(map[string]any{"common": common, "choices": choices, "platform": docker.platform, "builder": docker.builder, "owner": docker.owner,
-		"canonical_sha256": fmt.Sprintf("%x", sha256.Sum256(canonical)), "executed_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(recipe))),
-		"overlay": overlay, "prerequisite_recipe_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(prepared))),
-		"actual_shared_wheel_export": *wheelExport, "wheel_solve": legacyPoetrySolve, "fixture_sha256": fileHashes,
-		"tool_metadata_sha256": fmt.Sprintf("%x", sha256.Sum256(metadata)), "wheel_manifest_sha256": fmt.Sprintf("%x", sha256.Sum256(wheelManifest)),
-		"scope": "separate common legacy Python family gate; original13/28 unchanged; no native-init/Kubernetes/hosted claim"}, "", "  ")
-	must(t, err)
-	must(t, os.WriteFile(filepath.Join(evidence, "source-custody.json"), receipt, 0o600))
-	must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile"), []byte(recipe), 0o600))
-	tag := fmt.Sprintf("bex-native-legacy-python:%s-%d-%d", version, os.Getpid(), time.Now().UnixNano())
-	t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
-	defer cancel()
-	command := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...)
-	log, buildErr := command.CombinedOutput()
-	must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
-	if buildErr != nil {
-		t.Fatalf("actual generated legacy build: %v\n%s", buildErr, log)
-	}
-	docker.runImage(t, nativeUtilityCase{name: "legacy-python-" + version}, tag, evidence, true)
+	q.run(t, docker, common, prepared, *wheelExport, legacyPoetrySolve, metadata)
 }

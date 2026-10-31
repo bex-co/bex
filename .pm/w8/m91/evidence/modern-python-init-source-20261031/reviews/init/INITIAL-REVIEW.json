@@ -1,0 +1,45 @@
+{
+  "date_utc": "2026-10-31T19:11:07.348550+00:00",
+  "reviewed_source": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt",
+  "source_manifest_sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+  "all7frozen_source_hashes_lengths_verified": true,
+  "finding": {
+    "file": "lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "line": 12,
+    "related": "nativequalification_init_test.go:146 full Env DeepEqual",
+    "detail": "Runtime identity compares full donor PATH literally. npm/yarn/pnpm lifecycle script environments legitimately prepend bins/wrappers, including for dependency-free fixture. Wrapper server fails before listening even with correct imageENV/Node/native-init.",
+    "scope": "statically reachable fixture defect; no actual image/JS/npm/yarn/pnpm execution",
+    "suggested_fix": "Keep exact image/build environment proof and raw child PATH; allow only phase/launch-correct preserved baseline PATH with legitimate manager augmentation. Do not rewrite actual observed PATH to expected.",
+    "status": "reported to root and source owner; awaiting corrected freeze"
+  },
+  "other_review": "No additional concrete blocker found in canonical resolver/ELF/named-context staging/PID1/native-init identity/HTTP hold-drain/exit/localhost bridge/owned returned-ID cleanup source. Actual runtime behavior remains unexecuted.",
+  "upstream": {
+    "npm-run-script-v9.1.0-set-path.js": {
+      "url": "https://raw.githubusercontent.com/npm/run-script/v9.1.0/lib/set-path.js",
+      "bytes": 1501,
+      "sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2"
+    },
+    "npm-run-script-v10.0.0-set-path.js": {
+      "url": "https://raw.githubusercontent.com/npm/run-script/v10.0.0/lib/set-path.js",
+      "bytes": 1501,
+      "sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2"
+    },
+    "yarn-v1.22.22-execute-lifecycle-script.js": {
+      "url": "https://raw.githubusercontent.com/yarnpkg/yarn/v1.22.22/src/util/execute-lifecycle-script.js",
+      "bytes": 11621,
+      "sha256": "465a0e0b75e66d3192a3417ec4860d2da2ae9e6c361b817232ca989ff2eb88ae"
+    },
+    "pnpm-npm-lifecycle-1001.0.0-extendPath.js": {
+      "source": "/private/tmp/bex-w8-pnpm-compat-research-20261031-m0zcclcp/sources/npm-lifecycle-1001.0.0/package/lib/extendPath.js",
+      "custody": "cli090 reports exact pnpm10.34.7 lock-SHA512-verified npm-lifecycle source; reviewer copied source only",
+      "bytes": 2343,
+      "sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4"
+    }
+  },
+  "limits": [
+    "No actual target compiler/crosscompile/image/PID1/wrapper/drain/cleanup proof by reviewer",
+    "Parent separate same-source both-arch init compilation is not a generated-image launch/drain proof",
+    "Current source-only unit controls and JS parse are bounded synthetic evidence",
+    "Kubernetes/predeploy/hosted/original28/native-common adoption remain open"
+  ]
+}

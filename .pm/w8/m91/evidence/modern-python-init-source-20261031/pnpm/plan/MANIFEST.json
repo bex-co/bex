@@ -1,0 +1,50 @@
+{
+  "execution-plan.json": {
+    "bytes": 9757,
+    "sha256": "f92e23e1f395b1f4ae3f26f0ccf951ba8a9174a3f9c2acbb466f92fc3d996084"
+  },
+  "input-identity.json": {
+    "bytes": 6171,
+    "sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213"
+  },
+  "inputs/14.21.3-bullseye-slim.arm64.config.json": {
+    "bytes": 6813,
+    "sha256": "64a1be796b5d471eb8a7ba1662e9e4673faa3df54f51d5d0281a335ece311f11"
+  },
+  "inputs/14.21.3-bullseye-slim.arm64.manifest.json": {
+    "bytes": 1367,
+    "sha256": "59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c"
+  },
+  "inputs/14.21.3-bullseye-slim.index.json": {
+    "bytes": 1206,
+    "sha256": "0f5b374fae506741ff14db84daff2937ae788e88fb48a6c66d15de5ee808ccd3"
+  },
+  "inputs/16.20.2-bullseye-slim.arm64.config.json": {
+    "bytes": 7033,
+    "sha256": "e233eabde65b256d5b981e8663f613ea8d7bd9bcc2095ee5391a6cf055236f12"
+  },
+  "inputs/16.20.2-bullseye-slim.arm64.manifest.json": {
+    "bytes": 1367,
+    "sha256": "6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971"
+  },
+  "inputs/16.20.2-bullseye-slim.index.json": {
+    "bytes": 1206,
+    "sha256": "503446c15c6236291222f8192513c2eb56a02a8949cbadf4fe78cce19815c734"
+  },
+  "inputs/pnpm-linux-arm64-10.34.7.registry.json": {
+    "bytes": 1809,
+    "sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302"
+  },
+  "inputs/pnpm-release-v10.34.7-selected-assets.json": {
+    "bytes": 362,
+    "sha256": "0c8b7c51aa42a118776eadfda7e78b829a09facfddfe21c61d1e4d807a3e7049"
+  },
+  "inputs/pnpm-tarball-head.json": {
+    "bytes": 303,
+    "sha256": "5dd5dcc10bec314b92832bd4e28dc6f2290a1f37b23fe51dac19eb0fbb0f13c3"
+  },
+  "inputs/pnpm-v10.34.7-LICENSE": {
+    "bytes": 1170,
+    "sha256": "4b8e2a57502758b2d034ece9cabf19dd098c5609003ed8dbdafd085274f25bd9"
+  }
+}

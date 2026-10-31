@@ -1,0 +1,20 @@
+{
+  "previous_frozen_v2": "/private/tmp/bex-w8-common-init-v2-source-20261031-ifwmq8ff",
+  "v2_manifest": {
+    "sha256": "7f9fb5c654e2c7a871946168fe04407efd41ef074244889edf776e82680eeabd",
+    "bytes": 3964
+  },
+  "v2_source_manifest": {
+    "sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "bytes": 1420
+  },
+  "findings_from_root_and_common_review": [
+    "cleanup log t.Fatal before exactID rm and absence inspection",
+    "creation artifact t.Fatal after validCID allocation but before cleanup registration"
+  ],
+  "actual_runtime_damage_claim": false,
+  "v3_control_results": "final2 fakeDocker controls PASS with deliberately failing child artifact writes and complete exactID cleanup traces; rawlogs retained",
+  "pre_lint_v3_draft": "PRE-LINT-SOURCE-MANIFEST.json and pre-lint-source/ preserved; own gocyclo31 corrected by removing redundant writeFailed state. Peer Node modernize findings retained in initiallint but edited only by its owner.",
+  "final_lint": "0 issues in final-package-lint.log",
+  "new_target_or_js_execution": false
+}

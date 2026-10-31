@@ -1,0 +1,30 @@
+{
+  "CLEANUP.json": {
+    "bytes": 166,
+    "sha256": "53b2bee3add0c24238f1b67538575e843d5d52a6ad258df7b25fcf74456caeab"
+  },
+  "PLAN.json": {
+    "bytes": 260,
+    "sha256": "11099afaf8435a06710217e61cc4cbaac2f8469b879f22e37478fbe274d0c8dc"
+  },
+  "RESULT.json": {
+    "bytes": 3185,
+    "sha256": "be8810a62df53875b7fb3fa00148a39d949803551b1194d74a86cb7374fa566b"
+  },
+  "amd64.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "arm64.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "native-init-amd64": {
+    "bytes": 1753250,
+    "sha256": "01c59e90ed4225d9017940d3345765d36d03f7018800de5f4a980c5abd9dddf4"
+  },
+  "native-init-arm64": {
+    "bytes": 1704098,
+    "sha256": "3531abf12bfd6f31525653f57d1a3800e608165259b238cfcab4a81a23f50402"
+  }
+}

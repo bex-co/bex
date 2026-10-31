@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "bin/golangci-lint",
+    "run",
+    "./internal/build",
+    "--timeout=3m"
+  ],
+  "exit": 0,
+  "wall_seconds": 2.564322416,
+  "initial_free_bytes": 2483331072,
+  "final_free_bytes": 2476187648,
+  "floor_tripped": false,
+  "scope": "exactv2 source lint only; no target crosscompile or Docker"
+}

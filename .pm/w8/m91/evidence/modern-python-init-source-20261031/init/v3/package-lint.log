@@ -1,0 +1,12 @@
+internal/build/nativequalification_init_test.go:325:1: cyclomatic complexity 31 of func `nativeInitQualificationDrain` is high (> 30) (gocyclo)
+func nativeInitQualificationDrain(t *testing.T, docker nativeUtilityDocker, image string, expected nativeInitQualificationExpected, output, launch string, command []string) {
+^
+internal/build/nativecommon_node_qualification_test.go:116:23: stringsseq: Ranging over SplitSeq is more efficient (modernize)
+	for _, line := range strings.Split(node.primaryStage, "\n") {
+	                     ^
+internal/build/nativecommon_node_qualification_test.go:117:6: stringscutprefix: HasPrefix + TrimPrefix can be simplified to CutPrefix (modernize)
+		if strings.HasPrefix(line, prefix+command+version+" ") {
+		   ^
+3 issues:
+* gocyclo: 1
+* modernize: 2

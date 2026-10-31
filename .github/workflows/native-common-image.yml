@@ -89,6 +89,12 @@ jobs:
           go test -p 1 -count=1 -timeout 150m ./internal/build \
             -run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$' -v \
             2>&1 | tee "${{ steps.owned.outputs.root }}/qualification.log"
+      - name: record capacity observations before owned cleanup
+        timeout-minutes: 1
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests
       - name: remove only this job's labeled resources and exact builder
         if: always() && steps.owned.outputs.root != ''
         timeout-minutes: 5

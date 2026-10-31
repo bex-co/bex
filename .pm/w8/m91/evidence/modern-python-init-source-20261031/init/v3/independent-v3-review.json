@@ -1,0 +1,57 @@
+{
+  "status": "CLEAN focused final V3 source review",
+  "date_utc": "2026-10-31T19:39:25.754032+00:00",
+  "source_bundle": "/private/tmp/bex-w8-common-init-v3-source-20261031-idqe7881",
+  "SOURCE_sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+  "go_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+  "all8frozen_live_hashes_lengths_modes_equal_before_and_after_controls": true,
+  "changed_since_V2": [
+    "lego/operator/internal/build/nativequalification_init_test.go"
+  ],
+  "resolved_findings": [
+    {
+      "file": "nativequalification_init_test.go",
+      "detail": "Specific cleanup helper completes bounded log capture, exact-ID removal and absence inspection before nonfatal artifact/error reporting. Write/capture failure still fails the test after cleanup operations."
+    },
+    {
+      "file": "nativequalification_init_test.go",
+      "detail": "Valid returned CID cleanup is registered immediately before creation stdout/stderr artifact closure. A fatal evidence write invokes the already registered cleanup; ambiguous/noCID branch records raw outputs and fails without retry, as before."
+    }
+  ],
+  "independent_controls": {
+    "date_utc": "2026-10-31T19:37:27.721948+00:00",
+    "source_sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+    "go_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "all8frozen_live_bytes_modes_equal_before": true,
+    "argv": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "-overlay",
+      "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v3-focused-overlay.json",
+      "./internal/build",
+      "-run",
+      "^TestNativeInitQualificationArtifactFailureStillCleans$",
+      "-count=1",
+      "-v"
+    ],
+    "exit_code": 0,
+    "seconds": 5.901,
+    "log": "v3-focused-controls.log",
+    "scope": "Only2guarded fake-Docker subprocess controls against copied final Go bytes; no daemon/image/JS/crosscompile"
+  },
+  "negative_control_interpretation": "Two real test subprocesses run only the exact verified fake Docker script. Injected ENOTDIR cleanup artifact and EISDIR create artifact produce visible failing child tests, while command traces prove logs->rm exactID->inspect exactID; no app start or real daemon invocation.",
+  "preserved": "Other7sources byte-identicalV2. Prior PATH/baseENV capture/PID1 argv/ELF/canonical named-context/HTTP hold-drain/status/bridge/resource scope unchanged. No original13/28/runtime/product-map/first-cohort/publisher change.",
+  "test_scope": "Only new fake-Docker controls rerun independently against copied frozen Go via overlay. Author final full package/lint receipts are separate; reviewer does not reinterpret earlier31complexity/foreignNode lint draft as finalV3 result.",
+  "unexecuted": [
+    "No actual Docker/image/JS/crosscompile/native-init PID1/process/wrapper/drain/cleanup execution by reviewer",
+    "Both actual target runtime architectures, Kubernetes/predeploy/hosted/adoption remain unqualified",
+    "Parent separate same-source both-architecture native-init compilation remains separate evidence"
+  ],
+  "history": [
+    "INITIAL-REVIEW.json records initialPATHfinding",
+    "V2-REVIEW.json preserved; cleanup portion superseded byV2-ADDITIONAL-FINDINGS.json",
+    "V3-SETUP-HISTORY.json records premature unannounced-snapshot/absent-overlay attempt; no tests or Docker ran then"
+  ]
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "argv": [
+      "node",
+      "--check",
+      "testdata/native-common-init/identity.js"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "syntax-only; no fixture top-level execution"
+  },
+  {
+    "argv": [
+      "node",
+      "--check",
+      "testdata/native-common-init/build.js"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "syntax-only; no fixture top-level execution"
+  },
+  {
+    "argv": [
+      "node",
+      "--check",
+      "testdata/native-common-init/capture-env.js"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "syntax-only; no fixture top-level execution"
+  },
+  {
+    "argv": [
+      "node",
+      "--check",
+      "testdata/native-common-init/server.js"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "syntax-only; no fixture top-level execution"
+  }
+]

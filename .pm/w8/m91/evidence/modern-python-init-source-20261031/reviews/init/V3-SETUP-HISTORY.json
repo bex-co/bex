@@ -1,0 +1,4 @@
+{
+  "detail": "Reviewer read the preparing directory before final handoff. Frozen/live Go differed while owner simplified the31complexity draft; custody assertion stopped setup. A subsequent Go command failed because overlay was absent; no tests or Docker calls ran. Final exactf87ea81e handoff now used.",
+  "log": "v3-premature-overlay-setup-failure.log"
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit": 0,
+  "wall_seconds": 9.469043375,
+  "initial_free_bytes": 2754265088,
+  "final_free_bytes": 2736496640,
+  "floor_tripped": false,
+  "scope": "final exact source host unit suite after lint allocation corrections; no target crosscompile, Docker or JS fixture execution"
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit": 0,
+  "wall_seconds": 10.457462875,
+  "initial_free_bytes": 2763194368,
+  "final_free_bytes": 2667491328,
+  "floor_tripped": false,
+  "scope": "source/unit/lint only; guarded fake Docker in deliberate child failure controls; no real daemon/target compile/fixture execution"
+}

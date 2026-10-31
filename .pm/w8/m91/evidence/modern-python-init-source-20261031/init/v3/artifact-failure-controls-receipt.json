@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-run",
+    "^TestNativeInitQualificationArtifactFailureStillCleans$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "wall_seconds": 4.895218166,
+  "initial_free_bytes": 2700746752,
+  "final_free_bytes": 2686963712,
+  "floor_tripped": false,
+  "scope": "fake Docker executable only; two deliberately failing child unit cases must still trace rm+inspect. No real Docker/image/native init or JS execution."
+}

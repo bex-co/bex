@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-31T19:13:16.271197+00:00",
+  "state": "PLAN_ONLY_NOT_AUTHORIZED_FOR_EXECUTION",
+  "scope": "One small sequential native linux/arm64 viability experiment on official Node14.21.3 and16.20.2 bullseye-slim, using genuine official pnpm10.34.7 executable; no C compile/common-base qualification.",
+  "inputs_file": "input-identity.json",
+  "identity_checks_before_any_run": [
+    "Use exact arm64 child digests, not mutable tags/index platform inference. Registry index, child and config bytes have already been SHA256+size verified and retained. NODE_VERSION currently is config metadata only.",
+    "After a permitted pull, require actual Docker image configID equal the frozen registry config digest and linux/arm64. Actual node --version/npm --version are experimental observations, not asserted from ENV.",
+    "pnpm npm tarball must match exact frozen npm SHA512 SRI and SHA1 shasum; additionally compare extracted executable to official GitHub v10.34.7 raw binary SHA256c57bafc919110f5b942b7778bff0f2170a896d6dc0952c2ff042ca1e228655c3 and size63488279. These are currently metadata pins, NOT body-qualified.",
+    "Registry tarball SHA256 is unknown until the authorized complete body read. Record that observed SHA256 after SRI/SHA1 pass; never invent it. Preserve original tarball and license.",
+    "MIT license metadata and tagged1170B LICENSE (SHA2564b8e2a57502758b2d034ece9cabf19dd098c5609003ed8dbdafd085274f25bd9) retained; retain every license file from the actual tar package and compare provenance."
+  ],
+  "budget": {
+    "global_free_floor": 2147483648,
+    "own_total_cap": 536870912,
+    "proactive_free_margin": 134217728,
+    "required_fresh_physical_free_before_start": 2818572288,
+    "observed_free_at_metadata_read": 2681352192,
+    "observed_deficit_to_proactive_preflight": 137220096,
+    "currently_fits": false,
+    "fixed_input_output_reservation": 134217728,
+    "daemon_image_reservation": 402653184,
+    "fixed_breakdown": "Tarball hard bound32MiB (HEAD had no Content-Length); extracted package declared63490247B, reserve64MiB; metadata/fixtures/receipts/logs reserve16MiB; remaining16MiB buffer. Existing prior research is preserved and no executable body has been downloaded.",
+    "image_size_limit": "Registry descriptors establish compressed totals68684172B/68339448B only. Uncompressed storage is UNKNOWN, so no honest claim of a proven512MiB fit can be made from those descriptors alone.",
+    "size_preflight_after_root_approval": "Before pulling each image, permit one stream/discard read of that exact slim image layers to verify compressed digest/size and measure decompressed tar bytes + file allocation estimate, with bounded buffers/no persisted layers. Reuse existing canonical streaming/hash concepts, not a new artifact framework. Proceed to Docker only if compressed+estimated installed allocation+metadata margin fits384MiB daemon reservation. Any body error or unsuitable fit stops before pull; no retry/second image by assumption.",
+    "external_guard": "One-second physical-free and own scratch/daemon-delta samples. Stop only own active client/container at>=448MiB attributed growth or <=floor+64MiB, retaining64MiB stop margin; no claim this observer is a kernel disk quota. If foreign activity makes attribution or headroom unclear, stop this experiment, retain evidence, no foreign cleanup.",
+    "sequential": "One image and one container at a time. Retire only safe newly introduced references after case1; fresh capacity/preconditions before case2. If references cannot safely be removed, do not start case2."
+  },
+  "read_only_preflight_after_approval": [
+    "Check native host/Docker daemon architecture is linux/arm64; capture docker version/info relevant storage mode and docker image/container metadata only, no global builder/use/config mutation.",
+    "Unique absent /private/tmp/bex-w8-pnpm-smoke-<nonce>; record all source/fixture input hashes. One owner label and nonce assigned at docker create before an ID is returned.",
+    "Snapshot exact existing image references, configIDs and containers using either frozen configID before pull. No assumption that images remain absent since the earlier root inventory.",
+    "Fresh physical free must cover full512MiB budget +2GiB floor +128MiB proactive margin. No image/buildpack pull, artifact body read or Docker mutation until root approves this plan and it fits."
+  ],
+  "container_contract": {
+    "runtime": "--platform linux/arm64 --pull=never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory192m --memory-swap192m --pids-limit64 --cpus1",
+    "ownership": "Unique exact name + owner/nonce/case labels at create. Resolve ownID from labels/name/configID after interrupted create; never select by PID or broad name search.",
+    "mounts": "Verified executable directory read-only at /opt/pnpm (no node beside it); new fixture input read-only; only own work/output mount writable. /tmp tmpfs16MiB. Per-container HOME/PNPM_HOME/XDG cache below own workdir, no host/global HOME or caches/config changes.",
+    "PATH": "Record original image PATH; add only /opt/pnpm for command discovery, containing no Node binary. Never inject privateNode24 or replace app Node/npm.",
+    "bounds": "Per-command30s normally; explicit different-PM offline observation15s; whole case<=180s. Bounded stdout/stderr<=1MiB per command, total retained outputs<=16MiB. No curl/apt/npm install/network inside runtime."
+  },
+  "project_observations": [
+    {
+      "name": "startup",
+      "operation": "Unmodified genuine pnpm --version, app node --version/npm --version, command -v and realpath of node/pnpm; capture actual exit and output."
+    },
+    {
+      "name": "unmodified_lifecycle",
+      "operation": "With NODE initially absent, use a local dependency tarball with narrowly allowed install lifecycle plus a root run script. Record process.version/execPath, PATH resolution, NODE/npm_node_execpath/npm_execpath/configured node-gyp. Do not silently normalize observed defaults."
+    },
+    {
+      "name": "engine_selection",
+      "operation": "Separate matching engines14.x/16.x and deliberate>=18 dependency/root cases with project-local engine-strict=true. Offline local-only install must accept the matching app and reject the mismatch. Never use a private host version to bypass this."
+    },
+    {
+      "name": "exec_and_path",
+      "operation": "Actual pnpm exec node and pnpm run node observer, plus scripts-prepend-node-path=true, must identify selected app Node despite legitimate node_modules/.bin additions."
+    },
+    {
+      "name": "transparent_NODE_comparison",
+      "operation": "After preserving unmodified observations, a separately labeled planned command may set NODE to the already observed PATH appNode (no launcher/shim/source patch), then repeat lifecycle observer. Preserve an explicit NODE override in another bounded observation. Results are not retroactively applied to baseline."
+    },
+    {
+      "name": "actual_default_gyp",
+      "operation": "Inside dependency install lifecycle record actual command -v node-gyp, npm_config_node_gyp path+existence/mode and node-gyp --version status/output. Also inspect actual selected app npm bundled gyp path/version separately for comparison. Do NOT create a fallback, rewrite virtual paths, compile C or call a missing path a transport issue."
+    },
+    {
+      "name": "package_manager",
+      "operation": "A matching exact packageManager=pnpm@10.34.7 project must run offline. A different exact version (e.g.10.34.6) may only demonstrate actual upstream switch attempt/failure within15s because no second executable/cache download is in this plan; successful offline self-switch remains unproved unless root separately approves a genuine exact second input. No disabling PM management, rewriting requests or faking cache entries."
+    }
+  ],
+  "ownership_cleanup": [
+    "Before pull, record preexisting canonical node@childDigest/indexDigest references/configID and any containers referencing those IDs. Pull exact child only after fit; then label/use one unique own alias. Record every newly introduced reference explicitly.",
+    "Create/start only own labeled container; final cleanup uses exactID+labels+nonce+frozen configID. Stop/remove only that owned container. Interrupted create is reconciled by exact label/name/config before deletion; an ambiguous identity is reported, not guessed.",
+    "Remove own alias without force. Remove a newly introduced canonical digest reference only if it was absent before and fresh reference/container inventory confirms no foreign use. Never remove by broad image/configID, never force, never image/system/builder prune.",
+    "Docker retains shared blobs while any foreign reference/container uses them. If foreign use appears, preserve those references/layers, record retention and stop before case2 if budget is not demonstrably available.",
+    "Retain all verified inputs, raw command results, expected and unexpected failures, source hashes, metadata/budget timeline and cleanup proof. No cleanup of prior freezes, host caches, images or unrelated resources."
+  ],
+  "honesty": [
+    "Observational completion is separate from viability. Missing default gyp or wrong NODE is a failed criterion, not an experiment pass. Preserve exact exit/status.",
+    "No native C compilation, repaired addon proof, common Bookworm donor/library proof, both-architecture coverage, original13/28 fixture proof, native-init/K8/hosted or Render live behavior claim.",
+    "No production/catalog/pin/source writes, builds, CI dispatch/cancel/rerun or implementation launcher/shim in this plan. No image layer/executable body downloads or Docker calls occurred preparing it."
+  ]
+}

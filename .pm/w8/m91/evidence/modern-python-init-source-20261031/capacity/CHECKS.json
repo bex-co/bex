@@ -1,0 +1,22 @@
+[
+  {
+    "command": [
+      "actionlint",
+      "-config-file",
+      "/private/tmp/bex-w8-capacity-actionlint-20261031.yml",
+      ".github/workflows/native-common-image.yml"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "bash",
+      "scripts/github-actions-validate.sh"
+    ],
+    "exit": 0,
+    "stdout": "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, public-fork isolation and production-secret confinement intact\n",
+    "stderr": ""
+  }
+]

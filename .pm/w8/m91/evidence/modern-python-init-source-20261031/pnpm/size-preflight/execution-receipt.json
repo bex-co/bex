@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-31T19:21:10.023296+00:00",
+  "type": "BUDGET_PREFLIGHT_ONLY",
+  "process": {
+    "exec_session": 41769,
+    "actual_tool_exit_code": 0,
+    "actual_tool_completion_observed": true
+  },
+  "observed_result": "Two images,10 complete one-attempt anonymous compressed layer reads, all exact size/SHA256 and decompressed gzip/DiffID checks passed; no retries/Range/reuse; no persisted layers or extraction.",
+  "actual_limits": {
+    "min_physical_free": 2476908544,
+    "max_rss": 35651584,
+    "scratch_cap": 16777216
+  },
+  "reader_controls": [
+    {
+      "name": "complete",
+      "outcome": "PASS"
+    },
+    {
+      "name": "wrong-sha",
+      "outcome": "EXPECTED_REFUSAL",
+      "reason": "complete compressed size/SHA mismatch"
+    },
+    {
+      "name": "short-body",
+      "outcome": "EXPECTED_REFUSAL",
+      "reason": "complete compressed size/SHA mismatch"
+    },
+    {
+      "name": "wrong-diffid",
+      "outcome": "EXPECTED_REFUSAL",
+      "reason": "complete decompressed DiffID mismatch"
+    },
+    {
+      "name": "inflate-limit",
+      "outcome": "EXPECTED_REFUSAL",
+      "reason": "decompressed byte limit reached before next output"
+    }
+  ],
+  "images": [
+    {
+      "image": "node:14.21.3-bullseye-slim",
+      "child_digest": "sha256:59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c",
+      "complete": true,
+      "compressed_bytes": 68684172,
+      "decompressed_tar_bytes": 193336832,
+      "conservative_file_allocation_estimate": 251027456,
+      "snapshot_estimate": 251027456,
+      "daemon_metadata_margin_estimate": 33554432,
+      "conservative_compressed_plus_snapshot_plus_margin_estimate": 353266060,
+      "fits_planned_384MiB_image_reservation_estimate": true,
+      "estimate_limits": "4KiB file blocks plus4KiB/member metadata, all layer entries summed without dedup; max with tar bytes, compressed retention plus max32MiB/10% daemon margin. A budget estimate, not actual Docker allocation or a hard kernel bound."
+    },
+    {
+      "image": "node:16.20.2-bullseye-slim",
+      "child_digest": "sha256:6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971",
+      "complete": true,
+      "compressed_bytes": 68339448,
+      "decompressed_tar_bytes": 190196224,
+      "conservative_file_allocation_estimate": 234295296,
+      "snapshot_estimate": 234295296,
+      "daemon_metadata_margin_estimate": 33554432,
+      "conservative_compressed_plus_snapshot_plus_margin_estimate": 336189176,
+      "fits_planned_384MiB_image_reservation_estimate": true,
+      "estimate_limits": "4KiB file blocks plus4KiB/member metadata, all layer entries summed without dedup; max with tar bytes, compressed retention plus max32MiB/10% daemon margin. A budget estimate, not actual Docker allocation or a hard kernel bound."
+    }
+  ],
+  "runtime_supplier_approval": false,
+  "unexecuted": [
+    "pnpm executable artifact body download/verification",
+    "Docker pull/create/build or runtime execution",
+    "Actual Docker storage measurement",
+    "Native-addon compilation/common Bookworm/dual-arch/native-init/K8/hosted/Render acceptance"
+  ],
+  "cleanup": "No child processes or containers were created. Network responses closed per-request; layer buffers discarded. All own metadata/source/progress retained; no other cleanup performed.",
+  "source_sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67"
+}

@@ -1,0 +1,32 @@
+{
+  "lego/operator/internal/build/nativelegacy_python_test.go": {
+    "bytes": 6537,
+    "mode": "0644",
+    "sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131"
+  },
+  "lego/operator/internal/build/nativemodern_python_controls_test.go": {
+    "bytes": 9519,
+    "mode": "0644",
+    "sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b"
+  },
+  "lego/operator/internal/build/nativemodern_python_test.go": {
+    "bytes": 7506,
+    "mode": "0644",
+    "sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607"
+  },
+  "lego/operator/internal/build/nativepython_qualification_test.go": {
+    "bytes": 4911,
+    "mode": "0644",
+    "sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d"
+  },
+  "lego/operator/internal/build/testdata/native-modern-python/check-tool.py": {
+    "bytes": 1757,
+    "mode": "0644",
+    "sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac"
+  },
+  "lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py": {
+    "bytes": 4655,
+    "mode": "0644",
+    "sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f"
+  }
+}
