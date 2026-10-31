@@ -1,0 +1,17 @@
+{
+  "run": 41197243038,
+  "source": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "status": "completed",
+  "conclusion": "success",
+  "createdAt": "2026-10-31T11:32:03Z",
+  "updatedAt": "2026-10-31T13:09:20Z",
+  "cluster": {
+    "databaseId": 124526099401,
+    "name": "cluster",
+    "status": "completed",
+    "conclusion": "success",
+    "startedAt": "2026-10-31T13:07:13Z",
+    "completedAt": "2026-10-31T13:09:20Z"
+  },
+  "metadata_private_sha256": "172d60cf1b34a57d20da1f69dd4302ec1f9932b2669945228086081917175f7e"
+}

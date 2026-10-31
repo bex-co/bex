@@ -1,0 +1,20 @@
+{
+  "files": {
+    "CUSTODY.json": {
+      "bytes": 618,
+      "sha256": "4a515bed64981f3dcc4925cccd7c401b023f7a8ae052c2d78dac71125f495f46"
+    },
+    "README.md": {
+      "bytes": 894,
+      "sha256": "bea6d2edce5ee0d7a2eaa84e955ea73900028788edc8036377c19ba65e07a8fe"
+    },
+    "REQUESTS.json": {
+      "bytes": 1061,
+      "sha256": "ec044b7d1cc9d856678501a9074a6ea0c4c15b343d3f4fbbf8e9338eb4989961"
+    },
+    "SUMMARY.json": {
+      "bytes": 740,
+      "sha256": "df4bb2dfc9fea000d4cedd3cd7bd95b6cd5105ec2ce951acd5d2353feaaeeaf9"
+    }
+  }
+}

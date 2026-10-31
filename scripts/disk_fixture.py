@@ -932,7 +932,7 @@ def observe_cleanup(kube, proof, phase, image):
         nonlocal emitted_bytes
         encoded = json.dumps({"cleanupObservation": receipt, "run": proof["run"], "serviceId": proof["service_id"], "collectedAt": now().isoformat()})
         emitted_bytes += len(encoded)
-        require(emitted_bytes <= 2 * 1024**2, "cleanup observer exceeded its fixed output bound")
+        require(emitted_bytes <= CHANNEL_BYTES, "cleanup observer exceeded its fixed output bound")
         print(encoded, flush=True)
 
     def inventory():

@@ -1,0 +1,10 @@
+{
+  "raw_summary_sha256": "92af52464d1b690ce5b3dcd3318edfce7d13720415521ec9cbf4fd00ee1d8752",
+  "raw_request_index_sha256": "ec044b7d1cc9d856678501a9074a6ea0c4c15b343d3f4fbbf8e9338eb4989961",
+  "private_source": "/private/tmp/bex-w8-m144-provider-meta-20261031/read.py",
+  "private_source_sha256": "4c50927d9ec93191d15bb6195c36bf4e9e9549fc0e6f44637be33c405768ca05",
+  "export_transform": "aggregate summary only; credential-presence boolean omitted, raw metadata remains private",
+  "methods": "three GETs only",
+  "no_new_QA_login_fixture_SSH_or_Secret_read": true,
+  "former_provider_handle_remains_unknown": true
+}

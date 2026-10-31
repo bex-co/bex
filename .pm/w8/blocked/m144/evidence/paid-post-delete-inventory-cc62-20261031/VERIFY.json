@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-31T14:04:16.116810+00:00",
+  "raw_log_hash_bytes_mode_verified": true,
+  "single_fetch_intent_and_success": true,
+  "one_actual_JSON_report_reparsed_from_raw_log": true,
+  "selected_counts_and_exact_original_ID_workspace_comparisons_verified": true,
+  "source_copies_match_actual_job_git_commit": true,
+  "nonfixture_names_UIDs_serviceIDs_and_auth_material_not_exported": true,
+  "old_shipped_9a_manifest_and_every_file_byte_unchanged": true,
+  "no_new_auth_SSH_resource_dispatch_or_live_inventory_query": true,
+  "scope": "post-delete selected inventory only; all UID/provider/S3/lifecycle/billing limits retained"
+}

@@ -1,0 +1,13 @@
+{
+  "reviewed_at": "2026-10-31T15:15:18.397345+00:00",
+  "root_verified_exported_files": 7,
+  "raw_log_bytes": 35315,
+  "raw_JSON_extraction_reproduced": true,
+  "actual_job_source_files_verified_against_Git": 2,
+  "selected_post_delete_disk_apps": 2,
+  "selected_post_delete_App_owned_claims": 2,
+  "matching_own_service_or_namespace_rows": 0,
+  "exact_former_UID_PV_provider_S3_cleanup": "UNPROVED",
+  "shipped_ended_bundle_unchanged": true,
+  "no_new_resource_auth_or_dispatch": true
+}

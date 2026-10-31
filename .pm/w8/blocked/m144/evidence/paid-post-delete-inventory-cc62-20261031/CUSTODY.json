@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-10-31T13:59:47.287960+00:00",
+  "raw_private_log": {
+    "path": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/completed-inventory-20261031/job.log",
+    "sha256": "dd1c65f4dec38dd8c91e9e430c3c9ecea9206d72cfcc4b5feb9d62a3fd118792",
+    "bytes": 35315,
+    "mode": "0600",
+    "GET_fetches": 1,
+    "fetch_exit": 0,
+    "not_exported_reason": "retain full raw job log privately; omit nonfixture tenant identifiers and credential-environment/SSH details"
+  },
+  "private_extracted_inventory": {
+    "path": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/completed-inventory-20261031/inventory.private.json",
+    "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+  },
+  "private_run_metadata": {
+    "path": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/completed-inventory-20261031/run-metadata.json",
+    "sha256": "172d60cf1b34a57d20da1f69dd4302ec1f9932b2669945228086081917175f7e"
+  },
+  "log_extract": {
+    "raw_joblog_sha256": "dd1c65f4dec38dd8c91e9e430c3c9ecea9206d72cfcc4b5feb9d62a3fd118792",
+    "first_log_line_1based": 238,
+    "first_log_timestamp": "2026-10-31T13:09:14.9653586Z",
+    "JSON_characters_after_timestamp_removal": 7329,
+    "private_inventory_sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+  },
+  "selected_checkout_and_inventory_command_lines": [
+    {
+      "line_1based": 25,
+      "line": "2026-10-31T13:07:19.8446878Z   ref: fa85c44184ffa59879b8c1a77c991e3ce87fa028"
+    },
+    {
+      "line_1based": 99,
+      "line": "2026-10-31T13:08:40.3947474Z [command]/usr/bin/git checkout --progress --force fa85c44184ffa59879b8c1a77c991e3ce87fa028"
+    },
+    {
+      "line_1based": 232,
+      "line": "2026-10-31T13:09:08.0163924Z ##[group]Run bash scripts/service-disk-inventory.sh"
+    }
+  ],
+  "source_files_at_actual_job_commit": {
+    "scripts/service-disk-inventory.sh": {
+      "sha256": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e",
+      "bytes": 2210,
+      "exported": "service-disk-inventory.sh.txt"
+    },
+    "scripts/service_disk_inventory.py": {
+      "sha256": "5b84f55a625281d4a56338e2326f45b70a4a27be5156d8e3aa2b754780abc0ac",
+      "bytes": 9820,
+      "exported": "service_disk_inventory.py.txt"
+    }
+  },
+  "original_fixture_identity_sources": {
+    "outcome": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/paid-attempt-cc62-20261031/OUTCOME.json",
+    "outcome_sha256": "4eab60e2453d7d636ae649b85dce72c2c87d45389a33ea4b9a6abd53490b011e",
+    "create_response_sha256": "cc3fb5835d2ad802a5f65f93b85c610c112f915fbc4bc9dea66817675344aefe"
+  },
+  "old_shipped_manifest_sha256": "535289fbe7ce24609248fb1e7ff7bff46492fd2c6fe9386b1c926254acf706f7",
+  "selection": "Count/name/ID comparisons over the actual report. Nonfixture names, UIDs and provider handles omitted; no lifetime or handle synthesized."
+}

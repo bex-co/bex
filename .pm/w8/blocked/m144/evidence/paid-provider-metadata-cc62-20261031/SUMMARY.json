@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-31T15:45:58.956867+00:00",
+  "scope": "existing-credential read-only provider metadata; no Kubernetes/SSH/Secret/object-store access or mutation",
+  "baseline": [
+    {
+      "id": 107293514,
+      "HTTP": 200,
+      "exact_id_matches": true
+    },
+    {
+      "id": 107282157,
+      "HTTP": 200,
+      "exact_id_matches": true
+    }
+  ],
+  "complete_list": true,
+  "exact_former_provider_id": "UNKNOWN",
+  "exact_owned_cleanup_proven": false,
+  "total_volumes": 35,
+  "startup_interval": {
+    "from": "2026-10-31T11:30:14.914922+00:00",
+    "through": "2026-10-31T11:36:43.061531+00:00"
+  },
+  "volumes_created_during_startup_interval": 0,
+  "matching_cohort_ids": [],
+  "baseline_ids_present_in_complete_list": true
+}

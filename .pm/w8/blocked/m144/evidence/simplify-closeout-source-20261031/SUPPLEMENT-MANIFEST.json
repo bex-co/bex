@@ -1,0 +1,72 @@
+{
+  "scope": "remaining m144 implementation/factory/GitOps/snapshot source paths; diff only selected m144 commits, current fullsource for context",
+  "commits": [
+    "9026301316233effaaee71e5ba49730c093bd446",
+    "a59db2dd8",
+    "15ed18b94",
+    "dd64e4ff7"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/app-cluster.yml",
+      "bytes": 16821,
+      "sha256": "b82d0a7f6c24c05046edb8acc422098b2f2a7d745cd530560b70907e8d370388"
+    },
+    {
+      "path": ".github/workflows/hcloud-csi-image.yml",
+      "bytes": 3566,
+      "sha256": "a0cf8370f45c99b5e536b5c668c9570e5d329e98bf6b4b7f578a52abf2299128"
+    },
+    {
+      "path": ".github/workflows/scripts.yml",
+      "bytes": 10488,
+      "sha256": "77586771200d37c89caa42508583666b975dcaadde5726cc14fda2707c9b0278"
+    },
+    {
+      "path": "deploy/gitops/base/disk-bounded-storageclass.yaml",
+      "bytes": 925,
+      "sha256": "60fca119bdad27b6229ed6d44a39e8486bd4f6a8512711bf91ae5178d8ebb098"
+    },
+    {
+      "path": "deploy/gitops/base/kustomization.yaml",
+      "bytes": 7451,
+      "sha256": "be57d8d2e87960ba3e0ed3cc8ee5c48b8feb54283efebe741bda2eadca8a8bfb"
+    },
+    {
+      "path": "lego/operator/cmd/disk-snapshot/main.go",
+      "bytes": 9123,
+      "sha256": "6ef45323a6b0e35e84b3a98388b724ff1e493296952715a30dc75706b1ca6512"
+    },
+    {
+      "path": "lego/operator/internal/controller/app_controller.go",
+      "bytes": 367010,
+      "sha256": "c23131f26fba6d13be8b313217797d6fddcbf3812fd421a1c12df4e4ff1ead87"
+    },
+    {
+      "path": "lego/operator/internal/controller/cleanup_job.go",
+      "bytes": 7190,
+      "sha256": "ba7d9d8c5b1d7edc202a4778f0a922c2e437a1616874c2f91cca32978530228b"
+    },
+    {
+      "path": "lego/operator/internal/controller/cleanup_job_test.go",
+      "bytes": 5906,
+      "sha256": "c30bdf69c5cff13f0a9971b64eb97a6049f0e00ae764a693904d67efa839e940"
+    },
+    {
+      "path": "lego/operator/internal/disksnapshot/store.go",
+      "bytes": 9321,
+      "sha256": "8cbba164202b7f26f776ad5f8a1a8091bcbe3159239e53bec000490b7dfd671a"
+    },
+    {
+      "path": "lego/operator/internal/disksnapshot/store_integration_test.go",
+      "bytes": 10859,
+      "sha256": "fee7b2e98ab4e3834f915c7067a31576bc25c8421bed45b6fee9533756223337"
+    },
+    {
+      "path": "lego/operator/internal/disksnapshot/store_test.go",
+      "bytes": 5029,
+      "sha256": "dbc7ad48f122bd81825c5f81248b5dd377a95f8249ac59bd13930b94d047551e"
+    }
+  ],
+  "full_diff_sha256": "93a014941374d44f77b50a5640830ad10fff894d055fd60d468ac4c037af8e54"
+}

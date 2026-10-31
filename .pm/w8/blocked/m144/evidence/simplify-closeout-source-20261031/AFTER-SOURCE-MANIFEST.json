@@ -1,0 +1,14 @@
+{
+  "scripts/disk_fixture.py": {
+    "bytes": 72632,
+    "sha256": "eb1bcf5d983b764410ebc7e1f84609c9a18cc168fcf403ce234e81759ec1d253"
+  },
+  "lego/operator/internal/controller/app_controller.go": {
+    "bytes": 366848,
+    "sha256": "207cea361972d2bf491178147b8f976b1108a6dd757e403bd4147356387b811e"
+  },
+  "lego/operator/internal/controller/disk.go": {
+    "bytes": 20457,
+    "sha256": "2cb2f02278582c91def800f7a52e7262ad0d4710342d680c5131fe4101f2da72"
+  }
+}

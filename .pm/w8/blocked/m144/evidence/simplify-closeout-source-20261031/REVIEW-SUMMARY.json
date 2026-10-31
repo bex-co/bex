@@ -1,0 +1,35 @@
+{
+  "reviewed_at": "2026-10-31T15:58:05.190555+00:00",
+  "skill": "simplify",
+  "baseline": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "reviewed_paths": 35,
+  "reuse_reviewer": "common_review",
+  "quality_reviewer": "fixture_quality",
+  "efficiency_reviewer": "cli090",
+  "findings_fixed": [
+    "use existing CHANNEL_BYTES for the cleanup emitter unchanged2MiB bound",
+    "share the three snapshot-marker deletions while retaining provisioned-marker deletion only on detach"
+  ],
+  "other_quality_or_efficiency_changes": "none warranted",
+  "existing_fixture_tests": {
+    "count": 49,
+    "exit": 0
+  },
+  "focused_controller_tests": {
+    "exit": 0,
+    "seconds": 1.02
+  },
+  "actual_new_kernel_provider_hosted_claim": false,
+  "original_frozen_evidence_changed": false,
+  "pinned_controller_lint": {
+    "initial": "one import-shadowing finding in newly extracted helper; parameter renamed",
+    "final_exit": 0,
+    "final_log": "controller-lint-final.log"
+  },
+  "fixed_diff": {
+    "lossless_gzip": "fixed.diff.gz",
+    "uncompressed_bytes": 2863,
+    "uncompressed_sha256": "d2db6fe1c8f40036578451f8d7ef37020dc89e221271e86bdb350bd9ac4969c2",
+    "raw_private_path": "/private/tmp/bex-w8-m144-simplify-current-20261031/fixed-applied.diff"
+  }
+}

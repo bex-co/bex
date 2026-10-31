@@ -1,0 +1,36 @@
+{
+  "files": {
+    "CUSTODY.json": {
+      "bytes": 2885,
+      "sha256": "4f100d44333f109460217b84dea72be5d2246355e017330cbefeaab5a1ef089e"
+    },
+    "README.md": {
+      "bytes": 2488,
+      "sha256": "53db0f5e89a9b02dc7eae6620c3770a654bf44e327b811ddc7c6b65af0e7c21d"
+    },
+    "ROOT-REVIEW.json": {
+      "bytes": 489,
+      "sha256": "c8bcc6ffbf9e091c7cf20f2f17105beb0eb4e7ac0fe21a2e1df92647c2e07fe2"
+    },
+    "VERIFY.json": {
+      "bytes": 637,
+      "sha256": "4af2e28a9f83b1bf2203bd00fe9d716d1bbe4f33e491245dcb2a3f195fa25ed0"
+    },
+    "inventory-selection.json": {
+      "bytes": 2311,
+      "sha256": "ee43bf3badf0fc55d8950969d0cbdb800fd7ad31e1ead9e8fc05d262b0408ae6"
+    },
+    "job-selection.json": {
+      "bytes": 522,
+      "sha256": "77dfd6968eda1b4279adef25a10a00ee0143ff1b5eca34b0edb3bc6f7993e49e"
+    },
+    "service-disk-inventory.sh.txt": {
+      "bytes": 2210,
+      "sha256": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e"
+    },
+    "service_disk_inventory.py.txt": {
+      "bytes": 9820,
+      "sha256": "5b84f55a625281d4a56338e2326f45b70a4a27be5156d8e3aa2b754780abc0ac"
+    }
+  }
+}

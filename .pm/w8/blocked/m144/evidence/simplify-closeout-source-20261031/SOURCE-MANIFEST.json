@@ -1,0 +1,123 @@
+{
+  "base": "4a1981598f0553c9cc98e8dc1ea3625d45eaf93d",
+  "head": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "scope": "current m144 capacity, snapshot/delete and maintained fixture/inventory/rollout source; unrelated changes excluded",
+  "files": [
+    {
+      "path": ".github/workflows/hcloud-csi-rollout.yml",
+      "bytes": 8454,
+      "sha256": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa"
+    },
+    {
+      "path": "deploy/hcloud-csi/Dockerfile",
+      "bytes": 1835,
+      "sha256": "a900b77f152e5aa10a9a09594dc08822bddce52836a9bec971cdc008c8fc552e"
+    },
+    {
+      "path": "deploy/hcloud-csi/bounded-ext4.patch",
+      "bytes": 55821,
+      "sha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a"
+    },
+    {
+      "path": "deploy/hcloud-csi/fixture-proof.example.json",
+      "bytes": 1249,
+      "sha256": "a998a7f30723a9713a0a21dd8e12f7e4ffe713cdbdc0eb2dd9bdf1d65db4b09f"
+    },
+    {
+      "path": "deploy/hcloud-csi/official.values.json",
+      "bytes": 455,
+      "sha256": "fda774dbc822c14203dd113fa53adb00b65b9bc46ff8b20fc34227bdfd0e7576"
+    },
+    {
+      "path": "deploy/hcloud-csi/reviewed.values.json",
+      "bytes": 429,
+      "sha256": "141f83c709775de479af9f2f6fa6058a452740f5e976f7e1a45107035f894e36"
+    },
+    {
+      "path": "lego/operator/config/prod/kustomization.yaml",
+      "bytes": 7183,
+      "sha256": "e053afa55e0944fa86267b36b660927321758d275cd15d9753c6f6b3ba642642"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk.go",
+      "bytes": 20351,
+      "sha256": "06beeecbe8d2edae6458aafb39d601715e2ac66feed80b357ebf4330fb104fff"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk_backup.go",
+      "bytes": 34743,
+      "sha256": "4d203dd863592ab3ae60d41372b6de2c19aeb0666e5826a8ecf6367bf9b686c8"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk_deletion_envtest_test.go",
+      "bytes": 10395,
+      "sha256": "cfa202798581e47c97ea40f6c275ff67db1de2e5da1f9b14502b4280ca3ddc1a"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk_deletion_test.go",
+      "bytes": 15326,
+      "sha256": "6ffdcc76f96ac4ed22fbf91cd2b0af7934aed7e39b92c01829d4d431dff9c140"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk_envtest_test.go",
+      "bytes": 43215,
+      "sha256": "b6ba5a3d4a6cda9cf543354dc44e161e6ea8d686d5292d8492b11efc2a07bdf2"
+    },
+    {
+      "path": "lego/operator/internal/controller/disk_test.go",
+      "bytes": 23309,
+      "sha256": "2abf782237f191d32419a88165ef655b05968cd6bc12d72ac02f9a4a39e572b4"
+    },
+    {
+      "path": "scripts/disk_fixture.py",
+      "bytes": 72630,
+      "sha256": "8e7082764e951be7a00c0316cc3bac4c17bb3b10c14cb436220d15c4ea79c5e0"
+    },
+    {
+      "path": "scripts/hcloud_csi.py",
+      "bytes": 6198,
+      "sha256": "022b5fb586fcf65b8582a75c52457956333d8bd49462788faefc0d1a7e631af0"
+    },
+    {
+      "path": "scripts/install-hcloud-csi.sh",
+      "bytes": 3385,
+      "sha256": "5d4c03def0bf6ebbf33d19aaceb9ba5945092c0a3491d10c9d80123a235459d9"
+    },
+    {
+      "path": "scripts/install-hcloud-csi.test.sh",
+      "bytes": 5268,
+      "sha256": "8ecca3096f1e9ef35fc3cde12588e2aa9d9fae0763d39f2c74512863530c94c8"
+    },
+    {
+      "path": "scripts/service-disk-inventory.sh",
+      "bytes": 2210,
+      "sha256": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e"
+    },
+    {
+      "path": "scripts/service-disk-inventory.test.sh",
+      "bytes": 4551,
+      "sha256": "f3689a71a3bd034aab017cb2e30e193fcf35bc906469dcc7f7b514e7378fea2c"
+    },
+    {
+      "path": "scripts/service_disk_inventory.py",
+      "bytes": 9820,
+      "sha256": "5b84f55a625281d4a56338e2326f45b70a4a27be5156d8e3aa2b754780abc0ac"
+    },
+    {
+      "path": "scripts/test_disk_fixture.py",
+      "bytes": 63532,
+      "sha256": "948e6cd1a2943b6abeca1b62691e931b6d96851696f0580cab6b158fd8f375c2"
+    },
+    {
+      "path": "scripts/test_hcloud_csi.py",
+      "bytes": 5381,
+      "sha256": "1dc1fa425326120216749cef7915c4d658a2b102dd8bbbc47214d159d9ca952a"
+    },
+    {
+      "path": "scripts/test_service_disk_inventory.py",
+      "bytes": 7009,
+      "sha256": "89bc7110e3621b6e054adf734e54503bb96177eac8627a40f1f3b719f8b81d66"
+    }
+  ],
+  "full_diff_sha256": "6cba62e3ae0fa213464739ce77bc60377dceb96b6fe487a978593ff7ad4f21e3"
+}
