@@ -1,18 +1,18 @@
 # w4 · m139 — Billing's Charges card: a subscription-period total labelled "month to date" over a calendar-month tree, and a coverage watermark that never leaves the 1st
 
-**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** done (2026-10-31: t002 named both causes — parked Free services fixed, fleet-wide egress gating filed as w4/442)
 
 ## Tasks (in order)
 
 | id   | title                                                                                       | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | Label the rated headline by its real window, and reconcile or disclose the tree's window — **DONE**     | 45m | —                |
-| t002 | Trace why `coverage.through` is pinned at the month start with every source degraded         | 60m | —                |
+| t002 | Trace why `coverage.through` is pinned at the month start with every source degraded — **DONE** | 60m | —                |
 | t003 | Correct `w6/m98/t007`'s recorded mechanism for the estimate/rated gap — **DONE**                        | 10m | t001             |
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                              | 20m | t001, t002       |
 | t005 | Simplify — **DONE**                                                                                    | 15m | t004             |
 | t006 | Test coverage — **DONE**                                                                               | 30m | t004             |
-| t007 | Closeout                                                                                    | 10m | t006             |
+| t007 | Closeout — **DONE**                                                                         | 10m | t006             |
 
 ## Definition of done
 
