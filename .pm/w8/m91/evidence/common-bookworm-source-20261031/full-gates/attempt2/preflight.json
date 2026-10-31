@@ -1,0 +1,125 @@
+{
+  "at": "2026-10-31T11:34:42.389582+00:00",
+  "free_bytes": 4069752832,
+  "minimum_start_bytes": 4294967296,
+  "floor_bytes": 3221225472,
+  "additional_budget_bytes": 1073741824,
+  "fits": false,
+  "changed_since_review": [],
+  "inputs": [
+    {
+      "path": "deploy/native-common/Dockerfile",
+      "sha256": "892243ea603a5fa5bf2cede1b2248dfa84c902c98832cc0ee3ee06adbe58d21e",
+      "bytes": 1937,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/Dockerfile.dockerignore",
+      "sha256": "0c961bdd8d555f115d5663e1972b6b69ae73b5a03ff7dabf17ee74d2dd4ef552",
+      "bytes": 444,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/README.md",
+      "sha256": "fe03e5dc7f810e7e8eded94209127fb08738923ac48a03ef063993ee8f67dbaf",
+      "bytes": 3931,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/check-common.py",
+      "sha256": "ea9271091cc48c14ec9d77e471601b862eafcd0a09d13621dd8ea444c5bd282f",
+      "bytes": 2383,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/check-runtime.py",
+      "sha256": "7913748f1b9a52b57653efb4ac3efe6974c8151427a9145fa9544ec3c01c000f",
+      "bytes": 1946,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/common_test.py",
+      "sha256": "a83f4a2046f86174c6597005f13fe40b2804499bddbe7a38832a8bd1a6d1df10",
+      "bytes": 3394,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/matrix.py",
+      "sha256": "0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c",
+      "bytes": 644,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/upstream.json",
+      "sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "bytes": 511,
+      "mode": "0o644"
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5",
+      "bytes": 803,
+      "mode": "0o644"
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2",
+      "bytes": 16117,
+      "mode": "0o644"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "sha256": "1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0",
+      "bytes": 16626,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-base/install.sh",
+      "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "bytes": 2516,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-base/README.md",
+      "sha256": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1",
+      "bytes": 11186,
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "sha256": "97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a",
+      "bytes": 9582,
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "sha256": "e33a80a5c1cb275160c97cf6b62e385a931973a742ea72e6c94d6a8535aca95c",
+      "bytes": 6586,
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "sha256": "01ba707d411140520fa3e18693882c95d94d2257e6e1e257610225705be79d13",
+      "bytes": 12757,
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/toolchain-freshness.json",
+      "sha256": "6f2e510380e1cb6b258c2eced486f1b8c90ae16be09116930c4a4ea704cc2bbd",
+      "bytes": 25750,
+      "mode": "0o644"
+    },
+    {
+      "path": "scripts/lib/toolchain-freshness.py",
+      "sha256": "02fadcf55da0c580a5e679b2157a83be0e44edd7380f379b9ce333bf2979371c",
+      "bytes": 19157,
+      "mode": "0o644"
+    },
+    {
+      "path": "scripts/build-toolchain-freshness.test.sh",
+      "sha256": "2cf0039b055d44178eeb4a7043d3448090153c3ab99156b275fdb59173c81f4c",
+      "bytes": 16317,
+      "mode": "0o755"
+    }
+  ]
+}

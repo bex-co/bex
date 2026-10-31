@@ -45,6 +45,7 @@ CANONICAL_PIN_SITES = (
     "deploy/gitops/base/build-image-prewarm.yaml",
     "deploy/cnb-run/Dockerfile",
     "deploy/native-base/Dockerfile",
+    "deploy/native-common/Dockerfile",
 )
 
 REGISTRY_API = {

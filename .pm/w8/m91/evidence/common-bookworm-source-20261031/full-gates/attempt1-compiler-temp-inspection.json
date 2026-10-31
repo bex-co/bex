@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-31T12:05:35.639927+00:00",
+  "attempt1_owned_tmpdir": "/private/tmp/bex-w8-native-common-full-gates-20261031/go-tmp",
+  "uid": 501,
+  "gid": 0,
+  "entries": [],
+  "du": "0\t/private/tmp/bex-w8-native-common-full-gates-20261031/go-tmp",
+  "removable_compiler_subtrees": [],
+  "free_bytes": 3553947648,
+  "revised_lint_start_required": 4026531840,
+  "proactive_margin_start": 4093640704,
+  "fits_revised": false,
+  "source19_changed": [],
+  "owned_process_group": 21464,
+  "matching_processes": [],
+  "open_files_exit": 1,
+  "open_files_stdout": "",
+  "removed_paths": [],
+  "conclusion": "Attempt1 finished normally with a test failure; Go removed its compiler temporaries. No abandoned compiler subtree exists to remove. No metadata or foreign changes made."
+}

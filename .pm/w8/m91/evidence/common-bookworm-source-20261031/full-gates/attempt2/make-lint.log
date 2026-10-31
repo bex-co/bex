@@ -1,0 +1,3 @@
+Building custom golangci-lint with plugins...
+0 issues.
+make: *** [lint] Terminated: 15

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-31T11:51:48.857053+00:00",
+  "free_bytes": 4312428544,
+  "cap_bytes": 1073741824,
+  "minimum_start_bytes": 4294967296,
+  "floor_bytes": 3221225472,
+  "proactive_margin_bytes": 67108864,
+  "fits": true,
+  "prior_attempt": "/private/tmp/bex-w8-native-common-full-gates-20261031/actual-gates.json",
+  "prior_failure": "Unchanged archived-owner/setgid test failed only under own wheel-group TMPDIR. Original focused test passed under native user temp. No product/source/test change.",
+  "change": "Use a fresh owned subdirectory of the existing native user temp, preserving its actual group semantics."
+}

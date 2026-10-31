@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-31T12:00:14.779964+00:00",
+  "only_removed": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w8-common-gates-a2-4k67nvph/go-build3167800277",
+  "owned_by_uid": 501,
+  "du_before": "559148\t/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w8-common-gates-a2-4k67nvph/go-build3167800277",
+  "free_before": 3196878848,
+  "free_after": 3772211200,
+  "observed_free_increase": 575332352,
+  "open_file_check_exit": 1,
+  "scope": "Only abandoned own Go compiler temporary subtree after terminated own full-lint process. All raw logs/source/input manifests/caches/binaries and foreign paths preserved."
+}

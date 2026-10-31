@@ -1,0 +1,84 @@
+{
+  "files": [
+    {
+      "path": "actual-gates.json",
+      "bytes": 8430,
+      "sha256": "6afbc10c83b528743ec282c2f65c281f82918b04bf89b8a8458428a33627115b"
+    },
+    {
+      "path": "attempt1-compiler-temp-inspection.json",
+      "bytes": 780,
+      "sha256": "69f49717ffeb2793ab62f9deb4954e0b41faf82296a8822933e95f12803dfd46"
+    },
+    {
+      "path": "attempt2/actual-gates.json",
+      "bytes": 9048,
+      "sha256": "a30f7b2d62e07fccc6e702bae6081bf3966d2555833198160bba854ed4d2ae99"
+    },
+    {
+      "path": "attempt2/compiler-temp-cleanup.json",
+      "bytes": 626,
+      "sha256": "e8b7fe7c0eae4e8fd4f69ae732fc1361aa5e5581294322de4ccf0ddbd4d9d023"
+    },
+    {
+      "path": "attempt2/make-lint.log",
+      "bytes": 88,
+      "sha256": "2785fbad6c793c1f9936f8661c9ea962181ea20439fe28bb10f8ab14b14c8ca3"
+    },
+    {
+      "path": "attempt2/make-test.log",
+      "bytes": 4686,
+      "sha256": "734a2f3da912479ba435bb7abb5753bd622025eae4daea1b9cf686c4dbc42f63"
+    },
+    {
+      "path": "attempt2/plan.json",
+      "bytes": 620,
+      "sha256": "722597709732b1671b738e743369a25c9946cfdf53935417ecdfc7f550240577"
+    },
+    {
+      "path": "attempt2/preflight.json",
+      "bytes": 3991,
+      "sha256": "abbae0f321539e70d54ebe4b4d7a8c34842644e31205fe470a70c295edb3a7c6"
+    },
+    {
+      "path": "attempt2/run-gates.py",
+      "bytes": 3674,
+      "sha256": "ff29e764012e27f61b52db0282dc83f831d1d5cce7ddff50c35ed0fc0ff864b0"
+    },
+    {
+      "path": "make-test.log",
+      "bytes": 4880,
+      "sha256": "9523faf35adb6b8f06343c09eb7f997e54c9e8714697c4860b94f441ecc36a34"
+    },
+    {
+      "path": "native-temp-focused-test.log",
+      "bytes": 185,
+      "sha256": "9ba8b16e77152634066d5e513f347b152940d19795bcc23f5b7948d54bf60a99"
+    },
+    {
+      "path": "outcome-summary.json",
+      "bytes": 1523,
+      "sha256": "66d8d47c67441958325849f37af676657e42049d29a53b0cc37adf05be70702a"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 3991,
+      "sha256": "abbae0f321539e70d54ebe4b4d7a8c34842644e31205fe470a70c295edb3a7c6"
+    },
+    {
+      "path": "run-gates.py",
+      "bytes": 3313,
+      "sha256": "e060af1976892a70dffd37c154be32a2e6390d7b6f32a91d0dce277019670f75"
+    },
+    {
+      "path": "start-recheck.json",
+      "bytes": 220,
+      "sha256": "11ef363b1623c111aa6e91e5853c5c42ae5ee4a527e2fe405a55603ce2d8285f"
+    },
+    {
+      "path": "temp-parent-diagnosis.json",
+      "bytes": 1035,
+      "sha256": "f147fd2e693cd57d6aa45253093670616d6206f3c9b4502ddbe2e2b6130be071"
+    }
+  ]
+}
