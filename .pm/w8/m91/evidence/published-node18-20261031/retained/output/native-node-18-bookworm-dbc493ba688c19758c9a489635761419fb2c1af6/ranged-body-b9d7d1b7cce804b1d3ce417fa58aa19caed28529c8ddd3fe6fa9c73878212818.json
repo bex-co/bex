@@ -1,0 +1,19 @@
+{
+  "digest": "sha256:b9d7d1b7cce804b1d3ce417fa58aa19caed28529c8ddd3fe6fa9c73878212818",
+  "expected_size": 1048,
+  "logical_bytes_delivered": 1048,
+  "candidate_approved": false,
+  "attempts": [
+    {
+      "body_get_attempt": 1,
+      "requested_offset": 0,
+      "range_requested": false,
+      "reason": "initial",
+      "logical_bytes_delivered": 1048,
+      "http_status": 200,
+      "content_length": 1048,
+      "outcome": "complete"
+    }
+  ],
+  "scope": "Body GET metadata only; no headers/tokens/URLs or bodybytes retained. Canonical whole-SHA/size gate remains required after every logical byte."
+}

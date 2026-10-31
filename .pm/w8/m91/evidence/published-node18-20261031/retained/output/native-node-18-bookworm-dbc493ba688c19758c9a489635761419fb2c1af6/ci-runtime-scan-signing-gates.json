@@ -1,0 +1,18 @@
+{
+  "run_id": "41187749759",
+  "url": "https://github.com/bex-co/bex/actions/runs/41187749759",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "job_id": 124498652791,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41187749759/job/124498652791",
+  "job_name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "success",
+  "recovery_selection_conclusion": "success"
+}
