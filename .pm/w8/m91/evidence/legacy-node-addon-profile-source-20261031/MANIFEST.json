@@ -1,0 +1,822 @@
+{
+  "CUSTODY.json": {
+    "bytes": 72871,
+    "sha256": "1da7f68c10c95c30ebbcf28bf33042e3160917a3e3a4edc0efd589c9deecf5d4"
+  },
+  "independent/EXTRA-PRESERVATION.json.gz": {
+    "bytes": 217,
+    "sha256": "fc1269e1b006ff3e41a2f38132713c5ca797c2205a89aa5e941b172e3ba9b3ec"
+  },
+  "independent/INPUTS.json.gz": {
+    "bytes": 826,
+    "sha256": "9ddfd9038d05cab8bf592321f3ec08efcc68f744b018dcbdf6144b289a3a2edb"
+  },
+  "independent/MANIFEST.json.gz": {
+    "bytes": 4100,
+    "sha256": "ef2e1011293fa5c3094a8169004bf8f5eff95947425574c0dbd09ee6d9bdb1dc"
+  },
+  "independent/REVIEW.json.gz": {
+    "bytes": 2855,
+    "sha256": "7ef4b9f857ee782e9e2bdcf25bbffbf309a4739a960657a7041404d9acbd8912"
+  },
+  "independent/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "independent/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "40de8265c1c75e5d270bdda7316675737fd61a58a8b3853f721d13a96a833adf"
+  },
+  "independent/addon-tests.log.gz": {
+    "bytes": 705,
+    "sha256": "124cea24f6c2a644bf3e4307c4f6634695929956fe72e1922b9499a2998eb226"
+  },
+  "independent/node-syntax.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "independent/old-node-tests.log.gz": {
+    "bytes": 435,
+    "sha256": "6e6aeb23f1f93d1ae71d748c32677d2f0219ce53644b576d04edb47ecfca2f8c"
+  },
+  "independent/routing-tests.log.gz": {
+    "bytes": 835,
+    "sha256": "a562087e928f8398c8ddc652c3c59692d91b9a2d3247711a244d43495b97799f"
+  },
+  "independent/work/.github/scripts/native-common-qualify.py.gz": {
+    "bytes": 7163,
+    "sha256": "6f4120e755191025d1c460c7871ddc5b57a2f6e2cef22a442e430e145705f6b3"
+  },
+  "independent/work/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "bytes": 10080,
+    "sha256": "d9c24ca40b9f5ef547c85de282732ccaa64cc73d39fcc55f40b56049474554dd"
+  },
+  "independent/work/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  },
+  "independent/work/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "independent/work/.github/workflows/native-common-image.yml.gz": {
+    "bytes": 2615,
+    "sha256": "f89b2ec8b02dc6234318fde4d0d4d2c31edaad9ffb79093fb476a6e985d8a318"
+  },
+  "independent/work/lego/operator/internal/build/native.go.gz": {
+    "bytes": 10628,
+    "sha256": "0681d0c9de6eaddfe77b55e27eb91f51cbddb76d5271efa408d1e36daaa502f9"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "bytes": 3708,
+    "sha256": "7a463fb83a356af667f3c6a663e5ec0068330cbed03a145d9eb480dc3296c080"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "bytes": 3995,
+    "sha256": "595cd44c7778ff26a03c800811a791f897eca009e2f6a2e132166f6731323b26"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "bytes": 3589,
+    "sha256": "b8bb6bd9ce827e47f28d25b79a65f606a43f031793d44ebecfdc0dc2d87e472e"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "bytes": 4083,
+    "sha256": "c4b33f1fb99606063f87eb76d7d02100d430ed5f2d314f1ccfc5862ae032f782"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "bytes": 5293,
+    "sha256": "edc529fe4795f8da8458aaf00708e00bb9dd28afe3a91ec4fe83a9c7f865c9ec"
+  },
+  "independent/work/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "bytes": 2676,
+    "sha256": "1bcf998c9504f6d53c000ea734d6f8fa62ed03e69af400ffd2bce14db30cace7"
+  },
+  "independent/work/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "bytes": 2931,
+    "sha256": "25af7758f296d97f50722402852a1a708f6c13e3ecbfdb885f2220d9939fe679"
+  },
+  "independent/work/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "bytes": 9683,
+    "sha256": "907df8a7e3be2e269a87a2ed8687efa81ecb44c0b5a425442e08c3487e1f77e7"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js.gz": {
+    "bytes": 567,
+    "sha256": "de76cbcd128c88ab381120457d674a14889898c5d9d1994e0b4dd48fdb4a4d7a"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py.gz": {
+    "bytes": 5059,
+    "sha256": "30f19f6629bcb84db6c7c30da07d3e7a1d20f8027948adc526e1eee4c29b8b8a"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py.gz": {
+    "bytes": 4164,
+    "sha256": "df158bf42bdbd95ced408afa944857eb3091fa1138580394f9407cfa98a88523"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "bytes": 476,
+    "sha256": "5a01b521475363dd5cff843027dd90dedbef39ccd7c0fb60117eea41bfd77f5a"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "bytes": 1311,
+    "sha256": "784b0fd7bcde7f813fb2441e9436c4f66074b453a59a1769a87008e2fb8fa1e8"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "bytes": 4236,
+    "sha256": "e122e21e02f976422682943e7facf24fbde4bb0897bce662994a9bbc0eabc398"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "bytes": 3140,
+    "sha256": "96aef444f04950d1ee9c8f977b8357e19d8005a3e86e261c9d9a153345491df8"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "bytes": 89,
+    "sha256": "aa59ee4342526c685caf0304a3cf590c10e2cb4f113406a1328274bbe2070d83"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/addon.c.gz": {
+    "bytes": 311,
+    "sha256": "71361f1095835d7a21f4932baec31578e898da81ef807e3c51d2c1509d869377"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp.gz": {
+    "bytes": 73,
+    "sha256": "296f69e0cb82708d24c9150d819fea8247a89e36b38cfbc7691885baa030e4fd"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/check-build.py.gz": {
+    "bytes": 808,
+    "sha256": "841cb05fabd82ed3958a3127407c9f6b938b16a23f843968ffeb7a6a6b3d17e3"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/check.js.gz": {
+    "bytes": 309,
+    "sha256": "b5c01677a35827fe2fcb5b1bc4792f3af362d4982654056e29e4709b5da56c1a"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/package.json.gz": {
+    "bytes": 101,
+    "sha256": "409a98464a21b4af34b74f6b37e33675879b17de30671855d2511b2b775f3196"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py.gz": {
+    "bytes": 723,
+    "sha256": "de762b79bf1748782531ba884c22a34cca696d4c493db295ca4d37d759f7acd9"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py.gz": {
+    "bytes": 343,
+    "sha256": "d5ffe35e97a17f04942953bf882f78c5da5fed715cede424f68acbf607dffcaa"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py.gz": {
+    "bytes": 687,
+    "sha256": "98664f4fef991def4b6617a259ff8a48c179659d22a081cbdd1143639714624e"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py.gz": {
+    "bytes": 317,
+    "sha256": "47f0b41918d4cc8a97efa2ece4fa5a158810f251a4451975376a9131ef6efe62"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py.gz": {
+    "bytes": 953,
+    "sha256": "637ca3b7cf819f8a7124bca556451a2cf1a3634e53e70b4740adef75307533ed"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py.gz": {
+    "bytes": 380,
+    "sha256": "3407fe6a800a45169b06d44ccdf90b53e20746cc43950f52839885991d7a78ee"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py.gz": {
+    "bytes": 735,
+    "sha256": "82cb072ab2817e7505572dbca96c911326a30c9951f0c77f971454d2d7ed1bff"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py.gz": {
+    "bytes": 417,
+    "sha256": "78d7f5c5ca69e2533d63c34e42ed967216f3909193fca048bf1ea363ecbf14a9"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py.gz": {
+    "bytes": 1257,
+    "sha256": "198ee3c74979c90d6dce2edb1eff70e59c8f233be49473abc577dea82b56544d"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py.gz": {
+    "bytes": 196,
+    "sha256": "e007eeca6186cb5d2701bd1a11e7fe5e47d343eda03c3c014537d134792c8820"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py.gz": {
+    "bytes": 491,
+    "sha256": "c4ed753f707ea976ffca03097ee46a3ac850ca0e87fe999b0c362a6a54ff91c4"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64.gz": {
+    "bytes": 1057,
+    "sha256": "efc228e5fd1ce31b920e8a42e3ee2c43000d07c108b64e540248d2b0c82d4752"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py.gz": {
+    "bytes": 334,
+    "sha256": "cbb6e9a1436d66556ef607282cc854dabe1637c87c7d746fc67fde379db66d04"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py.gz": {
+    "bytes": 737,
+    "sha256": "a92c6b8d497ad68a2c83a479fb832598e697a63fc0382714a889c86dd9c74005"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py.gz": {
+    "bytes": 499,
+    "sha256": "09fcb7b69df61fd7309c9cde4f710083cf07ca5ac289b52575de3b2a8fafa529"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py.gz": {
+    "bytes": 390,
+    "sha256": "2d8308a64054a826e494a9ea53f09de095cb0c503a29018c483dadbe5bc8b37d"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py.gz": {
+    "bytes": 351,
+    "sha256": "d300e4f17373d6c837cd60719ff672c279654807cd558c72d7fbb0d9cd0ef5f4"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py.gz": {
+    "bytes": 768,
+    "sha256": "cf2bed63757c3e0822510cec3752d2a5fe75ac68f2cc2ae3cac840025e52e86b"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py.gz": {
+    "bytes": 557,
+    "sha256": "1c4559cdf7e15a934e0c1cfb6e866d7c16c32b85257bf6ebcb9912814c4dd867"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py.gz": {
+    "bytes": 372,
+    "sha256": "ca6a6180e5ebef7ee9b821b4469ba057a9d179a0bfe632275ed3d12ad303fe48"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py.gz": {
+    "bytes": 903,
+    "sha256": "3920a17791f34d9f8a0c2f62a5197be781e8e2fb56e0f8903b762b6beb6aeeca"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py.gz": {
+    "bytes": 422,
+    "sha256": "0b4497f696cfa0a87cb340cfa70e5e0cb6deed506b85596b33a390ccc1585088"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py.gz": {
+    "bytes": 894,
+    "sha256": "0fb65e8a841bda2cdeb7736dca55e7efa1b868339570e910cf7feb543da4c06b"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py.gz": {
+    "bytes": 557,
+    "sha256": "1c4559cdf7e15a934e0c1cfb6e866d7c16c32b85257bf6ebcb9912814c4dd867"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py.gz": {
+    "bytes": 272,
+    "sha256": "c8905fd7d222f578a0306578384c53cfaaf74a823434964856df89af40e3b6a6"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py.gz": {
+    "bytes": 682,
+    "sha256": "b5e55239a399be46cc98f550c38fa35078ca2c703ed1ff69bf19e61492d0e106"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py.gz": {
+    "bytes": 447,
+    "sha256": "44c722d9ee1bdfc3648547d8d42dbbc2f1f728788dde4aa0eac7eac1b6429ea5"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py.gz": {
+    "bytes": 678,
+    "sha256": "5d7668ec3a1802ecbdfdc623610fd0067b5477a3c3f5aa3aa9085ac44550a7a8"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py.gz": {
+    "bytes": 299,
+    "sha256": "4422e5235656440fbe0141d1e7776994202bed79daf9f14d12607edd9db3c39a"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json.gz": {
+    "bytes": 466,
+    "sha256": "88b7f863ea7d9d41f174d1e8cfa5677d8776729c4af91cacac5b13feff7638f2"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/messages.po.gz": {
+    "bytes": 317,
+    "sha256": "8bd36d7af267a19b6b58be4338ed8c87a9cd3b820e0e2a43f8d89173a592818b"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases.json.gz": {
+    "bytes": 30896,
+    "sha256": "97df4d0647915047ba136c0f64324e5cb95cd383695bbb45cbd8bfa41a062312"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases.py.gz": {
+    "bytes": 2632,
+    "sha256": "2eb4285a14fa385ab0f78c064fc8a4be953a78e8457836612538e868e8e920b7"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py.gz": {
+    "bytes": 2137,
+    "sha256": "63530fede702daed1105db67c1ac52cd41397d11793009ef3737c6c6ac3d0fef"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/png-decoder.py.gz": {
+    "bytes": 900,
+    "sha256": "cfe3c379703f4ecb087fff07888e5e1bed3660f238d28fde3f4cb88929412aae"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/provenance.json.gz": {
+    "bytes": 7161,
+    "sha256": "b3ae403cb74ebdff7a3103a67499338079a96d51d5a7bd513ea51c43a404b658"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz.gz": {
+    "bytes": 11965,
+    "sha256": "6d35865bb2164667055a56250db70ccd1011c6f69e99552ed67aca3d3b9f956e"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG.gz": {
+    "bytes": 38,
+    "sha256": "c91815b7149b5f25f6bd4266d4b4f34da5eab3ad852c1cd765b14e20626a371b"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE.gz": {
+    "bytes": 648,
+    "sha256": "be6d207e551f26c1c70d6b67a5e43715cf5dbc93c02ee6fc55d5dfd6d0d0132d"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/utility-check.py.gz": {
+    "bytes": 5006,
+    "sha256": "064715c3068e003216eafac823f6999e926425f48f00030a5dda2232aec8bdb9"
+  },
+  "postapply/MANIFEST.json.gz": {
+    "bytes": 573,
+    "sha256": "6ad335970246493f2285e6cc885c56f061bff985cb9da47cd89eb9d0cb318bef"
+  },
+  "postapply/PRESERVATION-REBIND.json.gz": {
+    "bytes": 3110,
+    "sha256": "811f45827bc2d26d5597da78c9bc2a854ad521b17b7ddc810301c24bab574011"
+  },
+  "postapply/REVIEW.json.gz": {
+    "bytes": 1403,
+    "sha256": "1aecc1cf325325856b2d44bc35327a291311538547a35b56e2e986f6aa7cc9e6"
+  },
+  "postapply/SOURCE-MANIFEST.json.gz": {
+    "bytes": 560,
+    "sha256": "e1184dcf43360bfabd44816ac58d814f6141f6ebae20fb9bb4869328ffd14de2"
+  },
+  "postapply/applied-delta.diff.gz": {
+    "bytes": 655,
+    "sha256": "586e950e7ebc4b027b1fc111eee6aace229db15de6c1983ede772f6d5e14c6ba"
+  },
+  "postapply/checkout-observation.json.gz": {
+    "bytes": 538,
+    "sha256": "42b89b35f565a5585e26f3b168e025320770f5d04d75a180f739057b321ea304"
+  },
+  "postapply/inventory-job-metadata.json.gz": {
+    "bytes": 1034,
+    "sha256": "a08fcecf588812af6f9b6edd722821aa1ec9f295f5da76879ea0eb4a58317b1b"
+  },
+  "postapply/root-Go-RESULT.json.gz": {
+    "bytes": 1589,
+    "sha256": "79de4961e3b639694e1bebad4e41139e5c756bfa4c8e929dc3e3c4a9ec7e6160"
+  },
+  "postapply/root-routing22.log.gz": {
+    "bytes": 55,
+    "sha256": "e61f8115a8df9d57102c012d164914216a8d0ea7dd494f0b73020c2e21ac6b61"
+  },
+  "root-checkout-budget-tests.log.gz": {
+    "bytes": 55,
+    "sha256": "e61f8115a8df9d57102c012d164914216a8d0ea7dd494f0b73020c2e21ac6b61"
+  },
+  "root-go/RESULT.json.gz": {
+    "bytes": 1589,
+    "sha256": "79de4961e3b639694e1bebad4e41139e5c756bfa4c8e929dc3e3c4a9ec7e6160"
+  },
+  "root-go/SCOPE.json.gz": {
+    "bytes": 1489,
+    "sha256": "09694e00ac57e904579bfa5663dc6ad71af6ee6b8a73eeb40c4eae806007715a"
+  },
+  "root-go/build-lint-PROCESS.json.gz": {
+    "bytes": 125,
+    "sha256": "044afec4ef040392583d6700472a9986eb079433c32f99dcfb64b4dd834f81a0"
+  },
+  "root-go/build-lint-RESULT.json.gz": {
+    "bytes": 199,
+    "sha256": "ce5f244286f94313e37a06940487727efacc163ba379e3c92972ed4cd36221be"
+  },
+  "root-go/build-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "root-go/build-unit-PROCESS.json.gz": {
+    "bytes": 104,
+    "sha256": "36bb1566a5b030c61f77ca4243a87d470e8314897343e57388d4b3c3c16917c4"
+  },
+  "root-go/build-unit-RESULT.json.gz": {
+    "bytes": 182,
+    "sha256": "3e51e646e9f7763d1990dc101c471feb3bec4cb7ac76389aabffbdfee7794cdf"
+  },
+  "root-go/build-unit.log.gz": {
+    "bytes": 80,
+    "sha256": "dfffb2ebc55609475288eb136ed16ea665ed3c1c2f3d981540bdb5934bd45320"
+  },
+  "root-go/run.py.gz": {
+    "bytes": 1950,
+    "sha256": "424a55ba6321fb160c4f5f2fb099b9d43bb200ba0777e21cd454285561a528e0"
+  },
+  "source/ADDON-FINAL-CHECKS.json.gz": {
+    "bytes": 511,
+    "sha256": "e86a5c4514a0a3eafe392cd5a91616a1a363228e0e9178ff9aeaac5c2789d9d9"
+  },
+  "source/BASELINE.json.gz": {
+    "bytes": 3466,
+    "sha256": "a6586294d202a883e7f1dd28cca6f36ae9b57c7bf72c3cd20d899b5e778b4610"
+  },
+  "source/CONTEXT-INPUTS.json.gz": {
+    "bytes": 3804,
+    "sha256": "696a3869eba0bda7882d77374690db4e2653f617f7ca3e49729201906d21c41b"
+  },
+  "source/DATED-CORRECTIONS.json.gz": {
+    "bytes": 909,
+    "sha256": "a528c16a93330117d058f377ab334091cd7e6573f180904001143d317f29d4ec"
+  },
+  "source/FINAL-CHECKS.json.gz": {
+    "bytes": 388,
+    "sha256": "5921015c2db8aabd2caef3b0585596c6dfed185fa01e056827d8fc0579a6c8c3"
+  },
+  "source/FROZEN-FIXTURE-GUARD.json.gz": {
+    "bytes": 3099,
+    "sha256": "a8bf50096b2f74c8958a8748bf0b0d4ed7c7e3b05dffb5e42d50c813086b0d0f"
+  },
+  "source/INITIAL-CHECKS.json.gz": {
+    "bytes": 297,
+    "sha256": "86035856ada56845a6b1c23a8cebdf209790b023aeb4a9fe6c70f796b5877c01"
+  },
+  "source/MANIFEST.json.gz": {
+    "bytes": 5754,
+    "sha256": "1bc81e44be70ab05ed7548b59921b1eaad8d5bd24778788ac994baf407ca1f3e"
+  },
+  "source/ORIGINAL28-READONLY-HASHES.json.gz": {
+    "bytes": 284,
+    "sha256": "36e33056fb2ece6371470d7695d83f260ed918d93257d6de3c2d4a82ef66fb74"
+  },
+  "source/POSITIVE9-GUARD.json.gz": {
+    "bytes": 771,
+    "sha256": "b074db83a42449d5ea53a0d65a82fa72a87b7649439f21f2cb582f99d749840b"
+  },
+  "source/PRESERVATION-GUARD.json.gz": {
+    "bytes": 1428,
+    "sha256": "730971bb25f8b8b800794f659ebb5774a121e6aadd9db8dbc0053c5e858fc802"
+  },
+  "source/REVIEW.json.gz": {
+    "bytes": 3053,
+    "sha256": "a52ab68edb41e4bf0e1fee17e75448ecb345129e339c5221305f68c5e013dd85"
+  },
+  "source/SOURCE-MANIFEST.json.gz": {
+    "bytes": 562,
+    "sha256": "c29afb18abd9257d7c83bbd35e1338e355d17139a6b7e8d34b9787edf28673b5"
+  },
+  "source/actionlint-final.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "source/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "40de8265c1c75e5d270bdda7316675737fd61a58a8b3853f721d13a96a833adf"
+  },
+  "source/addon-host-closure-final.log.gz": {
+    "bytes": 760,
+    "sha256": "06c01e1a205b254d633f88ef9f1ab440dd76fbb17ba1551bc6f62492e11a3ec3"
+  },
+  "source/addon-host-final.log.gz": {
+    "bytes": 760,
+    "sha256": "06c01e1a205b254d633f88ef9f1ab440dd76fbb17ba1551bc6f62492e11a3ec3"
+  },
+  "source/addon-host-initial.log.gz": {
+    "bytes": 641,
+    "sha256": "3442da674c3cd4ff83ea884965ece31efcc27780875bb6279be9e5cb9aaf632b"
+  },
+  "source/before/.github/scripts/native-common-qualify.py.gz": {
+    "bytes": 7016,
+    "sha256": "e18dd0c094bb534dd2b0dfe2a16ce638954f8240f17b64af2d13841d4ae9503d"
+  },
+  "source/before/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "bytes": 10002,
+    "sha256": "c1841943ac77be4dda4604043450bdd3aab441fb4ee69ea9aa05a09659f84e1e"
+  },
+  "source/before/.github/workflows/native-common-image.yml.gz": {
+    "bytes": 2609,
+    "sha256": "dbe63f5aff1315c8217638e65af79c489feda882dabace4bf7125225a66f70c1"
+  },
+  "source/initial-common-distutils-assumption-check.py.gz": {
+    "bytes": 4484,
+    "sha256": "e83b5f52c54164b63d0fa5a97c422f2a9f109c69bbe9e449d125c5df14ba2e08"
+  },
+  "source/initial-common-distutils-assumption-check_test.py.gz": {
+    "bytes": 4007,
+    "sha256": "75f6a771503b3b26b51c8f4e1b007d667e5cba858a219e837529b89d63769741"
+  },
+  "source/initial-weak-explicit-check.py.gz": {
+    "bytes": 4206,
+    "sha256": "1a36401949086f55f360d94a6b9c10aaaad9204ad71922851312136e26ff42f8"
+  },
+  "source/initial-weak-explicit-check_test.py.gz": {
+    "bytes": 3490,
+    "sha256": "387c13734887605fc555171a1831ca7a9e30ea290e36debdbcb94e127d667bc4"
+  },
+  "source/node-syntax-final.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "source/node-syntax.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "source/old-node-host.log.gz": {
+    "bytes": 478,
+    "sha256": "186bdc801f86768a521e0b414524b8ef2616be3d7ec7dc74341cccf6adc672f3"
+  },
+  "source/positive-projects/14.21.2/npm-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "01405a3264cd1ab974fb0ae906b9d4263905cf7ea6de68bcbc7890b932bb22f5"
+  },
+  "source/positive-projects/14.21.2/pnpm-project/package.json.gz": {
+    "bytes": 191,
+    "sha256": "d08fe448d5923084d111d0013bdcf787a966159aae1550727940de2b45f17800"
+  },
+  "source/positive-projects/14.21.2/yarn-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "1c4fbb290d41b2d4508f6e3c2635b79fbe59802531085efd0707a10144e0d335"
+  },
+  "source/positive-projects/16.20.2/npm-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "0cd237f1c31b981f726d1989e53587052d1cceae5a3f8f7b598515f7ea029be2"
+  },
+  "source/positive-projects/16.20.2/pnpm-project/package.json.gz": {
+    "bytes": 191,
+    "sha256": "b14a8bad47b30a5fbe148ef51c45b2b33d639395744dbc35e61a9c5d2ccf65ab"
+  },
+  "source/positive-projects/16.20.2/yarn-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "2e0c9b326107cbef284a68e27820fa7207fd1586f243a86c5d0bff8f364169df"
+  },
+  "source/positive-projects/26.12.1/npm-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "ebb143dd0b7b9a7326e7ef39b62175f51274de093e7c5ab93df38fe55134ba4a"
+  },
+  "source/positive-projects/26.12.1/pnpm-project/package.json.gz": {
+    "bytes": 192,
+    "sha256": "a54db16dcd932a96911eeeca91ddb89d4c848f6e22be9dd901adbf1ece7bfb57"
+  },
+  "source/positive-projects/26.12.1/yarn-project/package.json.gz": {
+    "bytes": 168,
+    "sha256": "2f85d8eb6c65e3ce25f5025d54ccd345b3bdfbc1bae18f01e4fb6e325dd8bbe9"
+  },
+  "source/routing-host-final.log.gz": {
+    "bytes": 954,
+    "sha256": "53621be2466b6211ca85b571a2abb08e44bc779263146359c788564e177a89e1"
+  },
+  "source/routing-host-initial.log.gz": {
+    "bytes": 955,
+    "sha256": "987e02bd783105659f320092d6edd28c9030edd010c38fa9305d2f87254e072a"
+  },
+  "source/source/.github/scripts/native-common-qualify.py.gz": {
+    "bytes": 7163,
+    "sha256": "6f4120e755191025d1c460c7871ddc5b57a2f6e2cef22a442e430e145705f6b3"
+  },
+  "source/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "bytes": 10080,
+    "sha256": "d9c24ca40b9f5ef547c85de282732ccaa64cc73d39fcc55f40b56049474554dd"
+  },
+  "source/source/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  },
+  "source/source/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "source/source/.github/workflows/native-common-image.yml.gz": {
+    "bytes": 2615,
+    "sha256": "f89b2ec8b02dc6234318fde4d0d4d2c31edaad9ffb79093fb476a6e985d8a318"
+  },
+  "source/source/lego/operator/internal/build/native.go.gz": {
+    "bytes": 10628,
+    "sha256": "0681d0c9de6eaddfe77b55e27eb91f51cbddb76d5271efa408d1e36daaa502f9"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "bytes": 3708,
+    "sha256": "7a463fb83a356af667f3c6a663e5ec0068330cbed03a145d9eb480dc3296c080"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "bytes": 3995,
+    "sha256": "595cd44c7778ff26a03c800811a791f897eca009e2f6a2e132166f6731323b26"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "bytes": 3589,
+    "sha256": "b8bb6bd9ce827e47f28d25b79a65f606a43f031793d44ebecfdc0dc2d87e472e"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "bytes": 4083,
+    "sha256": "c4b33f1fb99606063f87eb76d7d02100d430ed5f2d314f1ccfc5862ae032f782"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "bytes": 5293,
+    "sha256": "edc529fe4795f8da8458aaf00708e00bb9dd28afe3a91ec4fe83a9c7f865c9ec"
+  },
+  "source/source/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "bytes": 2676,
+    "sha256": "1bcf998c9504f6d53c000ea734d6f8fa62ed03e69af400ffd2bce14db30cace7"
+  },
+  "source/source/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "bytes": 2931,
+    "sha256": "25af7758f296d97f50722402852a1a708f6c13e3ecbfdb885f2220d9939fe679"
+  },
+  "source/source/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "bytes": 9683,
+    "sha256": "907df8a7e3be2e269a87a2ed8687efa81ecb44c0b5a425442e08c3487e1f77e7"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js.gz": {
+    "bytes": 567,
+    "sha256": "de76cbcd128c88ab381120457d674a14889898c5d9d1994e0b4dd48fdb4a4d7a"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py.gz": {
+    "bytes": 5059,
+    "sha256": "30f19f6629bcb84db6c7c30da07d3e7a1d20f8027948adc526e1eee4c29b8b8a"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py.gz": {
+    "bytes": 4164,
+    "sha256": "df158bf42bdbd95ced408afa944857eb3091fa1138580394f9407cfa98a88523"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "bytes": 476,
+    "sha256": "5a01b521475363dd5cff843027dd90dedbef39ccd7c0fb60117eea41bfd77f5a"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "bytes": 1311,
+    "sha256": "784b0fd7bcde7f813fb2441e9436c4f66074b453a59a1769a87008e2fb8fa1e8"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "bytes": 4236,
+    "sha256": "e122e21e02f976422682943e7facf24fbde4bb0897bce662994a9bbc0eabc398"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "bytes": 3140,
+    "sha256": "96aef444f04950d1ee9c8f977b8357e19d8005a3e86e261c9d9a153345491df8"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "bytes": 89,
+    "sha256": "aa59ee4342526c685caf0304a3cf590c10e2cb4f113406a1328274bbe2070d83"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/addon.c.gz": {
+    "bytes": 311,
+    "sha256": "71361f1095835d7a21f4932baec31578e898da81ef807e3c51d2c1509d869377"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp.gz": {
+    "bytes": 73,
+    "sha256": "296f69e0cb82708d24c9150d819fea8247a89e36b38cfbc7691885baa030e4fd"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/check-build.py.gz": {
+    "bytes": 808,
+    "sha256": "841cb05fabd82ed3958a3127407c9f6b938b16a23f843968ffeb7a6a6b3d17e3"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/check.js.gz": {
+    "bytes": 309,
+    "sha256": "b5c01677a35827fe2fcb5b1bc4792f3af362d4982654056e29e4709b5da56c1a"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/package.json.gz": {
+    "bytes": 101,
+    "sha256": "409a98464a21b4af34b74f6b37e33675879b17de30671855d2511b2b775f3196"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py.gz": {
+    "bytes": 723,
+    "sha256": "de762b79bf1748782531ba884c22a34cca696d4c493db295ca4d37d759f7acd9"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py.gz": {
+    "bytes": 343,
+    "sha256": "d5ffe35e97a17f04942953bf882f78c5da5fed715cede424f68acbf607dffcaa"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py.gz": {
+    "bytes": 687,
+    "sha256": "98664f4fef991def4b6617a259ff8a48c179659d22a081cbdd1143639714624e"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py.gz": {
+    "bytes": 317,
+    "sha256": "47f0b41918d4cc8a97efa2ece4fa5a158810f251a4451975376a9131ef6efe62"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py.gz": {
+    "bytes": 953,
+    "sha256": "637ca3b7cf819f8a7124bca556451a2cf1a3634e53e70b4740adef75307533ed"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py.gz": {
+    "bytes": 380,
+    "sha256": "3407fe6a800a45169b06d44ccdf90b53e20746cc43950f52839885991d7a78ee"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py.gz": {
+    "bytes": 735,
+    "sha256": "82cb072ab2817e7505572dbca96c911326a30c9951f0c77f971454d2d7ed1bff"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py.gz": {
+    "bytes": 417,
+    "sha256": "78d7f5c5ca69e2533d63c34e42ed967216f3909193fca048bf1ea363ecbf14a9"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py.gz": {
+    "bytes": 1257,
+    "sha256": "198ee3c74979c90d6dce2edb1eff70e59c8f233be49473abc577dea82b56544d"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py.gz": {
+    "bytes": 196,
+    "sha256": "e007eeca6186cb5d2701bd1a11e7fe5e47d343eda03c3c014537d134792c8820"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py.gz": {
+    "bytes": 491,
+    "sha256": "c4ed753f707ea976ffca03097ee46a3ac850ca0e87fe999b0c362a6a54ff91c4"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64.gz": {
+    "bytes": 1057,
+    "sha256": "efc228e5fd1ce31b920e8a42e3ee2c43000d07c108b64e540248d2b0c82d4752"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py.gz": {
+    "bytes": 334,
+    "sha256": "cbb6e9a1436d66556ef607282cc854dabe1637c87c7d746fc67fde379db66d04"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py.gz": {
+    "bytes": 737,
+    "sha256": "a92c6b8d497ad68a2c83a479fb832598e697a63fc0382714a889c86dd9c74005"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py.gz": {
+    "bytes": 499,
+    "sha256": "09fcb7b69df61fd7309c9cde4f710083cf07ca5ac289b52575de3b2a8fafa529"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py.gz": {
+    "bytes": 390,
+    "sha256": "2d8308a64054a826e494a9ea53f09de095cb0c503a29018c483dadbe5bc8b37d"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py.gz": {
+    "bytes": 351,
+    "sha256": "d300e4f17373d6c837cd60719ff672c279654807cd558c72d7fbb0d9cd0ef5f4"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py.gz": {
+    "bytes": 768,
+    "sha256": "cf2bed63757c3e0822510cec3752d2a5fe75ac68f2cc2ae3cac840025e52e86b"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py.gz": {
+    "bytes": 557,
+    "sha256": "1c4559cdf7e15a934e0c1cfb6e866d7c16c32b85257bf6ebcb9912814c4dd867"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py.gz": {
+    "bytes": 372,
+    "sha256": "ca6a6180e5ebef7ee9b821b4469ba057a9d179a0bfe632275ed3d12ad303fe48"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py.gz": {
+    "bytes": 903,
+    "sha256": "3920a17791f34d9f8a0c2f62a5197be781e8e2fb56e0f8903b762b6beb6aeeca"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py.gz": {
+    "bytes": 422,
+    "sha256": "0b4497f696cfa0a87cb340cfa70e5e0cb6deed506b85596b33a390ccc1585088"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py.gz": {
+    "bytes": 894,
+    "sha256": "0fb65e8a841bda2cdeb7736dca55e7efa1b868339570e910cf7feb543da4c06b"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py.gz": {
+    "bytes": 557,
+    "sha256": "1c4559cdf7e15a934e0c1cfb6e866d7c16c32b85257bf6ebcb9912814c4dd867"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py.gz": {
+    "bytes": 272,
+    "sha256": "c8905fd7d222f578a0306578384c53cfaaf74a823434964856df89af40e3b6a6"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py.gz": {
+    "bytes": 682,
+    "sha256": "b5e55239a399be46cc98f550c38fa35078ca2c703ed1ff69bf19e61492d0e106"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py.gz": {
+    "bytes": 447,
+    "sha256": "44c722d9ee1bdfc3648547d8d42dbbc2f1f728788dde4aa0eac7eac1b6429ea5"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py.gz": {
+    "bytes": 678,
+    "sha256": "5d7668ec3a1802ecbdfdc623610fd0067b5477a3c3f5aa3aa9085ac44550a7a8"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py.gz": {
+    "bytes": 299,
+    "sha256": "4422e5235656440fbe0141d1e7776994202bed79daf9f14d12607edd9db3c39a"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json.gz": {
+    "bytes": 466,
+    "sha256": "88b7f863ea7d9d41f174d1e8cfa5677d8776729c4af91cacac5b13feff7638f2"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/messages.po.gz": {
+    "bytes": 317,
+    "sha256": "8bd36d7af267a19b6b58be4338ed8c87a9cd3b820e0e2a43f8d89173a592818b"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.json.gz": {
+    "bytes": 30896,
+    "sha256": "97df4d0647915047ba136c0f64324e5cb95cd383695bbb45cbd8bfa41a062312"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py.gz": {
+    "bytes": 2632,
+    "sha256": "2eb4285a14fa385ab0f78c064fc8a4be953a78e8457836612538e868e8e920b7"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py.gz": {
+    "bytes": 2137,
+    "sha256": "63530fede702daed1105db67c1ac52cd41397d11793009ef3737c6c6ac3d0fef"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/png-decoder.py.gz": {
+    "bytes": 900,
+    "sha256": "cfe3c379703f4ecb087fff07888e5e1bed3660f238d28fde3f4cb88929412aae"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/provenance.json.gz": {
+    "bytes": 7161,
+    "sha256": "b3ae403cb74ebdff7a3103a67499338079a96d51d5a7bd513ea51c43a404b658"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz.gz": {
+    "bytes": 11965,
+    "sha256": "6d35865bb2164667055a56250db70ccd1011c6f69e99552ed67aca3d3b9f956e"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG.gz": {
+    "bytes": 38,
+    "sha256": "c91815b7149b5f25f6bd4266d4b4f34da5eab3ad852c1cd765b14e20626a371b"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE.gz": {
+    "bytes": 648,
+    "sha256": "be6d207e551f26c1c70d6b67a5e43715cf5dbc93c02ee6fc55d5dfd6d0d0132d"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/utility-check.py.gz": {
+    "bytes": 5006,
+    "sha256": "064715c3068e003216eafac823f6999e926425f48f00030a5dda2232aec8bdb9"
+  },
+  "source/source.diff.gz": {
+    "bytes": 13920,
+    "sha256": "303c98f436fe1db2d1844771926cc45a8874d66d192d56365649508200bf2424"
+  },
+  "source/verify.py.gz": {
+    "bytes": 1829,
+    "sha256": "58324f646f0269c119ebc44e84c2714d962af1373047d78c18536d5118bca451"
+  }
+}

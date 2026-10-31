@@ -432,7 +432,7 @@ class ProfileRoutingControls(unittest.TestCase):
         return "\n".join(lines) + "\n"
 
     def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
-        expected = {"node": (8, 90, 120), "modern-python": (5, 110, 140),
+        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "modern-python": (5, 110, 140),
                     "legacy-python": (2, 110, 140), "ruby": (8, 75, 105),
                     "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
         self.assertEqual(set(qualification.PROFILES), set(expected))
@@ -460,7 +460,7 @@ class ProfileRoutingControls(unittest.TestCase):
         def table_lines(runtime):
             block = table.split(runtime + ": {", 1)[1].split("\n\t}},", 1)[0]
             return re.findall(r'\{line: "([^"]+)"', block)
-        paths = {"node": "nativecommon_node_qualification_test.go", "modern-python": "nativemodern_python_test.go",
+        paths = {"node-addon": "nativecommon_nodeaddon_qualification_test.go", "node": "nativecommon_node_qualification_test.go", "modern-python": "nativemodern_python_test.go",
                  "legacy-python": "nativelegacy_python_test.go", "ruby": "nativecommon_ruby_test.go",
                  "go-rust": "nativecommon_gorust_test.go", "elixir": "nativecommon_elixir_qualification_test.go",
                  "native-init": "nativequalification_init_test.go"}
@@ -469,7 +469,11 @@ class ProfileRoutingControls(unittest.TestCase):
             test, flag, cases, _, _ = qualification.PROFILES[profile]
             self.assertIn("func " + test + "(t *testing.T)", raw)
             self.assertIn('"' + flag + '"', raw)
-            if profile == "node":
+            if profile == "node-addon":
+                actual = re.findall(r'\{name: "([^"]+)", runtime:', raw)
+                self.assertIn('t.Run(tc.name,', raw)
+                self.assertNotIn('BEX_NATIVE_TEST_NODE14_TREE', raw)
+            elif profile == "node":
                 lines = re.search(r'for _, line := range \[\]string\{([^}]+)\}', raw)[1]
                 actual = ["node-" + line for line in re.findall(r'"([^"]+)"', lines)]
                 actual += re.findall(r'commonNodeCase\{"([^"]+)",', raw)
