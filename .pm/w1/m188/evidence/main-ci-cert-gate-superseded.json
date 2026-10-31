@@ -1,0 +1,43 @@
+{
+  "schema": "bex.m188.main-ci-certificate-gate-countercheck/v1",
+  "observed_at": "2026-10-31T07:46:18.408466+00:00",
+  "checked_revision": "25a222016460060ba0f33fdbffca2655fd436526",
+  "fix_revision": "e12166f3787f74403a694dcd65ba7238e1634f64",
+  "decision_source": "docs/ADR093-onbex-wildcard-tls.md records accepted user decision and token provisioning by another workstream",
+  "historical_intake": {
+    "path": ".pm/w1/m188/evidence/main-ci-cert-renewal-intake.json",
+    "sha256": "4ab29fcf7ace9a3b67ec021f9af79ce72580bbdbe988fabb86e04ff58053b08a",
+    "unchanged": true
+  },
+  "source_state": {
+    "manual_PEM_30_day_preflight_removed": true,
+    "replacement": "cert-manager namespaced Cloudflare DNS-01 Issuer/Certificate; token preflight plus trusted edge/14-day validity probe",
+    "source_gate_superseded": true,
+    "runtime_files_and_publisher_inputs_changed_by_fix": false
+  },
+  "observed_root_tool_results": {
+    "metadata_command": "gh secret list --env production-deploy --json name,updatedAt",
+    "token_name_present": true,
+    "token_updated_at": "2026-10-31T06:49:10Z",
+    "secret_values_read": false,
+    "old_two_PEM_secret_names_still_present": true,
+    "edge_command": "bash scripts/onbex-default-tls-verify.sh notfound.onbex.co",
+    "edge_exit_code": 0,
+    "edge_certificate_SAN": [
+      "*.onbex.co"
+    ],
+    "edge_certificate_not_before": "2026-09-01T01:00:07Z",
+    "edge_certificate_not_after": "2026-11-30T01:00:06Z",
+    "edge_HTTP_status": 404,
+    "new_certificate_issuance_proven": false,
+    "private_key_read": false
+  },
+  "replacement_deploy_snapshot": {
+    "run_id": 41178940668,
+    "head_sha": "e12166f3787f74403a694dcd65ba7238e1634f64",
+    "status": "queued",
+    "updated_at": "2026-10-31T07:35:54Z",
+    "url": "https://github.com/bex-co/bex/actions/runs/41178940668"
+  },
+  "scope": "Supersedes the earlier request for manually renewed certificate/key files. The token name exists and current public edge passes the accepted replacement probe, but issuance and the queued replacement deployment are not proven. Final m188 acceptance still requires all eleven pins, six real fixtures, signed adopted-source operator and actual new Ready/census. No secret/DNS/cluster/CI mutations were made by these checks."
+}
