@@ -1,0 +1,255 @@
+{
+  "started_at": "2026-10-31T10:11:46.018953+00:00",
+  "completed_at": "2026-10-31T10:19:19.985734+00:00",
+  "actual_returncode": 0,
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v11.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "golang-1.27-bookworm",
+    "--sha",
+    "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+    "--run",
+    "41142870861",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-go127-v11-8af9306-20261031",
+    "--layer-workers",
+    "2"
+  ],
+  "executed_source_sha256": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "log": "/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/v11-case-attempt1.log",
+  "resource_policy": {
+    "minimum_free_bytes": 2147483648,
+    "maximum_owned_case_bytes": 2147483648,
+    "proactive_free_stop_bytes": 2281701376,
+    "proactive_owned_stop_bytes": 2080374784,
+    "poll_seconds": 2,
+    "maximum_elapsed_seconds": 7200,
+    "termination_scope": "Only the new local subprocess session/process group created by this supervisor; no CI or other process"
+  },
+  "minimum_observed_free_bytes": 6456999936,
+  "maximum_observed_owned_bytes": 113963378,
+  "stopped_reason": null,
+  "resource_observations": [
+    {
+      "at": "2026-10-31T10:11:46.021617+00:00",
+      "free_bytes": 7247077376,
+      "owned_bytes": 49359,
+      "actual_progress": null
+    },
+    {
+      "at": "2026-10-31T10:12:16.141736+00:00",
+      "free_bytes": 7204225024,
+      "owned_bytes": 39039156,
+      "actual_progress": {
+        "at": "2026-10-31T10:11:54.433166+00:00",
+        "stage": "anonymous-immutable-bundle-download",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm"
+      }
+    },
+    {
+      "at": "2026-10-31T10:12:46.263839+00:00",
+      "free_bytes": 7158538240,
+      "owned_bytes": 73651198,
+      "actual_progress": {
+        "at": "2026-10-31T10:12:30.287847+00:00",
+        "stage": "immutable-bundle-byte-progress",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69",
+        "downloaded_bytes": 22020096,
+        "expected_bytes": 23075627,
+        "attempt": 1
+      }
+    },
+    {
+      "at": "2026-10-31T10:13:16.362710+00:00",
+      "free_bytes": 7395282944,
+      "owned_bytes": 94638637,
+      "actual_progress": {
+        "at": "2026-10-31T10:13:08.120425+00:00",
+        "stage": "immutable-bundle-byte-progress",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3",
+        "downloaded_bytes": 17825792,
+        "expected_bytes": 27970939,
+        "attempt": 1
+      }
+    },
+    {
+      "at": "2026-10-31T10:13:46.456326+00:00",
+      "free_bytes": 7303659520,
+      "owned_bytes": 113912784,
+      "actual_progress": {
+        "at": "2026-10-31T10:13:42.834350+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395",
+        "expected_bytes": 23873246
+      }
+    },
+    {
+      "at": "2026-10-31T10:14:16.555677+00:00",
+      "free_bytes": 7048597504,
+      "owned_bytes": 113923456,
+      "actual_progress": {
+        "at": "2026-10-31T10:14:12.278978+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506",
+        "bytes_hashed": 19922944,
+        "expected_bytes": 48524552
+      }
+    },
+    {
+      "at": "2026-10-31T10:14:46.692764+00:00",
+      "free_bytes": 7042969600,
+      "owned_bytes": 113925944,
+      "actual_progress": {
+        "at": "2026-10-31T10:14:32.563997+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:82e0bb27ae78502103ed383ed33346f88a83943fb7bd93977850d5890ee8fb3b",
+        "expected_bytes": 71150395
+      }
+    },
+    {
+      "at": "2026-10-31T10:15:16.835412+00:00",
+      "free_bytes": 7035334656,
+      "owned_bytes": 113941939,
+      "actual_progress": {
+        "at": "2026-10-31T10:15:13.284847+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d",
+        "expected_bytes": 247072410
+      }
+    },
+    {
+      "at": "2026-10-31T10:15:47.013435+00:00",
+      "free_bytes": 7026339840,
+      "owned_bytes": 113945044,
+      "actual_progress": {
+        "at": "2026-10-31T10:15:43.574359+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d",
+        "bytes_hashed": 85983232,
+        "expected_bytes": 247072410
+      }
+    },
+    {
+      "at": "2026-10-31T10:16:17.130063+00:00",
+      "free_bytes": 6899552256,
+      "owned_bytes": 113947824,
+      "actual_progress": {
+        "at": "2026-10-31T10:16:15.780234+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3",
+        "expected_bytes": 64528622
+      }
+    },
+    {
+      "at": "2026-10-31T10:16:47.274293+00:00",
+      "free_bytes": 6666059776,
+      "owned_bytes": 113949396,
+      "actual_progress": {
+        "at": "2026-10-31T10:16:44.386087+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d",
+        "bytes_hashed": 170917888,
+        "expected_bytes": 247072410
+      }
+    },
+    {
+      "at": "2026-10-31T10:17:17.427013+00:00",
+      "free_bytes": 6534717440,
+      "owned_bytes": 113950938,
+      "actual_progress": {
+        "at": "2026-10-31T10:17:15.004722+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d",
+        "bytes_hashed": 213909504,
+        "expected_bytes": 247072410
+      }
+    },
+    {
+      "at": "2026-10-31T10:17:47.571475+00:00",
+      "free_bytes": 6568058880,
+      "owned_bytes": 113962502,
+      "actual_progress": {
+        "at": "2026-10-31T10:17:41.009628+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290",
+        "expected_bytes": 253834573
+      }
+    },
+    {
+      "at": "2026-10-31T10:18:17.699290+00:00",
+      "free_bytes": 7244959744,
+      "owned_bytes": 113962824,
+      "actual_progress": {
+        "at": "2026-10-31T10:18:11.251521+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290",
+        "bytes_hashed": 127926272,
+        "expected_bytes": 253834573
+      }
+    },
+    {
+      "at": "2026-10-31T10:18:47.857053+00:00",
+      "free_bytes": 6471446528,
+      "owned_bytes": 113963101,
+      "actual_progress": {
+        "at": "2026-10-31T10:18:41.589328+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290",
+        "bytes_hashed": 169869312,
+        "expected_bytes": 253834573
+      }
+    },
+    {
+      "at": "2026-10-31T10:19:17.975795+00:00",
+      "free_bytes": 6584115200,
+      "owned_bytes": 113963378,
+      "actual_progress": {
+        "at": "2026-10-31T10:19:11.939929+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "golang-1.27-bookworm",
+        "digest": "sha256:07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290",
+        "bytes_hashed": 235929600,
+        "expected_bytes": 253834573
+      }
+    }
+  ],
+  "supervisor_sha256": "3e9eae0c82b9610d44d36062ff75ce29a8cebc3fd8bd82bbc991ca5e3ee15d02"
+}

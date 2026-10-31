@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-31T09:54:14.746305+00:00",
+  "complete_native_closure_equal_2cc": true,
+  "free_bytes": 8074752000,
+  "known_historical_run_count": 68,
+  "nonterminal_other_requests": [
+    {
+      "conclusion": null,
+      "job_id": 124498652791,
+      "job_status": "queued",
+      "run_id": 41187749759,
+      "run_status": "queued",
+      "runtime": "node-18-bookworm",
+      "source": "dbc493ba688c19758c9a489635761419fb2c1af6"
+    },
+    {
+      "conclusion": null,
+      "job_id": 124367871533,
+      "job_status": "in_progress",
+      "run_id": 41144656779,
+      "run_status": "in_progress",
+      "runtime": "elixir-1.20",
+      "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2"
+    }
+  ],
+  "official_base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+  "only_execution_payload_change": "Top-level return_run_details:true; runtime and ref unchanged.",
+  "original_payload_sha256": "21c7df96e645af8269db28835c5425e09aa2115d725d57cfc53ba94f22ce37f9",
+  "request_headers": {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  },
+  "source_immediately_before_POST": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+  "target": "python-3.11-bookworm",
+  "target_duplicate": false,
+  "total_inventory_runs": 87
+}

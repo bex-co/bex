@@ -1,0 +1,253 @@
+{
+  "frozen_at": "2026-10-31T10:19:30.976807+00:00",
+  "result": "ONE_COMPLETE_STRICT_SUPPLIER_ARTIFACT_VALIDATION_EXIT0",
+  "root_artifact_review_pending": true,
+  "case_attempt": 1,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+  "official_base": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+  "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "producer": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "producer_mode": "fresh-build",
+  "run": "41142870861",
+  "job": 124361678277,
+  "actual_exit": 0,
+  "all_five_full_bundles_strict_PKI_tlog_TSA": true,
+  "actual_wrong_source_and_subject_controls_rejected": true,
+  "distinct_TUF_roots": 7,
+  "two_architecture_report_pairs_bound_independently": true,
+  "unique_fresh_full_blob_count": 31,
+  "unique_fresh_full_blob_bytes": 1216838007,
+  "prior_receipt_reuse_bytes": 0,
+  "actual_body_GET_count": 31,
+  "actual_range_resume_cases": 0,
+  "manual_decompressed_layer_reads": 0,
+  "actual_package_findings_by_architecture": {
+    "amd64": {
+      "spdx_package_count": 641,
+      "primary_ENV": "GOLANG_VERSION=1.27.3",
+      "selected_actual_spdx_packages": [
+        {
+          "name": "go",
+          "versionInfo": "1.27.3",
+          "SPDXID": "SPDXRef-Package-binary-go-d8a495867dd870f4"
+        },
+        {
+          "name": "libbrotli1",
+          "versionInfo": "1.0.9-2+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-libbrotli1-d52d25912aba3a2c"
+        },
+        {
+          "name": "node",
+          "versionInfo": "24.22.1",
+          "SPDXID": "SPDXRef-Package-binary-node-c1437476c4665b77"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.26.4",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-37ebbf2d9af1004a"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-391a93a381592dc3"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-0c79462b41b03fe5"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-b423eb0c47e9635e"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-cccdaee79952fe8f"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-9a71e68a7e48ae36"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-d73eed94f8ecb5a8"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-df7a9d50a35684c2"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-609aa8f7bdc40805"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-421dc4117c4b504d"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-a51cb6b822871068"
+        },
+        {
+          "name": "unzip",
+          "versionInfo": "6.0-28+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-unzip-85cfa8a7e7da20b1"
+        }
+      ]
+    },
+    "arm64": {
+      "spdx_package_count": 639,
+      "primary_ENV": "GOLANG_VERSION=1.27.3",
+      "selected_actual_spdx_packages": [
+        {
+          "name": "go",
+          "versionInfo": "1.27.3",
+          "SPDXID": "SPDXRef-Package-binary-go-6971db3cdd276351"
+        },
+        {
+          "name": "libbrotli1",
+          "versionInfo": "1.0.9-2+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-libbrotli1-b48fb4dbfa3fa33d"
+        },
+        {
+          "name": "node",
+          "versionInfo": "24.22.1",
+          "SPDXID": "SPDXRef-Package-binary-node-336fc60471a043ff"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.26.4",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-fc0f60c4bbbcf05c"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-391a93a381592dc3"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-0c79462b41b03fe5"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-cbfeb482942978d2"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-f6d14eda01848cad"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-b648296cfa277281"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-be81780cf8677742"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-49eba2d328b121e0"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-a1bb95e200e5a569"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-8ab0d27899390e68"
+        },
+        {
+          "name": "stdlib",
+          "versionInfo": "go1.27.3",
+          "SPDXID": "SPDXRef-Package-go-module-stdlib-131ca7f120c2acfd"
+        },
+        {
+          "name": "unzip",
+          "versionInfo": "6.0-28+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-unzip-9f1594fc67f5e5e5"
+        }
+      ]
+    }
+  },
+  "all_trivy_summaries_retained": {
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "config_digest": "sha256:36004d5cf414793334029832abe5f6941e386f23e215ae48d2de916cef2a2d72",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T08:42:57.751210009Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 13,
+        "vulnerability_count": 5690,
+        "severity_counts": {
+          "LOW": 2820,
+          "HIGH": 590,
+          "MEDIUM": 2164,
+          "UNKNOWN": 95,
+          "CRITICAL": 21
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ],
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "config_digest": "sha256:59613fcaabd6c01e030937a593792f8248a530529062d8e2375584c154615d36",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T09:00:07.285248513Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 13,
+        "vulnerability_count": 5690,
+        "severity_counts": {
+          "LOW": 2820,
+          "HIGH": 590,
+          "MEDIUM": 2164,
+          "UNKNOWN": 95,
+          "CRITICAL": 21
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ]
+  },
+  "resource_minimum_observed_free_bytes": 6456999936,
+  "resource_maximum_observed_owned_bytes": 113963378,
+  "resource_stop_reason": null,
+  "full_raw_signed_bundles_preserved": true,
+  "all_gzip_roundtrips_verified": true,
+  "receipt_sha256": "17976150fc2e472fbf1c9dc13e90bd2f6988770ecd47f269ba64b2aa0f53c4df",
+  "process_receipt_sha256": "f8d22f3dfc1feb431a6095c408558db4ca154f7dfe33a77ac88dbac15bf4f734",
+  "scope": "Published supplier identity/runtime/report/blob evidence only. All findings retained, no zero-CVE claim/waiver. Go1.27.3 supplier proves the explicit-unzip source8af publication only, never the failed99f artifact. Generated/hosted acceptance and common-base adoption remain separate. No catalog/adoption/repo/CI/Docker/resources changed. Twelve root-approved W8 suppliers and all prior failures/history remain unchanged. Root approval for this Go case is pending.",
+  "executed_source_hashes": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  }
+}

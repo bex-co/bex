@@ -1,0 +1,32 @@
+{
+  "actual_jobs": [],
+  "at": "2026-10-31T09:56:19.339822+00:00",
+  "binding_observed_at": "2026-10-31T09:57:54.318735+00:00",
+  "binding_raw_file": "native-binding-6.stdout",
+  "binding_read_started_at": "2026-10-31T09:57:53.703241+00:00",
+  "html_url": "https://github.com/bex-co/bex/actions/runs/41190693730",
+  "latest_actual_jobs": [
+    {
+      "conclusion": "success",
+      "id": 124506711820,
+      "name": "matrix",
+      "status": "completed"
+    },
+    {
+      "conclusion": null,
+      "id": 124506987325,
+      "name": "build (python-3.13-bookworm, python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307...",
+      "status": "queued"
+    }
+  ],
+  "native_job_id": 124506987325,
+  "native_job_runtime_bound": true,
+  "official_base_from_exact_reviewed_source_matrix": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+  "run_conclusion": null,
+  "run_id": 41190693730,
+  "run_status": "queued",
+  "scope": "Normal singleton source build requested. No job/candidate/supplier approval inferred.",
+  "source": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+  "status": "ACCEPTED_HTTP200_WITH_DOCUMENTED_RUN_ID",
+  "target": "python-3.13-bookworm"
+}

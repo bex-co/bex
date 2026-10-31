@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf",
+  "exit_code": 1,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf.bundle.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--digest",
+    "f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "0000000000000000000000000000000000000000",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h"
+}

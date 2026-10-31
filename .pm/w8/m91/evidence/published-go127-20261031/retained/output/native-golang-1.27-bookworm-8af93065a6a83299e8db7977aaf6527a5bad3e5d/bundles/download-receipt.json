@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:9f53ea6da3b5b3e29a88616fd33532537009bfcf01d7466ba079d15fd9659a4d",
+    "native_API_404": true,
+    "unselected_descriptor_count": 0
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:27bb12350901c587dab6372a4e8cb780b246119e3e0ddf3e24b2b496b68daa99",
+      "bundle_digest": "sha256:8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f",
+      "bundle_bytes": 27958295,
+      "path": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "d9f719160aa0030d23eb889bbd21ca5ea4587407c61afa9f95ade4f1379b27b4"
+    },
+    {
+      "manifest_digest": "sha256:5f7c83f314a8207007dd08f380f24af96e5b16acddeb4d321bf1bda1f1bed396",
+      "bundle_digest": "sha256:d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f",
+      "bundle_bytes": 23073463,
+      "path": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "1c05f4061b24eca42244ab84f79848160c25f7854ca13453413ca669e9c83bf7"
+    },
+    {
+      "manifest_digest": "sha256:a30c817f76472ef31460f3493f3987e3b647b80c002a8f738382661dbc5e7a42",
+      "bundle_digest": "sha256:7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69",
+      "bundle_bytes": 23075627,
+      "path": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "56138819badf6dc28c24f730c0613a49c7a0bb4e4341cde2009e96060063d0b6"
+    },
+    {
+      "manifest_digest": "sha256:fa784aed5c5406a3016caf5f548bda7fbf486a00e934b8af7ca9a6b0e7416cc1",
+      "bundle_digest": "sha256:797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3",
+      "bundle_bytes": 27970939,
+      "path": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "3f17a063a82e474f2ce098aeecbe50adc85c85a75de6b91ab853929e5097c133"
+    },
+    {
+      "manifest_digest": "sha256:fde86e1d1e176b2e31c8778fe0945048b56200ffd8de4cb9ac30744bfc4526fc",
+      "bundle_digest": "sha256:14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf",
+      "bundle_bytes": 9507,
+      "path": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "a77f6a26f7e5804a81423c04a4949264704ba7cb28d690beccaa7a2e2201b092"
+    }
+  ]
+}

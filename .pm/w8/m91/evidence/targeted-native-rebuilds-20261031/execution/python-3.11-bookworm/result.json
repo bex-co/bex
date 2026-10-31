@@ -1,0 +1,15 @@
+{
+  "actual_jobs": [],
+  "at": "2026-10-31T09:54:17.209324+00:00",
+  "html_url": "https://github.com/bex-co/bex/actions/runs/41190561558",
+  "native_job_id": null,
+  "native_job_runtime_bound": false,
+  "official_base_from_exact_reviewed_source_matrix": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+  "run_conclusion": null,
+  "run_id": 41190561558,
+  "run_status": "queued",
+  "scope": "Normal singleton source build requested. No job/candidate/supplier approval inferred.",
+  "source": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+  "status": "ACCEPTED_HTTP200_WITH_DOCUMENTED_RUN_ID",
+  "target": "python-3.11-bookworm"
+}

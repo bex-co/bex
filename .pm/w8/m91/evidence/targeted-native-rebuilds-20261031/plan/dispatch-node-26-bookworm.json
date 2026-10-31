@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "runtime": "node-26-bookworm"
+  },
+  "ref": "main"
+}

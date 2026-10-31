@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-31T10:11:45.980835+00:00",
+  "files": {
+    "reviewed-v11-strict-guards-result.json": "ae016e8c8e0fef97da8b491000371e55ca7fa81e2a1db3b0e38343a3d4524186",
+    "reviewed-v11-strict-guards.log": "56c287b57edf7dadc9bb49e5f7da435fb38919d548f2a5dabe681255be6d21f7",
+    "reviewed-v11-strict-guards.py": "a1367eec153bf2a1b8c04959ace8fec8aae0f9abc27d7745d8c2b411d5d47b26"
+  },
+  "scope": "Unchanged approved V11/ranged policy uses prior reviewed43-guard result. Copies were not re-executed or relabeled as new tests. Actual source/subject controls execute freshly in this case.",
+  "source": "/tmp/loopx-w8-native-controls-node22-v11-83c1e30-20261031"
+}

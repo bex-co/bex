@@ -1,0 +1,18 @@
+{
+  "run_id": "41142870861",
+  "url": "https://github.com/bex-co/bex/actions/runs/41142870861",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "job_id": 124361678277,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41142870861/job/124361678277",
+  "job_name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "success",
+  "recovery_selection_conclusion": "success"
+}

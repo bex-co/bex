@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-31T09:54:14.746433+00:00",
+  "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/dispatches",
+  "method": "POST",
+  "request_sha256": "b51179b19312c9f4f4705f64cfaf3a5e3e04f90d4a90cc6e3bb89b309f616b1b",
+  "rule": "Exactly one subprocess request. No mutation retry on any uncertainty/204. Resolve accepted run through reads."
+}

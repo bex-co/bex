@@ -1,0 +1,15 @@
+{
+  "actual_actions": "GET APIs, immutable source reads, local original-log rehash and private plan writes only. No dispatch/rerun/cancel, Git mutation, repo write, Docker, fixtures, payload download or cleanup.",
+  "at": "2026-10-31T09:36:28.193650+00:00",
+  "completed_process": {
+    "actual_exit_code": 0,
+    "dedupe_finalizer": "finalize-plan-current.py",
+    "exec_session": 31842,
+    "source_audit_script": "source-audit-new-main.py"
+  },
+  "factual_limits": "Snapshot describes actual queued/running states at09:35UTC. No future availability, throughput, start time or fix-success claim. Parent must fresh-guard main and duplicates before any authorized POST. A normal rebuilt green candidate still needs independent artifact review.",
+  "node22_artifact": "Separate frozen Node22 private proof remains unchanged and pending root disposition; no supplier approval granted by this planning receipt.",
+  "prior_preflight": "First main72e input audit passed, but final fresh-main guard observed0b and intentionally stopped before freeze. Original raw snapshots/receipt remain in stopped-preflight-main-advanced/.",
+  "source_resolution": "0b commit was not present in local object store; the local-tree probe correctly failed. The completed audit instead used its fresh public main ref, untruncated remote tree and compare ancestry. All selected files matched known2cc modes/Git blob IDs and locally read content hashes. No fetch/pull or worktree change.",
+  "task": "Read-only deduplicated normal-rebuild planning after one Node22 artifact verification"
+}

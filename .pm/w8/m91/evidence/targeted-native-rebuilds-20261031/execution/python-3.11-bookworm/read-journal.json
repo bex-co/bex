@@ -1,0 +1,82 @@
+[
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:09.819391+00:00",
+    "endpoint": "git/ref/heads/main",
+    "exit_code": 0,
+    "label": "preflight-main",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:09.320835+00:00",
+    "stdout_sha256": "82c6fadb1b5773e6a92aa651b06d6dc2aec7b154c9fb70700e037b07d4998340"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:11.189110+00:00",
+    "endpoint": "git/trees/d95dcd88505c5d6825343dbfbc74244242ccad25?recursive=1",
+    "exit_code": 0,
+    "label": "preflight-tree",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:09.819779+00:00",
+    "stdout_sha256": "fe6126316f6a1354c6a5dfe05a5ede04df2f5c993713bd650e3959e21ef91d27"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:13.270013+00:00",
+    "endpoint": "actions/workflows/native-base-image.yml/runs?per_page=100&page=1",
+    "exit_code": 0,
+    "label": "preflight-runs-page1",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:11.218880+00:00",
+    "stdout_sha256": "a42c45a62d8bcd7fd3bc06c0fbbf91b27a49096f5fa8f2185687f77ed09eb689"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:13.792125+00:00",
+    "endpoint": "actions/runs/41187749759/jobs?per_page=100",
+    "exit_code": 0,
+    "label": "preflight-jobs-41187749759",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:13.273731+00:00",
+    "stdout_sha256": "9cb3f2a50f680a4ba317692e5461dbc353ba5867857b0bbacf4d690078969176"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:14.343803+00:00",
+    "endpoint": "actions/runs/41144656779/jobs?per_page=100",
+    "exit_code": 0,
+    "label": "preflight-jobs-41144656779",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:13.792469+00:00",
+    "stdout_sha256": "63e67e45b19114e10a4031a7496633a3ef9e4d4f954cfb6a89bdced0ffdcd6ba"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:14.745315+00:00",
+    "endpoint": "git/ref/heads/main",
+    "exit_code": 0,
+    "label": "immediate-main",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:14.344378+00:00",
+    "stdout_sha256": "82c6fadb1b5773e6a92aa651b06d6dc2aec7b154c9fb70700e037b07d4998340"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:16.723382+00:00",
+    "endpoint": "actions/runs/41190561558",
+    "exit_code": 0,
+    "label": "accepted-run",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:16.189542+00:00",
+    "stdout_sha256": "cce6f5fd1192018239405b5f32c06188d460aa300304ebcb34e9ece5dfc97aa6"
+  },
+  {
+    "attempt": 1,
+    "ended_at": "2026-10-31T09:54:17.209060+00:00",
+    "endpoint": "actions/runs/41190561558/jobs?per_page=100",
+    "exit_code": 0,
+    "label": "accepted-jobs",
+    "method": "GET",
+    "started_at": "2026-10-31T09:54:16.723697+00:00",
+    "stdout_sha256": "b3dab5870ff3a8209160335de7c1077b89e461d875d9041ac9d8b8ed7c1666f6"
+  }
+]

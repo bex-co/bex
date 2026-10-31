@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "runtime": "python-3.11-bookworm"
+  },
+  "ref": "main"
+}

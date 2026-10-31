@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-31T09:35:19.636807+00:00",
+  "status": "STOPPED_BEFORE_PLAN_FREEZE",
+  "expected_main": "72eada0b35640a0569f4b3d8aeb89ee675cae360",
+  "observed_main": "0b138600b31ff4294651369109974a538a33310b",
+  "reason": "Fresh main changed; exact closure must be rebound. No dispatch/candidate/source action.",
+  "raw_files": [
+    {
+      "file": "final-queued.json",
+      "sha256": "c659e32033f06c8692e4d65cb5389df9ea352f103d016c18aaf443290cfe48d9",
+      "bytes": 11487
+    },
+    {
+      "file": "final-running.json",
+      "sha256": "85784b1243283dc2c2e980071b7282986a92f92938a7fd3e10f6c74eaf2e7b36",
+      "bytes": 23199
+    },
+    {
+      "file": "final-main-ref.json",
+      "sha256": "3deb83fbfe9b926a8c4def265bdc5a0d96e75f7af227350b9d9038c9ae3f6cee",
+      "bytes": 318
+    },
+    {
+      "file": "final-runs.json",
+      "sha256": "691258902bd73f887245a7fa47b0ad79c41df56902068d6704f60eb12da09d10",
+      "bytes": 1007598
+    }
+  ]
+}

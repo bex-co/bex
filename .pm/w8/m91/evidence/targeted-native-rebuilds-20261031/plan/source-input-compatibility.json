@@ -1,0 +1,350 @@
+{
+  "at": "2026-10-31T09:33:13.358978+00:00",
+  "current_and_fixed_complete_selected_input_closure_equal": true,
+  "current_native_inputs": {
+    ".github/native-base-recovery.json": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "12b915bb9ee3953768d77b3cce92ae0c426479db",
+      "mode": "100644",
+      "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "size": 4318
+    },
+    ".github/scripts/native-oci-stage.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "92107591aecc0452dba27da232ea91b03c83a9b3",
+      "mode": "100644",
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "size": 18041
+    },
+    ".github/scripts/test_native_oci_stage.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "343355aca472bd27a30b2d34148dc9366f6dcede",
+      "mode": "100644",
+      "sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "size": 18679
+    },
+    ".github/scripts/test_native_oci_workflow.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "ad46320408de8aee378b551d4c90c56f2b2b077e",
+      "mode": "100644",
+      "sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "size": 17915
+    },
+    ".github/workflows/native-base-image.yml": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "a1941034143c9acbfbd5b6c36b8e9e431853a2aa",
+      "mode": "100644",
+      "sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+      "size": 16530
+    },
+    "deploy/native-base/Dockerfile": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "ccf018f0f46a6f89aef03329fe52e233b56ef58e",
+      "mode": "100644",
+      "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "size": 2688
+    },
+    "deploy/native-base/bex-native-python-tools": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "ce192a671c38144f191b506baaffc75a42c8df5a",
+      "mode": "100644",
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "size": 301
+    },
+    "deploy/native-base/check-brotli.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "6ca42112ff14fed463004323b86eca8df3831faf",
+      "mode": "100644",
+      "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "size": 4029
+    },
+    "deploy/native-base/check-primary-python.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "5c8251ca52cee1deeed2b753b5c2f1e55ea9b660",
+      "mode": "100644",
+      "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "size": 5485
+    },
+    "deploy/native-base/check-tools.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "8140223ad18127367b27cf6c2ec4270e65227847",
+      "mode": "100644",
+      "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "size": 5099
+    },
+    "deploy/native-base/check.Dockerfile": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "029615b06e291d50e0056ce184a9cc88a9feba13",
+      "mode": "100644",
+      "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "size": 2210
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "171309cafe4652908e85687fd158761dff360322",
+      "mode": "100644",
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "size": 2686
+    },
+    "deploy/native-base/fetch_pgdg_key_test.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "8b5d152b31370770b31dd97a1bdc6b8ee9137711",
+      "mode": "100644",
+      "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "size": 2421
+    },
+    "deploy/native-base/fetch_python_tools_test.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "e2b732985a739553263f07773c6b83b1c82604f8",
+      "mode": "100644",
+      "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "size": 5558
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "c03257ad25fdb557120ef4884fc1277905a344d0",
+      "mode": "100644",
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "size": 2281
+    },
+    "deploy/native-base/install.sh": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "c0287ca950dee5973439adff7f4e508ba59c4600",
+      "mode": "100644",
+      "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "size": 2433
+    },
+    "deploy/native-base/matrix.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "078188733b1a31288965f640adff0c8e9a488ae0",
+      "mode": "100644",
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "size": 2099
+    },
+    "deploy/native-base/matrix_test.py": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "4ab51f32649d75423a99c11fc0d17a339fda1169",
+      "mode": "100644",
+      "sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "size": 2772
+    },
+    "deploy/native-base/node-brotli/check.js": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "72dcf51a95baa8b8edd079d60e8d5f7da07fda8e",
+      "mode": "100644",
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "size": 1705
+    },
+    "deploy/native-base/node-brotli/patch.sh": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "d15f4eac5dcd5a1cc292afada3a04f607e71a1f0",
+      "mode": "100644",
+      "sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "size": 3923
+    },
+    "deploy/native-base/package-lock.json": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "f17be474dabb1286ccca27571f5974363ea9d6f3",
+      "mode": "100644",
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "size": 57293
+    },
+    "deploy/native-base/package.json": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "cc19d22c8c9535f3eefe35178542bfdc17654161",
+      "mode": "100644",
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "size": 162
+    },
+    "deploy/native-base/patch-system-brotli.sh": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "c632b4958b7b1f70c343036b5d3e0b1e9240d976",
+      "mode": "100644",
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "size": 2355
+    },
+    "deploy/native-base/python-tools.json": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "1a7a71f7171d552f95e60bd5cec0dddb9a6131b2",
+      "mode": "100644",
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "size": 4110
+    },
+    "deploy/native-base/testdata/archive.dump.b64": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "69368b1cb80580276b2b551c952520bab123f845",
+      "mode": "100644",
+      "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "size": 2679
+    },
+    "deploy/native-base/testdata/archive.sql": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "884844a99160e7b8e1b13dcb26867b831b7aee60",
+      "mode": "100644",
+      "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "size": 161
+    },
+    "deploy/native-base/testdata/rows.txt": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "686466b2e8036b21efa480d40b01626b7b2bd04a",
+      "mode": "100644",
+      "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "size": 33
+    },
+    "deploy/native-base/tsc": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "f78f6adacf6dccadd33fd5a3feec8f02011cf6c9",
+      "mode": "100644",
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "size": 111
+    },
+    "deploy/native-base/webpack": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "4e5bf658679d6b71c69cab6483a90e82bcc24558",
+      "mode": "100644",
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "size": 115
+    },
+    "lego/operator/internal/build/native.go": {
+      "bytes_obtained_from_equal_local_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "git_blob_id": "d7c65df48f2d3f5382861ef0d55b3c589392dfeb",
+      "mode": "100644",
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "size": 25979
+    }
+  },
+  "current_published_main": "72eada0b35640a0569f4b3d8aeb89ee675cae360",
+  "current_recipe_nondoc_file_count": 24,
+  "factory_shape": {
+    "build_platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "build_runner_labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-production"
+    ],
+    "cancel_in_progress": false,
+    "each_complete_scan_budget": "20m Trivy /21m wrapper plus10s kill grace",
+    "gates": "Both architecture runtime probes, both complete Trivy reports, both full Syft SPDX, strict signed attestations and discovery publication remain required. No old artifact is approved by this plan.",
+    "java_db_prefetch_budget": "30m plus10s kill grace",
+    "matrix_runner_labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-ci"
+    ],
+    "max_parallel_per_matrix_run": 2,
+    "per_runtime_concurrency_group": "native-base-${{ matrix.name }}",
+    "scan_attempts": 3,
+    "targeted_singleton_selector": "inputs.runtime exact matrix name",
+    "vulnerability_db_prefetch_budget": "21m plus10s kill grace"
+  },
+  "fixes_ancestral_to_current": true,
+  "input_file_count": 30,
+  "input_scope": "Every non-Markdown deploy/native-base file; native workflow; native OCI staging helper and all test_native_oci_*.py files; native.go reviewed matrix input; recovery JSON. Exact path/mode/Git blob IDs compared from untruncated remote current tree to local fixed-source tree, independently content/SHA verified. Compare API file list (300-entry cap) was not used to infer equality.",
+  "matrix_total_reviewed_names": 27,
+  "native_fixed_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "old_failed_source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "old_index_recovery_eligible": false,
+  "old_recipe_nondoc_file_count": 22,
+  "old_to_current_changes": [
+    {
+      "current": {
+        "git_blob_id": "12b915bb9ee3953768d77b3cce92ae0c426479db",
+        "mode": "100644"
+      },
+      "old": {
+        "git_blob_id": "56fba368164d5d6d96ba2c2d27eb597e1021781d",
+        "mode": "100644"
+      },
+      "path": ".github/native-base-recovery.json"
+    },
+    {
+      "current": {
+        "git_blob_id": "92107591aecc0452dba27da232ea91b03c83a9b3",
+        "mode": "100644"
+      },
+      "old": null,
+      "path": ".github/scripts/native-oci-stage.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "343355aca472bd27a30b2d34148dc9366f6dcede",
+        "mode": "100644"
+      },
+      "old": null,
+      "path": ".github/scripts/test_native_oci_stage.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "ad46320408de8aee378b551d4c90c56f2b2b077e",
+        "mode": "100644"
+      },
+      "old": null,
+      "path": ".github/scripts/test_native_oci_workflow.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "a1941034143c9acbfbd5b6c36b8e9e431853a2aa",
+        "mode": "100644"
+      },
+      "old": {
+        "git_blob_id": "1a7ee881e318bda3341477a4f2899debaa0608a7",
+        "mode": "100644"
+      },
+      "path": ".github/workflows/native-base-image.yml"
+    },
+    {
+      "current": {
+        "git_blob_id": "171309cafe4652908e85687fd158761dff360322",
+        "mode": "100644"
+      },
+      "old": {
+        "git_blob_id": "ac37ec3da01149f2887e89cb9e308ecdb51e6a40",
+        "mode": "100644"
+      },
+      "path": "deploy/native-base/fetch-python-tools.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "8b5d152b31370770b31dd97a1bdc6b8ee9137711",
+        "mode": "100644"
+      },
+      "old": null,
+      "path": "deploy/native-base/fetch_pgdg_key_test.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "e2b732985a739553263f07773c6b83b1c82604f8",
+        "mode": "100644"
+      },
+      "old": null,
+      "path": "deploy/native-base/fetch_python_tools_test.py"
+    },
+    {
+      "current": {
+        "git_blob_id": "c0287ca950dee5973439adff7f4e508ba59c4600",
+        "mode": "100644"
+      },
+      "old": {
+        "git_blob_id": "73b1df4c85d66d484e5dc24f60cff58bbce227ec",
+        "mode": "100644"
+      },
+      "path": "deploy/native-base/install.sh"
+    }
+  ],
+  "recovery_reason": "Explicit unzip and dependency-fetch changes alter deploy/native-base recipe; normal source rebuild is required even where an old index exists. No target has a recovery authorization.",
+  "required_fix_commits": [
+    "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+    "94165237dbe63f997b0119ce70ad243da74468fa",
+    "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c"
+  ],
+  "target_bases": {
+    "node-26-bookworm": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+    "python-3.11-bookworm": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+    "python-3.13-bookworm": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e"
+  }
+}

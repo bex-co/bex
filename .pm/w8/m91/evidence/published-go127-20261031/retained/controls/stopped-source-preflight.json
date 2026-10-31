@@ -1,0 +1,7 @@
+{
+  "actual_error": "required reviewed source file missing: .github/scripts/native-oci-stage.py",
+  "at": "2026-10-31T10:11:44.027435+00:00",
+  "cause": "Source-audit enumeration assumed later OCI-staging helper files existed in both earlier commits. Both commits actually omit those paths.",
+  "resolution": "Compare optional file absence symmetrically; require all actual present source bytes unchanged. No candidate, tool, policy or source edits; this is not a real verification retry.",
+  "scope": "Setup only; V11 was not invoked and no candidate/image body was read. Initial fresh three roots were asserted absent, then only this controls directory was created."
+}

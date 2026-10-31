@@ -1,0 +1,11 @@
+--- 83c1e30e35eeeadab499de4d8d96c1f6c0349077/deploy/native-base/install.sh
++++ 8af93065a6a83299e8db7977aaf6527a5bad3e5d/deploy/native-base/install.sh
+@@ -28,7 +28,7 @@
+ apt-get update
+ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+   postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools pandoc \
+-  pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip \
++  pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip unzip \
+   gnupg2 nano vim libbrotli1 libbrotli-dev
+ 
+ sh /tmp/bex-patch-system-brotli.sh
