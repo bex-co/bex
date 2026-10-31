@@ -1,0 +1,36 @@
+{
+  "files": {
+    "MANIFEST.json": {
+      "bytes": 920,
+      "sha256": "467febe543ed2d1c453111b15e509de7cb663277e20e504b07fa0114b102f901"
+    },
+    "budget-estimate.json": {
+      "bytes": 12265,
+      "sha256": "c5391257e9cf1881c9eb078c3b43f0481af30901ae1bf1c11b098332dbe7a05d"
+    },
+    "csi-ready.json": {
+      "bytes": 1214,
+      "sha256": "736f88956478e859c374e77b64589ddbd5760fdae4a546cddb1ee1deb03dbbde"
+    },
+    "csi-signature.json": {
+      "bytes": 789,
+      "sha256": "d84bde62c6fec103a81fa5074d77ea04b79bc5eb7632788e66c6d7cd0dd4a45d"
+    },
+    "custody.json": {
+      "bytes": 2655,
+      "sha256": "d592c581650df5f501a92e90febbc6880811c698245a266b97d64191dbbb4eb2"
+    },
+    "inventory-source.json": {
+      "bytes": 7330,
+      "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+    },
+    "platform-ready.json": {
+      "bytes": 4724,
+      "sha256": "18d4a24eab5599ad36e74b0bf0399d347db9bc1f32413244f5c4d515afa643b3"
+    },
+    "platform-signature.json": {
+      "bytes": 627,
+      "sha256": "372b3e0198172deef526b4d874dc0504aae95d28d10b1266a75b471e0e66bd63"
+    }
+  }
+}

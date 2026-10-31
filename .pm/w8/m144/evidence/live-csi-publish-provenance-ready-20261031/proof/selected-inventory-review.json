@@ -1,0 +1,43 @@
+{
+  "atUTC": "2026-10-31T10:36:19.608333+00:00",
+  "workflowConclusion": "success",
+  "clusterConclusion": "success",
+  "actualReviewedCsiReady": true,
+  "driverReadiness": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+    "readyControllerPods": 1,
+    "readyNodePods": 12
+  },
+  "oldDriverTerminationByReviewedValidator": true,
+  "legacyComparisonScope": "Selected metadata inventory BEFORE this Helm upgrade compared with retained20261030 selected inventory; no post-upgrade tenant reread, filesystem or provider-data claim. Same scope as the prior original CSI rollout evidence.",
+  "baseline": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-release-ready-20261030/source-inventory-before-upgrade.json",
+    "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+  },
+  "legacyBindings": {
+    "srv-d9nqg9dcavls73fp8m2g": {
+      "present": true,
+      "sameProjectedAppMetadata": true,
+      "sameAppUIDNamespaceName": true,
+      "sameProjectedPVCAndPVBindingsHandles": true
+    },
+    "srv-dbg4lfdn83uc738uug70": {
+      "present": true,
+      "sameProjectedAppMetadata": true,
+      "sameAppUIDNamespaceName": true,
+      "sameProjectedPVCAndPVBindingsHandles": true
+    }
+  },
+  "classesEqualBaseline": {
+    "hcloud-volumes-luks": true,
+    "hcloud-volumes-luks-bounded": true
+  },
+  "appDiskCount": 2,
+  "unmatchedClaimCount": 0,
+  "clusterLogDownloadCount": 1,
+  "fullRawClusterLogSHA256": "c9a940ed2aaf974db46acd0ffeae38782ceb9b8c5507119ec971c84758b7bd31",
+  "fullRawBytes": 38399,
+  "privateRawMode": "0o600",
+  "sanitization": "Actions known-secret environment output is masked; no client-key/certificate-data or private-key payload marker. The persisted inventory contains only the fixed source projection, no Secret.data/App specs/tenant files.",
+  "noPaidAuthOrFixtureActions": true
+}

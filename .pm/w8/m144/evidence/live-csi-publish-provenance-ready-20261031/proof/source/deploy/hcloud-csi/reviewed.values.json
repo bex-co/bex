@@ -1,0 +1,18 @@
+{
+  "controller": {
+    "image": {
+      "hcloudCSIDriver": {
+        "name": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+        "tag": ""
+      }
+    }
+  },
+  "node": {
+    "image": {
+      "hcloudCSIDriver": {
+        "name": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+        "tag": ""
+      }
+    }
+  }
+}

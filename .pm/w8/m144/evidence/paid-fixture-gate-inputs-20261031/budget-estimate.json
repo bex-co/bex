@@ -1,0 +1,284 @@
+{
+  "atUTC": "2026-10-31T10:42:41.033484+00:00",
+  "state": "CREDIBLE_FIT_ESTIMATE_PENDING_ROOT_REVIEW_NO_AUTHORIZATION",
+  "basis": {
+    "actualRolloutRun": 41192091394,
+    "actualSource": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+    "actualTiming": {
+      "runCreatedAt": "2026-10-31T10:16:44Z",
+      "validationStartedAt": "2026-10-31T10:17:09Z",
+      "validationCompletedAt": "2026-10-31T10:20:06Z",
+      "clusterStartedAt": "2026-10-31T10:24:34Z",
+      "clusterCompletedAt": "2026-10-31T10:30:14Z",
+      "validationSeconds": 177.0,
+      "postValidationToClusterStartSeconds": 268.0,
+      "clusterExecutionSeconds": 340.0,
+      "runCreateToClusterCompleteSeconds": 810.0
+    },
+    "timingReceiptSha256": "e4702db87607f86b08282c2397c1ca2fd176909c95136baf4d8f7183b296166b",
+    "perOrderedCIWorkflowEstimateSeconds": 840,
+    "comparison": "Measured810s end-to-end including177s validation,268s cluster queue,340s cluster execution;14min is a planning allowance based on this observation, not an SLA or hidden-pool guarantee. Fixed fixture jobs skip Helm setup/upgrade; observer publishes earlyReady rather than waiting100min."
+  },
+  "originalOrderedCIOperations": {
+    "conservativeRequiredCount": 4,
+    "operations": [
+      "inventory",
+      "fixture-bind",
+      "fixture-cleanup-observe (earlyReady artifact)",
+      "single fixture-backup"
+    ],
+    "reasonForInventory": "Current bind validator already requires actual AppUID/PVCUID. Use existing fixed inventory once unless root already has an actual trustworthy receipt; never infer UIDs or silently omit this dependency.",
+    "noNormalExtraRuns": [
+      "six separate geometry inspections",
+      "backup-status",
+      "backup-cleanup"
+    ],
+    "backupConstraint": "One POST from exact committed CronJobUID/template/image only. Preserve actual JobUID before validation; no retry on ambiguity. Operator owned writer-chain cleanup at service DELETE avoids a separate cleanup roundtrip; any manual fixed cleanup still requires committed actual UID.",
+    "overlap": "Observer has a separate workflow concurrency group and stays live while backup runs. Root has observed concurrent production jobs; empty/idle runners are not required. Root coordinates actual overlap/capacity for its existing gate judgment."
+  },
+  "timelineFromActualCreateIntentMinutes": [
+    {
+      "minutes": [
+        0,
+        14
+      ],
+      "action": "actual201 creation; source/deployment Live/read-only checks overlap first inventory workflow",
+      "ci": "inventory",
+      "evidence": "actual own App/PVC UID metadata required before bind; no guessed UIDs"
+    },
+    {
+      "minutes": [
+        14,
+        16
+      ],
+      "action": "root review + commit actual201/App/PVC proof",
+      "ci": null
+    },
+    {
+      "minutes": [
+        16,
+        30
+      ],
+      "action": "fixed exact binding workflow",
+      "ci": "fixture-bind",
+      "evidence": "actual PV/Secret/CronUID/provider handle/CSI image candidates"
+    },
+    {
+      "minutes": [
+        30,
+        32
+      ],
+      "action": "root immutable binding review + commit",
+      "ci": null
+    },
+    {
+      "minutes": [
+        32,
+        46
+      ],
+      "action": "one bounded observer start; download early real observerReady artifact",
+      "ci": "fixture-cleanup-observe",
+      "evidence": "server watch bookmarks/RVs + same-token provider200 baseline before further writes"
+    },
+    {
+      "minutes": [
+        46,
+        52
+      ],
+      "action": "initial1Gi surfaces/UI/hashes/metrics, bounded ENOSPC fill, one growPATCH, online5Gi/hash check +256Mi growth",
+      "ci": null
+    },
+    {
+      "minutes": [
+        52,
+        61
+      ],
+      "action": "compact own fill/growth, restart+remount and redeploy+remount hashes; snapshot-ready lower timestamp",
+      "ci": null
+    },
+    {
+      "minutes": [
+        61,
+        62
+      ],
+      "action": "root commits actual compact/hash snapshot_not_before",
+      "ci": null
+    },
+    {
+      "minutes": [
+        62,
+        76
+      ],
+      "action": "exactly one owned backup POST workflow; archive actual JobUID and policy receipt",
+      "ci": "fixture-backup",
+      "evidence": "No replay or extra status/cleanup CI in normal path; own REST snapshot read independently waits fresh object"
+    },
+    {
+      "minutes": [
+        76,
+        83
+      ],
+      "action": "fresh own snapshot selection, post-snapshot marker, async restore/remount/hash checks",
+      "ci": null
+    },
+    {
+      "minutes": [
+        83,
+        85
+      ],
+      "action": "final own API/UI/metrics receipts",
+      "ci": null
+    },
+    {
+      "minutes": [
+        52,
+        95
+      ],
+      "action": "closed-hour requested1-to-5 meter coverage wait/poll overlaps restart/backup/restore; finish q billing before DELETE",
+      "ci": null
+    },
+    {
+      "minutes": [
+        95,
+        110
+      ],
+      "action": "target DELETE at95min; reserve900s for exact API/K8s/provider/purge absence + own auth cleanup",
+      "ci": null
+    },
+    {
+      "minutes": [
+        110,
+        120
+      ],
+      "action": "unallocated contingency inside unchanged hard7200s; no reason to delay DELETE",
+      "ci": null
+    }
+  ],
+  "criticalPath": {
+    "normalLifecycleEvidenceMinutes": 85,
+    "plannedGrowByMinutes": 52,
+    "targetDeleteMinutes": 95,
+    "cleanupReserveSeconds": 900,
+    "plannedCompletionMinutes": 110,
+    "contingencyMinutes": 10,
+    "originalHardLimitSeconds": 7200,
+    "newAcceptanceMutationCutoffMinutes": 105,
+    "candidateGateNumbersForRootReviewOnly": {
+      "estimated_post_create_seconds": 5700,
+      "cleanup_reserve_seconds": 900
+    },
+    "arithmeticFits": true
+  },
+  "closedHourScheduling": {
+    "rule": "Do not add a serial60min wait after lifecycle. Meter closure proceeds during existing restarts/backup/restore. Plan from anticipated actual grow timestamp and nextUTC hour, then allow about4min coverage polling; preserve the original requestedGB-second check, no sealing/invoice wait.",
+    "formula": "predicted billing time=max(lifecycle85min, ceilUTC_hour(create+52min)+4min); targetDELETE95min when that estimate fits. Re-evaluate actual clocks/remaining margin, never extend7200s.",
+    "recommendedCreationWindow": "UTC minute35\u201345 is one convenient example under these estimates; this is not a new mandatory gate or changed DoD. Other start times/observed faster phases can also fit.",
+    "illustrativeUnexecutedExample": {
+      "create": "2026-10-31T12:40:00+00:00",
+      "grow": "2026-10-31T13:32:00+00:00",
+      "firstClosedHourWith5GiInterval": "2026-10-31T14:00:00+00:00",
+      "coverageAllowanceEnd": "2026-10-31T14:04:00+00:00",
+      "lifecycleEnd": "2026-10-31T14:05:00+00:00",
+      "targetDelete": "2026-10-31T14:15:00+00:00",
+      "cleanupReserveEnd": "2026-10-31T14:30:00+00:00",
+      "hardExpiry": "2026-10-31T14:40:00+00:00"
+    },
+    "ifLate": "Retain actual receipts, stop acceptance writes when remaining checks+900s no longer fit, DELETE the sole own service on time even if meter/backup/purge proof is incomplete. The existing watchdog starts cleanup at hardExpiry-900s as fallback; targetDELETE95 is earlier."
+  },
+  "observer": {
+    "durationSecondsUnchanged": 6000,
+    "jobTimeoutMinutesUnchanged": 110,
+    "startsApproxMinute": 44,
+    "earlyReadinessApproxMinute": 46,
+    "coversTargetDeleteAndCleanup": true,
+    "endsEarlyOnProvedCleanup": "observe_cleanup returns when statecomplete; full evidence artifact follows. A missed event/410/unknown or unapproved helper remains unproved and never extends paid lifetime.",
+    "afterExpiry": "No geometryexec/fixture mutations after expiry; bounded cleanup reads may continue as originally designed."
+  },
+  "costEstimateOnly": {
+    "scope": "Preserved original committedBex service+requested-disk+two-build estimate; not usage/invoice proof. No new provider/paid resource or build is introduced.",
+    "serviceRateUSDPerSecond": "0.000001864535768645",
+    "requestedDiskUSDPerGBSecond": "0.000000066590563165905631659056",
+    "conservativeDiskGBThroughout": 5,
+    "billableBuildMinutesAssumedTotal": 4,
+    "buildUSDPerMinute": 0.0035,
+    "conservativeTotalsUSDIncluding4BuildMinutes": {
+      "105min": "0.02784417808218952739726026400",
+      "110min": "0.02850342465753188584474884800",
+      "115min": "0.02916267123287424429223743200",
+      "120min": "0.02982191780821660273972601600"
+    },
+    "capUSD": 0.03,
+    "assumptions": "Initial+single redeploy buildCommandtrue together remain within the original4billable-build-minute allowance; no dependencies changed, snapshot compacted to sentinel+two64Ki data files, tiny HTTP egress. Root monitors actual observed build time and budget; estimate never authorizes overrun or becomes billing proof.",
+    "actualRequestedMeterProof": "Original q billing must compare only fresh ownSID disk_gb_seconds TOTAL against actual servercreated/grow-clock bounded1-to-5 quantity; no physical10Gi or price estimate substitutes."
+  },
+  "entrypoints": {
+    "wrapper": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/q",
+    "python": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "liveDriver": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py",
+    "nameRefresh": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/q refresh-name",
+    "nameRefreshScope": "Run only after root paid-fit review and before unused exact-name gate. Existing helper refuses any prior intent/proof/owned/resources or live gate; current20261030 name remains untouched.",
+    "watchdog": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/cleanup-watchdog.py",
+    "watchdogInvocationAfterRootAuthorization": [
+      "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+      "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/cleanup-watchdog.py"
+    ],
+    "fixtureProgram": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/disk-fixture.py",
+    "startCommand": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/start-command.txt",
+    "spec": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/spec.json",
+    "originalPlan": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/acceptance-plan.json",
+    "unchangedResourceCaps": "1Starter500mCPU512MiRAM/singleinstance +1disk1to5Gi,7200s,$0.03; no new data/program/nonce"
+  },
+  "historicalQueues": "Old long waits including4387s CSI factory start and earlierhours-long cases remain retained history, not a permanent universal bound or an idle-runner requirement. Latest actual scoped rollout810s is the relevant concrete timing observation.",
+  "allOriginal10HashesUnchanged": {
+    "hosted-disk.py": {
+      "sha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953",
+      "bytes": 22978
+    },
+    "disk-fixture.py": {
+      "sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+      "bytes": 7014
+    },
+    "start-command.txt": {
+      "sha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74",
+      "bytes": 3668
+    },
+    "spec.json": {
+      "sha256": "e3fd70eb725b55017cdafbba50596c78fc84b804f43fd3da25ac1f96bbd18d14",
+      "bytes": 874
+    },
+    "cleanup-watchdog.py": {
+      "sha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+      "bytes": 5859
+    },
+    "test_cleanup_watchdog.py": {
+      "sha256": "d033d6a2700d04c751bd08e53e4fe0b9559806e4f9bf4f767f129a7c692906ae",
+      "bytes": 5319
+    },
+    "naming.py": {
+      "sha256": "4b83f2a03f33701a1f297040ea081c55a6a92568cf1b0e4ce46112a3cead217d",
+      "bytes": 5882
+    },
+    "q": {
+      "sha256": "20686321a8e898781ce7f58f293a29cc0b72b7f6c8794fa4d6534dfe1ef0a6d4",
+      "bytes": 152
+    },
+    "auth.py": {
+      "sha256": "634ed4f238da4dc9683d4ca5c1c1ac3b793bd5f7b1893ae4e4d1c5939e26c6e8",
+      "bytes": 5765
+    },
+    "cleanup-auth.py": {
+      "sha256": "b8eca7f4a55995a5b0bb32b50bebcdc3453e967614ffe76f770aa52899fbfc0d",
+      "bytes": 2081
+    }
+  },
+  "noExecution": {
+    "loginOrGrant": false,
+    "nameRefresh": false,
+    "gateCreated": false,
+    "watchdogArmed": false,
+    "paidCreate": false,
+    "newDispatch": false,
+    "ledgerOrCredentialContentsRead": false,
+    "fixtureProgramsOrDataChanged": false
+  }
+}

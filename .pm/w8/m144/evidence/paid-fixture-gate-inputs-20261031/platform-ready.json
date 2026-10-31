@@ -1,0 +1,129 @@
+{
+  "scope": "Actual20261031 selected platform inventory BEFORE reviewed537CSI Helm upgrade; platform publisher source is25b, inventory workflow source715. Derived from fixed projected columns only.",
+  "run": "https://github.com/bex-co/bex/actions/runs/41192091394",
+  "source_commit": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "observed_at_utc": "2026-10-31T10:28:58.8823038Z",
+  "source_inventory": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-csi-publish-provenance-ready-20261031/proof/source-inventory-before-upgrade.json",
+    "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+  },
+  "platform_deployments": {
+    "bex-controller-manager": {
+      "desired": 1,
+      "updated": 1,
+      "ready": 1,
+      "available": 1,
+      "generation": 1700,
+      "observedGeneration": 1700,
+      "images": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "converged": true
+    },
+    "bex-api": {
+      "desired": 2,
+      "updated": 2,
+      "ready": 2,
+      "available": 2,
+      "generation": 2814,
+      "observedGeneration": 2814,
+      "images": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "converged": true
+    }
+  },
+  "platform_pods": [
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6d97c75f-bczxr",
+      "uid": "42e775c9-95c2-4289-b1f7-33ca2f6f826f",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "api": true
+      }
+    },
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6d97c75f-mmxwr",
+      "uid": "9fead795-b74c-45a8-a70e-b1aa93e47600",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "api": true
+      }
+    },
+    {
+      "namespace": "bex-system",
+      "name": "bex-controller-manager-84cdb7cd58-m8pb2",
+      "uid": "7066590b-5577-4ea3-a7b3-ad8f9a300f9c",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerImageIds": {
+        "manager": "ghcr.io/bex-co/bex-operator@sha256:a544bb8a2c8e068674b76c560766da6e9d67566a49f0cd86696167622771b84c"
+      },
+      "containerReady": {
+        "manager": true
+      }
+    }
+  ],
+  "operator_disk_storage_class": "hcloud-volumes-luks-bounded",
+  "storage_classes": [
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks",
+      "uid": "13aeb054-74c2-4ca5-9861-039a7dc9cf27",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "",
+      "boundedFilesystem": "",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "",
+      "expandSecretNamespace": ""
+    },
+    {
+      "present": true,
+      "name": "hcloud-volumes-luks-bounded",
+      "uid": "45392ab9-1e77-477d-9a95-6a9a84670869",
+      "deletingAt": "",
+      "provisioner": "csi.hetzner.cloud",
+      "allowVolumeExpansion": true,
+      "volumeBindingMode": "WaitForFirstConsumer",
+      "reclaimPolicy": "Delete",
+      "filesystemType": "ext4",
+      "boundedFilesystem": "ext4-v1",
+      "publishSecretName": "${pvc.name}-luks",
+      "publishSecretNamespace": "${pvc.namespace}",
+      "expandSecretName": "${pvc.name}-luks",
+      "expandSecretNamespace": "${pvc.namespace}"
+    }
+  ],
+  "all_selected_platform_pods_running_ready_nonterminating": true,
+  "actual_image_ids_equal_requested_pins": true,
+  "manager_selects_bounded_class": true,
+  "bounded_class_matches_reviewed_contract": true,
+  "class_contract_baseline": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-release-ready-20261030/platform-ready-pre-csi.json",
+    "sha256": "35ecd4d9dfa8166b19ec730f9c288053339adb757ce3c2effde5939b09bc986e"
+  }
+}

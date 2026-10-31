@@ -121,3 +121,8 @@ The [post-CSI fixed inventory](evidence/post-csi-inventory-20261031/README.md) n
 ## Existing-volume fix image qualified and pinned — 2026-10-31
 
 [Root-reviewed actual factory and artifact proof](evidence/published-csi-publish-provenance-20261031/README.md) binds immutable53744992 to exactdd64 source and theedc67256 bounded patch. The actual full upstream suite and real kernel full/grow/remount/restore gate pass. Original strict CSI signature/source and signed SPDX checks pass; both runtime architectures independently preserve the official base and execute all four tools anonymously, with owned cleanup verified. Both reviewed controller/node pins now select this image. The signed SPDX inventory is explicitly AMD64 only. Scoped rollout and actual Ready must be verified before the original paid fixture; hosted lifecycle/billing/restore/cleanup remain open.
+
+
+## Fixed CSI live and original budget reviewed — 2026-10-31
+
+[Actual scoped rollout](evidence/live-csi-publish-provenance-ready-20261031/README.md) succeeded at10:30UTC: approved53744992 is Ready on one controller and twelve nodes, with the reviewed validator requiring old selected pods terminated. The selected pre-Helm tenant inventory preserves the original bindings/classes; no post-Helm tenant reread is claimed. [Sanitized actual gate inputs](evidence/paid-fixture-gate-inputs-20261031/) bind fresh a544 platform readiness and the new CSI source/signature/patch. The original7200-second/~$0.03 one-Starter fixture uses a reviewed95-minute lifecycle estimate plus900-second cleanup reserve. Actual lifecycle, weighted billing, restore and exact owned cleanup remain open; queue timing is a concrete estimate rather than an SLA.
