@@ -1,0 +1,15 @@
+{
+  "schema": "bex.m188.evidence-bundle/v1",
+  "files": [
+    {
+      "path": "build-package.log",
+      "bytes": 63,
+      "sha256": "5c1aa850a180b41f2ab9a94ac5667a2e87f708481b4568432ed7e9e23949d23f"
+    },
+    {
+      "path": "gate.json",
+      "bytes": 2998,
+      "sha256": "211a0deb9892fef8c8bfe753c510e54725920f65cc6c54b83de7bfa6a6328cbd"
+    }
+  ]
+}

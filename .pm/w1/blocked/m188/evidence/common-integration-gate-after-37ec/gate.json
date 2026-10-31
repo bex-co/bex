@@ -1,0 +1,60 @@
+{
+  "schema": "bex.m188.common-gate-followup-after-37ec/v1",
+  "at": "2026-10-31T14:41:15.012360+00:00",
+  "reviewed_head": "487df1943f170212ae89d4317ce11905f5ba869c",
+  "incoming_source_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+  "prior_gate_record": "../common-integration-gate-after-sync.json",
+  "prior_gate_sha256": "fda36f39b06d3f8a3373b594d1393e90d3555e03a530e33bafb8296d90cfc753",
+  "source_progress": "Common Bookworm source now prepares exact legacy runtime compatibility; this is not actual published/common/generated qualification.",
+  "observed_files": [
+    {
+      "path": ".pm/w8/m91/README.md",
+      "bytes": 37427,
+      "sha256": "7c37d356e2760dce94dc9cee57f9d59ae298c37bc70ef232dd728b4c14b0316a"
+    },
+    {
+      "path": ".pm/w8/m91/t007.md",
+      "bytes": 2197,
+      "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41"
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon.go",
+      "bytes": 7218,
+      "sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+    }
+  ],
+  "build_package_test": {
+    "cwd": "lego/operator",
+    "command": "GOWORK=off go test ./internal/build -count=1",
+    "exec_session": 57010,
+    "exit_code": 0,
+    "log": "build-package.log",
+    "actual_image_integration_claimed": false
+  },
+  "both_production_controls_empty": true,
+  "qualified_common_and_legacy_gate_still_open": true,
+  "upstream_task": "w8/m91/t007",
+  "owner": "worker8",
+  "node_patch_publication_requirement": {
+    "basis": "Existing D1=A: platform publishes same-version security-patched images once; tenant builds consume fixed images.",
+    "dormant_fallback": "commonNativeRuntimeChoice selects commonNodeBuildStage when an affected exact Node runtime lacks an approved runtime artifact; generated Dockerfile RUN invokes build-node --common-bookworm.",
+    "currently_executed_in_production": false,
+    "release_condition": "Provide reviewed digest-pinned platform-patched donors and actual generated-image evidence for primary and companion paths, avoiding the tenant Node security-patch compiler fallback.",
+    "generic_otp_compatibility_compilation_not_equated_with_security_patching": true
+  },
+  "artifact_acceptance_remains_historical_11_of_11": true,
+  "incoming_source_not_an_artifact_identity_alias": true,
+  "source_adoption_performed": false,
+  "production_actions_performed": false,
+  "remaining_work": "worker8 qualified signed common base and actual same-version legacy dual-arch closure; then worker1 reviewed adoption, six real build/HTTP checks, signed-source Ready and fresh full census/rebuild verification."
+}
