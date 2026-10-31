@@ -200,7 +200,14 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 		replicas = *dep.Spec.Replicas
 	}
 	r.observeServingRevision(ctx, app, dep, replicas)
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonHTTPPortDiscovery, Message: message, ObservedGeneration: app.Generation})
+	reason := appv1alpha1.ReasonHTTPPortDiscovery
+	// A pod the workspace quota refuses never exists, so port discovery would
+	// wait on it until the deadline; name the quota instead, as the ordinary
+	// rollout path does.
+	if quotaReason, quotaMessage := r.rolloutQuotaBlockMessage(ctx, dep); quotaMessage != "" {
+		reason, message = quotaReason, quotaMessage
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: message, ObservedGeneration: app.Generation})
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
 	}
