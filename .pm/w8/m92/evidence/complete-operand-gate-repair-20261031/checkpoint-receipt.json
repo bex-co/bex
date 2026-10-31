@@ -1,0 +1,35 @@
+{
+  "created_at": "2026-10-31T11:11:54.978211+00:00",
+  "head": "792acc263f814bc75229052386af3a49b2fd37d4",
+  "source_files": 21,
+  "manifest_sha256": "af296362f99fc447022b3ef92a038929892c1f7e9a00e9a1ed7c70053dd0e425",
+  "tracked_diff_sha256": "43e34e26dd067deed70415873531b178ba0c5c28b7403be91ab11cbf84df30e4",
+  "controlled_fix_paths": [
+    "lego/operator/internal/controller/database_controller.go",
+    "lego/operator/internal/controller/database_operand_reconcile_test.go"
+  ],
+  "fix": "Validate existingplatformextensionprofile; preferfreshlydecodedpriorownedprojection overadmission-defaultedliveconfiguration. Keepordinaryupstreambaselineandconvergence.",
+  "checks": {
+    "focused_oldprofile_legacy_exports": "PASS1.417s",
+    "full_make_test": "PASS235.314s; all244envtestspecs",
+    "full_make_lint": "PASS200.247s;4modulesandreachability",
+    "diff_check": "PASS"
+  },
+  "gates_directory": "/private/tmp/bex-w8-m92-warm-corrected-gates-20261031",
+  "historical_failure_directory": "/private/tmp/bex-w8-m92-final-head-gates-20261031",
+  "counterfactual": "Onlyold473byteblanketblockremoved;bothsubcasesfailed;finallybyte-restored;positivecasethenpassed. Subsequentblanketfullsuitefailurespreservedandfixedhere.",
+  "evidence_sha256": {
+    "/private/tmp/bex-w8-m92-warm-corrected-gates-20261031/test.log": "25b46e66a56133bb7e4f3ad5e317d8a22f5199d2794ae70b75d639ea6d51ed8a",
+    "/private/tmp/bex-w8-m92-warm-corrected-gates-20261031/test.json": "c72cfdf955a9217f9ba0be9396ae7d6913bcc78a6161470f2f3205b0a4e8f7f4",
+    "/private/tmp/bex-w8-m92-warm-corrected-gates-20261031/lint.log": "ba05e122f7aa17d045901051ff6f6337aa8968ebbaf7d70472495b9488177f75",
+    "/private/tmp/bex-w8-m92-warm-corrected-gates-20261031/lint.json": "00addb3985520fad3a301972d1a9f46e9fe44fe1fce979cb2f6d7f450a618a0a",
+    "/private/tmp/bex-w8-m92-final-head-gates-20261031/counterfactual.log": "db5d7fcdc771b78a15f7e41901adf5bf14cc9b8c14148464a518181c377247df",
+    "/private/tmp/bex-w8-m92-final-head-gates-20261031/counterfactual.json": "2de29e9ad6e8b7ba83fe6f7affc14c48aac43ac6edd20ba24814183ad94f8be6",
+    "/private/tmp/bex-w8-m92-final-head-gates-20261031/regression-restored.log": "5a7be4b266d188f66b3b1763309af91dba8ec8f65cdfc8aa9c34f6109655e49b",
+    "/private/tmp/bex-w8-m92-final-head-gates-20261031/test.log": "80a03a665e14587abba88be74382b205b4bbe78b89deb19d94ec3bb844494df5",
+    "/private/tmp/bex-w8-m92-final-head-gates-20261031/test.json": "e213e72dbd55f3f16fd44edb3f47ffe896cbdd50d43ac5ba6de2d487f755ff68"
+  },
+  "full_sql_qualification": "UNEXECUTED;alloriginalSQL/currentCNPG/botharchartifact/pin/rolloutDoDsremainopen",
+  "go_source_hold": "Gatescompleted;sourcebytescapturednow;commoncanresume.",
+  "git_state": "Ownedmodificationsunstaged;noindexconflicts;noGoSumstaging"
+}

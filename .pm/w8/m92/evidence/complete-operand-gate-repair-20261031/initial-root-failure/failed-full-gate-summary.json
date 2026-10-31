@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-31T10:52:35.075983+00:00",
+  "counterfactual": "EXPECTED FAIL exit1 bothlegacy/projected; exact473byteblockonlyremoved; finallyrestoredSHA667c6c80fb33752b42718f513d903e552fd5b2b1806c5a278e0c8fe05557f323",
+  "restored_regression": "PASS0.723s",
+  "full_make_test": "FAIL230.268s; no capacitystop",
+  "actual_failures": [
+    "TestLegacyDatabaseGainsPgStatStatements: copiedlegacywork_mem config preventsaddingmandatorypg_stat_statements",
+    "TestControllers convergence: copyingadmission-defaultedlivepostgresql intoprojection causesUpdateCluster"
+  ],
+  "full_make_lint": "NOT STARTED: fresh5,178,949,632Bfree below5,368,709,120Brequired",
+  "source_changes": "No additionaleditsauthorized beyondcounterfactual; exactbytesrestored, rootnotifiedforfix",
+  "evidence": {
+    "counterfactual.log": "db5d7fcdc771b78a15f7e41901adf5bf14cc9b8c14148464a518181c377247df",
+    "counterfactual.json": "2de29e9ad6e8b7ba83fe6f7affc14c48aac43ac6edd20ba24814183ad94f8be6",
+    "regression-restored.log": "5a7be4b266d188f66b3b1763309af91dba8ec8f65cdfc8aa9c34f6109655e49b",
+    "regression-restored.json": "8276d36380a9dbf4cd841044b13b8ce5addb84b23b23cdd45e633c4fa872e4cb",
+    "test.log": "80a03a665e14587abba88be74382b205b4bbe78b89deb19d94ec3bb844494df5",
+    "test.json": "e213e72dbd55f3f16fd44edb3f47ffe896cbdd50d43ac5ba6de2d487f755ff68"
+  },
+  "remaining_qualification": "AlloriginalSQL/CNPG/artifactacceptanceremainsopen"
+}
