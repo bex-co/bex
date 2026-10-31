@@ -1,6 +1,6 @@
 # w8 · m112 — Make documented time-series tables usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../../m92/design.md)); no task started
+**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** blocked — waits for [w8/m92/t008](../../m92/t008.md) to deliver qualified per-major operand images and the allowlist; the single ADR092 D4 rolling restart is already approved; no user-decision gate
 
 ## Tasks (in order)
 
@@ -45,3 +45,7 @@ On existing supported managed PostgreSQL13–18, with compatible extension relea
 - **结论：** 采用 [ADR092](../../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
 - **剩余门槛：** 无用户门槛。本项等 [w8/m92/t008](../../m92/t008.md) 的共享镜像和白名单落地（上游依赖），之后恢复，完成本扩展的回归和线上验收。
+
+## Shared operand qualification checkpoint — 2026-10-31
+
+The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../../m92/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.

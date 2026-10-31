@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed native sqlite3 executable and dependencies](t001.md) | 70m | — |
+| t001 | [Supply a reviewed native sqlite3 executable and dependencies](t001.md) | 70m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit shared native consumers and preserve library and cache behavior](t002.md) | 35m | t001 |
 | t003 | [Verify SQLite CLI Render parity across native authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed SQLite CLI supplier](t004.md) | 15m | t003 |

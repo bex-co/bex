@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed Webpack, compatible CLI and dependency closure](t001.md) | 75m | — |
+| t001 | [Supply reviewed Webpack, compatible CLI and dependency closure](t001.md) | 75m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit bundler delivery across native bases and phases](t002.md) | 40m | t001 |
 | t003 | [Verify Webpack native parity across authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify bundler supplier changes](t004.md) | 15m | t003 |

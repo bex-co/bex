@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed immutable native TypeScript compiler](t001.md) | 75m | — |
+| t001 | [Supply a reviewed immutable native TypeScript compiler](t001.md) | 75m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit compiler delivery across shared bases and native phases](t002.md) | 40m | t001 |
 | t003 | [Verify TypeScript native parity across authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify compiler supplier changes](t004.md) | 15m | t003 |
