@@ -282,12 +282,19 @@ func addNativeUV(dockerfile, baseImage, version string) (string, error) {
 // source change reuses it; a changed version is a changed instruction.
 func nativePythonToolInstall(python, pkg, version string, commands ...string) string {
 	home := "/opt/bex/" + pkg
+	requirement := pkg + "==" + version
+	if nativeCommonBase != "" && python == "/usr/bin/python3" && pkg == "poetry" && version == "2.1.3" {
+		// Upstream Poetry 2.1.4 caps this dependency because 20.33+ can
+		// select the wrong project Python. Keep the unchanged 2.1.3 default
+		// beside an old app interpreter without changing other tool routes.
+		requirement += " 'virtualenv<20.33.0'"
+	}
 	var links strings.Builder
 	for _, command := range commands {
 		fmt.Fprintf(&links, " && ln -s %s/bin/%s /usr/local/bin/%s", home, command, command)
 	}
-	return fmt.Sprintf("RUN %[1]s -m venv %[2]s && %[2]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[3]s==%[4]s%[5]s\n",
-		python, home, pkg, version, links.String())
+	return fmt.Sprintf("RUN %[1]s -m venv %[2]s && %[2]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[3]s%[4]s\n",
+		python, home, requirement, links.String())
 }
 
 // afterNativeBase inserts lines right after the generated Dockerfile's FROM.
