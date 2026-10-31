@@ -1,0 +1,22 @@
+{
+  "scope": "strict public signature of candidate carrier only; actual Ready adoption not yet established",
+  "source": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "image": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc",
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "d147703d7657f8795593deb2e74c9e7eac426cd2",
+    "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+  ],
+  "exit": 0,
+  "elapsed_seconds": 9.27,
+  "proof_count": 2,
+  "stdout_sha256": "48e6c0474f092bb1e35d1724cf12ca667c2231e74ae171bb433edf681318d224",
+  "fresh_private_tuf": "/private/tmp/bex-w8-218-candidate-signature-20261031-bj3xgbok/fresh-tuf",
+  "tool_sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+}

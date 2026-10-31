@@ -1,0 +1,23 @@
+{
+  "status": "CODE_PREPARATION_ONLY_NO_AUTH_OR_LIVE_ACTION",
+  "reusedFunctions": [
+    "now",
+    "save",
+    "clean_env",
+    "cli",
+    "decode_json",
+    "private_token",
+    "api"
+  ],
+  "originalHostedSha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+  "copiedAuthFiles": {
+    "auth.py": "d5d067324a13a5c7b82e61348ecfcd71f613af33a394f07a53aae0d1674c33ef",
+    "cleanup-auth.py": "b8eca7f4a55995a5b0bb32b50bebcdc3453e967614ffe76f770aa52899fbfc0d"
+  },
+  "binarySha256": {
+    "release/bex": "8c1eaa38e0ce3de0c9cae814ec432bcc1648737fd06d11a6950e910c7ede4081",
+    "render-pin": "327d91b7c0f9af859d66b36a61cb0fc66fc44a0dff6b5a5cd763561f8dfea36b"
+  },
+  "oldNativeFilesUnchanged": true,
+  "separatePaidM144FilesUntouched": true
+}

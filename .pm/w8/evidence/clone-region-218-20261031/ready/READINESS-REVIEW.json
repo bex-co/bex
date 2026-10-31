@@ -1,0 +1,87 @@
+{
+  "at": "2026-10-31T19:39:12.652560+00:00",
+  "requiredAncestor": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "source": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "image": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc",
+  "ready": true,
+  "signedReady": true,
+  "inventory_run": 41231665431,
+  "inventory_job": 124628275816,
+  "inventory_source": "9634bba9e186e4a122d103d477028edb3dec9132",
+  "job_completed_at": "2026-10-31T19:35:31Z",
+  "API": {
+    "namespace": "bex-system",
+    "name": "bex-api",
+    "uid": "2e592287-82f6-4077-80e8-d956de1c8f74",
+    "generation": 2817,
+    "observedGeneration": 2817,
+    "replicas": 2,
+    "updatedReplicas": 2,
+    "readyReplicas": 2,
+    "availableReplicas": 2,
+    "containerImages": {
+      "api": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+    },
+    "diskStorageClass": ""
+  },
+  "ReadyPods": [
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6974c77494-8tgh8",
+      "uid": "f4e95a8c-9fd1-405e-87a8-ad2af743e331",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+      },
+      "containerReady": {
+        "api": true
+      }
+    },
+    {
+      "namespace": "bex-system",
+      "name": "bex-api-6974c77494-tggvk",
+      "uid": "a1d4d887-6e27-49bc-b341-f33016d47c86",
+      "phase": "Running",
+      "deletingAt": "",
+      "containerImages": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+      },
+      "containerImageIds": {
+        "api": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc"
+      },
+      "containerReady": {
+        "api": true
+      }
+    }
+  ],
+  "signature_receipt": {
+    "path": "/private/tmp/bex-w8-218-candidate-signature-20261031-bj3xgbok/receipt.json",
+    "sha256": "b58941f8f2150a9391e95c22cc6e6d697c31b9468e595f1ec12f6a73f9a606f6"
+  },
+  "inventory_proof": {
+    "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/inventory.json",
+    "sha256": "3187e07e2f02ac4c259603b3ed3f188f49d4a97fef0018fe27e813f1614db928"
+  },
+  "critical_source": {
+    "lego/backend/internal/resourcemeta/metadata.go": {
+      "bytes": 8577,
+      "sha256": "57144630820ce59c38f90a89728261c50f6dd2cd8d9fffec4d7df8d0e4d9d9fd",
+      "same_at_ancestor_and_signed_source": true
+    },
+    "lego/backend/internal/apps/render.go": {
+      "bytes": 40210,
+      "sha256": "e0617ca19bb603cc32d9d01c4f5830867e96ca1f5a0828a52b1a5ea71290af1c",
+      "same_at_ancestor_and_signed_source": true
+    },
+    "lego/backend/internal/apps/blueprint_generate.go": {
+      "bytes": 31036,
+      "sha256": "c3e5ebe3f5e1f4ef888b57e6851987ec08ffde6b5a40b13ba81201044dce3c78",
+      "same_at_ancestor_and_signed_source": true
+    }
+  },
+  "scope": "actual signed Ready API adoption only; no clone/auth/resource or m144 paid acceptance performed"
+}

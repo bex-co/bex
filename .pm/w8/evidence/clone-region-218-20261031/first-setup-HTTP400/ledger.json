@@ -1,0 +1,267 @@
+{
+  "scope": "w8/218 Free clones only",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "baseline_ids": [
+    "srv-da40m1qii7bs73drbqlg"
+  ],
+  "resources": [
+    {
+      "role": "source",
+      "name": "w8-218-2908b65e7f5c-source",
+      "client": "bex",
+      "workspace": "tea-da2isimlm39c739m4ofg",
+      "at": "2026-10-31T19:56:55.722239+00:00",
+      "state": "not-created",
+      "forwarded_once": true,
+      "pre_ids": [
+        "srv-da40m1qii7bs73drbqlg"
+      ],
+      "request_body_base64": "eyJpbWFnZSI6eyJpbWFnZVBhdGgiOiJkb2NrZXIuaW8vZWFsZW4vZWNoby1zZXJ2ZXI6MC45LjIiLCJvd25lcklkIjoiIn0sIm5hbWUiOiJ3OC0yMTgtMjkwOGI2NWU3ZjVjLXNvdXJjZSIsIm93bmVySWQiOiJ0ZWEtZGEyaXNpbWxtMzljNzM5bTRvZmciLCJzZXJ2aWNlRGV0YWlscyI6eyJwbGFuIjoiZnJlZSIsInJlZ2lvbiI6ImZyYW5rZnVydCIsInJ1bnRpbWUiOiJkb2NrZXIifSwidHlwZSI6IndlYl9zZXJ2aWNlIn0=",
+      "HTTP": 400,
+      "response_body_base64": "H4sIAAAAAAAA/5zMwQ0CMQxE0TtVWD6ngjSDAh4hCyWGcXJC9I7Y3Qr2OqP3PwoyqFVvzYR4L+SswjWmd4jF/QluuxMpxCukDZMR4r09oEXddn09tBbtyPyfp6vfyy8AAP//ag6DTpkAAAA="
+    }
+  ],
+  "cases": [
+    {
+      "at": "2026-10-31T19:56:55.770521+00:00",
+      "method": "POST",
+      "path": "/v1/services",
+      "request_body_base64": "eyJpbWFnZSI6eyJpbWFnZVBhdGgiOiJkb2NrZXIuaW8vZWFsZW4vZWNoby1zZXJ2ZXI6MC45LjIiLCJvd25lcklkIjoiIn0sIm5hbWUiOiJ3OC0yMTgtMjkwOGI2NWU3ZjVjLXNvdXJjZSIsIm93bmVySWQiOiJ0ZWEtZGEyaXNpbWxtMzljNzM5bTRvZmciLCJzZXJ2aWNlRGV0YWlscyI6eyJwbGFuIjoiZnJlZSIsInJlZ2lvbiI6ImZyYW5rZnVydCIsInJ1bnRpbWUiOiJkb2NrZXIifSwidHlwZSI6IndlYl9zZXJ2aWNlIn0=",
+      "authorization": "[REDACTED]",
+      "HTTP": 400,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Content-Encoding": "gzip",
+        "CF-RAY": "a53539d2eaf2042c-SJC"
+      },
+      "response_body_base64": "H4sIAAAAAAAA/5zMwQ0CMQxE0TtVWD6ngjSDAh4hCyWGcXJC9I7Y3Qr2OqP3PwoyqFVvzYR4L+SswjWmd4jF/QluuxMpxCukDZMR4r09oEXddn09tBbtyPyfp6vfyy8AAP//ag6DTpkAAAA="
+    },
+    {
+      "client": "bex",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "w8-218-2908b65e7f5c-source",
+        "--type",
+        "web_service",
+        "--runtime",
+        "docker",
+        "--image",
+        "docker.io/ealen/echo-server:0.9.2",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: received response code 400: bad request: runtime docker requires repo and no image\n",
+      "elapsed": 0.531,
+      "at": "2026-10-31T19:56:56.272095+00:00",
+      "role": "source",
+      "acceptanceCommandOmitsRegion": false
+    }
+  ],
+  "nonce": "2908b65e7f5c",
+  "apiReadyBinding": {
+    "requiredAncestor": "9fe393b77814dc5199372419d10dad974e7b27e1",
+    "source": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+    "image": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc",
+    "ready": true,
+    "signedReady": true,
+    "readinessProof": {
+      "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/READINESS-REVIEW.json",
+      "sha256": "c2035fd20e1804030ae6e3fb8563a8d1f891af5da568e8e42a4db507b3438258"
+    }
+  },
+  "baseline_capture": {
+    "workspace": "tea-da2isimlm39c739m4ofg",
+    "ids": [
+      "srv-da40m1qii7bs73drbqlg"
+    ],
+    "limits": {
+      "services": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      }
+    },
+    "receipts": [
+      {
+        "at": "2026-10-31T19:56:53.522507+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services?ownerId=tea-da2isimlm39c739m4ofg&limit=100",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 1468,
+        "sha256": "a1ff041cbeabe3348c2aa40f8df7c4caf6c0a98386b149db51110c5c99a44d8d"
+      },
+      {
+        "at": "2026-10-31T19:56:54.530359+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services?ownerId=tea-da2isimlm39c739m4ofg&limit=100&cursor=tianpan-v4-web",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "at": "2026-10-31T19:56:55.585696+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-da2isimlm39c739m4ofg/limits",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 231,
+        "sha256": "8cf0c80bbcaf18bb49fd6f7d5769d568f3305cc0a4e9fc73024c5bc2b2532ca0"
+      }
+    ]
+  },
+  "baseline_after": {
+    "workspace": "tea-da2isimlm39c739m4ofg",
+    "ids": [
+      "srv-da40m1qii7bs73drbqlg"
+    ],
+    "limits": {
+      "services": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      }
+    },
+    "receipts": [
+      {
+        "at": "2026-10-31T19:58:29.789475+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services?ownerId=tea-da2isimlm39c739m4ofg&limit=100",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 1468,
+        "sha256": "a1ff041cbeabe3348c2aa40f8df7c4caf6c0a98386b149db51110c5c99a44d8d"
+      },
+      {
+        "at": "2026-10-31T19:58:30.256727+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services?ownerId=tea-da2isimlm39c739m4ofg&limit=100&cursor=tianpan-v4-web",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "at": "2026-10-31T19:58:31.076761+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-da2isimlm39c739m4ofg/limits",
+          "body": null,
+          "authorization": "[REDACTED]"
+        },
+        "HTTP": "200",
+        "bytes": 231,
+        "sha256": "8cf0c80bbcaf18bb49fd6f7d5769d568f3305cc0a4e9fc73024c5bc2b2532ca0"
+      }
+    ]
+  },
+  "baseline_comparison": {
+    "baseline_preserved": true,
+    "owned_fixture_absent": true,
+    "concurrent_additions": [],
+    "before_limits": {
+      "services": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      }
+    },
+    "after_limits": {
+      "services": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 1
+      }
+    }
+  }
+}

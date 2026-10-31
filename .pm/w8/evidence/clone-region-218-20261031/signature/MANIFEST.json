@@ -1,0 +1,42 @@
+{
+  "docker/config.json": {
+    "bytes": 13,
+    "sha256": "81bcbd3f950f2b31b87a64e8eca0de39db52feb0060d2bc631d7d794696604eb"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "0e587b08a8bd4e29ff19e9386b339d9f3653dfe450a8f6557a93a74bacd5834f"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "fresh-tuf/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "receipt.json": {
+    "bytes": 1094,
+    "sha256": "b58941f8f2150a9391e95c22cc6e6d697c31b9468e595f1ec12f6a73f9a606f6"
+  },
+  "stderr.log": {
+    "bytes": 391,
+    "sha256": "a90e594734d3e788ade2235505db2861e5386ed1732170545aaa948e88d8ad45"
+  },
+  "stdout.json": {
+    "bytes": 627,
+    "sha256": "48e6c0474f092bb1e35d1724cf12ca667c2231e74ae171bb433edf681318d224"
+  }
+}
