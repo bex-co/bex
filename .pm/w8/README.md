@@ -416,7 +416,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
-- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](218.md) — **IN PROGRESS (2026-10-31: D7 source shipped9fe393b77; full real-DB backend suite PASS; API rollout and two-client clone/invalid-region/cleanup404 acceptance remain)**
+- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](blocked/218.md) — **BLOCKED (platform deployment w4/439: adopt a signed Ready API carrier containing9fe393b77 or equivalent descendant; source and real-DB tests shipped, then worker8 runs the original two-client clone/invalid-region/cleanup404 acceptance; no user decision)**
 
 - [x] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](done/217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — option 1 implemented 2026-10-29 (exact 3.14.8 default; live acceptance pending; the keep-3.14.10 alternative is 222) — **DONE 2026-10-29** (no-signal Python runs 3.14.8, explicit 3.14 runs 3.14.10, on production)
 
