@@ -8,6 +8,8 @@ on:
     paths:
       - "deploy/native-base/**"
       - ".github/workflows/native-base-image.yml"
+      - ".github/scripts/native-oci-stage.py"
+      - ".github/scripts/test_native_oci_*.py"
       - "lego/operator/internal/build/native.go"
   workflow_dispatch:
     inputs:
@@ -35,6 +37,8 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
+      - name: test verified OCI staging and publication gates
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
       - id: matrix
         env:
           BEFORE: ${{ github.event.before }}
@@ -59,7 +63,7 @@ jobs:
             if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
               git fetch --no-tags --depth=1 origin "$BEFORE"
             fi
-            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml; then
+            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml .github/scripts/native-oci-stage.py; then
               git show "$BEFORE:lego/operator/internal/build/native.go" > "$RUNNER_TEMP/previous-native.go"
               publish=$(python3 deploy/native-base/matrix.py --changed-from "$RUNNER_TEMP/previous-native.go")
             fi
@@ -253,11 +257,22 @@ jobs:
         with:
           cosign-release: v3.1.4
       - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          syft-version: v1.55.0
       - name: sign and attest the immutable candidate
         env:
           REF: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
           PRODUCER: ${{ steps.candidate.outputs.producer }}
         run: |
+          syft_work_dir="$(mktemp -d "$RUNNER_TEMP/native-syft.XXXXXX")"
+          trap 'rm -rf -- "$syft_work_dir"' EXIT
+          # Staged compressed blobs and Syft's cache share this checked filesystem.
+          # This is a capacity check, not a reservation against parallel jobs.
+          available_kib="$(df -Pk "$syft_work_dir" | awk 'NR == 2 {print $4}')"
+          if ! [[ "$available_kib" =~ ^[0-9]+$ ]] || (( available_kib < 28 * 1024 * 1024 )); then
+            echo 'Native SBOM staging needs at least 28 GiB of free space' >&2
+            exit 1
+          fi
           # Rekor v2 logs signed PAE hashes; complete predicates remain
           # in signed OCI bundles. Exhausted retries stop tag publication.
           retry_signing() {
@@ -272,9 +287,31 @@ jobs:
           generate_sbom() {
             local arch="$1"
             local output="native-$arch.spdx.json"
+            local layout="$syft_work_dir/$arch/layout"
+            local cache="$syft_work_dir/$arch/cache"
+            local proof="$PWD/native-$arch-oci-stage.json"
+            local stage_status=0
+            mkdir -p -- "$cache"
+            rm -f -- "$output"
+            # Retry individual authenticated blobs, retaining verified progress.
+            # Syft then reads exact OCI bytes locally, with no registry stream.
+            timeout --kill-after=10s 30m python3 .github/scripts/native-oci-stage.py \
+              --ref "$REF" --platform "linux/$arch" --output "$layout" --proof "$proof" \
+              || stage_status=$?
+            if [ -f "$proof" ]; then cat "$proof"; fi
+            if [ "$stage_status" -ne 0 ]; then
+              echo "Native OCI staging $arch failed with exit $stage_status" >&2
+              return "$stage_status"
+            fi
             for attempt in 1 2 3; do
               rm -f -- "$output"
-              if GODEBUG=http2client=0 timeout --kill-after=10s 30m syft "registry:$REF" --platform "linux/$arch" -o spdx-json > "$output"; then
+              rm -rf -- "${cache:?}"
+              mkdir -p -- "$cache"
+              if TMPDIR="$cache" GODEBUG=http2client=0 SYFT_CHECK_FOR_APP_UPDATE=false \
+                timeout --kill-after=10s 30m syft scan "oci-dir:$layout" \
+                  --source-name "$NATIVE_IMAGE" --source-version "${REF##*@}" \
+                  --platform "linux/$arch" -o spdx-json > "$output"; then
+                rm -rf -- "${syft_work_dir:?}/${arch:?}"
                 return 0
               fi
               echo "Syft $arch attempt $attempt failed" >&2
