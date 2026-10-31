@@ -1,0 +1,19 @@
+{
+  "reviewed_at": "2026-10-31T08:28:00.569774+00:00",
+  "root_verified_small_payloads": 55,
+  "root_verified_small_payload_bytes": 180570,
+  "actual_receipt_sha256": "8b813f76d6bcd3f41cf79159c9b213edebad95da8faf420c9c9f8a02c075885f",
+  "root_independent_fresh_locked_archive_apply_reverse_check": true,
+  "applied_source_files_equal_actual_tested_source": 16,
+  "replacement_patch_sha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+  "functional_reviews": [
+    "root CLEAN",
+    "cli090 independent CLEAN: exactly4changedpaths/163otherbaselinefiles byteidentical; fresh-format provenance, fsck, defaults, readonly and error handling preserve contracts"
+  ],
+  "local_unit_scope": "All changed volumes package tests passed; owned transition test explicitly opt-in and separately executed11cases.",
+  "owned_transition_result": "11/11 PASS; unchangedhealthyA/B; exactowner removed/absence;cleanup0. No actual Publish format/resize/fsck/mount executed.",
+  "local_full_upstream_suite": "Two compilation attempts stopped by measured local-capacity guards before tests. Not code failures or passing full-suite evidence.",
+  "factory_full_upstream_and_real_kernel_gates_unchanged_and_still_required": true,
+  "production_pin_or_original_hosted_DoD_changed": false,
+  "proof_archive_sha256": "623a277a4f5b987539e5fdb84fc6cc840f853b4690d475b3e414c2177eedcdcf"
+}

@@ -1,0 +1,5 @@
+# Fixed inventory after CSI rollout — 2026-10-31
+
+Run41107548122/job124256013895 at source8afa1b0d completed successfully. The actual capture at01:32:52UTC proves the previously qualified platform a544 image/source25b Ready on one manager and two API pods, with bounded storage as the manager default. Both storage-class contracts/UIDs and the original two legacy App/PVC/PV-binding/handle records remained unchanged at10Gi; no new service or unmatched claim appeared. PV metadataUID was not projected, so a stronger PV-lifetime claim remains unproved.
+
+[The selected bundle](selected-facts.tar.gz), [manifest](MANIFEST.json) and [review](review.json) preserve the evidence. Root independently rechecked all11 payload hashes. Full raw logs stay private; exactly one CSI and one inventory job-log fetch occurred. Final actual timestamps give6h23m43 queue and6m16 execution; earlier reported queued ages were not guaranteed scheduler waits or future capacity bounds. This inventory adds no hosted filesystem, billing, restore or cleanup acceptance.

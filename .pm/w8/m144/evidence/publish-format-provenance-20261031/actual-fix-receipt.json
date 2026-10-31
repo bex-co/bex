@@ -1,0 +1,408 @@
+{
+  "schema": 1,
+  "status": "CHANGED_PACKAGE_UNIT_AND_11_OWNED_PUBLISH_TRANSITIONS_PASS",
+  "frozenAt": "2026-10-31T08:24:51.007718+00:00",
+  "baselineQualifiedFailure": {
+    "receipt": "/private/tmp/bex-w8-m144-t006-publish-simulation-v2-20261030/actual-run-receipt-20261031.json",
+    "sha256": "ecd9b4d75b95ac86e1e09bd326af4072b39b8ebc76b6eb4f4d71349e672f904b",
+    "actualTestExit": 1,
+    "observed": "known existing outerLUKS/active mapping +simulatedinnerempty2 caused refusedmkfs request; healthyA/B unchanged andcleaned"
+  },
+  "source": {
+    "sourceSha256Map": "source-sha256.json",
+    "sourceMapSha256": "71d484d9867220e63648047aa596601d290d0e87cdd2abb69fdbc10577eb4c74",
+    "deltaPatch": "publish-fix.delta.patch",
+    "deltaPatchSha256": "a7c09c8a8431458f530d6967a5ff403f1311b58dd53d6556aede86db796cec8c",
+    "originalLocked035BaselineUntouched": true,
+    "productionChanges": [
+      "freshLUKS only aftersamePublish Format success",
+      "bounded pathavoids downstream formatting probe",
+      "bounded Additionalro safety",
+      "mount-utils0.36.2 fsckpolicy/defaults/typederror semantics; freshformat/fsckskip andreadonlypreserved",
+      "unbounded pathunchanged"
+    ]
+  },
+  "actualTests": {
+    "changedPackage": {
+      "exit": 0,
+      "scope": "ALL ./internal/volumes tests withownedkerneloptin absent; 12newpure subcases andexistingtests passed",
+      "rawLog": "changed-package-unit-linux.log",
+      "packageSeconds": 1.28,
+      "totalSeconds": 3.899
+    },
+    "ownedTransitions": {
+      "testExit": 0,
+      "rawLog": "run-9f7daa64c99934ab/fixed-publish.log",
+      "startedUTC": "2026-10-31T08:21:51.661832+00:00",
+      "finishedUTC": "2026-10-31T08:22:06.215319+00:00",
+      "all11Cases": {
+        "additional-ro-no-grow-or-fsck": true,
+        "corrected-fsck": true,
+        "existing-ambiguous": true,
+        "failed-crypto-format": true,
+        "fresh-initialization": true,
+        "interrupted-initialization-refuses-retry": true,
+        "missing-fsck": true,
+        "mount-error-wrap": true,
+        "readonly-no-grow-or-fsck": true,
+        "uncorrected-fsck": true,
+        "valid-remount": true
+      },
+      "AUnchanged": true,
+      "BUnchanged": true,
+      "independentCheck": {
+        "geometryAUnchanged": true,
+        "geometryBUnchanged": true,
+        "sentinelsUnchanged": true
+      },
+      "actualWrites": "Only normalownedfixture setup. Publish cryptoformat/mkfs/fsck/mountresponses simulated; read-onlyouter/status/superblock+A/B identity/geometry/sentinels real. No existingmetadataedits,unmount,corruption oractualPublish writes."
+    }
+  },
+  "fullUpstreamLocalAttempts": {
+    "status": "UNPROVED_LOCAL_FULL_SUITE; BOTH_COMPILATION_CAPACITY_GUARDS_STOPPED_BEFORE_ANY_TEST_OR_CONTAINER",
+    "receipts": [
+      "full-upstream-unit-linux-result.json",
+      "full-upstream-unit-linux-attempt2-result.json"
+    ],
+    "exitBoth": [
+      -15,
+      -15
+    ],
+    "originalCumulativeBaseline": 343945216,
+    "limits": [
+      67108864,
+      134217728
+    ],
+    "observedGrowth": [
+      70197248,
+      134578176
+    ],
+    "noProductTestFailureInferred": true,
+    "fullFactoryCIGate": "Full upstream./... remains mandatory unchangedDockerfile/CI beforeartifactqualification/pin; no waiver orskip"
+  },
+  "preflightLifetimeRefusal": {
+    "path": "run-feb68593ee445a5b/execution-receipt.json",
+    "testExecuted": false,
+    "ownerCreated": false,
+    "reason": "oldroot holder remaining<=150s; preservedbeforefreshcustody rebind"
+  },
+  "binary": {
+    "sha256": "7af27fedf3e7d361b7ab72709fff19f15d7c7fb7f5b4fd1d20996531a8ab2d94",
+    "bytes": 14513598,
+    "compileReceipt": "retained-binary-compile-result.json",
+    "excludedFromCompactProof": true
+  },
+  "cleanup": {
+    "ownedKernelContainerID": "c0294e354885a71d3857110aa46e56315f3a0c55b0f5c199bbc4e16183f4f383",
+    "stopped": true,
+    "ownerAbsentAfter": true,
+    "cleanup": {
+      "cleanupExit": 0,
+      "originalExit": 0
+    },
+    "unitContainerAbsent": "unitintent + local-container-absence-20261031.json",
+    "ownTerminatedGoTMPOnlyCleanup": "stale-go-tmp-cleanup.json; module/buildcache retained",
+    "rootTinyHolder": "608aba1abee64ef8badf202de8e8e2f960dd24065869ae874afd538024291512 untouched; rootownsfinalcleanup"
+  },
+  "budget": {
+    "aggregateCapBytes": 1006632960,
+    "compileCapBytes": 536870912,
+    "floorBytes": 2147483648,
+    "unitMaximumAPlusP": 965750784,
+    "unitPeakCumulativeGrowth": 83824640,
+    "kernelMaximumAPlusP": 916705280,
+    "kernelMinimumFreeBytes": 17709146112,
+    "currentFreeBytes": 17275371520,
+    "rejectedFullsuiteOvershootSamplesRetained": true
+  },
+  "artifacts": [
+    {
+      "path": "changed-package-unit-linux-result.json",
+      "sha256": "141828be17fbfd015ff518d902b5135af63a54f9c377c61bff2f30dc2c28393d",
+      "bytes": 3389
+    },
+    {
+      "path": "changed-package-unit-linux.log",
+      "sha256": "91656d7bdbc37bab5e317bca9b0aca3aeb9c6e37e0f4e08d37658ddcbd5afdbe",
+      "bytes": 6321
+    },
+    {
+      "path": "full-upstream-unit-linux-attempt2-result.json",
+      "sha256": "7d6ac95692e9d3adb8e32c4b9dd2cd7174a08763d635641bb64df097e7e2751c",
+      "bytes": 3264
+    },
+    {
+      "path": "full-upstream-unit-linux-attempt2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "full-upstream-unit-linux-result.json",
+      "sha256": "2ce0ad1870317733de188a6eaeb2496a386a300bf20c732ee9eadd696e17cf42",
+      "bytes": 3662
+    },
+    {
+      "path": "full-upstream-unit-linux.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "image-binding-plan.json",
+      "sha256": "0a7c980ee7af855eeca76430383a723e960d3854682bee6aa27c68d1e9aec30a",
+      "bytes": 1581
+    },
+    {
+      "path": "kernel-custody-rebinding.json",
+      "sha256": "1b397bee71b125822eefa40e95ef4c699e0c6e2b139c094d998ad176ff435409",
+      "bytes": 949
+    },
+    {
+      "path": "kernel-plan.json",
+      "sha256": "f32840df1f236342d77c3083430d310f3aa782b2202ec666bd78608569cb03c9",
+      "bytes": 1848
+    },
+    {
+      "path": "linux-test-exec.py",
+      "sha256": "8e0821811e2c5bd706f5560eae5b528e5bcdbbd95a3adf421c17acf1d2b921ef",
+      "bytes": 2887
+    },
+    {
+      "path": "local-container-absence-20261031.json",
+      "sha256": "4519c05311dc12af80751f10ebefd7c6a69b4c8175a6b6533c48717e69b6cfa9",
+      "bytes": 954
+    },
+    {
+      "path": "publish-fix.delta.patch",
+      "sha256": "a7c09c8a8431458f530d6967a5ff403f1311b58dd53d6556aede86db796cec8c",
+      "bytes": 23793
+    },
+    {
+      "path": "retained-binary-compile-result.json",
+      "sha256": "5e0387f92c8207a043421c7bbfcfe7ba90a4b777901af126fe9c6759ce960c15",
+      "bytes": 2742
+    },
+    {
+      "path": "retained-binary-compile.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run-9f7daa64c99934ab/check",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run-9f7daa64c99934ab/checked.json",
+      "sha256": "449fb1877cf8d35e24d0c8e7c992674c919d4216b04bc2fce41418572b5b6136",
+      "bytes": 80
+    },
+    {
+      "path": "run-9f7daa64c99934ab/cleanup.json",
+      "sha256": "738447d898c8ece38d4d35e916609a154b8dc8ae136b1cb800fc3652e40d9285",
+      "bytes": 35
+    },
+    {
+      "path": "run-9f7daa64c99934ab/execution-receipt.json",
+      "sha256": "27540f20239ba90115353e0bace9caaa29ffc30b0d6d63d70f3d46ea8707b665",
+      "bytes": 17970
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-additional-ro-no-grow-or-fsck.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-corrected-fsck.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-existing-ambiguous.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-failed-crypto-format.log",
+      "sha256": "5542a83a10719c2b5832e159fe32eb1c50b90bdbf445956e0a0e1075cb611b08",
+      "bytes": 96
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-fresh-initialization.log",
+      "sha256": "2127bab09d5a30d5206254262c34672ebc3ae3a427d30df8a91a87e4d7c2012f",
+      "bytes": 131
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-interrupted-initialization-refuses-retry.log",
+      "sha256": "fd743743566f017ad486c70fdf88b466bfc4a1b4f92b7589d98b862f2a8d3d34",
+      "bytes": 166
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-missing-fsck.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-mount-error-wrap.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-readonly-no-grow-or-fsck.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-uncorrected-fsck.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-crypto-valid-remount.log",
+      "sha256": "b854d9f86250610d91b0182b5c6dce33be2a6854765bb6010ef47319d0bf3388",
+      "bytes": 70
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-guard-mountinfo.txt",
+      "sha256": "9bc48467ac203b8b9efdaf600a48e3ac71d326fed89e2294074355c1f5e76454",
+      "bytes": 83
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-publish-result.json",
+      "sha256": "2e91f9f525256c47d0e759c7c7c32333ff0b779a617e749aea376e314270a4a3",
+      "bytes": 2562
+    },
+    {
+      "path": "run-9f7daa64c99934ab/fixed-publish.log",
+      "sha256": "f1578f032c8aa7c28072ca7c0673763ebbb676c1129da9d95d36cd9eb319b067",
+      "bytes": 3429
+    },
+    {
+      "path": "run-9f7daa64c99934ab/geometry-a-after.json",
+      "sha256": "fbc08de9f7d74f632ebe8e886984eeaa3137659c25b61e010b984b093c1fe795",
+      "bytes": 80
+    },
+    {
+      "path": "run-9f7daa64c99934ab/geometry-a-before.json",
+      "sha256": "fbc08de9f7d74f632ebe8e886984eeaa3137659c25b61e010b984b093c1fe795",
+      "bytes": 80
+    },
+    {
+      "path": "run-9f7daa64c99934ab/geometry-b-after.json",
+      "sha256": "350db97090c4aa84eb6b110739fb33bc2f1d3568abdfd83930023ee5fb312d0c",
+      "bytes": 80
+    },
+    {
+      "path": "run-9f7daa64c99934ab/geometry-b-before.json",
+      "sha256": "350db97090c4aa84eb6b110739fb33bc2f1d3568abdfd83930023ee5fb312d0c",
+      "bytes": 80
+    },
+    {
+      "path": "run-9f7daa64c99934ab/intended-owner.json",
+      "sha256": "e029a3bb9f2a650080c80a367dcb6a91c466b7ba6f45a5ee6011710de78346a2",
+      "bytes": 293
+    },
+    {
+      "path": "run-9f7daa64c99934ab/owner.log",
+      "sha256": "f64bfbbf34941b9ca756d175c97277067d7bb0884c643e1300f24db1c1c18d8f",
+      "bytes": 1512
+    },
+    {
+      "path": "run-9f7daa64c99934ab/ready.json",
+      "sha256": "be522777beeefac64a7021bd03649983a857639ab572cb41d9ae49352b0ce082",
+      "bytes": 209
+    },
+    {
+      "path": "run-9f7daa64c99934ab/sentinels.sha256",
+      "sha256": "27567269580f83b68435ed67c7a5ca15f76f161cf289cfc010fb04e0842f8e7c",
+      "bytes": 184
+    },
+    {
+      "path": "run-9f7daa64c99934ab/stop",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run-feb68593ee445a5b/execution-receipt.json",
+      "sha256": "ded12256b748d491cd61df04d2614b40156eaf76c147eaf850385e28a3f19740",
+      "bytes": 2337
+    },
+    {
+      "path": "run-feb68593ee445a5b/intended-owner.json",
+      "sha256": "2fe63f271241bc1384d44cbe85a08a472db2a0f6489500dbbb904c2a50cb5e77",
+      "bytes": 293
+    },
+    {
+      "path": "run-feb68593ee445a5b/stop",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run-owned-fixed-publish-rebound.py",
+      "sha256": "b870695e85d184ba45c47a62b7e82aa9f1b629b8698d1fa9016881681bee6ffe",
+      "bytes": 9700
+    },
+    {
+      "path": "run-owned-fixed-publish.py",
+      "sha256": "8d7bed3d7abb816c4dc080b1fc5a50d0d514f202282a4c08dc7819043c1f8cfe",
+      "bytes": 9700
+    },
+    {
+      "path": "source/internal/volumes/bounded.go",
+      "sha256": "46c71aae71e648ecff2ea4ebcee627e4f7982e1357d60ebf9e035a99c2ffee87",
+      "bytes": 3267
+    },
+    {
+      "path": "source/internal/volumes/bounded_mount_test.go",
+      "sha256": "7119d663a0af10da431491ddd95313a13f868372e21d3915143afe7591e6df62",
+      "bytes": 5401
+    },
+    {
+      "path": "source/internal/volumes/bounded_publish_linux_test.go",
+      "sha256": "47b1b25c04944f0c1ef562eaa83c7fad8c0b3ef7522d4c0375e7cb4be6fde2aa",
+      "bytes": 13761
+    },
+    {
+      "path": "source/internal/volumes/mount.go",
+      "sha256": "801fc7f7e728eb66bce07996a33542f9870c32c69d1eff05c447432da7083435",
+      "bytes": 8315
+    },
+    {
+      "path": "source-map-before-full-resume.json",
+      "sha256": "71d484d9867220e63648047aa596601d290d0e87cdd2abb69fdbc10577eb4c74",
+      "bytes": 17322
+    },
+    {
+      "path": "source-sha256.json",
+      "sha256": "71d484d9867220e63648047aa596601d290d0e87cdd2abb69fdbc10577eb4c74",
+      "bytes": 17322
+    },
+    {
+      "path": "stale-go-tmp-cleanup.json",
+      "sha256": "deaaee1ebf10dc399f767fb3e680737d1baff7db60dfcd5ef981591b59ea1bb3",
+      "bytes": 745
+    },
+    {
+      "path": "stale-go-tmp-measurement.json",
+      "sha256": "9417a8c8081b3baf5199de2e5c00399c29573b144bde7ab1c60f88901fa9d578",
+      "bytes": 12874
+    },
+    {
+      "path": "unit-ec2d8bc8ff5b1e00.json",
+      "sha256": "5fb94b19aeb95f1daaabefa3532a18b487ae10a8782d2bf7487b1206a2f4a949",
+      "bytes": 513
+    }
+  ],
+  "excluded": [
+    "compiledbinary",
+    "allcache/buildtemp/images",
+    "zeroauthDockerconfigs",
+    "unchangedfullsource tree (hashmap retained)"
+  ],
+  "notClaimed": [
+    "Localfullupstreamsuitepass",
+    "Realcorruption/kernelEIO orrealfirstPublishformat",
+    "Newimageartifact/factoryqualification",
+    "Production/tenant/provider/billing/hostedacceptance orPMclosure",
+    "Anyrepo/Git/CI/catalog/authmutation"
+  ]
+}

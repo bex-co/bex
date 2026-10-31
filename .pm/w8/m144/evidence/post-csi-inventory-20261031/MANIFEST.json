@@ -1,0 +1,64 @@
+{
+  "scope": "Selected fixed inventory and run/job metadata only; private full raw log excluded",
+  "files": [
+    {
+      "path": "cluster-job.json",
+      "bytes": 4673,
+      "sha256": "f6498cc781de032bbc21a6ce1bbe07433449322dedc1a27fcae01aa61910958e"
+    },
+    {
+      "path": "cluster-log-fetch-once.json",
+      "bytes": 228,
+      "sha256": "02a7f79d17f704bd2fe70fda07f90fd86963ecf72cb6712436bafea325b5f8a9"
+    },
+    {
+      "path": "inventory.json",
+      "bytes": 7330,
+      "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+    },
+    {
+      "path": "metadata-job-snapshot.json",
+      "bytes": 5435,
+      "sha256": "ad951c2ebfa766419cce5236d278215833713fd8abd810628935a1b57fe0a9e7"
+    },
+    {
+      "path": "metadata-run-snapshot.json",
+      "bytes": 658,
+      "sha256": "754db17a95dec8dee1c4dbeb75466fecd37877a24254ff69f27208c5bc309aab"
+    },
+    {
+      "path": "metadata-snapshot-receipt.json",
+      "bytes": 7605,
+      "sha256": "a2c1b9091c470df1958171d6c63c77b38a56f9bbbbbd0052b8d92a2429960614"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 8508,
+      "sha256": "5fa373df393f9cae656cc8ca94d32fac2078f31267a135e92b8a147529372ebc"
+    },
+    {
+      "path": "review-20261031.json",
+      "bytes": 7923,
+      "sha256": "102c7f37d498eff51667f6a6ca5429e1d15bee3a86d54325794421c20ecb8da4"
+    },
+    {
+      "path": "safe-failure-lines.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "safe-selected-cluster-output.log",
+      "bytes": 13391,
+      "sha256": "e56af24ddff355edd04c9f22e6d07a2a6b4b3138f69fbfefb0487140d7e25aa4"
+    },
+    {
+      "path": "workflow-run.json",
+      "bytes": 343,
+      "sha256": "dc073d5f8b5eed0d0770341d05d4b874d2c84b77ef0f9d1d1cfc6a54cb81cb8d"
+    }
+  ],
+  "network_log_fetch_counts_after": {
+    "CSI": 1,
+    "inventory": 1
+  }
+}

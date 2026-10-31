@@ -435,10 +435,10 @@ index 5ff22ae..ef3a096 100644
  		Server:      toDomainServer(hcloudVolume.Server),
 diff --git a/internal/volumes/bounded.go b/internal/volumes/bounded.go
 new file mode 100644
-index 0000000..a0f7e61
+index 0000000..fdefcc8
 --- /dev/null
 +++ b/internal/volumes/bounded.go
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,94 @@
 +package volumes
 +
 +import (
@@ -461,7 +461,8 @@ index 0000000..a0f7e61
 +
 +// boundedExt4 works on the unlocked device selected by the trusted CSI node.
 +// It never shrinks or reformats an existing filesystem. Empty-device formatting
-+// is allowed only by the mount path, never by expansion or a read-only mount.
++// is allowed only when Publish initialized LUKS in that call, never by
++// expansion or a read-only mount.
 +func boundedExt4(ctx context.Context, executor exec.Interface, device string, bytes int64, allowFormat, readonly bool) error {
 +	if err := ValidateFilesystemBytes(bytes); err != nil {
 +		return err
@@ -742,6 +743,140 @@ index 0000000..5ad43f8
 +	}
 +	return bytes, nil
 +}
+diff --git a/internal/volumes/bounded_mount_test.go b/internal/volumes/bounded_mount_test.go
+new file mode 100644
+index 0000000..9a78190
+--- /dev/null
++++ b/internal/volumes/bounded_mount_test.go
+@@ -0,0 +1,128 @@
++package volumes
++
++import (
++	"context"
++	"errors"
++	"io"
++	"log/slog"
++	"os"
++	"path/filepath"
++	"reflect"
++	"strings"
++	"testing"
++
++	mount "k8s.io/mount-utils"
++	utilexec "k8s.io/utils/exec"
++	testingexec "k8s.io/utils/exec/testing"
++)
++
++func boundedTestCommand(t *testing.T, name string, args []string, output string, err error) testingexec.FakeCommandAction {
++	t.Helper()
++	return func(got string, gotArgs ...string) utilexec.Cmd {
++		if got != name || !reflect.DeepEqual(gotArgs, args) {
++			t.Fatalf("command=%s %v, want %s %v", got, gotArgs, name, args)
++		}
++		return testingexec.InitFakeCmd(&testingexec.FakeCmd{CombinedOutputScript: []testingexec.FakeAction{func() ([]byte, []byte, error) {
++			return []byte(output), nil, err
++		}}}, got, gotArgs...)
++	}
++}
++
++func TestBoundedFilesystemCheckPreservesMountUtilsSemantics(t *testing.T) {
++	for _, tc := range []struct {
++		name   string
++		err    error
++		refuse bool
++	}{
++		{name: "clean"},
++		{name: "corrected", err: utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 1}},
++		{name: "reboot-required", err: utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 2}},
++		{name: "uncorrected", err: utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 4}, refuse: true},
++		{name: "operational-exit", err: utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 8}},
++		{name: "missing", err: utilexec.ErrExecutableNotFound},
++		{name: "execution-error", err: errors.New("simulated execution failure")},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			executor := &testingexec.FakeExec{CommandScript: []testingexec.FakeCommandAction{boundedTestCommand(t, "fsck", []string{"-a", "/dev/owned-test"}, "fsck-result", tc.err)}}
++			service := NewLinuxMountService(slog.New(slog.NewTextHandler(io.Discard, nil)))
++			service.mounter.Exec = executor
++			err := service.checkBoundedFilesystem("/dev/owned-test")
++			if tc.refuse {
++				var typed mount.MountError
++				if !errors.As(err, &typed) || typed.Type != mount.HasFilesystemErrors || !strings.Contains(typed.Message, "fsck-result") {
++					t.Fatalf("uncorrected error lost type/output: %v", err)
++				}
++			} else if err != nil {
++				t.Fatal(err)
++			}
++			if executor.CommandCalls != 1 {
++				t.Fatalf("fsck calls=%d", executor.CommandCalls)
++			}
++		})
++	}
++}
++
++func TestBoundedReadonlyRefusesUnformattedOuterBeforeCryptsetup(t *testing.T) {
++	for _, tc := range []struct {
++		name       string
++		readonly   bool
++		additional []string
++	}{
++		{name: "readonly-option", readonly: true},
++		{name: "additional-ro", additional: []string{"ro"}},
++		{name: "additional-any-ro", additional: []string{"ro", "rw"}},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			dir := t.TempDir()
++			device := filepath.Join(dir, "device")
++			if err := os.WriteFile(device, nil, 0600); err != nil {
++				t.Fatal(err)
++			}
++			// No real cryptsetup can run even if this early refusal regresses.
++			t.Setenv("PATH", dir)
++			executor := &testingexec.FakeExec{CommandScript: []testingexec.FakeCommandAction{boundedTestCommand(t, "blkid", []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", device}, "", utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 2})}}
++			service := NewLinuxMountService(slog.New(slog.NewTextHandler(io.Discard, nil)))
++			mounts := mount.NewFakeMounter(nil)
++			service.mounter = &mount.SafeFormatAndMount{Interface: mounts, Exec: executor}
++			err := service.Publish(context.Background(), filepath.Join(dir, "target"), device, MountOpts{FilesystemBytes: 1 << 30, EncryptionPassphrase: "test-only", Readonly: tc.readonly, Additional: tc.additional})
++			if err == nil || !strings.Contains(err.Error(), "read-only mode") {
++				t.Fatalf("error=%v", err)
++			}
++			if executor.CommandCalls != 1 || len(mounts.GetLog()) != 0 {
++				t.Fatal("readonly blank outer advanced to mount")
++			}
++		})
++	}
++}
++
++func TestUnboundedPublishPreservesLegacyPlaintext(t *testing.T) {
++	for _, fresh := range []bool{false, true} {
++		t.Run(map[bool]string{false: "existing", true: "fresh"}[fresh], func(t *testing.T) {
++			dir := t.TempDir()
++			device := filepath.Join(dir, "device")
++			if err := os.WriteFile(device, nil, 0600); err != nil {
++				t.Fatal(err)
++			}
++			format, inspectErr := "TYPE=ext4\n", error(nil)
++			if fresh {
++				format, inspectErr = "", utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 2}
++			}
++			script := []testingexec.FakeCommandAction{boundedTestCommand(t, "blkid", []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", device}, format, inspectErr)}
++			if fresh {
++				script = append(script, boundedTestCommand(t, "mkfs.ext4", []string{"-F", "-m0", device}, "", nil))
++			} else {
++				script = append(script, boundedTestCommand(t, "fsck", []string{"-a", device}, "", nil))
++			}
++			executor := &testingexec.FakeExec{CommandScript: script}
++			mounts := mount.NewFakeMounter(nil)
++			service := NewLinuxMountService(slog.New(slog.NewTextHandler(io.Discard, nil)))
++			service.mounter = &mount.SafeFormatAndMount{Interface: mounts, Exec: executor}
++			if err := service.Publish(context.Background(), filepath.Join(dir, "target"), device, MountOpts{}); err != nil {
++				t.Fatal(err)
++			}
++			if executor.CommandCalls != 2 || len(mounts.GetLog()) != 1 || !reflect.DeepEqual(mounts.MountPoints[0].Opts, []string{"defaults"}) {
++				t.Fatalf("legacy route changed: commands=%d mounts=%+v", executor.CommandCalls, mounts.MountPoints)
++			}
++		})
++	}
++}
 diff --git a/internal/volumes/bounded_other.go b/internal/volumes/bounded_other.go
 new file mode 100644
 index 0000000..bc1546c
@@ -755,6 +890,349 @@ index 0000000..bc1546c
 +import "fmt"
 +
 +func blockDeviceBytes(string) (uint64, error) { return 0, fmt.Errorf("bounded ext4 requires Linux") }
+diff --git a/internal/volumes/bounded_publish_linux_test.go b/internal/volumes/bounded_publish_linux_test.go
+new file mode 100644
+index 0000000..48f25e4
+--- /dev/null
++++ b/internal/volumes/bounded_publish_linux_test.go
+@@ -0,0 +1,337 @@
++//go:build linux
++
++package volumes
++
++import (
++	"context"
++	"crypto/sha256"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"io"
++	mount "k8s.io/mount-utils"
++	utilexec "k8s.io/utils/exec"
++	testingexec "k8s.io/utils/exec/testing"
++	"log/slog"
++	"os"
++	osexec "os/exec"
++	"path/filepath"
++	"reflect"
++	"regexp"
++	"slices"
++	"strings"
++	"testing"
++)
++
++type failureVolumeState struct {
++	UUID     string
++	Geometry string
++	Sentinel [32]byte
++}
++
++func captureFailureState(t *testing.T, device, mountpoint string) failureVolumeState {
++	t.Helper()
++	readCommand := func(name string, args ...string) string {
++		t.Helper()
++		out, err := osexec.Command(name, args...).CombinedOutput()
++		if err != nil {
++			t.Fatalf("read-only %s: %v: %s", name, err, out)
++		}
++		return strings.TrimSpace(string(out))
++	}
++	uuid := readCommand("blkid", "-s", "UUID", "-o", "value", device)
++	var geometry []string
++	for _, line := range strings.Split(readCommand("dumpe2fs", "-h", device), "\n") {
++		if strings.HasPrefix(line, "Block count:") || strings.HasPrefix(line, "Block size:") {
++			geometry = append(geometry, strings.Join(strings.Fields(line), " "))
++		}
++	}
++	if uuid == "" || len(geometry) != 2 {
++		t.Fatal("independent filesystem identity/geometry unavailable")
++	}
++	data, err := os.ReadFile(filepath.Join(mountpoint, "sentinel"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	return failureVolumeState{uuid, strings.Join(geometry, ";"), sha256.Sum256(data)}
++}
++
++type boundedMountFailure struct{ *mount.FakeMounter }
++
++func (m boundedMountFailure) MountSensitive(string, string, string, []string, []string) error {
++	return errors.New("simulated mount failure")
++}
++
++// Reuse the reviewed two-volume owner: only command results and mounts are mocked.
++// No test command formats, resizes, unmounts or edits either healthy filesystem.
++func TestBoundedPublishOwnedTransitions(t *testing.T) {
++	if os.Getenv("BEX_CSI_PUBLISH_FIX_TEST") != "1" {
++		t.Skip("explicitly authorized owned Linux fixture required")
++	}
++	if _, err := os.Stat("/.dockerenv"); err != nil {
++		t.Fatal(err)
++	}
++	nonce := os.Getenv("BEX_CSI_PUBLISH_FIX_NONCE")
++	if !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(nonce) {
++		t.Fatal("own nonce required")
++	}
++	mapping := "m144t006-" + nonce + "-a"
++	device := "/dev/mapper/" + mapping
++	var ready struct{ LoopA, MappingA, MappingB string }
++	data, err := os.ReadFile("/proof/ready.json")
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := json.Unmarshal(data, &ready); err != nil {
++		t.Fatal(err)
++	}
++	if ready.MappingA != mapping || ready.MappingB != "m144t006-"+nonce+"-b" || !regexp.MustCompile(`^/dev/loop[0-9]+$`).MatchString(ready.LoopA) {
++		t.Fatal("owned fixture identity mismatch")
++	}
++	beforeA := captureFailureState(t, device, "/scratch/mount-a")
++	beforeB := captureFailureState(t, "/dev/mapper/"+ready.MappingB, "/scratch/mount-b")
++	outcomes := map[string]bool{}
++	t.Cleanup(func() {
++		a := captureFailureState(t, device, "/scratch/mount-a")
++		b := captureFailureState(t, "/dev/mapper/"+ready.MappingB, "/scratch/mount-b")
++		if a != beforeA || b != beforeB {
++			t.Error("owned A/B geometry, UUID or sentinel changed")
++		}
++		proof := map[string]any{"scope": "Actual healthy own blockdevices; crypto format, inner blkid, fsck, mkfs results and mount are simulated; every real mutation refused", "BeforeA": beforeA, "BeforeB": beforeB, "AfterA": a, "AfterB": b, "AUnchanged": a == beforeA, "BUnchanged": b == beforeB, "cases": outcomes, "TestFailed": t.Failed()}
++		encoded, e := json.MarshalIndent(proof, "", "  ")
++		if e == nil {
++			e = os.WriteFile("/proof/fixed-publish-result.json", append(encoded, '\n'), 0600)
++		}
++		if e != nil {
++			t.Error(e)
++		}
++	})
++	raw := filepath.Join("/scratch", mapping)
++	if err := os.Symlink(ready.LoopA, raw); err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() {
++		if e := os.Remove(raw); e != nil {
++			t.Error(e)
++		}
++	})
++	actual := &mount.SafeFormatAndMount{Exec: utilexec.New()}
++	kind, err := actual.GetDiskFormat(raw)
++	if err != nil || kind != "crypto_LUKS" {
++		t.Fatalf("actual outer=%q err=%v", kind, err)
++	}
++	realCrypt, err := osexec.LookPath("cryptsetup")
++	if err != nil {
++		t.Fatal(err)
++	}
++	realCrypt, err = filepath.Abs(realCrypt)
++	if err != nil || !regexp.MustCompile(`^/[A-Za-z0-9_./-]+$`).MatchString(realCrypt) {
++		t.Fatal("fixed cryptsetup path required")
++	}
++	status, err := osexec.Command(realCrypt, "status", mapping).CombinedOutput()
++	if err != nil {
++		t.Fatalf("actual status: %v %s", err, status)
++	}
++	var backing string
++	for _, line := range strings.Split(string(status), "\n") {
++		f := strings.Fields(line)
++		if len(f) == 2 && f[0] == "device:" {
++			backing = f[1]
++		}
++	}
++	if backing != ready.LoopA {
++		t.Fatal("active own mapping backing differs")
++	}
++	mountinfo, err := os.ReadFile("/proc/self/mountinfo")
++	if err != nil {
++		t.Fatal(err)
++	}
++	var guardMount string
++	for _, line := range strings.Split(string(mountinfo), "\n") {
++		f := strings.Fields(line)
++		if len(f) > 6 && f[4] == "/guard-bin" {
++			guardMount = line
++			break
++		}
++	}
++	f := strings.Fields(guardMount)
++	if len(f) < 6 || !strings.Contains(guardMount, " - tmpfs ") {
++		t.Fatal("own guard tmpfs absent")
++	}
++	flags := "," + f[5] + ","
++	if strings.Contains(flags, ",noexec,") || !strings.Contains(flags, ",nosuid,") || !strings.Contains(flags, ",nodev,") {
++		t.Fatal("guard mount flags differ")
++	}
++	if err := os.WriteFile("/proof/fixed-guard-mountinfo.txt", []byte(guardMount+"\n"), 0600); err != nil {
++		t.Fatal(err)
++	}
++	outer := func(t *testing.T, blank bool) testingexec.FakeCommandAction {
++		args := []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", raw}
++		if blank {
++			return boundedTestCommand(t, "blkid", args, "", utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 2})
++		}
++		return func(name string, got ...string) utilexec.Cmd {
++			if name != "blkid" || !reflect.DeepEqual(got, args) {
++				t.Fatalf("unexpected outer command %s %v", name, got)
++			}
++			return utilexec.New().Command(name, got...)
++		}
++	}
++	inner := func(t *testing.T, blank bool) testingexec.FakeCommandAction {
++		out, e := "ext4\n", error(nil)
++		if blank {
++			out, e = "", utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 2}
++		}
++		return boundedTestCommand(t, "blkid", []string{"-p", "-s", "TYPE", "-o", "value", device}, out, e)
++	}
++	fsck := func(t *testing.T, e error) testingexec.FakeCommandAction {
++		return boundedTestCommand(t, "fsck", []string{"-a", device}, "fsck-result", e)
++	}
++	mkfs := func(t *testing.T, e error) testingexec.FakeCommandAction {
++		return boundedTestCommand(t, "mkfs.ext4", []string{"-F", "-m0", "-b4096", device, "262144"}, "", e)
++	}
++	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
++	for _, tc := range []struct {
++		name         string
++		script       func(*testing.T) []testingexec.FakeCommandAction
++		opts         MountOpts
++		formatExit   int // -1 refuses every crypto-format request; >=0 is a simulated result only.
++		wantError    string
++		wantType     mount.MountErrorType
++		wantMount    bool
++		mountFailure bool
++	}{
++		{name: "existing-ambiguous", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, true)}
++		}, formatExit: -1, wantError: "refuse to format"},
++		{name: "valid-remount", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false), fsck(t, nil)}
++		}, formatExit: -1, wantMount: true},
++		{name: "corrected-fsck", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false), fsck(t, utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 1})}
++		}, formatExit: -1, wantMount: true},
++		{name: "uncorrected-fsck", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false), fsck(t, utilexec.CodeExitError{Err: errors.New("simulated command exit"), Code: 4})}
++		}, formatExit: -1, wantType: mount.HasFilesystemErrors},
++		{name: "missing-fsck", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false), fsck(t, utilexec.ErrExecutableNotFound)}
++		}, formatExit: -1, wantMount: true},
++		{name: "readonly-no-grow-or-fsck", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false)}
++		}, opts: MountOpts{Readonly: true, FilesystemBytes: 5 << 30}, formatExit: -1, wantMount: true},
++		{name: "additional-ro-no-grow-or-fsck", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false)}
++		}, opts: MountOpts{Additional: []string{"ro"}, FilesystemBytes: 5 << 30}, formatExit: -1, wantMount: true},
++		{name: "fresh-initialization", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, true), inner(t, true), mkfs(t, nil)}
++		}, formatExit: 0, wantMount: true},
++		{name: "failed-crypto-format", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, true)}
++		}, formatExit: 125, wantError: "unable to format"},
++		{name: "mount-error-wrap", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, false), inner(t, false), fsck(t, nil)}
++		}, formatExit: -1, wantType: mount.UnknownMountError, mountFailure: true},
++		{name: "interrupted-initialization-refuses-retry", script: func(t *testing.T) []testingexec.FakeCommandAction {
++			return []testingexec.FakeCommandAction{outer(t, true), inner(t, true), mkfs(t, errors.New("simulated first mkfs failure")), outer(t, false), inner(t, true)}
++		}, formatExit: 0, wantError: "refuse to format"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			logPath := "/proof/fixed-crypto-" + tc.name + ".log"
++			formatArgs := "luksFormat --type luks1 " + raw
++			shim := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' \"$*\" >> %s\nif [ \"$#\" -eq 2 ] && [ \"$1\" = status ] && [ \"$2\" = %s ]; then exec %s status %s; fi\nif [ \"$*\" = '%s' ] && [ %d -ge 0 ]; then exit %d; fi\nexit 125\n", logPath, mapping, realCrypt, mapping, formatArgs, tc.formatExit, tc.formatExit)
++			guard := "/guard-bin/cryptsetup"
++			if err := os.WriteFile(guard, []byte(shim), 0700); err != nil {
++				t.Fatal(err)
++			}
++			t.Setenv("PATH", "/guard-bin:"+os.Getenv("PATH"))
++			if path, e := osexec.LookPath("cryptsetup"); e != nil || path != guard {
++				t.Fatalf("guard path %q %v", path, e)
++			}
++			if out, e := osexec.Command("cryptsetup", "status", mapping).CombinedOutput(); e != nil {
++				t.Fatalf("guard preflight %v %s", e, out)
++			}
++			if got, e := os.ReadFile(logPath); e != nil || string(got) != "status "+mapping+"\n" {
++				t.Fatalf("preflight log %q %v", got, e)
++			}
++			executor := &testingexec.FakeExec{CommandScript: tc.script(t)}
++			mounts := mount.NewFakeMounter(nil)
++			surface := mount.Interface(mounts)
++			if tc.mountFailure {
++				surface = boundedMountFailure{mounts}
++			}
++			service := NewLinuxMountService(logger)
++			service.mounter = &mount.SafeFormatAndMount{Interface: surface, Exec: executor}
++			opts := tc.opts
++			opts.FSType = "ext4"
++			opts.EncryptionPassphrase = "test-only-simulated-command"
++			if opts.FilesystemBytes == 0 {
++				opts.FilesystemBytes = 1 << 30
++			}
++			target := filepath.Join("/scratch", "fixed-target-"+tc.name)
++			err := service.Publish(context.Background(), target, raw, opts)
++			if tc.name == "interrupted-initialization-refuses-retry" {
++				if err == nil || !strings.Contains(err.Error(), "simulated first mkfs failure") {
++					t.Fatalf("first interruption %v", err)
++				}
++				err = service.Publish(context.Background(), target, raw, opts)
++			}
++			if tc.wantType != "" {
++				var typed mount.MountError
++				if !errors.As(err, &typed) || typed.Type != tc.wantType {
++					t.Fatalf("mount type lost: %v", err)
++				}
++			} else if tc.wantError != "" {
++				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
++					t.Fatalf("error=%v want %q", err, tc.wantError)
++				}
++			} else if err != nil {
++				t.Fatal(err)
++			}
++			if executor.CommandCalls != len(executor.CommandScript) {
++				t.Fatalf("commands consumed %d/%d", executor.CommandCalls, len(executor.CommandScript))
++			}
++			if tc.wantMount {
++				if len(mounts.MountPoints) != 1 || mounts.MountPoints[0].Type != "ext4" || !slices.Contains(mounts.MountPoints[0].Opts, "defaults") {
++					t.Fatalf("mount/defaults lost: %+v", mounts.MountPoints)
++				}
++				if (opts.Readonly || slices.Contains(opts.Additional, "ro")) && !slices.Contains(mounts.MountPoints[0].Opts, "ro") {
++					t.Fatal("readonly option lost")
++				}
++			} else if len(mounts.GetLog()) != 0 {
++				t.Fatal("unexpected mount")
++			}
++			crypto, err := os.ReadFile(logPath)
++			if err != nil {
++				t.Fatal(err)
++			}
++			formats := 0
++			statuses := 0
++			for _, line := range strings.Split(strings.TrimSpace(string(crypto)), "\n") {
++				switch line {
++				case "status " + mapping:
++					statuses++
++				case formatArgs:
++					formats++
++				default:
++					t.Fatalf("unexpected crypto request %q", line)
++				}
++			}
++			wantFormats := 0
++			if tc.formatExit >= 0 {
++				wantFormats = 1
++			}
++			wantStatuses := 2
++			if tc.name == "failed-crypto-format" {
++				wantStatuses = 1
++			}
++			if tc.name == "interrupted-initialization-refuses-retry" {
++				wantStatuses = 3
++			}
++			if formats != wantFormats || statuses != wantStatuses {
++				t.Fatalf("crypto format/status=%d/%d want %d/%d", formats, statuses, wantFormats, wantStatuses)
++			}
++			outcomes[tc.name] = true
++			t.Logf("exact command script consumed=%d, simulatedCryptoFormats=%d, readOnlyStatuses=%d, fakeMounts=%d; all actual writes refused", executor.CommandCalls, formats, statuses, len(mounts.GetLog()))
++		})
++	}
++}
 diff --git a/internal/volumes/bounded_test.go b/internal/volumes/bounded_test.go
 new file mode 100644
 index 0000000..71c0ddd
@@ -787,10 +1265,18 @@ index 0000000..71c0ddd
 +	}
 +}
 diff --git a/internal/volumes/mount.go b/internal/volumes/mount.go
-index f773b6b..822bd9e 100644
+index f773b6b..f93ec12 100644
 --- a/internal/volumes/mount.go
 +++ b/internal/volumes/mount.go
-@@ -32,6 +32,7 @@ type MountOpts struct {
+@@ -7,6 +7,7 @@ import (
+ 	"log/slog"
+ 	"os"
+ 	"path/filepath"
++	"slices"
+ 	"strings"
+ 	"time"
+ 
+@@ -32,6 +33,7 @@ type MountOpts struct {
  	Additional           []string // Additional mount options/flags passed to /bin/mount
  	EncryptionPassphrase string
  	FsFormatOptions      string
@@ -798,7 +1284,43 @@ index f773b6b..822bd9e 100644
  }
  
  // MountService mounts volumes.
-@@ -160,6 +161,14 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
+@@ -79,6 +81,11 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
+ 	}
+ 
+ 	var mountOptions []string
++	freshLUKS := false
++	readOnly := opts.Readonly
++	if opts.FilesystemBytes != 0 {
++		readOnly = readOnly || slices.Contains(opts.Additional, "ro")
++	}
+ 
+ 	targetPathPermissions := os.FileMode(0o750)
+ 	if opts.BlockVolume {
+@@ -117,12 +124,13 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
+ 		}
+ 		luksDeviceName := GenerateLUKSDeviceName(devicePath)
+ 		if existingFSType == "" {
+-			if opts.Readonly {
++			if readOnly {
+ 				return fmt.Errorf("cannot publish unformatted disk %s in read-only mode", devicePath)
+ 			}
+ 			if err = s.cryptSetup.Format(ctx, devicePath, opts.EncryptionPassphrase); err != nil {
+ 				return err
+ 			}
++			freshLUKS = true
+ 		} else if existingFSType != "crypto_LUKS" {
+ 			return fmt.Errorf("requested encrypted volume, but disk %s already is formatted with %s", devicePath, existingFSType)
+ 		}
+@@ -139,7 +147,7 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
+ 		"device-path", devicePath,
+ 		"fs-type", opts.FSType,
+ 		"block-volume", opts.BlockVolume,
+-		"readonly", opts.Readonly,
++		"readonly", readOnly,
+ 		"mount-options", strings.Join(mountOptions, ", "),
+ 		"encrypted", opts.EncryptionPassphrase != "",
+ 	)
+@@ -160,9 +168,49 @@ func (s *LinuxMountService) Publish(ctx context.Context, targetPath string, devi
  		formatOptions = append(formatOptions, "-c", fmt.Sprintf("options=%s", XFSDefaultConfigPath))
  	}
  
@@ -806,13 +1328,48 @@ index f773b6b..822bd9e 100644
 +		if opts.FSType != "ext4" || len(formatOptions) != 0 {
 +			return fmt.Errorf("bounded ext4 refuses other filesystems and custom format options")
 +		}
-+		if err := boundedExt4(ctx, s.mounter.Exec, devicePath, opts.FilesystemBytes, !opts.Readonly, opts.Readonly); err != nil {
++		if err := boundedExt4(ctx, s.mounter.Exec, devicePath, opts.FilesystemBytes, freshLUKS, readOnly); err != nil {
 +			return err
 +		}
++		if !freshLUKS && !readOnly {
++			if err := s.checkBoundedFilesystem(devicePath); err != nil {
++				return err
++			}
++		}
++		mountOptions = append(mountOptions, "defaults")
++		if err := s.mounter.MountSensitive(devicePath, targetPath, opts.FSType, mountOptions, opts.Additional); err != nil {
++			return mount.NewMountError(mount.UnknownMountError, "%s", err.Error())
++		}
++		return nil
 +	}
  	return s.mounter.FormatAndMountSensitiveWithFormatOptions(devicePath, targetPath, opts.FSType, mountOptions, opts.Additional, formatOptions)
  }
  
++// Keep mount-utils v0.36.2's fsck policy without its fallback to formatting.
++func (s *LinuxMountService) checkBoundedFilesystem(source string) error {
++	out, err := s.mounter.Exec.Command("fsck", "-a", source).CombinedOutput()
++	if err == nil {
++		return nil
++	}
++	exit, isExitError := err.(exec.ExitError)
++	switch {
++	case err == exec.ErrExecutableNotFound:
++		s.logger.Warn("fsck unavailable; continuing mount", "device", source)
++	case isExitError && exit.ExitStatus() == 1:
++		s.logger.Info("fsck corrected filesystem errors", "device", source)
++	case isExitError && exit.ExitStatus() == 4:
++		return mount.NewMountError(mount.HasFilesystemErrors, "'fsck' found errors on device %s but could not correct them: %s", source, string(out))
++	case isExitError && exit.ExitStatus() > 4:
++		s.logger.Info("fsck error; continuing mount", "device", source, "output", string(out))
++	default:
++		s.logger.Warn("fsck failed; continuing mount", "device", source, "error", err, "output", string(out))
++	}
++	return nil
++}
++
+ // waitDeviceReady ensures the device at devicePath exists. This is done by ensuring a stat
+ // syscall returns no error.
+ func (s *LinuxMountService) waitDeviceReady(ctx context.Context, devicePath string) error {
 diff --git a/internal/volumes/resize.go b/internal/volumes/resize.go
 index 8647d0c..e8b4e5c 100644
 --- a/internal/volumes/resize.go

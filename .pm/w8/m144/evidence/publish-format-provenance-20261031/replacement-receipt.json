@@ -1,0 +1,138 @@
+{
+  "status": "PRIVATE_REPLACEMENT_PREPARED_NO_REPO_EDIT",
+  "at": "2026-10-31T08:26:23.446778+00:00",
+  "originalRepoPatchSha256": "035bcc3eca78ac1a6f1520ef863cabab66567dc7583fe53eb5b9de550df4d3ec",
+  "lockedUpstreamRevision": "2d814c4f36351a6f1652f80657cb3ddd18d51a0b",
+  "lockedRawArchive": "/private/tmp/w8-csi-source.tar.gz",
+  "lockedRawArchiveSha256": "5c3697eef3ca6a97b437930fca51ea9d440a43e33842f96d9ce20300bf4eeae6",
+  "replacementPatch": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/bounded-ext4.patch",
+  "replacementPatchSha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+  "replacementPatchBytes": 55821,
+  "patchFiles": [
+    "internal/csi/volume.go",
+    "internal/driver/bounded.go",
+    "internal/driver/bounded_test.go",
+    "internal/driver/controller.go",
+    "internal/driver/helper.go",
+    "internal/driver/node.go",
+    "internal/volsrv/helper.go",
+    "internal/volumes/bounded.go",
+    "internal/volumes/bounded_kernel_test.go",
+    "internal/volumes/bounded_linux.go",
+    "internal/volumes/bounded_mount_test.go",
+    "internal/volumes/bounded_other.go",
+    "internal/volumes/bounded_publish_linux_test.go",
+    "internal/volumes/bounded_test.go",
+    "internal/volumes/mount.go",
+    "internal/volumes/resize.go"
+  ],
+  "appliesCleanlyToExactLockedArchive": true,
+  "appliedAllFilesEqualTestedPrivateSourceExcludingOnlyPrivateIndependentAudit": true,
+  "excludedPrivateAudit": "internal/driver/bounded_missing_key_audit_test.go (preexisting102lineindependentkeyaudit; neverpartofpublished035patch)",
+  "appliedPatchSourceSha256": {
+    "internal/csi/volume.go": "61b8bdc3e4a37e4b0aa231168d1022a4a98db835c7096e9cac880c68685bbc9c",
+    "internal/driver/bounded.go": "69a9f94a921e6a9465f774f74655ce9d23f89b2ec53487f7a9e01bee06fae180",
+    "internal/driver/bounded_test.go": "db834333d7b5fc9e6b071ef27ca7dc03d6396e1d24934d74aed1c430505b28d5",
+    "internal/driver/controller.go": "afc7254b3386fa0f0149d8cb109c173d0c97e993eb4d65d3e6c721d7dbda7efa",
+    "internal/driver/helper.go": "ddc2a609e3d939a087139a2fec231b4e7d1a9ddc1cfd6db7bcfcf671d431975b",
+    "internal/driver/node.go": "b26e273bb6c2ea01a2d7db8940133f833e698cd0ec60dd028ca6befa5837fc23",
+    "internal/volsrv/helper.go": "61a5472761737d7a048d4a45b8e9e6c907157b33bed59d8d949fa068c67ed927",
+    "internal/volumes/bounded.go": "46c71aae71e648ecff2ea4ebcee627e4f7982e1357d60ebf9e035a99c2ffee87",
+    "internal/volumes/bounded_kernel_test.go": "b86b23c74d51797342bc7c0bdf0766f784470079e6ecb48960cceef6f40b186b",
+    "internal/volumes/bounded_linux.go": "a75dec01218ad66705ff1ddaf05323bbfff7e12eb02f4dea8f497fdfd4c554d8",
+    "internal/volumes/bounded_mount_test.go": "7119d663a0af10da431491ddd95313a13f868372e21d3915143afe7591e6df62",
+    "internal/volumes/bounded_other.go": "e78125b24ab95136f41b9d47e5e02b69d46a504b2e8f2bebc544bcff5b8ffa56",
+    "internal/volumes/bounded_publish_linux_test.go": "47b1b25c04944f0c1ef562eaa83c7fad8c0b3ef7522d4c0375e7cb4be6fde2aa",
+    "internal/volumes/bounded_test.go": "ffa5750c8ef21c69a6a23d8f5b6b92e1ed57504dfc24b388f42726cd1eaecea2",
+    "internal/volumes/mount.go": "801fc7f7e728eb66bce07996a33542f9870c32c69d1eff05c447432da7083435",
+    "internal/volumes/resize.go": "4a0ed441e412f65caa7b6d901ed36fb817427d0c7bcb8c26aeb3716218a1336c"
+  },
+  "commandChecks": [
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--check",
+        "/private/tmp/bex-w8-m144-t006-local-20261030/fixed.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/candidate",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "/private/tmp/bex-w8-m144-t006-local-20261030/fixed.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/candidate",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--check",
+        "/private/tmp/bex-w8-m144-publish-fix-20261031/publish-fix.delta.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/candidate",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "/private/tmp/bex-w8-m144-publish-fix-20261031/publish-fix.delta.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/candidate",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--check",
+        "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/bounded-ext4.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/apply-check",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/bounded-ext4.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/apply-check",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "apply",
+        "--reverse",
+        "--check",
+        "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/bounded-ext4.patch"
+      ],
+      "cwd": "/private/tmp/bex-w8-m144-publish-fix-20261031/patch-replacement/apply-check",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "actualFixReceipt": "/private/tmp/bex-w8-m144-publish-fix-20261031/actual-fix-receipt.json",
+  "actualFixReceiptSha256": "8b813f76d6bcd3f41cf79159c9b213edebad95da8faf420c9c9f8a02c075885f",
+  "fullUpstreamGate": "Localfull./... unproved duecapacityguards; unchangedfactory/CI fullsuite required beforeartifactqualification",
+  "repoOrCIChanges": false
+}

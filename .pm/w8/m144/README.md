@@ -106,3 +106,13 @@ The [final snapshot cleanup implementation](evidence/snapshot-delete-finalizatio
 ## Local command-failure coverage — 2026-10-30
 
 [Two executed error-path cases](evidence/command-failure-isolation-20261030/README.md) preserve actual A/B filesystem identity, geometry and data while simulated inspection/resize commands fail; no fallback formatting or false success occurs. The exact test owner and mappings are cleaned, with a restricted tools holder temporarily retained for separate testing. Harness failures and both authorized image pulls remain explicit. No kernel fault, actual billing, hosted lifecycle or separate ambiguous-format safety result is claimed; original production acceptance remains open.
+
+
+## Existing-volume format regression and completed inventory — 2026-10-31
+
+The [post-CSI fixed inventory](evidence/post-csi-inventory-20261031/README.md) now has actual completed output: qualified a544 platform Ready, bounded default and preserved legacy bindings. Separately, [one corrected local full-Publish simulation](evidence/publish-probe-routing-20261031/README.md) qualified the original criterion failure: an ambiguous inner probe on an existing LUKS mapping requested mkfs, which was refused. Both healthy filesystems and exact owned cleanup passed; the actual regression test's failure is retained. This is a source bug to fix before acceptance, not data-loss reproduction. Production source fixes and original hosted/billing/restore/cleanup DoDs remain open.
+
+
+## Publish provenance fix and regressions — 2026-10-31
+
+[The tested source fix](evidence/publish-format-provenance-20261031/README.md) prevents ambiguous inner probes on existing recognized LUKS mappings from requesting formatting, removes the second formatting fallback, and retains filesystem-check/read-only/legacy contracts. All changed-package Linux unit tests and11 owned transition cases pass with healthyA/B preserved and cleanup0. Root and independent functional reviews are clean; root applied/reversed the exact replacement against the checksum-locked upstream archive and matched all16 resulting source files. Full image-factory tests, strict artifact qualification, reviewed pin/Ready and original hosted/billing/restore/cleanup acceptance still remain.
