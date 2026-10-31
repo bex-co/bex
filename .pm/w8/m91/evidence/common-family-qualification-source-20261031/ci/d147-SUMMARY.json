@@ -1,0 +1,11 @@
+{
+  "sha256": "ba82e17e95a7ae040d1e6fb5b5c5d42f783e1bd253f11241aa5bfd0815a322a0",
+  "bytes": 1128540,
+  "selected_tail": [
+    "2026-10-31T16:03:31.0502956Z #9 ERROR: failed to configure registry cache importer: ghcr.io/bex-co/bex-cnb-run:native-common-bookworm: not found",
+    "2026-10-31T16:36:48.0506241Z #22 0.765 pg_restore: error: input file is too short (read 0, expected 5)",
+    "2026-10-31T16:40:42.7657847Z #33 0.190 pg_restore: error: input file is too short (read 0, expected 5)",
+    "2026-10-31T17:10:37.9342652Z 2026-10-31T17:10:37Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: failed to calculate image size: pipeline error: failed to save layer: unexpected EOF",
+    "2026-10-31T17:45:22.8358393Z 2026-10-31T17:45:22Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: failed to calculate image size: pipeline error: failed to save layer: unexpected EOF"
+  ]
+}

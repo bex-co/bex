@@ -1,0 +1,110 @@
+{
+  "CHECKS.json": {
+    "bytes": 2386,
+    "sha256": "2a225a4c2c74d2646fa3ce45231fafa92639154b620ad6cf62c9fec63783c424"
+  },
+  "FUTURE-EXECUTION.json": {
+    "bytes": 5778,
+    "sha256": "6e9cd04ae720de94724120adc7588f2d60dc12ca9a3529f77ecaa43cb399df70"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 1649,
+    "sha256": "72640aa6c5edfaf255e231948e39cb40b4130356698ac20bb7c0d059c6099ed0"
+  },
+  "build-package-final.log": {
+    "bytes": 63,
+    "sha256": "df65b6b64d5f1ff0bd10681aedcb54dd11238449bc042f90a89583422d6d62ad"
+  },
+  "host-bundler-0.log": {
+    "bytes": 68,
+    "sha256": "5c8775706f1eb0f25d0bba150471b112452a783ceebe89a32804472908990741"
+  },
+  "host-bundler-1.log": {
+    "bytes": 7,
+    "sha256": "17ed26c02bfb3b6e3f2e09540dedc561bfdcfdb21a8fa0bdabd6009911daa727"
+  },
+  "host-bundler-2.log": {
+    "bytes": 395,
+    "sha256": "985cfdc0391f538bd43cd6fb7fc29379d6c0aaefe83869fa99e6d5e6d0ee1e38"
+  },
+  "host-bundler-3.log": {
+    "bytes": 41,
+    "sha256": "c98ac32c9fa6b9d4ab4578017b8e217afd7989cb947cd3bdf5b80e07e7cab391"
+  },
+  "host-bundler-4.log": {
+    "bytes": 6,
+    "sha256": "2e9fe584010a41f374317eb891684ccaab818403e8fa8eb7b2053c1810a8c00a"
+  },
+  "host-bundler-unit.json": {
+    "bytes": 860,
+    "sha256": "be574d2ff9601d1d1e28543878478231098754e371798b2a3ab05a37405e74ad"
+  },
+  "host-empty-bundler-unit/Gemfile": {
+    "bytes": 71,
+    "sha256": "64e0245498491c9ca88b40d21fc207f04d5ecf34dacc056805ef87a20acde743"
+  },
+  "host-empty-bundler-unit/Gemfile.lock": {
+    "bytes": 45,
+    "sha256": "47721c7d0cc398e770ae3dd99ff29afdc642046da031e4068ebeb6fb875fa93b"
+  },
+  "initial-source-controls.log": {
+    "bytes": 46703,
+    "sha256": "9d99a9389c59bbae85b5ee8ef3f2a98e5b18c683d41d790024d704b83d3e046b"
+  },
+  "lint-final.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "lint-initial.log": {
+    "bytes": 193,
+    "sha256": "6afaa00a5ab384ac82d9c0fba82dc6907f0198ca71d2a6599929d4981a7d2e9c"
+  },
+  "protected-source-receipt.json": {
+    "bytes": 11746,
+    "sha256": "c2cd83d7dbe332a6480eaae164b0ccf5a72c6f152594bbb6c59fbd233566640b"
+  },
+  "source-controls-final.log": {
+    "bytes": 5627,
+    "sha256": "9198ffb75ac4bdd339a00e47578a746d25c3209e144747b38539a93efe5d50eb"
+  },
+  "source-controls.log": {
+    "bytes": 4515,
+    "sha256": "bcce6117ecb8b08075c7c3278d7d488b8a366d328c094f94e227fe72c667ce90"
+  },
+  "source/lego/operator/internal/build/nativecommon_ruby_test.go": {
+    "bytes": 16847,
+    "sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile": {
+    "bytes": 71,
+    "sha256": "64e0245498491c9ca88b40d21fc207f04d5ecf34dacc056805ef87a20acde743"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile.lock": {
+    "bytes": 45,
+    "sha256": "47721c7d0cc398e770ae3dd99ff29afdc642046da031e4068ebeb6fb875fa93b"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/build.rb": {
+    "bytes": 884,
+    "sha256": "0fd903e4b57077a71abd42f8773dafdbc21c9211fb34a69317bea38fde6b653c"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+    "bytes": 3871,
+    "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/ext/bex_ruby_probe.c": {
+    "bytes": 727,
+    "sha256": "de7fd17cc64fbf66a14865e8a8d4065e2a9f08a8bd4e0d3d8941932318816b2a"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/ext/extconf.rb": {
+    "bytes": 150,
+    "sha256": "7e5dcc2662c3491eaa9077fbb9a97729f76420baa462896860d4b7169ebdcfc6"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/static.js": {
+    "bytes": 1082,
+    "sha256": "a92f110bde5a96bbe1acc29fc6bd40fdc6fe2c881b54abc292ce314362ada241"
+  },
+  "syntax-controls.json": {
+    "bytes": 572,
+    "sha256": "62f31f7829bfd2bae1a069a97114975fa03ac7b863d35fca7fc9251437630e5e"
+  }
+}

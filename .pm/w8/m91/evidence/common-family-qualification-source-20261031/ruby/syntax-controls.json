@@ -1,0 +1,42 @@
+[
+  {
+    "command": [
+      "ruby",
+      "-c",
+      "build.rb"
+    ],
+    "exit_code": 0,
+    "stdout": "Syntax OK\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "ruby",
+      "-c",
+      "check.rb"
+    ],
+    "exit_code": 0,
+    "stdout": "Syntax OK\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "ruby",
+      "-c",
+      "ext/extconf.rb"
+    ],
+    "exit_code": 0,
+    "stdout": "Syntax OK\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "--check",
+      "static.js"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

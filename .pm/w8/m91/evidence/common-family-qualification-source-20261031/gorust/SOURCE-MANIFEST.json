@@ -1,0 +1,58 @@
+{
+  "lego/operator/internal/build/nativecommon_gorust_test.go": {
+    "bytes": 12042,
+    "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/Cargo.lock": {
+    "bytes": 128,
+    "sha256": "96ca666ab8d15918a206816f5bc3a2a7682311a3032e2cc10d336d7932a406d3"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/Cargo.toml": {
+    "bytes": 66,
+    "sha256": "80d6e628e7ee92e1823e024186dad074878f3080dd3a43da67409ed5d24b60b1"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/check.py": {
+    "bytes": 8934,
+    "sha256": "0101a87529a21ec2beb52071e98b7b21f6e8de29d05e02217e55a74fe927a977"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/check_test.py": {
+    "bytes": 4312,
+    "sha256": "7dc71ea5fd8b016a08220814629dc87ff83712628ee8a558374f7fb66063a81e"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/go-cgo/main.go": {
+    "bytes": 1128,
+    "sha256": "5fef1b1a809a990ca84c3da2ada7d8f08a80bdc1887db7bd08e68085996b6e9e"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/go-pure/main.go": {
+    "bytes": 781,
+    "sha256": "30589e0fbdd2b2f977c29ee5de265bd89c48b4b878850c0adab9d3d6adab7126"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/go.mod": {
+    "bytes": 57,
+    "sha256": "76b6873605f846720707abd038b459a16040bf647d3f261b7e96a833830c11fa"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-native/Cargo.toml": {
+    "bytes": 92,
+    "sha256": "f5e3a9cf61a8e4157de528adc50d44bdb60dcfdd96c41c0bcaf4011398b83193"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-native/build.rs": {
+    "bytes": 728,
+    "sha256": "a853711ab72de9137d9b4073f8f047a5895342e3788463416ee73b9afb94f6f6"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-native/probe.c": {
+    "bytes": 374,
+    "sha256": "f1ea3aab549172e52df827fcde46db02f7736088c8d9cf5a08712b5f9ec8e0ce"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-native/src/main.rs": {
+    "bytes": 657,
+    "sha256": "32c3cef2265c229b9de11e5c5dd7c855811a767b421608a7b13bb888e2a95f92"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/Cargo.toml": {
+    "bytes": 71,
+    "sha256": "da7cd83a9fa7f8bf6dff461b5dba2d8d45c8cf20c2c5cb65abe120ede188c9cf"
+  },
+  "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/src/main.rs": {
+    "bytes": 234,
+    "sha256": "9b8d1f5af916052c78559fa38ef7d199994c3fa16eb3c8645ac1fb0a28d76e82"
+  }
+}

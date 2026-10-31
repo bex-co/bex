@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-31T18:29:10.489026+00:00",
+  "initial_lint_attempt": "preflight refused, no lint process started",
+  "initial_free_bytes": 2660200448,
+  "initial_required_bytes": 2684354560,
+  "new_preflight_bytes": 2415919104,
+  "floor_bytes": 2147483648,
+  "proactive_reserve_bytes": 134217728,
+  "reason": "Fresh scoped cached-lint-only plan; prior scoped build temp42,553,344B and prior same-package lint <=327,680B. No resource/prune change, own stop guard unchanged.",
+  "current_free_bytes": 2635796480
+}

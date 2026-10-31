@@ -1,0 +1,60 @@
+{
+  "head": "3e0f14299b723312d4a708923a45f965cb004519",
+  "owned_paths": [
+    {
+      "path": "lego/operator/internal/build/nativelegacy_python_test.go",
+      "bytes": 9689,
+      "sha256": "10edf34e3c2dc0db463e0ca96406f49cfa11b084a8f2241e20390d57c817833b",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativelegacy_python_controls_test.go",
+      "bytes": 5310,
+      "sha256": "0b0271bebc2125a0161f34a8e370f06e6de20e1b2f56786306f04869bc87b774",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 15080,
+      "sha256": "0d18824de5fca1b6d23258eb6b4332d9dc55728ee237f57b883bc0bee5a2ef74",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/check-tool.py",
+      "bytes": 1025,
+      "sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/check.py",
+      "bytes": 5823,
+      "sha256": "30c4371e21588e2e25900b52b22f54094cb25675f2ffc7229b75a811e73899c6",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/check_test.py",
+      "bytes": 4201,
+      "sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c",
+      "bytes": 548,
+      "sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml",
+      "bytes": 259,
+      "sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/setup.py",
+      "bytes": 165,
+      "sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e",
+      "mode": "0o644"
+    }
+  ],
+  "scope": "Separate opt-in Python3.7/3.8 fixture/source gate; no actual image execution or pin"
+}

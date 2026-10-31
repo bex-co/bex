@@ -1,0 +1,113 @@
+{
+  "at": "2026-10-31T18:35:33.239948+00:00",
+  "state": "SOURCE_AND_UNIT_CONTROLS_PASS_ACTUAL_LEGACY_IMAGES_UNEXECUTED",
+  "source_manifest_sha256": "86b7d6de2fd679a62890d321e80e91f7db0ac758864e26a96133e3a64fcc92be",
+  "owned_paths": [
+    "lego/operator/internal/build/nativelegacy_python_test.go",
+    "lego/operator/internal/build/nativelegacy_python_controls_test.go",
+    "lego/operator/internal/build/nativeutility_qualification_test.go",
+    "lego/operator/internal/build/testdata/native-legacy-python/check-tool.py",
+    "lego/operator/internal/build/testdata/native-legacy-python/check.py",
+    "lego/operator/internal/build/testdata/native-legacy-python/check_test.py",
+    "lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c",
+    "lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml",
+    "lego/operator/internal/build/testdata/native-legacy-python/setup.py"
+  ],
+  "scope": "Separate opt-in common Bookworm Python3.7.17/3.8.20 qualification. Original13 tool programs,28 hosted specs and first-cohort workflow selector unchanged; no source/catalog/adoption changes.",
+  "profile_inputs": {
+    "enable": "BEX_BUILDKIT_INTEGRATION plus BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=1",
+    "common_image": "caller supplies actually reviewed immutable common ref; production pin stays empty",
+    "builder_platform_owner": "existing explicit owned Docker helper contract",
+    "retained_output": "BEX_NATIVE_TEST_OUTPUT for durable external artifacts"
+  },
+  "mechanism": {
+    "canonical": "actual resolver/recipe for reviewed full patch version; same full patch in authored env bundle and Docker ENV, no phase workaround",
+    "wheel_closure": "one fresh system-Python3.11 common-base closure; same poetry==2.1.3 and virtualenv<20.33.0 solve; canonical system-Python bootstrap runs offline against that closure",
+    "shared_custody": "second family compares exact prerequisite recipe bytes to original actual export recipe; tool metadata/platform validated; every actual wheel copied and SHA256 inventoried under128MiB existing bound; no external modern wheelhouse accepted",
+    "actual_test_commands": "selected app header C extension compile/import; SSL MemoryBIO local handshake/RAND; libc FFI; libpython actual INSTSONAME/Py_GetVersion and ldd; unforced poetry run python under exact dependency-free project constraint",
+    "private_dependencies": "both app and automatic project env must exclude tool module imports/paths; actual private tool remains systemPython3.11 and cappedPoetry2.1.3",
+    "failure_custody": "bounded child commands preserve stdout/stderr before propagating failure; first failed family stops next case; inherited unique owner/builder/config/platform receipts and cleanup",
+    "shared_helper_change": "only extract unchanged Buildx wheel export operation; current modern recipe/profile behavior and mirror trigger testcase retained"
+  },
+  "checks": {
+    "full_build_package": {
+      "started_at": "2026-10-31T18:30:18.446752+00:00",
+      "completed_at": "2026-10-31T18:30:28.654756+00:00",
+      "command": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "./internal/build",
+        "-count=1"
+      ],
+      "exit_code": 0,
+      "stop": null,
+      "start_free_bytes": 2604879872,
+      "minimum_observed_free_bytes": 2546798592,
+      "maximum_owned_tmp_bytes": 41902080,
+      "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+    },
+    "scoped_build_lint": {
+      "started_at": "2026-10-31T18:30:59.349019+00:00",
+      "completed_at": "2026-10-31T18:31:04.378254+00:00",
+      "command": [
+        "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+        "run",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "stop": null,
+      "start_free_bytes": 2573996032,
+      "minimum_observed_free_bytes": 2560786432,
+      "maximum_owned_tmp_bytes": 16384,
+      "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+    },
+    "fixture_oracles": "5 controls PASS; oracle/entrypoint mocks are explicitly source-only, not actual application/Poetry/C execution",
+    "generic_integration_skip": {
+      "started_at": "2026-10-31T18:31:55.648825+00:00",
+      "completed_at": "2026-10-31T18:31:59.724985+00:00",
+      "command": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "./internal/build",
+        "-run",
+        "^TestNativeLegacyPythonGeneratedImages$",
+        "-count=1",
+        "-v"
+      ],
+      "exit_code": 0,
+      "stop": null,
+      "start_free_bytes": 2438729728,
+      "minimum_observed_free_bytes": 2383855616,
+      "maximum_owned_tmp_bytes": 41566208,
+      "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+    },
+    "original_programs_and_mirror_trigger_paths": "git diff HEAD empty at recorded source check; raw checks logs retained",
+    "initial_combined_failure": {
+      "actual_exit": 1,
+      "eight_foreign_ruby_WIP_oracle_failures": true,
+      "raw_log": "scoped-test.log",
+      "disposition": "author fixed fixture-specific LITERAL assertion; later full buildpkg passed. Not a legacy product failure."
+    },
+    "initial_lint": "one initial no-process512MiB preflight refusal; fresh cached256MiB plan preserved2GiB floor/128MiB reserve/cap. First executed lint found only author-fixed Ruby ineffassign; logs retained."
+  },
+  "source_pre_final_custody": "Initial9 source hashes and exact bytes retained under SOURCE-pre-final.json/source-pre-final. Exact inverse of the two recorded fixture changes recovered bytes, all original hashes/lengths checked. Final changes: prefer actual INSTSONAME and independently check authored env full patch.",
+  "not_executed": [
+    "system-Python wheel download/solve/export",
+    "Python3.7 or3.8 generated image build/runtime on either architecture",
+    "actual old SSL/FFI/libpython/C-header compatibility",
+    "actual Poetry automatic project selection/private isolation",
+    "native-init named-context/PID1 qualification",
+    "Kubernetes build/predeploy/static/hosted original28 acceptance",
+    "full27 common family qualification/adoption"
+  ],
+  "production_pins": "unchanged/empty; no CI/Docker/image/factory/resource actions or original fixture edits",
+  "capacity": {
+    "final_free_bytes": 2470510592,
+    "no_owned_active_processes": true,
+    "all_owned_compiler_temp_files": 0
+  }
+}

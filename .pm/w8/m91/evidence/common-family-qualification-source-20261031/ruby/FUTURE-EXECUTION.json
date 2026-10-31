@@ -1,0 +1,124 @@
+{
+  "status": "SOURCE_PREPARED_ONLY; target images/compilers/extensions/Bundler/static outputs not executed",
+  "selections": [
+    {
+      "case": "ruby30",
+      "ruby": "3.0.7",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby31",
+      "ruby": "3.1.7",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby32",
+      "ruby": "3.2.11",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby33",
+      "ruby": "3.3.13",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby34",
+      "ruby": "3.4.12",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby40",
+      "ruby": "4.0.9",
+      "mode": "primary"
+    },
+    {
+      "case": "ruby344-creation-default",
+      "ruby": "3.4.4",
+      "mode": "primary"
+    },
+    {
+      "case": "node-static-ruby34",
+      "ruby": "3.4.12",
+      "mode": "static"
+    }
+  ],
+  "creation_default": {
+    "signal": "no Ruby version env/file/Gemfile directive",
+    "created": "rubyDefaultCutoff +1 second",
+    "must_resolve": "exact3.4.4, distinct from reviewed line3.4.12"
+  },
+  "companion": {
+    "primary_node": "reviewed24.22.1, selected by .node-version24",
+    "ruby": "reviewed3.4.12, selected by .ruby-version3.4 with Gemfile present",
+    "primary_env": "exact NODE_VERSION retained; companion intentionally supplies no RUBY_VERSION ENV",
+    "proof": "canonical static auto-install + node static.js; Ruby compiles/imports C extension and offline Bundler; Node writes public/index.html+Ruby proof; extraction only, no compute start"
+  },
+  "future_invocation": {
+    "cwd": "lego/operator",
+    "environment": {
+      "BEX_NATIVE_TEST_RUBY_PROFILE": "1",
+      "BEX_BUILDKIT_INTEGRATION": "1",
+      "BEX_NATIVE_TEST_COMMON_IMAGE": "ONE qualified immutable common candidate REF@sha256:DIGEST, identical for both platforms",
+      "BEX_NATIVE_TEST_BUILDER": "explicitly owned existing builder",
+      "BEX_NATIVE_TEST_OWNER": "same exact owner as builder",
+      "BEX_NATIVE_TEST_PLATFORM": "linux/amd64, then separate linux/arm64 run",
+      "BEX_NATIVE_TEST_OUTPUT": "owned retained evidence directory"
+    },
+    "argv": [
+      "go",
+      "test",
+      "./internal/build",
+      "-run",
+      "^TestCommonRubyGeneratedImages$",
+      "-count=1",
+      "-v",
+      "-timeout=9h"
+    ]
+  },
+  "measured_work": {
+    "cases_per_platform": 8,
+    "compute_build_and_local_start_cases_per_platform": 7,
+    "static_build_and_extract_only_cases_per_platform": 1,
+    "full_two_platform_matrix_cells": 16,
+    "source_controls_elapsed_seconds": 0.498,
+    "actual_image_duration_disk_memory": "UNMEASURED; no extrapolated claim from source tests or host-only empty Bundler unit",
+    "bounds": "each existing builder command and runImage helper has a30-minute context; sequential cases, each owned image/container cleanup registered; 9h go-test timeout per platform is an outer bound, not a time estimate"
+  },
+  "capacity_and_schedule": "Future executor must first check actual owned runner disk/memory/headroom and qualify one common candidate through m91 publication gates. Measure first Ruby3.0 and exact-default3.4.4 independently, record wall time/image sizes/peak memory/disk deltas, then schedule remaining sequential cases/platforms within measured headroom. No runner, builder, image, or cache action occurred during this source task.",
+  "limits": [
+    "No target Docker, image build, runtime ABI, compiler/header, OpenSSL1.1/3, Fiddle/libffi, Bundler target-version, or static output execution yet.",
+    "Host-only empty-lock Bundler control used installed macOS Ruby4.0.5/Bundler4.0.11 solely to check fixture lock/deployment compatibility and version-output syntax. It is not any reviewed Ruby/common/Linux qualification.",
+    "Both linux/amd64 and linux/arm64 need actual generated recipes+full retained outputs/config/platform before matrix qualification. A single architecture cannot stand in for the other.",
+    "Default3.4.4 canonical resolution/tag availability and exact donor remain actual qualification; fallback to reviewed3.4.12 would fail the fixture version assertions.",
+    "The ordinary local Options do not enable render-v1 native-init. This profile does not execute native-init, K8s pre-deploy, rollout, env/secret projection, cache mount, multi-client authoring, hosted networking, or original28 programs.",
+    "The Node static case proves authored build and extracted output only. It cannot qualify a Node compute runtime.",
+    "No original13 replay, original28 fixture, first-cohort selector, product runtime/artifact pin, workflow, runtime code, PM task/DoD, or adoption state was changed.",
+    "No production artifact publication, vulnerability/SBOM gate, current CNPG or common-image adoption is inferred."
+  ],
+  "primary_references": [
+    {
+      "url": "https://docs.ruby-lang.org/en/3.4/MakeMakefile.html",
+      "supports": "mkmf generates extension Makefile using target Ruby RbConfig"
+    },
+    {
+      "url": "https://guides.rubygems.org/gems-with-extensions/",
+      "supports": "extconf ruby.h checks, create_makefile, make, Ruby import"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ruby/ruby/v3_0_7/include/ruby/version.h",
+      "supports": "stable header API major/minor and exported linked ruby_version; no exact-release header macro claim"
+    },
+    {
+      "url": "https://docs.ruby-lang.org/en/3.4/Fiddle.html",
+      "supports": "libffi wrapper, dlopen and native Fiddle::Function calls"
+    },
+    {
+      "url": "https://docs.ruby-lang.org/en/3.4/OpenSSL/Digest.html",
+      "supports": "OpenSSL SHA256 operations"
+    },
+    {
+      "url": "https://bundler.io/v1.16/bundle_install.html",
+      "supports": "--local and locked deployment behavior; actual supplied Bundler compatibility remains target matrix work"
+    }
+  ]
+}

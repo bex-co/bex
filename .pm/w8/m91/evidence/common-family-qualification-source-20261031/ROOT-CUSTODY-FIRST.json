@@ -1,0 +1,14 @@
+[
+  {
+    "root": "/private/tmp/bex-w8-ruby-qualification-source-20261031-a8kqqtls",
+    "payload_count": 27,
+    "source_count": 8,
+    "all_hashes_bytes_modes_match": true
+  },
+  {
+    "root": "/private/tmp/bex-w8-legacy-python-qualification-source-20261031-ogr7fbzj",
+    "payload_count": 50,
+    "source_count": 9,
+    "all_hashes_bytes_modes_match": true
+  }
+]

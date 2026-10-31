@@ -1,0 +1,36 @@
+{
+  "source_files": 10,
+  "source_bytes": 18458,
+  "canonical_recipe_controls": 5,
+  "actual_images_executed": false,
+  "native_execution": false,
+  "limits": [
+    "Host has no Erlang/Elixir executables or cached image. No image was pulled.",
+    "Canonical recipe tests use synthetic immutable metadata; they are not registry or runtime qualification.",
+    "Initial unsupported version-file attempt was caught by exact OTP28.0 mismatch; final selection uses supported full-patch env contract, with explicit selected-line assertion.",
+    "Only exact canonical platform build-otp prerequisite receives recorded network-default test overlay; authored commands/runtime are network-off.",
+    "All original13 utility programs and28 hosted cases unchanged.",
+    "No production maps, pins, workflow, resources, image adoption or board status changed."
+  ],
+  "future_plan": [
+    "Use a reviewed immutable common image after the existing first cohort qualifies.",
+    "Require explicitly owned per-architecture Buildx builder/platform/owner and existing CI capacity preflight; current local free disk around2.6GiB is insufficient.",
+    "Run the explicit BEX_NATIVE_ELIXIR_INTEGRATION=1 profile sequentially on linux/arm64 and linux/amd64; five cases per architecture, bounded45-minute build each and existing30-minute runtime bound.",
+    "Retain canonical/executed recipes, selected exact metadata, actual command stdout/stderr/exit logs, build/runtime qa-output, config/platform/network/owner receipts before own image/container cleanup.",
+    "Measure source acquisition/build footprint and duration on the first case before expanding; no inferred completion or hosted/Kubernetes/native-init acceptance."
+  ],
+  "independent_review_finding": {
+    "initial_freeze": "/private/tmp/bex-w8-elixir-qualification-source-20261031-8590k6jl",
+    "defect": "Mix prunes the manually supplied rebar application path and validates external application dependencies; undeclared bex_probe may fail warnings-as-errors.",
+    "fix": "Declare actual local bex_probe in application/0 extra_applications. Keep explicit -pa, default path pruning, normal dependency validation and --warnings-as-errors.",
+    "candidate_not_retained": "The transient --no-prune-code-paths candidate was removed in favor of a proper application relationship.",
+    "primary_sources": [
+      "https://raw.githubusercontent.com/elixir-lang/elixir/v1.17.3/lib/mix/lib/mix/tasks/compile.ex",
+      "https://raw.githubusercontent.com/elixir-lang/elixir/v1.20.4/lib/mix/lib/mix/tasks/compile.ex",
+      "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/tasks/compile.all.ex",
+      "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/app_loader.ex",
+      "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/state.ex"
+    ],
+    "actual_failure_dynamically_reproduced": false
+  }
+}

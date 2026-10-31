@@ -1,0 +1,9 @@
+[tool.poetry]
+name = "bex-legacy-interpreter-control"
+version = "1.0.0"
+description = "Dependency-free automatic project interpreter qualification"
+authors = ["Bex <noreply@bex.co>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "==@APP_VERSION@"

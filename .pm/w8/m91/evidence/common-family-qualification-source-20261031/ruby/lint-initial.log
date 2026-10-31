@@ -1,0 +1,5 @@
+internal/build/nativecommon_ruby_test.go:235:4: ineffectual assignment to primary (ineffassign)
+			primary := nativeToolchains[nativeRubyRuntime].lines[0].image
+			^
+1 issues:
+* ineffassign: 1

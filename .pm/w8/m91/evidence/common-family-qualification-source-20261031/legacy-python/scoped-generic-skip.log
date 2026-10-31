@@ -1,0 +1,5 @@
+=== RUN   TestNativeLegacyPythonGeneratedImages
+    nativelegacy_python_test.go:103: set BEX_BUILDKIT_INTEGRATION and BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=1 for the separate legacy family profile
+--- SKIP: TestNativeLegacyPythonGeneratedImages (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.451s

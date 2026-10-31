@@ -1,0 +1,26 @@
+{
+  "status": "CLEAN focused corrected source review; no additional concrete blocker found",
+  "date_utc": "2026-10-31T18:39:39.130343+00:00",
+  "bundle": "/private/tmp/bex-w8-elixir-qualification-corrected-20261031-gpgstktw",
+  "source_sha256": "62a3dee328c023195342da6a1e3c5cd4cfa5d37aaacdaec5d9371cce8c1ea92a",
+  "manifest_sha256": "18f4390aa7d85f85e6fb1112994714bd49c7c143f477148d2e60544086c793c4",
+  "custody": {
+    "source_paths": 10,
+    "payloads": 14,
+    "all_hashes_lengths_exactfileset_and_live_bytes_modes": true
+  },
+  "changes_since_failed_review": [
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check.py",
+    "lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs"
+  ],
+  "resolved_finding": "mix.exs application/0 explicitly requires the already-local :bex_probe application, allowing default Mix pruning to retain its manually supplied ebin path and application relationship. Existing actual Mix compile, warnings-as-errors and -pa retained. check.py comment explains it; no no-prune override.",
+  "primary_implementation_evidence": "INITIAL-REVIEW.json + upstream/ in this same private review directory; tagged Compile.All.project_apps->AppLoader.load_apps->State.builtin_apps chain reviewed",
+  "other_source_paths": "Remaining8 source files unchanged from independent first review",
+  "tests": "Root reports rerun targeted canonical-source/output-oracle controls PASS. Independent review did not duplicate them; no actual target Erlang/Elixir executable or image invoked.",
+  "qualification_limits": [
+    "This resolves the statically reachable fixture pruning defect; actual Mix application discovery/compile remains unexecuted.",
+    "No OTP/NIF/rebar/ffi/OpenSSL/crypto/native-image/runtime execution proof.",
+    "Both architectures, real same-source OTP factory prerequisites, selected metadata, generated image ABI, native-init, K8s/pre-deploy, hosted behavior, publication and adoption remain separately unqualified.",
+    "No source, original13/28, production pins/runtime, workflow, resources or PM mutation by reviewer."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "status": "FROZEN_SOURCE_AND_UNIT_ONLY",
+  "source_manifest_schema": "direct map of repository relative paths to SHA256/bytes; source/ mirrors exact bytes",
+  "source_file_count": 14,
+  "source_bytes": 29604,
+  "source_manifest": {
+    "sha256": "d87528aff6b89253affd5a38bd2da27ceeadde85af51d95d588454f32e2e9570",
+    "bytes": 2596
+  },
+  "go_test_file": {
+    "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+    "bytes": 12042
+  },
+  "tests": {
+    "scoped_unit": "scoped-unit-receipt.json",
+    "full_current_build_package": "full-build-package-receipt.json",
+    "full_current_build_package_lint": "build-package-lint-receipt.json"
+  },
+  "initial_test_issue": "Initial root whole-package log retained; standalone shellJSON expectation omitted canonical load-env prefix. Corrected assertion only; runtime generator and original programs unchanged.",
+  "original_preserved": {
+    "count": 44,
+    "changed": []
+  },
+  "fixture_execution": false,
+  "root_approval": false,
+  "repository_edits": "14 new own Go/Rust test/fixture paths only; foreign go.work.sum/shared helpers and other profiles untouched",
+  "no_live_or_resource_actions": true
+}

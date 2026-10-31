@@ -1,0 +1,22 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { spawnSync } = require('node:child_process');
+
+const [ruby, node] = process.argv.slice(2);
+assert.equal(process.argv.length, 4);
+assert.equal(process.versions.node, node);
+assert.equal(process.execPath, '/usr/local/bin/node');
+assert.equal(process.env.NODE_VERSION, node);
+const result = spawnSync('ruby', ['build.rb', ruby, node, 'static'], { encoding: 'utf8' });
+process.stdout.write(result.stdout || '');
+process.stderr.write(result.stderr || '');
+assert.ifError(result.error);
+assert.equal(result.status, 0, 'Ruby companion offline build must succeed');
+const proof = JSON.parse(fs.readFileSync('qa-output/build.json', 'utf8'));
+assert.equal(proof.pass, true);
+assert.equal(proof.ruby, ruby);
+assert.equal(proof.node, node);
+assert.equal(proof.mode, 'static');
+fs.mkdirSync('public', { recursive: true });
+fs.copyFileSync('qa-output/build.json', 'public/ruby-proof.json');
+fs.writeFileSync('public/index.html', `<!doctype html><meta charset="utf-8"><p>Node ${node} + Ruby ${ruby}: 雪</p>\n`);

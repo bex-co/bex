@@ -1,0 +1,69 @@
+=== RUN   TestCommonRubyGeneratedImages
+    nativecommon_ruby_test.go:91: set BEX_NATIVE_TEST_RUBY_PROFILE=1 for the separate Ruby qualification profile
+--- SKIP: TestCommonRubyGeneratedImages (0.00s)
+=== RUN   TestCommonRubyQualificationCanonicalRecipes
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby30
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby31
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby32
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby33
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby34
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby40
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/ruby344-creation-default
+=== RUN   TestCommonRubyQualificationCanonicalRecipes/node-static-ruby34
+--- PASS: TestCommonRubyQualificationCanonicalRecipes (0.02s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby30 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby31 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby32 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby33 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby34 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby40 (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/ruby344-creation-default (0.00s)
+    --- PASS: TestCommonRubyQualificationCanonicalRecipes/node-static-ruby34 (0.00s)
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_mode
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_Ruby
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_native_import
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_stdlib
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_phase
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_OpenSSL
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_Bundler
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_dynamic_OpenSSL
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_platform
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/healthy_Bundler4
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_pass
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_Node
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_source_root
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_locale
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_gem_path
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_headers
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_version_ENV
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_bin_path
+=== RUN   TestCommonRubyQualificationProofRejectsWrongOrMissingControls/healthy
+--- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls (0.01s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_mode (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_Ruby (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_native_import (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_stdlib (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_phase (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_OpenSSL (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_Bundler (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_dynamic_OpenSSL (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_platform (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/healthy_Bundler4 (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/no_pass (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_Node (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_source_root (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_locale (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_gem_path (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_headers (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_version_ENV (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/wrong_bin_path (0.00s)
+    --- PASS: TestCommonRubyQualificationProofRejectsWrongOrMissingControls/healthy (0.00s)
+=== RUN   TestCommonRubyProfileSkipsGenericBuildkitOptIn
+=== RUN   TestCommonRubyProfileSkipsGenericBuildkitOptIn/generic_integration_skips
+=== RUN   TestCommonRubyProfileSkipsGenericBuildkitOptIn/profile_needs_integration_opt-in
+--- PASS: TestCommonRubyProfileSkipsGenericBuildkitOptIn (0.02s)
+    --- PASS: TestCommonRubyProfileSkipsGenericBuildkitOptIn/generic_integration_skips (0.01s)
+    --- PASS: TestCommonRubyProfileSkipsGenericBuildkitOptIn/profile_needs_integration_opt-in (0.01s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.498s

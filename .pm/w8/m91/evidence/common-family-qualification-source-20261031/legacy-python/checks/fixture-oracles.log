@@ -1,0 +1,10 @@
+test_actual_entrypoint_requests_unforced_poetry_run_and_records_result (check_test.LegacyOracleTests.test_actual_entrypoint_requests_unforced_poetry_run_and_records_result) ... ok
+test_application_scripts_parse_with_python37_syntax (check_test.LegacyOracleTests.test_application_scripts_parse_with_python37_syntax) ... ok
+test_failed_child_output_is_retained_before_failure (check_test.LegacyOracleTests.test_failed_child_output_is_retained_before_failure) ... ok
+test_project_must_be_distinct_and_cannot_use_tool_or_system_interpreter (check_test.LegacyOracleTests.test_project_must_be_distinct_and_cannot_use_tool_or_system_interpreter) ... ok
+test_wrong_version_loader_headers_or_private_imports_cannot_pass (check_test.LegacyOracleTests.test_wrong_version_loader_headers_or_private_imports_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.026s
+
+OK

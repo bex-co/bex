@@ -1,0 +1,7 @@
+{application, bex_probe, [
+    {description, "Offline common-foundation OTP qualification"},
+    {vsn, "1.0.0"},
+    {modules, []},
+    {registered, []},
+    {applications, [kernel, stdlib, crypto, public_key, ssl]}
+]}.

@@ -1,0 +1,6 @@
+{
+  "compared_files": 44,
+  "changed_files": [],
+  "comparison": "bytes and SHA256; preserved-before.json includes canonical native.go/nativebases.go/first-cohort driver and all original utility custody fixtures present at baseline",
+  "not_claimed": "This is not a new hosted replay or image execution; no source under original native-utilities was edited."
+}

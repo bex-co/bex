@@ -1,0 +1,49 @@
+{
+  "scope": "Host-only empty lockfile/Bundler contract unit, not target Ruby/table/image/runtime qualification",
+  "commands": [
+    {
+      "argv": [
+        "ruby",
+        "--version"
+      ],
+      "exit_code": 0,
+      "log": "host-bundler-0.log"
+    },
+    {
+      "argv": [
+        "bundle",
+        "--version"
+      ],
+      "exit_code": 0,
+      "log": "host-bundler-1.log"
+    },
+    {
+      "argv": [
+        "bundle",
+        "install",
+        "--local"
+      ],
+      "exit_code": 0,
+      "log": "host-bundler-2.log"
+    },
+    {
+      "argv": [
+        "bundle",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "host-bundler-3.log"
+    },
+    {
+      "argv": [
+        "bundle",
+        "exec",
+        "ruby",
+        "-e",
+        "puts RUBY_VERSION"
+      ],
+      "exit_code": 0,
+      "log": "host-bundler-4.log"
+    }
+  ]
+}
