@@ -1,6 +1,6 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001, t002, t004–t010 done; t003/t012 code shipped, their live Stripe catalog run authorized 2026-10-30 (worker runs it); t011 Closeout after that
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** done — every task done; production DoD walk passed 2026-10-31
 
 ## Tasks (in order)
 
@@ -8,16 +8,16 @@
 | --- | --- | --- | --- |
 | t001 | Fetch Render's live Postgres catalog and record which ≥1-CPU tiers bex adds, at Render × 0.70 — **DONE** | 40m | — |
 | t002 | Capacity and placement check: an HA pair of each chosen tier on production node types — **DONE** | 40m | t001 |
-| t003 | Add the tiers to the catalog, pricing, Stripe catalog and schema enums, with Render's plan-change rules for HA | 1h | t002 |
+| t003 | Add the tiers to the catalog, pricing, Stripe catalog and schema enums, with Render's plan-change rules for HA — **DONE** | 1h | t002 |
 | t004 | Emit `postgres_cluster_leader_changed` when the primary changes — **DONE** | 1h | t003, w5/m138/t003 |
 | t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry — **DONE** | 45m | t003 |
 | t006 | Live HA acceptance on `dev-2`: create, fail the primary, observe failover and the event — **DONE** | 1h | t004, t005 |
 | t007 | Correct ADR018, ADR009 §5, ADR030 and the CLI checklist — **DONE** | 20m | t006 |
-| t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) | 30m | t003 |
+| t012 | Correct the `basic-256mb` / `basic-1gb` prices to Render × 0.70 ($4.20 / $13.30), moving existing subscriptions at their next period (absorbs `w2/047`) — **DONE** | 30m | t003 |
 | t008 | Render parity — **DONE** | 30m | t007, t012 |
 | t009 | Simplify — **DONE** | 15m | t008 |
 | t010 | Test coverage — **DONE** | 45m | t008 |
-| t011 | Closeout | 10m | t009, t010 |
+| t011 | Closeout — **DONE** | 10m | t009, t010 |
 
 ## Definition of done
 
@@ -31,7 +31,7 @@
 
 - **Source:** `/pm-brainstorm for w2` (2026-10-19), item 4, chosen by the user the same day (parity-ledger sweep). `w8/done/m43` shipped the HA plan gate and called a larger plan "deferred product work" but filed nothing; `w5/m138` (read replicas, in progress) explicitly leaves `postgres_cluster_leader_changed` out "because HA needs a ≥1-CPU plan and none ships yet (ADR009 §5's larger plans are an open pricing decision)" — this milestone owns that decision and that event.
 - **Evidence:** the largest Postgres tier is `basic-1gb` (500m CPU, 1Gi, 5 GB) in `lego/types/tiers/tiers.yaml:78-104`; `CheckHighAvailabilityPlan` (`lego/backend/internal/postgres/tiers.go:115-140`) refuses HA below 1 CPU, and `PlanSupportsHighAvailability` is a variable "only so tests … can run while the shipped catalog has no ≥1-CPU Postgres plan". Render's pinned event list (`lego/backend/internal/api/openapi/render-public-api-1.json`) includes `postgres_cluster_leader_changed`; bex's event vocabulary does not. The operator already projects CNPG `status.currentPrimary` into `Database.status.CurrentPrimary` and `LastFailoverAt` (`lego/operator/internal/controller/database_controller.go:1503-1577`).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillar 1 (Render-compatible API) and [ADR009](../../../docs/ADR009-postgresql-management.md) managed Postgres — its §5 maps Render's Pro tier to "availability + PITR".
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillar 1 (Render-compatible API) and [ADR009](../../../../docs/ADR009-postgresql-management.md) managed Postgres — its §5 maps Render's Pro tier to "availability + PITR".
 - **Expected outcome:** a team on Render can move a production database that needs failover or more than 1 GiB of RAM; the HA and failover code bex already ships becomes reachable.
 - **Why now:** shipped capability (HA gate, failover verb, HA panel) is unreachable behind a ledger row that marks it ✅, and `w5/m138` is extending the same Postgres plan family right now — landing the plan decision while that context is fresh avoids a second pass over admission and events.
 - **Render parity included:** new plans and HA availability appear on REST, GraphQL, MCP, the CLI and the dashboard.
@@ -135,3 +135,24 @@ Release condition: the user authorizes the live Stripe run (or runs it), and the
 - **Render basis:** Render bills these plans at its list prices; bex charges Render × 0.70 (ADR030). Until the live Prices exist, bex customers on the new HA plans use them without being invoiced and small-plan customers pay above the rule.
 - **Remaining gates:** none for the catalog run. The per-Subscription swap waits for each period boundary (calendar, not a decision); if a boundary is days away, record the list of Subscriptions and dates, and close t012 once every swap is either done or scheduled with its date recorded. If the live key has expired or a write is refused, park only that step and ask the user.
 - **Worker next steps:** (1) t003/t012: test-mode run → live run → second run all `exists`; save the redacted script output as evidence. (2) List live Subscriptions carrying the two retired Prices with their `current_period_end`; swap the ones already past their boundary, record the rest. (3) t011: walk the DoD on production (pinned CLI `bex postgres create --plan 1c-2g --high-availability`, REST/GraphQL/MCP/dashboard, two instances on distinct nodes, failover + one `postgres_cluster_leader_changed` event delivered to an external receiver, usage estimate), clean up, then close.
+
+## t003 + t012 — live Stripe catalog, 2026-10-31
+
+- **Test mode first:** the full script refuses in test mode because 11 legacy non-Postgres test Prices carry an older rounding (unrelated drift; live has none). Rehearsed the five Postgres dimensions with the script's own `ensure_meter`/`ensure_price`: first run created them, second run all `exists`.
+- **Two runbook gaps found and fixed in `docs/runbooks/stripe-billing-setup.md`:** Stripe refuses to archive a Price that is its Product's `default_price`, and an archived Price still holds its lookup key (create then fails with "already uses this lookup_key"). Retiring now clears the default, then archives and releases the key in one call.
+- **Live:** retired `price_1U50Y7EqsEqs2tLVLiOmfb2A` (`basic-256mb`) and `price_1U50Y8EqsEqs2tLVFgYkkzl2` (`basic-1gb`). `scripts/stripe-billing-setup.py --live` created `basic-256mb` 0.000159817352¢/s ($4.20), `basic-1gb` 0.00050608828 ($13.30), `1c-2g` 0.001065449011 ($28.00), `pro-4gb` 0.00146499239 ($38.50), `basic-4gb` 0.001997716895 ($52.50); a second run reported all 18 dimensions `exists exists` (exit 0), and an independent drift scan matched 18/18.
+- **Existing subscriptions:** 9 live Subscriptions (18 items) carry the retired Prices, all with period end 2026-11-16. Their swap at the boundary is filed as [`w2/058`](../../blocked/058.md) (date-gated). t012's acceptance counts them as scheduled; the swap itself is 058's DoD.
+
+## t011 — production DoD walk, 2026-10-31 (PASS); closed
+
+Production `25b99d8a3` (contains every m171 commit), workspace `bex` (Scale). QA user; the pinned CLI (`bex v0.2.1`, Render CLI v2.27.0) logged in by device flow into an isolated config.
+
+1. **Create with HA, every surface.** `bex postgres create --plan 1c-2g --high-availability` → `dpg-dbiqsb2t5fis7381js40`: CR `highAvailability: true`, CNPG `instances: 2`, `podAntiAffinityType: required`; instances on **two nodes** (`bex-tenant-0-tghbn-s67g5`, `-j4q4x`); REST `available`, `highAvailabilityEnabled: true`. Dashboard: instance type `1c-2g`, High Availability panel "Enabled" with the switch on and Trigger failover. GraphQL/MCP create were covered in t005/t010; on production they were exercised through the refusal below.
+2. **Upgrade, then HA; and the refusal.** CLI `create --plan 0.5c-1g` → `update --plan 1c-2g` → `update --high-availability` → `available 1c-2g`, HA on, two instances on two nodes. Moving the HA database to `basic-1gb` is refused with `POSTGRES_HA_PLAN_UNSUPPORTED` and the same message on the pinned CLI, REST `PATCH`, GraphQL `updateDatabasePlan(dryRun)` and MCP `update_postgres`.
+3. **Failover + event + webhook.** Deleting the primary Pod at 09:07:10Z promoted `-2` at 09:07:24Z; a write through the unchanged `internalConnectionString` (`…-rw…svc:5432`) succeeded. `POST /v1/postgres/{id}/failover` → 202 at 09:07:43Z, promoted `-1` at 09:07:53Z; writes and earlier rows intact (`after-kill,after-verb`). Exactly two `postgres_cluster_leader_changed` events, none at create: `evt-6hl13l5fmdivlcahs44p` (`{"leaderId":"…-2"}`) and `evt-2386samvpj6dnpbarfp8` (`{"leaderId":"…-1"}`), each delivered by webhook `whk-dbiqs8it5fis7381js3g` to an external HTTPS receiver with **200** (`whd-dbiqvjit5fis7381js50`, `whd-dbiqvs2lpuls73ei2gd0`).
+4. **Pricing.** The dashboard New Postgres picker lists Basic 256MB $4.20, Basic 1GB $13.30, 1c-2g $28.00, Pro 4GB $38.50, Basic 4GB $52.50; the live Stripe catalog is in sync (t003/t012).
+5. **Docs.** ADR018/ADR009 §5/ADR030/CLI checklist corrected in t007.
+
+Found (not a DoD failure, filed as [`w2/059`](../059.md)): the create response and the first reads report `highAvailabilityEnabled: false` until the operator observes the standby, because the view projects `Database.status` (`lego/backend/internal/postgres/service.go:582`); Render returns the configured value.
+
+Cleanup: both databases (404 after delete), the webhook, the CLI session (`bex logout`) and the extra Kratos session were removed. Remaining work outside this milestone: [`w2/058`](../../blocked/058.md) (swap the 9 subscriptions after 2026-11-16).
