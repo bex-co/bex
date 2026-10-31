@@ -583,12 +583,33 @@ func replayDigest(key verifiedKey, body []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// scopedReplayDigest is the replay ledger's digest for one claim scope. The
+// ledger's primary key is the digest ALONE (kept for pre-0104 rolling-upgrade
+// compatibility), so under N:N fan-out (ADR078 §4a) the byte digest would let
+// the first workspace's claim swallow every later workspace's: one push, one
+// deploy. A workspace scope is therefore
+// folded into the digest. The single-tenant fallback scopes keep the plain
+// byte digest, so their existing claims still recognize a redelivery.
+func scopedReplayDigest(key verifiedKey, scope string, body []byte) string {
+	if !strings.HasPrefix(scope, workspaceReplayScopePrefix) {
+		return replayDigest(key, body)
+	}
+	h := sha256.New()
+	_, _ = h.Write([]byte{byte(key)})
+	_, _ = h.Write([]byte(scope))
+	_, _ = h.Write([]byte{0})
+	_, _ = h.Write(body)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+const workspaceReplayScopePrefix = "workspace:"
+
 // replayScope attributes each claim to the tenant that can cause it. In
 // multitenant operation scope is the installation-bound workspace. The
 // fallbacks exist only for the supported single-tenant configurations.
 func replayScope(key verifiedKey, workspace string, installationID int64) string {
 	if workspace != "" {
-		return "workspace:" + workspace
+		return workspaceReplayScopePrefix + workspace
 	}
 	if key == keyGitHubApp && installationID != 0 {
 		return "github-installation:" + strconv.FormatInt(installationID, 10)
@@ -608,14 +629,15 @@ func (h *GitWebhook) replayClaim(key verifiedKey, scope string, body []byte) sto
 		Scope:    scope,
 		KeyClass: keyClass,
 		Epoch:    store.GitWebhookSigningEpoch(keyClass, secret),
-		Digest:   replayDigest(key, body),
+		Digest:   scopedReplayDigest(key, scope, body),
 	}
 }
 
 // deliveryClaims tracks the replay claims one delivery took across its fan-out
-// (ADR078 §4a). Each workspace scope claims independently — the claim key already
-// includes the scope — so one workspace's processing can neither swallow nor be
-// swallowed by another's, and a redelivery is still refused per workspace.
+// (ADR078 §4a). Each workspace scope claims independently — its digest folds in
+// the scope (scopedReplayDigest), because the ledger is unique on the digest
+// alone — so one workspace's processing can neither swallow nor be swallowed by
+// another's, and a redelivery is still refused per workspace.
 //
 // release() returns EVERY claim taken, and is called only when the delivery
 // answers 5xx: the git host will redeliver, and that retry must not be swallowed

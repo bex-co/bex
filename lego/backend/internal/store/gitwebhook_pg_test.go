@@ -215,3 +215,26 @@ func TestPGGitWebhookReplayEpochPurgesOnlyAfterLeaseExpires(t *testing.T) {
 		t.Fatalf("retired old replica claim => fresh=%v err=%v, want fail closed", fresh, err)
 	}
 }
+
+// The ledger is unique on the digest ALONE (rolling-upgrade compatibility with
+// pre-0104 replicas): the same digest in another scope is a replay, not fresh
+// work. Callers that fan one body out to several workspaces must fold the scope
+// into the digest (apps.scopedReplayDigest); the webhook's in-memory fake
+// mirrors this contract, and keying that fake on scope+digest once hid a
+// one-deploy-per-push production bug.
+func TestPGGitWebhookReplayDigestIsUniqueAcrossScopes(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	digest := "digest-cross-scope-" + time.Now().UTC().Format(time.RFC3339Nano)
+	claimA := GitWebhookReplayClaim{Scope: "workspace:test-cross-a", KeyClass: GitWebhookReplayKeyGitHub, Epoch: "epoch-cross-scope", Digest: digest}
+	registerReplayTestEpoch(t, st, GitWebhookReplayEpoch{KeyClass: claimA.KeyClass, Epoch: claimA.Epoch})
+
+	if fresh, err := st.ClaimGitWebhookDelivery(ctx, claimA); err != nil || !fresh {
+		t.Fatalf("first scope => fresh=%v err=%v, want fresh", fresh, err)
+	}
+	claimB := claimA
+	claimB.Scope = "workspace:test-cross-b"
+	if fresh, err := st.ClaimGitWebhookDelivery(ctx, claimB); err != nil || fresh {
+		t.Fatalf("same digest, other scope => fresh=%v err=%v; the ledger is digest-unique, want !fresh", fresh, err)
+	}
+}
