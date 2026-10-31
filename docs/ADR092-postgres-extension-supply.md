@@ -1,6 +1,6 @@
 # ADR092 — Managed Postgres extensions: built into the image, enabled per database by the owner
 
-**Status:** Accepted, 2026-10-29 (user decision in `/unblock w8`, topic 2). Not yet implemented; tracked by w8/m92 (the shared image and activation path), then w8/m104 and w8/m109–m112 (one extension each).
+**Status:** Accepted, 2026-10-29 (user decision in `/unblock w8`, topic 2). Partly implemented: the images, allowlist and operator projection shipped with w8/m92 t008 (2026-10-31). The production pin and rollout are next (w8/m92 t001), then w8/m104 and w8/m109–m112 (one extension each).
 
 **Related decisions:** [ADR009](ADR009-postgresql-management.md) owns managed Postgres (its § pgvector in every application database stays as written); [ADR018](ADR018-render-parity.md) is the parity ledger; [ADR060](ADR060-build-worker-reliability-and-performance.md) D7 governs reviewed digest pins.
 
@@ -30,7 +30,7 @@ Facts carried over from the [m92 design](../.pm/w8/m92/design.md):
 
 ### D1 — One bex-built operand image per major
 
-bex builds `FROM` the reviewed CNPG `ghcr.io/cloudnative-pg/postgresql:<major>` digest, adding PGDG or upstream packages for each extension on exactly the majors where Render offers it (table above). The image is published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) for both architectures, and the operator pins the digests in `cnpgExportImages` by a reviewed commit (ADR060 D7). The upstream CNPG digest stays recorded as the image's base. Export Jobs use the same image, so `pg_dump` of a database that uses an extension keeps working.
+bex builds `FROM` the reviewed CNPG `ghcr.io/cloudnative-pg/postgresql:<major>` digest, adding PGDG or upstream packages for each extension on exactly the majors where Render offers it (table above). The image is published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) for both architectures, and the operator pins the digests in `bexOperandImages` (`database_operand.go`, which takes precedence over the upstream `cnpgExportImages` per major) by a reviewed commit (ADR060 D7). The upstream CNPG digest stays recorded as the image's base. Export Jobs use the same image, so `pg_dump` of a database that uses an extension keeps working.
 
 Rejected: CNPG's PostGIS-only images. They would close m92 alone and leave five extensions as divergences.
 
@@ -52,6 +52,23 @@ Required properties:
    - TimescaleDB runs with `timescaledb.license = 'apache'`, which keeps Render's Community-feature exclusion.
 4. **Preload libraries are projected by the operator** (`shared_preload_libraries` for TimescaleDB and pg_duckdb, alongside the existing `pg_stat_statements`), not set by tenants. The added per-backend memory is accounted for in each plan's sizing before rollout.
 5. **Tests prove it:** for each extension, the owner can `CREATE EXTENSION`, and a non-listed non-trusted extension still fails; the owner is not superuser afterwards; `pg_dump`/restore of a database using it works.
+
+**Chosen: pgextwlist v1.20 (2026-10-31, w8/m92 t008).** It is packaged by PGDG for 13–18 on amd64 and arm64. supautils is not packaged anywhere, so it would be a from-source build bex maintains. v1.20 adds `extwlist.restrict_to_database_owner` and rejects schema/owner names that could inject into custom scripts. How each property holds:
+
+1. `extwlist.extensions` is `PGC_SUSET`, so an owner's `SET` or `ALTER ROLE … SET` is refused. The operator writes it after the tenant's parameters, and bex-api refuses `extwlist.*`, `local_preload_libraries` and `session_preload_libraries` as platform-managed. A non-listed extension falls through to Postgres's own check, so trusted ones keep working and untrusted ones (`file_fdw`, `dblink`, `adminpack`) fail as before. `restrict_to_database_owner = on` keeps the path to the database owner.
+2. pgextwlist runs only the extension's create, update, comment and drop scripts as the bootstrap superuser, then drops back. The objects belong to that superuser, as they would for a `trusted` extension. Because of that, the image's `extwlist.custom_path` scripts grant the owner only what an ordinary app needs: `spatial_ref_sys`, the topology and geocoder metadata, and `pg_partman`'s `part_config`. They never grant on TimescaleDB's catalog, whose job table names the role a job runs as.
+   - The residual risk is the one every allowlist, and Postgres's own `trusted` flag, shares: a superuser-run install script resolving a name the owner planted in `public`.
+3. The guardrails:
+   - pg_partman's `pg_partman_bgw` is never preloaded.
+   - pg_similarity is installed only on 13–15, and pg_duckdb only on 16–18.
+   - TimescaleDB is the Apache-only build: PGDG's `+dfsg` package on 14+, and on 13 Timescale's 2.15.3 with the TSL module deleted from the image. The owner cannot change `timescaledb.license` (superuser-only), and even a superuser's switch to `timescale` is rejected because no TSL module exists.
+   - pg_duckdb ships in the image but stays off the list and unloaded until w8/m109 settles its file/network access (`duckdb.enable_external_access`, `duckdb.postgres_role`) and memory.
+4. The operator projects `shared_preload_libraries = pg_stat_statements, timescaledb`, `local_preload_libraries = pgextwlist`, and `timescaledb.license = apache` with telemetry off, only for a major whose image is a bex operand (`bexOperandImages`). Measured on PG18 (arm64, idle): the TimescaleDB launcher adds one process and about 1.4 MB PSS; an owner backend adds about 1.2 MB; a database with TimescaleDB created adds its scheduler, about 10 MB. That fits the 256 MiB Free plan without resizing any plan.
+5. `deploy/pg-operand/check.sh` is the publish gate on every major and platform, and `TestApplicationDatabaseExtensionsOnCNPG` repeats its core through bex's real Cluster projection on a real CloudNativePG. Both passed locally on arm64 for 13–18 (CNPG 1.27); the published amd64/arm64 digests run the same gate in CI. Two restore limits are upstream behavior and belong to their extension's milestone:
+   - a non-superuser cannot logically restore a TimescaleDB hypertable, because Timescale's restore writes its catalog (w8/m112);
+   - pg_ivm 1.15+ restores an IMMV as a plain table (w8/m110).
+
+**Base distribution.** The bex operand is built on CNPG's `system-bookworm` image of the same major and patch. The earlier upstream pins were bullseye images, and PGDG's bullseye archive has no PostGIS for 18 or TimescaleDB for 13. bex sets no locale, so CNPG initializes each cluster with `C`, whose order is independent of glibc. The rollout still checks for databases created with a glibc locale before the restart.
 
 ### D4 — Rollout: one rolling restart, approved
 
