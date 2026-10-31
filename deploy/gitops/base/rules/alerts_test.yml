@@ -1149,6 +1149,12 @@ tests:
         values: "864000x90"
       - series: 'certmanager_certificate_ready_status{condition="True", namespace="bex-system", name="bex-api-tls"}'
         values: "1x90"
+      # ADR093 D5: the *.onbex.co fallback wildcard is a platform Certificate
+      # in traefik; a stuck DNS-01 renewal pages like any other.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="traefik", name="onbex-wildcard"}'
+        values: "864000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="traefik", name="onbex-wildcard"}'
+        values: "1x90"
       # Issued platform cert, 20d left: renewal not due yet, silent.
       - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="auth", name="kratos-public-tls"}'
         values: "1728000x90"
@@ -1198,6 +1204,11 @@ tests:
             exp_annotations:
               summary: "Certificate bex-system/bex-api-tls expires in <14d"
               description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
+          - exp_labels:
+              { severity: warning, namespace: traefik, name: onbex-wildcard }
+            exp_annotations:
+              summary: "Certificate traefik/onbex-wildcard expires in <14d"
+              description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n traefik describe certificate onbex-wildcard; kubectl -n traefik get certificaterequest,order,challenge"
           - exp_labels:
               { severity: warning, namespace: tea-abc, name: tea-abc-web-tls }
             exp_annotations:

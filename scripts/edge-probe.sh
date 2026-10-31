@@ -43,8 +43,8 @@ classify_edge_failure() {
         echo "certificate does not cover the host"
       elif grep -q "lacks the exact" "$out"; then
         echo "certificate lacks the *.onbex.co SAN"
-      elif grep -q "expires inside 30 days" "$out"; then
-        echo "certificate expires within 30 days"
+      elif grep -q "expires inside" "$out"; then
+        echo "certificate expires inside the minimum validity window"
       elif grep -qE "curl: \(28\)" "$out"; then
         echo "HTTP request timed out after the TLS checks passed"
       elif grep -q "returned HTTP" "$out"; then
@@ -60,7 +60,7 @@ classify_edge_failure() {
 }
 
 # certificate_failure <class> is true when the class is the certificate's own
-# fault, the only case where rotating it is the remedy.
+# fault, the only case where its cert-manager renewal is the place to look.
 certificate_failure() {
   case "$1" in
     "TLS handshake failed"* | "no leaf certificate"* | "certificate "*) return 0 ;;

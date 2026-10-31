@@ -14,13 +14,13 @@ mkdir -p "$tmp/scripts/lib"
 cp "$here/gh-secrets.sh" "$tmp/scripts/"
 cp "$here/lib/env-file.sh" "$tmp/scripts/lib/"
 printf '%s\n' '# fixture' 'TOKEN_A production-deploy,production-observe' 'KEY_B production-release' \
-  'BEX_ONBEX_TLS_CERT production-deploy' 'BEX_ONBEX_TLS_KEY production-deploy' \
+  'BEX_CLOUDFLARE_DNS_TOKEN production-deploy' \
   'BEX_SSH_PUBLIC_KEY production-infra' 'BEX_SSH_PRIVATE_KEY production-deploy,production-cluster' \
   'OPTIONAL_C production-observe' >"$tmp/scripts/production-secrets.txt"
-for f in cert key pub priv kb; do printf 'material-%s\n' "$f" >"$tmp/$f"; done
+for f in pub priv kb; do printf 'material-%s\n' "$f" >"$tmp/$f"; done
 write_env() {
-  printf '%s\n' 'TOKEN_A=alpha' "KEY_B_FILE=$tmp/kb" "BEX_ONBEX_TLS_CERT_FILE=$tmp/cert" \
-    "BEX_ONBEX_TLS_KEY_FILE=$tmp/key" "BEX_SSH_PUBLIC_KEY_FILE=$tmp/pub" "$1" >"$tmp/.env"
+  printf '%s\n' 'TOKEN_A=alpha' "KEY_B_FILE=$tmp/kb" 'BEX_CLOUDFLARE_DNS_TOKEN=cf-token' \
+    "BEX_SSH_PUBLIC_KEY_FILE=$tmp/pub" "$1" >"$tmp/.env"
   chmod 600 "$tmp/.env"
 }
 run() { DRY_RUN=1 bash "$tmp/scripts/gh-secrets.sh" 2>&1; }

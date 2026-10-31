@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="840" viewBox="0 0 1240 840" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR093 — automated *.onbex.co wildcard renewal via cert-manager DNS-01 on Cloudflare</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f2937"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; }
+      .t { font-size: 12.5px; fill: #374151; }
+      .s { font-size: 11.5px; fill: #6b7280; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; fill: #111827; }
+      .flow { stroke: #1f2937; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .visit { stroke: #9ca3af; stroke-width: 1.8; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow-grey); }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="1240" height="840" fill="#ffffff"/>
+
+  <text x="30" y="40" font-size="20" font-weight="700" fill="#111827">ADR093 — *.onbex.co fallback certificate: automated DNS-01 renewal</text>
+  <text x="30" y="64" class="t">cert-manager renews the wildcard by writing a short-lived TXT through the Cloudflare API. It does this only during a renewal, with a token limited to the onbex.co zone.</text>
+
+  <!-- Cloudflare zone -->
+  <rect x="30" y="110" width="400" height="250" rx="10" fill="#fff7ef" stroke="#f38020" stroke-width="1.6"/>
+  <text x="48" y="138" class="h">Cloudflare DNS · zone onbex.co</text>
+  <text x="48" y="158" class="s">authoritative for all tenant hostnames</text>
+  <rect x="44" y="172" width="372" height="96" rx="6" fill="#ffffff" stroke="#fbd5b0"/>
+  <text x="56" y="194" class="m" xml:space="preserve">*                A    Hetzner LB IP</text>
+  <text x="56" y="214" class="s">static, carries every tenant request</text>
+  <text x="56" y="240" class="m" xml:space="preserve">_acme-challenge  TXT  "&lt;challenge&gt;"</text>
+  <text x="56" y="258" class="s">exists only while a renewal is being validated</text>
+  <text x="48" y="294" class="t" font-weight="600">API token held by cert-manager</text>
+  <text x="48" y="314" class="m">Zone·DNS·Edit + Zone·Zone·Read</text>
+  <text x="48" y="332" class="s">zone resources: onbex.co only (not bex.co, not all zones)</text>
+  <text x="48" y="348" class="s">no client-IP filter yet: nodes have no fixed egress IP</text>
+
+  <!-- Dependency direction -->
+  <rect x="30" y="400" width="400" height="270" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="48" y="428" class="h">Dependency direction</text>
+  <text x="48" y="456" class="t" font-weight="600">Traffic (always on)</text>
+  <text x="48" y="476" class="t">Cloudflare DNS → Hetzner LB → Traefik</text>
+  <text x="48" y="508" class="t" font-weight="600">Renewal (accepted back-edge)</text>
+  <text x="48" y="528" class="t">cert-manager → Cloudflare API</text>
+  <text x="48" y="546" class="s">runs once per certificate lifetime, weeks before expiry</text>
+  <text x="48" y="578" class="t" font-weight="600">Why it cannot deadlock</text>
+  <text x="48" y="598" class="s">Serving never calls the Cloudflare API.</text>
+  <text x="48" y="616" class="s">Cloudflare never needs bex to run.</text>
+  <text x="48" y="634" class="s">If Cloudflare is down, traffic is down anyway;</text>
+  <text x="48" y="652" class="s">cert-manager retries the renewal on its own.</text>
+
+  <!-- Cluster -->
+  <rect x="470" y="110" width="390" height="560" rx="12" fill="#f5f8ff" stroke="#326ce5" stroke-width="1.6" stroke-dasharray="8 5"/>
+  <text x="488" y="134" class="s" font-weight="600" fill="#326ce5">Kubernetes cluster (production)</text>
+
+  <rect x="490" y="145" width="350" height="140" rx="8" fill="#ffffff" stroke="#326ce5"/>
+  <text x="506" y="170" class="h">cert-manager</text>
+  <text x="506" y="192" class="m">Certificate traefik/onbex-wildcard</text>
+  <text x="506" y="210" class="m">Issuer traefik/onbex-dns01</text>
+  <text x="506" y="230" class="s">built-in cloudflare solver · renews at ⅓ lifetime left</text>
+  <text x="506" y="248" class="s">token: Secret traefik/cloudflare-dns-token</text>
+  <text x="506" y="270" class="s">HTTP-01 issuers for App/custom hosts unchanged</text>
+
+  <rect x="490" y="430" width="350" height="60" rx="8" fill="#ffffff" stroke="#326ce5"/>
+  <text x="506" y="456" class="t" font-weight="600">Secret</text>
+  <text x="506" y="476" class="m">traefik/onbex-default-wildcard-tls</text>
+
+  <rect x="490" y="540" width="350" height="115" rx="8" fill="#ffffff" stroke="#326ce5"/>
+  <text x="506" y="566" class="h">Traefik</text>
+  <text x="506" y="588" class="m">TLSStore default → that Secret</text>
+  <text x="506" y="610" class="t">SNI with no own certificate → wildcard</text>
+  <text x="506" y="630" class="t">unknown host → bex 404 (activator)</text>
+  <text x="506" y="648" class="s">routed hosts keep their HTTP-01 certificates</text>
+
+  <!-- Let's Encrypt -->
+  <rect x="910" y="110" width="300" height="150" rx="10" fill="#f2f4fa" stroke="#2c3c69" stroke-width="1.6"/>
+  <text x="928" y="138" class="h">Let's Encrypt (ACME)</text>
+  <text x="928" y="162" class="t">wildcards require DNS-01</text>
+  <text x="928" y="182" class="t">reads _acme-challenge.onbex.co</text>
+  <text x="928" y="208" class="s">default lifetime 90 d → 64 d (2027-02-10)</text>
+  <text x="928" y="226" class="s">→ 45 d (2028-02-16)</text>
+
+  <!-- Visitor path -->
+  <rect x="910" y="430" width="300" height="60" rx="10" fill="#ffffff" stroke="#9ca3af" stroke-width="1.4"/>
+  <text x="928" y="456" class="t" font-weight="600">Browser</text>
+  <text x="928" y="476" class="m">https://unknown.onbex.co</text>
+
+  <rect x="910" y="555" width="300" height="80" rx="10" fill="#ffffff" stroke="#9ca3af" stroke-width="1.4"/>
+  <text x="928" y="581" class="t" font-weight="600">Hetzner Load Balancer</text>
+  <text x="928" y="601" class="s">TCP :443, passes TLS through to Traefik</text>
+  <text x="928" y="619" class="s">reached via the * A record in Cloudflare</text>
+
+  <path class="visit" d="M1060,490 V551"/>
+  <path class="visit" d="M910,600 H844"/>
+
+  <!-- 1 order -->
+  <path class="flow" d="M840,180 H906"/>
+  <g class="badge"><circle cx="873" cy="180" r="11"/><text x="873" y="184">1</text></g>
+
+  <!-- 2 write TXT via Cloudflare API -->
+  <path class="flow" d="M490,240 H434"/>
+  <g class="badge"><circle cx="460" cy="240" r="11"/><text x="460" y="244">2</text></g>
+
+  <!-- 3 validate: LE reads TXT from Cloudflare -->
+  <path class="flow" d="M1060,110 V90 H230 V106"/>
+  <g class="badge"><circle cx="640" cy="90" r="11"/><text x="640" y="94">3</text></g>
+
+  <!-- 4 issue -->
+  <path class="flow" d="M910,232 H844"/>
+  <g class="badge"><circle cx="877" cy="232" r="11"/><text x="877" y="236">4</text></g>
+  <path class="flow" d="M665,285 V426"/>
+  <g class="badge"><circle cx="665" cy="356" r="11"/><text x="665" y="360">4</text></g>
+
+  <!-- 5 serve -->
+  <path class="flow" d="M665,490 V536"/>
+  <g class="badge"><circle cx="687" cy="513" r="11"/><text x="687" y="517">5</text></g>
+
+  <!-- Steps -->
+  <line x1="30" y1="695" x2="1210" y2="695" stroke="#e5e7eb"/>
+  <g class="badge"><circle cx="42" cy="720" r="11"/><text x="42" y="724">1</text></g>
+  <text x="62" y="724" class="t">cert-manager places an ACME order for *.onbex.co. It runs again by itself when ⅓ of the certificate's lifetime remains.</text>
+  <g class="badge"><circle cx="42" cy="746" r="11"/><text x="42" y="750">2</text></g>
+  <text x="62" y="750" class="t">cert-manager writes the challenge TXT at _acme-challenge.onbex.co through the Cloudflare API, and deletes it after validation.</text>
+  <g class="badge"><circle cx="42" cy="772" r="11"/><text x="42" y="776">3</text></g>
+  <text x="62" y="776" class="t">Let's Encrypt reads that TXT from Cloudflare's nameservers.</text>
+  <g class="badge"><circle cx="42" cy="798" r="11"/><text x="42" y="802">4</text></g>
+  <text x="62" y="802" class="t">Let's Encrypt issues the certificate, and cert-manager writes it into the Secret that Traefik's TLSStore already references.</text>
+  <g class="badge"><circle cx="42" cy="824" r="11"/><text x="42" y="828">5</text></g>
+  <text x="62" y="828" class="t">Traefik serves it for every *.onbex.co SNI that has no certificate of its own. Grey dashed lines show visitor traffic, which is unchanged.</text>
+</svg>
