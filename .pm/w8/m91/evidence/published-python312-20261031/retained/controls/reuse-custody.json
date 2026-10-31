@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-31T08:33:22.507720+00:00",
+  "source_journal": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/receipts.json",
+  "source_journal_sha256": "b7aabc6a2bf1509b0daf50812b9234081e51094ba458ae3e94e5b540aa04439c",
+  "source_journal_bytes": 13610,
+  "source_frozen_manifest_sha256": "1a5131d3677c3fad05496ba9b3516c0307f4bca4f13b4ad3c2e1b968421bf3f7",
+  "source_full_case_receipt": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/receipt.json",
+  "source_full_case_receipt_sha256": "d7614d0bf99673f892864ba0ccd7e44da505b26fc724b977b4678a94c07c736c",
+  "source_index": "ghcr.io/bex-co/bex-cnb-run@sha256:3969f95fbf827f4a985c527e2690f369651faa53a07e73b32761e393b10c0b63",
+  "genuine_full_receipts_copied": 35,
+  "genuine_full_bytes_in_source": 1197437263,
+  "exact_copy_destination": "/tmp/loopx-w8-native-cache-python312-v11-83c1e30-20261031/anonymous-compressed-v2/receipts.json",
+  "exact_copy_sha256": "b7aabc6a2bf1509b0daf50812b9234081e51094ba458ae3e94e5b540aa04439c",
+  "no_failed_blob_receipts": true,
+  "no_source_or_shared_files_changed": true,
+  "not_all_copied_entries_claimed_reused": "Only final selected V11 pull receipts with current_anonymous_head_at count as actual reuse. Unselected copied genuine entries do not count toward this candidate proof."
+}

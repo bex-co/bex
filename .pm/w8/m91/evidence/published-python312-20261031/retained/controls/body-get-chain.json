@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-31T08:38:20.802937+00:00",
+  "case_attempt": 1,
+  "all_selected_full_blob_count": 35,
+  "all_selected_full_bytes_covered": 1188703761,
+  "new_complete_blob_count": 26,
+  "new_full_bytes_hashed": 500339368,
+  "genuine_prior_full_blob_count": 9,
+  "genuine_prior_full_bytes_with_current_HEAD": 688364393,
+  "cache_seed_or_prior_receipt_reuse": true,
+  "prior_custody": "/private/tmp/loopx-w8-native-controls-python312-v11-83c1e30-20261031/reuse-custody.json",
+  "body_GET_count": 26,
+  "ranged_blob_cases": [],
+  "scope": "All canonical full-SHA/size receipt gates passed. Any range records retain actual responses without changing policy. No manual decompressed-layer proof is implied."
+}

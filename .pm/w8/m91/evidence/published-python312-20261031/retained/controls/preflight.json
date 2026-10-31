@@ -1,0 +1,34 @@
+{
+  "at": "2026-10-31T08:33:22.507720+00:00",
+  "scope": "ROOT authorized ONE complete Python3.12 validation, FIRSTcaseattempt. All strict V11 gates unchanged; no automatic secondcase/CI/adoption/repo/Docker action.",
+  "expected_source_hashes": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "initially_absent_paths": [
+    "/tmp/loopx-w8-native-review-python312-v11-83c1e30-20261031",
+    "/tmp/loopx-w8-native-cache-python312-v11-83c1e30-20261031",
+    "/tmp/loopx-w8-native-controls-python312-v11-83c1e30-20261031"
+  ],
+  "name": "python-3.12-bookworm",
+  "run": "41129082245",
+  "job_id": 124318545123,
+  "sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "official_base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+  "fresh_green_preflight": {
+    "whole_run": "completed/success",
+    "job": "completed/success",
+    "job_completed_at": "2026-10-31T06:08:36Z",
+    "both_arch_runtime_scans_signing": "success",
+    "source": "Fresh gh run view; V11 independently rechecks/persists exact currentCI gates"
+  },
+  "free_bytes": 14800134144,
+  "projected_new_case_bytes": 536870912,
+  "projected_fit_pass": true,
+  "own_case_cap_bytes": 2147483648,
+  "global_floor_bytes": 2147483648,
+  "full_body_workers": 2,
+  "reuse": "Exact copied genuine previously full-hashed Python314 receipt journal only. Canonical V11 validates selected immutable descriptor digest/size/repository and actual fresh anonymous HEAD before reuse. New/nonmatching blobs require fresh complete SHA/size body reads. No forged/failed blob entries, bundle reuse, shared writes or copied TUF cache.",
+  "TUF": "Unique fresh per-Cosign-invocation roots below unique output; no global cache/credentials changes."
+}
