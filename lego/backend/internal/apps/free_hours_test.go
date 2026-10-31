@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -69,11 +70,28 @@ func TestFreeHoursSuspensionRules(t *testing.T) {
 // w8/225: the refusal names the service the caller knows, never the internal
 // App object name ("tea-<workspace>-<slug>") no API surface issues.
 func TestFreeHoursRefusalNamesThePublicService(t *testing.T) {
-	a := freeHoursSuspendedApp("tea-ws1-web", FreeHoursMonth(time.Now()))
-	a.Labels = map[string]string{core.LabelServiceName: "web"}
-	svc, _ := newService(nil, a)
-	err := svc.requireFreeHoursAvailable(a)
-	if err == nil || !strings.Contains(err.Error(), `upgrade "web" to a paid plan`) || strings.Contains(err.Error(), "tea-") {
-		t.Fatalf("refusal = %v, want it to name the public service \"web\"", err)
+	const publicName = "customer-api"
+	const month = "2026-10"
+	app := freeHoursSuspendedApp("tea-example-"+publicName, month)
+	serviceID := id.New(id.Service)
+	app.Labels = map[string]string{core.LabelServiceName: publicName, core.LabelAppID: serviceID}
+	svc, cl := newService(nil, app)
+	svc.Clock = func() time.Time { return time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC) }
+
+	_, err := svc.Resume(context.Background(), serviceID)
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != FreeHoursErrorCode {
+		t.Fatalf("resume: want the coded exhausted-hours refusal, got %v", err)
+	}
+	const want = "this workspace has used its monthly Free instance hours; Free web services resume at the start of next month, or upgrade \"customer-api\" to a paid plan to run it now"
+	if coded.Error() != want {
+		t.Errorf("resume refusal = %q, want public service name: %q", coded.Error(), want)
+	}
+	if len(coded.Params) != 1 || coded.Params["month"] != month {
+		t.Errorf("refusal params = %v, want only the exhausted month", coded.Params)
+	}
+	stored := getApp(t, cl, app.Name)
+	if !stored.Spec.Suspended || stored.Annotations[core.AnnotFreeHoursSuspended] != month {
+		t.Fatal("refused resume changed the billing suspension")
 	}
 }
