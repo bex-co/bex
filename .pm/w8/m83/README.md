@@ -1,6 +1,6 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked 2026-10-16 — needs a user decision: the only streaming-safe edge compressor on the deployed Traefik changes no-transform/ETag neighbors this milestone forbids (see [attempt](evidence/edge-compression-attempt/README.md)); no task is done because nothing shipped
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** todo（2026-10-31 解除阻塞；原记录：2026-10-16 — needs a user decision: the only streaming-safe edge compressor on the deployed Traefik changes no-transform/ETag neighbors this milestone forbids (see [attempt](evidence/edge-compression-attempt/README.md)); no task is done because nothing shipped
 
 ## Tasks (in order)
 
@@ -36,3 +36,14 @@ Six tasks,160m total.
 - **结论来源：** 当前固定 Traefik 3.7.5 配置与既有真实代理测量复核。裸 compress 违反 no-transform / ETag，Brotli 大 Range 也有错误；现有 guard 的 Yaegi wrapper 又会缓冲 streaming。
 - **处理：** 不能为了移出 blocked 删除这些未达成的验收，或让用户替 worker 选择破坏 HTTP 邻居。优先在保持原 DoD 的前提下修复/升级供应方；worker 先核实最新官方修复是否可用，再准备具体最小变更。本批 D2 的 19 份 render-oss/cli 补丁不包括本项尚未准备的 Traefik/Yaegi PR。
 - **剩余门槛：** 若仍需对外提交，具体补丁可评审后另取授权；若仅已有官方修复可用，按真实代理回归自行恢复。未证实可用修复，本项继续 blocked。
+
+
+## 解除阻塞记录（2026-10-31，`/unblock w8`）
+
+- **涉及 ID：** w8/m83
+- **结论来源：** 用户明确决定（`/unblock w8` B，2026-10-31）。
+- **结论：** 选项 1：现在就上线 Traefik 自带的 `compress`（流式安全）。用户签字接受两处与 Render 的差异，由 worker 记入 ADR018：带 `Cache-Control: no-transform` 的响应也会被压缩；强 ETag 压缩后保持为强 ETag。
+- **约束：** 不能引入**错误**行为。如果启用 `br` 会让大的 Range（206）响应编码错误，就只用 gzip，或把 Range 响应排除在压缩之外，直到证明正确。保留 allowlist，去掉 `compressguard`。
+- **后续：** 上游修复（traefik/yaegi 的 Flusher 包装，或 compress 增加 no-transform/ETag 选项）出来后可以消除这两处差异，worker 另立 follow-up。
+- **用户门槛：** 无。
+- **worker 下一步：** 从 t001 起实施（基于 [attempt](evidence/edge-compression-attempt/README.md) 的补丁），覆盖 t002 的共享路由和 HTTP 邻居审计；验收：可压缩响应解码后内容与原文逐字节一致，流式响应不被缓冲，Range 响应正确；记录 ADR018 的签字差异。

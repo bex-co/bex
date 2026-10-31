@@ -1,6 +1,6 @@
 # w8 · m65 — Retain PostgreSQL process logs during bursts
 
-**Worker:** worker8 **Goal:** successful database statements retain their distinct diagnostic records before hosting history search. **Status:** blocked — t001/t002 done；原升级门槛已由 w7/m156 消除；待 D3 的自有 QA Postgres fixture，之后验证 300/1005 条 burst，保留 strict source-access 条件
+**Worker:** worker8 **Goal:** successful database statements retain their distinct diagnostic records before hosting history search. **Status:** todo（2026-10-31 解除阻塞；原记录：t001/t002 done；原升级门槛已由 w7/m156 消除；待 D3 的自有 QA Postgres fixture，之后验证 300/1005 条 burst，保留 strict source-access 条件
 
 ## Tasks (in order)
 
@@ -21,7 +21,7 @@ Fresh owned Free PostgreSQL statements through published/current Bex and the unm
 ## Source + Goal linkage
 
 - **Source:** user-requested continuous CLI QA in w8, sweep218; [two-client source-loss finding](finding.md) and [durable evidence](evidence/cli-sweep218/README.md).
-- **Goal linkage:** [ADR008 core hosting](../../../../docs/ADR008-vision.md), [ADR009 managed Postgres](../../../../docs/ADR009-postgresql-management.md) and [ADR010 observability](../../../../docs/ADR010-observability.md).
+- **Goal linkage:** [ADR008 core hosting](../../../docs/ADR008-vision.md), [ADR009 managed Postgres](../../../docs/ADR009-postgresql-management.md) and [ADR010 observability](../../../docs/ADR010-observability.md).
 - **Expected outcome:** customers can retrieve distinct database diagnostic records from real bursts through the unchanged hosting interfaces.
 - **Why now:** two successful native statements retain109/1005 and102/300, while the paced1005 control is complete. A released upstream correction exists, but the actual pinned/deployed manager identity still needs resolution.
 - **Parity included:** the source feeds tenant-facing REST/GraphQL/MCP/dashboard logs even though the correction belongs to infrastructure.
@@ -54,3 +54,13 @@ Fresh owned Free PostgreSQL statements through published/current Bex and the unm
 ## 补充（2026-10-29，`/unblock w8` 主题 2）
 
 - 用户批准的「一次滚动重启」只用于 ADR092 的新 operand 镜像。本项的 CNPG 升级已由 w7/m156 原地完成，不需要与之合并；本项剩余的 QA 落点问题仍按上一条记录等待用户确认。
+
+
+## 解除阻塞记录（2026-10-31，`/unblock w8`）
+
+- **涉及 ID：** w8/m65
+- **结论来源：** 用户明确决定（`/unblock w8` A，2026-10-31），回答了上一条「QA 落点待用户确认」。
+- **结论：** QA Postgres fixture 放在 **bex-canary**（用户说明它已经改了 plan，worker 先核实当前 plan 和 Postgres 配额）。动手前，按用户指示清掉 bex-canary 里现有的资源（用户的判断是「似乎都是垃圾」）。
+- **清理做法：** 先列出全部资源并记录 ID、类型和创建时间；跳过最近 2 小时内创建、可能属于正在运行的 QA 会话的资源；其余逐个按 ID 删除并留 404 证据。服务配额回到基线后再建 fixture。不碰 tian-personal 和 bex workspace。
+- **用户门槛：** 无（短时付费 fixture 已在 D4 获批）。
+- **worker 下一步：** 清理 bex-canary 后建自有 QA Postgres fixture，验证 300/1005 条短 burst 的 LOG 全部保留并可检索（不能用 WAL 验收替代）；按 ID 删除 fixture 并留 404 证据。
