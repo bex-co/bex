@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](227.md) (tracking, minor) ← w8/m83 2026-10-31: Brotli off (206 mis-encode on v3.7.5), no-transform compressed, strong ETag kept
+- [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
 
 - [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
 
