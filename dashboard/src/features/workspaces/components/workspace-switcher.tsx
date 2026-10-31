@@ -76,10 +76,23 @@ export function WorkspaceSwitcher() {
   };
 
   if (loading && workspaces.length === 0) {
+    // The loaded trigger's exact box (SidebarMenuButton: h-8, p-2, gap-2) with
+    // its badge, name and chevron, so the 48px header and every nav link
+    // below it stay put when the workspaces arrive (w4/440).
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5">
-        <Skeleton className="h-8 w-full" />
-      </div>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div
+            data-slot="workspace-switcher-pending"
+            aria-hidden="true"
+            className="flex h-8 w-full items-center gap-2 overflow-hidden rounded-md p-2 group-data-[collapsible=icon]:size-8!"
+          >
+            <Skeleton className="size-5 shrink-0" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="ml-auto size-4 shrink-0" />
+          </div>
+        </SidebarMenuItem>
+      </SidebarMenu>
     );
   }
 
