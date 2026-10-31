@@ -418,7 +418,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
-- [x] **218** — [`services create --from` without `--region` is refused with "region must be one of"](done/218.md) — **DONE 2026-10-31** (readback reports `frankfurt`; no-region clone verified on production pin `d147703d7657`)
+- [x] **218** — [`services create --from` without `--region`](done/218.md) — **DONE 2026-10-31:** production pin `d147703d7657` reports frankfurt; both real clients clone without region, both invalid controls forward zero POSTs; three owned IDs404, baseline/quota intact and own login revoked
 
 - [x] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](done/217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — option 1 implemented 2026-10-29 (exact 3.14.8 default; live acceptance pending; the keep-3.14.10 alternative is 222) — **DONE 2026-10-29** (no-signal Python runs 3.14.8, explicit 3.14 runs 3.14.10, on production)
 
@@ -800,7 +800,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 | PostgreSQL TLS 信任边界 | w8/m87 | 单独讨论 proxy 持全租户私钥 / 明文 SQL；设计与 t002 的 BackendKeyData 策略冲突亦需 worker 修正 |
 | Web 压缩供应方 | w8/m83 | 先找官方 streaming-safe / HTTP 正确的修复；未准备的 Traefik/Yaegi PR 不混入 D2，不能删原 DoD 来解锁 |
 | HTTP/3 edge 与费用 | w8/211 | 仍需专题决定付费 UDP/IP 路径、Cloudflare 或明确偏离；未新增资源 |
-| 区域 readback 的既有 D1 | w8/218 | 需明确是否修改 D1 的 BEX_REGION readback；内部区域不变，不擅自覆盖用户已选行为 |
+| 区域 readback 的既有 D1 | w8/218 | D7 已明确公开 frankfurt、内部 fsn1；2026-10-31 两客户端无 region 克隆、invalid/404/基线及自身登出验收通过，已归档 done |
 | 小盘实际容量 | w8/221 | 已恢复，保持 requested-size 计费并实现请求容量上限；可选涨价/拒绝不阻塞 parity |
 | 旧静态站迁移 | w8/192 | 全量 inventory / 必需 rewrite 真实完成后再恢复 cutoff 移除，due 2026-11-22 |
 | 构建 narration 缺行 | w8/069 | 保留 recurrence gate，下一次先留 Job/pod/source/Loki 证据，无需用户选择 |
