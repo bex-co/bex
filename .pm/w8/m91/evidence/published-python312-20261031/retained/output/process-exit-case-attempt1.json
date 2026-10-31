@@ -1,0 +1,156 @@
+{
+  "started_at": "2026-10-31T08:33:22.606906+00:00",
+  "completed_at": "2026-10-31T08:37:35.753115+00:00",
+  "actual_returncode": 0,
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v11.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "python-3.12-bookworm",
+    "--sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--run",
+    "41129082245",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-python312-v11-83c1e30-20261031",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-python312-v11-83c1e30-20261031",
+    "--layer-workers",
+    "2"
+  ],
+  "executed_source_sha256": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "log": "/tmp/loopx-w8-native-review-python312-v11-83c1e30-20261031/v11-case-attempt1.log",
+  "resource_policy": {
+    "minimum_free_bytes": 2147483648,
+    "maximum_owned_case_bytes": 2147483648,
+    "proactive_free_stop_bytes": 2281701376,
+    "proactive_owned_stop_bytes": 2080374784,
+    "poll_seconds": 2,
+    "maximum_elapsed_seconds": 7200,
+    "termination_scope": "Only the new local subprocess session/process group created by this supervisor; no CI or other process"
+  },
+  "minimum_observed_free_bytes": 12661137408,
+  "maximum_observed_owned_bytes": 121903518,
+  "stopped_reason": null,
+  "resource_observations": [
+    {
+      "at": "2026-10-31T08:33:22.609866+00:00",
+      "free_bytes": 14799568896,
+      "owned_bytes": 41217,
+      "actual_progress": null
+    },
+    {
+      "at": "2026-10-31T08:33:52.732885+00:00",
+      "free_bytes": 14407565312,
+      "owned_bytes": 109597991,
+      "actual_progress": {
+        "at": "2026-10-31T08:33:52.289401+00:00",
+        "stage": "strict-keyless-bundle-verification",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm"
+      }
+    },
+    {
+      "at": "2026-10-31T08:34:22.880806+00:00",
+      "free_bytes": 14321385472,
+      "owned_bytes": 121852672,
+      "actual_progress": {
+        "at": "2026-10-31T08:34:16.774175+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:25fb8418b67783eba7bf3f8315f94b03f3ffd853e9dc56817230ff1b5124be9b",
+        "expected_bytes": 146527304
+      }
+    },
+    {
+      "at": "2026-10-31T08:34:53.005590+00:00",
+      "free_bytes": 14309888000,
+      "owned_bytes": 121858266,
+      "actual_progress": {
+        "at": "2026-10-31T08:34:50.396494+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:f1b71993b3ded2230a90c0904a1378f06bdf26e4e09d7b961a3ec57064ec0219",
+        "expected_bytes": 25005879
+      }
+    },
+    {
+      "at": "2026-10-31T08:35:23.146845+00:00",
+      "free_bytes": 14270787584,
+      "owned_bytes": 121883534,
+      "actual_progress": {
+        "at": "2026-10-31T08:35:22.365737+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:5b07063cb37fc13e50c2e08cdbba4ee5d27ec16acd5aa4e021181805a8e66edc",
+        "expected_bytes": 262
+      }
+    },
+    {
+      "at": "2026-10-31T08:35:53.267374+00:00",
+      "free_bytes": 13560840192,
+      "owned_bytes": 121892014,
+      "actual_progress": {
+        "at": "2026-10-31T08:35:26.863495+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:ad7b2dccb26eaf8f89076bb8fab328eeb07c63e5a1b14f097b9ad3e41501d83b",
+        "expected_bytes": 5084176
+      }
+    },
+    {
+      "at": "2026-10-31T08:36:23.382693+00:00",
+      "free_bytes": 13560586240,
+      "owned_bytes": 121892334,
+      "actual_progress": {
+        "at": "2026-10-31T08:35:57.422773+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:4b476a1ddd14e62e42d9233e8d7faa81f122bdf6f4fd7ecfe5d7bdb87dad14b4",
+        "bytes_hashed": 52428800,
+        "expected_bytes": 155965242
+      }
+    },
+    {
+      "at": "2026-10-31T08:36:53.531382+00:00",
+      "free_bytes": 13648523264,
+      "owned_bytes": 121892610,
+      "actual_progress": {
+        "at": "2026-10-31T08:36:29.277853+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:4b476a1ddd14e62e42d9233e8d7faa81f122bdf6f4fd7ecfe5d7bdb87dad14b4",
+        "bytes_hashed": 68157440,
+        "expected_bytes": 155965242
+      }
+    },
+    {
+      "at": "2026-10-31T08:37:23.689478+00:00",
+      "free_bytes": 12858945536,
+      "owned_bytes": 121903238,
+      "actual_progress": {
+        "at": "2026-10-31T08:37:00.024313+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "python-3.12-bookworm",
+        "digest": "sha256:4b476a1ddd14e62e42d9233e8d7faa81f122bdf6f4fd7ecfe5d7bdb87dad14b4",
+        "bytes_hashed": 95420416,
+        "expected_bytes": 155965242
+      }
+    }
+  ],
+  "supervisor_sha256": "c8f4fc1efb363d8087a389721b77dfa2b280b9a014e456415dbe7c0a53734d83"
+}

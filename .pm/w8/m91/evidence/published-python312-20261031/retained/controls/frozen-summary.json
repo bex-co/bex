@@ -1,0 +1,197 @@
+{
+  "frozen_at": "2026-10-31T08:38:20.802937+00:00",
+  "result": "ONE_COMPLETE_STRICT_SUPPLIER_ARTIFACT_VALIDATION_EXIT0",
+  "root_artifact_review_pending": true,
+  "case_attempt": 1,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:f3c3a554addd0e3f21a991cb102eb2f6c37073d21e44d1351243daad3234a1d6",
+  "official_base": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "producer": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "producer_mode": "fresh-build",
+  "run": "41129082245",
+  "job": 124318545123,
+  "actual_exit": 0,
+  "all_five_full_bundles_strict_PKI_tlog_TSA": true,
+  "actual_wrong_source_and_subject_controls_rejected": true,
+  "distinct_TUF_roots": 7,
+  "two_architecture_report_pairs_bound_independently": true,
+  "unique_verified_full_blob_count": 35,
+  "unique_verified_full_blob_bytes": 1188703761,
+  "new_complete_full_blob_count": 26,
+  "new_complete_full_blob_bytes": 500339368,
+  "genuine_prior_full_blob_count": 9,
+  "prior_receipt_reuse_bytes": 688364393,
+  "actual_current_anonymous_HEAD_count": 9,
+  "actual_body_GET_count": 26,
+  "actual_range_resume_cases": 0,
+  "manual_decompressed_layer_reads": 0,
+  "actual_package_findings_by_architecture": {
+    "amd64": {
+      "spdx_package_count": 719,
+      "primary_ENV": "PYTHON_VERSION=3.12.16",
+      "selected_actual_spdx_packages": [
+        {
+          "name": "libbrotli1",
+          "versionInfo": "1.0.9-2+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-libbrotli1-d52d25912aba3a2c"
+        },
+        {
+          "name": "python",
+          "versionInfo": "3.12.16",
+          "SPDXID": "SPDXRef-Package-binary-python-781e3fa5b4652295"
+        },
+        {
+          "name": "python3",
+          "versionInfo": "3.11.2-1+b1",
+          "SPDXID": "SPDXRef-Package-deb-python3-c4e630d0983fc5b9"
+        },
+        {
+          "name": "setuptools",
+          "versionInfo": "66.1.1",
+          "SPDXID": "SPDXRef-Package-python-setuptools-5681ba7903f2ba37"
+        },
+        {
+          "name": "setuptools",
+          "versionInfo": "80.9.0",
+          "SPDXID": "SPDXRef-Package-python-setuptools-c131d1c2e7f0f9fb"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.38.4",
+          "SPDXID": "SPDXRef-Package-python-wheel-ad7e2e3f95e2ec0d"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.45.1",
+          "SPDXID": "SPDXRef-Package-python-wheel-9f59623e1764ed10"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.48.0",
+          "SPDXID": "SPDXRef-Package-python-wheel-ecbec75bb1a67e5f"
+        }
+      ]
+    },
+    "arm64": {
+      "spdx_package_count": 717,
+      "primary_ENV": "PYTHON_VERSION=3.12.16",
+      "selected_actual_spdx_packages": [
+        {
+          "name": "libbrotli1",
+          "versionInfo": "1.0.9-2+deb12u1",
+          "SPDXID": "SPDXRef-Package-deb-libbrotli1-b48fb4dbfa3fa33d"
+        },
+        {
+          "name": "python",
+          "versionInfo": "3.12.16",
+          "SPDXID": "SPDXRef-Package-binary-python-d86c0efa2450571e"
+        },
+        {
+          "name": "python3",
+          "versionInfo": "3.11.2-1+b1",
+          "SPDXID": "SPDXRef-Package-deb-python3-56f7dd8cda6a5b71"
+        },
+        {
+          "name": "setuptools",
+          "versionInfo": "66.1.1",
+          "SPDXID": "SPDXRef-Package-python-setuptools-5681ba7903f2ba37"
+        },
+        {
+          "name": "setuptools",
+          "versionInfo": "80.9.0",
+          "SPDXID": "SPDXRef-Package-python-setuptools-c131d1c2e7f0f9fb"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.38.4",
+          "SPDXID": "SPDXRef-Package-python-wheel-ad7e2e3f95e2ec0d"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.45.1",
+          "SPDXID": "SPDXRef-Package-python-wheel-9f59623e1764ed10"
+        },
+        {
+          "name": "wheel",
+          "versionInfo": "0.48.0",
+          "SPDXID": "SPDXRef-Package-python-wheel-ecbec75bb1a67e5f"
+        }
+      ]
+    }
+  },
+  "all_trivy_summaries_retained": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "config_digest": "sha256:d360c2a8ad342243e24085d691770db0b739aa937381782849a29c6bf8cc2f84",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:f3c3a554addd0e3f21a991cb102eb2f6c37073d21e44d1351243daad3234a1d6",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T05:48:21.323186382Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 4,
+        "vulnerability_count": 5968,
+        "severity_counts": {
+          "LOW": 2969,
+          "HIGH": 636,
+          "MEDIUM": 2238,
+          "UNKNOWN": 103,
+          "CRITICAL": 22
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "config_digest": "sha256:62e6e329d99f05a8db9fe61ea699afa8e379b03710ec8e4abf3766060b12ceb1",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:f3c3a554addd0e3f21a991cb102eb2f6c37073d21e44d1351243daad3234a1d6",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T05:39:37.840437959Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 4,
+        "vulnerability_count": 5968,
+        "severity_counts": {
+          "LOW": 2969,
+          "HIGH": 636,
+          "MEDIUM": 2238,
+          "UNKNOWN": 103,
+          "CRITICAL": 22
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ]
+  },
+  "resource_minimum_observed_free_bytes": 12661137408,
+  "resource_maximum_observed_owned_bytes": 121903518,
+  "resource_stop_reason": null,
+  "full_raw_signed_bundles_preserved": true,
+  "all_gzip_roundtrips_verified": true,
+  "receipt_sha256": "ae85d6115aaa9fae5d191825312264f9bc79c900ae56599a381a7b06e504ca85",
+  "process_receipt_sha256": "6e5515b848e9eba2bf3c8638bb30aa061ab40a43451e9be69305374751d12546",
+  "scope": "Published supplier identity/runtime/report/blob evidence only. All findings retained, no zero-CVE claim/waiver. Python3.12 supplier proof does not establish generated exact-default3.14.8, hosted222 acceptance or catalog/common-base adoption. No catalog/adoption/repo/CI/Docker/resources changed. Ten prior root-approved W8 suppliers/history remain unchanged; committed board count may lag pending docs ship.",
+  "executed_source_hashes": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "terminal_capacity": {
+    "at": "2026-10-31T08:38:50.494648+00:00",
+    "actual_terminal_owned_logical_bytes": 140644038,
+    "actual_terminal_free_bytes": 9542213632,
+    "own_limit_bytes": 2147483648,
+    "global_free_floor_bytes": 2147483648,
+    "pass": true,
+    "scope": "Terminal sample after complete verification and losslesscustody; process receipt retains its original samples. No exact unsampled peak claim.",
+    "no_raw_or_shared_cleanup": true
+  }
+}
