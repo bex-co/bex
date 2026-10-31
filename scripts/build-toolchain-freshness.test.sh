@@ -104,6 +104,22 @@ assert "canonical supplied-base digest needs inventory coverage" 1 \
 assert "inventoried canonical supplied-base digest validates" 0 \
   env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/covered.json" "$SCRIPT" validate
 
+# The single common foundation is an independent upstream input, even while
+# the operator's adopted common pin is empty.
+printf 'ARG BASE_IMAGE=buildpack-deps:bookworm@%s\n' "$DIGEST_B" >"$tmp/supplied/deploy/native-common/Dockerfile"
+assert "canonical common source needs inventory coverage" 1 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/covered.json" "$SCRIPT" validate
+python3 - "$tmp/supplied" "$DIGEST_B" <<'PYFIXTURE'
+import json, sys
+from pathlib import Path
+fixture = Path(sys.argv[1])
+inventory = json.loads((fixture / "covered.json").read_text())
+inventory["images"].append(dict(inventory["images"][0], id="native-common-source", kind="native-base", upstream="docker.io/library/buildpack-deps:bookworm", committed="buildpack-deps:bookworm@" + sys.argv[2], files=["deploy/native-common/Dockerfile"]))
+(fixture / "common-covered.json").write_text(json.dumps(inventory))
+PYFIXTURE
+assert "inventoried canonical common source validates" 0 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/common-covered.json" "$SCRIPT" validate
+
 # RED: missing coverage of a pin-site digest.
 write_tree "$tmp/uncovered"
 printf 'extra := "other@%s"\n' "$DIGEST_C" >>"$tmp/uncovered/pin.go"

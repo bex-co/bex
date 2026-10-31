@@ -223,7 +223,8 @@
       "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
       "files": [
         "lego/operator/internal/build/native.go",
-        "deploy/native-base/Dockerfile"
+        "deploy/native-base/Dockerfile",
+        "deploy/native-common/Dockerfile"
       ]
     },
     {
@@ -490,6 +491,17 @@
       "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
       "files": [
         "lego/operator/internal/build/native.go"
+      ]
+    },
+    {
+      "id": "native-common-bookworm-source",
+      "kind": "native-base",
+      "upstream": "docker.io/library/buildpack-deps:bookworm",
+      "committed": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
+      "resolved_at": "2026-10-31T10:53:52Z",
+      "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved2026-10-31; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
+      "files": [
+        "deploy/native-common/Dockerfile"
       ]
     }
   ]

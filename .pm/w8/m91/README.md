@@ -239,3 +239,8 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Three fixed publication requests bound — 2026-10-31
 
 [The complete plan and actual dispatch custody](evidence/targeted-native-rebuilds-20261031/README.md) records exactly one singleton normal build each for Python3.11, Python3.13 and Node26. Root independently checked all71 plan and133 execution files, direct HTTP200 returned run identities and all30 native Git inputs against the fixed2cc profile. The actual runs are41190561558/41190693730/41190806242, with successful matrices and queued build jobs at the frozen observation. No CI completion, new supplier approval or hosted acceptance is inferred from dispatch. Earlier actual failures and the stopped preflight remain retained.
+
+
+## Common Bookworm first source slice — 2026-10-31
+
+[The reviewed common foundation and resolver source](evidence/common-bookworm-source-20261031/README.md) follows the recorded user choice: one Bookworm tools layer, exact/default primary installation before companions, shared offline tooling and the existing complete publication gates. New automatic C matrices retire; historical singleton finish remains. Full operator tests and scoped lint pass; full workspace lint is capacity-incomplete with every stopped/failed attempt retained. Both production pins remain empty. Actual common publication, generated Node24/Python3.13/exactdefault3.14.8 images on both architectures, complete legacy/OTP compatibility and all original hosted DoDs remain open.

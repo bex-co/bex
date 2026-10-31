@@ -30,6 +30,11 @@ import (
 // continue to resolve the upstream primary rather than a derivative tag.
 var nativeSuppliedBases = map[string]string{}
 
+// nativeCommonBase is the user-selected single Bookworm system/tools image.
+// Keep it empty until every supported runtime/companion has been qualified on
+// the common foundation. Publication and partial-family proof never adopt it.
+var nativeCommonBase string
+
 var nativeImageEnvName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var nativeDebianHistory = regexp.MustCompile(`^# debian\.sh --arch '(?:amd64|arm64)' out/ '(bullseye|bookworm|trixie)' '@[0-9]+'$`)
@@ -128,6 +133,16 @@ func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime str
 	} else {
 		choice = pinExactVersion(ctx, exact, choice)
 	}
+	if nativeCommonBase != "" {
+		// The common image has no primary, including when selection kept the
+		// reviewed default. Never substitute another language patch because its
+		// environment could not be read; preserve identity and report the error.
+		choice.imageEnv, _, err = exact.ImageMetadata(ctx, choice.Image)
+		if err != nil {
+			return NativeChoice{}, fmt.Errorf("read selected native primary environment: %w", err)
+		}
+		return choice, nil
+	}
 	if len(nativeSuppliedBases) == 0 || choice.Image == reviewed.Image {
 		return choice, nil
 	}
@@ -151,6 +166,9 @@ func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime str
 // Its primary replacement is prepended ahead of companions so an exact
 // primary cannot erase Node, Ruby, Bun, Poetry, or their links.
 func applyNativeSuppliedBase(dockerfile, reviewedImage string, choice NativeChoice, supplied map[string]string) (string, error) {
+	if nativeCommonBase != "" {
+		return transplantNativePrimary(dockerfile, reviewedImage, nativeCommonBase, choice)
+	}
 	if len(supplied) == 0 {
 		return dockerfile, nil
 	}
@@ -158,13 +176,33 @@ func applyNativeSuppliedBase(dockerfile, reviewedImage string, choice NativeChoi
 	if err != nil {
 		return "", err
 	}
+	if choice.Image == reviewedImage {
+		if err := validateNativeBase(image); err != nil {
+			return "", err
+		}
+		return rewriteNativeBase(dockerfile, choice.Image, image)
+	}
+	return transplantNativePrimary(dockerfile, reviewedImage, image, choice)
+}
+
+func validateNativeBase(image string) error {
 	ref, digest, pinned := strings.Cut(image, "@")
 	if !pinned || ref == "" || strings.ContainsAny(ref, " \t\r\n") || !digestPattern.MatchString(digest) {
-		return "", fmt.Errorf("supplied native base is not pinned: %s", image)
+		return fmt.Errorf("supplied native base is not pinned: %s", image)
+	}
+	return nil
+}
+
+// transplantNativePrimary is shared by the common foundation and historical
+// exact-patch supplier path. It always installs the selected primary first,
+// including a reviewed default, before any companion or authored command.
+func transplantNativePrimary(dockerfile, reviewedImage, image string, choice NativeChoice) (string, error) {
+	if err := validateNativeBase(image); err != nil {
+		return "", err
 	}
 	out, err := rewriteNativeBase(dockerfile, choice.Image, image)
-	if err != nil || choice.Image == reviewedImage {
-		return out, err
+	if err != nil {
+		return "", err
 	}
 	if len(choice.imageEnv) == 0 {
 		return "", fmt.Errorf("exact primary %s has no verified environment", choice.Image)

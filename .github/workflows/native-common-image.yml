@@ -1,0 +1,29 @@
+name: common Bookworm native image (build + verify)
+
+# One tools/system image, followed by independently selected runtime artifacts.
+# Publication never fills the production common-base pin or adopts C images.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/native-common/**"
+      - "deploy/native-base/**"
+      - ".github/workflows/native-common-image.yml"
+      - ".github/workflows/native-base-image.yml"
+      - ".github/scripts/native-oci-stage.py"
+      - ".github/scripts/test_native_oci_*.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/native-base-image.yml
+    with:
+      runtime: common-bookworm
