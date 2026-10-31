@@ -1,0 +1,25 @@
+{
+  "started_at": "2026-10-31T12:28:15.603654+00:00",
+  "script_sha256": "519f5a9302fb4213ec7320f111f0fcaa306f4a04473df07ecd58f049dddfd16b",
+  "mode": "sanctioned opaque existing credentials, strict pinned host identity, original fixed read-only inventory",
+  "new_credential_grant": false,
+  "exit": 1,
+  "completed_at": "2026-10-31T12:28:33.964647+00:00",
+  "phase": "existing-credential-material-present-strict-pinned",
+  "private_kubeconfig_exists": false,
+  "inventory_exists": false,
+  "noncredential_artifacts": {
+    "run-existing-access.sh": {
+      "sha256": "519f5a9302fb4213ec7320f111f0fcaa306f4a04473df07ecd58f049dddfd16b",
+      "bytes": 1458
+    },
+    "fetch.stdout.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "fetch.stderr.txt": {
+      "sha256": "ca444ea4acdc8727af93a2c45efc8924a5f3dd5ad084413fe2c80d29b78f5d50",
+      "bytes": 2334
+    }
+  }
+}

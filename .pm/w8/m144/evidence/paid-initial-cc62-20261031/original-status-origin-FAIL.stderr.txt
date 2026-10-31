@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 195, in <module>
+    elif cmd in ['status','hashes']:out=probe('/'+cmd)
+                                        ~~~~~^^^^^^^^^
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 129, in probe
+    rec=request(method,path,{} if method=='POST' else None,fixture=True,timeout=155);v=value(rec);assert v.get('run',v.get('after',{}).get('run'))==S['run'];L.setdefault('probe_history',[]).append({'path':path,'method':method,'response':v,'at':now()});save();return v
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 41, in request
+    if fixture:assert u.hostname==S['name']+'.onbex.co','unreviewed fixture hostname'
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: unreviewed fixture hostname

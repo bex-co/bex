@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:36:17.168893+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/hashes",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "owned fixture",
+  "request_started_at": "2026-10-31T12:36:17.169150+00:00",
+  "response_received_at": "2026-10-31T12:36:17.990480+00:00",
+  "HTTP": 200,
+  "response": "{\"boot\": \"34381d5d4e8a400f95c5689a3f8de31a\", \"hashes\": {\"data-a.bin\": {\"bytes\": 65536, \"sha256\": \"2bef3cca11a34119022b5330847f670e8bd498aceefc260a3e96fef8fba0eb52\"}, \"data-b.bin\": {\"bytes\": 65536, \"sha256\": \"5b6e10b0768ab3711ce390186889af91fac4ad90391c1b87ee6b5cbdf78944f7\"}, \"owner.json\": {\"bytes\": 59, \"sha256\": \"6d0a5426904f5aed54fed6b56a7b1bc5a00b9e91474dc49bff2148fba9a77ee4\"}, \"sentinel.bin\": {\"bytes\": 65536, \"sha256\": \"46af1fa55daaee2c78cfa0412af3feb8f8354b7531d78bb8c38baaa20d528478\"}}, \"run\": \"cc62f8e3a1ee8b8c\"}",
+  "response_sha256": "e5741e9e8e22e0d1aab0980c1c70290a76137f92a059a0200e17957ce77f7976",
+  "request_id": null
+}

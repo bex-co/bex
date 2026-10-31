@@ -1,0 +1,21 @@
+--- hosted-disk-observed-v2.py
++++ hosted-disk-observed-v3.py
+@@ -172,15 +172,15 @@
+  v=value(rec);assert not v.get('error') and not v['result'].get('isError');r=v['result'];return r.get('structuredContent') or json.loads(next(i['text'] for i in r['content'] if i['type']=='text'))
+ def series_values(series):return [p['value'] for s in series for p in s.get('values',s.get('points',[]))]
+ def surfaces():
+- d=disk();sid=d['serviceId'];did=d['id'];q='query DiskAcceptance($d:String!,$s:String!){disk(id:$d){id name mountPath sizeGB serviceId} service(id:$s){id name plan disk{name mountPath sizeGB}}}';out={'REST_disk':request('GET','/v1/disks/'+did),'GraphQL_disk':request('POST','/graphql',{'query':q,'variables':{'d':did,'s':sid}}),'MCP_disk':rpc('get_disk',{'diskId':did})}
++ d=disk();sid=d['serviceId'];did=d['id'];q='query DiskAcceptance($d:String!,$s:String!){disk(id:$d){id name mountPath sizeGB serviceId} service(id:$s){id name plan disk{name mountPath sizeGB}}}';out={'REST_disk_resource':request('GET','/v1/disks/'+did),'GraphQL_disk':request('POST','/graphql',{'query':q,'variables':{'d':did,'s':sid}}),'MCP_disk':rpc('get_disk',{'diskId':did})}
+  for metric in ['disk','disk_capacity']:
+-  out['REST_'+metric]=request('GET','/v1/metrics/'+('disk-usage' if metric=='disk' else 'disk-capacity')+'?resource='+sid+'&kind=service')
++  out['REST_'+metric]=request('GET','/v1/metrics/'+('disk-usage' if metric=='disk' else 'disk-capacity')+'?resource='+sid)
+   out['GQL_'+metric]=request('POST','/graphql',{'query':'query($q:DatastoreMetricsQueryInput!){datastoreMetrics(query:$q){unit labels{field value} values{time value}}}','variables':{'q':{'kind':'service','resource':sid,'name':metric.upper()}}})
+  out['MCP_metrics']=rpc('get_datastore_metrics',{'resourceId':sid,'kind':'service','metricTypes':['disk','disk_capacity']})
+  out['Blueprint_generate']=request('POST','/v1/blueprints/generate',{'ownerId':WS,'serviceIds':[sid]});generated=value(out['Blueprint_generate']);manifest=yaml.safe_load(generated['manifest']);entries=manifest['services'];assert len(entries)==1 and entries[0]['disk']['sizeGB']==d['sizeGB'] and entries[0]['disk']['mountPath']==S['mount']
+  out['Blueprint_validate']=request('POST','/v1/blueprints/validate',{'ownerId':WS,'bexYaml':generated['manifest']});assert value(out['Blueprint_validate'])['valid'] is True
+  readback={'at':now(),'size_gib':d['sizeGB'],'receipts':out};L.setdefault('surface_readbacks',[]).append(readback);save()
+- assert value(out['REST_disk'])==d
++ assert value(out['REST_disk_resource'])==d
+  gv=value(out['GraphQL_disk']);assert not gv.get('errors');gd=gv['data']['disk'];assert all(gd[k]==d[k] for k in ['id','name','mountPath','sizeGB','serviceId']);assert gv['data']['service']['disk']['sizeGB']==d['sizeGB']
+  md=mcp_value(out['MCP_disk']);md=md.get('disk',md);assert all(md[k]==d[k] for k in ['id','name','mountPath','sizeGB','serviceId'])
+  expected=d['sizeGB']*1024**3

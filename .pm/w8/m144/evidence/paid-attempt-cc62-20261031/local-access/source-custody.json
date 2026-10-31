@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-31T12:30:27.007551+00:00",
+  "source_hashes": {
+    "scripts/fetch-app-kubeconfig.sh": "59e5d881b452e8c6f5e5b656b4f3df553a35a20257acc32a6c47fa96481d4507",
+    "scripts/lib/env-file.sh": "c69c6bfc8f5b93a1fa88820ccbc7156cbe03f9d20580caad64d7946b1814288a",
+    "scripts/lib/ssh-hostkey.sh": "fbc6aa55ba2fd743c20282d55c8754c6e660004a47420ed7f6c4d2bfba794f27",
+    "scripts/service-disk-inventory.sh": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e",
+    "scripts/service_disk_inventory.py": "5b84f55a625281d4a56338e2326f45b70a4a27be5156d8e3aa2b754780abc0ac"
+  },
+  "own_pin_file_created": false,
+  "own_pin_mode": null,
+  "credential_material_not_hashed": true,
+  "own_kubeconfig_present": false,
+  "no_value_output": true
+}

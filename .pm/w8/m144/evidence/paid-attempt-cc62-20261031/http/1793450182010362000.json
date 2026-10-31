@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:36:22.010330+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/metrics/disk-usage?resource=srv-dbit2iat5fis7381jscg&kind=service",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:22.010493+00:00",
+  "response_received_at": "2026-10-31T12:36:22.269428+00:00",
+  "HTTP": 400,
+  "response": "{\"error\":\"unsupported query parameter \\\"kind\\\" for get-disk-usage\",\"id\":\"bad_request\",\"message\":\"unsupported query parameter \\\"kind\\\" for get-disk-usage\"}\n",
+  "response_sha256": "c735ec7a6b790eed9efadc786deae5c8a16a1fb377803a13b620c21d4acd4987",
+  "request_id": null
+}

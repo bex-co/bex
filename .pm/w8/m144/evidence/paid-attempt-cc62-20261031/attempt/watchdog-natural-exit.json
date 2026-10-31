@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-31T12:40:06.910336+00:00",
+  "expected_pid": 96621,
+  "ps_exit": 1,
+  "process_present": false,
+  "own_exec_session_80479_observed_exit": 0,
+  "termination_signal_sent": false,
+  "source_sha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+  "actual_API_absence_proven": true
+}

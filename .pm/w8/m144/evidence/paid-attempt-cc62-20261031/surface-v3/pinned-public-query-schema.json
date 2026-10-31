@@ -1,0 +1,125 @@
+{
+  "pinned_upstream": "https://api-docs.render.com/openapi/render-public-api-1.json",
+  "fetched_pin_date": "2026-09-11",
+  "source": "lego/backend/internal/api/openapi/render-public-api-1.json",
+  "sha256": "c6851bc830fa0f01fa58face22c8cf46d4762054c6fe879d724fae5ade72a520",
+  "bytes": 345074,
+  "operations": {
+    "/metrics/disk-usage": {
+      "operationId": "get-disk-usage",
+      "parameters": [
+        {
+          "name": "startTime",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-06-17T08:15:30Z"
+          },
+          "required": false,
+          "description": "Epoch/Unix timestamp of start of time range to return. Defaults to `now() - 1 hour`."
+        },
+        {
+          "name": "endTime",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-06-17T08:30:30Z"
+          },
+          "required": false,
+          "description": "Epoch/Unix timestamp of end of time range to return. Defaults to `now()`."
+        },
+        {
+          "name": "resolutionSeconds",
+          "in": "query",
+          "schema": {
+            "type": "number",
+            "minimum": 30,
+            "example": 60,
+            "default": 60
+          },
+          "required": false,
+          "description": "The resolution of the returned data"
+        },
+        {
+          "name": "resource",
+          "in": "query",
+          "description": "Resource ID to query. When multiple resource query params are provided, they are ORed together. Resources can be service ids, Postgres ids, or Redis ids",
+          "schema": {
+            "type": "string",
+            "example": "srv-xxxxx,dpg-xxxxx,red-xxxxx"
+          }
+        },
+        {
+          "name": "service",
+          "in": "query",
+          "deprecated": true,
+          "description": "This parameter is deprecated. Please use `resource` instead",
+          "schema": {
+            "type": "string",
+            "example": "srv-xxxxx"
+          }
+        }
+      ]
+    },
+    "/metrics/disk-capacity": {
+      "operationId": "get-disk-capacity",
+      "parameters": [
+        {
+          "name": "startTime",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-06-17T08:15:30Z"
+          },
+          "required": false,
+          "description": "Epoch/Unix timestamp of start of time range to return. Defaults to `now() - 1 hour`."
+        },
+        {
+          "name": "endTime",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-06-17T08:30:30Z"
+          },
+          "required": false,
+          "description": "Epoch/Unix timestamp of end of time range to return. Defaults to `now()`."
+        },
+        {
+          "name": "resolutionSeconds",
+          "in": "query",
+          "schema": {
+            "type": "number",
+            "minimum": 30,
+            "example": 60,
+            "default": 60
+          },
+          "required": false,
+          "description": "The resolution of the returned data"
+        },
+        {
+          "name": "resource",
+          "in": "query",
+          "description": "Resource ID to query. When multiple resource query params are provided, they are ORed together. Resources can be service ids, Postgres ids, or Redis ids",
+          "schema": {
+            "type": "string",
+            "example": "srv-xxxxx,dpg-xxxxx,red-xxxxx"
+          }
+        },
+        {
+          "name": "service",
+          "in": "query",
+          "deprecated": true,
+          "description": "This parameter is deprecated. Please use `resource` instead",
+          "schema": {
+            "type": "string",
+            "example": "srv-xxxxx"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "at_recorded": "2026-10-31T12:38:48.253247+00:00",
+  "exit": 1,
+  "result": "preflight import failure before HTTP",
+  "error": "ModuleNotFoundError: No module named yaml",
+  "wrong_interpreter": "host python3",
+  "correction": "use same existing venv interpreter as original q",
+  "evidence_kind": "transcribed existing tool output; no raw redirected log existed",
+  "no_HTTP_call": true
+}

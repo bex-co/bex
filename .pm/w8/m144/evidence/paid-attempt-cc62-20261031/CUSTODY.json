@@ -1,0 +1,646 @@
+{
+  "frozen_input_manifests": {
+    "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt": "5d07ba3fe53f0182633590a55341a4ce0513a1372f03ed5e003f1559d3742c83",
+    "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation": "58ba9d98bdfeb4390f1178d2164516527893ee5c3a30fedce8bd9814a360128f",
+    "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/paid-initial-cc62-20261031": "4aa8920fe5d9572852ca858d4ed025f404f5cb69a1edeec9b91836ef3b79a113"
+  },
+  "files": {
+    "http/1793450176135376000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450176135376000.json",
+      "source_sha256": "8ccef759cdba9afee3b91d907e132c9a131bf9d0ee730cd3552dd3e6ec7cd7ca",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "a7f647ad3b9c95ef74dbb6c8e69eb5472d6a78a7eefed4830dbb10c450a3c649",
+      "bytes": 6009
+    },
+    "http/1793450177168987000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450177168987000.json",
+      "source_sha256": "04edb8aa067fc136c4e00f9badb44ff345a88755413a64a4e61972c027bd8b52",
+      "source_bytes": 1046,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "9539ce1c23f3c42c9e2430169c65ab9b891e0abf36778b37243a7144645f1843",
+      "bytes": 1012
+    },
+    "http/1793450178109745000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450178109745000.json",
+      "source_sha256": "4b0182eae131e18e4354cfa827c3abc899a3235cd96f7d7fb289923661bf2ac6",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "1085087052efd59ffefc4f31d1a8fa2009f269f58ac54b1508146500c7cf4ea1",
+      "bytes": 6009
+    },
+    "http/1793450179103947000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450179103947000.json",
+      "source_sha256": "9ca6baa5b7d239cdbad2e2b129f8a4dbd860a8702d7d9c4508c4347b95d247cf",
+      "source_bytes": 840,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "888d62f4a925ad408fbcc88915bcec314551e8031d73f0503cf981b46fef7738",
+      "bytes": 806
+    },
+    "http/1793450180346690000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450180346690000.json",
+      "source_sha256": "9315f5fea762b2bc5a2bf2b81d961a3cd55cf39f65e0c25c86b7fc124076070f",
+      "source_bytes": 777,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "efae66ba663c28e07e332786017f8770ea04024c7285a3fa2f18e2d6203b1402",
+      "bytes": 743
+    },
+    "http/1793450180830130000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450180830130000.json",
+      "source_sha256": "4cfe04ca0713f6b0e8e8656c7d0bfe18bf3a6a37d09e653a869774a61d99d04e",
+      "source_bytes": 1255,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "0c4c3dcf329f301adf6447118374a9a5e3949b6f0f33d936d679967346b3e97c",
+      "bytes": 1221
+    },
+    "http/1793450181569239000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450181569239000.json",
+      "source_sha256": "2d2791f996592ebef4cbb827ebf3dccc3370a8a228bf8499e440c20dbfa6084c",
+      "source_bytes": 1472,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "fc112757e8937c2f4685b03eb92f71e6b2718e99a77b0c27199c43dd277c053b",
+      "bytes": 1438
+    },
+    "http/1793450182010362000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450182010362000.json",
+      "source_sha256": "2cf3ead7ae4d38fb9661ca099edf1392280e6d9c02749160f1e059fbd92fcc43",
+      "source_bytes": 720,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "78bd9affbf03199e1abb2c6cb20bfabc028fd5d538a211787483c4b6cdb4809e",
+      "bytes": 686
+    },
+    "http/1793450182270121000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450182270121000.json",
+      "source_sha256": "03989433751a9be09d88e634879a91cfca6720860b0839f4b1bfcc16f74752e2",
+      "source_bytes": 4280,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "38cfe096e7929915627258fc605169becda6b682228f60d15db1b39dafd309ee",
+      "bytes": 4246
+    },
+    "http/1793450182782739000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450182782739000.json",
+      "source_sha256": "6fbf00fd55b9b0ac47e8edd52a9bfd511c4a5d0295d22a0f991a7e423c084377",
+      "source_bytes": 754,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "064cf2a518ea24fe8537d1e4d387cfbf3c9c520684a200235f55af48083490ac",
+      "bytes": 720
+    },
+    "http/1793450183508305000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450183508305000.json",
+      "source_sha256": "da246871a1df05fc77b1d05f04210d07d5fb8bfa21bbf31510268350272083ba",
+      "source_bytes": 1081,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "344aa5cb900536d7dd63472c45f4ba6ee24ecf68b9369b2e368542593f215197",
+      "bytes": 1047
+    },
+    "http/1793450183909933000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450183909933000.json",
+      "source_sha256": "4dbb5486c01c7193bdbc635234e9e1eda8fec3657dd64d105418e2e176c0b9ac",
+      "source_bytes": 9646,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "eb17ff6d1b4fcddb0cd4820f465645774394f74cda949a11a9e7a292d71eb8e5",
+      "bytes": 9612
+    },
+    "http/1793450184365963000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450184365963000.json",
+      "source_sha256": "0e0e3a3f61c1e8e082cb108d0df15a52b9e37c7eaa61dde8addba5d1506f971a",
+      "source_bytes": 4951,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "712910b42e54cf46c30f1cdb65bb9c662510729c304911a4dbacff8e9210cfad",
+      "bytes": 4917
+    },
+    "http/1793450185568063000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450185568063000.json",
+      "source_sha256": "90b369a41becfba3a990ef3d053cbaa9d65fbdb1c15ecb19e450a4a88c21562d",
+      "source_bytes": 5472,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "e335fff9b3fcbc041b616fb089128a690d815c30e772bef6866e90e9f2f72945",
+      "bytes": 5438
+    },
+    "http/1793450186535678000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450186535678000.json",
+      "source_sha256": "52bacde23331822e3a4a46838efb93958aceb74582b97ed4ee58ed717bd834f7",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "56a1c653645de0184945b574533babf55364a40a72fa0af7483f0c7ba0aa6cd0",
+      "bytes": 6009
+    },
+    "http/1793450188948862000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450188948862000.json",
+      "source_sha256": "a0d78e3f2755acc718ce5d8fbf3edd034358caed8397bdde1c3ada25a8701524",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "9aeb743e484c8e2317f7456a269b8bea6599d245b230f7970fe64af2794175a5",
+      "bytes": 6009
+    },
+    "http/1793450190854566000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450190854566000.json",
+      "source_sha256": "aedd0eff1e3b8433559df2cae9383988581ec4cd2bbbdf49f2bf6f7e94b7addf",
+      "source_bytes": 840,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "601b158278f04bf096f9a9d74afb8d494306e515db1683524dc813c9f24aaa04",
+      "bytes": 806
+    },
+    "http/1793450191384989000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450191384989000.json",
+      "source_sha256": "5f9b7fb8c8400d7d23132aeedbc91761280c01cf6ce2145ea84d0ba58f2a7fc1",
+      "source_bytes": 1159,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "ceb934c441a645fee2ff6998ea231041971af0de36be391a69341f3fc4562d08",
+      "bytes": 1125
+    },
+    "http/1793450228129484000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450228129484000.json",
+      "source_sha256": "f5c79762551099aefd052ee0c0f122ff152bb608131d224fc2b8c16389504cec",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "5546f5964430196e3688eda8376f84d3b4ce669b1a5edb42363bc9925aac758b",
+      "bytes": 6009
+    },
+    "http/1793450228544214000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450228544214000.json",
+      "source_sha256": "3a2fb8f0851bd44f0eeec61ae3aca8b831892311c18e45d39e9b428446f4361e",
+      "source_bytes": 6043,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "613f5639282f0812f36e89768e3525bb09fccbe5f0cac64c9cb0953c9d868b8a",
+      "bytes": 6009
+    },
+    "http/1793450229028172000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450229028172000.json",
+      "source_sha256": "5982a45e0a1a3023ba78bfeda035c59e0831404551a1e14e44dc9c15473c3cf6",
+      "source_bytes": 840,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "6da02b86b5c62433ed6f844c0a752ebd28cb4d6df31f0d1f5ac33af5178dd85e",
+      "bytes": 806
+    },
+    "http/1793450229618108000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450229618108000.json",
+      "source_sha256": "2def186df377d8ddfbd1b1a775df8e6c7274c79af5ee7c356a9ad5408193915f",
+      "source_bytes": 515,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "f91cb62efdb08b985f371a10b41216518f71d9913ce05e1b11ebaad2c775a2cf",
+      "bytes": 481
+    },
+    "http/1793450231907674000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450231907674000.json",
+      "source_sha256": "748bd10780e2e44ed7fd42a7b1cd63a204e6e591f73da64403ba053c6f7e80f8",
+      "source_bytes": 625,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "12641b3c1fb62d99c6faca901051c20e6304e1050bc83e64631d2e0811eabb4e",
+      "bytes": 591
+    },
+    "http/1793450232812625000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450232812625000.json",
+      "source_sha256": "8e0b74ecc508d4b9410cb705a9446205d3f881df12c804b3f1ad4fe0b2b9a58f",
+      "source_bytes": 632,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "c703026f5376cdd6ba3c8d6af52bf6a1879940fd48f75ce584637d304d547209",
+      "bytes": 598
+    },
+    "http/1793450259658091000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450259658091000.json",
+      "source_sha256": "91c7f7d0e28dffc933d945918c3ac556498fade57cec4668b0153cd4c1adf9d6",
+      "source_bytes": 625,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "266f60870e788fb653072c4d9a291af2536c20ff86ff7b7fbbae9e7b7facadf0",
+      "bytes": 591
+    },
+    "http/1793450260078350000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450260078350000.json",
+      "source_sha256": "5ec69dda17fd2f2670a1fbe8a588e9be9866fd6bbdcabb53582590d8b9949951",
+      "source_bytes": 632,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "6e58d4fbc56709571f007af612d358e495f8b20fc4a96a46c055b8ed74aaf7d9",
+      "bytes": 598
+    },
+    "http/1793450328344826000.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/http/1793450328344826000.json",
+      "source_sha256": "fd91b92f07ef53e9a32a428d8fe1ff573e0f5b9d6264e10b37d50558a0d2bc63",
+      "source_bytes": 785,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "c48352ae76fb3ff404135f8d80320c3b8db10e1dacc58250a3b40ad806efd746",
+      "bytes": 751
+    },
+    "attempt/early-final-hashes.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-hashes.stdout.json",
+      "source_sha256": "0f09bbe11840e03374f64f7d5efe8fbc6518956f602859a3032bd833682a60bb",
+      "source_bytes": 623,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "0f09bbe11840e03374f64f7d5efe8fbc6518956f602859a3032bd833682a60bb",
+      "bytes": 623
+    },
+    "attempt/early-final-hashes.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-hashes.result.json",
+      "source_sha256": "4737dbd46b287afca3ae12e632ef546f4093232b64edf6f50893db3b76a06265",
+      "source_bytes": 451,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "4737dbd46b287afca3ae12e632ef546f4093232b64edf6f50893db3b76a06265",
+      "bytes": 451
+    },
+    "attempt/early-final-surfaces.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-surfaces.result.json",
+      "source_sha256": "f507f1da6f3e412fae9203367dd9ab99f587a551cce9095288d45d91b43391fd",
+      "source_bytes": 454,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "f507f1da6f3e412fae9203367dd9ab99f587a551cce9095288d45d91b43391fd",
+      "bytes": 454
+    },
+    "attempt/early-final-surfaces.stderr.txt": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-surfaces.stderr.txt",
+      "source_sha256": "d581a6c52eb9b5e10dd141ac1e738f2146b2b2a6a7f80bffa9f5a3e5c7e1fb12",
+      "source_bytes": 1248,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "d581a6c52eb9b5e10dd141ac1e738f2146b2b2a6a7f80bffa9f5a3e5c7e1fb12",
+      "bytes": 1248
+    },
+    "attempt/early-final-billing.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-billing.stdout.json",
+      "source_sha256": "4be5de6bf3b7b7042b4b2952a5089f5b23ece2ae0f751258d6d8af7283c7c2dc",
+      "source_bytes": 507,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "4be5de6bf3b7b7042b4b2952a5089f5b23ece2ae0f751258d6d8af7283c7c2dc",
+      "bytes": 507
+    },
+    "attempt/early-final-billing.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-final-billing.result.json",
+      "source_sha256": "39e1b3d6fdda92c48f3c9b57efb0f988d949c5f1b4d1ddadda81c66a4349e737",
+      "source_bytes": 452,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "39e1b3d6fdda92c48f3c9b57efb0f988d949c5f1b4d1ddadda81c66a4349e737",
+      "bytes": 452
+    },
+    "attempt/early-cleanup-launch.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-cleanup-launch.json",
+      "source_sha256": "ed51867cc3c956d6dc633e802394b9e05650e9efb5ea2f4307722193d2b990f1",
+      "source_bytes": 248,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "ed51867cc3c956d6dc633e802394b9e05650e9efb5ea2f4307722193d2b990f1",
+      "bytes": 248
+    },
+    "attempt/early-cleanup.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-cleanup.stdout.json",
+      "source_sha256": "06faeae9490a832a56293c5728f10c19957c79a27aed64b950151af1c8a7b4e9",
+      "source_bytes": 148,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "06faeae9490a832a56293c5728f10c19957c79a27aed64b950151af1c8a7b4e9",
+      "bytes": 148
+    },
+    "attempt/early-cleanup-result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-cleanup-result.json",
+      "source_sha256": "97c12c87ece9fc579c96efa015a7abf3e2f628a5bec5494ff578036f510f7e1f",
+      "source_bytes": 604,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "97c12c87ece9fc579c96efa015a7abf3e2f628a5bec5494ff578036f510f7e1f",
+      "bytes": 604
+    },
+    "attempt/early-cleanup-check-001.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-cleanup-check-001.stdout.json",
+      "source_sha256": "2c8ee04875d9a08445b6ad626eff50555560cea9704f80724d33b9480fb0eda6",
+      "source_bytes": 243,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "2c8ee04875d9a08445b6ad626eff50555560cea9704f80724d33b9480fb0eda6",
+      "bytes": 243
+    },
+    "attempt/early-cleanup-check-001.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/early-cleanup-check-001.result.json",
+      "source_sha256": "36c1b78f21240f5792bdf15a6bb3b269c91c4e41a58668c56ea994e782cb4a8a",
+      "source_bytes": 532,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "36c1b78f21240f5792bdf15a6bb3b269c91c4e41a58668c56ea994e782cb4a8a",
+      "bytes": 532
+    },
+    "attempt/post-cleanup-quota.py": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/post-cleanup-quota.py",
+      "source_sha256": "438e5e00ea567c02cabc221bc440a8ad00b7b4e0231684fe6bc08e9d5ad5886e",
+      "source_bytes": 1434,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "438e5e00ea567c02cabc221bc440a8ad00b7b4e0231684fe6bc08e9d5ad5886e",
+      "bytes": 1434
+    },
+    "attempt/post-cleanup-quota-attempt1.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/post-cleanup-quota-attempt1.json",
+      "source_sha256": "b3be4d5ce262e36a5befb778c7b79f472371f4c804287cc0711fb1f491ba0be4",
+      "source_bytes": 394,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "b3be4d5ce262e36a5befb778c7b79f472371f4c804287cc0711fb1f491ba0be4",
+      "bytes": 394
+    },
+    "attempt/post-cleanup-quota.receipt.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/post-cleanup-quota.receipt.json",
+      "source_sha256": "c6a5609964a014aaad7483970cde0dfbbf14c1a00493380218f49cc3833f25df",
+      "source_bytes": 786,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "c48352ae76fb3ff404135f8d80320c3b8db10e1dacc58250a3b40ad806efd746",
+      "bytes": 751
+    },
+    "attempt/post-cleanup-quota.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/post-cleanup-quota.result.json",
+      "source_sha256": "03b44f45b9870f472b5a515ccb29d555d30199b2a392b1486e8e0ef8e800c103",
+      "source_bytes": 431,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "03b44f45b9870f472b5a515ccb29d555d30199b2a392b1486e8e0ef8e800c103",
+      "bytes": 431
+    },
+    "attempt/auth-cleanup.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/auth-cleanup.stdout.json",
+      "source_sha256": "2ed66c58ad99e0e9f7e41f20f11078e32356f8ac0e06956244ee55ba5cb33f4b",
+      "source_bytes": 231,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "8603df1173e0b7914169eb2e95f3337b82fede4b01664a097e260c6399469805",
+      "bytes": 245
+    },
+    "attempt/auth-cleanup-original-receipt.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/auth-cleanup-original-receipt.json",
+      "source_sha256": "8603df1173e0b7914169eb2e95f3337b82fede4b01664a097e260c6399469805",
+      "source_bytes": 245,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "8603df1173e0b7914169eb2e95f3337b82fede4b01664a097e260c6399469805",
+      "bytes": 245
+    },
+    "attempt/auth-cleanup-result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/auth-cleanup-result.json",
+      "source_sha256": "fdafb3559e393320b7b9c463985e6bbd8923bde092bc8ac555a1ca19edaf3271",
+      "source_bytes": 518,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "fdafb3559e393320b7b9c463985e6bbd8923bde092bc8ac555a1ca19edaf3271",
+      "bytes": 518
+    },
+    "attempt/cleanup-watchdog-state.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/cleanup-watchdog-state.json",
+      "source_sha256": "6576b05a7c418cc0de7a42dc774cf1a5cc7c870157c01c38a1b1f6b9785fe0c2",
+      "source_bytes": 405,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "6576b05a7c418cc0de7a42dc774cf1a5cc7c870157c01c38a1b1f6b9785fe0c2",
+      "bytes": 405
+    },
+    "attempt/watchdog-natural-exit.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/watchdog-natural-exit.json",
+      "source_sha256": "893f89c7599d75a4b7bf1723636e15993bd0013baa9c183b120e6c258402d6a2",
+      "source_bytes": 321,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "893f89c7599d75a4b7bf1723636e15993bd0013baa9c183b120e6c258402d6a2",
+      "bytes": 321
+    },
+    "attempt/cleanup-watchdog-1793450229831339000.txt": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/cleanup-watchdog-1793450229831339000.txt",
+      "source_sha256": "2fac18c4d0ad25c893c174043503182965ecdcc28d8c71e511f24ea7289e7815",
+      "source_bytes": 563,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "2fac18c4d0ad25c893c174043503182965ecdcc28d8c71e511f24ea7289e7815",
+      "bytes": 563
+    },
+    "attempt/cleanup-watchdog-1793450234486338000.txt": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/cleanup-watchdog-1793450234486338000.txt",
+      "source_sha256": "5608db114a4f391d28ff892dcb96d8ccc0663dfc77f2d84c009c9298dadeee20",
+      "source_bytes": 243,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "5608db114a4f391d28ff892dcb96d8ccc0663dfc77f2d84c009c9298dadeee20",
+      "bytes": 243
+    },
+    "attempt/orchestrator-v2.diff": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/orchestrator-v2.diff",
+      "source_sha256": "89730176453c6d09ec795f943e690b1337d57d65797e478db32328a5a2b2e1f8",
+      "source_bytes": 4362,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "89730176453c6d09ec795f943e690b1337d57d65797e478db32328a5a2b2e1f8",
+      "bytes": 4362
+    },
+    "attempt/orchestrator-v2-ast-identity.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/orchestrator-v2-ast-identity.json",
+      "source_sha256": "463079593647e17445b5ab99414082c474a573804ed5822d6b1cfb3f2a5cbae3",
+      "source_bytes": 7185,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "463079593647e17445b5ab99414082c474a573804ed5822d6b1cfb3f2a5cbae3",
+      "bytes": 7185
+    },
+    "attempt/orchestrator-v2-tests.log": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/orchestrator-v2-tests.log",
+      "source_sha256": "50a1a049d05dfd69306c94feaba76821be48a4d0f0f7e63591171bbca968c13a",
+      "source_bytes": 998,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "50a1a049d05dfd69306c94feaba76821be48a4d0f0f7e63591171bbca968c13a",
+      "bytes": 998
+    },
+    "attempt/test_orchestrator_v2.py": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/test_orchestrator_v2.py",
+      "source_sha256": "57c14e7dde7323a79a58c185ec7b326f183ea85007fe50023b7605cdb2e6fcd8",
+      "source_bytes": 5561,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "57c14e7dde7323a79a58c185ec7b326f183ea85007fe50023b7605cdb2e6fcd8",
+      "bytes": 5561
+    },
+    "attempt/observe-v2-readonly-001.stdout.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/observe-v2-readonly-001.stdout.json",
+      "source_sha256": "4a55757a9a3685efd190b8de1b6479eefab92f84de2af5998ccd92d47f9e3099",
+      "source_bytes": 128,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "4a55757a9a3685efd190b8de1b6479eefab92f84de2af5998ccd92d47f9e3099",
+      "bytes": 128
+    },
+    "attempt/observe-v2-readonly-001.result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/observe-v2-readonly-001.result.json",
+      "source_sha256": "0c4bc1f6617b2a58ef8eb15eba3e2a5708f70844e0eb7e8c653d5a190d71f1f2",
+      "source_bytes": 417,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "0c4bc1f6617b2a58ef8eb15eba3e2a5708f70844e0eb7e8c653d5a190d71f1f2",
+      "bytes": 417
+    },
+    "attempt/existing-local-access-source-followup.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/existing-local-access-source-followup.json",
+      "source_sha256": "509afa118e451b3b6878fc701b19cfbc5e118d3ba42037b62edc0ceff9043184",
+      "source_bytes": 781,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "509afa118e451b3b6878fc701b19cfbc5e118d3ba42037b62edc0ceff9043184",
+      "bytes": 781
+    },
+    "attempt/remaining-budget-1223.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/remaining-budget-1223.json",
+      "source_sha256": "073d6d1ccb769560b1520431caf99be986472717675f37035cc97f26ccec9b81",
+      "source_bytes": 1208,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "073d6d1ccb769560b1520431caf99be986472717675f37035cc97f26ccec9b81",
+      "bytes": 1208
+    },
+    "attempt/inventory-snapshot-012.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/inventory-snapshot-012.json",
+      "source_sha256": "f52ab906f49e07767b1393de233a2f4879b53d768f505642ca9501a8a8a1b08c",
+      "source_bytes": 2005,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "01294a7ed863638f64c036c13351203e1fbdeb752f31465a4c6651fd85462b25",
+      "bytes": 2806
+    },
+    "local-access/access-intent.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/access-intent.json",
+      "source_sha256": "5f40d762c628033c3693cacf7b83042966553c3c40b88e45c644dc47af763653",
+      "source_bytes": 292,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "5f40d762c628033c3693cacf7b83042966553c3c40b88e45c644dc47af763653",
+      "bytes": 292
+    },
+    "local-access/access-result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/access-result.json",
+      "source_sha256": "13ce42d61d93303d233399a952a9e953af140ba29777ee43d5b0d48c5a3cdfe4",
+      "source_bytes": 940,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "13ce42d61d93303d233399a952a9e953af140ba29777ee43d5b0d48c5a3cdfe4",
+      "bytes": 940
+    },
+    "local-access/fetch-error-classification.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/fetch-error-classification.json",
+      "source_sha256": "0036203c736f229ce3e08e6aca7e7954e9bfff8a2620fa094cbff45a96fe471f",
+      "source_bytes": 383,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "0036203c736f229ce3e08e6aca7e7954e9bfff8a2620fa094cbff45a96fe471f",
+      "bytes": 383
+    },
+    "local-access/source-custody.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/source-custody.json",
+      "source_sha256": "230e20d2dea9d3036d4e3e5f9206919778115a2a22999efd0b7a105ea5558982",
+      "source_bytes": 759,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "230e20d2dea9d3036d4e3e5f9206919778115a2a22999efd0b7a105ea5558982",
+      "bytes": 759
+    },
+    "local-access/existing-hostpin-source-presence.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/existing-hostpin-source-presence.json",
+      "source_sha256": "b23cffc6a2f03dafe177b6a72a62d6558c669f30199f20809f3fa7f7bcaff1f0",
+      "source_bytes": 235,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "b23cffc6a2f03dafe177b6a72a62d6558c669f30199f20809f3fa7f7bcaff1f0",
+      "bytes": 235
+    },
+    "local-access/failed-fetch-private-material-state.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/failed-fetch-private-material-state.json",
+      "source_sha256": "10e62f11ad71460c63335f9478ea0714fcfa9be75487e4b58242601ed20eb9c1",
+      "source_bytes": 250,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "10e62f11ad71460c63335f9478ea0714fcfa9be75487e4b58242601ed20eb9c1",
+      "bytes": 250
+    },
+    "local-access/run-existing-access.sh": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/frozen-ended-attempt/local-access/run-existing-access.sh",
+      "source_sha256": "519f5a9302fb4213ec7320f111f0fcaa306f4a04473df07ecd58f049dddfd16b",
+      "source_bytes": 1458,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "519f5a9302fb4213ec7320f111f0fcaa306f4a04473df07ecd58f049dddfd16b",
+      "bytes": 1458
+    },
+    "surface-v3/RECEIPT.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/RECEIPT.json",
+      "source_sha256": "2cf6accfdd6a442790c9f20e2a74fa9dd395cd6476ce0ea7c85b281101dc06e4",
+      "source_bytes": 857,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "2cf6accfdd6a442790c9f20e2a74fa9dd395cd6476ce0ea7c85b281101dc06e4",
+      "bytes": 857
+    },
+    "surface-v3/ast-identity.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/ast-identity.json",
+      "source_sha256": "f46633461ffe1925a54c899f84b9de6347e7fa929bd388337ee33e20337a97a3",
+      "source_bytes": 320,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "f46633461ffe1925a54c899f84b9de6347e7fa929bd388337ee33e20337a97a3",
+      "bytes": 320
+    },
+    "surface-v3/hosted-disk-observed-v3.py": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/hosted-disk-observed-v3.py",
+      "source_sha256": "f750980ca3af1fe0a54c63e846264dfe2847abb5c0256e56789c077c6e6f591b",
+      "source_bytes": 24940,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "f750980ca3af1fe0a54c63e846264dfe2847abb5c0256e56789c077c6e6f591b",
+      "bytes": 24940
+    },
+    "surface-v3/offline-predelete-surface-review.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/offline-predelete-surface-review.json",
+      "source_sha256": "7d65abba3faec0a9914ebd5237f6c8ab3c40f626b6979370c458782584dc8e88",
+      "source_bytes": 10297,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "7d65abba3faec0a9914ebd5237f6c8ab3c40f626b6979370c458782584dc8e88",
+      "bytes": 10297
+    },
+    "surface-v3/pinned-public-query-schema.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/pinned-public-query-schema.json",
+      "source_sha256": "f2c086b1b32325245366a1f78210445766e3f6282f5515db6e11afddb5b794db",
+      "source_bytes": 3943,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "f2c086b1b32325245366a1f78210445766e3f6282f5515db6e11afddb5b794db",
+      "bytes": 3943
+    },
+    "surface-v3/test-result.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/test-result.json",
+      "source_sha256": "d9ed91cdc8364051653ef701bc5caaa2a4bc1af129765209ac2d9e2e386afdbd",
+      "source_bytes": 646,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "d9ed91cdc8364051653ef701bc5caaa2a4bc1af129765209ac2d9e2e386afdbd",
+      "bytes": 646
+    },
+    "surface-v3/test_surface_v3.py": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/test_surface_v3.py",
+      "source_sha256": "4ca7b12d69063ce33d18fbc9bab33c845cab49b4871fcb21095c5366ca2e5363",
+      "source_bytes": 8027,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "4ca7b12d69063ce33d18fbc9bab33c845cab49b4871fcb21095c5366ca2e5363",
+      "bytes": 8027
+    },
+    "surface-v3/tests.stderr.txt": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/tests.stderr.txt",
+      "source_sha256": "d3635e8532f1b7d67c50766f6853d0090f29172668fc1a14ca4f302826398f03",
+      "source_bytes": 1192,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "d3635e8532f1b7d67c50766f6853d0090f29172668fc1a14ca4f302826398f03",
+      "bytes": 1192
+    },
+    "surface-v3/tests.stdout.txt": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/tests.stdout.txt",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "surface-v3/v2-to-v3.diff": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation/v2-to-v3.diff",
+      "source_sha256": "b7c2ca423b570669daf0f5b578d2085a459ebb79a512b6504390baaf19f82fad",
+      "source_bytes": 2940,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "b7c2ca423b570669daf0f5b578d2085a459ebb79a512b6504390baaf19f82fad",
+      "bytes": 2940
+    },
+    "original-failures/original-observe-FAIL.stderr.txt": {
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/paid-initial-cc62-20261031/original-observe-FAIL.stderr.txt",
+      "source_sha256": "3beb678e3ae36d5c52bd6217ce336f076339404e38bd0409002b01e1cf4f7aac",
+      "source_bytes": 1233,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "3beb678e3ae36d5c52bd6217ce336f076339404e38bd0409002b01e1cf4f7aac",
+      "bytes": 1233
+    },
+    "original-failures/original-status-origin-FAIL.stderr.txt": {
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/paid-initial-cc62-20261031/original-status-origin-FAIL.stderr.txt",
+      "source_sha256": "f3e9a1afedee1c5c2cb86a04fb8838d323754621de3bf2b6a1c829174f036e8c",
+      "source_bytes": 879,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "f3e9a1afedee1c5c2cb86a04fb8838d323754621de3bf2b6a1c829174f036e8c",
+      "bytes": 879
+    },
+    "original-failures/v2-first-read-API-reset.stderr.txt": {
+      "source": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/paid-initial-cc62-20261031/v2-first-read-API-reset.stderr.txt",
+      "source_sha256": "a30d25859a25048e47ebd8571ff22dab859c91110cde07a99b31bbbe4a6d0122",
+      "source_bytes": 1659,
+      "transformation": "verbatim noncredential source/test/failure text",
+      "sha256": "a30d25859a25048e47ebd8571ff22dab859c91110cde07a99b31bbbe4a6d0122",
+      "bytes": 1659
+    },
+    "inventory-check-1259.json": {
+      "source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/inventory-check-1259.json",
+      "source_sha256": "5e6e45de525f1dcb2d3d9b85d4be2a34872533dcccc01ed32bc9bb489746860e",
+      "source_bytes": 1008,
+      "transformation": "JSON authorization metadata omitted; response bytes unchanged",
+      "sha256": "5e6e45de525f1dcb2d3d9b85d4be2a34872533dcccc01ed32bc9bb489746860e",
+      "bytes": 1008
+    }
+  },
+  "exporter": {
+    "private_source": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/export-ended-evidence.py",
+    "sha256": "487726f9b5096bdd04bdf648706503ae269c461e6f2291ea7de7ff73904bbb98",
+    "exported_source": "EXPORTER.py"
+  }
+}

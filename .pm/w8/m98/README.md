@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed native jq executable and dependencies](t001.md) | 50m | — |
+| t001 | [Supply a reviewed native jq executable and dependencies](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Supply a reviewed native rsync executable and dependencies](t002.md) | 70m | t001 |
 | t003 | [Audit shared native bases, phases and both utility consumers](t003.md) | 35m | t001, t002 |
 | t004 | [Verify jq and rsync Render parity across native inputs](t004.md) | 20m | t003 |

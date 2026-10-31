@@ -1,0 +1,40 @@
+--- original/hosted-disk.py
++++ private/hosted-disk-observed-v2.py
+@@ -36,9 +36,15 @@
+   assert method=='GET' and not fixture and path==fixed_usage_path(WS,L['created_at']),'only fixed owned usage GET is allowed'
+   usage_sid=own(False)['id']
+  token=(P/'credentials/fixture-token').read_text() if fixture else private_token()
+- url=own()['serviceDetails']['url'].rstrip('/')+path if fixture else 'https://api.bex.co'+path
++ if fixture:
++  created=json.loads(L['create_proof']['response'])['service'];assert hashlib.sha256(L['create_proof']['response'].encode()).hexdigest()==L['create_proof']['response_sha256']
++  assert (created['id'],created['ownerId'],created['name'])==('srv-dbit2iat5fis7381jscg',WS,S['name'])
++  current=own();origin=created['serviceDetails']['url']
++  assert origin=='https://qa-20261031-w8-m144-cc6-fd2d4d.onbex.co' and current['id']==created['id'] and current['serviceDetails']['url']==origin,'actual201-owned fixture origin changed'
++  url=origin+path
++ else:url='https://api.bex.co'+path
+  u=urllib.parse.urlsplit(url);assert u.scheme=='https' and not u.username and not u.password
+- if fixture:assert u.hostname==S['name']+'.onbex.co','unreviewed fixture hostname'
++ if fixture:assert u.hostname=='qa-20261031-w8-m144-cc6-fd2d4d.onbex.co' and u.port is None and not u.query and not u.fragment,'unreviewed fixture origin'
+  else:assert u.hostname=='api.bex.co'
+  data=json.dumps(body,separators=(',',':')).encode() if body is not None else None
+  headers={'Authorization':'Bearer '+token,'Accept':'application/json, text/event-stream','User-Agent':'m144-owned-disk-acceptance/1','X-Bex-Workspace':WS,'MCP-Protocol-Version':'2025-03-26'}
+@@ -112,7 +118,18 @@
+ def observe():
+  v=own();history=value(request('GET','/v1/services/'+v['id']+'/deploys?limit=100'));deploys=[r.get('deploy',r) for r in history];assert deploys and len(deploys)<100
+  for d in deploys:assert d.get('commit',{}).get('id')==S['expected_source_commit'],'fixture source commit changed; stop rather than silently substituting'
+- initial=next(d for d in deploys if d['id']==json.loads(L['create_proof']['response'])['deployId']);assert initial['status']=='live','first fixture deployment not Live';L['deploy_ids']=[d['id'] for d in deploys];L['source_verified_at']=now();save();return {'first_deploy':initial['id'],'source_commit':S['expected_source_commit'],'deploys':len(deploys)}
++ initial_id=json.loads(L['create_proof']['response']).get('deployId')
++ if initial_id:initial=next(d for d in deploys if d['id']==initial_id)
++ else:
++  assert len(deploys)==1 and not any(L.get(k) for k in ('before_redeploy','before_restart','last_remount','redeploy_intent','deploy_intent')),'exact sole initial deployment required before any follow-up intent'
++  candidate=deploys[0];assert candidate['serviceId']==v['id'] and instant(candidate['createdAt'])>=instant(L['create_intent']['created_at'])
++  direct=request('GET','/v1/services/'+v['id']+'/deploys/'+candidate['id']);initial=value(direct);initial=initial.get('deploy',initial)
++  assert (initial['id'],initial['serviceId'],initial['commit']['id'])==(candidate['id'],v['id'],S['expected_source_commit']) and instant(initial['createdAt'])==instant(candidate['createdAt'])
++  assert initial['status']=='live','first fixture deployment not Live'
++  existing=L.get('initial_deploy_binding')
++  if existing:assert (existing['first_deploy_id'],existing['service_id'],existing['source_commit'])==(initial['id'],v['id'],S['expected_source_commit'])
++  else:L['initial_deploy_binding']={'first_deploy_id':initial['id'],'service_id':v['id'],'source_commit':initial['commit']['id'],'created_at':initial['createdAt'],'live_observed_at':now(),'create_response_sha256':L['create_proof']['response_sha256'],'direct_response_sha256':direct['response_sha256'],'original_q_observe':'FAIL missing optionaldeployId retained; independent actual initial binding'}
++ assert initial['status']=='live','first fixture deployment not Live';L['deploy_ids']=[d['id'] for d in deploys];L['source_verified_at']=now();save();return {'first_deploy':initial['id'],'source_commit':S['expected_source_commit'],'deploys':len(deploys)}
+ def create():
+  creation_guard(S)
+  g=gate('create');assert 'baseline_ids' in L and not L.get('create_intent') and not L.get('owned');assert time.time()-datetime.datetime.fromisoformat(L['baseline_at']).timestamp()<300

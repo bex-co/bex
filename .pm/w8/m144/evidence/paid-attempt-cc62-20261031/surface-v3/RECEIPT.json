@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-31T12:48:34.534887+00:00",
+  "scope": "private source copy and synthetic tests plus offline actual receipt inspection only",
+  "actual_original_case_incomplete": true,
+  "no_live_v3_execution_or_auth": true,
+  "only_changed_function": "surfaces",
+  "other_v2_functions_byte_identical": 29,
+  "tests": 7,
+  "test_exit": 0,
+  "original_v2_sha256": "6790b48a7a2b7867a659f81354c87d3428d3d94abca99a7bf25c6c14fe7addf3",
+  "v3_sha256": "f750980ca3af1fe0a54c63e846264dfe2847abb5c0256e56789c077c6e6f591b",
+  "actual_predelete_surface_command": "FAIL retained; rawHTTP400 unsupported RESTkind plus originalREST_disk key overwrite",
+  "offline_received_GQL_MCP_errors": false,
+  "offline_blueprint_valid": true,
+  "offline_blueprint_startCommand_matches_original": true,
+  "all_surface_acceptance": false,
+  "no_product_bug_claim_or_filing": true
+}

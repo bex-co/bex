@@ -1,0 +1,13 @@
+{
+  "operation": "surfaces",
+  "started_at": "2026-10-31T12:36:18.039055+00:00",
+  "approved_readonly": true,
+  "entrypoint": "q-observed",
+  "no_fixture_POST": true,
+  "exit": 1,
+  "completed_at": "2026-10-31T12:36:26.458811+00:00",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "d581a6c52eb9b5e10dd141ac1e738f2146b2b2a6a7f80bffa9f5a3e5c7e1fb12",
+  "stdout_bytes": 0,
+  "stderr_bytes": 1248
+}

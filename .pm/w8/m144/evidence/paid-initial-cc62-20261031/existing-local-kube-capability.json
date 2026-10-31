@@ -1,0 +1,49 @@
+{
+  "atUTC": "2026-10-31T12:05:48.656021+00:00",
+  "kubectlPresent": true,
+  "localContextMetadata": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/kubectl",
+        "config",
+        "current-context"
+      ],
+      "exit": 0,
+      "contextNamesOnly": [
+        "orbstack"
+      ],
+      "errorPresent": false
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/kubectl",
+        "config",
+        "get-contexts",
+        "-o",
+        "name"
+      ],
+      "exit": 0,
+      "contextNamesOnly": [
+        "kind-bex-mgmt",
+        "orbstack"
+      ],
+      "errorPresent": false
+    }
+  ],
+  "environmentPresenceOnly": {
+    "KUBECONFIG": false,
+    "HCLOUD_TOKEN": false,
+    "BEX_SSH_PRIVATE_KEY": false,
+    "BEX_SSH_KEY_PATH": false,
+    "BEX_SSH_KNOWN_HOSTS": false,
+    "BEX_SSH_KNOWN_HOSTS_FILE": false
+  },
+  "knownConfigExistenceOnly": {
+    "defaultUserConfig": true,
+    "repoHetznerAppConfig": false,
+    "repoLocalDevConfig": true
+  },
+  "existingFetchScriptPresent": true,
+  "noCredentialValuesReadOrPrinted": true,
+  "noNewGrantSecretWriteOrClusterResourceQuery": true
+}

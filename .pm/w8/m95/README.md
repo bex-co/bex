@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed native libvips libraries, headers and tools](t001.md) | 90m | — |
+| t001 | [Supply reviewed native libvips libraries, headers and tools](t001.md) | 90m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit shared bases, phases, companions and exclusions](t002.md) | 35m | t001 |
 | t003 | [Verify native image-library Render parity and shared inputs](t003.md) | 20m | t002 |
 | t004 | [Simplify the native libvips supplier](t004.md) | 15m | t003 |

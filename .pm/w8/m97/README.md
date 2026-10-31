@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed native Ghostscript with its runtime resources](t001.md) | 80m | — |
+| t001 | [Supply reviewed native Ghostscript with its runtime resources](t001.md) | 80m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit shared native bases, phases, resources and exclusions](t002.md) | 35m | t001 |
 | t003 | [Verify Ghostscript native Render parity and authoring inputs](t003.md) | 20m | t002 |
 | t004 | [Simplify the Ghostscript supplier](t004.md) | 15m | t003 |

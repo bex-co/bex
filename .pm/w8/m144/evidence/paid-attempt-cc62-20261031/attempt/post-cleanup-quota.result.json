@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-31T12:38:49.529488+00:00",
+  "HTTP": 200,
+  "baseline_services": {
+    "used": 2,
+    "terminating": 0,
+    "limit": 25,
+    "freeUsed": 0,
+    "freeLimit": 0
+  },
+  "after_cleanup_services": {
+    "used": 2,
+    "terminating": 0,
+    "limit": 25,
+    "freeUsed": 0,
+    "freeLimit": 0
+  },
+  "service_quota_returned_to_baseline": true,
+  "own_service_and_disk_404_proven": true,
+  "no_foreign_mutation": true
+}

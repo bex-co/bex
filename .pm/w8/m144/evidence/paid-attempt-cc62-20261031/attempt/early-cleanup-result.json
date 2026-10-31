@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-10-31T12:37:08.029367+00:00",
+  "command": "original q cleanup",
+  "serviceId": "srv-dbit2iat5fis7381jscg",
+  "diskId": "dsk-dbit2iat5fis7381jsdg",
+  "preexisting_cleanup_intent": false,
+  "authorized_early_cleanup": true,
+  "exit": 0,
+  "completed_at": "2026-10-31T12:37:11.344047+00:00",
+  "cleanup_intent": {
+    "service": "srv-dbit2iat5fis7381jscg",
+    "disk": "dsk-dbit2iat5fis7381jsdg",
+    "at": "2026-10-31T12:37:09.617345+00:00"
+  },
+  "HTTP": 204,
+  "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "ambiguous_mutation": null
+}

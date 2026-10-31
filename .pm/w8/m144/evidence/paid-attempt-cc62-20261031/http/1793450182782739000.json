@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:36:22.782705+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/metrics/disk-capacity?resource=srv-dbit2iat5fis7381jscg&kind=service",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:22.782861+00:00",
+  "response_received_at": "2026-10-31T12:36:23.507609+00:00",
+  "HTTP": 200,
+  "response": "[{\"labels\":[{\"field\":\"resource\",\"value\":\"tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d\"}],\"unit\":\"bytes\",\"values\":[{\"timestamp\":\"2026-10-31T12:36:23Z\",\"value\":1073741824}]}]\n",
+  "response_sha256": "aae37fd286a81a08c1638872aa4df191016a3e0ba42b069d6669da106953bacf",
+  "request_id": null
+}

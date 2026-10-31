@@ -1,0 +1,54 @@
+{
+  "CHECKPOINT.json": {
+    "sha256": "598834e60baf6cb80ae7f0e524f0cc3e1347dff0cb06a428253fbfda485fc92a",
+    "bytes": 4315
+  },
+  "actual-create201-response.json": {
+    "sha256": "cc3fb5835d2ad802a5f65f93b85c610c112f915fbc4bc9dea66817675344aefe",
+    "bytes": 5184
+  },
+  "actual-exact-initial-live-deploy.json": {
+    "sha256": "12ac3828e7efb29f93f9447538ef8964ea09120afd285d44ddcd6435eb7bd7b8",
+    "bytes": 380
+  },
+  "actual-initial-1Gi-status.json": {
+    "sha256": "59a1dcd0b74187a59927fb8a8746d187477d0fd0bd26ceeb66e9aa572d7e9f70",
+    "bytes": 367
+  },
+  "actual-inventory-dispatch.json": {
+    "sha256": "e0fa080db322fe62ec21c9023389fb57135d4b05159e18c834d47522d38e7b85",
+    "bytes": 345
+  },
+  "actual-sole-initial-live-history.json": {
+    "sha256": "e2ca07f98083dbec5953d6a8222780543fafbcc0566acc1df355341290eb0ab2",
+    "bytes": 429
+  },
+  "existing-local-kube-capability.json": {
+    "sha256": "a4b89fd577451c027400faece1619723d8b2a6dd7b5297765dd37c8a53482919",
+    "bytes": 1095
+  },
+  "original-first-deploy-history.json": {
+    "sha256": "9b15637c1bd20a712e24cad5d60e458ebc04f92c1a10e7ea1bfba3f981e89a32",
+    "bytes": 400
+  },
+  "original-observe-FAIL.stderr.txt": {
+    "sha256": "3beb678e3ae36d5c52bd6217ce336f076339404e38bd0409002b01e1cf4f7aac",
+    "bytes": 1233
+  },
+  "original-status-origin-FAIL.stderr.txt": {
+    "sha256": "f3e9a1afedee1c5c2cb86a04fb8838d323754621de3bf2b6a1c829174f036e8c",
+    "bytes": 879
+  },
+  "private-orchestrator-v2.diff": {
+    "sha256": "89730176453c6d09ec795f943e690b1337d57d65797e478db32328a5a2b2e1f8",
+    "bytes": 4362
+  },
+  "private-v2-pure-tests.log": {
+    "sha256": "50a1a049d05dfd69306c94feaba76821be48a4d0f0f7e63591171bbca968c13a",
+    "bytes": 998
+  },
+  "v2-first-read-API-reset.stderr.txt": {
+    "sha256": "a30d25859a25048e47ebd8571ff22dab859c91110cde07a99b31bbbe4a6d0122",
+    "bytes": 1659
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "action": "complete",
+  "at": "2026-10-31T12:37:16.489357+00:00",
+  "run": "cc62f8e3a1ee8b8c",
+  "owned": {
+    "state": "owned",
+    "serviceId": "srv-dbit2iat5fis7381jscg",
+    "diskId": "dsk-dbit2iat5fis7381jsdg",
+    "cleanupAt": "2026-10-31T13:15:00+00:00",
+    "expiresAt": "2026-10-31T13:30:00+00:00",
+    "proofSha256": "cc3fb5835d2ad802a5f65f93b85c610c112f915fbc4bc9dea66817675344aefe"
+  }
+}

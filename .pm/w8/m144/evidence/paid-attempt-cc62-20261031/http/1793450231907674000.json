@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:37:11.907467+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/services/srv-dbit2iat5fis7381jscg",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:37:11.907956+00:00",
+  "response_received_at": "2026-10-31T12:37:12.811884+00:00",
+  "HTTP": 404,
+  "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+  "response_sha256": "fb60cbd43e13f7528ea0e21e0c92fba8e15995949117cf2520f65ea4fe1eb9cc",
+  "request_id": null
+}

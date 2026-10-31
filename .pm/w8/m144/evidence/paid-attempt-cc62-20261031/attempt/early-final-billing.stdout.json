@@ -1,0 +1,11 @@
+{
+  "state": "unproved",
+  "serviceId": "srv-dbit2iat5fis7381jscg",
+  "workspaceId": "tea-da2isimlm39c739m4ofg",
+  "collectedAt": "2026-10-31T12:36:33.029853+00:00",
+  "firstCreationHourEnd": "2026-10-31T12:00:00+00:00",
+  "latestClosedHourEnd": "2026-10-31T12:00:00+00:00",
+  "financialSealing": "unproved: usage REST exposes no per-hour seal/export state; the default billing seal horizon is 48h",
+  "invoiceClaim": false,
+  "reason": "usage coverage is stale, partial or extends into an unclosed hour"
+}

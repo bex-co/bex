@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-31T12:37:14.477555+00:00",
+  "service_404": true,
+  "disk_404": true,
+  "baseline_preserved": true,
+  "remaining": "root must verify owned App/PVC/PV/LUKSSecret/Jobs and provider-volume deletion; no borrowed secret reads"
+}

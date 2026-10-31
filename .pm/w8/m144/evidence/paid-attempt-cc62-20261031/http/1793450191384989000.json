@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-31T12:36:31.384951+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/usage?ownerId=tea-da2isimlm39c739m4ofg&period=2026-10",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:31.385130+00:00",
+  "response_received_at": "2026-10-31T12:36:33.029404+00:00",
+  "response_projection": "only own disk_gb_seconds and coverage; foreign rows/estimates/invoices discarded in memory",
+  "HTTP": 200,
+  "response": "{\"workspaceId\":\"tea-da2isimlm39c739m4ofg\",\"workspaceMatched\":true,\"period\":\"2026-10\",\"services\":[{\"serviceId\":\"srv-dbit2iat5fis7381jscg\",\"resourceKind\":\"service\",\"deleted\":false,\"rows\":[{\"kind\":\"disk_gb_seconds\",\"tier\":\"\",\"total\":1783}]}],\"coverage\":{\"state\":\"partial\",\"through\":\"2026-10-01T00:00:00Z\"},\"projection\":\"only this HTTP201-owned service and requested-capacity disk_gb_seconds; foreign services, estimates and invoices discarded before persistence\"}",
+  "response_sha256": "2490d991b510775129e6ade65b45e9963ae8c0bd8f8a864e6174aef724c63ad7",
+  "request_id": null
+}

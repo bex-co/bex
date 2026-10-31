@@ -1,0 +1,170 @@
+{
+  "frozen_at": "2026-10-31T12:42:42.165228+00:00",
+  "state": "original one-fixture paid attempt ended early; m144 live DoD INCOMPLETE",
+  "run": "cc62f8e3a1ee8b8c",
+  "serviceId": "srv-dbit2iat5fis7381jscg",
+  "diskId": "dsk-dbit2iat5fis7381jsdg",
+  "actual_HTTP201_received_at": "2026-10-31T11:30:17.702737+00:00",
+  "actual_create_intent_at": "2026-10-31T11:30:14.914922+00:00",
+  "actual_single_DELETE_intent_at": "2026-10-31T12:37:09.617345+00:00",
+  "actual_DELETE_HTTP": 204,
+  "actual_DELETE_received_at": "2026-10-31T12:37:11.326800+00:00",
+  "intent_to_DELETE_response_seconds": 4016.411878,
+  "hard_expiry_unchanged": "2026-10-31T13:30:00+00:00",
+  "final_api_cleanup": {
+    "at": "2026-10-31T12:37:43.166526+00:00",
+    "service_404": true,
+    "disk_404": true,
+    "baseline_preserved": true,
+    "remaining": "root must verify owned App/PVC/PV/LUKSSecret/Jobs and provider-volume deletion; no borrowed secret reads"
+  },
+  "final_quota": {
+    "at": "2026-10-31T12:38:49.529488+00:00",
+    "HTTP": 200,
+    "baseline_services": {
+      "used": 2,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 0
+    },
+    "after_cleanup_services": {
+      "used": 2,
+      "terminating": 0,
+      "limit": 25,
+      "freeUsed": 0,
+      "freeLimit": 0
+    },
+    "service_quota_returned_to_baseline": true,
+    "own_service_and_disk_404_proven": true,
+    "no_foreign_mutation": true
+  },
+  "own_auth_cleanup": {
+    "at": "2026-10-31T12:39:17.213799+00:00",
+    "native_logout_exit": 0,
+    "Kratos_logout_exit": 0,
+    "resources_created_by_run": 1,
+    "scope": "only this own native OAuth credential and own QA session",
+    "own_credential_files_removed": true
+  },
+  "original_programs_unchanged": {
+    "hosted-disk.py": {
+      "sha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953",
+      "expected_unchanged_sha256": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953"
+    },
+    "q": {
+      "sha256": "20686321a8e898781ce7f58f293a29cc0b72b7f6c8794fa4d6534dfe1ef0a6d4",
+      "expected_unchanged_sha256": "20686321a8e898781ce7f58f293a29cc0b72b7f6c8794fa4d6534dfe1ef0a6d4"
+    },
+    "disk-fixture.py": {
+      "sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+      "expected_unchanged_sha256": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4"
+    },
+    "start-command.txt": {
+      "sha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74",
+      "expected_unchanged_sha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74"
+    },
+    "cleanup-watchdog.py": {
+      "sha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+      "expected_unchanged_sha256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090"
+    }
+  },
+  "v2_sha256": "6790b48a7a2b7867a659f81354c87d3428d3d94abca99a7bf25c6c14fe7addf3",
+  "retained_original_failures": [
+    "optional201deployId assumption",
+    "displayname-derived host assumption"
+  ],
+  "readonly_hashes": "PASS exact initial sentinel/data hashes; no remount or growth inference",
+  "surface_result": "FAIL retained; frozen helper overwrites REST_disk key and supplies kind to disk-usage, which returned400. Other HTTP200 responses are not whole-surface acceptance.",
+  "billing_result": {
+    "state": "unproved",
+    "serviceId": "srv-dbit2iat5fis7381jscg",
+    "workspaceId": "tea-da2isimlm39c739m4ofg",
+    "collectedAt": "2026-10-31T12:36:33.029853+00:00",
+    "firstCreationHourEnd": "2026-10-31T12:00:00+00:00",
+    "latestClosedHourEnd": "2026-10-31T12:00:00+00:00",
+    "financialSealing": "unproved: usage REST exposes no per-hour seal/export state; the default billing seal horizon is 48h",
+    "invoiceClaim": false,
+    "reason": "usage coverage is stale, partial or extends into an unclosed hour"
+  },
+  "commands_not_executed": [
+    "fill",
+    "grow",
+    "growth",
+    "restart",
+    "redeploy",
+    "compact",
+    "snapshot-ready",
+    "backup",
+    "marker",
+    "restore"
+  ],
+  "Kubernetes_App_PVC_UID_binding": "UNPROVED; inventory remained queued and local strict pinned SSH failed",
+  "observer_ready": "NOT ESTABLISHED; no subsequent lifecycle mutations",
+  "Kubernetes_provider_S3_cleanup": "UNPROVED; no handle/UID inference from API absence",
+  "queued_readonly_inventory": {
+    "run": 41197243038,
+    "job": 124526099401,
+    "source": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+    "latest_included_status": "queued",
+    "untouched": true
+  },
+  "exclusions": [
+    "credential files",
+    "raw ledger",
+    "full foreign/baseline service list responses",
+    "images",
+    "binaries",
+    "filesystem data"
+  ],
+  "scope": "original fixed workload/data/budget preserved; no Git or CI mutations after the single authorized inventory dispatch",
+  "initial_checkpoint": {
+    "repo_path": ".pm/w8/m144/evidence/paid-initial-cc62-20261031",
+    "checkpoint_sha256": "598834e60baf6cb80ae7f0e524f0cc3e1347dff0cb06a428253fbfda485fc92a",
+    "manifest_sha256": "4aa8920fe5d9572852ca858d4ed025f404f5cb69a1edeec9b91836ef3b79a113",
+    "contains": "exact original HTTP201 response, sole initial Live deployment, initial1Gi status, retained originalobserve/origin failures"
+  },
+  "exported_scope": "Allowlisted derivatives; exact source hashes and transformations in CUSTODY.json",
+  "latest_inventory_check": {
+    "recorded_at": "2026-10-31T13:04:45.321146+00:00",
+    "query_started_utc": "2026-10-31T12:59:25Z",
+    "record_kind": "selected metadata transcribed from actual gh run view tool result; stdout was not redirected",
+    "tool_session_id": 88530,
+    "argv": [
+      "gh",
+      "run",
+      "view",
+      "41197243038",
+      "--repo",
+      "bex-co/bex",
+      "--json",
+      "databaseId,headSha,status,conclusion,createdAt,updatedAt,jobs"
+    ],
+    "run": 41197243038,
+    "source": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+    "status": "queued",
+    "conclusion": "",
+    "jobs": [
+      {
+        "id": 124525787783,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124526099401,
+        "name": "cluster",
+        "status": "queued",
+        "steps": 0
+      },
+      {
+        "id": 124526100685,
+        "name": "observer-channel-smoke",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ],
+    "completed_log_available": false,
+    "dispatch_cancel_or_mutation": false
+  }
+}

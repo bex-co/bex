@@ -1,0 +1,266 @@
+{
+  "generated_at": "2026-10-31T12:48:19.662987+00:00",
+  "mode": "OFFLINE inspection of actual pre-DELETE receipts; no live calls/auth",
+  "whole_surface_acceptance": false,
+  "actual_original_surface_command": "FAIL retained, not rewritten",
+  "observations": {
+    "GraphQL_disk": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450180830130000.json",
+      "raw_receipt_sha256": "4cfe04ca0713f6b0e8e8656c7d0bfe18bf3a6a37d09e653a869774a61d99d04e",
+      "response_sha256": "88746a3e307cbd8a15aca3c0f0ffa7449ce219ef8012134b1ab871f2cc8258ac",
+      "at": "2026-10-31T12:36:20.830088+00:00",
+      "HTTP": 200,
+      "errors": null,
+      "disk": {
+        "id": "dsk-dbit2iat5fis7381jsdg",
+        "mountPath": "/var/data",
+        "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk",
+        "serviceId": "srv-dbit2iat5fis7381jscg",
+        "sizeGB": 1
+      },
+      "service": {
+        "disk": {
+          "mountPath": "/var/data",
+          "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk",
+          "sizeGB": 1
+        },
+        "id": "srv-dbit2iat5fis7381jscg",
+        "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c",
+        "plan": "starter"
+      }
+    },
+    "MCP_disk": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450181569239000.json",
+      "raw_receipt_sha256": "2d2791f996592ebef4cbb827ebf3dccc3370a8a228bf8499e440c20dbfa6084c",
+      "response_sha256": "6ae0367dd4ebfa7c097bb684b3e4cac2d383b3b0c525e9e3fb441496b66cf3c8",
+      "at": "2026-10-31T12:36:21.569201+00:00",
+      "HTTP": 200,
+      "isError": false,
+      "disk": {
+        "createdAt": "2026-10-31T11:30:17.35417Z",
+        "id": "dsk-dbit2iat5fis7381jsdg",
+        "mountPath": "/var/data",
+        "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk",
+        "serviceId": "srv-dbit2iat5fis7381jscg",
+        "sizeGB": 1,
+        "updatedAt": "2026-10-31T11:30:17.35417Z"
+      }
+    },
+    "GQL_disk": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450182270121000.json",
+      "raw_receipt_sha256": "03989433751a9be09d88e634879a91cfca6720860b0839f4b1bfcc16f74752e2",
+      "response_sha256": "b97f195c484a4cd0a4d0a121e8af00c7bdb415a603980d1527b6bfe2915536b9",
+      "at": "2026-10-31T12:36:22.270083+00:00",
+      "HTTP": 200,
+      "errors": null,
+      "series": [
+        {
+          "unit": "bytes",
+          "labels": [
+            {
+              "field": "instance",
+              "value": "srv-dbit2iat5fis7381jscg-a8vvj0cjvr2sg2amgob5"
+            },
+            {
+              "field": "resource",
+              "value": "tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d"
+            }
+          ],
+          "samples": 60,
+          "first": 286720,
+          "last": 491520,
+          "minimum": 286720,
+          "maximum": 491520,
+          "first_time": "2026-10-31T11:37:22Z",
+          "last_time": "2026-10-31T12:36:22Z"
+        }
+      ]
+    },
+    "GQL_disk_capacity": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450183508305000.json",
+      "raw_receipt_sha256": "da246871a1df05fc77b1d05f04210d07d5fb8bfa21bbf31510268350272083ba",
+      "response_sha256": "6efd6e5f6e6a53f45f55cbd0fb65085d250b8eb7f913661e0251c6e439d00ab8",
+      "at": "2026-10-31T12:36:23.508266+00:00",
+      "HTTP": 200,
+      "errors": null,
+      "series": [
+        {
+          "unit": "bytes",
+          "labels": [
+            {
+              "field": "resource",
+              "value": "tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d"
+            }
+          ],
+          "samples": 1,
+          "first": 1073741824,
+          "last": 1073741824,
+          "minimum": 1073741824,
+          "maximum": 1073741824,
+          "first_time": "2026-10-31T12:36:23Z",
+          "last_time": "2026-10-31T12:36:23Z"
+        }
+      ]
+    },
+    "MCP_metrics": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450183909933000.json",
+      "raw_receipt_sha256": "4dbb5486c01c7193bdbc635234e9e1eda8fec3657dd64d105418e2e176c0b9ac",
+      "response_sha256": "ecf930128a48d0a2cbe435f90514acece8a27c8cca71831c80802f1256da981f",
+      "at": "2026-10-31T12:36:23.909884+00:00",
+      "HTTP": 200,
+      "isError": false,
+      "series": [
+        {
+          "unit": "bytes",
+          "labels": {
+            "instance": "srv-dbit2iat5fis7381jscg-a8vvj0cjvr2sg2amgob5",
+            "metric": "disk",
+            "resource": "tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d"
+          },
+          "samples": 60,
+          "first": 286720,
+          "last": 491520,
+          "minimum": 286720,
+          "maximum": 491520,
+          "first_time": "2026-10-31T11:37:24Z",
+          "last_time": "2026-10-31T12:36:24Z"
+        },
+        {
+          "unit": "bytes",
+          "labels": {
+            "metric": "disk_capacity",
+            "resource": "tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d"
+          },
+          "samples": 1,
+          "first": 1073741824,
+          "last": 1073741824,
+          "minimum": 1073741824,
+          "maximum": 1073741824,
+          "first_time": "2026-10-31T12:36:24Z",
+          "last_time": "2026-10-31T12:36:24Z"
+        }
+      ]
+    },
+    "Blueprint_generate": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450184365963000.json",
+      "raw_receipt_sha256": "0e0e3a3f61c1e8e082cb108d0df15a52b9e37c7eaa61dde8addba5d1506f971a",
+      "response_sha256": "a28709265335c6c0dc5ada79e592957de72d591a1c3466a8ab87b756ab5547a4",
+      "at": "2026-10-31T12:36:24.365927+00:00",
+      "HTTP": 200,
+      "manifest_sha256": "94efcf341f583d8dabf32cdbb2fab903b70bb231b47bb15da53008d6b5a39581",
+      "service_count": 1,
+      "service": {
+        "name": "qa-20261031-w8-m144-cc6-fd2d4d",
+        "plan": "starter",
+        "runtime": "python",
+        "repo": "https://github.com/git-fixtures/basic",
+        "branch": "master",
+        "disk": {
+          "mountPath": "/var/data",
+          "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk",
+          "sizeGB": 1
+        }
+      },
+      "secret_env_values_not_returned": [
+        "DISK_QA_RUN",
+        "DISK_QA_TOKEN",
+        "PYTHON_VERSION"
+      ],
+      "start_command_sha256": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74",
+      "start_command_equal_to_original_submitted_file": true
+    },
+    "Blueprint_validate": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450185568063000.json",
+      "raw_receipt_sha256": "90b369a41becfba3a990ef3d053cbaa9d65fbdb1c15ecb19e450a4a88c21562d",
+      "response_sha256": "a7c86b6cf95f30ccd908abbd3eb256d1cc1248994e4d16667254ee07ff90e11f",
+      "at": "2026-10-31T12:36:25.568010+00:00",
+      "HTTP": 200,
+      "valid": true,
+      "plan": {
+        "mode": "current_state",
+        "services": [
+          "qa-20261031-w8-m144-cc6-fd2d4d"
+        ],
+        "syncFalseVars": [
+          "DISK_QA_RUN",
+          "DISK_QA_TOKEN",
+          "PYTHON_VERSION"
+        ],
+        "totalActions": 1,
+        "actions": [
+          {
+            "operation": "noop",
+            "kind": "service",
+            "name": "qa-20261031-w8-m144-cc6-fd2d4d",
+            "sourcePath": "#/services/0",
+            "resourceId": "srv-dbit2iat5fis7381jscg"
+          }
+        ]
+      },
+      "storageGB_pricing_estimate_only": [
+        1
+      ],
+      "price_estimate_is_not_usage_or_invoice_proof": true
+    },
+    "REST_disk_resource": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450180346690000.json",
+      "raw_receipt_sha256": "9315f5fea762b2bc5a2bf2b81d961a3cd55cf39f65e0c25c86b7fc124076070f",
+      "response_sha256": "4c7cb24658473a227c00000ec1b16b03e961f607108196f7067d06956755c2aa",
+      "at": "2026-10-31T12:36:20.346656+00:00",
+      "HTTP": 200,
+      "disk": {
+        "id": "dsk-dbit2iat5fis7381jsdg",
+        "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk",
+        "mountPath": "/var/data",
+        "sizeGB": 1,
+        "serviceId": "srv-dbit2iat5fis7381jscg",
+        "createdAt": "2026-10-31T11:30:17.35417Z",
+        "updatedAt": "2026-10-31T11:30:17.35417Z"
+      }
+    },
+    "REST_disk_usage": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450182010362000.json",
+      "raw_receipt_sha256": "2cf3ead7ae4d38fb9661ca099edf1392280e6d9c02749160f1e059fbd92fcc43",
+      "response_sha256": "c735ec7a6b790eed9efadc786deae5c8a16a1fb377803a13b620c21d4acd4987",
+      "at": "2026-10-31T12:36:22.010330+00:00",
+      "HTTP": 400,
+      "actual_error": {
+        "error": "unsupported query parameter \"kind\" for get-disk-usage",
+        "id": "bad_request",
+        "message": "unsupported query parameter \"kind\" for get-disk-usage"
+      }
+    },
+    "REST_disk_capacity": {
+      "raw_receipt_file": "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/receipts/1793450182782739000.json",
+      "raw_receipt_sha256": "6fbf00fd55b9b0ac47e8edd52a9bfd511c4a5d0295d22a0f991a7e423c084377",
+      "response_sha256": "aae37fd286a81a08c1638872aa4df191016a3e0ba42b069d6669da106953bacf",
+      "at": "2026-10-31T12:36:22.782705+00:00",
+      "HTTP": 200,
+      "series": [
+        {
+          "unit": "bytes",
+          "labels": [
+            {
+              "field": "resource",
+              "value": "tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d"
+            }
+          ],
+          "samples": 1,
+          "first": 1073741824,
+          "last": 1073741824,
+          "minimum": 1073741824,
+          "maximum": 1073741824,
+          "first_time": "2026-10-31T12:36:23Z",
+          "last_time": "2026-10-31T12:36:23Z"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "Only initial requested1Gi state was observed; no5Gi/remount/redeploy/snapshot/restore acceptance",
+    "GQL/MCP capacity1073741824 is a requested-capacity API metric, not independent raw filesystem geometry",
+    "Actual resource label is retained but does not establish App/PVC UID binding",
+    "RESTusage400 and frozen helper keycollision keep whole original surface command failed",
+    "No billing/invoice claim from Blueprint monthly price estimate"
+  ]
+}

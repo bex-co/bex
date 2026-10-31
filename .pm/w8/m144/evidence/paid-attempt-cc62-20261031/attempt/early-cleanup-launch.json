@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T12:37:08.029367+00:00",
+  "command": "original q cleanup",
+  "serviceId": "srv-dbit2iat5fis7381jscg",
+  "diskId": "dsk-dbit2iat5fis7381jsdg",
+  "preexisting_cleanup_intent": false,
+  "authorized_early_cleanup": true
+}

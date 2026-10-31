@@ -1,0 +1,6 @@
+{
+  "started_at": "2026-10-31T12:28:15.603654+00:00",
+  "script_sha256": "519f5a9302fb4213ec7320f111f0fcaa306f4a04473df07ecd58f049dddfd16b",
+  "mode": "sanctioned opaque existing credentials, strict pinned host identity, original fixed read-only inventory",
+  "new_credential_grant": false
+}

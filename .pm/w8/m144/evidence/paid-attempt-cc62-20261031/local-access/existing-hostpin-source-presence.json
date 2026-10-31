@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-31T12:32:54.481200+00:00",
+  "opaque_loader_only": true,
+  "BEX_SSH_KNOWN_HOSTS_env_present": false,
+  "BEX_SSH_KNOWN_HOSTS_FILE_configured": true,
+  "credential_or_pin_values_emitted": false,
+  "network_calls": 0
+}

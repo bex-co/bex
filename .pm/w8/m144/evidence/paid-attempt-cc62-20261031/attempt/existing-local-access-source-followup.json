@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-10-31T12:17:20.451631+00:00",
+  "kind": "metadata-only-existing-local-access",
+  "no_credential_values_read_or_printed": true,
+  "default_ssh_key_exists": true,
+  "production_kubeconfig_established": false,
+  "existing_production_context_established": false,
+  "existing_credential_route_source": "scripts/verify-substrate.sh uses scripts/lib/env-file.sh:bex_load_env ./.env then scripts/fetch-app-kubeconfig.sh",
+  "route_executed": false,
+  "required_existing_material": [
+    "HCLOUD_TOKEN",
+    "SSH private key",
+    "authoritative BEX_SSH_KNOWN_HOSTS_FILE"
+  ],
+  "host_identity_requirement": "strict known-host verification; no TOFU",
+  "notes": "Presence of default SSH key is not proof of valid access. No provider/SSH/Kubernetes request made."
+}
