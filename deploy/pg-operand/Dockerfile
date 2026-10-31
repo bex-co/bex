@@ -48,7 +48,8 @@ ARG TIMESCALE_PACKAGES=
 USER root
 RUN set -eu; \
   export DEBIAN_FRONTEND=noninteractive; \
-  server="$(dpkg-query -W -f='${Version}' "postgresql-${PG_MAJOR}")"; \
+  dpkg-query -W -f='${binary:Package}=${Version}\n' "postgresql-${PG_MAJOR}" "postgresql-client-${PG_MAJOR}" libpq5 | sort > /tmp/pg-base-versions; \
+  cat /tmp/pg-base-versions; \
   # Hold the server so an extension dependency can never move the patch the
   # base image was reviewed at.
   apt-mark hold "postgresql-${PG_MAJOR}" "postgresql-client-${PG_MAJOR}" libpq5 >/dev/null; \
@@ -70,7 +71,9 @@ RUN set -eu; \
     rm -f "/usr/lib/postgresql/${PG_MAJOR}/lib"/timescaledb-tsl-*.so /etc/apt/sources.list.d/timescale.list; \
     apt-get purge -y --auto-remove curl gnupg; \
   fi; \
-  test "$(dpkg-query -W -f='${Version}' "postgresql-${PG_MAJOR}")" = "$server"; \
+  dpkg-query -W -f='${binary:Package}=${Version}\n' "postgresql-${PG_MAJOR}" "postgresql-client-${PG_MAJOR}" libpq5 | sort > /tmp/pg-after-versions; \
+  cmp /tmp/pg-base-versions /tmp/pg-after-versions; \
+  cat /tmp/pg-after-versions; \
   if ls "/usr/lib/postgresql/${PG_MAJOR}/lib"/timescaledb-tsl-*.so >/dev/null 2>&1; then \
     echo "TimescaleDB TSL module present" >&2; exit 1; \
   fi; \
@@ -85,5 +88,8 @@ COPY --from=duckdb /out/ /
 # pgextwlist's custom scripts (extwlist.custom_path): the grants that let the
 # owner use what a whitelisted extension created as superuser.
 COPY extwlist/ /usr/share/bex/extwlist/
+COPY export.sh /usr/local/bin/bex-postgres-export
+COPY dump-snapshot.sh /usr/local/bin/bex-postgres-dump-snapshot
+RUN chmod 755 /usr/local/bin/bex-postgres-export /usr/local/bin/bex-postgres-dump-snapshot
 
 USER 26

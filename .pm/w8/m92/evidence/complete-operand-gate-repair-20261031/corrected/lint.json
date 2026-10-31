@@ -1,0 +1,295 @@
+{
+  "gate": "lint",
+  "command": [
+    "make",
+    "lint"
+  ],
+  "exit_code": 0,
+  "stop_reason": null,
+  "seconds": 200.247,
+  "host_free_before": 4912312320,
+  "host_free_after": 4496154624,
+  "peak_conservative_host_delta_bytes": 499085312,
+  "samples": [
+    {
+      "at": "2026-10-31T11:06:47.833219+00:00",
+      "gate": "lint",
+      "seconds": 0.0,
+      "free_bytes": 4912308224,
+      "conservative_host_delta_bytes": 4096
+    },
+    {
+      "at": "2026-10-31T11:06:52.835995+00:00",
+      "gate": "lint",
+      "seconds": 5.0,
+      "free_bytes": 4954263552,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:06:57.845806+00:00",
+      "gate": "lint",
+      "seconds": 10.01,
+      "free_bytes": 4951982080,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:02.852684+00:00",
+      "gate": "lint",
+      "seconds": 15.02,
+      "free_bytes": 4949594112,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:07.862144+00:00",
+      "gate": "lint",
+      "seconds": 20.03,
+      "free_bytes": 4947222528,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:12.866237+00:00",
+      "gate": "lint",
+      "seconds": 25.03,
+      "free_bytes": 4953870336,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:17.869581+00:00",
+      "gate": "lint",
+      "seconds": 30.04,
+      "free_bytes": 4951851008,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:22.879241+00:00",
+      "gate": "lint",
+      "seconds": 35.05,
+      "free_bytes": 4949131264,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:27.888015+00:00",
+      "gate": "lint",
+      "seconds": 40.06,
+      "free_bytes": 4946276352,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:32.897779+00:00",
+      "gate": "lint",
+      "seconds": 45.07,
+      "free_bytes": 4944154624,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:37.901740+00:00",
+      "gate": "lint",
+      "seconds": 50.07,
+      "free_bytes": 4943261696,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:42.903353+00:00",
+      "gate": "lint",
+      "seconds": 55.07,
+      "free_bytes": 4953665536,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:47.904607+00:00",
+      "gate": "lint",
+      "seconds": 60.07,
+      "free_bytes": 4951040000,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:52.914424+00:00",
+      "gate": "lint",
+      "seconds": 65.08,
+      "free_bytes": 4948107264,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:07:57.923970+00:00",
+      "gate": "lint",
+      "seconds": 70.09,
+      "free_bytes": 4945670144,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:02.934039+00:00",
+      "gate": "lint",
+      "seconds": 75.1,
+      "free_bytes": 4943331328,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:07.939399+00:00",
+      "gate": "lint",
+      "seconds": 80.11,
+      "free_bytes": 4948566016,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:12.940886+00:00",
+      "gate": "lint",
+      "seconds": 85.11,
+      "free_bytes": 4926627840,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:17.949295+00:00",
+      "gate": "lint",
+      "seconds": 90.12,
+      "free_bytes": 4924911616,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:22.957279+00:00",
+      "gate": "lint",
+      "seconds": 95.13,
+      "free_bytes": 4922396672,
+      "conservative_host_delta_bytes": 0
+    },
+    {
+      "at": "2026-10-31T11:08:27.963389+00:00",
+      "gate": "lint",
+      "seconds": 100.13,
+      "free_bytes": 4827471872,
+      "conservative_host_delta_bytes": 84840448
+    },
+    {
+      "at": "2026-10-31T11:08:32.971232+00:00",
+      "gate": "lint",
+      "seconds": 105.14,
+      "free_bytes": 4611846144,
+      "conservative_host_delta_bytes": 300466176
+    },
+    {
+      "at": "2026-10-31T11:08:37.978341+00:00",
+      "gate": "lint",
+      "seconds": 110.15,
+      "free_bytes": 4747505664,
+      "conservative_host_delta_bytes": 164806656
+    },
+    {
+      "at": "2026-10-31T11:08:42.979295+00:00",
+      "gate": "lint",
+      "seconds": 115.15,
+      "free_bytes": 4751392768,
+      "conservative_host_delta_bytes": 160919552
+    },
+    {
+      "at": "2026-10-31T11:08:47.988685+00:00",
+      "gate": "lint",
+      "seconds": 120.16,
+      "free_bytes": 4709830656,
+      "conservative_host_delta_bytes": 202481664
+    },
+    {
+      "at": "2026-10-31T11:08:52.994179+00:00",
+      "gate": "lint",
+      "seconds": 125.16,
+      "free_bytes": 4705701888,
+      "conservative_host_delta_bytes": 206610432
+    },
+    {
+      "at": "2026-10-31T11:08:57.994681+00:00",
+      "gate": "lint",
+      "seconds": 130.16,
+      "free_bytes": 4702502912,
+      "conservative_host_delta_bytes": 209809408
+    },
+    {
+      "at": "2026-10-31T11:09:02.996307+00:00",
+      "gate": "lint",
+      "seconds": 135.16,
+      "free_bytes": 4696403968,
+      "conservative_host_delta_bytes": 215908352
+    },
+    {
+      "at": "2026-10-31T11:09:08.003188+00:00",
+      "gate": "lint",
+      "seconds": 140.17,
+      "free_bytes": 4660842496,
+      "conservative_host_delta_bytes": 251469824
+    },
+    {
+      "at": "2026-10-31T11:09:13.000804+00:00",
+      "gate": "lint",
+      "seconds": 145.17,
+      "free_bytes": 4640612352,
+      "conservative_host_delta_bytes": 271699968
+    },
+    {
+      "at": "2026-10-31T11:09:18.003435+00:00",
+      "gate": "lint",
+      "seconds": 150.18,
+      "free_bytes": 4636835840,
+      "conservative_host_delta_bytes": 275476480
+    },
+    {
+      "at": "2026-10-31T11:09:23.001736+00:00",
+      "gate": "lint",
+      "seconds": 155.18,
+      "free_bytes": 4634800128,
+      "conservative_host_delta_bytes": 277512192
+    },
+    {
+      "at": "2026-10-31T11:09:28.008509+00:00",
+      "gate": "lint",
+      "seconds": 160.19,
+      "free_bytes": 4633038848,
+      "conservative_host_delta_bytes": 279273472
+    },
+    {
+      "at": "2026-10-31T11:09:33.016790+00:00",
+      "gate": "lint",
+      "seconds": 165.19,
+      "free_bytes": 4630315008,
+      "conservative_host_delta_bytes": 281997312
+    },
+    {
+      "at": "2026-10-31T11:09:38.025372+00:00",
+      "gate": "lint",
+      "seconds": 170.2,
+      "free_bytes": 4413227008,
+      "conservative_host_delta_bytes": 499085312
+    },
+    {
+      "at": "2026-10-31T11:09:43.027904+00:00",
+      "gate": "lint",
+      "seconds": 175.21,
+      "free_bytes": 4494790656,
+      "conservative_host_delta_bytes": 417521664
+    },
+    {
+      "at": "2026-10-31T11:09:48.033255+00:00",
+      "gate": "lint",
+      "seconds": 180.21,
+      "free_bytes": 4492267520,
+      "conservative_host_delta_bytes": 420044800
+    },
+    {
+      "at": "2026-10-31T11:09:53.043200+00:00",
+      "gate": "lint",
+      "seconds": 185.22,
+      "free_bytes": 4490067968,
+      "conservative_host_delta_bytes": 422244352
+    },
+    {
+      "at": "2026-10-31T11:09:58.053139+00:00",
+      "gate": "lint",
+      "seconds": 190.23,
+      "free_bytes": 4487524352,
+      "conservative_host_delta_bytes": 424787968
+    },
+    {
+      "at": "2026-10-31T11:10:03.057182+00:00",
+      "gate": "lint",
+      "seconds": 195.24,
+      "free_bytes": 4495761408,
+      "conservative_host_delta_bytes": 416550912
+    }
+  ]
+}

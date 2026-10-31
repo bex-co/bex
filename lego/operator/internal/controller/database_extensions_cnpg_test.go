@@ -165,10 +165,11 @@ func startCNPGDatabase(t *testing.T, cl client.Client, kubeconfig, prefix, major
 	t.Helper()
 	ctx := context.Background()
 	ns := fmt.Sprintf("%s-%s-%d", prefix, major, os.Getpid())
-	if err := cl.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}); err != nil {
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
+	if err := cl.Create(ctx, namespace); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = cl.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}) })
+	t.Cleanup(func() { _ = cl.Delete(ctx, namespace, client.Preconditions{UID: &namespace.UID}) })
 
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
@@ -177,7 +178,9 @@ func startCNPGDatabase(t *testing.T, cl client.Client, kubeconfig, prefix, major
 	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, version: major, dbname: dbname, owner: owner, namespace: ns, parameters: parameters})
 	delete(spec["storage"].(map[string]any), "storageClass")
-	delete(spec, "resources")
+	if _, operand := cnpgOperandImage(major); !operand {
+		delete(spec, "resources")
+	}
 	if err := projectUnstructuredSpec(cluster, spec); err != nil {
 		t.Fatal(err)
 	}

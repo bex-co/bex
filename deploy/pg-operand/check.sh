@@ -7,15 +7,18 @@
 # TestCheckShConfiguresTheProjectedSettings). Usage:
 #
 #   docker run --rm --network none -v "$PWD/deploy/pg-operand:/check:ro" \
-#     <image> bash /check/check.sh <major> <allowlist>
+#     <image> bash /check/check.sh <major> <allowlist> <exact-server-version>
 #
 # <allowlist> is the comma-separated extwlist.extensions value for the major.
 set -euo pipefail
 
 major="$1"
 allowlist="$2"
+expected_version="${3:?exact base server patch is required}"
 bin="/usr/lib/postgresql/${major}/bin"
+test "$("$bin/postgres" --version | awk '{print $3}')" = "$expected_version"
 data="$(mktemp -d)/data"
+scripts="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 export PGHOST=/tmp PGPORT=5432 PGOPTIONS="-c client_min_messages=warning"
 
 fail() {
@@ -28,14 +31,8 @@ has() { case ",$allowlist," in *",$1,"*) return 0 ;; esac; return 1; }
 cat >>"$data/postgresql.conf" <<EOF
 listen_addresses = ''
 unix_socket_directories = '/tmp'
-shared_preload_libraries = 'pg_stat_statements,timescaledb'
-local_preload_libraries = 'pgextwlist'
-extwlist.extensions = '${allowlist}'
-extwlist.restrict_to_database_owner = on
-extwlist.custom_path = '/usr/share/bex/extwlist'
-timescaledb.license = 'apache'
-timescaledb.telemetry_level = off
 EOF
+sh "$scripts/config.sh" "$major" "$allowlist" app 256 >>"$data/postgresql.conf"
 "$bin/pg_ctl" -D "$data" -w -l "$data/../log" start >/dev/null || {
   cat "$data/../log"
   exit 1
@@ -103,6 +100,37 @@ if has pg_ivm; then
   expect 60 "SELECT s FROM base_sum"
 fi
 has pg_similarity && expect 0.57 "SELECT round(lev('kitten', 'sitting')::numeric, 2)"
+if has pg_duckdb; then
+  expect t "SELECT setting='32' AND unit='MB' FROM pg_settings WHERE name='duckdb.max_memory'"
+  expect 1 "SHOW duckdb.threads"
+  refused app appdb "SET duckdb.max_memory = '4096'" 'permission denied'
+  [ "$(super "SELECT context FROM pg_settings WHERE name='duckdb.postgres_role'")" = postmaster ] || fail 'DuckDB role is not restart-only'
+  refused app appdb "SET duckdb.postgres_role = 'other'" 'cannot be changed without restarting the server'
+  [ "$(super 'SHOW duckdb.postgres_role')" = app ] || fail 'owner changed DuckDB role'
+  refused app appdb "SET duckdb.enable_external_access = true" 'permission denied'
+  as app appdb 'CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v' >/dev/null
+  expect 5000050000 'SET duckdb.force_execution = true; SELECT sum(v) FROM duck_values'
+  refused other appdb 'SET duckdb.force_execution = true; SELECT sum(g) FROM generate_series(1,10) g' 'permission denied\|not allowed'
+  # Both instances live inside the same actual Free-plan cgroup. Observe only
+  # these two controlled sessions after a real forced DuckDB scan.
+  PGAPPNAME=operand-scan-a as app appdb 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-a" &
+  scan_a=$!
+  PGAPPNAME=operand-scan-b as app appdb 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-b" &
+  scan_b=$!
+  backends=''
+  for ((attempt=0; attempt<100; attempt++)); do
+    backends="$(as app appdb "SELECT pid FROM pg_stat_activity WHERE application_name IN ('operand-scan-a','operand-scan-b') AND wait_event='PgSleep'")"
+    [ "$(wc -w <<<"$backends")" -ne 2 ] || break
+    sleep 0.1
+  done
+  [ "$(wc -w <<<"$backends")" -eq 2 ] || fail 'two DuckDB scan sessions did not finish together'
+  for backend in $backends; do
+    awk '/^Private_(Clean|Dirty):/ {kb += $2} END {printf "duckdb_backend_private_bytes=%d\n", kb * 1024}' "/proc/$backend/smaps_rollup"
+  done
+  wait "$scan_a"; wait "$scan_b"
+  grep -qx 5000050000 "$data/../scan-a"
+  grep -qx 5000050000 "$data/../scan-b"
+fi
 if has pg_partman; then
   as app appdb "CREATE TABLE events (id bigint, at timestamptz NOT NULL) PARTITION BY RANGE (at)" >/dev/null
   schema="$(as app appdb "SELECT extnamespace::regnamespace FROM pg_extension WHERE extname = 'pg_partman'")"
@@ -132,25 +160,49 @@ fi
 
 # Property 2: no superuser leaks to the owner.
 expect "f|off" "SELECT rolsuper, current_setting('is_superuser') FROM pg_roles WHERE rolname = current_user"
+as app appdb "DO \$check\$ BEGIN BEGIN CREATE EXTENSION postgis; EXCEPTION WHEN duplicate_object THEN NULL; END; IF current_user <> 'app' OR current_setting('is_superuser') <> 'off' THEN RAISE EXCEPTION 'extension exception leaked privileges'; END IF; END \$check\$" >/dev/null
 refused app appdb "CREATE EXTENSION adminpack" "permission denied\|not available\|could not open"
 # The owner manages the extensions it created.
 as app appdb "ALTER EXTENSION hstore UPDATE" >/dev/null
 
-# Property 5: pg_dump/restore as the owner, through the same allowlist.
-pg_dump -U app -d appdb -Fc -f /tmp/appdb.dump
-restorable="$allowlist"
-if has timescaledb; then
-  # The owner's pg_dump of a hypertable works (the logical-export path), but
-  # restoring one writes TimescaleDB's own catalog, which only a superuser
-  # may: Timescale's pre/post-restore protocol. That restore belongs to
-  # w8/m112; the rest of the database must round-trip without it.
-  as app appdb "DROP TABLE metrics; DROP EXTENSION timescaledb" >/dev/null
-  pg_dump -U app -d appdb -Fc -f /tmp/appdb.dump
-  restorable="$(tr , '\n' <<<"$allowlist" | grep -vx timescaledb | paste -sd, -)"
+# Property 5: the owner's complete logical export, with the same snapshot for
+# IMMV metadata and pg_dump. Never delete a fixture to make its restore pass.
+export PGUSER=app PGDATABASE=appdb BEX_POSTGRES_EXPORT_ROOT="${data%/data}/export"
+export EXPORT_DIRECTORY=operand EXPORT_FILENAME=appdb.dir.tar.gz
+bex-postgres-export
+archive="$BEX_POSTGRES_EXPORT_ROOT/$EXPORT_DIRECTORY/$PGDATABASE"
+test -s "$BEX_POSTGRES_EXPORT_ROOT/$EXPORT_DIRECTORY/pg_ivm_restore.sql"
+super "CREATE DATABASE owner_restored OWNER app;"
+owner_restore_failed=false
+owner_restore_log="${data%/data}/owner-restore.log"
+# Keep the original ordinary-owner attempt and its exact errors. Platform
+# recovery below is separate proof and cannot turn this criterion green.
+if ! {
+  as app owner_restored 'CREATE EXTENSION timescaledb; SELECT timescaledb_pre_restore()' &&
+  pg_restore -U app -d owner_restored --no-owner --no-privileges --exit-on-error "$archive" &&
+  as app owner_restored 'SELECT timescaledb_post_restore()' &&
+  psql -X -q -v ON_ERROR_STOP=1 -U app -d owner_restored \
+    -f "$BEX_POSTGRES_EXPORT_ROOT/$EXPORT_DIRECTORY/pg_ivm_restore.sql" &&
+  as app owner_restored 'INSERT INTO base VALUES (4,40); INSERT INTO metrics VALUES (now(),3)' &&
+  test "$(as app owner_restored 'SELECT s FROM base_sum')" = 100 &&
+  test "$(as app owner_restored 'SELECT sum(v) FROM metrics')" = 6;
+} >"$owner_restore_log" 2>&1; then
+  owner_restore_failed=true
+  cat "$owner_restore_log"
+  echo 'ordinary_owner_complete_restore=FAIL; platform recovery is separate evidence'
+else
+  echo 'ordinary_owner_complete_restore=PASS'
 fi
 super "CREATE DATABASE restored OWNER app;"
-pg_restore -U app -d restored --no-owner --exit-on-error /tmp/appdb.dump || fail "pg_restore failed"
-for ext in ${restorable//,/ }; do
+# Timescale's internal catalogs require the platform restore actor. Ordinary
+# schemas are restored as the original owner; no tenant role gains superuser.
+psql -X -q -v ON_ERROR_STOP=1 -U postgres -d restored \
+  -c 'CREATE EXTENSION timescaledb' -c 'SELECT timescaledb_pre_restore()' >/dev/null
+pg_restore -U postgres -d restored --exit-on-error "$archive" || fail "pg_restore failed"
+psql -X -q -v ON_ERROR_STOP=1 -U postgres -d restored -c 'SELECT timescaledb_post_restore()' >/dev/null
+psql -X -q -v ON_ERROR_STOP=1 -U app -d restored \
+  -f "$BEX_POSTGRES_EXPORT_ROOT/$EXPORT_DIRECTORY/pg_ivm_restore.sql" >/dev/null
+for ext in ${allowlist//,/ }; do
   [ "$(as app restored "SELECT count(*) FROM pg_extension WHERE extname = '${ext}'")" = 1 ] ||
     fail "restore lost extension ${ext}"
 done
@@ -159,14 +211,18 @@ if has postgis; then
   [ "$(as app restored "SELECT count(*) FROM spatial_ref_sys WHERE srid = 990001")" = 1 ] || fail "custom SRID did not restore"
 fi
 if has pg_ivm; then
-  # pg_ivm 1.15+ deliberately leaves its IMMV catalog out of dumps, so an
-  # IMMV restores as a plain table with its rows (upstream behavior; w8/m110
-  # owns that acceptance). The extension itself keeps working there.
   [ "$(as app restored "SELECT s FROM base_sum")" = 60 ] || fail "pg_ivm rows did not restore"
-  as app restored "SELECT ${ivm}.create_immv('base_sum2', 'SELECT sum(v) AS s FROM base'); INSERT INTO base VALUES (4, 40)" >/dev/null
-  [ "$(as app restored "SELECT s FROM base_sum2")" = 100 ] || fail "pg_ivm is not incremental after restore"
+  as app restored "INSERT INTO base VALUES (4, 40)" >/dev/null
+  [ "$(as app restored "SELECT s FROM base_sum")" = 100 ] || fail "original IMMV is not incremental after restore"
 fi
+expect 2 'SELECT count(*) FROM metrics'
+[ "$(as app restored 'SELECT count(*) FROM metrics')" = 2 ] || fail 'hypertable rows did not restore'
+as app restored 'INSERT INTO metrics VALUES (now(), 3)' >/dev/null
+[ "$(as app restored 'SELECT sum(v) FROM metrics')" = 6 ] || fail 'restored hypertable is not writable'
+[ "$(as app restored "SELECT rolsuper, current_setting('is_superuser') FROM pg_roles WHERE rolname = current_user")" = 'f|off' ] || fail 'restore elevated the owner'
+if [ -r /sys/fs/cgroup/memory.peak ]; then echo "cgroup_memory_peak_bytes=$(cat /sys/fs/cgroup/memory.peak)"; fi
 
 # The owner can drop what it created.
-for ext in ${restorable//,/ }; do as app appdb "DROP EXTENSION IF EXISTS ${ext} CASCADE" >/dev/null; done
+for ext in ${allowlist//,/ }; do as app appdb "DROP EXTENSION IF EXISTS ${ext} CASCADE" >/dev/null; done
+if "$owner_restore_failed"; then fail 'ordinary-owner complete Timescale/IMMV logical restore remains unsupported'; fi
 echo "PASS PG${major}: ${allowlist}"

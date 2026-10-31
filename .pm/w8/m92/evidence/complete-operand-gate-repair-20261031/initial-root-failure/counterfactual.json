@@ -1,0 +1,18 @@
+{
+  "head": "792acc263f814bc75229052386af3a49b2fd37d4",
+  "original_sha256": "667c6c80fb33752b42718f513d903e552fd5b2b1806c5a278e0c8fe05557f323",
+  "counterfactual_sha256": "d6ee7392960c227c30d92bc6c547b9f5957a2d42f1197e0bae13855c1f5b217e",
+  "removed_block_sha256": "930960444b042c81e49964ad110d96acdae80391286d989a0f83090a83ebd4ca",
+  "removed_bytes": 473,
+  "test_name": "TestUnobservedMajorKeepsAnOlderOperandProfileUntilObservation",
+  "host_free_before": 5695655936,
+  "started_at": "2026-10-31T10:44:24.851239+00:00",
+  "exit_code": 1,
+  "stop_reason": null,
+  "seconds": 17.154,
+  "restored_sha256": "667c6c80fb33752b42718f513d903e552fd5b2b1806c5a278e0c8fe05557f323",
+  "restored_exactly": true,
+  "peak_host_delta_bytes": 225976320,
+  "host_free_after": 6070026240,
+  "log_sha256": "db5d7fcdc771b78a15f7e41901adf5bf14cc9b8c14148464a518181c377247df"
+}

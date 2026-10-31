@@ -1,0 +1,107 @@
+[
+  {
+    "path": ".github/workflows/pg-operand-image.yml",
+    "bytes": 6244,
+    "sha256": "6f52b917bae56a2cdd471c901055b6b9b089d21729c885936ada65a6d5ce5142"
+  },
+  {
+    "path": "deploy/pg-operand/Dockerfile",
+    "bytes": 4983,
+    "sha256": "9c8bc99fa19452bf1344973a0d8faebab43c410a957375137aa3915dcbeca3de"
+  },
+  {
+    "path": "deploy/pg-operand/README.md",
+    "bytes": 6988,
+    "sha256": "31dd3f59286d5a4d388598d6bceb9c039f5f09a6e7569ff66fcbbe758527c17f"
+  },
+  {
+    "path": "deploy/pg-operand/check.sh",
+    "bytes": 13252,
+    "sha256": "553b2fa1e132ab18d83b5cb3d326ec9d483ad0add6f28843eb1ab9d75b72c9ed"
+  },
+  {
+    "path": "deploy/pg-operand/config.sh",
+    "bytes": 1201,
+    "sha256": "fa295495c295a5cd33767bd86fba87b9f2741801592c6de6f2778a04e0f27d47"
+  },
+  {
+    "path": "deploy/pg-operand/dump-snapshot.sh",
+    "bytes": 436,
+    "sha256": "7863cb9a291852220a5af625ba070d6732d2c7efb4577656dec167bfc00ea3b6"
+  },
+  {
+    "path": "deploy/pg-operand/export.sh",
+    "bytes": 1397,
+    "sha256": "e861930010a85c3fe2636096c86de4d87946f4b7f9b0127d8b11dc255b80298a"
+  },
+  {
+    "path": "deploy/pg-operand/extwlist/pg_partman/after-create.sql",
+    "bytes": 324,
+    "sha256": "c2e9543db851b57500f73a8a7cae60fe76ace69214143c5b1cad9eeb3d80bff3"
+  },
+  {
+    "path": "deploy/pg-operand/extwlist/postgis/after-create.sql",
+    "bytes": 361,
+    "sha256": "21710269591c3064e3b037804b05013b6de36d80d791d651ce87173be4afc002"
+  },
+  {
+    "path": "deploy/pg-operand/extwlist/postgis_tiger_geocoder/after-create.sql",
+    "bytes": 343,
+    "sha256": "2f661121417286dc1238fe7ce13360609afd5acbba19e732860c38eddfa3600a"
+  },
+  {
+    "path": "deploy/pg-operand/extwlist/postgis_topology/after-create.sql",
+    "bytes": 372,
+    "sha256": "27bfc929d693348333afee7f393f854792a507bd734420f1a3cb47ef0287ac77"
+  },
+  {
+    "path": "deploy/pg-operand/matrix.json",
+    "bytes": 3255,
+    "sha256": "a6b6cd3ced9212aa98f14f4cbefca6b947b59f94f18ab28c115405eb5b1bdffa"
+  },
+  {
+    "path": "deploy/pg-operand/operand_test.py",
+    "bytes": 5916,
+    "sha256": "65ec0057701cfb363feb7398d89e4528c4094e4b30a2ca2224e69bc10c424c65"
+  },
+  {
+    "path": "docs/ADR092-postgres-extension-supply.md",
+    "bytes": 13069,
+    "sha256": "df55bfcc34d64d8c6d731e163b61f91f72b7b4a000eebd7f04bdf0ee1c9e5088"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_controller.go",
+    "bytes": 98322,
+    "sha256": "a022b207d6ce8f252019be75e420ec3e49a09489b28d191b2392888b0d87251a"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_exports.go",
+    "bytes": 19611,
+    "sha256": "1bbfb67331a43b869a51b25662a97e75fd1332b26766160cb5be8bb71b7ca78e"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_extensions_cnpg_test.go",
+    "bytes": 9335,
+    "sha256": "15e941491805e315ce113fef4a1aac970edd09f57bc682057d905d1db088d425"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_operand.go",
+    "bytes": 7314,
+    "sha256": "000911b56bc0d3709b03536b272d35161b85fb5693886f185438d0e3bd363a50"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_operand_cnpg_test.go",
+    "bytes": 7871,
+    "sha256": "3ffd435a20eaa9abd64514762e55aefeddac1a6c517b6c5fa410372ea8045b6f"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_operand_reconcile_test.go",
+    "bytes": 9367,
+    "sha256": "f8be091245e3e1a2e9baa79e970fd85bab9422409ed5c6c3d07dd1b7025eb028"
+  },
+  {
+    "path": "lego/operator/internal/controller/database_operand_test.go",
+    "bytes": 16837,
+    "sha256": "cc3f37acb1616a07f09d1a6c806da0590570752fc88427f4f5a7b629126de15b"
+  }
+]

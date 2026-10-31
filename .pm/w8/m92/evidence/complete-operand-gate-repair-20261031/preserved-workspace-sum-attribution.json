@@ -1,0 +1,13 @@
+{
+  "preserved_stash": "fabecc3e6c2d44e0280b2c1f0a54b60e13dff981",
+  "preserved_sha256": "f64f523426270016774d5b282b8eba344f6e541499d5d0763e9d7575b3dd2f93",
+  "current_sha256": "9c4b1ca78acfe9b6d6a6bc4ff60a413c1793fac3301b0afdfd5d38ff7a7360c7",
+  "added_rows": [
+    "cloud.google.com/go/compute v1.62.0 h1:tJ7lKJ8YEVa6vZX03Jc8o1YePbjKDOQhDw1BscMZ1bs=",
+    "github.com/go-openapi/strfmt v0.27.2 h1:SG32SlbwNy92s0KJiVxt2joJeFdqIYHvwrA0OU6HqzQ=",
+    "github.com/oapi-codegen/runtime v1.6.0 h1:7Xx+GlueD6nRuyKoCPzL434Jfi3BetbiJOrzCHp/VPU=",
+    "github.com/oklog/ulid v1.3.1 h1:EGfNDEx6MqHz8B3uNV6QAib1UR2Lm97sHi3ocA6ESJ4="
+  ],
+  "removed_rows": [],
+  "attribution": "Observed only; tool/concurrent writer not inferred. No GoSum staging."
+}

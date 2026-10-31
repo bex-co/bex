@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -187,6 +188,7 @@ type clusterParams struct {
 	// yet. Both only matter for an unversioned Database.
 	runningVersion string
 	creating       bool
+	currentImage   string
 	dbname         string
 	owner          string
 	// namespace is the Database's own namespace. It scopes the archive identity
@@ -509,6 +511,15 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	if p.version == "" {
 		image, extensionsMajor = unversionedOperandImage(p.runningVersion, p.creating)
 		bexOperand = image != ""
+		if image == "" && !p.creating {
+			// Omitting imageName withdraws a previously projected pin and can
+			// cause admission to choose a different major. Preserve live intent
+			// until this major's reviewed operand can actually be selected.
+			image = p.currentImage
+			if major := adoptedOperandMajor(image); major != "" {
+				extensionsMajor, bexOperand = major, true
+			}
+		}
 	} else {
 		image, bexOperand = cnpgOperandImage(p.version)
 	}
@@ -566,7 +577,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		"pg_stat_statements.track": "all",
 	}
 	for k, v := range p.parameters {
-		if k != "shared_preload_libraries" {
+		if !strings.EqualFold(strings.TrimSpace(k), "shared_preload_libraries") && !managedExtensionParameter(k) {
 			pgParams[k] = v
 		}
 	}
@@ -575,8 +586,10 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// the image that carries it: on any other image these libraries do not
 	// exist and the server would not start.
 	if bexOperand {
-		maps.Copy(pgParams, pgExtensionParameters(extensionsMajor))
-		preload = append(preload, pgExtensionPreloadLibraries...)
+		extensionParams := p
+		extensionParams.version = extensionsMajor
+		maps.Copy(pgParams, pgExtensionParameters(extensionParams))
+		preload = append(preload, pgExtensionPreloadLibraries(extensionsMajor)...)
 	}
 	spec["postgresql"] = map[string]any{
 		"parameters":               pgParams,
@@ -1005,7 +1018,15 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.currentInstances = cnpgInstanceCount(cluster)
 		params.creating = cluster.GetResourceVersion() == ""
+		params.currentImage, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
 		spec := cnpgClusterSpec(params)
+		if !params.creating && params.version == "" && params.runningVersion == "" {
+			if configuration, err := unobservedOperandPostgresql(cluster); err != nil {
+				return err
+			} else if configuration != nil {
+				spec["postgresql"] = configuration
+			}
+		}
 		if !clusterAdoptsDatastorePriority(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
 			delete(spec, "priorityClassName")
 		}
@@ -1032,6 +1053,42 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		return controllerutil.SetControllerReference(db, cluster, r.Scheme)
 	})
 	return err
+}
+
+// An older bex image may be absent from the refreshed pin map. Preserve its
+// declared extension profile until its running major is observed. Prefer the
+// prior owned input: copying webhook defaults would turn them into new intent
+// and cause a write on an otherwise redundant reconcile. Ordinary upstream
+// configurations must still gain the platform's pg_stat_statements defaults.
+func unobservedOperandPostgresql(cluster *unstructured.Unstructured) (map[string]any, error) {
+	source, _, err := unstructured.NestedMap(cluster.Object, "spec")
+	if err != nil {
+		return nil, err
+	}
+	if previous := cluster.GetAnnotations()[annotationProjectedSpec]; previous != "" {
+		source = nil
+		if err := json.Unmarshal([]byte(previous), &source); err != nil {
+			return nil, fmt.Errorf("decoding previous operand projection: %w", err)
+		}
+	}
+	configuration, _, err := unstructured.NestedMap(source, "postgresql")
+	if err != nil {
+		return nil, err
+	}
+	parameters, _, err := unstructured.NestedStringMap(configuration, "parameters")
+	if err != nil {
+		return nil, err
+	}
+	preload, _, err := unstructured.NestedStringSlice(configuration, "shared_preload_libraries")
+	if err != nil {
+		return nil, err
+	}
+	if parameters["extwlist.custom_path"] != "/usr/share/bex/extwlist" ||
+		parameters["local_preload_libraries"] != "pgextwlist" ||
+		parameters["timescaledb.license"] != "apache" || !slices.Contains(preload, "timescaledb") {
+		return nil, nil
+	}
+	return configuration, nil
 }
 
 // stampConnectionStatus records how consumers reach this Database and what its

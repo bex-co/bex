@@ -1,0 +1,337 @@
+{
+  "gate": "test",
+  "command": [
+    "make",
+    "test"
+  ],
+  "exit_code": 2,
+  "stop_reason": null,
+  "seconds": 230.268,
+  "host_free_before": 5569048576,
+  "host_free_after": 5195771904,
+  "peak_conservative_host_delta_bytes": 636399616,
+  "samples": [
+    {
+      "at": "2026-10-31T10:45:36.428835+00:00",
+      "gate": "test",
+      "seconds": 0.0,
+      "free_bytes": 5569036288,
+      "conservative_host_delta_bytes": 12288
+    },
+    {
+      "at": "2026-10-31T10:45:41.435892+00:00",
+      "gate": "test",
+      "seconds": 5.01,
+      "free_bytes": 5560000512,
+      "conservative_host_delta_bytes": 9048064
+    },
+    {
+      "at": "2026-10-31T10:45:46.444672+00:00",
+      "gate": "test",
+      "seconds": 10.02,
+      "free_bytes": 5523369984,
+      "conservative_host_delta_bytes": 45678592
+    },
+    {
+      "at": "2026-10-31T10:45:51.451214+00:00",
+      "gate": "test",
+      "seconds": 15.02,
+      "free_bytes": 5402660864,
+      "conservative_host_delta_bytes": 166387712
+    },
+    {
+      "at": "2026-10-31T10:45:56.454813+00:00",
+      "gate": "test",
+      "seconds": 20.03,
+      "free_bytes": 5359382528,
+      "conservative_host_delta_bytes": 209666048
+    },
+    {
+      "at": "2026-10-31T10:46:01.455198+00:00",
+      "gate": "test",
+      "seconds": 25.03,
+      "free_bytes": 5365305344,
+      "conservative_host_delta_bytes": 203743232
+    },
+    {
+      "at": "2026-10-31T10:46:06.464917+00:00",
+      "gate": "test",
+      "seconds": 30.04,
+      "free_bytes": 5235777536,
+      "conservative_host_delta_bytes": 333271040
+    },
+    {
+      "at": "2026-10-31T10:46:11.466987+00:00",
+      "gate": "test",
+      "seconds": 35.04,
+      "free_bytes": 5232529408,
+      "conservative_host_delta_bytes": 336519168
+    },
+    {
+      "at": "2026-10-31T10:46:16.469990+00:00",
+      "gate": "test",
+      "seconds": 40.04,
+      "free_bytes": 5228335104,
+      "conservative_host_delta_bytes": 340713472
+    },
+    {
+      "at": "2026-10-31T10:46:21.472265+00:00",
+      "gate": "test",
+      "seconds": 45.04,
+      "free_bytes": 5225365504,
+      "conservative_host_delta_bytes": 343683072
+    },
+    {
+      "at": "2026-10-31T10:46:26.479725+00:00",
+      "gate": "test",
+      "seconds": 50.05,
+      "free_bytes": 5221289984,
+      "conservative_host_delta_bytes": 347758592
+    },
+    {
+      "at": "2026-10-31T10:46:31.489795+00:00",
+      "gate": "test",
+      "seconds": 55.06,
+      "free_bytes": 5213102080,
+      "conservative_host_delta_bytes": 355946496
+    },
+    {
+      "at": "2026-10-31T10:46:36.497104+00:00",
+      "gate": "test",
+      "seconds": 60.07,
+      "free_bytes": 5206228992,
+      "conservative_host_delta_bytes": 362819584
+    },
+    {
+      "at": "2026-10-31T10:46:41.506638+00:00",
+      "gate": "test",
+      "seconds": 65.08,
+      "free_bytes": 5202935808,
+      "conservative_host_delta_bytes": 366112768
+    },
+    {
+      "at": "2026-10-31T10:46:46.516068+00:00",
+      "gate": "test",
+      "seconds": 70.09,
+      "free_bytes": 5212184576,
+      "conservative_host_delta_bytes": 356864000
+    },
+    {
+      "at": "2026-10-31T10:46:51.521010+00:00",
+      "gate": "test",
+      "seconds": 75.09,
+      "free_bytes": 5174919168,
+      "conservative_host_delta_bytes": 394129408
+    },
+    {
+      "at": "2026-10-31T10:46:56.521828+00:00",
+      "gate": "test",
+      "seconds": 80.09,
+      "free_bytes": 5202419712,
+      "conservative_host_delta_bytes": 366628864
+    },
+    {
+      "at": "2026-10-31T10:47:01.525523+00:00",
+      "gate": "test",
+      "seconds": 85.1,
+      "free_bytes": 5200723968,
+      "conservative_host_delta_bytes": 368324608
+    },
+    {
+      "at": "2026-10-31T10:47:06.530375+00:00",
+      "gate": "test",
+      "seconds": 90.1,
+      "free_bytes": 5199400960,
+      "conservative_host_delta_bytes": 369647616
+    },
+    {
+      "at": "2026-10-31T10:47:11.539515+00:00",
+      "gate": "test",
+      "seconds": 95.11,
+      "free_bytes": 5195264000,
+      "conservative_host_delta_bytes": 373784576
+    },
+    {
+      "at": "2026-10-31T10:47:16.545475+00:00",
+      "gate": "test",
+      "seconds": 100.12,
+      "free_bytes": 5188481024,
+      "conservative_host_delta_bytes": 380567552
+    },
+    {
+      "at": "2026-10-31T10:47:21.550440+00:00",
+      "gate": "test",
+      "seconds": 105.12,
+      "free_bytes": 5180620800,
+      "conservative_host_delta_bytes": 388427776
+    },
+    {
+      "at": "2026-10-31T10:47:26.560544+00:00",
+      "gate": "test",
+      "seconds": 110.13,
+      "free_bytes": 5177536512,
+      "conservative_host_delta_bytes": 391512064
+    },
+    {
+      "at": "2026-10-31T10:47:31.566539+00:00",
+      "gate": "test",
+      "seconds": 115.14,
+      "free_bytes": 5180653568,
+      "conservative_host_delta_bytes": 388395008
+    },
+    {
+      "at": "2026-10-31T10:47:36.574365+00:00",
+      "gate": "test",
+      "seconds": 120.15,
+      "free_bytes": 5052948480,
+      "conservative_host_delta_bytes": 516100096
+    },
+    {
+      "at": "2026-10-31T10:47:41.578422+00:00",
+      "gate": "test",
+      "seconds": 125.15,
+      "free_bytes": 5041479680,
+      "conservative_host_delta_bytes": 527568896
+    },
+    {
+      "at": "2026-10-31T10:47:46.588397+00:00",
+      "gate": "test",
+      "seconds": 130.16,
+      "free_bytes": 5034422272,
+      "conservative_host_delta_bytes": 534626304
+    },
+    {
+      "at": "2026-10-31T10:47:51.598500+00:00",
+      "gate": "test",
+      "seconds": 135.17,
+      "free_bytes": 5162774528,
+      "conservative_host_delta_bytes": 406274048
+    },
+    {
+      "at": "2026-10-31T10:47:56.600822+00:00",
+      "gate": "test",
+      "seconds": 140.17,
+      "free_bytes": 5159297024,
+      "conservative_host_delta_bytes": 409751552
+    },
+    {
+      "at": "2026-10-31T10:48:01.602779+00:00",
+      "gate": "test",
+      "seconds": 145.17,
+      "free_bytes": 5157330944,
+      "conservative_host_delta_bytes": 411717632
+    },
+    {
+      "at": "2026-10-31T10:48:06.611375+00:00",
+      "gate": "test",
+      "seconds": 150.18,
+      "free_bytes": 5152002048,
+      "conservative_host_delta_bytes": 417046528
+    },
+    {
+      "at": "2026-10-31T10:48:11.613266+00:00",
+      "gate": "test",
+      "seconds": 155.19,
+      "free_bytes": 5145710592,
+      "conservative_host_delta_bytes": 423337984
+    },
+    {
+      "at": "2026-10-31T10:48:16.613718+00:00",
+      "gate": "test",
+      "seconds": 160.19,
+      "free_bytes": 5134548992,
+      "conservative_host_delta_bytes": 434499584
+    },
+    {
+      "at": "2026-10-31T10:48:21.622763+00:00",
+      "gate": "test",
+      "seconds": 165.19,
+      "free_bytes": 5114175488,
+      "conservative_host_delta_bytes": 454873088
+    },
+    {
+      "at": "2026-10-31T10:48:26.624702+00:00",
+      "gate": "test",
+      "seconds": 170.2,
+      "free_bytes": 5102874624,
+      "conservative_host_delta_bytes": 466173952
+    },
+    {
+      "at": "2026-10-31T10:48:31.629453+00:00",
+      "gate": "test",
+      "seconds": 175.2,
+      "free_bytes": 5095698432,
+      "conservative_host_delta_bytes": 473350144
+    },
+    {
+      "at": "2026-10-31T10:48:36.639033+00:00",
+      "gate": "test",
+      "seconds": 180.21,
+      "free_bytes": 5083541504,
+      "conservative_host_delta_bytes": 485507072
+    },
+    {
+      "at": "2026-10-31T10:48:41.646469+00:00",
+      "gate": "test",
+      "seconds": 185.22,
+      "free_bytes": 5082365952,
+      "conservative_host_delta_bytes": 486682624
+    },
+    {
+      "at": "2026-10-31T10:48:46.648881+00:00",
+      "gate": "test",
+      "seconds": 190.22,
+      "free_bytes": 5066715136,
+      "conservative_host_delta_bytes": 502333440
+    },
+    {
+      "at": "2026-10-31T10:48:51.654536+00:00",
+      "gate": "test",
+      "seconds": 195.23,
+      "free_bytes": 5041111040,
+      "conservative_host_delta_bytes": 527937536
+    },
+    {
+      "at": "2026-10-31T10:48:56.655745+00:00",
+      "gate": "test",
+      "seconds": 200.23,
+      "free_bytes": 5022564352,
+      "conservative_host_delta_bytes": 546484224
+    },
+    {
+      "at": "2026-10-31T10:49:01.663907+00:00",
+      "gate": "test",
+      "seconds": 205.24,
+      "free_bytes": 4997599232,
+      "conservative_host_delta_bytes": 571449344
+    },
+    {
+      "at": "2026-10-31T10:49:06.673531+00:00",
+      "gate": "test",
+      "seconds": 210.25,
+      "free_bytes": 4959744000,
+      "conservative_host_delta_bytes": 609304576
+    },
+    {
+      "at": "2026-10-31T10:49:11.678499+00:00",
+      "gate": "test",
+      "seconds": 215.25,
+      "free_bytes": 4950540288,
+      "conservative_host_delta_bytes": 618508288
+    },
+    {
+      "at": "2026-10-31T10:49:16.684720+00:00",
+      "gate": "test",
+      "seconds": 220.26,
+      "free_bytes": 4932648960,
+      "conservative_host_delta_bytes": 636399616
+    },
+    {
+      "at": "2026-10-31T10:49:21.694844+00:00",
+      "gate": "test",
+      "seconds": 225.27,
+      "free_bytes": 5065510912,
+      "conservative_host_delta_bytes": 503537664
+    }
+  ]
+}
