@@ -341,7 +341,7 @@ A native build no longer has exactly one base per runtime. Each runtime offers a
 | Poetry (Python companion, always) | **2.1.3** (any exact 1.x/2.x release) | `POETRY_VERSION` (exact release) → default; installed from PyPI, not an image |
 | uv (Python companion, uv projects) | **0.12.10** (any exact release) | opt-in only: a `uv.lock` in the service's root directory, then `UV_VERSION` (exact release) → default; installed from PyPI, not an image |
 | Node/npm/Yarn/pnpm (Ruby + Python companion, always) | Node **24** (22, 24, 26); Yarn 1.22.22; pnpm 10.34.7 | `NODE_VERSION` → `.node-version` → `.nvmrc` → `engines.node` → default; copied from the pinned node images (pnpm from its pinned tarball) |
-| pnpm (companion, every Node build) | **10.34.7** | none: always present on Node, as on Render; `packageManager` is pnpm's own business (w8/m73) |
+| pnpm (companion, every Node build) | **10.34.7** | none: always present on Node, as on Render; `packageManager` is pnpm's own business (w8/m73). Node 14/16, which the package refuses (engines `>=18.12`), get pnpm's official standalone build of the same release behind a launcher that keeps lifecycle `NODE` on the app's node and `node-gyp` on the app npm's bundled copy (w8/226) |
 | FFmpeg/ffprobe (companion, every native build) | **9.0.2** (static) | none: always present on every native runtime and static site, as on Render; copied from the pinned `mwader/static-ffmpeg` image (w8/m82) |
 
 **Resolution rules:**

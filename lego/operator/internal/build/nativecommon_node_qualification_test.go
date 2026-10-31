@@ -132,8 +132,9 @@ func commonNodeQualificationRecipe(canonical string, node NativeChoice) (string,
 }
 
 // This is an additional profile, not the Node24 original13/28 cohort. In
-// particular, current pnpm14/16 startup incompatibility is an actual failure,
-// never skipped, downgraded, or replaced with a private-host Node launcher.
+// particular, pnpm on Node 14/16 is the standalone build of the same release
+// (w8/226), never skipped or downgraded, and lifecycle scripts still run the
+// app's Node.
 func TestCommonNodeGeneratedImages(t *testing.T) {
 	if os.Getenv("BEX_NATIVE_TEST_NODE_PROFILE") != "1" {
 		t.Skip("set BEX_NATIVE_TEST_NODE_PROFILE=1 for the separate common Node profile")
@@ -195,8 +196,8 @@ func commonNodeQualificationCase(t *testing.T, docker nativeUtilityDocker, commo
 		"canonical_sha256":          fmt.Sprintf("%x", sha256.Sum256(canonical)),
 		"executed_sha256":           fmt.Sprintf("%x", sha256.Sum256([]byte(executed))),
 		"test_only_network_overlay": overlay, "empty_runtime_artifact_map": true, "fixture_sha256": hashes,
-		"known_unresolved": "pnpm10.34.7 JS rejects Node14/16; strict tool/lifecycle assertions remain enabled",
-		"scope":            "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
+		"legacy_pnpm": "Node14/16 run the pnpm10.34.7 standalone (w8/226); strict tool/lifecycle assertions remain enabled",
+		"scope":       "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
 	}, "", "  ")
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(evidence, "source-custody.json"), custody, 0o600))
@@ -208,7 +209,7 @@ func commonNodeQualificationCase(t *testing.T, docker nativeUtilityDocker, commo
 	log, buildErr := command.CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
 	if buildErr != nil {
-		t.Fatalf("actual common Node offline build (pnpm14/16 remains unresolved): %v\n%s", buildErr, log)
+		t.Fatalf("actual common Node offline build: %v\n%s", buildErr, log)
 	}
 	docker.runImage(t, nativeUtilityCase{name: tc.name}, tag, evidence, overlay)
 }

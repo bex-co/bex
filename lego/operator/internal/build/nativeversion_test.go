@@ -272,7 +272,7 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	after, _ := os.ReadFile(dockerfile)
 	py311, _ := nativeToolchains["python"].find("3.11")
 	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+expectedNativeBase(py311.image)+"\n"+
-		nativeJSToolLines(nativeToolchains["node"].defaultImage())+
+		nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine)+
 		"RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n", 1)
 	if string(after) != want {
 		t.Fatalf("Dockerfile =\n%s\nwant\n%s", after, want)
@@ -301,7 +301,8 @@ func TestResolveNativeBuildKeepsPnpmOnEveryNodeLine(t *testing.T) {
 			t.Fatal(err)
 		}
 		after, _ := os.ReadFile(dockerfile)
-		tools := nativeNodeTools(nativeOptions())
+		// Node 14/16 carry the standalone pnpm instead of the package (w8/226).
+		tools := strings.Replace(nativeNodeTools(nativeOptions()), nativePnpmInstall(), nativePnpmFor(l.line), 1)
 		if !strings.Contains(string(after), "FROM "+expectedNativeBase(l.image)+"\n") || !strings.Contains(string(after), tools) ||
 			strings.Index(string(after), tools) > strings.Index(string(after), "\nCOPY . .\n") {
 			t.Fatalf("node %s Dockerfile lost its pnpm layers:\n%s", l.line, after)
@@ -577,7 +578,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 			}
 			df, _ := os.ReadFile(dockerfile)
 			from := strings.Index(string(df), "\nFROM "+expectedNativeBase(line.image)+"\n")
-			tools := strings.Index(string(df), "\n"+nativeJSToolLines(nativeToolchains["node"].defaultImage()))
+			tools := strings.Index(string(df), "\n"+nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine))
 			source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
 			if from < 0 || tools < from || source < tools || build < source {
 				t.Fatalf("%s %s: JS tools are not between FROM and the source/build:\n%s", runtime, line.line, df)

@@ -42,7 +42,13 @@ def validate_tools(proof, versions, expected):
     assert proof["yarn_package"]["version"] == versions["yarn"] == expected["yarn"]
     assert proof["yarn_cli"].endswith("/yarn-v" + expected["yarn"] + "/bin/yarn.js")
     assert proof["pnpm_package"]["name"] == "pnpm"
-    assert proof["pnpm_package"]["version"] == versions["pnpm"] == expected["pnpm"]
+    if "standalone" in proof["pnpm_package"]:
+        # pnpm 10's package refuses Node < 18.12; Node 14/16 run its standalone (w8/226).
+        assert expected["node"].split(".")[0] in ("14", "16"), "standalone pnpm on a modern Node"
+        assert proof["pnpm_package"]["standalone"] == "/opt/bex/pnpm/bin/pnpm"
+        assert versions["pnpm"] == expected["pnpm"]
+    else:
+        assert proof["pnpm_package"]["version"] == versions["pnpm"] == expected["pnpm"]
 
 
 def validate_lifecycle(proof, expected, manager, event):
@@ -195,8 +201,8 @@ def main():
     for manager in ("npm", "yarn"):
         versions[manager] = command(manager + "-version-" + phase, [manager, "--version"]).stdout.strip()
     package_managers(expected, versions, phase, ("npm", "yarn"))
-    # Intentionally expose pnpm14/16, retaining the earlier actual npm/Yarn
-    # observations. No private-host Node, downgrade or fake success is used.
+    # pnpm on Node 14/16 is the standalone build of the same release (w8/226):
+    # no downgrade, and lifecycle scripts still run the app's Node.
     versions["pnpm"] = command("pnpm-version-" + phase, ["pnpm", "--version"]).stdout.strip()
     validate_tools(tools, versions, expected)
     if phase == "runtime":
