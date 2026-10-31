@@ -116,3 +116,8 @@ The [post-CSI fixed inventory](evidence/post-csi-inventory-20261031/README.md) n
 ## Publish provenance fix and regressions — 2026-10-31
 
 [The tested source fix](evidence/publish-format-provenance-20261031/README.md) prevents ambiguous inner probes on existing recognized LUKS mappings from requesting formatting, removes the second formatting fallback, and retains filesystem-check/read-only/legacy contracts. All changed-package Linux unit tests and11 owned transition cases pass with healthyA/B preserved and cleanup0. Root and independent functional reviews are clean; root applied/reversed the exact replacement against the checksum-locked upstream archive and matched all16 resulting source files. Full image-factory tests, strict artifact qualification, reviewed pin/Ready and original hosted/billing/restore/cleanup acceptance still remain.
+
+
+## Existing-volume fix image qualified and pinned — 2026-10-31
+
+[Root-reviewed actual factory and artifact proof](evidence/published-csi-publish-provenance-20261031/README.md) binds immutable53744992 to exactdd64 source and theedc67256 bounded patch. The actual full upstream suite and real kernel full/grow/remount/restore gate pass. Original strict CSI signature/source and signed SPDX checks pass; both runtime architectures independently preserve the official base and execute all four tools anonymously, with owned cleanup verified. Both reviewed controller/node pins now select this image. The signed SPDX inventory is explicitly AMD64 only. Scoped rollout and actual Ready must be verified before the original paid fixture; hosted lifecycle/billing/restore/cleanup remain open.
