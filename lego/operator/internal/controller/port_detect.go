@@ -62,11 +62,17 @@ const (
 // (edgeCacheContainerName, the caching sidecar that also listens inside the
 // pod, is declared in edge_cache.go; a cached service is not scanned.)
 
+// explicitServingPort reports whether the App's own configuration already names
+// the serving port, so a detected listener must never override it.
+func explicitServingPort(app *appv1alpha1.App) bool {
+	return (app.Spec.Port > 0 && app.Spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || app.Spec.HasImagePorts()
+}
+
 // detectedServingPort applies a detected port to the serving port decided from
 // the App's own configuration. An explicit port or a PORT variable always wins
 // and clears a stale detection.
 func detectedServingPort(app *appv1alpha1.App, port int) int {
-	if (app.Spec.Port > 0 && app.Spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || app.Spec.HasImagePorts() {
+	if explicitServingPort(app) {
 		app.Status.DetectedPort = 0
 		return port
 	}
@@ -80,7 +86,7 @@ func detectedServingPort(app *appv1alpha1.App, port int) int {
 // status.detectedPort when exactly one other port answers, and returns text to
 // append to the stall message (empty when there is nothing to add).
 func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
-	if r.PortScanner == nil || (app.Spec.Port > 0 && app.Spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || app.Spec.HasImagePorts() ||
+	if r.PortScanner == nil || explicitServingPort(app) ||
 		(app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) {
 		return ""
 	}

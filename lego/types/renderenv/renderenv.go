@@ -185,10 +185,9 @@ func Static(app *appv1alpha1.App, baseDomain string) []Var {
 	if HasDiscoveryService(app) {
 		vars = append(vars, Var{DiscoveryService, DiscoveryServiceName(app)})
 	}
-	// Only when the platform host actually routes: the same Expose and
-	// subdomain-policy rule as AppSpec.EffectiveHosts.
-	if app.Spec.PubliclyRoutable() && app.Spec.Expose && baseDomain != "" &&
-		app.Spec.SubdomainPolicy != appv1alpha1.SubdomainPolicyDisabled {
+	// Only when the platform host actually routes: the routing rule
+	// AppSpec.EffectiveHosts owns, plus the type gate a public hostname needs.
+	if app.Spec.PubliclyRoutable() && app.Spec.UsesPlatformHost(baseDomain) {
 		host := slug + "." + baseDomain
 		vars = append(vars, Var{ExternalHostname, host}, Var{ExternalURL, "https://" + host})
 	}

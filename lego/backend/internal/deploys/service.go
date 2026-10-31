@@ -992,7 +992,7 @@ func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID 
 	// A saved-image service records its saved image on every row (Trigger), so
 	// a row "selects an image of its own" only when it differs from that (w8/m117).
 	selectsImage := func(row store.Deploy) bool { return row.Image != "" && row.Image != a.Spec.Image }
-	if (a.Spec.Repo == "" && a.Spec.Image == "") || !d.OverlapPending || selectsImage(d) || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
+	if (a.Spec.Repo == "" && a.Spec.Image == "") || !d.OverlapPending || selectsImage(d) || !sourceOnly(d) {
 		return nil, nil
 	}
 	open, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
@@ -1001,14 +1001,21 @@ func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID 
 	}
 	// One deploy executes at a time, ahead of the pending one (prepareDeployCreate).
 	for i, o := range open {
-		if !o.OverlapPending && o.Generation > 0 && o.Generation < d.Generation {
-			if selectsImage(o) {
-				return nil, nil
-			}
-			return &open[i], nil
+		if o.OverlapPending || o.Generation <= 0 || o.Generation >= d.Generation {
+			continue
 		}
+		if selectsImage(o) {
+			return nil, nil
+		}
+		return &open[i], nil
 	}
 	return nil, nil
+}
+
+// sourceOnly reports whether an open deploy changes nothing but the source to
+// build.
+func sourceOnly(row store.Deploy) bool {
+	return slices.Contains(sourceOnlyTriggers, row.Trigger)
 }
 
 // sourceOnlyTriggers open deploys that change nothing but the source to build.

@@ -40,6 +40,40 @@ func TestRenderRepoSlugKeepsOwnerAndRepoInAnyURLForm(t *testing.T) {
 	}
 }
 
+// RENDER_EXTERNAL_HOSTNAME/URL follow the one platform-host rule that
+// AppSpec.EffectiveHosts owns: publicly routable, exposed, a permitted
+// subdomain policy, and a known base domain (w5/m148).
+func TestStaticExternalHostFollowsThePlatformHostRule(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		spec       appv1alpha1.AppSpec
+		baseDomain string
+		wantHost   string
+	}{
+		{"routed", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Expose: true}, "onbex.co", "web.onbex.co"},
+		{"no base domain", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Expose: true}, "", ""},
+		{"not exposed", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService}, "onbex.co", ""},
+		{"subdomain disabled", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Expose: true, SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled}, "onbex.co", ""},
+		{"not publicly routable", appv1alpha1.AppSpec{Type: appv1alpha1.TypeBackgroundWorker, Expose: true}, "onbex.co", ""},
+	} {
+		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web"}, Spec: tc.spec}
+		got := map[string]string{}
+		for _, v := range Static(app, tc.baseDomain) {
+			got[v.Name] = v.Value
+		}
+		if got[ExternalHostname] != tc.wantHost {
+			t.Errorf("%s: %s = %q, want %q", tc.name, ExternalHostname, got[ExternalHostname], tc.wantHost)
+		}
+		wantURL := ""
+		if tc.wantHost != "" {
+			wantURL = "https://" + tc.wantHost
+		}
+		if got[ExternalURL] != wantURL {
+			t.Errorf("%s: %s = %q, want %q", tc.name, ExternalURL, got[ExternalURL], wantURL)
+		}
+	}
+}
+
 func TestDiscoveryServiceNameFitsADNSLabel(t *testing.T) {
 	long := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: strings.Repeat("a", 60)}}
 	if n := DiscoveryServiceName(long); len(n) > 63 || !strings.HasSuffix(n, "-discovery") {

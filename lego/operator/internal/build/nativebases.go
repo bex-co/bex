@@ -87,7 +87,7 @@ func suppliedNativeImage(reviewedImage string, choice NativeChoice, supplied map
 		}
 		matched := false
 		for _, line := range nativeToolchains[nativeElixirRuntime].lines {
-			if (choice.imageSuite != "" && line.debian == choice.imageSuite) || (wantedOTP != "" && line.otp == wantedOTP) {
+			if line.matchesProvenance(choice.imageSuite, wantedOTP) {
 				if !matched {
 					selected, matched = cmp.Or(line.upstream, line.image), true
 				}
@@ -106,6 +106,13 @@ func suppliedNativeImage(reviewedImage string, choice NativeChoice, supplied map
 		return "", fmt.Errorf("no reviewed supplied base for %s", selected)
 	}
 	return image, nil
+}
+
+// matchesProvenance reports whether the toolchain line is the reviewed one for
+// a supplied base: the source Debian suite when it is known, else the exact OTP
+// major. The two selectors are mutually exclusive at the call site.
+func (line nativeLine) matchesProvenance(suite, otp string) bool {
+	return (suite != "" && line.debian == suite) || (otp != "" && line.otp == otp)
 }
 
 // pinNativePrimary keeps exact-version fallback behavior while collecting the

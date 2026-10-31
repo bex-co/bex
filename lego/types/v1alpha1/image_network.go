@@ -139,10 +139,15 @@ func (a *App) ConfiguredImagePort() (port int32, ok bool) {
 // recorded it, else an explicit non-default spec.port (w5/m149), else the detected
 // listener (w8/177, w8/202), else the default.
 func (a *App) ServingPort() int32 {
-	if a.Status.EnvPort > 0 && !a.Spec.HasImagePorts() {
+	// Image-port services publish through the serving image network instead of
+	// any recorded PORT or detected listener.
+	if a.Spec.HasImagePorts() {
+		return a.Spec.EffectivePort()
+	}
+	if a.Status.EnvPort > 0 {
 		return a.Status.EnvPort
 	}
-	if a.Status.DetectedPort > 0 && (a.Spec.Port <= 0 || a.Spec.Port == DefaultPort) && !a.Spec.HasImagePorts() {
+	if a.Status.DetectedPort > 0 && (a.Spec.Port <= 0 || a.Spec.Port == DefaultPort) {
 		return a.Status.DetectedPort
 	}
 	return a.Spec.EffectivePort()
