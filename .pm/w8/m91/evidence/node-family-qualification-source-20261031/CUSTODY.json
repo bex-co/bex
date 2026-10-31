@@ -1,0 +1,446 @@
+{
+  "initial/DEPENDENCY-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/DEPENDENCY-MANIFEST.json",
+    "source_bytes": 1759,
+    "source_sha256": "4c8515eb25403116fb3d432e5cbc9b925be7c9af0d75fc39baa2f915dbac8a57",
+    "encoding": "gzip"
+  },
+  "initial/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/MANIFEST.json",
+    "source_bytes": 5322,
+    "source_sha256": "e38c5613939d00413d1133de64bc5dcb4c5d13a5cb34a7dd428725c3f2d889a4",
+    "encoding": "gzip"
+  },
+  "initial/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/SOURCE-MANIFEST.json",
+    "source_bytes": 1452,
+    "source_sha256": "282d228695fa210ce1630521fb763a1f66e701331467955725f6db89029024fb",
+    "encoding": "gzip"
+  },
+  "initial/SOURCE-PRE-LINT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/SOURCE-PRE-LINT.json",
+    "source_bytes": 1305,
+    "source_sha256": "7a2b68526f37159388eb2cdace3832e1589ae49fc75d294f1b5d0bf2574a523c",
+    "encoding": "gzip"
+  },
+  "initial/checks/fixture-oracles.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/checks/fixture-oracles.log",
+    "source_bytes": 266,
+    "source_sha256": "1137e938e73ac583d421c66f8445b7a2e45945eedaa400e2a8c091c43d2d4d92",
+    "encoding": "gzip"
+  },
+  "initial/checks/javascript-syntax.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/checks/javascript-syntax.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "initial/checks/new-source-whitespace.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/checks/new-source-whitespace.log",
+    "source_bytes": 94,
+    "source_sha256": "c95cde188c8b66ec93256bee22042f305af3369469022adc892406944dcd3882",
+    "encoding": "gzip"
+  },
+  "initial/checks/original13-tree-unchanged.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/checks/original13-tree-unchanged.log",
+    "source_bytes": 8,
+    "source_sha256": "3c696c094e2a1323fa00cf0974a861af0cd6824b1672248c1d12791a70a61e4e",
+    "encoding": "gzip"
+  },
+  "initial/future-measured-plan.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/future-measured-plan.json",
+    "source_bytes": 3209,
+    "source_sha256": "1b39c7d8a014f11aaf0882eec89378bfe6733f91d10abf79e320a9644988f950",
+    "encoding": "gzip"
+  },
+  "initial/owned-paths.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/owned-paths.json",
+    "source_bytes": 558,
+    "source_sha256": "225617c2c4217bf70ff7039da947da5848426182a701f6c3118dfcea0b99540c",
+    "encoding": "gzip"
+  },
+  "initial/receipt.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/receipt.json",
+    "source_bytes": 5049,
+    "source_sha256": "dd240c3b6833f29a874b043cf798b4c6dbea042300e234a89a7a7b20a200b980",
+    "encoding": "gzip"
+  },
+  "initial/run-scoped.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/run-scoped.py",
+    "source_bytes": 2017,
+    "source_sha256": "5cd193d1249e077d67ded8aac7c307ac071ad3830765935c1d293416c98e01d9",
+    "encoding": "gzip"
+  },
+  "initial/scoped-lint-final-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-lint-final-result.json",
+    "source_bytes": 461,
+    "source_sha256": "c3b9b43f9fa755704624fbf60fb3c0804aec0988b4f2229225317f5c06f8638a",
+    "encoding": "gzip"
+  },
+  "initial/scoped-lint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-lint-final.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "initial/scoped-lint-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-lint-result.json",
+    "source_bytes": 461,
+    "source_sha256": "c82fa1bae41118b0c8ea638bdf73ae50e3bee65540ca97daaa4c5882ce672a1b",
+    "encoding": "gzip"
+  },
+  "initial/scoped-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-lint.log",
+    "source_bytes": 785,
+    "source_sha256": "e03cd470ebd61ec496a6e745a100580050e45486ad1b73fb3217fdf1bced3ea0",
+    "encoding": "gzip"
+  },
+  "initial/scoped-test-final-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-test-final-result.json",
+    "source_bytes": 446,
+    "source_sha256": "e1314289cabfbcfc2e115ef0f1166cee80e099ba58fc396b479b55f82062de5f",
+    "encoding": "gzip"
+  },
+  "initial/scoped-test-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-test-final.log",
+    "source_bytes": 63,
+    "source_sha256": "f2d355107af57ba8a90b0fe0c0c7935c5c913e52116cbeef7717bd3a121762df",
+    "encoding": "gzip"
+  },
+  "initial/scoped-test-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-test-result.json",
+    "source_bytes": 446,
+    "source_sha256": "300011c62329be740fe320e845c908dcd7f1d682ce00f396e7b487de409f4a62",
+    "encoding": "gzip"
+  },
+  "initial/scoped-test.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/scoped-test.log",
+    "source_bytes": 63,
+    "source_sha256": "f7e63ee393123f5787543a4973616167504156859a7d9981b7de5216219cfa14",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7197,
+    "source_sha256": "506c2ba3a3b9aaddf6df7adb7ce8f687f8ea471089355a0122e16437f64f7004",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9465,
+    "source_sha256": "555545861c6f1ce21468f6665e7a38f83d1fea05fe8525366505b07ee19aa8f7",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3185,
+    "source_sha256": "672e5a47454a0dc6ef3a786221e33ba6d86f9481750d794b55ea71d9f2385aab",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 8421,
+    "source_sha256": "98fb50afd4aab58913112c740d9f23ebed318d045d67927ccc3a5568ec896e8e",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 4901,
+    "source_sha256": "03faabce46fc57ef429d14be6ee5c0ebf8dfd2266bc7b2c8699d67f5f03509e1",
+    "encoding": "gzip"
+  },
+  "initial/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7197,
+    "source_sha256": "506c2ba3a3b9aaddf6df7adb7ce8f687f8ea471089355a0122e16437f64f7004",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9507,
+    "source_sha256": "cdd528c3d47477861229cf34b21908b99e8386e1619bc6703b2d64e5d455ab39",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3185,
+    "source_sha256": "672e5a47454a0dc6ef3a786221e33ba6d86f9481750d794b55ea71d9f2385aab",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 8421,
+    "source_sha256": "98fb50afd4aab58913112c740d9f23ebed318d045d67927ccc3a5568ec896e8e",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 4901,
+    "source_sha256": "03faabce46fc57ef429d14be6ee5c0ebf8dfd2266bc7b2c8699d67f5f03509e1",
+    "encoding": "gzip"
+  },
+  "initial/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-source-20261031-xgoallpk/source-pre-lint/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "corrected/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/MANIFEST.json",
+    "source_bytes": 4109,
+    "source_sha256": "026e7c6d7f25e07bc7fe1202d103b876f49f20854fe012fdd2dc03dd42ffbd3d",
+    "encoding": "gzip"
+  },
+  "corrected/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/SOURCE-MANIFEST.json",
+    "source_bytes": 1453,
+    "source_sha256": "8d11dd316b3a3834fcd8406604fbad6b26dca6104489dc73372e6aa62da826ec",
+    "encoding": "gzip"
+  },
+  "corrected/UPSTREAM-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/UPSTREAM-MANIFEST.json",
+    "source_bytes": 463,
+    "source_sha256": "8427a46cc6a4b1bc5b97e40a6bdc0174c669269e494151082371646bb0546eaa",
+    "encoding": "gzip"
+  },
+  "corrected/checks/fixture-oracles.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/checks/fixture-oracles.log",
+    "source_bytes": 268,
+    "source_sha256": "05313980f2c0f6b4e270c5e3d70fed6cd0b4c789996013d9e08d51b24b5dc35a",
+    "encoding": "gzip"
+  },
+  "corrected/checks/javascript-syntax.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/checks/javascript-syntax.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "corrected/checks/original13-unchanged.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/checks/original13-unchanged.log",
+    "source_bytes": 8,
+    "source_sha256": "3c696c094e2a1323fa00cf0974a861af0cd6824b1672248c1d12791a70a61e4e",
+    "encoding": "gzip"
+  },
+  "corrected/checks/source-edit-match-history.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/checks/source-edit-match-history.log",
+    "source_bytes": 211,
+    "source_sha256": "b2b9b1862a5885465118a2c53d2af82778606a31d32317a905482c529e1af5bf",
+    "encoding": "gzip"
+  },
+  "corrected/checks/source-whitespace.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/checks/source-whitespace.log",
+    "source_bytes": 76,
+    "source_sha256": "15f1634f62a771eabea2a761810021f7f5f4e2566a652a914ab7e1789469a42f",
+    "encoding": "gzip"
+  },
+  "corrected/frozen-input-loader-cache-restoration.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/frozen-input-loader-cache-restoration.json",
+    "source_bytes": 788,
+    "source_sha256": "87cde095a6282c0b270a245376e60e7c81b7ee444f4588f39974f2b567645d5a",
+    "encoding": "gzip"
+  },
+  "corrected/initial-review-finding.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/initial-review-finding.json",
+    "source_bytes": 889,
+    "source_sha256": "ca574a250a1a458221b41969d40e39f9584a65d21040f98c4f4936c959071c8b",
+    "encoding": "gzip"
+  },
+  "corrected/owned-paths.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/owned-paths.json",
+    "source_bytes": 558,
+    "source_sha256": "225617c2c4217bf70ff7039da947da5848426182a701f6c3118dfcea0b99540c",
+    "encoding": "gzip"
+  },
+  "corrected/positive-project-byte-equality.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/positive-project-byte-equality.json",
+    "source_bytes": 9611,
+    "source_sha256": "78b1680be27994c001c6dc543a42fb77cd34563fc404600f79af97483644c870",
+    "encoding": "gzip"
+  },
+  "corrected/positive-projects-before.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/positive-projects-before.json",
+    "source_bytes": 4446,
+    "source_sha256": "ade2a7974301aa0f5131f7881e3405a8af444cdebf79ca833057c55eed04ab23",
+    "encoding": "gzip"
+  },
+  "corrected/receipt.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/receipt.json",
+    "source_bytes": 4100,
+    "source_sha256": "5644dab147e77c31e82abd35b0dce68274273097171f07398b0d98127885adfb",
+    "encoding": "gzip"
+  },
+  "corrected/run-scoped.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/run-scoped.py",
+    "source_bytes": 2017,
+    "source_sha256": "5cd193d1249e077d67ded8aac7c307ac071ad3830765935c1d293416c98e01d9",
+    "encoding": "gzip"
+  },
+  "corrected/scoped-lint-final-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/scoped-lint-final-result.json",
+    "source_bytes": 461,
+    "source_sha256": "c3c6802eadff3913a5f3605d002ba9f4ed64b4a66299406c3035d8b9612b2093",
+    "encoding": "gzip"
+  },
+  "corrected/scoped-lint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/scoped-lint-final.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "corrected/scoped-test-final-result.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/scoped-test-final-result.json",
+    "source_bytes": 446,
+    "source_sha256": "bb741f1c77949924c6bd8ae84a30d9527d4b78c6a2652cf5830b36b8726c967a",
+    "encoding": "gzip"
+  },
+  "corrected/scoped-test-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/scoped-test-final.log",
+    "source_bytes": 63,
+    "source_sha256": "eaa354bd416934eb1803ef22577e953c3c2c3adf7a6133d279e5ea847006b6fe",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7197,
+    "source_sha256": "506c2ba3a3b9aaddf6df7adb7ce8f687f8ea471089355a0122e16437f64f7004",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9465,
+    "source_sha256": "555545861c6f1ce21468f6665e7a38f83d1fea05fe8525366505b07ee19aa8f7",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3185,
+    "source_sha256": "672e5a47454a0dc6ef3a786221e33ba6d86f9481750d794b55ea71d9f2385aab",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 11043,
+    "source_sha256": "8b09b47e1968a268f715d183e913e6f74c4c428c2daed8d04cd3bdcb21ba769d",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 8678,
+    "source_sha256": "e165c00e7ab63fe16dcad2d430c3820d2e13a217be9c2cb7cca499993aaa120e",
+    "encoding": "gzip"
+  },
+  "corrected/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/source/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "corrected/upstream/pnpm10.34.7.txt.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/upstream/pnpm10.34.7.txt",
+    "source_bytes": 1539,
+    "source_sha256": "4f280c1dd26d382094046e26b183eb78d41320b2c82bdbfe4f5dbf2515fe7056",
+    "encoding": "gzip"
+  },
+  "corrected/upstream/yarn1.22.22.txt.gz": {
+    "source": "/private/tmp/bex-w8-node-qualification-corrected-20261031-s8_md87r/upstream/yarn1.22.22.txt",
+    "source_bytes": 25791,
+    "source_sha256": "8b0295449067378a01144b8512871a9dac714338c5f397384ba18eabe972c88d",
+    "encoding": "gzip"
+  },
+  "review/CORRECTED-BEHAVIOR.json.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/CORRECTED-BEHAVIOR.json",
+    "source_bytes": 2833,
+    "source_sha256": "601067333138a2da8298e0a7623ee9326123492c0458b8fdba6ecf5ddf2e451b",
+    "encoding": "gzip"
+  },
+  "review/CORRECTED-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/CORRECTED-REVIEW.json",
+    "source_bytes": 3418,
+    "source_sha256": "210f032632a07a372400d980ab6dcc5a367bb2f8a01aebc90e7bac3c77cc0f29",
+    "encoding": "gzip"
+  },
+  "review/INITIAL-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/INITIAL-REVIEW.json",
+    "source_bytes": 4523,
+    "source_sha256": "f2ce67e3a6c6bf2d5e9029d200bddcb99bd96770987fb30478a84cb92f5a608d",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-build-action.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-build-action.js",
+    "source_bytes": 412,
+    "source_sha256": "e4426bd26eb488ba26ebab428d1ebea346b4e69690a482bc8a35fb44cf12d80c",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-deps.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-deps.js",
+    "source_bytes": 31048,
+    "source_sha256": "e81f8fa9572ece4b31eb5a096c83b39fb7b80f977ebb447d0acb6ea98dc193c0",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-install-checks.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-install-checks.js",
+    "source_bytes": 4201,
+    "source_sha256": "18bd6b2240a81696874c765922d3d4b38915db867f6904abc6a470b298f57591",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-install.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-install.js",
+    "source_bytes": 37345,
+    "source_sha256": "f8e6524a92b928d761096e39038d4452ace19b65a8bdb80e9c686b3125d9005f",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-lifecycle.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-lifecycle.js",
+    "source_bytes": 364,
+    "source_sha256": "4f576b6e4c0d80a79673785433cc28f5dae8014c7f1de7cd4a0326cd95fbbd9f",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-validate-args.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-validate-args.js",
+    "source_bytes": 2797,
+    "source_sha256": "c14bce9d865ed95b03455d0b74fd2830a4a34bc788017372f359929886655ae2",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6-validate-tree.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6-validate-tree.js",
+    "source_bytes": 3178,
+    "source_sha256": "910f3b142ee3d655c304fc7be488a95e1d5e615e94c4bf6cfba72fd010351ed7",
+    "encoding": "gzip"
+  },
+  "review/upstream/npm6.14.17-validate-tree.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/npm6.14.17-validate-tree.js",
+    "source_bytes": 3178,
+    "source_sha256": "910f3b142ee3d655c304fc7be488a95e1d5e615e94c4bf6cfba72fd010351ed7",
+    "encoding": "gzip"
+  },
+  "review/upstream/yarn1.22.22-compatibility.js.gz": {
+    "source": "/private/tmp/bex-w8-node-independent-review-20261031-k09e1ph2/upstream/yarn1.22.22-compatibility.js",
+    "source_bytes": 5458,
+    "source_sha256": "9391f3dab982845b3edd6bfa813acdcfd80f70c885d3450c5a37c11f14c14408",
+    "encoding": "gzip"
+  }
+}
