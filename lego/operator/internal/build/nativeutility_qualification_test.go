@@ -74,6 +74,7 @@ func TestNativeCommonQualificationTracksActualGeneratorAndFixtureChanges(t *test
 		{"lego/operator/internal/build/testdata/native-utilities/original-cases.py", true},
 		{"lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py", true},
 		{"deploy/native-common/Dockerfile", true},
+		{".github/scripts/native-oci-mirror.py", true},
 		{"lego/operator/internal/controller/disk.go", false},
 		{"lego/backend/internal/apps/service.go", false},
 		{".pm/w8/m91/README.md", false},
