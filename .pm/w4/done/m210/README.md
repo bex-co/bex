@@ -1,6 +1,6 @@
 # w4 · m210 — Keep capped cron history chronological
 
-**Worker:** worker4 **Goal:** retain the newest ten cron executions in stable chronological order without reclassifying old completed Jobs as new **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** retain the newest ten cron executions in stable chronological order without reclassifying old completed Jobs as new **Status:** done (2026-10-31: capped run history keeps the newest ten in order on REST/GraphQL/UI; recovery displaces only the oldest)
 
 **Estimate:** 2h55 across seven tasks. [Finding and compatibility audit](finding.md) · [Complete live evidence](../evidence/m210-cron-history-boundary.json).
 
