@@ -173,7 +173,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](done/m78/README.md).
 
-- [ ] **m65** — [Retain PostgreSQL process logs during bursts](m65/README.md) — **READY（2026-10-31 用户决定；下一步：清理 bex-canary 后做 300/1005 burst 验收）** CNPG 1.30.1 + in-place 已由 w7/m156 上线验收；现等 D3 的自有 QA Postgres fixture，随后验证 300/1005 条 burst，不能用 WAL 验收替代。
+- [x] **m65** — [Retain PostgreSQL process logs during bursts](done/m65/README.md) — **DONE 2026-10-31** (production replay: 300/300 and 1005/1005 burst LOG records retrievable via REST and the bex CLI; bex-canary pre-cleaned per user decision)
 
 - [x] **m64** — [Keep Blueprint environment copies consistent across applies](done/m64/README.md) — **DONE 2026-10-29** (Blueprint copies consistent; dashboard Validate scoped, on production)
 

@@ -1,0 +1,20 @@
+{
+ "300": {
+  "pages": 3,
+  "rows": 300,
+  "distinct_numbers": 300,
+  "missing": [],
+  "missing_count": 0,
+  "dups_seen": 0,
+  "repeated_numbers": 0
+ },
+ "1005": {
+  "pages": 11,
+  "rows": 1005,
+  "distinct_numbers": 1005,
+  "missing": [],
+  "missing_count": 0,
+  "dups_seen": 0,
+  "repeated_numbers": 0
+ }
+}
