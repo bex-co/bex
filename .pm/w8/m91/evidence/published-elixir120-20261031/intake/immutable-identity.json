@@ -1,0 +1,20 @@
+{
+  "name": "elixir-1.20",
+  "verifier": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "base": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:c88f22780f50d375cb38381111207ff646e9414e96c03abaa583e7273e8af4c4",
+  "producer": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "architectures": {
+    "amd64": {
+      "child_digest": "sha256:a909e5e9f486ebbec4b3eb49ad446865f0afd172217b1b1bef64680921594f2d",
+      "config_digest": "sha256:c409d79602e33caf72b67fa00e57235c7b27249e41d81cc48eb1952e505fe598",
+      "producer_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2"
+    },
+    "arm64": {
+      "child_digest": "sha256:f686e253e8dd0dde994835761c528dc63b0d68056362ca906e7bb5c854e9a2c6",
+      "config_digest": "sha256:b0102d3c5136bf866793b01674738b71d937333d62f734b9dd375f635849c3fa",
+      "producer_source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2"
+    }
+  },
+  "qualification_not_yet_executed": true
+}

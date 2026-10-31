@@ -1,0 +1,94 @@
+{
+  "sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+  "non_documentation_files": {
+    "deploy/native-base/Dockerfile": {
+      "mode": "100644",
+      "git_blob_id": "ccf018f0f46a6f89aef03329fe52e233b56ef58e"
+    },
+    "deploy/native-base/bex-native-python-tools": {
+      "mode": "100644",
+      "git_blob_id": "ce192a671c38144f191b506baaffc75a42c8df5a"
+    },
+    "deploy/native-base/check-brotli.py": {
+      "mode": "100644",
+      "git_blob_id": "6ca42112ff14fed463004323b86eca8df3831faf"
+    },
+    "deploy/native-base/check-primary-python.py": {
+      "mode": "100644",
+      "git_blob_id": "5c8251ca52cee1deeed2b753b5c2f1e55ea9b660"
+    },
+    "deploy/native-base/check-tools.py": {
+      "mode": "100644",
+      "git_blob_id": "8140223ad18127367b27cf6c2ec4270e65227847"
+    },
+    "deploy/native-base/check.Dockerfile": {
+      "mode": "100644",
+      "git_blob_id": "029615b06e291d50e0056ce184a9cc88a9feba13"
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "mode": "100644",
+      "git_blob_id": "ac37ec3da01149f2887e89cb9e308ecdb51e6a40"
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "mode": "100644",
+      "git_blob_id": "c03257ad25fdb557120ef4884fc1277905a344d0"
+    },
+    "deploy/native-base/install.sh": {
+      "mode": "100644",
+      "git_blob_id": "0f0edd6cc251948e4ee78c4c07ceef55f7eb032b"
+    },
+    "deploy/native-base/matrix.py": {
+      "mode": "100644",
+      "git_blob_id": "078188733b1a31288965f640adff0c8e9a488ae0"
+    },
+    "deploy/native-base/matrix_test.py": {
+      "mode": "100644",
+      "git_blob_id": "4ab51f32649d75423a99c11fc0d17a339fda1169"
+    },
+    "deploy/native-base/node-brotli/check.js": {
+      "mode": "100644",
+      "git_blob_id": "72dcf51a95baa8b8edd079d60e8d5f7da07fda8e"
+    },
+    "deploy/native-base/node-brotli/patch.sh": {
+      "mode": "100644",
+      "git_blob_id": "d15f4eac5dcd5a1cc292afada3a04f607e71a1f0"
+    },
+    "deploy/native-base/package-lock.json": {
+      "mode": "100644",
+      "git_blob_id": "f17be474dabb1286ccca27571f5974363ea9d6f3"
+    },
+    "deploy/native-base/package.json": {
+      "mode": "100644",
+      "git_blob_id": "cc19d22c8c9535f3eefe35178542bfdc17654161"
+    },
+    "deploy/native-base/patch-system-brotli.sh": {
+      "mode": "100644",
+      "git_blob_id": "c632b4958b7b1f70c343036b5d3e0b1e9240d976"
+    },
+    "deploy/native-base/python-tools.json": {
+      "mode": "100644",
+      "git_blob_id": "1a7a71f7171d552f95e60bd5cec0dddb9a6131b2"
+    },
+    "deploy/native-base/testdata/archive.dump.b64": {
+      "mode": "100644",
+      "git_blob_id": "69368b1cb80580276b2b551c952520bab123f845"
+    },
+    "deploy/native-base/testdata/archive.sql": {
+      "mode": "100644",
+      "git_blob_id": "884844a99160e7b8e1b13dcb26867b831b7aee60"
+    },
+    "deploy/native-base/testdata/rows.txt": {
+      "mode": "100644",
+      "git_blob_id": "686466b2e8036b21efa480d40b01626b7b2bd04a"
+    },
+    "deploy/native-base/tsc": {
+      "mode": "100644",
+      "git_blob_id": "f78f6adacf6dccadd33fd5a3feec8f02011cf6c9"
+    },
+    "deploy/native-base/webpack": {
+      "mode": "100644",
+      "git_blob_id": "4e5bf658679d6b71c69cab6483a90e82bcc24558"
+    }
+  },
+  "scope": "Immutable reviewed factory context; no recovery is presumed for a successful fresh build."
+}

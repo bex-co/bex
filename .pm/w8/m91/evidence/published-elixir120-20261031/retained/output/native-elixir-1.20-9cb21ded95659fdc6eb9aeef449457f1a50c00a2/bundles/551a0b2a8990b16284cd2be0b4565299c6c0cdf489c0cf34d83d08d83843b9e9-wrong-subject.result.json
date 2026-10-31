@@ -1,0 +1,56 @@
+{
+  "bundle_digest": "sha256:551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9",
+  "exit_code": 1,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9.bundle.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--digest",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9-wrong-subject-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/cosign-tuf-cache/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9-wrong-subject-attempt1-s8bojnbl",
+  "attempts": [
+    {
+      "bundle_digest": "sha256:551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9",
+      "exit_code": 1,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9.bundle.json",
+        "--type",
+        "https://sigstore.dev/cosign/sign/v1",
+        "--digest",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9-wrong-subject-attempt1.stderr.log",
+      "tuf_cache": "/private/tmp/bex-w8-elixir120-v11-case-20261031-9cb21d/output/native-elixir-1.20-9cb21ded95659fdc6eb9aeef449457f1a50c00a2/bundles/cosign-tuf-cache/551a0b2a8990b16284cd2be0b4565299c6c0cdf489c0cf34d83d08d83843b9e9-wrong-subject-attempt1-s8bojnbl"
+    }
+  ]
+}

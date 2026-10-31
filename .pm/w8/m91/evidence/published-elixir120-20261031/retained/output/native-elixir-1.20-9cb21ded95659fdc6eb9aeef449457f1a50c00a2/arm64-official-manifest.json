@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:8cf0a80fc1cf9255798eee20b29450b7a4d36c21a2b8333942f978dc235debf1",
+    "size": 7577
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:dfb68c024d5cdf4872bb7f0be8d63874aa6d0b7a0050f1b06169573e34ea543a",
+      "size": 49776179
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:ea47142302fe74338cf6ed49f9110b011080a21c8ad97badf03a6bb996588537",
+      "size": 25037338
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:fe8bb6fc1504f78dd21539a6470860dc388c32916976117deb157b66d9d076c3",
+      "size": 67634185
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:0a48e1a423f7b0196a5eeb30fa9312d4ddac8315491bfd1dec87951691b59309",
+      "size": 227134615
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:4218870585580fc9623b3a95f52b0a3a100669ac64ec78ba7363db33934eb42b",
+      "size": 288822377
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:5ae0a38141019013d4a7117b2daa9eae1c5486b8dee299b651c0b1d099d3acec",
+      "size": 191486
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:bc41908be56d0e6a0004c9a75b173a2843f41abc75c9fd2945321f0c671ac107",
+      "size": 828037
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:4971b3dfacfe0312e0db60ebadedad3e6ab1af9dce36747fa957108f03f0322e",
+      "size": 8134032
+    }
+  ],
+  "annotations": {
+    "com.docker.official-images.bashbrew.arch": "arm64v8",
+    "org.opencontainers.image.base.digest": "sha256:273fb0dea25df9a310454fdcc1f3a49ceee1e6f2789eb73566f465f312c3c1fc",
+    "org.opencontainers.image.base.name": "erlang:29",
+    "org.opencontainers.image.created": "2026-10-28T05:10:15Z",
+    "org.opencontainers.image.revision": "9e0a6fc3bee08dddc9fc41d78f4593c34a7f5834",
+    "org.opencontainers.image.source": "https://github.com/erlef/docker-elixir.git#9e0a6fc3bee08dddc9fc41d78f4593c34a7f5834:1.20",
+    "org.opencontainers.image.url": "https://hub.docker.com/_/elixir",
+    "org.opencontainers.image.version": "1.20.4"
+  }
+}
