@@ -68,6 +68,16 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 		}
 		choice.runtimeCheck += "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
 	}
+	if runtime == nativeNodeRuntime && strings.HasPrefix(version, "14.") {
+		python, buildPython, err := commonNodeBuildPython()
+		if err != nil {
+			return NativeChoice{}, err
+		}
+		// npm6's bundled node-gyp needs old Python APIs. Keep its default
+		// interpreter private, after user choices and outside the app prefix.
+		choice.runtimeCheck += "COPY --link --from=" + buildPython + " /usr/local/ /opt/bex/native-node-python/\n" +
+			"RUN --network=none /usr/bin/python3 -I /usr/libexec/bex-native/prepare-node14-tools.py " + python.version + "\n"
+	}
 	if strings.Contains(choice.Image, "-bullseye@") {
 		choice.legacySource = (runtime == nativeNodeRuntime && strings.HasPrefix(version, "14.")) ||
 			(runtime == nativePythonRuntime && strings.HasPrefix(version, "3.7.")) ||
@@ -77,12 +87,8 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 }
 
 func commonNodeBuildStage(node, version, checksum string) (string, error) {
-	python, found := nativeToolchains[nativePythonRuntime].find("3.9")
-	if !found || !strings.HasPrefix(python.version, "3.9.") {
-		return "", fmt.Errorf("native Node rebuild requires its reviewed Python 3.9 input")
-	}
-	buildPython := cmp.Or(python.upstream, python.image)
-	if err := validateNativeBase(buildPython); err != nil {
+	_, buildPython, err := commonNodeBuildPython()
+	if err != nil {
 		return "", err
 	}
 	// Python is a compiler input only. Export the original Node installation
@@ -96,6 +102,21 @@ func commonNodeBuildStage(node, version, checksum string) (string, error) {
 		"COPY --link --from=bex-node-build /usr/local/bin/node /usr/local/bin/node\n" +
 		"COPY --link --from=bex-node-build /usr/share/bex-node-brotli /usr/share/bex-node-brotli\n" +
 		"COPY --link --from=" + nativeCommonBase + " /usr/lib/os-release /usr/lib/os-release\n", nil
+}
+
+func commonNodeBuildPython() (nativeLine, string, error) {
+	python, found := nativeToolchains[nativePythonRuntime].find("3.9")
+	if !found || !strings.HasPrefix(python.version, "3.9.") || !fullVersion.MatchString(python.version) {
+		return nativeLine{}, "", fmt.Errorf("native Node tools require their reviewed Python 3.9 input")
+	}
+	buildPython := cmp.Or(python.upstream, python.image)
+	if err := validateNativeBase(buildPython); err != nil {
+		return nativeLine{}, "", err
+	}
+	if !strings.Contains(buildPython, "-bookworm@") {
+		return nativeLine{}, "", fmt.Errorf("native Node tools require their reviewed Bookworm Python input")
+	}
+	return python, buildPython, nil
 }
 
 func commonNodeBackport(version string) bool {
