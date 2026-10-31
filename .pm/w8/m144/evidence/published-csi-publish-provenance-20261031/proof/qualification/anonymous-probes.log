@@ -1,0 +1,7 @@
+{"architecture": "amd64", "anonymous_pull_and_execution": "PASS", "reference": "ghcr.io/bex-co/bex-operator@sha256:d96bac2f27b80dbd2df109c3aedb6b9d79d861b37a46c2c9acd56a58c560045d", "free_bytes": 7258710016}
+{"architecture": "arm64", "anonymous_pull_and_execution": "PASS", "reference": "ghcr.io/bex-co/bex-operator@sha256:08a53916d01c3f5929e57269cc124c6b9689e94ca53b4757914feebd30218ec4", "free_bytes": 7374225408}
+{
+  "both_architectures_pass": true,
+  "minimum_observed_free_bytes": 7151280128,
+  "compressed_unique_layer_bytes": 82524898
+}

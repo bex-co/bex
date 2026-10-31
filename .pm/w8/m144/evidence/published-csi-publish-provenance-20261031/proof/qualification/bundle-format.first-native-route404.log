@@ -1,0 +1,39 @@
+{
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "candidate_ref": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "anonymous_metadata_only": true,
+  "all_raw_metadata_sha256_verified": true,
+  "checks": {
+    "amd64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    },
+    "arm64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    }
+  }
+}
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/record-bundle-format.py", line 11, in <module>
+    raw=registry.request('https://ghcr.io/v2/bex-co/bex-operator/referrers/'+meta['digest'],state['ACCEPT']);(P/'candidate-referrer-index.json').write_bytes(raw);descriptors=json.loads(raw)['manifests'];assert len(descriptors)<=16,'bounded metadata inventory exceeded'
+  File "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/registry-review.py", line 27, in request
+    with self.opener.open(Request(url, headers=headers), timeout=45) as response:
+         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 404: Not Found

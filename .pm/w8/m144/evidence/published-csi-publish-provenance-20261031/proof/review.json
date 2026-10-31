@@ -1,0 +1,126 @@
+{
+  "atUTC": "2026-10-31T10:07:43.688207+00:00",
+  "state": "INDEPENDENT_QUALIFICATION_PASS_READY_FOR_ROOT_REVIEW",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "boundedPatchSha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+  "factory": {
+    "run": 41184800857,
+    "job": 124489445679,
+    "event": "push",
+    "conclusion": "success",
+    "fullUpstreamSuite": "PASS actual33.5s Docker builder gate, all./... packages",
+    "actualKernel": "PASS27.48s 1GiBENOSPC/5GiBgrow/data/remount/file restore/wholedevice rejection"
+  },
+  "strictCrypto": {
+    "identity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "workflowSource": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+    "signatureVerified": true,
+    "signedSpdxVerified": true,
+    "verifierVersion": "v3.1.4",
+    "verifierSha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+    "producerInstallerVersionObserved": "v3.0.6",
+    "producerSyftObserved": "v1.51.1",
+    "originalCsiPolicyPreserved": true,
+    "firstAttemptPrimaryVerification": true,
+    "nativeOnlyFormatRequirementAdded": false
+  },
+  "actualBundles": {
+    "count": 2,
+    "observedTlogKindVersions": [
+      [
+        {
+          "kind": "dsse",
+          "version": "0.0.1"
+        }
+      ],
+      [
+        {
+          "kind": "dsse",
+          "version": "0.0.1"
+        }
+      ]
+    ],
+    "observedRFC3161Counts": [
+      1,
+      1
+    ],
+    "nativeReferrers404": "retained adjunct metadata attempt; canonicalOCIreferrer-tag discovery succeeded, no primary PKI retry or waiver"
+  },
+  "sbomScope": "Only actual inventory architecture qualifiers above; no inferred arm64 SBOM. Runtime children separately require original metadata/baseclosure and bounded anonymous probes.",
+  "sbomSummaries": [
+    {
+      "spdxVersion": "SPDX-2.3",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-operator",
+          "digest": {
+            "sha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+          }
+        }
+      ],
+      "packageCount": 84,
+      "packageArchitectureQualifiers": [
+        "amd64",
+        "x86_64"
+      ],
+      "filesystemPackages": [
+        {
+          "name": "blkid",
+          "version": "2.42.1-r0"
+        },
+        {
+          "name": "cryptsetup",
+          "version": "2.8.6-r0"
+        },
+        {
+          "name": "cryptsetup-libs",
+          "version": "2.8.6-r0"
+        },
+        {
+          "name": "device-mapper-libs",
+          "version": "2.03.35-r3"
+        },
+        {
+          "name": "e2fsprogs",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "e2fsprogs-extra",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "e2fsprogs-libs",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "libblkid",
+          "version": "2.42.1-r0"
+        }
+      ]
+    }
+  ],
+  "bothChildMetadataAndOfficialBaseClosure": "PASS exact source/revision/entrypoint/config architecture and upstream DiffID prefix; actual anonymous pulled config IDs/RepoDigests/DiffIDs also matched",
+  "anonymousRuntimeProbes": {
+    "amd64": "all4exit0",
+    "arm64": "all4exit0",
+    "commands": [
+      "/bin/hcloud-csi-driver --help",
+      "cryptsetup --version",
+      "blkid --help",
+      "dumpe2fs -V"
+    ],
+    "compressedUniqueLayerBytes": 82524898,
+    "minimumObservedFreeBytes": 7151280128,
+    "reserveBytes": 2147483648,
+    "auth": "explicit emptyEngineAuthConfig and new empty privateDOCKER_CONFIG; no user registry credentials",
+    "containerScope": "networknone/rootfsreadonly/capdropALL/no-new-privileges/no hostmounts/64MiB/32pids",
+    "cleanup": "all8 exact owned containers and both newly pulled child image references removed and absence checked; preexisting/foreign resources preserved"
+  },
+  "productionPinWrites": false,
+  "productionReadyClaim": false,
+  "paidFixtureOrAuthActions": false,
+  "rootRolloutApproval": false,
+  "remaining": "Root must review exactartifact before any production pin/rollout; actual Ready and originalpaid/hosted acceptance remain separate."
+}

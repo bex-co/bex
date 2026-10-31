@@ -1,0 +1,16 @@
+{
+  "atUTC": "2026-10-31T10:07:43.688825+00:00",
+  "bundlePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/proof-bundle",
+  "reviewSha256": "0c64865cf09d7c192a65a07ceb407b1d44731230d102f799b20f5bea7796d9dc",
+  "manifestSha256": "069e3fae76aa5226a146d07eaeaeaf46e398cc0af47507f56a4733d19de720af",
+  "artifactFiles": 82,
+  "storedArtifactBytes": 1045038,
+  "allSourceAndStoredHashesRecorded": true,
+  "losslessGzipVerified": true,
+  "binariesImagesLayerPayloadsCredentialsTufCacheIncluded": false,
+  "currentFreeBytes": 7171584000,
+  "state": "INDEPENDENT_QUALIFICATION_PASS_READY_FOR_ROOT_REVIEW",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "rolloutApproval": false
+}

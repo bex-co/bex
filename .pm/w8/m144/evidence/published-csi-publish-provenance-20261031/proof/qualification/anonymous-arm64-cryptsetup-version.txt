@@ -1,0 +1,1 @@
+cryptsetup 2.8.6 flags: UDEV BLKID KEYRING KERNEL_CAPI HW_OPAL 

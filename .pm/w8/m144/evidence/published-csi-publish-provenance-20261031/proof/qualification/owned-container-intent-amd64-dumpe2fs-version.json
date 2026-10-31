@@ -1,0 +1,32 @@
+{
+  "name": "bex-m144-dd64-4b0c838a5159b614-amd64-dumpe2fs-version",
+  "label": "bex-m144-dd64-4b0c838a5159b614",
+  "image": "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+  "command": [
+    "/usr/local/bin/docker",
+    "create",
+    "--name",
+    "bex-m144-dd64-4b0c838a5159b614-amd64-dumpe2fs-version",
+    "--label",
+    "bex.qa.owner=bex-m144-dd64-4b0c838a5159b614",
+    "--pull=never",
+    "--network",
+    "none",
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "32",
+    "--memory",
+    "64m",
+    "--platform",
+    "linux/amd64",
+    "--entrypoint",
+    "dumpe2fs",
+    "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+    "-V"
+  ],
+  "preexisting": false
+}

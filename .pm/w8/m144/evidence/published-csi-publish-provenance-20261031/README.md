@@ -1,0 +1,5 @@
+# Fixed CSI supplier — 2026-10-31
+
+Root approved the exact image `ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781` from source `dd64e4ff7888828faa1b547f3a637b76d7e7da91` after checking all82 frozen artifacts, source bytes and lossless gzip custody. The actual factory full upstream suite and encrypted kernel regression pass, including1GiB full and5GiB growth/data/remount/restore. Original strict CSI identity/issuer/source/signature and signed SPDX checks pass. Both architecture manifests/configs preserve the official base and each passes four actual anonymous tool executions; owned resources are removed.
+
+The signed SPDX is the actual84-package AMD64 inventory; ARM64 runtime verification is recorded separately. Original CSI trust policy remains intact. The [root approval](ROOT-REVIEW.json) authorizes the reviewed pin and scoped rollout. Production Ready, preserved legacy volume inventory and the original paid lifecycle acceptance remain open. No paid fixture has started.
