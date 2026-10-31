@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-31T20:11:54.411910+00:00",
+  "verdict": "PASS",
+  "item": "w8/218",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "both_original_no_region_clone_commands": true,
+  "both_clones_HTTP": 201,
+  "all_source_and_clone_regions": "frankfurt",
+  "both_invalid_region_named_nonzero_and_zero_POST": true,
+  "total_actual_creations": 3,
+  "max_simultaneous_owned_services": 2,
+  "plan": "free",
+  "owned_resources": [
+    {
+      "role": "source",
+      "id": "srv-dbj4m60202hc739ftfk0",
+      "name": "w8-218-90fb64bc6fa0-source",
+      "HTTP": 201,
+      "state": "deleted",
+      "absence": {
+        "HTTP": 404,
+        "at": "2026-10-31T20:10:36.352611+00:00",
+        "id": "srv-dbj4m60202hc739ftfk0"
+      }
+    },
+    {
+      "role": "clone-bex",
+      "id": "srv-dbj4ma8202hc739ftfm0",
+      "name": "w8-218-90fb64bc6fa0-clone-bex",
+      "HTTP": 201,
+      "state": "deleted",
+      "absence": {
+        "HTTP": 404,
+        "at": "2026-10-31T20:10:19.951819+00:00",
+        "id": "srv-dbj4ma8202hc739ftfm0"
+      }
+    },
+    {
+      "role": "clone-render",
+      "id": "srv-dbj4mee4n0ds73elhieg",
+      "name": "w8-218-90fb64bc6fa0-clone-render",
+      "HTTP": 201,
+      "state": "deleted",
+      "absence": {
+        "HTTP": 404,
+        "at": "2026-10-31T20:10:35.423642+00:00",
+        "id": "srv-dbj4mee4n0ds73elhieg"
+      }
+    }
+  ],
+  "baseline_preserved": true,
+  "quota_exactly_unchanged": true,
+  "concurrent_additions": [],
+  "baseline_ids": [
+    "srv-da40m1qii7bs73drbqlg"
+  ],
+  "own_native_and_Kratos_logout_exit": 0,
+  "own_credential_files_absent": true,
+  "ledger_sha256": "05a1c623cfcfeb8f12531feb50abf437e43a4f2257b603b7d9524d3c991a4736",
+  "auth_cleanup_receipt_sha256": "4ac5db05fd6cc3032e850453ee9feecabb4c0c6d26f056780c8d38974930c147",
+  "scope": "Region clone creation/readback only; no service Live or native-build claim",
+  "transport": "Exact published clients through fixed owned loopback scope relay; real upstream entity bytes/status preserved",
+  "setup_correction": "Fresh case changes source --runtime docker to image only; first HTTP400 attempt retained separately"
+}

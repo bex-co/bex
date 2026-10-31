@@ -1,0 +1,113 @@
+{
+  "at_utc": "2026-10-31T19:45:25.260198+00:00",
+  "verdict": "CLEAN_NO_BLOCKER",
+  "scope": "independent read-only review of recorded original-policy signed Ready API adoption evidence and original218 execution inputs; no re-verification or acceptance execution",
+  "ready_review": {
+    "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/READINESS-REVIEW.json",
+    "sha256": "c2035fd20e1804030ae6e3fb8563a8d1f891af5da568e8e42a4db507b3438258",
+    "bytes": 3258
+  },
+  "image": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc",
+  "source": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "required_ancestor": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "recorded_signature": {
+    "receipt": {
+      "path": "/private/tmp/bex-w8-218-candidate-signature-20261031-bj3xgbok/receipt.json",
+      "sha256": "b58941f8f2150a9391e95c22cc6e6d697c31b9468e595f1ec12f6a73f9a606f6",
+      "bytes": 1094
+    },
+    "exact_workflow": "https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main",
+    "exact_issuer": "https://token.actions.githubusercontent.com",
+    "exact_workflow_sha": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+    "exit": 0,
+    "matching_digest_payloads": 2,
+    "tool_hash_matches_recorded_command": true,
+    "all9_public_signature_TUF_output_files_match_manifest": true,
+    "credential_config_contents_not_read": true,
+    "policy": "original platform Cosign strict identity/issuer/source checks; no native-only extra format gate, bypass or new signature/network command"
+  },
+  "actual_inventory": {
+    "run": 41231665431,
+    "job": 124628275816,
+    "workflow_source": "9634bba9e186e4a122d103d477028edb3dec9132",
+    "job_status": "completed",
+    "job_conclusion": "success",
+    "inventory_step": "success; rollout and allfixture steps skipped",
+    "raw_log": {
+      "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/completed-cluster-job.log",
+      "sha256": "9a674f7bc6d235ed025698a0c28089dc8bb66a32c7efdf8869ddb358b1eefcd5",
+      "bytes": 35742
+    },
+    "inventory": {
+      "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/inventory.json",
+      "sha256": "3187e07e2f02ac4c259603b3ed3f188f49d4a97fef0018fe27e813f1614db928",
+      "bytes": 7334
+    },
+    "raw_inventory_bytes_reconstruct_exactly_after_CI_timestamp_strip": true,
+    "API_generation": 2817,
+    "observedGeneration": 2817,
+    "replicas_updated_ready_available": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "API_pod_count": 2,
+    "all_API_rows_non_deleting_Running_containerReady": true,
+    "all_API_spec_and_actual_imageIDs_exactly_signed_digest": true,
+    "health_or_git_pin_inference_used": false
+  },
+  "source_binding": {
+    "local_ancestry_exit": 0,
+    "all3_critical_production_files_exact_at_required_ancestor_and_signed_source": {
+      "lego/backend/internal/resourcemeta/metadata.go": {
+        "bytes": 8577,
+        "sha256": "57144630820ce59c38f90a89728261c50f6dd2cd8d9fffec4d7df8d0e4d9d9fd",
+        "same_at_ancestor_and_signed_source": true
+      },
+      "lego/backend/internal/apps/render.go": {
+        "bytes": 40210,
+        "sha256": "e0617ca19bb603cc32d9d01c4f5830867e96ca1f5a0828a52b1a5ea71290af1c",
+        "same_at_ancestor_and_signed_source": true
+      },
+      "lego/backend/internal/apps/blueprint_generate.go": {
+        "bytes": 31036,
+        "sha256": "c3e5ebe3f5e1f4ef888b57e6851987ec08ffde6b5a40b13ba81201044dce3c78",
+        "same_at_ancestor_and_signed_source": true
+      }
+    }
+  },
+  "original_inputs": {
+    "root": "/private/tmp/bex-w8-218-clone-acceptance-20261031",
+    "all15_original_preparation_artifacts_unchanged": true,
+    "both_client_binary_SHA_match": true,
+    "original_driver": {
+      "sha256": "6db47d882804cdb9e344eb9c06cfef68a7843c361fc1c5e985da24f786614e7a",
+      "bytes": 7123
+    },
+    "auth_transport_ownership": "original isolated QA/devicegrant and exactID cleanup scopes remain intact; no current credential contents read"
+  },
+  "baseline_helper": {
+    "root": "/private/tmp/bex-w8-218-baseline-source-20261031",
+    "source": {
+      "sha256": "ab5a68e5f6e26100cdb4c8236f7b3e54dd574bf8fee94358e2d934f267411000",
+      "bytes": 4508
+    },
+    "all5_manifest_artifacts_verified": true,
+    "author_recorded_units": 4,
+    "independent_review": {
+      "sha256": "1956d056098010f68d0a25adb48b6d3334a437271a078267714b95bd78688fa6",
+      "bytes": 1263
+    },
+    "review": "fixed workspace GET-only bounded cursor pages andlimits; reject foreign/duplicate identities/unstable cursors; capturebeforeanyintent; compareonlyafter exact-owned cleanup; records concurrent additions without mutation; umask077 before any execution writes; no import action"
+  },
+  "execution_input_details_not_new_gates": [
+    "Root constructs existing api-ready.json schema binding requiredAncestor/source/image/ready/signedReady plus readinessProof.path to the exact READINESS-REVIEW.json and its c2035fd20e1804030ae6e3fb8563a8d1f891af5da568e8e42a4db507b3438258 hash. The review receipt itself does not have the driver readinessProof field.",
+    "Copy unchanged Python driver/auth/primitives into the new private root (do not symlink their __file__ back to the frozen prep); only immutable client binaries may point to the existing hashed inputs.",
+    "Run supplemental baseline capture after own auth and before first source POST; then preserve original no-region commands, invalid-region/zero-forwarded-POST controls, clone-before-source exactID404 cleanup, baseline comparison and own native+Kratos logout."
+  ],
+  "original_acceptance_or_auth_resources_performed_by_review": false,
+  "remaining_original_DoD": "actual two-client no-region clones, invalid-region controls, exact owned cleanup404/baseline preservation and own auth logout remain unexecuted",
+  "paid_m144_window_renewed": false,
+  "PM_or_repository_mutations": false
+}

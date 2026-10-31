@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-31T19:54:18.719145+00:00",
+  "root": "/private/tmp/bex-w8-218-live-17tb_s35",
+  "original_preparation": "/private/tmp/bex-w8-218-clone-acceptance-20261031",
+  "all_original_files_byte_equal": true,
+  "approved_binary_symlinks_physically_copied": true,
+  "copied_bytes": 75108824,
+  "max_owned_free_services": 2,
+  "max_total_creations": 3,
+  "no_paid_resources": true,
+  "baseline_before_first_POST": true,
+  "original_clone_commands_unchanged": true,
+  "readiness_adapter": {
+    "requiredAncestor": "9fe393b77814dc5199372419d10dad974e7b27e1",
+    "source": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+    "image": "ghcr.io/bex-co/bex-operator@sha256:b0ecf83158e7b97bb6db0496a1f72dacda7e4a8840ac1e2c4a9693588b6981dc",
+    "ready": true,
+    "signedReady": true,
+    "readinessProof": {
+      "path": "/private/tmp/bex-w8-218-inventory-dispatch-20261031-5a78giud/READINESS-REVIEW.json",
+      "sha256": "c2035fd20e1804030ae6e3fb8563a8d1f891af5da568e8e42a4db507b3438258"
+    }
+  },
+  "phase": "ended_setup_HTTP400_no_resources_baseline_preserved_own_auth_revoked",
+  "acceptance_passed": false
+}

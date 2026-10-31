@@ -1,0 +1,78 @@
+{
+  "AST-PRESERVATION.json": {
+    "bytes": 1436,
+    "sha256": "0e008fac5b8a1e8952a7738bbb72d07b4d949106bae88cb4379ed6ef5114fbee"
+  },
+  "CONTRACT.json": {
+    "bytes": 1515,
+    "sha256": "f8086f458bc783c3cf4ca1cd1be9d638a4b4aaf7f770545c98806db7dc726e5e"
+  },
+  "FROZEN-REVIEW.json": {
+    "bytes": 1053,
+    "sha256": "5a5d39152238e65fe2ba7833447423f888529c33b38e7891afc344e69fd71fd2"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 1015,
+    "sha256": "8c8d97c4467610159bc18284205dd12922be4eb3e5005bd574ad08fea18db72e"
+  },
+  "auth.py": {
+    "bytes": 5766,
+    "sha256": "d5d067324a13a5c7b82e61348ecfcd71f613af33a394f07a53aae0d1674c33ef"
+  },
+  "baseline.py": {
+    "bytes": 4508,
+    "sha256": "ab5a68e5f6e26100cdb4c8236f7b3e54dd574bf8fee94358e2d934f267411000"
+  },
+  "cleanup-auth.py": {
+    "bytes": 2081,
+    "sha256": "b8eca7f4a55995a5b0bb32b50bebcdc3453e967614ffe76f770aa52899fbfc0d"
+  },
+  "client_primitives.py": {
+    "bytes": 5028,
+    "sha256": "1cba42980eda48019d345b5349324e3cf3d70ddcd508a4d2fae6d85498e539f9"
+  },
+  "clone_scope.py": {
+    "bytes": 8794,
+    "sha256": "5f358ec3fc32029f23e61f7465c4d977985ddd7a0dbe529a03681e7663c117fc"
+  },
+  "driver-only.diff": {
+    "bytes": 778,
+    "sha256": "707b2dd196d5a61b4d08ed0543f30ce056dc14e3b6decc3d31574b5992365bda"
+  },
+  "driver.py": {
+    "bytes": 7122,
+    "sha256": "450ba472ecc2dc58573f13cf65c4c1cc6367af8f80513a404ec1b3ae17c389e7"
+  },
+  "original-source-manifest.json": {
+    "bytes": 1484,
+    "sha256": "621e685473e80ae675bc9f85d6e0608503c4896ce1390707015b2102086dc3e1"
+  },
+  "plan.json": {
+    "bytes": 6076,
+    "sha256": "d334ddd5e15298680f152ff6a4047991784be01f0937c7c595599f026536b579"
+  },
+  "reuse-manifest.json": {
+    "bytes": 761,
+    "sha256": "42eddaa9532eb893cc5a9a0cd3338dca727523b2eefab89f9dbdba69518f2883"
+  },
+  "synthetic-client-cases.json": {
+    "bytes": 18896,
+    "sha256": "8bb2140cf5ffc1a7c7a13436a684a560715fcf9988a5fe91a6940f6d0959bb37"
+  },
+  "synthetic-test-receipt.json": {
+    "bytes": 442,
+    "sha256": "7cfb79833ebbfa04ff36a835f4cf712ad8c2505a2cd3ab1f7c313961184bd1bb"
+  },
+  "synthetic-tests.log": {
+    "bytes": 2274,
+    "sha256": "e2c762392543353f7d2cfd5613f5f8cae7a831faf61d1de0f8d3d829e941115a"
+  },
+  "test_clone.py": {
+    "bytes": 14341,
+    "sha256": "a42c4247c7dbb6d4e6d290e750de01ce776df84b46990f42a7813c1d3e1138a6"
+  },
+  "tests.diff": {
+    "bytes": 6714,
+    "sha256": "b9ef43d26b9c76a9d5a932553422d753dd044f500321202654da1e636398e38b"
+  }
+}

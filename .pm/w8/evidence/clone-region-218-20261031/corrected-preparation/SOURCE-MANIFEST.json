@@ -1,0 +1,34 @@
+{
+  "auth.py": {
+    "bytes": 5766,
+    "sha256": "d5d067324a13a5c7b82e61348ecfcd71f613af33a394f07a53aae0d1674c33ef"
+  },
+  "baseline.py": {
+    "bytes": 4508,
+    "sha256": "ab5a68e5f6e26100cdb4c8236f7b3e54dd574bf8fee94358e2d934f267411000"
+  },
+  "cleanup-auth.py": {
+    "bytes": 2081,
+    "sha256": "b8eca7f4a55995a5b0bb32b50bebcdc3453e967614ffe76f770aa52899fbfc0d"
+  },
+  "client_primitives.py": {
+    "bytes": 5028,
+    "sha256": "1cba42980eda48019d345b5349324e3cf3d70ddcd508a4d2fae6d85498e539f9"
+  },
+  "clone_scope.py": {
+    "bytes": 8794,
+    "sha256": "5f358ec3fc32029f23e61f7465c4d977985ddd7a0dbe529a03681e7663c117fc"
+  },
+  "driver.py": {
+    "bytes": 7122,
+    "sha256": "450ba472ecc2dc58573f13cf65c4c1cc6367af8f80513a404ec1b3ae17c389e7"
+  },
+  "reuse-manifest.json": {
+    "bytes": 761,
+    "sha256": "42eddaa9532eb893cc5a9a0cd3338dca727523b2eefab89f9dbdba69518f2883"
+  },
+  "test_clone.py": {
+    "bytes": 14341,
+    "sha256": "a42c4247c7dbb6d4e6d290e750de01ce776df84b46990f42a7813c1d3e1138a6"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-10-31T20:04:31.839322+00:00",
+  "status": "FROZEN_SOURCE_SETUP_CORRECTION_ONLY",
+  "source_manifest": {
+    "sha256": "8c8d97c4467610159bc18284205dd12922be4eb3e5005bd574ad08fea18db72e",
+    "bytes": 1015
+  },
+  "driver": {
+    "sha256": "450ba472ecc2dc58573f13cf65c4c1cc6367af8f80513a404ec1b3ae17c389e7",
+    "bytes": 7122
+  },
+  "tests": {
+    "count": 17,
+    "exit": 0,
+    "actual_client_binaries": 2,
+    "scope": "LOCAL_SYNTHETIC_ONLY_NO_HOSTED_PROOF",
+    "receipt": "synthetic-test-receipt.json"
+  },
+  "correction": "source setup runtimeimage for existing fixed publicprebuiltimage. Originalclone/invalid/cleanup commands/programs andsecurity/ownership/Ready/baseline/2Freepeak3total caps unchanged.",
+  "actual_first_400_or_credentials_modified_or_retried": false,
+  "original15_inputs_unchanged": true,
+  "api_ready_or_auth_or_ledger_file_created_in_preparation": false,
+  "external_API_or_auth_or_resource_actions": false,
+  "paid_m144_or_original13_28_changes": false,
+  "root_approval_or_live_acceptance_pass": false
+}

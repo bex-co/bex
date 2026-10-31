@@ -1,0 +1,83 @@
+{
+  "at_utc": "2026-10-31T20:15:46.442729+00:00",
+  "verdict": "CLEAN_ORIGINAL_218_ACCEPTANCE_PASSES",
+  "read_only": true,
+  "actual_result": {
+    "path": "/private/tmp/bex-w8-218-live-i4ir8aez/ACCEPTANCE-RESULT.json",
+    "bytes": 2125,
+    "sha256": "53edcd85258d8d53e8f945a6cfa92fc08f0d2f6dc9f7dd8c5e4bcbe4552f4421"
+  },
+  "ledger": {
+    "path": "/private/tmp/bex-w8-218-live-i4ir8aez/ledger.json",
+    "bytes": 44407,
+    "sha256": "05a1c623cfcfeb8f12531feb50abf437e43a4f2257b603b7d9524d3c991a4736"
+  },
+  "actual_resources": [
+    {
+      "role": "source",
+      "id": "srv-dbj4m60202hc739ftfk0",
+      "create_HTTP": 201,
+      "region": "frankfurt",
+      "Free": true,
+      "runtime": "image",
+      "response_encoding": "gzip",
+      "raw_response_sha256": "bf77f48ca173a862e21320917696ca0c53e333005b549cdcdb8addbcb395ba93",
+      "delete_HTTP": 204,
+      "exact_ID_404_at": "2026-10-31T20:10:36.352611+00:00"
+    },
+    {
+      "role": "clone-bex",
+      "id": "srv-dbj4ma8202hc739ftfm0",
+      "create_HTTP": 201,
+      "region": "frankfurt",
+      "Free": true,
+      "runtime": "image",
+      "response_encoding": "gzip",
+      "raw_response_sha256": "68b7e34992d9f920ffee0648825f860d8704ce017ba7032105c4d2d9a4377d52",
+      "delete_HTTP": 204,
+      "exact_ID_404_at": "2026-10-31T20:10:19.951819+00:00"
+    },
+    {
+      "role": "clone-render",
+      "id": "srv-dbj4mee4n0ds73elhieg",
+      "create_HTTP": 201,
+      "region": "frankfurt",
+      "Free": true,
+      "runtime": "image",
+      "response_encoding": "gzip",
+      "raw_response_sha256": "7769f92d5329fd00a75d203e2f64d766ea3bf982d9c13c6cf32b23f8c8d9a9fe",
+      "delete_HTTP": 204,
+      "exact_ID_404_at": "2026-10-31T20:10:35.423642+00:00"
+    }
+  ],
+  "both_original_no_region_commands_exact_and_exit0": true,
+  "both_invalid_named_exit1_zero_forwarded_POST": true,
+  "one_post_per_role_no_unknown_or_retry": true,
+  "total_actual_creations": 3,
+  "max_simultaneous_owned_Free": 2,
+  "baseline_count_before_after": 1,
+  "baseline_ids_and_quota_exactly_preserved": true,
+  "concurrent_additions": [],
+  "own_native_and_Kratos_logout_exit": 0,
+  "own_credential_files_removed_recorded_in_actual_receipt": true,
+  "credential_or_session_files_read": false,
+  "capsule": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/evidence/clone-region-218-20261031",
+    "custody": {
+      "bytes": 17430,
+      "sha256": "e4be7b018f5c4fc85ba04f1fc6365e8462ed5d03c0ad5a7abc83eaec0b915598"
+    },
+    "copied_payloads_verified": 63,
+    "all_stored_bytes_lossless_decoded_and_match_exact_source_bytes_SHA": true,
+    "gzip_roundtrips_verified": 26,
+    "excluded_live_auth_session_cookie_state_config_paths": true,
+    "sole_registry_config": "known empty public anonymous auths map; no credentials",
+    "finding": null
+  },
+  "public_capsule_allowlist": "The63 explicit CUSTODY entries are verified. Final README/review/manifest may be added; no new wildcard exports. Own service metadata, exact commands/HTTP receipts, baseline/limits, safe logout receipt, reviewed source, Ready/signaturepublicproof and preserved initial400 only. Exclude auth.stdout, all credential/config/session/cookie/state/device-form/header/body files and private login logs; registry config exception above is empty and unnecessary but harmless.",
+  "scope_limits": [
+    "Original source setup400 retained separately; not a region failure or retried intent",
+    "Region clone creation/readback/invalid-control/API cleanup only; no serviceLive/nativebuild/physicalKubernetes or paidm144 claim",
+    "No API/auth/resource/network/signature repetition/git/repository mutation by reviewer"
+  ]
+}

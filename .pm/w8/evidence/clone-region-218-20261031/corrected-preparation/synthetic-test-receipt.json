@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "-B",
+    "/private/tmp/bex-w8-218-image-source-preparation-20261031-862bt0wk/test_clone.py"
+  ],
+  "exit": 0,
+  "wall_seconds": 7.924773124977946,
+  "scope": "LOCAL SYNTHETIC ONLY: actual hashed Bex/Render binaries against loopback FakeAPI; FixedAPI.request raises before production transport and proxyblocks external calls; no real auth/API/resources"
+}

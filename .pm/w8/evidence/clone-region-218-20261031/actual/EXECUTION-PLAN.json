@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-31T20:06:53.152474+00:00",
+  "root": "/private/tmp/bex-w8-218-live-i4ir8aez",
+  "original": "/private/tmp/bex-w8-218-clone-acceptance-20261031",
+  "corrected_preparation": "/private/tmp/bex-w8-218-image-source-preparation-20261031-862bt0wk",
+  "first_attempt_preserved": "/private/tmp/bex-w8-218-live-17tb_s35",
+  "sole_setup_change": "source --runtime docker -> image; prebuilt image, no repository",
+  "clone_invalid_cleanup_programs_unchanged": true,
+  "max_owned_free_services": 2,
+  "max_actual_creations": 3,
+  "baseline_before_first_POST": true,
+  "no_paid_resources": true,
+  "phase": "complete_both_clients_pass_exact404_baseline_preserved_own_auth_revoked",
+  "acceptance_result_sha256": "53edcd85258d8d53e8f945a6cfa92fc08f0d2f6dc9f7dd8c5e4bcbe4552f4421"
+}
