@@ -1,0 +1,76 @@
+{
+  "schema": "native_acceptance_metadata_transition/v1",
+  "recorded_at": "2026-10-31T13:40:04.562062+00:00",
+  "record_kind": "original_pre_promotion_snapshot_and_recorded_acceptance_transition",
+  "before": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate-validated-body-ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648.json",
+    "sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648"
+  },
+  "after": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+    "sha256": "8dd51f97f98f79078d06f7262d0f0a56fea3157fb5351c5f1ad9a3d592e56efc"
+  },
+  "changed_fields": [
+    {
+      "field": "candidate_state",
+      "before_present": true,
+      "after_present": true,
+      "before": "verified_pending_guard_alignment",
+      "after": "verified"
+    },
+    {
+      "field": "guard_alignment_required",
+      "before_present": true,
+      "after_present": true,
+      "before": true,
+      "after": false
+    },
+    {
+      "field": "guard_validation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation-4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806.json",
+        "sha256": "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/accepting-guard-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+        "guard_sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+        "actual_proof_sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/generic-controls-214a69d44fb7d69c9fd6f379a4fc2a3e5eadda094b1c98e533a4715adba5003f.json",
+          "sha256": "214a69d44fb7d69c9fd6f379a4fc2a3e5eadda094b1c98e533a4715adba5003f"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-31T13:40:04.561127+00:00"
+      }
+    },
+    {
+      "field": "accepted_at",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": "2026-10-31T13:40:04.562062+00:00"
+    },
+    {
+      "field": "stable_discovery_confirmation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-node-18-bookworm-discovery-confirmation.json",
+        "sha256": "2baa44d584f03b042c625e3cee3e3d6294f987ed53069ddc2171af8890acea35"
+      }
+    }
+  ],
+  "runtime_source_security_fields_changed": false,
+  "full_validation": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation-4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806.json",
+    "sha256": "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806"
+  },
+  "promotion_helper": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+    "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084"
+  }
+}

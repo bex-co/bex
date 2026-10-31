@@ -1,0 +1,35 @@
+{
+  "schema": "bex.m188.fresh-upstream-common-qualification-gate-at-parking/v1",
+  "checked_at": "2026-10-31T14:14:00.741471+00:00",
+  "remote_main": "9a3366f7ed8d4080d53f706a80137edb14aaeba0",
+  "remote_git_files": [
+    {
+      "path": ".pm/w8/m91/t007.md",
+      "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "bytes": 2197,
+      "git_blob": "b63a1c5d7513c4edc0adf7fb8ef16fcc827c6308"
+    },
+    {
+      "path": ".pm/w8/m91/README.md",
+      "sha256": "2bf0972977d12993370057be1e250f058e8c9d55d26b24883f3a0e203530dc7a",
+      "bytes": 36105,
+      "git_blob": "38c483f5c96b03b63d29d12470dd8b1ccbe65954"
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "sha256": "97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a",
+      "bytes": 9582,
+      "git_blob": "3e7b2cf5485eac79be2e43f0f047d1e73a146bdf"
+    }
+  ],
+  "owner": "worker8",
+  "upstream_task": "w8/m91/t007",
+  "verified_gate": "Common foundation and same-version legacy runtime generated-image qualification remain unimplemented/unqualified; actual source common/supplied pins are unset/empty; t007 in-progress with three unchecked DoDs and latest README explicitly retains actual common/legacy/generated/hosted work.",
+  "release_condition": "Reviewed signed fixed common digest with actual both-architecture same-version runtime/library/header/extension/Poetry/companion qualification; then w1 joint adoption and actual six build/HTTP, final deployed-source Ready/census/scoped rebuild acceptance. A task checkbox or common publication alone is insufficient.",
+  "artifact_publication_count": 11,
+  "artifact_receipt_sha256": "6f9c9dbcfd42a0228aca6c2b027d64002ce141260cda0132df00bb30a1ce2cb1",
+  "not_a_slow_Node18_CI_gate": true,
+  "source_adoption_authorized": false,
+  "no_user_policy_or_credential_decision_pending": true,
+  "no_production_probe_or_mutation": true
+}

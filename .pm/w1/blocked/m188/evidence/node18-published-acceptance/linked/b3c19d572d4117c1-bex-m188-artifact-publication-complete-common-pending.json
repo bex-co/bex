@@ -1,0 +1,109 @@
+{
+  "schema": "bex.m188.actual-artifact-publication-complete-common-pending/v1",
+  "at": "2026-10-31T13:45:05.330566+00:00",
+  "before": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/aggregate-at-promotion-11.json",
+    "sha256": "860d78bb8a848ee76bf0fb7802c3d30d00b9541fbaf1f379abb7bf6c2efe2215",
+    "bytes": 177893
+  },
+  "after": {
+    "file": "/tmp/bex-m188-published-artifacts-complete-donor-only.json",
+    "sha256": "6f9c9dbcfd42a0228aca6c2b027d64002ce141260cda0132df00bb30a1ce2cb1",
+    "bytes": 178559
+  },
+  "live_receipt": "/tmp/bex-m188-published-acceptance.json",
+  "changed_metadata_fields": {
+    "state": {
+      "before_present": true,
+      "before": "in_progress",
+      "after": "complete"
+    },
+    "state_scope": {
+      "before_present": false,
+      "before": null,
+      "after": "Published artifact/donor-security evidence only; NOT common or production adoption"
+    },
+    "artifact_publication_completed_at": {
+      "before_present": false,
+      "before": null,
+      "after": "2026-10-31T13:45:05.183511+00:00"
+    },
+    "legacy_C_tenant_base_adoption_prohibited": {
+      "before_present": false,
+      "before": null,
+      "after": true
+    },
+    "common_integration_required": {
+      "before_present": false,
+      "before": null,
+      "after": true
+    },
+    "common_integration_status": {
+      "before_present": false,
+      "before": null,
+      "after": "pending qualified common foundation and same-version runtime/closure evidence"
+    },
+    "common_qualification_gate": {
+      "before_present": false,
+      "before": null,
+      "after": "w8/m91/t007: signed reviewed common Bookworm digest, actual both-architecture generated-image qualification including retained legacy versions/libraries/headers/extensions/companions; then separate w1 production build/HTTP/rollout/live census acceptance"
+    }
+  },
+  "all11_verified_rows_and_roles_unchanged": true,
+  "actual_post_retirement_full11_replay": {
+    "file": "/tmp/bex-m188-root-actual11-post-retirement-replay.json",
+    "sha256": "27d91f721c1839824c37eef77c81135fa301ac4017125b88cf2a34397726b305",
+    "bytes": 5638
+  },
+  "actual_source_control_selector_checks": {
+    "file": "/tmp/bex-m188-recovery-selection-all11-retired.json",
+    "sha256": "335d968b54bfa61fab40f41a1d2b14a11a5447ddfbe093ad8dbf2a362bf93f04",
+    "bytes": 3996
+  },
+  "actual_selector_case_count": 20,
+  "old7dd_not_accepted_retirement": {
+    "file": "/tmp/bex-m188-node18-recovery-retirement.json",
+    "sha256": "535418b541ef511540a0fde117a3acce438adc3d9d1a5afd32e71c721a831b8b",
+    "bytes": 2993
+  },
+  "real_complete11_legacy_C_writer_refusal": {
+    "argv": [
+      "python3",
+      "-B",
+      "/tmp/bex-m188-prepare-adoption.py",
+      "--receipt",
+      "/tmp/bex-m188-published-artifacts-complete-donor-only.json",
+      "--plan",
+      "/tmp/bex-m188-real11-proof-only-plan.json",
+      "--prepare-dir",
+      "/tmp/bex-m188-real11-C-writer-MUST-NOT-EXIST"
+    ],
+    "actual_exit_code": 1,
+    "stdout": {
+      "file": "/tmp/bex-m188-real11-C-writer-refusal.stdout.log",
+      "sha256": "b0740c947221a1817ae3e106849642cfa45016ff42b92fe37c9dafa2a593c014",
+      "bytes": 132
+    },
+    "stderr": {
+      "file": "/tmp/bex-m188-real11-C-writer-refusal.stderr.log",
+      "sha256": "8f9e9503e2662f1807c8123831adef7bf82fd4e7c2571ba6d8f66fdf20e90077",
+      "bytes": 295
+    },
+    "output_absent": true,
+    "plan": {
+      "file": "/tmp/bex-m188-real11-proof-only-plan.json",
+      "sha256": "9246a5bdb23ace6e765bf08f3e15d0c8135beed480ddbaa03d405bcb8d30fd35",
+      "bytes": 19655
+    },
+    "actual11_verified_artifacts_NOT_a_modeled_receipt": true
+  },
+  "artifact_count": 11,
+  "source_adoption_authorized": false,
+  "common_integration_pending": true,
+  "common_or_live_DoD_met": false,
+  "native_source_inventory_unchanged": {
+    "native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "inventory": "6f2e510380e1cb6b258c2eced486f1b8c90ae16be09116930c4a4ea704cc2bbd"
+  },
+  "no_CI_or_production_mutation": true
+}

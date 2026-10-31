@@ -1,0 +1,17 @@
+*
+!native-base/
+!native-base/package.json
+!native-base/package-lock.json
+!native-base/node-brotli/
+!native-base/node-brotli/check.js
+!native-base/tsc
+!native-base/webpack
+!native-base/python-tools.json
+!native-base/fetch-python-tools.py
+!native-base/install-python-tools.py
+!native-base/bex-native-python-tools
+!native-base/install.sh
+!native-base/patch-system-brotli.sh
+!native-common/
+!native-common/Dockerfile
+!native-common/check-common.py

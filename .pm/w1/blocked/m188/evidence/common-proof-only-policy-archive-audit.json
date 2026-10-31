@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.root-common-proof-only-policy-archive-audit/v1",
+  "at": "2026-10-31T13:53:11.385607+00:00",
+  "manifest": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/common-proof-only-policy/MANIFEST.json",
+  "manifest_sha256": "5201769b3e27fc70f8aa0099c0b3c54cc8149eb38a64f205121a00ea64e018e7",
+  "source_record_count": 139,
+  "physical_payload_count": 124,
+  "generated_metadata_count": 2,
+  "file_count_including_manifest": 127,
+  "total_stored_directory_bytes": 2094433,
+  "lossless_gzip_payloads": 2,
+  "all_stored_and_original_hashes_sizes_verified": true,
+  "literal_Git_source_records_verified": 53,
+  "exact_prior_protected_crossreferences": 105,
+  "prior_manifests_verified": 14,
+  "all116_path_expectedhash_protected_inputs_portable": true,
+  "historical_aliases_resolve_only_by_expected_hash": true,
+  "all_copied_bytes_equal_candidate": true,
+  "archive_scope": "Root-accepted custody of checker/decision/source activation evidence only. Historical activation count10 and pending/false fields retain their times; no candidate/common ABI/production/live acceptance is inferred.",
+  "source_adoption_authorized": false
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "bex.m188.node18.build-runtime-stage-observation/v1",
+  "recorded_at": "2026-10-31T12:06:13.134120+00:00",
+  "actual_raw_retrieved_at": "2026-10-31T12:05:50.585359+00:00",
+  "run_id": 41187749759,
+  "job_id": 124498652791,
+  "run_attempt": 1,
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "job_status": "in_progress",
+  "build_push": {
+    "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+    "status": "completed",
+    "conclusion": "success",
+    "number": 7,
+    "started_at": "2026-10-31T10:02:48Z",
+    "completed_at": "2026-10-31T12:04:38Z"
+  },
+  "dual_arch_runtime_gate": {
+    "name": "verify real native tool transformations without network on both architectures",
+    "status": "completed",
+    "conclusion": "success",
+    "number": 9,
+    "started_at": "2026-10-31T12:04:38Z",
+    "completed_at": "2026-10-31T12:05:08Z"
+  },
+  "active_steps": [
+    {
+      "name": "scan amd64 candidate",
+      "status": "in_progress",
+      "conclusion": null,
+      "number": 11,
+      "started_at": "2026-10-31T12:05:08Z",
+      "completed_at": null
+    }
+  ],
+  "raw_job": {
+    "file": "/tmp/bex-m188-node18-dbc-stage-observations/build-and-runtime-complete/job.raw.json",
+    "sha256": "4d523af0292be5c84e4604346dca735ff7877af4ff27491c84560000d6b10ce7",
+    "bytes": 4529
+  },
+  "focused_status": {
+    "file": "/tmp/bex-m188-node18-dbc-stage-observations/build-and-runtime-complete/focused-status.json",
+    "sha256": "8618ac54e345b15e27b565ef700100fe620bdc4a3b7afaa19b6167086da4e701",
+    "bytes": 6947
+  },
+  "raw_hash_matches_original_focused_status_ref": true,
+  "original_mutable_raw_path_not_used_as_archival_custody": true,
+  "first_runtime_active_seen_via_passive_console_at": "2026-10-31T12:05:04.969457+00:00",
+  "first_console_observation_not_separately_retained_as_raw_API_body": true,
+  "accepted_count": 10,
+  "artifact_acceptance_performed": false,
+  "no_extra_API_or_CI_mutation": true,
+  "active_guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "aggregate_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f"
+}

@@ -1,0 +1,58 @@
+{
+  "schema": "bex.m188.actual-root-proof-only-policy-activation/v1",
+  "at": "2026-10-31T13:27:10.685319+00:00",
+  "root_approval": {
+    "file": "/tmp/bex-m188-c5-root-proof-only-approval.json",
+    "sha256": "d0ec36bc07775ba1b1e01d2b81c2fc52fe98682187f31070094651b581d58e8f",
+    "bytes": 1772
+  },
+  "previous_guard": {
+    "file": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+    "bytes": 92910
+  },
+  "active_guard": {
+    "file": "/tmp/bex-m188-prepare-adoption.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "active_guard_snapshot": {
+    "file": "/tmp/bex-m188-guard-snapshots/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "frozen_receipt_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-c5-proof-only.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "Q_unchanged": true,
+  "accepted_count": 10,
+  "protected_original_count": 116,
+  "only_active_G_changed_among_protected_originals": true,
+  "other_originals_unchanged": 115,
+  "old_default_plan_preserved": {
+    "file": "/tmp/bex-m188-c5-root-activation-evidence/historical-default-plan-8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2.json",
+    "sha256": "8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2",
+    "bytes": 17266
+  },
+  "new_readonly_proof_plan": {
+    "file": "/tmp/bex-m188-adoption-plan.json",
+    "sha256": "69f861e09b8843a065e00287a27bb37cb8ee039b4642c2ef1b14a2db3724d726",
+    "bytes": 19624
+  },
+  "plan_stdout": {
+    "file": "/tmp/bex-m188-c5-root-activation-evidence/actual-readonly-plan.stdout.log",
+    "sha256": "fa8e7142438fe263560959721820bbdd05ac441e195d25d5f1fdb4af1ddfa6f4",
+    "bytes": 124
+  },
+  "plan_stderr": {
+    "file": "/tmp/bex-m188-c5-root-activation-evidence/actual-readonly-plan.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "no_repo_CI_candidate_role_or_catalog_mutations": true,
+  "source_adoption_authorized": false,
+  "legacy_C_writer_globally_retired": true,
+  "combined_context_file": "/tmp/bex-m188-current-tree-profile-context-after-c5-proof-only.json"
+}

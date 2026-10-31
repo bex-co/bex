@@ -1,0 +1,35 @@
+{
+  "schema": "bex.native-publisher-recovery/v1",
+  "images": {
+    "elixir-1.18": {
+      "base": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:1678ee9a3d9e61ab5598dc643d7e0cd8a6191bc90889bf41684526073e38fdd8",
+      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "run_id": 41067560420,
+      "job_id": 124104056666,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41067560420/job/124104056666",
+      "reason": "Authenticated main producer built this exact index with an unchanged factory recipe. Both architecture runtime verification builds passed; amd64 full Trivy analysis exhausted all three attempts with archive unexpected EOF, so scanning and signing remain unapproved. Reuse only this immutable same-base artifact and repeat all current runtime checks, both complete scans, full SBOMs, signatures and attestations.",
+      "remove_after": "Remove this authorization after verified discovery publication; this data-only path does not trigger another full publication."
+    },
+    "elixir-1.19": {
+      "base": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:30750c906589468572ce40aad749c065d8ca3d6d69c0740e8c2cb99886d36fa0",
+      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "run_id": 41067564282,
+      "job_id": 124104134360,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41067564282/job/124104134360",
+      "reason": "Authenticated main producer built this exact index with an unchanged factory recipe. Both architecture runtime checks and full Trivy scans completed successfully after bounded retries; registry Syft generation then failed with peer HTTP2 PROTOCOL_ERROR, so the full attestation set remains unapproved. Reuse only this immutable same-base artifact and repeat all current runtime checks, both complete scans, full SBOMs, signatures and attestations.",
+      "remove_after": "Remove this authorization after verified discovery publication; this data-only path does not trigger another full publication."
+    },
+    "elixir-1.17": {
+      "base": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7e8b843cdcca682f47f908e5811b6304385c8b47c135709dfe0c65a39fc7510f",
+      "producer": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "run_id": 41067556052,
+      "job_id": 124104259906,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41067556052/job/124104259906",
+      "reason": "Authenticated main producer built this exact index with an unchanged factory recipe. Both architecture runtime checks and complete Trivy scans passed after bounded scan retries; old-source Syft then failed populating a registry layer with HTTP2 PROTOCOL_ERROR. Reuse only this immutable same-base artifact and repeat every current runtime check, complete scan, full SBOM, signature and attestation.",
+      "remove_after": "Remove this authorization after verified discovery publication; data-only recovery does not trigger another full publication."
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-31T13:24:48.471618+00:00",
+  "scope": "Root actual source/controls/hash review; checker activation only, no candidate acceptance/source adoption/retirement authorization",
+  "head": "62a9c2500169557c9fbeb566a4d6b44fe31c44f3",
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/proposal-final.json",
+    "sha256": "0b97ba2aec9e326314e99dbc08dc6c9d6ef505c5edb0f5569631e5dd60aeab46"
+  },
+  "new_guard": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097"
+  },
+  "independent_review": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-65e085-final-review.json",
+    "sha256": "fbe70230c0c168a5abc7e38f5e556d4f717c37052b61b9d8d213fe7d09b02651"
+  },
+  "linked_references_checked": 23,
+  "source_inputs_checked": 49,
+  "protected_originals_checked": 116,
+  "modified_old_functions": [
+    "reviewed_current_workflow",
+    "reviewed_recipe_paths",
+    "reviewed_current_recipe_file",
+    "main"
+  ],
+  "artifact_roles_unchanged": true,
+  "actual_current_profile": {
+    "canonical_artifact_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "canonical_workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+    "actual_workflow_sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2",
+    "artifact_source_roles_added": [],
+    "current_tree_workflow_source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+    "current_tree_recipe_source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+    "prior_recipe_anchor": "94165237dbe63f997b0119ce70ad243da74468fa",
+    "prior_workflow_anchor": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+    "proof_only_common_source": true,
+    "recovery_control": {
+      "path": ".github/native-base-recovery.json",
+      "actual_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "exact_reviewed_shape": "original_four_entry_control",
+      "shape_is_not_proof_of_retirement_authorization": true
+    },
+    "legacy_C_tenant_base_writer_authorized": false,
+    "common_qualification_gate": "w8/m91/t007: user-selected qualified common Bookworm foundation and independently reviewed same-version runtime integration; the legacy C tenant-base writer is superseded",
+    "compatibility_scope": "Historical selected per-line artifact proof gates only; common artifacts and production adoption require separate review",
+    "raw_matches_canonical": false,
+    "compatible_with_canonical": true
+  },
+  "global_C_writer_removed": true,
+  "actual10_plus_pending_node18_preflight_only": true,
+  "full_harness_and_controls_read": true,
+  "Node18_candidate_acceptance_authorized": false,
+  "source_adoption_authorized": false,
+  "linked_hashes": {
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/guard.diff": "3d4c900b5b3c692f1b25827e46e1781ec3ab806a919de57d476744e2278f7e46",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/profile-context-proposal.json": "6d4287fd5ee5023037db0bfe8a0a2713d8cca01c8bce78935418f279b5f02d55",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/source-input-manifest.json": "058f5a9abbe158c40d61a4d9e67bc92111da9307962397fd0f99182397c194c7",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-and-proof-only-controls.json": "c8a9406500b7230a8b2e48bdfbf8dd3ad20109e619bfd57a49055d9b2b0fca26",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/execution.json": "ea8cde127539aa0b31c1e0ff8413e460933f7f04b5077f2950d625595ddf28ee",
+    "/tmp/bex-m188-build-c5-proof-only-v2.py": "56a7dcecda2870c6164cf1ce41060fcf897f48b41ec0132d81b6ae38da89f36c",
+    "/tmp/bex-m188-c5-proof-only-proposal/source-contract-controls.json": "fccafc78e206b80f8f2aa9b5e37f95fdb02c8e4d9de994613e63cbdd551e76ae",
+    "/tmp/bex-m188-test-c5-source-contracts.py": "5a8761a2065296ce685b01842eca349ba98337c86777e6cf6694f51b3c9497af",
+    "/tmp/bex-m188-c5-proof-only-proposal/c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0",
+    "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+    "/tmp/bex-m188-prepare-adoption.py": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+    "/tmp/bex-m188-published-acceptance.json": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/PROPOSED-ONLY-exact-own-Node18-retirement.json": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+    "/tmp/bex-m188-test-c5-proof-only-v2.py": "327bb65ff9e3fd3992a86a7a1e3f69a852ffccf6ec5f02e6b173ab165db1420a",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stdout.log": "a12f42ac80677697e263a5f3a074973799fe10780804903a268584a6bcb63789",
+    "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stderr.log": "99a4429322642a4963f79e8ab29bb6091bdc8a2695474b739ad798e9a4ea7fb4",
+    "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stderr.log": "b7a7f63319e5c72a540d583dfef79f5cd6961179d593cf5034d5b2d065787731",
+    "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stderr.log": "a8d743b03243c0ccb9b078c4fcba8a98bbcaf391afc9b95130525dd514e88330"
+  }
+}

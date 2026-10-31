@@ -1,0 +1,32 @@
+{
+  "schema": "bex.m188.readonly-blocked-migration-preparation/v1",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-blocked-links-o2k5ykiw/plan.py",
+      "archive": "plan.py",
+      "bytes": 13951,
+      "sha256": "f8d973ec58e946b0fb4d56e9051b3a9ed39698f69d110933cfc9c13e3dbe04e0"
+    },
+    {
+      "source": "/tmp/bex-m188-blocked-links-o2k5ykiw/planner.diff",
+      "archive": "planner.diff",
+      "bytes": 15533,
+      "sha256": "cd307198e2f86bdaf23ade6600c15acc787a9bda0b312afaba5e82c4893f34c8"
+    },
+    {
+      "source": "/tmp/bex-m188-blocked-links-o2k5ykiw/evidence-locator.PROPOSAL.md",
+      "archive": "evidence-locator.PROPOSAL.md",
+      "bytes": 1513,
+      "sha256": "583f1cd8570e341b87e2dccfd01fb9b5daf11ba72cde6d60f2c7733b7379b721"
+    },
+    {
+      "source": "/tmp/bex-m188-blocked-links-o2k5ykiw/handoff.json",
+      "archive": "handoff.json",
+      "bytes": 1719,
+      "sha256": "87293c14f0fe58d48c53239095fe0ca1af4d8a2cc2cb2b6c0103de3238861570"
+    }
+  ],
+  "actual_migration_claimed": false,
+  "example_plans_not_execution_authority": true,
+  "old4fa_helper_preserved": true
+}

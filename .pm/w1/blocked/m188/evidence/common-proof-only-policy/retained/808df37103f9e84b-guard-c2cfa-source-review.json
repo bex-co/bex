@@ -1,0 +1,32 @@
+{
+  "schema": "bex.m188.independent-c2cfa-proof-only-source-review/v1",
+  "at": "2026-10-31T13:11:35.689693+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal/c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py",
+    "sha256": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0"
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal/guard.diff",
+    "sha256": "0401a035abd014a226f07c17400dd0ccef85b3b7cd77c6170fd1be2ea8d36e3c"
+  },
+  "verdict": "Source review clean for exactC5 proof-only current-tree profile; no findings. Final activation approval remains pending actual10/refusal/isolated controls. No guard/artifact/adoption approval executed here.",
+  "source_decision_review": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/review.json",
+    "sha256": "5c67fcf91483ea68e630a759464c2797f4fd4a68b57eb65e71a552731a504908"
+  },
+  "source_checks": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-c2cfa-source-checks.json",
+    "sha256": "32ac915c8848db29a61fbebd506bd8fcdbbae4134293ea50905106ceb5d09071"
+  },
+  "boundaries": [
+    "Exact49independentC5hashes, C5\u2192HEAD, bothpinsEMPTY, exactcommonfactoryfileset and45inventory",
+    "4uniqueWFreversals exact2cc then2existingreversals exactcanonicalDA0",
+    "C5notartifactrole; all priorDBC restrictions/producer-verifierroles/Q unchanged",
+    "Exactsource-mapped old18/DA0/DBC install/fetch exceptions only; originalnormalzeroargverified independently",
+    "Fullvalidate_candidate/v2sourcebinding/crypto functions unchanged; actualsource/subject/config/platform/fullreports/portabilityremainmandatory",
+    "C5planlabelsartifactproof-only; legacyC --prepare-dir refuses evenmodeledcomplete11 beforeoutputcreation, neverunlockedbycommonqualification",
+    "Oldprofilebranches remainhistorical paths; thisreview authorizes no productionwriter underanyprofile. Futurecommonadoption requires separatequalifiedcommon/runtimeintegrationreview"
+  ],
+  "limits": "Staticfullsource/diff/hash/AST only. No actual10/refusal/negative/noargCnbharness result yet claimed; no suitesduplicated or candidateacceptance. First own receipt attempt used wrongasthelper input type and producedno receipt; corrected to source strings beforefreeze.",
+  "mutations": "Only NEWowned/tmpcheck/review files. No activeguard/Q/repo/board/acceptedproof/API/CIwrites."
+}

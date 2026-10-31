@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.actual-blocked-migration-plan-custody/v1",
+  "at": "2026-10-31T14:16:28.083893+00:00",
+  "records": [
+    {
+      "original_source": "/tmp/bex-m188-blocked-final-plan-20261031.json",
+      "canonical_source": "/private/tmp/bex-m188-blocked-final-plan-20261031.json",
+      "original_sha256": "0fc41cbeae9491aa02ff4db56498446cc28421bc6d725a16f7370632d724a693",
+      "original_bytes": 1044564,
+      "archive_path": "plan.json.gz",
+      "encoding": "gzip",
+      "stored_sha256": "bc293b1efc85ae45648d14e8208cf201bd782c64b17ef24e77db7f473fc1c666",
+      "stored_bytes": 157776
+    },
+    {
+      "original_source": "/private/tmp/bex-m188-blocked-final-plan-20261031.protected.json",
+      "canonical_source": "/private/tmp/bex-m188-blocked-final-plan-20261031.protected.json",
+      "original_sha256": "2b29a751bb0ca2fbcd2eb5f91b27e9daba3ce2c78c5cd4c050a28f8bd48226dd",
+      "original_bytes": 1094109,
+      "archive_path": "protected-evidence.json.gz",
+      "encoding": "gzip",
+      "stored_sha256": "c37f7767bc3ae6db04ef7d3504d26c498968edb51c7fcbb8a517c00dfbed3799",
+      "stored_bytes": 157643
+    }
+  ],
+  "historical_active_prefix": ".pm/w1/m188",
+  "actual_blocked_prefix": ".pm/w1/blocked/m188",
+  "actual_migration_performed": true,
+  "milestone_DoD_complete": false
+}

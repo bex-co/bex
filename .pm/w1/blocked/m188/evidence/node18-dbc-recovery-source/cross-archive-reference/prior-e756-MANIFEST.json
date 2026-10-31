@@ -1,0 +1,1215 @@
+{
+  "schema": "bex.m188.portable-current-tree-compatibility-archive/v1",
+  "created_at": "2026-10-31T08:42:00.449650+00:00",
+  "archive_candidate_only": true,
+  "canonical_artifact_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_recipe_anchor": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "current_workflow_anchor": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "records": [
+    {
+      "original_source": "/Users/tianpan/projects/bex/.github/native-base-recovery.json",
+      "archive_path": "current-source/.github/native-base-recovery.json",
+      "stored_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "stored_bytes": 4318,
+      "original_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "original_bytes": 4318,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/.github/scripts/native-oci-stage.py",
+      "archive_path": "current-source/.github/scripts/native-oci-stage.py",
+      "stored_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "stored_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "original_bytes": 18041,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/.github/scripts/test_native_oci_stage.py",
+      "archive_path": "current-source/.github/scripts/test_native_oci_stage.py",
+      "stored_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "stored_bytes": 18679,
+      "original_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "original_bytes": 18679,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/.github/scripts/test_native_oci_workflow.py",
+      "archive_path": "current-source/.github/scripts/test_native_oci_workflow.py",
+      "stored_sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "stored_bytes": 17915,
+      "original_sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "original_bytes": 17915,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/.github/workflows/native-base-image.yml",
+      "archive_path": "current-source/.github/workflows/native-base-image.yml",
+      "stored_sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+      "stored_bytes": 16530,
+      "original_sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+      "original_bytes": 16530,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/Dockerfile",
+      "archive_path": "current-source/deploy/native-base/Dockerfile",
+      "stored_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "stored_bytes": 2688,
+      "original_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "original_bytes": 2688,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/README.md",
+      "archive_path": "current-source/deploy/native-base/README.md",
+      "stored_sha256": "cde67144ba93348e9edf9402716e9e29b3fbc335fe34043332911185f3660841",
+      "stored_bytes": 10960,
+      "original_sha256": "cde67144ba93348e9edf9402716e9e29b3fbc335fe34043332911185f3660841",
+      "original_bytes": 10960,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/bex-native-python-tools",
+      "archive_path": "current-source/deploy/native-base/bex-native-python-tools",
+      "stored_sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "stored_bytes": 301,
+      "original_sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "original_bytes": 301,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/check-brotli.py",
+      "archive_path": "current-source/deploy/native-base/check-brotli.py",
+      "stored_sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "stored_bytes": 4029,
+      "original_sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "original_bytes": 4029,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/check-primary-python.py",
+      "archive_path": "current-source/deploy/native-base/check-primary-python.py",
+      "stored_sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "stored_bytes": 5485,
+      "original_sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "original_bytes": 5485,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/check-tools.py",
+      "archive_path": "current-source/deploy/native-base/check-tools.py",
+      "stored_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "stored_bytes": 5099,
+      "original_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "original_bytes": 5099,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/check.Dockerfile",
+      "archive_path": "current-source/deploy/native-base/check.Dockerfile",
+      "stored_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "stored_bytes": 2210,
+      "original_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "original_bytes": 2210,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/fetch-python-tools.py",
+      "archive_path": "current-source/deploy/native-base/fetch-python-tools.py",
+      "stored_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "stored_bytes": 2686,
+      "original_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "original_bytes": 2686,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/fetch_pgdg_key_test.py",
+      "archive_path": "current-source/deploy/native-base/fetch_pgdg_key_test.py",
+      "stored_sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "stored_bytes": 2421,
+      "original_sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "original_bytes": 2421,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/fetch_python_tools_test.py",
+      "archive_path": "current-source/deploy/native-base/fetch_python_tools_test.py",
+      "stored_sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "stored_bytes": 5558,
+      "original_sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "original_bytes": 5558,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/install-python-tools.py",
+      "archive_path": "current-source/deploy/native-base/install-python-tools.py",
+      "stored_sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "stored_bytes": 2281,
+      "original_sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "original_bytes": 2281,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/install.sh",
+      "archive_path": "current-source/deploy/native-base/install.sh",
+      "stored_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "stored_bytes": 2433,
+      "original_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "original_bytes": 2433,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/matrix.py",
+      "archive_path": "current-source/deploy/native-base/matrix.py",
+      "stored_sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "stored_bytes": 2099,
+      "original_sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "original_bytes": 2099,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/matrix_test.py",
+      "archive_path": "current-source/deploy/native-base/matrix_test.py",
+      "stored_sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "stored_bytes": 2772,
+      "original_sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "original_bytes": 2772,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/node-brotli/README.md",
+      "archive_path": "current-source/deploy/native-base/node-brotli/README.md",
+      "stored_sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "stored_bytes": 3519,
+      "original_sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "original_bytes": 3519,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/node-brotli/check.js",
+      "archive_path": "current-source/deploy/native-base/node-brotli/check.js",
+      "stored_sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "stored_bytes": 1705,
+      "original_sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "original_bytes": 1705,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/node-brotli/patch.sh",
+      "archive_path": "current-source/deploy/native-base/node-brotli/patch.sh",
+      "stored_sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "stored_bytes": 3923,
+      "original_sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "original_bytes": 3923,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/package-lock.json",
+      "archive_path": "current-source/deploy/native-base/package-lock.json",
+      "stored_sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "stored_bytes": 57293,
+      "original_sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "original_bytes": 57293,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/package.json",
+      "archive_path": "current-source/deploy/native-base/package.json",
+      "stored_sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "stored_bytes": 162,
+      "original_sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "original_bytes": 162,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/patch-system-brotli.sh",
+      "archive_path": "current-source/deploy/native-base/patch-system-brotli.sh",
+      "stored_sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "stored_bytes": 2355,
+      "original_sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "original_bytes": 2355,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/python-tools.json",
+      "archive_path": "current-source/deploy/native-base/python-tools.json",
+      "stored_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "stored_bytes": 4110,
+      "original_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "original_bytes": 4110,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/testdata/archive.dump.b64",
+      "archive_path": "current-source/deploy/native-base/testdata/archive.dump.b64",
+      "stored_sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "stored_bytes": 2679,
+      "original_sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "original_bytes": 2679,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/testdata/archive.sql",
+      "archive_path": "current-source/deploy/native-base/testdata/archive.sql",
+      "stored_sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "stored_bytes": 161,
+      "original_sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "original_bytes": 161,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/testdata/rows.txt",
+      "archive_path": "current-source/deploy/native-base/testdata/rows.txt",
+      "stored_sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "stored_bytes": 33,
+      "original_sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "original_bytes": 33,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/tsc",
+      "archive_path": "current-source/deploy/native-base/tsc",
+      "stored_sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "stored_bytes": 111,
+      "original_sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "original_bytes": 111,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/deploy/native-base/webpack",
+      "archive_path": "current-source/deploy/native-base/webpack",
+      "stored_sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "stored_bytes": 115,
+      "original_sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "original_bytes": 115,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/lego/operator/internal/build/native.go",
+      "archive_path": "current-source/lego/operator/internal/build/native.go",
+      "stored_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "stored_bytes": 25979,
+      "original_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "original_bytes": 25979,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebases.go",
+      "archive_path": "current-source/lego/operator/internal/build/nativebases.go",
+      "stored_sha256": "9c7644f0c2f60399dd6eaad93bda2006c6e0f59c6b78dcc17ea1a347da6cf6b3",
+      "stored_bytes": 8063,
+      "original_sha256": "9c7644f0c2f60399dd6eaad93bda2006c6e0f59c6b78dcc17ea1a347da6cf6b3",
+      "original_bytes": 8063,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativeresolve.go",
+      "archive_path": "current-source/lego/operator/internal/build/nativeresolve.go",
+      "stored_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "stored_bytes": 18138,
+      "original_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "original_bytes": 18138,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativeversion.go",
+      "archive_path": "current-source/lego/operator/internal/build/nativeversion.go",
+      "stored_sha256": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "stored_bytes": 28559,
+      "original_sha256": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "original_bytes": 28559,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/lego/operator/internal/build/toolchain-freshness.json",
+      "archive_path": "current-source/lego/operator/internal/build/toolchain-freshness.json",
+      "stored_sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+      "stored_bytes": 25117,
+      "original_sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+      "original_bytes": 25117,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/Users/tianpan/projects/bex/scripts/lib/toolchain-freshness.py",
+      "archive_path": "current-source/scripts/lib/toolchain-freshness.py",
+      "stored_sha256": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+      "stored_bytes": 19118,
+      "original_sha256": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+      "original_bytes": 19118,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_current2cc_source_closure_input"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-2cc-root-source-closure-audit.json",
+      "archive_path": "root-policy/bex-m188-2cc-root-source-closure-audit.json",
+      "stored_sha256": "835db40e545087b09328d102f9b75e2b3ddf52646da312ba6af4e5cac2bdaa98",
+      "stored_bytes": 6629,
+      "original_sha256": "835db40e545087b09328d102f9b75e2b3ddf52646da312ba6af4e5cac2bdaa98",
+      "original_bytes": 6629,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-4cfe-independent-review-r1ch760s/review.json",
+      "archive_path": "independent-approved-4cfe-review/review.json",
+      "stored_sha256": "a30b0f42861722f511dcdd540c787842837f14da7a3a00a0351d4ecd7fa882da",
+      "stored_bytes": 2232,
+      "original_sha256": "a30b0f42861722f511dcdd540c787842837f14da7a3a00a0351d4ecd7fa882da",
+      "original_bytes": 2232,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "approved_4cfe_review"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-2cc-vs-941.diff",
+      "archive_path": "independent-node-source-review/exact-2cc-vs-941.diff",
+      "stored_sha256": "726e5f65b37051329502e6b52f7661694f1a1cc8367ca4f8e641b9f73ded6077",
+      "stored_bytes": 955,
+      "original_sha256": "726e5f65b37051329502e6b52f7661694f1a1cc8367ca4f8e641b9f73ded6077",
+      "original_bytes": 955,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff",
+      "archive_path": "independent-node-source-review/exact-941-vs-da0.diff.gz",
+      "stored_sha256": "fd81edfc8f23bf0021d10e797addc846e9360fc8cd1f586d17730af50e63cb00",
+      "stored_bytes": 5166,
+      "original_sha256": "c8092e1f5bcd6642e57b6a35487c7c0551cee71014f97fdce7c78c8304382554",
+      "original_bytes": 17031,
+      "encoding": "gzip",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": "actual_git_diff_check_whitespace_diagnostic"
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/fetch-python-tools.py",
+      "archive_path": "independent-node-source-review/fetch-python-tools.py",
+      "stored_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "stored_bytes": 2686,
+      "original_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "original_bytes": 2686,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/fetch_pgdg_key_test.py",
+      "archive_path": "independent-node-source-review/fetch_pgdg_key_test.py",
+      "stored_sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "stored_bytes": 2421,
+      "original_sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "original_bytes": 2421,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/fetch_python_tools_test.py",
+      "archive_path": "independent-node-source-review/fetch_python_tools_test.py",
+      "stored_sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "stored_bytes": 5558,
+      "original_sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "original_bytes": 5558,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/historical-recipe-profile-hashes.json",
+      "archive_path": "independent-node-source-review/historical-recipe-profile-hashes.json",
+      "stored_sha256": "f05093d20817d8757815d3337ee3bad53d04e1e381b1c345851d9727f5e8a1de",
+      "stored_bytes": 7715,
+      "original_sha256": "f05093d20817d8757815d3337ee3bad53d04e1e381b1c345851d9727f5e8a1de",
+      "original_bytes": 7715,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/install.sh",
+      "archive_path": "independent-node-source-review/install.sh",
+      "stored_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "stored_bytes": 2433,
+      "original_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "original_bytes": 2433,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/python-tools.json",
+      "archive_path": "independent-node-source-review/python-tools.json",
+      "stored_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "stored_bytes": 4110,
+      "original_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "original_bytes": 4110,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/review.json",
+      "archive_path": "independent-node-source-review/review.json",
+      "stored_sha256": "7ea8fa2f6fb201ee78a887a1a9d7c3e3bffe6d8f5d8a1dd91ae7e74af9de729e",
+      "stored_bytes": 7231,
+      "original_sha256": "7ea8fa2f6fb201ee78a887a1a9d7c3e3bffe6d8f5d8a1dd91ae7e74af9de729e",
+      "original_bytes": 7231,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/source-contract-checks.json",
+      "archive_path": "independent-node-source-review/source-contract-checks.json",
+      "stored_sha256": "1b57a4d3850913f69d3fb2ccd3930cbc5295bf538a61e54fd374dec7ce495a30",
+      "stored_bytes": 5043,
+      "original_sha256": "1b57a4d3850913f69d3fb2ccd3930cbc5295bf538a61e54fd374dec7ce495a30",
+      "original_bytes": 5043,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/tests-receipt.json",
+      "archive_path": "independent-node-source-review/tests-receipt.json",
+      "stored_sha256": "4dde18f84b901b096beb9ce2d4d606b5a6e28e673cee98ed1c22b42bb7fa412f",
+      "stored_bytes": 1262,
+      "original_sha256": "4dde18f84b901b096beb9ce2d4d606b5a6e28e673cee98ed1c22b42bb7fa412f",
+      "original_bytes": 1262,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/tests.raw.log",
+      "archive_path": "independent-node-source-review/tests.raw.log",
+      "stored_sha256": "5971874899a13e8329250476e7592c62c4e5bb912a12e30a5bc41aacad6a21e9",
+      "stored_bytes": 1560,
+      "original_sha256": "5971874899a13e8329250476e7592c62c4e5bb912a12e30a5bc41aacad6a21e9",
+      "original_bytes": 1560,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_9tests_source_and_historical_checks"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-root-source-closure-audit.json",
+      "archive_path": "root-policy/bex-m188-941-root-source-closure-audit.json",
+      "stored_sha256": "f651d3ab3291aebe7ab12141711cb9fbe0bda0768317352b5d62712ba6bd522d",
+      "stored_bytes": 10251,
+      "original_sha256": "f651d3ab3291aebe7ab12141711cb9fbe0bda0768317352b5d62712ba6bd522d",
+      "original_bytes": 10251,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-source-review/local-fetch-controls.json",
+      "archive_path": "cnb-local-fetch-tests/local-fetch-controls.json",
+      "stored_sha256": "366dba85844eb48df7d4a1c92d1ea12cede9c5f7781b8fcb7f2f5afa68b5d83a",
+      "stored_bytes": 1981,
+      "original_sha256": "366dba85844eb48df7d4a1c92d1ea12cede9c5f7781b8fcb7f2f5afa68b5d83a",
+      "original_bytes": 1981,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_local_9tests"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-source-review/local-fetch-controls.stderr.log",
+      "archive_path": "cnb-local-fetch-tests/local-fetch-controls.stderr.log",
+      "stored_sha256": "f7bb3cc7d290bb9b1277b5316c7a90623958a17fd0d42bad42092a62f3a7b613",
+      "stored_bytes": 1560,
+      "original_sha256": "f7bb3cc7d290bb9b1277b5316c7a90623958a17fd0d42bad42092a62f3a7b613",
+      "original_bytes": 1560,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_local_9tests"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-941-source-review/local-fetch-controls.stdout.log",
+      "archive_path": "cnb-local-fetch-tests/local-fetch-controls.stdout.log",
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_exact941_local_9tests"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-a349-independent-review-w4eh3k1q/review.json",
+      "archive_path": "independent-rejected-a349-review/review.json",
+      "stored_sha256": "d18c2508989b126b741270e97e3a7e3d3e16b04cb52f81c439caa185d61da209",
+      "stored_bytes": 3517,
+      "original_sha256": "d18c2508989b126b741270e97e3a7e3d3e16b04cb52f81c439caa185d61da209",
+      "original_bytes": 3517,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "rejected_inactive_a349_review"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-a349-independent-review-w4eh3k1q/source-checks.json",
+      "archive_path": "independent-rejected-a349-review/source-checks.json",
+      "stored_sha256": "cbd00021d6dcdbd051809f80d952d240f2327f7589f905b94ffe11f03cd18582",
+      "stored_bytes": 1186,
+      "original_sha256": "cbd00021d6dcdbd051809f80d952d240f2327f7589f905b94ffe11f03cd18582",
+      "original_bytes": 1186,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "rejected_inactive_a349_review"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-current-tree-2cc-proposal.py",
+      "archive_path": "harness/bex-m188-build-current-tree-2cc-proposal.py",
+      "stored_sha256": "9887fc4e54c23e5a3a01e13fa83730f8c520950e06cc12d9abb6d617974ee3f6",
+      "stored_bytes": 12341,
+      "original_sha256": "9887fc4e54c23e5a3a01e13fa83730f8c520950e06cc12d9abb6d617974ee3f6",
+      "original_bytes": 12341,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_harness_or_evidence_builder"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-current-tree-portable-archive.py",
+      "archive_path": "harness/bex-m188-build-current-tree-portable-archive.py",
+      "stored_sha256": "93c5b30781d736594dcbc8f8c35e9cea432b5b780954b0967f919cb283b2c3f7",
+      "stored_bytes": 11946,
+      "original_sha256": "93c5b30781d736594dcbc8f8c35e9cea432b5b780954b0967f919cb283b2c3f7",
+      "original_bytes": 11946,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_harness_or_evidence_builder"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-create-independent-2cc-review.py",
+      "archive_path": "harness/bex-m188-create-independent-2cc-review.py",
+      "stored_sha256": "0951416c96c012cadba0c1c9fbf331c63ad24310c67b58def9e95644aee9ab61",
+      "stored_bytes": 8482,
+      "original_sha256": "0951416c96c012cadba0c1c9fbf331c63ad24310c67b58def9e95644aee9ab61",
+      "original_bytes": 8482,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_harness_or_evidence_builder"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "archive_path": "proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "stored_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "stored_bytes": 92369,
+      "original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "original_bytes": 92369,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/execution.json",
+      "archive_path": "proposal-v2/execution.json",
+      "stored_sha256": "942906e7ed9dd3566d10e5815f6f3a7bd130cf45935cb5c91f484e40a3907f44",
+      "stored_bytes": 1557,
+      "original_sha256": "942906e7ed9dd3566d10e5815f6f3a7bd130cf45935cb5c91f484e40a3907f44",
+      "original_bytes": 1557,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff",
+      "archive_path": "proposal-v2/guard.diff.gz",
+      "stored_sha256": "e8caae2321cf70a746ca95df590b13215c668dd07996aed89c0b3c70c27f78fa",
+      "stored_bytes": 5268,
+      "original_sha256": "f0bc8b7ad18ef1d37ab6fc020e6d5873df9520cb66abb28d058aebcdf2645363",
+      "original_bytes": 16817,
+      "encoding": "gzip",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": "actual_git_diff_check_whitespace_diagnostic"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/independent-source-closure-review.json",
+      "archive_path": "proposal-v2/independent-source-closure-review.json",
+      "stored_sha256": "a52613dd23460cc69e9586807adbb67295433ad8d902c24b33e6c1f574746225",
+      "stored_bytes": 21801,
+      "original_sha256": "a52613dd23460cc69e9586807adbb67295433ad8d902c24b33e6c1f574746225",
+      "original_bytes": 21801,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/proposal-final.json",
+      "archive_path": "proposal-v2/proposal-final.json",
+      "stored_sha256": "6ebf10b513c7795240ba7c2abe445cd37139dc77e4c91cdc6c04f59c45ff0fd7",
+      "stored_bytes": 9771,
+      "original_sha256": "6ebf10b513c7795240ba7c2abe445cd37139dc77e4c91cdc6c04f59c45ff0fd7",
+      "original_bytes": 9771,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-and-negative-controls.json",
+      "archive_path": "proposal-v2/real10-and-negative-controls.json",
+      "stored_sha256": "48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f",
+      "stored_bytes": 28687,
+      "original_sha256": "48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f",
+      "original_bytes": 28687,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-controls.stderr.log",
+      "archive_path": "proposal-v2/real10-controls.stderr.log",
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-controls.stdout.log",
+      "archive_path": "proposal-v2/real10-controls.stdout.log",
+      "stored_sha256": "92231395f5f0fa52e16322561572f87ef0a31015ca4c784a3f5b568500f46dd8",
+      "stored_bytes": 1327,
+      "original_sha256": "92231395f5f0fa52e16322561572f87ef0a31015ca4c784a3f5b568500f46dd8",
+      "original_bytes": 1327,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-plan.stderr.log",
+      "archive_path": "proposal-v2/real10-plan.stderr.log",
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-plan.stdout.log",
+      "archive_path": "proposal-v2/real10-plan.stdout.log",
+      "stored_sha256": "655c69c675084834bd08a8a3a0cd7bfa4b888559f55a2a3b6faacf52a1234120",
+      "stored_bytes": 160,
+      "original_sha256": "655c69c675084834bd08a8a3a0cd7bfa4b888559f55a2a3b6faacf52a1234120",
+      "original_bytes": 160,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-readonly-plan.json",
+      "archive_path": "proposal-v2/real10-readonly-plan.json",
+      "stored_sha256": "ff656ed74837dc1347a0745a3dbbe94ffa602c2638f0cfd57453e1d24d236f21",
+      "stored_bytes": 18024,
+      "original_sha256": "ff656ed74837dc1347a0745a3dbbe94ffa602c2638f0cfd57453e1d24d236f21",
+      "original_bytes": 18024,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-refusal-plan.json",
+      "archive_path": "proposal-v2/real10-refusal-plan.json",
+      "stored_sha256": "a94faab7947ad388ffe43773d6b8d06a04f4c4d98c37f29a894e5e65965dab96",
+      "stored_bytes": 18024,
+      "original_sha256": "a94faab7947ad388ffe43773d6b8d06a04f4c4d98c37f29a894e5e65965dab96",
+      "original_bytes": 18024,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real11-refusal.stderr.log",
+      "archive_path": "proposal-v2/real11-refusal.stderr.log",
+      "stored_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "stored_bytes": 113,
+      "original_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "original_bytes": 113,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real11-refusal.stdout.log",
+      "archive_path": "proposal-v2/real11-refusal.stdout.log",
+      "stored_sha256": "f8f4b63645db3fd6ddd6d778cacba39277e5b7d8cb5e6b551a553c47728a788a",
+      "stored_bytes": 159,
+      "original_sha256": "f8f4b63645db3fd6ddd6d778cacba39277e5b7d8cb5e6b551a553c47728a788a",
+      "original_bytes": 159,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "final_approved_proposal_package"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal/a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e.py",
+      "archive_path": "rejected-never-active-a349/a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e.py",
+      "stored_sha256": "a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e",
+      "stored_bytes": 92020,
+      "original_sha256": "a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e",
+      "original_bytes": 92020,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "rejected_never_active_missing_explicit_ancestry"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff",
+      "archive_path": "rejected-never-active-a349/guard-final.diff.gz",
+      "stored_sha256": "d0a1381308c207ec1454e7ce4afe3b5c5d4ac5d934b15c2b2a7dbf99015288aa",
+      "stored_bytes": 5202,
+      "original_sha256": "96b9e1920d605ffae6345a13b115917496a5fc49cc10311ee9a13fc5094b014b",
+      "original_bytes": 16466,
+      "encoding": "gzip",
+      "source_mode": "0o644",
+      "roles": [
+        "rejected_never_active_missing_explicit_ancestry"
+      ],
+      "lossless_compression_reason": "actual_git_diff_check_whitespace_diagnostic"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-activation.json",
+      "archive_path": "root-policy/bex-m188-current-tree-profile-activation.json",
+      "stored_sha256": "85683153b7a17b4548226ed64e2950e83c52448850105dba7ac63e305770493a",
+      "stored_bytes": 1787,
+      "original_sha256": "85683153b7a17b4548226ed64e2950e83c52448850105dba7ac63e305770493a",
+      "original_bytes": 1787,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-context.json",
+      "archive_path": "root-policy/bex-m188-current-tree-profile-context.json",
+      "stored_sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2",
+      "stored_bytes": 1071,
+      "original_sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2",
+      "original_bytes": 1071,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-root-approval.json",
+      "archive_path": "root-policy/bex-m188-current-tree-profile-root-approval.json",
+      "stored_sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08",
+      "stored_bytes": 2392,
+      "original_sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08",
+      "original_bytes": 2392,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+      "archive_path": "root-policy/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+      "stored_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "stored_bytes": 167376,
+      "original_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "original_bytes": 167376,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_audit_approval_activation_or_frozen_context"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "archive_path": "frozen-guards/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "stored_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "stored_bytes": 86158,
+      "original_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "original_bytes": 86158,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_old_or_new_guard"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "archive_path": "frozen-guards/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "stored_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "stored_bytes": 92369,
+      "original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "original_bytes": 92369,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_old_or_new_guard"
+      ],
+      "lossless_compression_reason": null
+    },
+    {
+      "original_source": "/tmp/bex-m188-test-current-tree-2cc-proposal-v2.py",
+      "archive_path": "harness/bex-m188-test-current-tree-2cc-proposal-v2.py",
+      "stored_sha256": "9014645562b418de987714362ee476547636e39228705fe5543c0b7bca927833",
+      "stored_bytes": 12096,
+      "original_sha256": "9014645562b418de987714362ee476547636e39228705fe5543c0b7bca927833",
+      "original_bytes": 12096,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_harness_or_evidence_builder"
+      ],
+      "lossless_compression_reason": null
+    }
+  ],
+  "generated_metadata": [
+    {
+      "archive_path": "EXTERNAL-REFERENCES.json",
+      "sha256": "fc4ff4093ef6fb307530539f79443ae38820b9a6da3aa8398d8047053700d30c",
+      "bytes": 46675,
+      "generated_archive_metadata": true
+    },
+    {
+      "archive_path": "README.txt",
+      "sha256": "416188957143720d10de3cc722e04b103a3430b4e17575ea7d655dcd83a748f9",
+      "bytes": 1206,
+      "generated_archive_metadata": true
+    },
+    {
+      "archive_path": "WHITESPACE-COMPRESSION.json",
+      "sha256": "0014ca314d5427d8426e01cef6fb0b9a9882babe7c26d8886a2eebcf59e7b942",
+      "bytes": 1396,
+      "generated_archive_metadata": true
+    }
+  ],
+  "record_count": 83,
+  "compressed_record_count": 3,
+  "original_bytes": 1126319,
+  "stored_bytes": 1091641,
+  "current_source_closure_inputs": 37,
+  "new_artifact_source_roles": [],
+  "large_accepted_proof_bodies_archived": false,
+  "historical_content_aliases": [
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "expected_original_bytes": 86158,
+      "archive_path": "frozen-guards/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "resolution": "content-bound frozen snapshot; original record references are unmodified"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "expected_original_bytes": 92369,
+      "archive_path": "frozen-guards/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "resolution": "content-bound frozen snapshot; original record references are unmodified"
+    }
+  ]
+}

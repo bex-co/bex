@@ -24,12 +24,24 @@ import (
 	"testing"
 )
 
-// Exercise the generated tenant build and start path, not only the publishing
-// image's probes. Run after adopting verified backports, with Docker available.
-func TestNativeBackportsBuildAndStart(t *testing.T) {
+func requireNativeBackportCommonFoundation(t *testing.T) {
+	t.Helper()
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed backports")
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed backports on the common foundation")
 	}
+	if nativeCommonBase == "" {
+		t.Fatal("qualify and adopt the common Bookworm foundation and patched runtime donors before backport acceptance")
+	}
+	if err := validateNativeBase(nativeCommonBase); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("common foundation image: %s", nativeCommonBase)
+}
+
+// Exercise the generated tenant build and start path after common-foundation
+// and patched-primary adoption, with Docker available.
+func TestNativeBackportsBuildAndStart(t *testing.T) {
+	requireNativeBackportCommonFoundation(t)
 	probe, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "native-base", "node-brotli", "check.js"))
 	if err != nil {
 		t.Fatal(err)

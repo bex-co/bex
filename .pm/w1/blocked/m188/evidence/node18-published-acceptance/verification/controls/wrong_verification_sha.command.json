@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-31T13:08:11.131752+00:00",
+  "argv": [
+    "/tmp/bex-w1-136-cosign/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--check-claims=true",
+    "--use-signed-timestamps=true",
+    "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha=0000000000000000000000000000000000000000",
+    "--timeout=120s",
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/root-index.raw.json"
+  ],
+  "exit_code": 1,
+  "verification_source": "0000000000000000000000000000000000000000",
+  "root_index_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/root-index.raw.json",
+  "root_index_sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "bundle_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176.json",
+  "bundle_raw_sha256": "1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176",
+  "stdout_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/wrong_verification_sha.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/wrong_verification_sha.stderr",
+  "stderr_sha256": "efcd37a0d80a2a466a76d98460d6f4494af4b8f0b1fe9d3567c13d81402aba9c"
+}

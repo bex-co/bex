@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-31T14:22:08.168423+00:00",
+  "main": "e36b1462c42a3eb33fcb2b3e42ed8308b7beacba",
+  "argv": [
+    "go",
+    "test",
+    "./internal/build",
+    "-count=1"
+  ],
+  "started_at": "2026-10-31T14:21:58.513830+00:00",
+  "exit_code": 0,
+  "log_sha256": "f560e148ea0bff7931880d0dd42031c7017a0f9ced5059a222813b54f9ffe297",
+  "scope": "Actual full build-package tests after incominge36 source combined with owned common precondition; opt-in real Docker tests remain disabled, no common qualification/live claim."
+}

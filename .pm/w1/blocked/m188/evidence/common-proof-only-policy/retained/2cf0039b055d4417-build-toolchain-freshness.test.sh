@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+# Self-test for scripts/build-toolchain-freshness.sh. Fixture trees prove
+# fail-closed inventory validation, byte-identical resolve, exact old→new
+# drift, and issue open/update/close/noop — without contacting a registry
+# or GitHub.
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT="$here/build-toolchain-freshness.sh"
+root="$(cd "$here/.." && pwd)"
+[ -x "$SCRIPT" ] || { echo "FAIL: $SCRIPT not executable" >&2; exit 1; }
+
+fails=0
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+DIGEST_A='sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+DIGEST_B='sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+DIGEST_C='sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+
+inventory_json() {
+  local committed="${1:-$DIGEST_A}"
+  cat <<EOF
+{
+  "schema": "bex.build-toolchain-freshness/v1",
+  "images": [
+    {
+      "id": "cnb-builder",
+      "kind": "builder",
+      "upstream": "docker.io/example/builder:latest",
+      "committed": "example/builder@${committed}",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "fixture",
+      "files": ["pin.go"]
+    }
+  ]
+}
+EOF
+}
+
+write_tree() {
+  local dir="$1" committed="${2:-$DIGEST_A}"
+  mkdir -p "$dir"
+  inventory_json "$committed" >"$dir/inv.json"
+  printf 'image := "example/builder@%s"\n' "$committed" >"$dir/pin.go"
+}
+
+assert() {
+  local label="$1" want="$2"
+  shift 2
+  set +e
+  local err
+  err="$("$@" 2>&1 >/dev/null)"
+  local got=$?
+  set -e
+  if [ "$got" -ne "$want" ]; then
+    echo "FAIL: $label — exit $got, want $want" >&2
+    echo "$err" >&2
+    fails=$((fails + 1))
+    return
+  fi
+  echo "ok: $label (exit $got)"
+}
+
+assert_stdout() {
+  local label="$1" needle="$2"
+  shift 2
+  local out
+  out="$("$@")"
+  if ! printf '%s' "$out" | grep -qF "$needle"; then
+    echo "FAIL: $label — stdout did not contain '$needle'" >&2
+    echo "$out" >&2
+    fails=$((fails + 1))
+    return
+  fi
+  echo "ok: $label"
+}
+
+# GREEN: the committed tree validates.
+assert "canonical inventory validates" 0 env -u FRESHNESS_INVENTORY -u FRESHNESS_ROOT -u FRESHNESS_PIN_SITES "$SCRIPT" validate
+
+# Canonical discovery must cover supplied derivatives without a fixture override.
+write_tree "$tmp/supplied"
+python3 - "$root/scripts/lib/toolchain-freshness.py" "$tmp/supplied" "$DIGEST_C" <<'PYFIXTURE'
+import importlib.util, json, sys
+from pathlib import Path
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("freshness_fixture", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+fixture = Path(sys.argv[2])
+for site in module.CANONICAL_PIN_SITES:
+    target = fixture / site
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("")
+native_site = "lego/operator/internal/build/nativebases.go"
+(fixture / native_site).write_text('package build\nvar supplied = "ghcr.io/bex-co/bex-cnb-run@' + sys.argv[3] + '"\n')
+inventory = json.loads((fixture / "inv.json").read_text())
+inventory["images"].append(dict(inventory["images"][0], id="native-supplier", kind="native-base", upstream="ghcr.io/bex-co/bex-cnb-run:native-fixture", committed="ghcr.io/bex-co/bex-cnb-run@" + sys.argv[3], files=[native_site]))
+(fixture / "covered.json").write_text(json.dumps(inventory))
+PYFIXTURE
+assert "canonical supplied-base digest needs inventory coverage" 1 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/inv.json" "$SCRIPT" validate
+assert "inventoried canonical supplied-base digest validates" 0 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/covered.json" "$SCRIPT" validate
+
+# The single common foundation is an independent upstream input, even while
+# the operator's adopted common pin is empty.
+printf 'ARG BASE_IMAGE=buildpack-deps:bookworm@%s\n' "$DIGEST_B" >"$tmp/supplied/deploy/native-common/Dockerfile"
+assert "canonical common source needs inventory coverage" 1 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/covered.json" "$SCRIPT" validate
+python3 - "$tmp/supplied" "$DIGEST_B" <<'PYFIXTURE'
+import json, sys
+from pathlib import Path
+fixture = Path(sys.argv[1])
+inventory = json.loads((fixture / "covered.json").read_text())
+inventory["images"].append(dict(inventory["images"][0], id="native-common-source", kind="native-base", upstream="docker.io/library/buildpack-deps:bookworm", committed="buildpack-deps:bookworm@" + sys.argv[2], files=["deploy/native-common/Dockerfile"]))
+(fixture / "common-covered.json").write_text(json.dumps(inventory))
+PYFIXTURE
+assert "inventoried canonical common source validates" 0 \
+  env -u FRESHNESS_PIN_SITES FRESHNESS_ROOT="$tmp/supplied" FRESHNESS_INVENTORY="$tmp/supplied/common-covered.json" "$SCRIPT" validate
+
+# RED: missing coverage of a pin-site digest.
+write_tree "$tmp/uncovered"
+printf 'extra := "other@%s"\n' "$DIGEST_C" >>"$tmp/uncovered/pin.go"
+assert "uncovered pin-site digest fails" 1 \
+  env FRESHNESS_ROOT="$tmp/uncovered" FRESHNESS_INVENTORY="$tmp/uncovered/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" "$SCRIPT" validate
+
+# RED: listed file lacks the committed digest.
+write_tree "$tmp/mismatch"
+printf 'image := "example/builder@%s"\n' "$DIGEST_B" >"$tmp/mismatch/pin.go"
+assert "committed digest missing from file fails" 1 \
+  env FRESHNESS_ROOT="$tmp/mismatch" FRESHNESS_INVENTORY="$tmp/mismatch/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" "$SCRIPT" validate
+
+# RED: malformed metadata.
+printf '{"schema":"nope","images":[]}\n' >"$tmp/bad.json"
+assert "malformed schema fails" 1 \
+  env FRESHNESS_INVENTORY="$tmp/bad.json" FRESHNESS_ROOT="$tmp" FRESHNESS_PIN_SITES="" "$SCRIPT" validate
+
+printf '{"schema":"bex.build-toolchain-freshness/v1","images":[{"id":"cnb-builder","kind":"builder","upstream":"docker.io/example/builder:latest","committed":"example/builder@sha256:dead","resolved_at":"2026-08-18T00:00:00Z","source":"x","files":["pin.go"]}]}\n' >"$tmp/shortdigest.json"
+assert "short digest fails" 1 \
+  env FRESHNESS_INVENTORY="$tmp/shortdigest.json" FRESHNESS_ROOT="$tmp" FRESHNESS_PIN_SITES="" "$SCRIPT" validate
+
+# GREEN: resolve against a fixture map is byte-identical across runs.
+write_tree "$tmp/stable"
+printf '{"docker.io/example/builder:latest":"%s"}\n' "$DIGEST_A" >"$tmp/stable/digests.json"
+run_resolve() {
+  env FRESHNESS_ROOT="$tmp/stable" FRESHNESS_INVENTORY="$tmp/stable/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/stable/digests.json" \
+      "$SCRIPT" resolve
+}
+run_resolve >"$tmp/r1.json"
+run_resolve >"$tmp/r2.json"
+if ! cmp -s "$tmp/r1.json" "$tmp/r2.json"; then
+  echo "FAIL: repeated resolve is not byte-identical" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: repeated resolve is byte-identical"
+fi
+assert_stdout "unchanged resolve reports changed=false" '"changed": false' cat "$tmp/r1.json"
+
+# Drift: exact old → new replacement, worktree untouched.
+printf '{"docker.io/example/builder:latest":"%s"}\n' "$DIGEST_B" >"$tmp/stable/digests.json"
+env FRESHNESS_ROOT="$tmp/stable" FRESHNESS_INVENTORY="$tmp/stable/inv.json" \
+    FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/stable/digests.json" \
+    "$SCRIPT" resolve >"$tmp/drift.json"
+assert_stdout "drift names committed digest" "$DIGEST_A" cat "$tmp/drift.json"
+assert_stdout "drift names observed digest" "$DIGEST_B" cat "$tmp/drift.json"
+assert_stdout "drift sets changed=true" '"changed": true' cat "$tmp/drift.json"
+if ! grep -q "$DIGEST_A" "$tmp/stable/pin.go"; then
+  echo "FAIL: resolve mutated the pin file" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: resolve does not edit the worktree"
+fi
+
+# ghcr.io upstream (w1/m169 `cnb-run-image`): parse to the ghcr.io registry and
+# resolve through its anonymous token + manifest endpoints, not Docker Hub's.
+# The HTTP layer is stubbed, so this exercises the real parse/resolve path
+# without contacting a registry.
+if ghcr_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+ref = "ghcr.io/bex-co/bex-cnb-run:latest"
+got = m.parse_upstream(ref)
+assert got == ("ghcr.io", "bex-co/bex-cnb-run", "latest"), got
+calls = []
+def fake_json(url, headers=None):
+    calls.append(url)
+    return {"token": "anon"}
+def fake_digest(url, headers):
+    calls.append(url)
+    assert headers.get("Authorization") == "Bearer anon", headers
+    return "sha256:" + "d" * 64
+m.http_json, m.http_digest = fake_json, fake_digest
+assert m.resolve_upstream(ref) == "sha256:" + "d" * 64
+assert calls == [
+    "https://ghcr.io/token?service=ghcr.io&scope=repository%3Abex-co%2Fbex-cnb-run%3Apull",
+    "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/latest",
+], calls
+PY
+)"; then
+  echo "ok: ghcr.io upstream parses and resolves via ghcr.io token + manifest"
+else
+  echo "FAIL: ghcr.io upstream parse/resolve — $ghcr_out" >&2
+  fails=$((fails + 1))
+fi
+
+# npm-package upstream (w8/m73 `native-pnpm`): resolve the dist-tag through
+# the npm registry and hash the tarball it names — never an image registry.
+if npm_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+calls = []
+def fake_json(url, headers=None):
+    calls.append(url)
+    return {"dist": {"tarball": "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz"}}
+def fake_sha256(url):
+    calls.append(url)
+    return "sha256:" + "e" * 64
+def no_image_registry(*args):
+    raise AssertionError("npm-package resolved through an image registry")
+m.http_json, m.http_sha256, m.http_digest = fake_json, fake_sha256, no_image_registry
+assert m.resolve_upstream("registry.npmjs.org/pnpm:latest-10") == "sha256:" + "e" * 64
+assert calls == [
+    "https://registry.npmjs.org/pnpm/latest-10",
+    "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz",
+], calls
+PY
+)"; then
+  echo "ok: npm-package upstream resolves via npm dist-tag + tarball sha256"
+else
+  echo "FAIL: npm-package upstream resolve — $npm_out" >&2
+  fails=$((fails + 1))
+fi
+
+# release-asset upstream (w8/m106 `native-hugo-*`): hash the GitHub release
+# asset the tag serves — never an image registry.
+if asset_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+calls = []
+def fake_sha256(url):
+    calls.append(url)
+    return "sha256:" + "f" * 64
+def no_image_registry(*args):
+    raise AssertionError("release-asset resolved through an image registry")
+m.http_sha256, m.http_digest, m.http_json = fake_sha256, no_image_registry, no_image_registry
+ref = "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-amd64.tar.gz:v0.111.3"
+assert m.resolve_upstream(ref) == "sha256:" + "f" * 64
+assert calls == [
+    "https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_extended_0.111.3_linux-amd64.tar.gz",
+], calls
+try:
+    m.resolve_upstream("github.com/gohugoio/hugo:v0.111.3")
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("an asset-less release-asset ref resolved")
+PY
+)"; then
+  echo "ok: release-asset upstream resolves via the GitHub release download sha256"
+else
+  echo "FAIL: release-asset upstream resolve — $asset_out" >&2
+  fails=$((fails + 1))
+fi
+
+body="$(env "$SCRIPT" issue-body "$tmp/drift.json")"
+if ! printf '%s' "$body" | grep -qF "$DIGEST_A" || ! printf '%s' "$body" | grep -qF "$DIGEST_B"; then
+  echo "FAIL: issue body omitted exact digests" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: issue body carries exact replacements"
+fi
+if ! printf '%s' "$body" | grep -qF 'never edits, commits, or merges'; then
+  echo "FAIL: issue body must say the workflow never applies a pin" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: issue body is a review request"
+fi
+
+action() { env EXISTING_ISSUE="${1:-}" "$SCRIPT" issue-action "$2"; }
+[ "$(action '' "$tmp/drift.json")" = open ] || { echo "FAIL: new drift should open" >&2; fails=$((fails + 1)); }
+[ "$(action '12' "$tmp/drift.json")" = update ] || { echo "FAIL: repeated drift should update" >&2; fails=$((fails + 1)); }
+[ "$(action '' "$tmp/r1.json")" = noop ] || { echo "FAIL: no-drift without issue should noop" >&2; fails=$((fails + 1)); }
+[ "$(action '12' "$tmp/r1.json")" = close ] || { echo "FAIL: no-drift with issue should close" >&2; fails=$((fails + 1)); }
+echo "ok: issue open/update/close/noop decisions"
+
+wf="$root/.github/workflows/build-toolchain-freshness.yml"
+if grep -Eq '\$\{\{[[:space:]]*secrets\.|git (commit|push)|gh pr ' "$wf"; then
+  echo "FAIL: freshness workflow must not edit the tree or reference production secrets" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: freshness workflow is issue-only and secret-free"
+fi
+if ! grep -q 'permissions:' "$wf" || ! grep -q 'contents: read' "$wf" || ! grep -q 'issues: write' "$wf"; then
+  echo "FAIL: freshness workflow permissions must be contents:read + issues:write" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: freshness workflow permissions are least privilege"
+fi
+
+if ! grep -q '!operator/internal/build/toolchain-freshness.json' "$root/lego/.dockerignore"; then
+  echo "FAIL: image build context must re-include the embedded freshness inventory" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: dockerignore admits the embedded freshness inventory"
+fi
+
+# Line staleness (w5/m144): a Go pin one minor behind upstream's newest line is
+# drift even when its own tag's digest has not moved; a current line is not.
+mkdir -p "$tmp/line"
+printf '{"schema":"bex.build-toolchain-freshness/v1","images":[{"id":"cnb-builder","kind":"builder","upstream":"docker.io/example/builder:latest","committed":"example/builder@%s","resolved_at":"2026-10-20T00:00:00Z","source":"x","files":["pin.go"]},{"id":"native-go","kind":"native-base","upstream":"docker.io/library/golang:1.27-bookworm","committed":"golang:1.27-bookworm@%s","resolved_at":"2026-10-20T00:00:00Z","source":"x","files":["pin.go"]}]}\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/inv.json"
+printf 'a := "example/builder@%s"\nb := "golang:1.27-bookworm@%s"\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/pin.go"
+printf '{"docker.io/example/builder:latest":"%s","docker.io/library/golang:1.27-bookworm":"%s"}\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/digests.json"
+line_resolve() {
+  printf '{"native-go":"%s"}\n' "$1" >"$tmp/line/lines.json"
+  env FRESHNESS_ROOT="$tmp/line" FRESHNESS_INVENTORY="$tmp/line/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/line/digests.json" \
+      FRESHNESS_LATEST_LINES="$tmp/line/lines.json" "$SCRIPT" resolve
+}
+line_resolve 1.28 >"$tmp/line/behind.json"
+assert_stdout "a Go pin one minor behind is drift" '"newer_line": "1.28"' cat "$tmp/line/behind.json"
+assert_stdout "a Go pin one minor behind sets changed=true" '"changed": true' cat "$tmp/line/behind.json"
+line_resolve 1.27 >"$tmp/line/current.json"
+if grep -q '"changed": true' "$tmp/line/current.json"; then
+  echo "FAIL: a current Go line is not drift" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: a current Go line is not drift"
+fi
+# Lines compare numerically: 1.3 is older than 1.27, not newer.
+line_resolve 1.3 >"$tmp/line/older.json"
+if grep -q '"changed": true' "$tmp/line/older.json"; then
+  echo "FAIL: an upstream line of 1.3 is not newer than a 1.27 pin" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: lines compare numerically, not as strings"
+fi
+# A feed that answers the wrong shape is a warning, not a failed resolve.
+printf '{"native-go":["1.28"]}\n' >"$tmp/line/bad.json"
+if env FRESHNESS_ROOT="$tmp/line" FRESHNESS_INVENTORY="$tmp/line/inv.json" \
+    FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/line/digests.json" \
+    FRESHNESS_LATEST_LINES="$tmp/line/bad.json" "$SCRIPT" resolve >/dev/null 2>"$tmp/line/bad.err"; then
+  echo "ok: a malformed line feed does not fail the resolve"
+else
+  echo "FAIL: a malformed line feed failed the resolve: $(cat "$tmp/line/bad.err")" >&2
+  fails=$((fails + 1))
+fi
+
+if [ "$fails" -ne 0 ]; then
+  echo "FAIL: $fails build-toolchain freshness checks" >&2
+  exit 1
+fi
+echo "PASS: build-toolchain-freshness.sh"

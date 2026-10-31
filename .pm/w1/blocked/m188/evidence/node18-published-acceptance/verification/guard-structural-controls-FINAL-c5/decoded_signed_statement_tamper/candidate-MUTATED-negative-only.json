@@ -1,0 +1,168 @@
+{
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "candidate_state": "verified_pending_guard_alignment",
+  "guard_alignment_required": true,
+  "architecture_binding_verified": true,
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/architecture-binding.json",
+    "sha256": "a69a918ab7029713e226d0604537ddcda811af6922d8a2fcac6b71f2244b30f6",
+    "complete": true
+  },
+  "verified_at": "2026-10-31T13:09:42.779261+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "digest": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "runtime": "node",
+  "version": "18.20.8",
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "producer_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "verification_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "producer": {
+    "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "run_id": 41187749759,
+    "job_id": 124498652791,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41187749759/job/124498652791",
+    "digest": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+    "original_build_passed": true,
+    "original_runtime_gates_passed": true
+  },
+  "recovered": false,
+  "recovery_authorization": null,
+  "run_id": 41187749759,
+  "job_id": 124498652791,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41187749759/job/124498652791",
+  "verification_run_id": 41187749759,
+  "verification_job_id": 124498652791,
+  "verification_job_completed_at": "2026-10-31T13:06:58Z",
+  "scans": {
+    "amd64": {
+      "attestation_verified": true,
+      "architecture": "amd64",
+      "severity_counts": {
+        "LOW": 3815,
+        "HIGH": 2279,
+        "MEDIUM": 6898,
+        "UNKNOWN": 127,
+        "CRITICAL": 228
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-scans.jsonl.gz"
+    },
+    "arm64": {
+      "attestation_verified": true,
+      "architecture": "arm64",
+      "severity_counts": {
+        "LOW": 3815,
+        "HIGH": 2279,
+        "MEDIUM": 6898,
+        "UNKNOWN": 127,
+        "CRITICAL": 228
+      },
+      "brotli_findings": [],
+      "proof_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-scans.jsonl.gz"
+    }
+  },
+  "security": {
+    "portable_companion_baseline": {
+      "applicable": true,
+      "verified": true,
+      "distribution": "Debian11 Bullseye",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "legacy_header_major": "18",
+      "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+      "source_record_presence_verified": true,
+      "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+      "success_log_lines": {
+        "amd64": "2026-10-31T12:04:56.7261989Z #15 0.607 Patched Node passed the Bullseye companion baseline",
+        "arm64": "2026-10-31T12:04:57.5982692Z #16 0.228 Patched Node passed the Bullseye companion baseline"
+      }
+    },
+    "cve": "CVE-2026-111497",
+    "behavioral_gates_verified": true,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "permanent_decoder_error": -17,
+    "healthy_round_trip_verified": true,
+    "bundled_brotli_version": "1.1.1",
+    "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+  },
+  "signature": {
+    "verified": true,
+    "identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "oidc_issuer": "https://token.actions.githubusercontent.com",
+    "workflow_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "proof_mode": "targeted_sigstore_bundles/v1",
+    "signed_subject": {
+      "digest": {
+        "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+      },
+      "annotations": {}
+    },
+    "repository_binding": "authenticated OCI repository discovery plus digest-authenticated raw root index; no reconstructed signed DockerReference"
+  },
+  "runtime_gate_steps": [
+    {
+      "name": "verify real native tool transformations without network on both architectures",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan amd64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "scan arm64 candidate",
+      "conclusion": "success"
+    },
+    {
+      "name": "sign and attest the immutable candidate",
+      "conclusion": "success"
+    }
+  ],
+  "platforms": {
+    "amd64": {
+      "revision": "dbc493ba688c19758c9a489635761419fb2c1af6",
+      "runtime_env": [
+        "NODE_VERSION=18.20.8"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.11&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.11&upstream=brotli"
+        }
+      ]
+    },
+    "arm64": {
+      "revision": "dbc493ba688c19758c9a489635761419fb2c1af6",
+      "runtime_env": [
+        "NODE_VERSION=18.20.8"
+      ],
+      "brotli_packages": [
+        {
+          "name": "libbrotli-dev",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.11&upstream=brotli"
+        },
+        {
+          "name": "libbrotli1",
+          "version": "1.0.9-2+deb12u1",
+          "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.11&upstream=brotli"
+        }
+      ]
+    }
+  },
+  "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+  "anonymous_metadata_pull": true,
+  "proof_directory": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6",
+  "targeted_proof_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/decoded_signed_statement_tamper/proof-MUTATED-negative-only.json",
+  "targeted_proof_sha256": "4c176adbb3eece7e0f3ab4e265554cdb925d64c1b19f3e3d3a2a1ab32f3630f7"
+}

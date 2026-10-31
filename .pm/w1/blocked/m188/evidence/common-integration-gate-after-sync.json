@@ -1,0 +1,33 @@
+{
+  "schema": "bex.m188.common-gate-followup-after-ship-sync/v1",
+  "at": "2026-10-31T14:21:58.512619+00:00",
+  "current_main": "e36b1462c42a3eb33fcb2b3e42ed8308b7beacba",
+  "prior_gate_record": "common-integration-gate-at-parking.json",
+  "prior_gate_sha256": "247ab7f6391ecec07be58669d8efbb5a2bf515b69dae7472f5576606fb107592",
+  "incoming_change": "Maintained original Node tool replay source/fixtures and unit controls; latest README explicitly says generated/common execution still waits for a real candidate and source preparation is not actual qualification.",
+  "current_observed_files": [
+    {
+      "path": ".pm/w8/m91/README.md",
+      "sha256": "ca2c9e94ad7d58d59fe7063194c07ddf05cff29b9e17811549240c1c4920f188",
+      "bytes": 36765
+    },
+    {
+      "path": ".pm/w8/m91/t007.md",
+      "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "bytes": 2197
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "sha256": "97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a",
+      "bytes": 9582
+    }
+  ],
+  "qualified_common_and_legacy_gate_still_open": true,
+  "both_production_pins_still_empty": true,
+  "owner": "worker8",
+  "required_evidence": "w8/m91/t007 signed reviewed common base and actual same-version legacy dual-architecture generated qualification, then w1 adoption/live verification",
+  "artifact_acceptance_remains_historical_11_of_11": true,
+  "incoming_source_NOT_artifact_role_alias": true,
+  "source_adoption_authorized": false,
+  "no_new_CI_or_production_action": true
+}

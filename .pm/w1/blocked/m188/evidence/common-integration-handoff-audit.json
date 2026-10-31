@@ -1,0 +1,12 @@
+{
+  "schema": "bex.m188.root-common-handoff-audit/v1",
+  "at": "2026-10-31T14:07:10.141167+00:00",
+  "manifest_sha256": "f434ab41cdfc2a0a8b899cdf2c4cd66c8e5af7820f0d7f33b4c1da9ee8b85e0f",
+  "all11_exact_artifacts_versions_and_scope_match_frozen_Q": true,
+  "linked_file_hashes_checked": 68,
+  "all_copied_bytes_equal": true,
+  "no_private_config_filename_references": true,
+  "common_qualified": false,
+  "source_adoption_authorized": false,
+  "live_DoD_complete": false
+}

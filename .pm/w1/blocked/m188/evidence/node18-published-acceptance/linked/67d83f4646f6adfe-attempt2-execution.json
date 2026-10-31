@@ -1,0 +1,22 @@
+{
+  "attempt": 2,
+  "started_at": "2026-10-31T13:39:43.207514+00:00",
+  "finished_at": "2026-10-31T13:40:04.574128+00:00",
+  "argv": [
+    "python3",
+    "/tmp/bex-m188-promote-reviewed-candidate.py",
+    "node-18-bookworm",
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6",
+    "root-approved",
+    "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806"
+  ],
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-node18-promotion-attempts/attempt2.stdout.log",
+    "sha256": "67c4c1bb02e9a22f9309286f07b4e14383ce4013c9412dc0cfcc1f1f904f6b5e"
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-node18-promotion-attempts/attempt2.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

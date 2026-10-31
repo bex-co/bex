@@ -1,0 +1,9 @@
+test_all_wheels_are_required_even_without_a_primary_interpreter (common_test.CommonImageTests.test_all_wheels_are_required_even_without_a_primary_interpreter) ... ok
+test_common_layout_refuses_other_distribution_and_dangling_primary (common_test.CommonImageTests.test_common_layout_refuses_other_distribution_and_dangling_primary) ... ok
+test_missing_ambiguous_or_other_distribution_pin_is_refused (common_test.CommonImageTests.test_missing_ambiguous_or_other_distribution_pin_is_refused) ... ok
+test_real_cli_supplies_one_common_row_and_reviewed_base (common_test.CommonImageTests.test_real_cli_supplies_one_common_row_and_reviewed_base) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.027s
+
+OK

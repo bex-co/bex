@@ -1,0 +1,86 @@
+{
+  "schema": "bex.m188.common-acceptance-precondition-evidence/v1",
+  "at": "2026-10-31T14:02:48.805602+00:00",
+  "files": [
+    {
+      "source": "/private/tmp/bex-m188-common-scope-review-x24vsect/full-owned.diff",
+      "archive": "review/full-owned.diff",
+      "bytes": 19772,
+      "sha256": "55bf24a860752004d704c8c89c40de91076a9a4194cf541d3b112c13796fb1f3"
+    },
+    {
+      "source": "/private/tmp/bex-m188-common-scope-review-x24vsect/manifest.json",
+      "archive": "review/manifest.json",
+      "bytes": 781,
+      "sha256": "294c1b562a8dd371708b22c73519786d1bdcf5387be7771ecfae89ceeb851ced"
+    },
+    {
+      "source": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/receipt.json",
+      "archive": "validation/receipt.json",
+      "bytes": 2123,
+      "sha256": "75a90eed8038c7135c5ab19ff65c914e26a6564518e04dde42a824ab28bed4f9"
+    },
+    {
+      "source": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/build-package.log",
+      "archive": "validation/build-package.log",
+      "bytes": 63,
+      "sha256": "7f5d34136c01fe937d74ed235b5a4f7dc41762818a2496c1b8a7315ad64e28a4"
+    },
+    {
+      "source": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/empty-common-rejected.log",
+      "archive": "validation/empty-common-rejected.log",
+      "bytes": 785,
+      "sha256": "b3d997c2b79d8d64018a2d4bb98c0fdb31c3441fbdb06904e2bbb9c50e73e35f"
+    },
+    {
+      "source": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/actions-validate.log",
+      "archive": "validation/actions-validate.log",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebackport_test.go",
+      "archive": "source/nativebackport_test.go",
+      "bytes": 3663,
+      "sha256": "dbcd3a8de4cf3c7019fcaae1dd18870b911bab983e372e040a038e7df4a27834"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebackport_python_test.go",
+      "archive": "source/nativebackport_python_test.go",
+      "bytes": 3463,
+      "sha256": "98837a71294d5e21e94e5a97b2b46de566f72b8f223cc767bded90f6ac52ecd0"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebackport_ruby_test.go",
+      "archive": "source/nativebackport_ruby_test.go",
+      "bytes": 3448,
+      "sha256": "1235fd131b4a8baca769846aaaae6beb0202047bb1a42e15615b2d5cf5d7234c"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/.github/workflows/native-backport-acceptance.yml",
+      "archive": "source/native-backport-acceptance.yml",
+      "bytes": 2359,
+      "sha256": "0e5e2d5e2c787798a44c7847162178d894e5f2d3d4ec30d9282d29ae20f740db"
+    },
+    {
+      "source": "/Users/tianpan/projects/bex/docs/ADR060-build-worker-reliability-and-performance.md",
+      "archive": "source/ADR060-build-worker-reliability-and-performance.md",
+      "bytes": 114199,
+      "sha256": "83272d93ce88b6d06819aeef7a13c2870551f4e4289623b1744d63af6687f274"
+    },
+    {
+      "source": "/private/tmp/bex-m188-common-consumer-reuse-review.json",
+      "archive": "review/reuse.json",
+      "bytes": 2053,
+      "sha256": "b25b501d8eb7288fb9608fe0f8a486db1cef8d1f5e9b1dfcd373855e19301995"
+    },
+    {
+      "source": "root-generated-current-session-review-summary",
+      "archive": "review/root-summary.json",
+      "bytes": 1990,
+      "sha256": "bcdd932a8d56da67873e0bb52d442f81f3f7494164975469347cfc21962bfa9d"
+    }
+  ],
+  "actual_common_or_live_acceptance": false,
+  "source_adoption_performed": false
+}

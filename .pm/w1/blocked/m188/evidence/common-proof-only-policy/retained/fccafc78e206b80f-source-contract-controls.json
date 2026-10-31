@@ -1,0 +1,303 @@
+{
+  "schema": "bex.m188.actual-C5-source-success-contract-controls/v1",
+  "at": "2026-10-31T13:12:40.616482+00:00",
+  "installer_source_DBC_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+  "installer_source_C5_sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+  "entire_install_text_reconstructs_DBC_after_exact_comment_and_quoted_args_removal": true,
+  "actual_shell_apt_argv_controls": [
+    {
+      "case": "actual_DBC_installer_zero_arguments",
+      "actual_shell_exit_code": 0,
+      "actual_stub_apt_argv": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev"
+        ],
+        "DEBIAN_FRONTEND": "noninteractive"
+      },
+      "input_argument_count": 0
+    },
+    {
+      "case": "actual_C5_installer_zero_arguments",
+      "actual_shell_exit_code": 0,
+      "actual_stub_apt_argv": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev"
+        ],
+        "DEBIAN_FRONTEND": "noninteractive"
+      },
+      "input_argument_count": 0
+    },
+    {
+      "case": "actual_C5_two_trusted_argument_operands",
+      "actual_shell_exit_code": 0,
+      "actual_stub_apt_argv": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev",
+          "control-lib-one",
+          "control lib two"
+        ],
+        "DEBIAN_FRONTEND": "noninteractive"
+      },
+      "input_argument_count": 2
+    },
+    {
+      "case": "mutated_unquoted_arguments_negative_demonstration",
+      "actual_shell_exit_code": 0,
+      "actual_stub_apt_argv": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev",
+          "control",
+          "lib",
+          "two"
+        ],
+        "DEBIAN_FRONTEND": "noninteractive"
+      },
+      "input_argument_count": 1
+    }
+  ],
+  "actual_zero_arg_apt_operands_and_noninteractive_env_equal": true,
+  "old_perline_Dockerfile_exact_and_actual_script_invocation_zero_args": true,
+  "scope_no_bit_identity": "Only explicit old per-line installer zero-argument argv and exact shared downstream gates; apt resolution/image bytes, common artifact/runtime/ABI and all global failure behaviors are not claimed equal.",
+  "actual_existing_unit_groups": [
+    {
+      "group": "OCI-source",
+      "argv": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py",
+        "-v"
+      ],
+      "cwd": "/tmp/bex-m188-c5-proof-only-proposal/source",
+      "exit_code": 0,
+      "tests": 34,
+      "seconds": 15.243,
+      "stdout": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stderr.log",
+        "sha256": "99a4429322642a4963f79e8ab29bb6091bdc8a2695474b739ad798e9a4ea7fb4"
+      }
+    },
+    {
+      "group": "native-base",
+      "argv": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-base",
+        "-p",
+        "*_test.py",
+        "-v"
+      ],
+      "cwd": "/tmp/bex-m188-c5-proof-only-proposal/source",
+      "exit_code": 0,
+      "tests": 14,
+      "seconds": 1.41,
+      "stdout": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stderr.log",
+        "sha256": "b7a7f63319e5c72a540d583dfef79f5cd6961179d593cf5034d5b2d065787731"
+      }
+    },
+    {
+      "group": "native-common",
+      "argv": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-common",
+        "-p",
+        "*_test.py",
+        "-v"
+      ],
+      "cwd": "/tmp/bex-m188-c5-proof-only-proposal/source",
+      "exit_code": 0,
+      "tests": 4,
+      "seconds": 0.085,
+      "stdout": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stderr.log",
+        "sha256": "a8d743b03243c0ccb9b078c4fcba8a98bbcaf391afc9b95130525dd514e88330"
+      }
+    }
+  ],
+  "source_unit_total": 52,
+  "actual_workflow_matrix_selections": [
+    {
+      "runtime": "node-18-bookworm",
+      "actual_shell_exit_code": 0,
+      "outputs": {
+        "images": "{\"include\":[{\"name\":\"node-18-bookworm\",\"base\":\"node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783\"}]}",
+        "publish": "true"
+      },
+      "stderr": ""
+    },
+    {
+      "runtime": "node-14-bullseye",
+      "actual_shell_exit_code": 0,
+      "outputs": {
+        "images": "{\"include\":[{\"name\":\"node-14-bullseye\",\"base\":\"node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e\"}]}",
+        "publish": "true"
+      },
+      "stderr": ""
+    },
+    {
+      "runtime": "common-bookworm",
+      "actual_shell_exit_code": 0,
+      "outputs": {
+        "images": "{\"include\":[{\"name\":\"common-bookworm\",\"base\":\"buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988\"}]}",
+        "publish": "true"
+      },
+      "stderr": ""
+    },
+    {
+      "runtime": "",
+      "actual_shell_exit_code": 1,
+      "outputs": {},
+      "stderr": "runtime must match one reviewed matrix name\n"
+    },
+    {
+      "runtime": "unreviewed-runtime",
+      "actual_shell_exit_code": 1,
+      "outputs": {},
+      "stderr": "runtime must match one reviewed matrix name\n"
+    }
+  ],
+  "historical_selected_perline_build_context": "deploy/native-base",
+  "historical_selected_perline_Dockerfile": "deploy/native-base/Dockerfile",
+  "workflow_context_proof": "Exact conditional source reviewed: only common-bookworm gets deploy/native-common Dockerfile; controlled actual matrix selects singleton; no GitHub build/Docker execution claimed",
+  "candidate_to_all_gates_and_tags_suffix_exact_DBC": true,
+  "candidate_to_all_gates_suffix_sha256": "d3e050ecda9b86135167f73412f9c0376116c7680cf03c237a185bb8aa68b621",
+  "exact4_WF_reversals_to_DBC": true,
+  "inventory_old44_preserved_except_declared_foreign_metadata": [
+    {
+      "id": "native-node",
+      "only_files_appended": "deploy/native-common/Dockerfile"
+    }
+  ],
+  "new45_inventory_common_entry": {
+    "id": "native-common-bookworm-source",
+    "kind": "native-base",
+    "upstream": "docker.io/library/buildpack-deps:bookworm",
+    "committed": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
+    "resolved_at": "2026-10-31T10:53:52Z",
+    "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved2026-10-31; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
+    "files": [
+      "deploy/native-common/Dockerfile"
+    ]
+  },
+  "no_common_artifact_or_adoption_or_CI_or_prod_claim": true,
+  "network_scope": "OCI staging unit tests use owned loopback controlled HTTP fixtures; no external download, production, apt or Docker"
+}

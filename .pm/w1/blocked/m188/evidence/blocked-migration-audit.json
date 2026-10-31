@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.actual-root-blocked-migration-audit/v1",
+  "at": "2026-10-31T14:16:28.084152+00:00",
+  "source": ".pm/w1/m188",
+  "destination": ".pm/w1/blocked/m188",
+  "source_absent_no_stub_or_symlink": true,
+  "completed_tasks": [
+    "t001",
+    "t002"
+  ],
+  "blocked_frontier": "t003 depends on qualifiedcommon w8/m91/t007",
+  "other_pending_tasks": [
+    "t004",
+    "t005",
+    "t006",
+    "t007",
+    "t008"
+  ],
+  "entire_original_milestone_files_after_only_reviewed_human_link_edits_preserved": 3144,
+  "immutable_evidence_files_byte_exact": 3132,
+  "reviewed_human_link_replacements": 21,
+  "resolved_human_links_after_move": true,
+  "preexisting_protected_Markdown_advisories_not_modified": 204,
+  "all_state_locations_synchronized": true,
+  "actual_upstream_gate_record_sha256": "247ab7f6391ecec07be58669d8efbb5a2bf515b69dae7472f5576606fb107592",
+  "plan_original_sha256": "0fc41cbeae9491aa02ff4db56498446cc28421bc6d725a16f7370632d724a693",
+  "plan_custody_manifest_sha256": "7b2ffdac8c05a84f923455011ef438a73e7b04da31ce2d45301d452bc2fa477d",
+  "source_adoption_performed": false,
+  "common_or_live_DoD_met": false
+}

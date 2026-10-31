@@ -1,0 +1,14 @@
+{
+  "scope": "PROPOSED ONLY. No repository write or retirement authorized until root completes actual new DBC candidate strict acceptance. Old7dd remains unsigned/unaccepted; retirement reason is superseded by DIFFERENT verified current ref6c40. Preserve allthree foreign Elixir entries.",
+  "before_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+  "proposed_file": "/tmp/bex-m188-proposed-old-node18-retirement-htpbdfoa/PROPOSED-ONLY-native-base-recovery.json",
+  "proposed_sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+  "removed_runtime": "node-18-bookworm",
+  "removed_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+  "new_candidate_not_yet_accepted": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "foreign_keys": [
+    "elixir-1.18",
+    "elixir-1.19",
+    "elixir-1.17"
+  ]
+}

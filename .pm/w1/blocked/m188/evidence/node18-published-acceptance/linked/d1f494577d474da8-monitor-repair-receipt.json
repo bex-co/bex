@@ -1,0 +1,57 @@
+{
+  "schema": "bex.m188.read-only-focused-monitor-repair/v1",
+  "at": "2026-10-31T11:04:22.990205+00:00",
+  "authorization": "ROOT read-only monitoring repair after actual core metadata age >240s; no CI mutation",
+  "run_id": 41187749759,
+  "job_id": 124498652791,
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "run_attempt": 1,
+  "first_fresh_direct_job_at": "2026-10-31T11:00:59.350657+00:00",
+  "initial_direct_job_raw": {
+    "file": "/tmp/bex-m188-node18-dbc-focused-observer-v2/initial-direct-job.raw.json",
+    "sha256": "a4ab33fbcd6b13ba7098b805d87789e1f477f27e688139629b6dba3479877d42",
+    "bytes": 4052
+  },
+  "initial_direct_job_request": {
+    "file": "/tmp/bex-m188-node18-dbc-focused-observer-v2/initial-direct-job.request.json",
+    "sha256": "d6b140bee064126373226a49ae8392f100e9f4231bbccd7f7721e1b89573932f",
+    "bytes": 418
+  },
+  "focused_observer_code": {
+    "file": "/tmp/bex-m188-node18-dbc-focused-observer-v2/watch-focused.py",
+    "sha256": "2bc6a8ee9127200e99f64e7eb929bd6be378995e87e23d6a0f85d1cd99fc80e3",
+    "bytes": 4417
+  },
+  "identity_controls": {
+    "file": "/tmp/bex-m188-node18-dbc-focused-observer-v2/identity-controls.json",
+    "sha256": "9c182f9b8bfd6f035f23a78039ea6af9e9e1c9363d907487231eff607360daf4",
+    "bytes": 643
+  },
+  "stateless_brief": {
+    "file": "/tmp/bex-m188-core-brief-v5.py",
+    "sha256": "5d0e34cf8eb3fec601f29e7a63b1e6c1db929051d80e3b0aecc3610e6284b555",
+    "bytes": 2782
+  },
+  "local_delta_reader": {
+    "file": "/tmp/bex-m188-runtime-passive-tick-v2.py",
+    "sha256": "3beef1f497674177fb6cce707e814933db01cdf62f184c726510547d91a9d473",
+    "bytes": 1499
+  },
+  "poll_seconds": 45,
+  "per_request_timeout_seconds": 25,
+  "direct_job_first": true,
+  "run_GET_only_for_terminal_confirmation": true,
+  "failed_reads_never_advance_observed_at": true,
+  "stale_age_threshold_seconds": 180,
+  "focus_writes_only_separate_temp_status": "/tmp/bex-m188-node18-dbc-focused-observer-v2/focused-status.json",
+  "mutable_status_and_latest_raw_excluded_from_frozen_inputs": true,
+  "actual_first_focused_poll_at": "2026-10-31T11:03:28.797738+00:00",
+  "current_step_at_record": "normal build/push",
+  "old47_phase_preserved": {
+    "manifest": "/tmp/bex-m188-node18-dbc-normal-dispatch/MANIFEST.json",
+    "sha256": "90647cebb1027b3b6d84df3eaedc8e6247ca31bfbc10619d7d695e478fb19794"
+  },
+  "active_guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "aggregate_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+  "source_guard_count_or_CI_mutations": false
+}

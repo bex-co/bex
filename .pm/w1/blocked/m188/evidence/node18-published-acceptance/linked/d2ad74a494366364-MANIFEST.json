@@ -1,0 +1,2002 @@
+{
+  "schema": "bex.m188.portable-actualDBC-Node18-source-policy-and-FINAL-dispatch-phase-archive/v2",
+  "created_at": "2026-10-31T09:31:47.746365+00:00",
+  "archive_candidate_only": true,
+  "records": [
+    {
+      "original_source": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "archive_path": "cross-archive-reference/prior-e756-MANIFEST.json",
+      "original_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "original_bytes": 52401,
+      "stored_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "stored_bytes": 52401,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "exact_existing_source_custody_manifest_metadata_only"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+      "original_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+      "original_bytes": 92910,
+      "stored_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+      "stored_bytes": 92910,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "original_sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+      "original_bytes": 167424,
+      "stored_sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+      "stored_bytes": 167424,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/execution.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/execution.json",
+      "original_sha256": "55d74ecee91a8d912d103a9797f6e02fcb6d1f439c55b12209fda37e6fa6b0d5",
+      "original_bytes": 1420,
+      "stored_sha256": "55d74ecee91a8d912d103a9797f6e02fcb6d1f439c55b12209fda37e6fa6b0d5",
+      "stored_bytes": 1420,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/guard.diff.gz",
+      "original_sha256": "123017e5b122704b727d7e07b55dec0b7ace5b9c0e2c2ea8cbf0f21429af84f6",
+      "original_bytes": 10267,
+      "stored_sha256": "bd6a150dfa1b8d9d843df2b55eff0e8c354a7bef049235842a2e00f5450c0d1e",
+      "stored_bytes": 2865,
+      "encoding": "gzip",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/proposal-final.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/proposal-final.json",
+      "original_sha256": "2ceda36d06fe6a6c4f0e0b135512638a7f56e65bcbd236318d4bb4bf90f5cb0e",
+      "original_bytes": 2367,
+      "stored_sha256": "2ceda36d06fe6a6c4f0e0b135512638a7f56e65bcbd236318d4bb4bf90f5cb0e",
+      "stored_bytes": 2367,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-and-source-boundary-controls.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-and-source-boundary-controls.json",
+      "original_sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+      "original_bytes": 27913,
+      "stored_sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+      "stored_bytes": 27913,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-controls.stderr.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-controls.stderr.log",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-controls.stdout.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-controls.stdout.log",
+      "original_sha256": "cb6c41c7542126bb4e879fef09ef12ee853077591fbd1add17548e6fa10c42b1",
+      "original_bytes": 923,
+      "stored_sha256": "cb6c41c7542126bb4e879fef09ef12ee853077591fbd1add17548e6fa10c42b1",
+      "stored_bytes": 923,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-plan.stderr.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-plan.stderr.log",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-plan.stdout.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-plan.stdout.log",
+      "original_sha256": "ab99e43576582aa8b19eef097fc9a8719868acdb3a75a582338db853d2403fcc",
+      "original_bytes": 158,
+      "stored_sha256": "ab99e43576582aa8b19eef097fc9a8719868acdb3a75a582338db853d2403fcc",
+      "stored_bytes": 158,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-readonly-plan.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-readonly-plan.json",
+      "original_sha256": "311489229992ab2dd019f05bdde9f16c36c8fb0c25fe1feea2c250b2637de0ca",
+      "original_bytes": 18374,
+      "stored_sha256": "311489229992ab2dd019f05bdde9f16c36c8fb0c25fe1feea2c250b2637de0ca",
+      "stored_bytes": 18374,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-refusal-plan.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-refusal-plan.json",
+      "original_sha256": "1b34df8dd2cc2a0488fa3bc2a217a125e7d1007841f7c435a19dcaaf521299e8",
+      "original_bytes": 18374,
+      "stored_sha256": "1b34df8dd2cc2a0488fa3bc2a217a125e7d1007841f7c435a19dcaaf521299e8",
+      "stored_bytes": 18374,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real11-refusal.stderr.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real11-refusal.stderr.log",
+      "original_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "original_bytes": 113,
+      "stored_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "stored_bytes": 113,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real11-refusal.stdout.log",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/real11-refusal.stdout.log",
+      "original_sha256": "78de182f2f5e3a5947229b71b16b5c0da639d6e54dd9a977f65c3de9f3e89de1",
+      "original_bytes": 157,
+      "stored_sha256": "78de182f2f5e3a5947229b71b16b5c0da639d6e54dd9a977f65c3de9f3e89de1",
+      "stored_bytes": 157,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/source-closure-review.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/source-closure-review.json",
+      "original_sha256": "ddacb1ca8a6f1efbc0036f0e560f46227446c237033eec26dd435cb95791de82",
+      "original_bytes": 11730,
+      "stored_sha256": "ddacb1ca8a6f1efbc0036f0e560f46227446c237033eec26dd435cb95791de82",
+      "stored_bytes": 11730,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED_historical_proposal"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/actual-recovery-selector.py",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/actual-recovery-selector.py",
+      "original_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+      "original_bytes": 1507,
+      "stored_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+      "stored_bytes": 1507,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/commit.raw",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/commit.raw",
+      "original_sha256": "f50bd1786868fae49d72213ace12dbe93b1d6c0998fe9eae089a33f396fdd88d",
+      "original_bytes": 990,
+      "stored_sha256": "f50bd1786868fae49d72213ace12dbe93b1d6c0998fe9eae089a33f396fdd88d",
+      "stored_bytes": 990,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/guard-704-review.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/guard-704-review.json",
+      "original_sha256": "66d08380f9cd3da04c061a45c548a6b22bf3674c65178988107c4d096920ec6a",
+      "original_bytes": 2455,
+      "stored_sha256": "66d08380f9cd3da04c061a45c548a6b22bf3674c65178988107c4d096920ec6a",
+      "stored_bytes": 2455,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/guard-704-source-checks.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/guard-704-source-checks.json",
+      "original_sha256": "6d6b784af3586585b6c1bc74fb93f0b8000dc09ff8adba3f69c5209e8aadbe79",
+      "original_bytes": 1544,
+      "stored_sha256": "6d6b784af3586585b6c1bc74fb93f0b8000dc09ff8adba3f69c5209e8aadbe79",
+      "stored_bytes": 1544,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/input-manifest.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/input-manifest.json",
+      "original_sha256": "0cd94737737bd3ec4b462f3bf9a461648f89bdb3aa5767b5465c44b5dec19ff9",
+      "original_bytes": 14433,
+      "stored_sha256": "0cd94737737bd3ec4b462f3bf9a461648f89bdb3aa5767b5465c44b5dec19ff9",
+      "stored_bytes": 14433,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/review.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/review.json",
+      "original_sha256": "32442ca091a6b4cb8358b4d1c85f9f0edd401a6301fb02c914bcb3ad469b854c",
+      "original_bytes": 3145,
+      "stored_sha256": "32442ca091a6b4cb8358b4d1c85f9f0edd401a6301fb02c914bcb3ad469b854c",
+      "stored_bytes": 3145,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector-receipt.json",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/selector-receipt.json",
+      "original_sha256": "28cb4d720a8a250c42a691b1b290fa61759642a4ed91ffa59e92c470ba020b20",
+      "original_bytes": 1997,
+      "stored_sha256": "28cb4d720a8a250c42a691b1b290fa61759642a4ed91ffa59e92c470ba020b20",
+      "stored_bytes": 1997,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.GITHUB_OUTPUT",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/selector.GITHUB_OUTPUT",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o600",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.stderr",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/selector.stderr",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.stdout",
+      "archive_path": "NEVER-ACTIVE-unused9fe-independent/selector.stdout",
+      "original_sha256": "c07d01500a71d80858d49dfa3f58f4e39e80112e5d52ffb779bffcc98baaaff3",
+      "original_bytes": 46,
+      "stored_sha256": "c07d01500a71d80858d49dfa3f58f4e39e80112e5d52ffb779bffcc98baaaff3",
+      "stored_bytes": 46,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "unused9fe_NEVER_ACTIVE_independent_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-9fe-node18-source-proposal.py",
+      "archive_path": "harness/bex-m188-build-9fe-node18-source-proposal.py",
+      "original_sha256": "c395a847bf8418f82bb39d24c8eae79155da9d29ac90551eebc25bcb6fe8cd38",
+      "original_bytes": 7580,
+      "stored_sha256": "c395a847bf8418f82bb39d24c8eae79155da9d29ac90551eebc25bcb6fe8cd38",
+      "stored_bytes": 7580,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "source_proposal_or_actual_test_or_archive_harness"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-dbc-node18-source-proposal.py",
+      "archive_path": "harness/bex-m188-build-dbc-node18-source-proposal.py",
+      "original_sha256": "ff2f90fd780ab2d094f0b3e642a0e313e4e7e67df69653f344db320c2d1dca84",
+      "original_bytes": 7575,
+      "stored_sha256": "ff2f90fd780ab2d094f0b3e642a0e313e4e7e67df69653f344db320c2d1dca84",
+      "stored_bytes": 7575,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "source_proposal_or_actual_test_or_archive_harness"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-dbc-portable-archive.py",
+      "archive_path": "harness/bex-m188-build-dbc-portable-archive.py",
+      "original_sha256": "b3680cde48aedfb66b98a547e351549b0c6957f012c128df6a1ce65daeb5be07",
+      "original_bytes": 17357,
+      "stored_sha256": "b3680cde48aedfb66b98a547e351549b0c6957f012c128df6a1ce65daeb5be07",
+      "stored_bytes": 17357,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "source_proposal_or_actual_test_or_archive_harness"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+      "original_sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+      "original_bytes": 1696,
+      "stored_sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+      "stored_bytes": 1696,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "archive_path": "actual-DBC-proposal/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "original_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "original_bytes": 92910,
+      "stored_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "stored_bytes": 92910,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "archive_path": "actual-DBC-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "original_bytes": 167424,
+      "stored_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "stored_bytes": 167424,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/execution.json",
+      "archive_path": "actual-DBC-proposal/execution.json",
+      "original_sha256": "e5db7708b702e21c08f9614faed3928970bc25aebd9e4718f5687707ad1831f4",
+      "original_bytes": 1422,
+      "stored_sha256": "e5db7708b702e21c08f9614faed3928970bc25aebd9e4718f5687707ad1831f4",
+      "stored_bytes": 1422,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/guard.diff",
+      "archive_path": "actual-DBC-proposal/guard.diff.gz",
+      "original_sha256": "c10847227891760e554ff5fe08b1ad91244e328eb4995f7d1e8774c0ec67bc47",
+      "original_bytes": 10267,
+      "stored_sha256": "8c244ccc7b21f347fa3a9a8f47766d19004e079efb44c5eefa3bb6f4d9b3deaa",
+      "stored_bytes": 2863,
+      "encoding": "gzip",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/proposal-final.json",
+      "archive_path": "actual-DBC-proposal/proposal-final.json",
+      "original_sha256": "81f9b1fbc736450d859c865c16654e057e4a15996e2eeabd3884f83b8dada453",
+      "original_bytes": 3230,
+      "stored_sha256": "81f9b1fbc736450d859c865c16654e057e4a15996e2eeabd3884f83b8dada453",
+      "stored_bytes": 3230,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-and-source-boundary-controls.json",
+      "archive_path": "actual-DBC-proposal/real10-and-source-boundary-controls.json",
+      "original_sha256": "743ea7fdc9c4060b9262d1ee71ea1d9689d1121740d7acf03e93c61acf94b5aa",
+      "original_bytes": 29258,
+      "stored_sha256": "743ea7fdc9c4060b9262d1ee71ea1d9689d1121740d7acf03e93c61acf94b5aa",
+      "stored_bytes": 29258,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-controls.stderr.log",
+      "archive_path": "actual-DBC-proposal/real10-controls.stderr.log",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-controls.stdout.log",
+      "archive_path": "actual-DBC-proposal/real10-controls.stdout.log",
+      "original_sha256": "020904681d60891f989601fcc512c6d78e61f8800a681550e394fb443ed14d11",
+      "original_bytes": 986,
+      "stored_sha256": "020904681d60891f989601fcc512c6d78e61f8800a681550e394fb443ed14d11",
+      "stored_bytes": 986,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-plan.stderr.log",
+      "archive_path": "actual-DBC-proposal/real10-plan.stderr.log",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-plan.stdout.log",
+      "archive_path": "actual-DBC-proposal/real10-plan.stdout.log",
+      "original_sha256": "42d8d5e57e3f848d6180dd5a79064a039da414a9de07e39c5a480c977b285960",
+      "original_bytes": 158,
+      "stored_sha256": "42d8d5e57e3f848d6180dd5a79064a039da414a9de07e39c5a480c977b285960",
+      "stored_bytes": 158,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-readonly-plan.json",
+      "archive_path": "actual-DBC-proposal/real10-readonly-plan.json",
+      "original_sha256": "9d65755ff0eed3941caf5174bdd00eac0d7a3154779305cb1ef34b7ef99c5fe0",
+      "original_bytes": 18374,
+      "stored_sha256": "9d65755ff0eed3941caf5174bdd00eac0d7a3154779305cb1ef34b7ef99c5fe0",
+      "stored_bytes": 18374,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real10-refusal-plan.json",
+      "archive_path": "actual-DBC-proposal/real10-refusal-plan.json",
+      "original_sha256": "4a48eaca041f8c3a4f38b643a03f037d7ddcfadec3f8a15e929668cf511fd021",
+      "original_bytes": 18374,
+      "stored_sha256": "4a48eaca041f8c3a4f38b643a03f037d7ddcfadec3f8a15e929668cf511fd021",
+      "stored_bytes": 18374,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real11-refusal.stderr.log",
+      "archive_path": "actual-DBC-proposal/real11-refusal.stderr.log",
+      "original_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "original_bytes": 113,
+      "stored_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "stored_bytes": 113,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/real11-refusal.stdout.log",
+      "archive_path": "actual-DBC-proposal/real11-refusal.stdout.log",
+      "original_sha256": "649233f03a9dc286f067bc2acdce443b11904b1efb2c1e5579476f318abcf410",
+      "original_bytes": 157,
+      "stored_sha256": "649233f03a9dc286f067bc2acdce443b11904b1efb2c1e5579476f318abcf410",
+      "stored_bytes": 157,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/source-closure-review.json",
+      "archive_path": "actual-DBC-proposal/source-closure-review.json",
+      "original_sha256": "8f958d855f82ad976381ed205ab39c7c1071935f91a5520cec3c311f4108f3b2",
+      "original_bytes": 12604,
+      "stored_sha256": "8f958d855f82ad976381ed205ab39c7c1071935f91a5520cec3c311f4108f3b2",
+      "stored_bytes": 12604,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_DBC_source_policy_proposal_and_actual_controls"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-root-execution-source-eligibility.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-dbc-root-execution-source-eligibility.json",
+      "original_sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+      "original_bytes": 7639,
+      "stored_sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+      "stored_bytes": 7639,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-root-source-admission.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-dbc-root-source-admission.json",
+      "original_sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+      "original_bytes": 2636,
+      "stored_sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+      "stored_bytes": 2636,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/commit.raw",
+      "archive_path": "independent-DBC/commit.raw",
+      "original_sha256": "0c22f69e51fc1066913cd617c8ca0c64fb26938d51dbf0bfc0d46fd811eb7551",
+      "original_bytes": 260,
+      "stored_sha256": "0c22f69e51fc1066913cd617c8ca0c64fb26938d51dbf0bfc0d46fd811eb7551",
+      "stored_bytes": 260,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_actual_DBC_source_and_guard_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/guard-1690-review.json",
+      "archive_path": "independent-DBC/guard-1690-review.json",
+      "original_sha256": "d2cf0bbd1ed44bc273e2fa97e2ba1e2a5ea18bebb7fbd03d9a5b16f374143387",
+      "original_bytes": 2448,
+      "stored_sha256": "d2cf0bbd1ed44bc273e2fa97e2ba1e2a5ea18bebb7fbd03d9a5b16f374143387",
+      "stored_bytes": 2448,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_actual_DBC_source_and_guard_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/guard-1690-source-checks.json",
+      "archive_path": "independent-DBC/guard-1690-source-checks.json",
+      "original_sha256": "adda7f6f7ace1b232e535437d8ab8c21b0d0c65b5526754c7fbf1d2fb058cbd6",
+      "original_bytes": 1241,
+      "stored_sha256": "adda7f6f7ace1b232e535437d8ab8c21b0d0c65b5526754c7fbf1d2fb058cbd6",
+      "stored_bytes": 1241,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_actual_DBC_source_and_guard_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/input-manifest.json",
+      "archive_path": "independent-DBC/input-manifest.json",
+      "original_sha256": "9f14fda120a2f602ba0444861ee8dbe6b62dd1b74a815f313eaa049252c58839",
+      "original_bytes": 11234,
+      "stored_sha256": "9f14fda120a2f602ba0444861ee8dbe6b62dd1b74a815f313eaa049252c58839",
+      "stored_bytes": 11234,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_actual_DBC_source_and_guard_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/review.json",
+      "archive_path": "independent-DBC/review.json",
+      "original_sha256": "e15cc2110d3e330631d8fcf02b3daa88a6379604b3797b8ee4ad21e41a0e5d56",
+      "original_bytes": 3346,
+      "stored_sha256": "e15cc2110d3e330631d8fcf02b3daa88a6379604b3797b8ee4ad21e41a0e5d56",
+      "stored_bytes": 3346,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "independent_actual_DBC_source_and_guard_review"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-policy-activation.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-dbc-source-policy-activation.json",
+      "original_sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+      "original_bytes": 2082,
+      "stored_sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+      "stored_bytes": 2082,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-dispatch-node18-dbc.py",
+      "archive_path": "root-policy-and-dispatch/bex-m188-dispatch-node18-dbc.py",
+      "original_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+      "original_bytes": 12819,
+      "stored_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+      "stored_bytes": 12819,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+      "original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "original_bytes": 167424,
+      "stored_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "stored_bytes": 167424,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "archive_path": "frozen-guards/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "original_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "original_bytes": 92910,
+      "stored_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "stored_bytes": 92910,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_old_or_active_DBC_guard"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "archive_path": "frozen-guards/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "original_bytes": 92369,
+      "stored_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "stored_bytes": 92369,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_old_or_active_DBC_guard"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-investigate-node18-cancelled.py",
+      "archive_path": "harness/bex-m188-investigate-node18-cancelled.py",
+      "original_sha256": "550a20c1afe964b9f6924fb7b92ad2e7b71191be4cf854bbc975005ca3d7c972",
+      "original_bytes": 8820,
+      "stored_sha256": "550a20c1afe964b9f6924fb7b92ad2e7b71191be4cf854bbc975005ca3d7c972",
+      "stored_bytes": 8820,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "actual_cancellation_dedupe_helper"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/2cc-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/2cc-run.raw.json",
+      "original_sha256": "2574f26c7ee0635bec2485acb02f18c095ccf7dee228fefe5086c890defa9e89",
+      "original_bytes": 11869,
+      "stored_sha256": "2574f26c7ee0635bec2485acb02f18c095ccf7dee228fefe5086c890defa9e89",
+      "stored_bytes": 11869,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/2cc-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/2cc-run.request.json",
+      "original_sha256": "c84a59404f61eb0bb43e4347c306405f20e88d1a584083964a9d6468df73611a",
+      "original_bytes": 426,
+      "stored_sha256": "c84a59404f61eb0bb43e4347c306405f20e88d1a584083964a9d6468df73611a",
+      "stored_bytes": 426,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/MANIFEST.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/MANIFEST.json",
+      "original_sha256": "5d6370c1e1e249f4625c56678bd1949910503a22c115a032346b79f86aee4a8f",
+      "original_bytes": 6186,
+      "stored_sha256": "5d6370c1e1e249f4625c56678bd1949910503a22c115a032346b79f86aee4a8f",
+      "stored_bytes": 6186,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41129321189-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41129321189-run.raw.json",
+      "original_sha256": "94f89fb321cbbc58460436a838f58c813d167b26bb838725a6b090dfd4612d02",
+      "original_bytes": 11608,
+      "stored_sha256": "94f89fb321cbbc58460436a838f58c813d167b26bb838725a6b090dfd4612d02",
+      "stored_bytes": 11608,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41129321189-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41129321189-run.request.json",
+      "original_sha256": "3410b2fbb2fd47052f2f7912e39c38296e6351e1f5e71da537f43d4a3ae03f31",
+      "original_bytes": 441,
+      "stored_sha256": "3410b2fbb2fd47052f2f7912e39c38296e6351e1f5e71da537f43d4a3ae03f31",
+      "stored_bytes": 441,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41142870861-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41142870861-run.raw.json",
+      "original_sha256": "4a7e4705e033c2bcd5629ac328b796cac0151d75e8181fee3072e299271226da",
+      "original_bytes": 11687,
+      "stored_sha256": "4a7e4705e033c2bcd5629ac328b796cac0151d75e8181fee3072e299271226da",
+      "stored_bytes": 11687,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41142870861-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41142870861-run.request.json",
+      "original_sha256": "636ff3db82654d1cad395994ca740da11302f6fd7af51b2b3e551a2847baa882",
+      "original_bytes": 441,
+      "stored_sha256": "636ff3db82654d1cad395994ca740da11302f6fd7af51b2b3e551a2847baa882",
+      "stored_bytes": 441,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41144656779-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41144656779-run.raw.json",
+      "original_sha256": "f7693f965835c26f40197f9febfbfca852734f27f3a467056edf8ad12a534ddf",
+      "original_bytes": 11475,
+      "stored_sha256": "f7693f965835c26f40197f9febfbfca852734f27f3a467056edf8ad12a534ddf",
+      "stored_bytes": 11475,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/active-41144656779-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/active-41144656779-run.request.json",
+      "original_sha256": "3d0265581a4b87f6c200968d13f42025ae341a8c669a85f1110570381a09c7b7",
+      "original_bytes": 441,
+      "stored_sha256": "3d0265581a4b87f6c200968d13f42025ae341a8c669a85f1110570381a09c7b7",
+      "stored_bytes": 441,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-annotations.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-check-annotations.raw.json",
+      "original_sha256": "7586dea7b586c348e6b0bc2b4770c01cefcfb96bb1ac611c58c473a03aa87c0d",
+      "original_bytes": 287,
+      "stored_sha256": "7586dea7b586c348e6b0bc2b4770c01cefcfb96bb1ac611c58c473a03aa87c0d",
+      "stored_bytes": 287,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-annotations.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-check-annotations.request.json",
+      "original_sha256": "bb59e0cc3efde89078ea30d80513112cf35e7f209383ac8b6d2876c8c6805c9f",
+      "original_bytes": 462,
+      "stored_sha256": "bb59e0cc3efde89078ea30d80513112cf35e7f209383ac8b6d2876c8c6805c9f",
+      "stored_bytes": 462,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-check-run.raw.json",
+      "original_sha256": "8f35872d87c159d506484f489ee65e1ded81b3574019a97c54cc80eb874e3284",
+      "original_bytes": 3112,
+      "stored_sha256": "8f35872d87c159d506484f489ee65e1ded81b3574019a97c54cc80eb874e3284",
+      "stored_bytes": 3112,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-check-run.request.json",
+      "original_sha256": "39ecff84816d762a1b3358382c7b7c48b708ddc59b62a49d09cd6076999e0d71",
+      "original_bytes": 430,
+      "stored_sha256": "39ecff84816d762a1b3358382c7b7c48b708ddc59b62a49d09cd6076999e0d71",
+      "stored_bytes": 430,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-job.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-job.raw.json",
+      "original_sha256": "476adeff584dddb4df317a2c751994949c61889ed8e182486dae76989bf2b801",
+      "original_bytes": 950,
+      "stored_sha256": "476adeff584dddb4df317a2c751994949c61889ed8e182486dae76989bf2b801",
+      "stored_bytes": 950,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-job.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-job.request.json",
+      "original_sha256": "c1d2859982a927e03fadbe447560aba7886cbd8391b72690b322d1ca7a0e8f9c",
+      "original_bytes": 425,
+      "stored_sha256": "c1d2859982a927e03fadbe447560aba7886cbd8391b72690b322d1ca7a0e8f9c",
+      "stored_bytes": 425,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-run.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-run.raw.json",
+      "original_sha256": "725d6fbbf274b3c792a45a0418733d1dde92c676e558b36577b008bff53f00c9",
+      "original_bytes": 11835,
+      "stored_sha256": "725d6fbbf274b3c792a45a0418733d1dde92c676e558b36577b008bff53f00c9",
+      "stored_bytes": 11835,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-run.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/da0-run.request.json",
+      "original_sha256": "81d5b8fed61cb6aa6417331c738b4be02bbf3492614797f0419371a05e1df332",
+      "original_bytes": 426,
+      "stored_sha256": "81d5b8fed61cb6aa6417331c738b4be02bbf3492614797f0419371a05e1df332",
+      "stored_bytes": 426,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/executed-helper.py",
+      "archive_path": "prior-DA0-cancellation-dedupe/executed-helper.py",
+      "original_sha256": "550a20c1afe964b9f6924fb7b92ad2e7b71191be4cf854bbc975005ca3d7c972",
+      "original_bytes": 8820,
+      "stored_sha256": "550a20c1afe964b9f6924fb7b92ad2e7b71191be4cf854bbc975005ca3d7c972",
+      "stored_bytes": 8820,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/latest-main-runs.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/latest-main-runs.raw.json",
+      "original_sha256": "a0dadbdbd73c2d78cdc83127e96c4fdf647dc1c3f074df845ef126d9a4b7b45f",
+      "original_bytes": 982024,
+      "stored_sha256": "a0dadbdbd73c2d78cdc83127e96c4fdf647dc1c3f074df845ef126d9a4b7b45f",
+      "stored_bytes": 982024,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/latest-main-runs.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/latest-main-runs.request.json",
+      "original_sha256": "363c81c7b0ede457791a193a35a81cf46f758d5f76fcbaab85dfc65cda00b438",
+      "original_bytes": 481,
+      "stored_sha256": "363c81c7b0ede457791a193a35a81cf46f758d5f76fcbaab85dfc65cda00b438",
+      "stored_bytes": 481,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41129321189-jobs.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41129321189-jobs.raw.json",
+      "original_sha256": "3924a51e1bcb7ef2df53816c0ad2ed970b08ce05646577947a3607ecb6e1e875",
+      "original_bytes": 6778,
+      "stored_sha256": "3924a51e1bcb7ef2df53816c0ad2ed970b08ce05646577947a3607ecb6e1e875",
+      "stored_bytes": 6778,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41129321189-jobs.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41129321189-jobs.request.json",
+      "original_sha256": "fdec01e56358dd77610edaf17f7794af2bbca8ef8161ee717f45942279a6cf71",
+      "original_bytes": 467,
+      "stored_sha256": "fdec01e56358dd77610edaf17f7794af2bbca8ef8161ee717f45942279a6cf71",
+      "stored_bytes": 467,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41142870861-jobs.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41142870861-jobs.raw.json",
+      "original_sha256": "5ce890f9fc4dedd5730a58e63d15895cde83498d7afe57cfbdbb4af11a9d8e53",
+      "original_bytes": 6649,
+      "stored_sha256": "5ce890f9fc4dedd5730a58e63d15895cde83498d7afe57cfbdbb4af11a9d8e53",
+      "stored_bytes": 6649,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41142870861-jobs.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41142870861-jobs.request.json",
+      "original_sha256": "1049a8d676c9c74a215c23f8dc144195cdec0cf6773041fddae404206129bf2b",
+      "original_bytes": 467,
+      "stored_sha256": "1049a8d676c9c74a215c23f8dc144195cdec0cf6773041fddae404206129bf2b",
+      "stored_bytes": 467,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41144656779-jobs.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41144656779-jobs.raw.json",
+      "original_sha256": "76ae8269408df746eb379833c3695df3fd82119422df1572eb0a2df93e008343",
+      "original_bytes": 6482,
+      "stored_sha256": "76ae8269408df746eb379833c3695df3fd82119422df1572eb0a2df93e008343",
+      "stored_bytes": 6482,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41144656779-jobs.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41144656779-jobs.request.json",
+      "original_sha256": "bd1af59668e5fcdf5402053996cca0ecaceb797dc3380e8fcda60e83538c7934",
+      "original_bytes": 467,
+      "stored_sha256": "bd1af59668e5fcdf5402053996cca0ecaceb797dc3380e8fcda60e83538c7934",
+      "stored_bytes": 467,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41184126238-jobs.raw.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41184126238-jobs.raw.json",
+      "original_sha256": "c88f407be5826b58a2c2616f7d572cc04f99ce809f45b7849bea756af72cc5ef",
+      "original_bytes": 28070,
+      "stored_sha256": "c88f407be5826b58a2c2616f7d572cc04f99ce809f45b7849bea756af72cc5ef",
+      "stored_bytes": 28070,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/run-41184126238-jobs.request.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/run-41184126238-jobs.request.json",
+      "original_sha256": "8eed620d43ffa0bbd4ca3ad665a4c992caa0bc33e80680850c96417cd4f861e6",
+      "original_bytes": 468,
+      "stored_sha256": "8eed620d43ffa0bbd4ca3ad665a4c992caa0bc33e80680850c96417cd4f861e6",
+      "stored_bytes": 468,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/summary.json",
+      "archive_path": "prior-DA0-cancellation-dedupe/summary.json",
+      "original_sha256": "c09d634f7cc40924bc8989ed4a8e5216f59954ba6a3de9a3fdde8722671d2fb6",
+      "original_bytes": 28350,
+      "stored_sha256": "c09d634f7cc40924bc8989ed4a8e5216f59954ba6a3de9a3fdde8722671d2fb6",
+      "stored_bytes": 28350,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_cancelled_and_85run_dedupe_complete_snapshot"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/MANIFEST.json",
+      "archive_path": "prior-DA0-zero-work-observation/MANIFEST.json",
+      "original_sha256": "b0dc25e1ec641215c49e4d99edfa130f6e27e503e2e5b6eedde9178bc2d72134",
+      "original_bytes": 718,
+      "stored_sha256": "b0dc25e1ec641215c49e4d99edfa130f6e27e503e2e5b6eedde9178bc2d72134",
+      "stored_bytes": 718,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_terminal_zero_work_frozen_observation"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/existing-observer-publisher.json",
+      "archive_path": "prior-DA0-zero-work-observation/existing-observer-publisher.json",
+      "original_sha256": "fb056883f8d4361fd5d8471d7b1c29f202f7217773a8982d9324b3010e41caa9",
+      "original_bytes": 2219,
+      "stored_sha256": "fb056883f8d4361fd5d8471d7b1c29f202f7217773a8982d9324b3010e41caa9",
+      "stored_bytes": 2219,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_terminal_zero_work_frozen_observation"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/observation.json",
+      "archive_path": "prior-DA0-zero-work-observation/observation.json",
+      "original_sha256": "f2bf0793c750ba98af348acdf7c9e3b7e9ac6185f7ca1925b8c638fd50fe28d7",
+      "original_bytes": 1185,
+      "stored_sha256": "f2bf0793c750ba98af348acdf7c9e3b7e9ac6185f7ca1925b8c638fd50fe28d7",
+      "stored_bytes": 1185,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_terminal_zero_work_frozen_observation"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/terminal-job.json",
+      "archive_path": "prior-DA0-zero-work-observation/terminal-job.json",
+      "original_sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+      "original_bytes": 1067,
+      "stored_sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+      "stored_bytes": 1067,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "old_DA0_terminal_zero_work_frozen_observation"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-dispatch-controls.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-node18-dbc-dispatch-controls.json",
+      "original_sha256": "4632fc5dae53a1799b321d93ba981e78444e87acd1ce82ff372c8ba6eb4ac9ec",
+      "original_bytes": 984,
+      "stored_sha256": "4632fc5dae53a1799b321d93ba981e78444e87acd1ce82ff372c8ba6eb4ac9ec",
+      "stored_bytes": 984,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-dispatch-proposal.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-node18-dbc-dispatch-proposal.json",
+      "original_sha256": "0ab7808cce5c0fe133ff209fefe99cec3ccb2da450fee73813d56449104376ab",
+      "original_bytes": 9582,
+      "stored_sha256": "0ab7808cce5c0fe133ff209fefe99cec3ccb2da450fee73813d56449104376ab",
+      "stored_bytes": 9582,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-dispatch-proposed-authorization.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-node18-dbc-dispatch-proposed-authorization.json",
+      "original_sha256": "ce9fdfb430b6ecf106e4d5b2207b37eae457472b12095695b49b25b6929613c7",
+      "original_bytes": 1109,
+      "stored_sha256": "ce9fdfb430b6ecf106e4d5b2207b37eae457472b12095695b49b25b6929613c7",
+      "stored_bytes": 1109,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-dispatch-root-authorization.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-node18-dbc-dispatch-root-authorization.json",
+      "original_sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+      "original_bytes": 2108,
+      "stored_sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+      "stored_bytes": 2108,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-native-binding.json",
+      "archive_path": "actual-request-snapshot/actual-native-binding.json",
+      "original_sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2",
+      "original_bytes": 2001,
+      "stored_sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2",
+      "stored_bytes": 2001,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+      "archive_path": "actual-request-snapshot/actual-run-head-binding.json",
+      "original_sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+      "original_bytes": 870,
+      "stored_sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+      "stored_bytes": 870,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/all-source-dedupe.json",
+      "archive_path": "actual-request-snapshot/all-source-dedupe.json",
+      "original_sha256": "1152cd098f41a516dcc149d7dad54e57bb0061e35df5f6d615b0806bb0596e3a",
+      "original_bytes": 1385,
+      "stored_sha256": "1152cd098f41a516dcc149d7dad54e57bb0061e35df5f6d615b0806bb0596e3a",
+      "stored_bytes": 1385,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/all-source-runs-1.raw.json",
+      "archive_path": "actual-request-snapshot/all-source-runs-1.raw.json",
+      "original_sha256": "a0dadbdbd73c2d78cdc83127e96c4fdf647dc1c3f074df845ef126d9a4b7b45f",
+      "original_bytes": 982024,
+      "stored_sha256": "a0dadbdbd73c2d78cdc83127e96c4fdf647dc1c3f074df845ef126d9a4b7b45f",
+      "stored_bytes": 982024,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/all-source-runs-1.request.json",
+      "archive_path": "actual-request-snapshot/all-source-runs-1.request.json",
+      "original_sha256": "c54dd5ecc37152e0e3acc5560062d9d32cc5acfc0af31b120936d8676fe02185",
+      "original_bytes": 337,
+      "stored_sha256": "c54dd5ecc37152e0e3acc5560062d9d32cc5acfc0af31b120936d8676fe02185",
+      "stored_bytes": 337,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/authorization.json",
+      "archive_path": "actual-request-snapshot/authorization.json",
+      "original_sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+      "original_bytes": 2108,
+      "stored_sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+      "stored_bytes": 2108,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-1-jobs.raw.json",
+      "archive_path": "actual-request-snapshot/binding-1-jobs.raw.json",
+      "original_sha256": "dc5a7ca61f3f5e914979804dd0190f5b37dc09f9f55a9913c8b7cbb1c34fc29d",
+      "original_bytes": 1817,
+      "stored_sha256": "dc5a7ca61f3f5e914979804dd0190f5b37dc09f9f55a9913c8b7cbb1c34fc29d",
+      "stored_bytes": 1817,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-1-jobs.request.json",
+      "archive_path": "actual-request-snapshot/binding-1-jobs.request.json",
+      "original_sha256": "930d8358180b5760d86f3a7ad1b07802c80c7e94aa1e6a9ce62f309fc9eeb34f",
+      "original_bytes": 314,
+      "stored_sha256": "930d8358180b5760d86f3a7ad1b07802c80c7e94aa1e6a9ce62f309fc9eeb34f",
+      "stored_bytes": 314,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-1-run.raw.json",
+      "archive_path": "actual-request-snapshot/binding-1-run.raw.json",
+      "original_sha256": "ee2eedab3d641abff1e9e8f912e4b5fcf1f65643aaaa5059ebeb0f525a075259",
+      "original_bytes": 11456,
+      "stored_sha256": "ee2eedab3d641abff1e9e8f912e4b5fcf1f65643aaaa5059ebeb0f525a075259",
+      "stored_bytes": 11456,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-1-run.request.json",
+      "archive_path": "actual-request-snapshot/binding-1-run.request.json",
+      "original_sha256": "57207a8016b65aa3b2292bded3a32e258d20118a47b85f531e523049bcf3c273",
+      "original_bytes": 285,
+      "stored_sha256": "57207a8016b65aa3b2292bded3a32e258d20118a47b85f531e523049bcf3c273",
+      "stored_bytes": 285,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-jobs.raw.json",
+      "archive_path": "actual-request-snapshot/binding-2-jobs.raw.json",
+      "original_sha256": "9cb3f2a50f680a4ba317692e5461dbc353ba5867857b0bbacf4d690078969176",
+      "original_bytes": 3065,
+      "stored_sha256": "9cb3f2a50f680a4ba317692e5461dbc353ba5867857b0bbacf4d690078969176",
+      "stored_bytes": 3065,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-jobs.request.json",
+      "archive_path": "actual-request-snapshot/binding-2-jobs.request.json",
+      "original_sha256": "503e69957548fdc7867f86b4c830311d3baadfd28c589759f923f3f5400a33ba",
+      "original_bytes": 314,
+      "stored_sha256": "503e69957548fdc7867f86b4c830311d3baadfd28c589759f923f3f5400a33ba",
+      "stored_bytes": 314,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-run.raw.json",
+      "archive_path": "actual-request-snapshot/binding-2-run.raw.json",
+      "original_sha256": "f6f30fb51a60aa919248643ac82871067038201663918c035236fc6d871e8d10",
+      "original_bytes": 11451,
+      "stored_sha256": "f6f30fb51a60aa919248643ac82871067038201663918c035236fc6d871e8d10",
+      "stored_bytes": 11451,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-run.request.json",
+      "archive_path": "actual-request-snapshot/binding-2-run.request.json",
+      "original_sha256": "7df8dc14c87e1d854a0da67fd3051a54be064a8e4b139d913cd8f04037aa730d",
+      "original_bytes": 285,
+      "stored_sha256": "7df8dc14c87e1d854a0da67fd3051a54be064a8e4b139d913cd8f04037aa730d",
+      "stored_bytes": 285,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41129321189-jobs.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41129321189-jobs.raw.json",
+      "original_sha256": "3924a51e1bcb7ef2df53816c0ad2ed970b08ce05646577947a3607ecb6e1e875",
+      "original_bytes": 6778,
+      "stored_sha256": "3924a51e1bcb7ef2df53816c0ad2ed970b08ce05646577947a3607ecb6e1e875",
+      "stored_bytes": 6778,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41129321189-jobs.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41129321189-jobs.request.json",
+      "original_sha256": "e67c87ccbb9009b5fdbe219487f16f1b82e5df0afcbc79ca08b82a6cbef29282",
+      "original_bytes": 314,
+      "stored_sha256": "e67c87ccbb9009b5fdbe219487f16f1b82e5df0afcbc79ca08b82a6cbef29282",
+      "stored_bytes": 314,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41129321189-run.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41129321189-run.raw.json",
+      "original_sha256": "94f89fb321cbbc58460436a838f58c813d167b26bb838725a6b090dfd4612d02",
+      "original_bytes": 11608,
+      "stored_sha256": "94f89fb321cbbc58460436a838f58c813d167b26bb838725a6b090dfd4612d02",
+      "stored_bytes": 11608,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41129321189-run.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41129321189-run.request.json",
+      "original_sha256": "640142334268bc8e95aa3d5d1539577f44d64d4948e2d5d0014a3f5b80c403e1",
+      "original_bytes": 285,
+      "stored_sha256": "640142334268bc8e95aa3d5d1539577f44d64d4948e2d5d0014a3f5b80c403e1",
+      "stored_bytes": 285,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41142870861-jobs.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41142870861-jobs.raw.json",
+      "original_sha256": "a3a1cf8c1894acc0593c38e2061fbfa4eb6c47b7eb7cf2f6551dd36e2eb67245",
+      "original_bytes": 6778,
+      "stored_sha256": "a3a1cf8c1894acc0593c38e2061fbfa4eb6c47b7eb7cf2f6551dd36e2eb67245",
+      "stored_bytes": 6778,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41142870861-jobs.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41142870861-jobs.request.json",
+      "original_sha256": "224942bf7e57122436bedc726fc7cdeb2844027c503a0c25db1ae652394c9400",
+      "original_bytes": 314,
+      "stored_sha256": "224942bf7e57122436bedc726fc7cdeb2844027c503a0c25db1ae652394c9400",
+      "stored_bytes": 314,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41142870861-run.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41142870861-run.raw.json",
+      "original_sha256": "4a7e4705e033c2bcd5629ac328b796cac0151d75e8181fee3072e299271226da",
+      "original_bytes": 11687,
+      "stored_sha256": "4a7e4705e033c2bcd5629ac328b796cac0151d75e8181fee3072e299271226da",
+      "stored_bytes": 11687,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41142870861-run.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41142870861-run.request.json",
+      "original_sha256": "b7faf8d12c6163ebb400e4e70477522a7d033250ccaab9d692d23203a896a4ff",
+      "original_bytes": 285,
+      "stored_sha256": "b7faf8d12c6163ebb400e4e70477522a7d033250ccaab9d692d23203a896a4ff",
+      "stored_bytes": 285,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41144656779-jobs.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41144656779-jobs.raw.json",
+      "original_sha256": "76ae8269408df746eb379833c3695df3fd82119422df1572eb0a2df93e008343",
+      "original_bytes": 6482,
+      "stored_sha256": "76ae8269408df746eb379833c3695df3fd82119422df1572eb0a2df93e008343",
+      "stored_bytes": 6482,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41144656779-jobs.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41144656779-jobs.request.json",
+      "original_sha256": "001a5e6c6cdde40a45e902ceac1e168d8c89777ea856e800157fb445dc0f5a2b",
+      "original_bytes": 314,
+      "stored_sha256": "001a5e6c6cdde40a45e902ceac1e168d8c89777ea856e800157fb445dc0f5a2b",
+      "stored_bytes": 314,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41144656779-run.raw.json",
+      "archive_path": "actual-request-snapshot/dedupe-41144656779-run.raw.json",
+      "original_sha256": "f7693f965835c26f40197f9febfbfca852734f27f3a467056edf8ad12a534ddf",
+      "original_bytes": 11475,
+      "stored_sha256": "f7693f965835c26f40197f9febfbfca852734f27f3a467056edf8ad12a534ddf",
+      "stored_bytes": 11475,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dedupe-41144656779-run.request.json",
+      "archive_path": "actual-request-snapshot/dedupe-41144656779-run.request.json",
+      "original_sha256": "da97970566bde721d88b6d7d3e0c28c91c502a3658b4b6c86f9e9557e9b42016",
+      "original_bytes": 285,
+      "stored_sha256": "da97970566bde721d88b6d7d3e0c28c91c502a3658b4b6c86f9e9557e9b42016",
+      "stored_bytes": 285,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-input.json",
+      "archive_path": "actual-request-snapshot/dispatch-input.json",
+      "original_sha256": "dba1667c2298e19ee2317784a69be1ee8315e42385a338f3077c26ea466eccea",
+      "original_bytes": 73,
+      "stored_sha256": "dba1667c2298e19ee2317784a69be1ee8315e42385a338f3077c26ea466eccea",
+      "stored_bytes": 73,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-intent.json",
+      "archive_path": "actual-request-snapshot/dispatch-intent.json",
+      "original_sha256": "3007c3149929615e4c1bfa1dc69290944d6546acb1689966ddd776057f3714bb",
+      "original_bytes": 226,
+      "stored_sha256": "3007c3149929615e4c1bfa1dc69290944d6546acb1689966ddd776057f3714bb",
+      "stored_bytes": 226,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-result.json",
+      "archive_path": "actual-request-snapshot/dispatch-result.json",
+      "original_sha256": "5889020939ea9ffa40435a8cb142bd4c019a1fda0df18c2edb0ed0e1b3c40c2f",
+      "original_bytes": 1826,
+      "stored_sha256": "5889020939ea9ffa40435a8cb142bd4c019a1fda0df18c2edb0ed0e1b3c40c2f",
+      "stored_bytes": 1826,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/executed-helper.py",
+      "archive_path": "actual-request-snapshot/executed-helper.py",
+      "original_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+      "original_bytes": 12819,
+      "stored_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+      "stored_bytes": 12819,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/immediate-prepost-main.raw.json",
+      "archive_path": "actual-request-snapshot/immediate-prepost-main.raw.json",
+      "original_sha256": "3e952ed6aae950e018d9ca1ddb7cb5e9d4f3711990722ac805f27c9ecaabe4d7",
+      "original_bytes": 318,
+      "stored_sha256": "3e952ed6aae950e018d9ca1ddb7cb5e9d4f3711990722ac805f27c9ecaabe4d7",
+      "stored_bytes": 318,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/immediate-prepost-main.request.json",
+      "archive_path": "actual-request-snapshot/immediate-prepost-main.request.json",
+      "original_sha256": "ebba0e94aa02cd845a758dc82f07ea7a2526419cbff60859a4f96327a0092179",
+      "original_bytes": 279,
+      "stored_sha256": "ebba0e94aa02cd845a758dc82f07ea7a2526419cbff60859a4f96327a0092179",
+      "stored_bytes": 279,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/initial-main.raw.json",
+      "archive_path": "actual-request-snapshot/initial-main.raw.json",
+      "original_sha256": "3e952ed6aae950e018d9ca1ddb7cb5e9d4f3711990722ac805f27c9ecaabe4d7",
+      "original_bytes": 318,
+      "stored_sha256": "3e952ed6aae950e018d9ca1ddb7cb5e9d4f3711990722ac805f27c9ecaabe4d7",
+      "stored_bytes": 318,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/initial-main.request.json",
+      "archive_path": "actual-request-snapshot/initial-main.request.json",
+      "original_sha256": "179527617d654d81aade322daa06bd90cf258ac73ae0ae69870a71d599d7ef74",
+      "original_bytes": 279,
+      "stored_sha256": "179527617d654d81aade322daa06bd90cf258ac73ae0ae69870a71d599d7ef74",
+      "stored_bytes": 279,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/known-runs-after.json",
+      "archive_path": "actual-request-snapshot/known-runs-after.json",
+      "original_sha256": "f6f503bd277c68aa2cfad951967f54bb1dd1a7a1d70feaefed24c858631204b9",
+      "original_bytes": 3968,
+      "stored_sha256": "f6f503bd277c68aa2cfad951967f54bb1dd1a7a1d70feaefed24c858631204b9",
+      "stored_bytes": 3968,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/known-runs-before.json",
+      "archive_path": "actual-request-snapshot/known-runs-before.json",
+      "original_sha256": "3c1341173379c361e42b035ee5a9a393f0f296ef2bc67ac3cf22d5b30d5b7539",
+      "original_bytes": 3907,
+      "stored_sha256": "3c1341173379c361e42b035ee5a9a393f0f296ef2bc67ac3cf22d5b30d5b7539",
+      "stored_bytes": 3907,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/post-discovery-1-summary.json",
+      "archive_path": "actual-request-snapshot/post-discovery-1-summary.json",
+      "original_sha256": "b23d03833c28bab978ccafa733c360aac22a4bb3409f7398d7ebde072cd429c7",
+      "original_bytes": 525,
+      "stored_sha256": "b23d03833c28bab978ccafa733c360aac22a4bb3409f7398d7ebde072cd429c7",
+      "stored_bytes": 525,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/post-discovery-1.raw.json",
+      "archive_path": "actual-request-snapshot/post-discovery-1.raw.json",
+      "original_sha256": "f77a8646706795643d7ef357e2c54825c62605752a5cb115b2b9376da1d5967e",
+      "original_bytes": 692204,
+      "stored_sha256": "f77a8646706795643d7ef357e2c54825c62605752a5cb115b2b9376da1d5967e",
+      "stored_bytes": 692204,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/post-discovery-1.request.json",
+      "archive_path": "actual-request-snapshot/post-discovery-1.request.json",
+      "original_sha256": "8ea3e314b53e84a9100e72e48c88d2d9f0273a33cfb7da3856ca08c71e4b6e81",
+      "original_bytes": 354,
+      "stored_sha256": "8ea3e314b53e84a9100e72e48c88d2d9f0273a33cfb7da3856ca08c71e4b6e81",
+      "stored_bytes": 354,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-admission-observer-registration.json",
+      "archive_path": "actual-request-snapshot/source-admission-observer-registration.json",
+      "original_sha256": "209183d1b3688e8d72af45d9941bcac3c5801be46fdbe21d1d5aedfcd1086fa4",
+      "original_bytes": 2150,
+      "stored_sha256": "209183d1b3688e8d72af45d9941bcac3c5801be46fdbe21d1d5aedfcd1086fa4",
+      "stored_bytes": 2150,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+      "archive_path": "actual-request-snapshot/source-and-normal-selector-proof.json",
+      "original_sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+      "original_bytes": 8233,
+      "stored_sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+      "stored_bytes": 8233,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-store-after.json",
+      "archive_path": "actual-request-snapshot/source-store-after.json",
+      "original_sha256": "69082a6b977b4b960a5f89c6e3f8969ae0cc8f4878449be6b8c3d770d3efb8c5",
+      "original_bytes": 23828,
+      "stored_sha256": "69082a6b977b4b960a5f89c6e3f8969ae0cc8f4878449be6b8c3d770d3efb8c5",
+      "stored_bytes": 23828,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-store-before.json",
+      "archive_path": "actual-request-snapshot/source-store-before.json",
+      "original_sha256": "e2ec7b2ca9836a9220c1a719b85afcf4a5febfee6d3db6647d1a73d2a735b472",
+      "original_bytes": 22812,
+      "stored_sha256": "e2ec7b2ca9836a9220c1a719b85afcf4a5febfee6d3db6647d1a73d2a735b472",
+      "stored_bytes": 22812,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "complete_existing_request_snapshot_prePOST_dedupe_run_head_and_native_binding"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-post-root-confirmation.json",
+      "archive_path": "root-policy-and-dispatch/bex-m188-node18-dbc-post-root-confirmation.json",
+      "original_sha256": "ddc874652505cf715089ed136e4fc68d6871cde372ae40d8b5ed1d6477efee3c",
+      "original_bytes": 1419,
+      "stored_sha256": "ddc874652505cf715089ed136e4fc68d6871cde372ae40d8b5ed1d6477efee3c",
+      "stored_bytes": 1419,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "root_execution_eligibility_dispatch_authorization_actual_POST_admission_activation_or_frozen_context"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-test-9fe-node18-source-proposal.py",
+      "archive_path": "harness/bex-m188-test-9fe-node18-source-proposal.py",
+      "original_sha256": "70c59d0de805c62939bb175dfbc13bec60666fe0038474e6622a6cdc5a9932e7",
+      "original_bytes": 7220,
+      "stored_sha256": "70c59d0de805c62939bb175dfbc13bec60666fe0038474e6622a6cdc5a9932e7",
+      "stored_bytes": 7220,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "source_proposal_or_actual_test_or_archive_harness"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-test-dbc-node18-source-proposal.py",
+      "archive_path": "harness/bex-m188-test-dbc-node18-source-proposal.py",
+      "original_sha256": "c6ef96d2e4d3770e5ff7d894e5aedc832de1ab4cfc1eb54ffe4d0213e19e3a37",
+      "original_bytes": 7614,
+      "stored_sha256": "c6ef96d2e4d3770e5ff7d894e5aedc832de1ab4cfc1eb54ffe4d0213e19e3a37",
+      "stored_bytes": 7614,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "source_proposal_or_actual_test_or_archive_harness"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/MANIFEST.json",
+      "archive_path": "actual-request-snapshot/MANIFEST.json",
+      "original_sha256": "90647cebb1027b3b6d84df3eaedc8e6247ca31bfbc10619d7d695e478fb19794",
+      "original_bytes": 7922,
+      "stored_sha256": "90647cebb1027b3b6d84df3eaedc8e6247ca31bfbc10619d7d695e478fb19794",
+      "stored_bytes": 7922,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_FINAL_request_phase_47_payload_files_plus_manifest"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-binding-source-phase-receipt.json",
+      "archive_path": "actual-request-snapshot/dispatch-binding-source-phase-receipt.json",
+      "original_sha256": "ec51d576cb53242c034d60335889ff843b43e8bfdc35e1afdf28ffe7a0eb5904",
+      "original_bytes": 4602,
+      "stored_sha256": "ec51d576cb53242c034d60335889ff843b43e8bfdc35e1afdf28ffe7a0eb5904",
+      "stored_bytes": 4602,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_FINAL_request_phase_47_payload_files_plus_manifest"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/isolated-metadata-observer.py",
+      "archive_path": "actual-request-snapshot/isolated-metadata-observer.py",
+      "original_sha256": "cd5cc59c2908bbf21ed5038a21b8191eac177edf3baf47d2c73a7aba2a687e96",
+      "original_bytes": 5097,
+      "stored_sha256": "cd5cc59c2908bbf21ed5038a21b8191eac177edf3baf47d2c73a7aba2a687e96",
+      "stored_bytes": 5097,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_FINAL_request_phase_47_payload_files_plus_manifest"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/observer-primary-handoff.json",
+      "archive_path": "actual-request-snapshot/observer-primary-handoff.json",
+      "original_sha256": "3c3be6071056bf319df8df382cd80831e63460fb9bfbf0bad0996c5ee323dc48",
+      "original_bytes": 260,
+      "stored_sha256": "3c3be6071056bf319df8df382cd80831e63460fb9bfbf0bad0996c5ee323dc48",
+      "stored_bytes": 260,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_FINAL_request_phase_47_payload_files_plus_manifest"
+      ]
+    },
+    {
+      "original_source": "/tmp/bex-m188-node18-dbc-normal-dispatch/passive-reader-v4.py",
+      "archive_path": "actual-request-snapshot/passive-reader-v4.py",
+      "original_sha256": "8b4c606eb6508d2a99236b32182db73aadec45343d9d598803a4a885f3098cd7",
+      "original_bytes": 2109,
+      "stored_sha256": "8b4c606eb6508d2a99236b32182db73aadec45343d9d598803a4a885f3098cd7",
+      "stored_bytes": 2109,
+      "encoding": "identity",
+      "source_mode": "0o644",
+      "roles": [
+        "frozen_FINAL_request_phase_47_payload_files_plus_manifest"
+      ]
+    }
+  ],
+  "generated_metadata": [
+    {
+      "archive_path": "CROSS-ARCHIVE-SOURCE-MAPPING.json",
+      "sha256": "c8336ee1b374ad4819d4927c3b184f04e4426528d737affdcfacfe9b7b729aef",
+      "bytes": 95936,
+      "generated_archive_metadata": true
+    },
+    {
+      "archive_path": "EXTERNAL-PROOF-REFERENCES.json",
+      "sha256": "5e594732218002f1e427485942c6d5512d723c24b49c1c3625057db1de7fd3e0",
+      "bytes": 47020,
+      "generated_archive_metadata": true
+    },
+    {
+      "archive_path": "WHITESPACE-COMPRESSION.json",
+      "sha256": "f420b53918f1fbced519b7c5bc408caa503f94e7b58af990140a6addccd6409f",
+      "bytes": 651,
+      "generated_archive_metadata": true
+    },
+    {
+      "archive_path": "README.txt",
+      "sha256": "7c22834d14ca81de5b5c5314f25c1342946492d240e9b074cce1e7af2534e58e",
+      "bytes": 1577,
+      "generated_archive_metadata": true
+    }
+  ],
+  "historical_content_aliases": [
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "expected_original_bytes": 92369,
+      "archive_path": "frozen-guards/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "resolution": "Exact content-bound frozen guard, never map historical references to whichever active path exists now"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "expected_original_bytes": 92910,
+      "archive_path": "frozen-guards/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "resolution": "Exact content-bound frozen guard, never map historical references to whichever active path exists now"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-published-acceptance.json",
+      "expected_original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "expected_original_bytes": 167424,
+      "archive_path": "root-policy-and-dispatch/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+      "resolution": "Exact content-bound frozen post-admission10 context"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-published-acceptance.json",
+      "expected_original_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "expected_original_bytes": 167376,
+      "cross_archive_reference": {
+        "original_source": "/tmp/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+        "original_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+        "original_bytes": 167376,
+        "referenced_manifest": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+        "referenced_manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+        "referenced_archive_path": "root-policy/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+        "referenced_stored_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+        "referenced_stored_bytes": 167376,
+        "referenced_encoding": "identity",
+        "scope": "Exact authenticated content reference; no duplicate source payload in this archive"
+      },
+      "resolution": "Exact pre-admission10 bytes in pinned prior-e756 archive; never resolve to post-admission metadata"
+    }
+  ],
+  "cross_archive_manifest": {
+    "original_source": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+    "sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+    "archive_path": "cross-archive-reference/prior-e756-MANIFEST.json"
+  },
+  "cross_archive_content_reference_count": 113,
+  "copied_source_record_count": 146,
+  "compressed_record_count": 2,
+  "original_bytes": 4271036,
+  "stored_bytes": 4256230,
+  "large_old10_proof_bodies_archived": false,
+  "same37_source_payloads_duplicated": false,
+  "unused9fe_NEVER_ACTIVE_NEVER_ADMITTED": true,
+  "supersedes_archive_candidate": {
+    "directory": "/tmp/bex-m188-dbc-portable-archive-j0rigs80",
+    "manifest_sha256": "5279440d2c50f4718327c018c682806cd6dad782714ddbdcb32b9243b0b298e4",
+    "status": "Preserved unchanged; request snapshot superseded by finalized47-payload-file phase"
+  },
+  "final_request_phase": {
+    "original_manifest": "/tmp/bex-m188-node18-dbc-normal-dispatch/MANIFEST.json",
+    "manifest_sha256": "90647cebb1027b3b6d84df3eaedc8e6247ca31bfbc10619d7d695e478fb19794",
+    "payload_file_count": 47,
+    "manifest_file_additional": true,
+    "phase_receipt": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-binding-source-phase-receipt.json",
+    "phase_receipt_sha256": "ec51d576cb53242c034d60335889ff843b43e8bfdc35e1afdf28ffe7a0eb5904",
+    "prior_archive_request_records": 43,
+    "new_request_records_added": 5,
+    "final_request_records": 48,
+    "all_prior_request_record_bytes_unchanged": true
+  }
+}

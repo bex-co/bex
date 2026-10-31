@@ -1,0 +1,7 @@
+11/11 旧运行时产物已完成签名发布和独立审阅，完整 digest、生产/验证来源、版本、证明与扫描计数见同目录 JSON。它们现在只是候选 runtime donors 和 CVE-2026-111497 补丁证据，不是公共底合格或生产修复。原始完整扫描全部保留；例如 Node18 每架构仍有 13,347 条发现（含 228 条 CRITICAL），不能表述为“其他漏洞为零”。三个 Bullseye donor 的目标版本告警保留了明确 backport 处置，没有忽略规则。
+
+现在的上游门槛是 worker8 的 w8/m91/t007，不再是 Node18 CI。需要一个已审核、签名且固定 digest 的 Bookworm 公共底，以及这 11 个相同版本运行时在其上真实生成镜像的双架构证据：库/头文件/扩展、动态加载器、Poetry、Node20 companion 和 decoder 都要实际通过。公共底还必须独立证明自己的系统 Brotli 与 /opt 下私有 Node 已修复；复制 donor 的 /usr/local 不会带来 /usr/lib 系统库或 /opt 工具。当前代码保留 Debian suite 一致性检查，Bullseye donor 不能直接视为 Bookworm 合格，不能删除保护来“接通”。未来公共镜像也要绑定真实 caller/reusable workflow、源码和证书身份，不能套用旧逐语言签名身份。
+
+资格满足后，worker1 才联合接入公共底与补丁运行时，保留现有/其他 worker 的 inventory 条目；使用新审阅的 common-aware collector 跑六项真实 CI build/HTTP，再核对实际签名部署源码、operator Ready 和新鲜全量 census。旧 collector-v2、逐语言 C tenant FROM 写入方案及旧 census 都不能充当本次验收。新 Apps 全部纳入；agentmarketcap-1、beancount-cms-v2、eden-cms-v2、market-size、cloneix 五行都要有新结论，按需绑定精确 release/commit/image 重建并逐项验收。无 Pod、失败/取消状态或旧镜像配置声明都不等于安全。
+
+不需要用户重新选择 A/C、交付手动证书或新建资源。可先优先执行 $loopx w8，推进 m91/t007 的实际资格证据；证据就绪后再由 $loopx w1 接入并完成生产验收。

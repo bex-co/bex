@@ -1,0 +1,227 @@
+diff --git a/.github/workflows/native-backport-acceptance.yml b/.github/workflows/native-backport-acceptance.yml
+index 699b103d5..431152b37 100644
+--- a/.github/workflows/native-backport-acceptance.yml
++++ b/.github/workflows/native-backport-acceptance.yml
+@@ -1,6 +1,7 @@
+ name: native backport acceptance (build + HTTP)
+ 
+-# Run manually after adopting the verified native supplier pins.
++# Run after qualifying and adopting the common Bookworm foundation and patched
++# runtime donors. Per-language publication alone cannot pass this acceptance.
+ on:
+   workflow_dispatch: {}
+ 
+diff --git a/.pm/w1/README.md b/.pm/w1/README.md
+index bac88dc54..84bc1ff3a 100644
+--- a/.pm/w1/README.md
++++ b/.pm/w1/README.md
+@@ -21,7 +21,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared
+ - [x] **m184** — [Platform-initiated rebuilds are not billed as tenant build minutes](done/m184/README.md) (5 tasks) ← `w1/137`, promoted 2026-10-25 by `/loopx w1`
+ - [x] **136** — **DONE 2026-10-29** — [Brotli base pin 更新、CNB rollout 与运行服务重建](done/136.md)；3 个有 live commit 的服务均在原 commit 重建，系统库与实际 decoder 验收通过；market-size 无 live deploy，明确排除且未算作验收。旧版 11 项继续由 m188 维护。
+ - [x] **143** — **PROMOTED 2026-10-29（用户 D1=A，记录归档；安全修复未完成）** — [旧版 native 镜像的原始阻塞与决定](done/143.md) → [m188](m188/README.md)
+-- [ ] **m188** — [旧版 native 运行时的安全补丁由平台集中维护](m188/README.md) (8 tasks) ← 143，用户于 `/unblock w1` 选择 A；优先在用且受影响版本，保留语言版本语义；独立验收10/11，[Node18定向正常构建](https://github.com/bex-co/bex/actions/runs/41187749759)已恢复，继续接入；rollout继续验证主线新增的自动证书续期流程（[ADR093](../../docs/ADR093-onbex-wildcard-tls.md)）
++- [ ] **m188** — [旧版 native 运行时的安全补丁由平台集中维护](m188/README.md) (8 tasks) ← 143，用户已选择平台维护与单一Bookworm公共底；发布独立验收10/11，[Node18 CI](https://github.com/bex-co/bex/actions/runs/41187749759)已成功、最终审阅中。继续独立发布收尾；生产集成依赖w8/m91/t007合格公共底与同版本运行时，不临时采用逐语言租户底，无需重复选型。
+ - [x] **135** — [Run the platform-rebuild fleet rebuild for CVE-2026-111497](done/135.md) — done 2026-10-25: plan 3 eligible / 2 already rebuilt; apply rebuilt `tianpan-v4-web`; the other two have no live release
+ - [x] **m183** — [Registry retention never deletes a live release's image](done/m183/README.md) (5 tasks) ← `w1/139`, promoted 2026-10-25 by `/loopx w1` (2026-10-24 beancount.io outage root cause)
+ - [x] **m182** — [Older Blueprint auto-sync work cannot overwrite newer configuration](done/m182/README.md) (8 tasks) — done 2026-10-20: current-branch immutable source, per-Blueprint leases, reclaimed-worker execution fencing and truthful accepted/consumed history; real-Postgres walkthrough, full backend suite and lint pass. Render ordering/recovery guarantees remain explicitly unverified.
+diff --git a/.pm/w1/m188/README.md b/.pm/w1/m188/README.md
+index 197beb0dc..b837d6313 100644
+--- a/.pm/w1/m188/README.md
++++ b/.pm/w1/m188/README.md
+@@ -1,6 +1,6 @@
+ # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
+ 
+-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Node20、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1/3.2 签名发布独立验收通过（10/11），继续Node18与接入验收
++**Worker:** worker1 **Goal:** 用经过验证的平台补丁解除旧版官方镜像的上游等待，在用户选择的统一公共底架构中保持运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；独立发布验收10/11，Node18 CI已成功、完整独立复核中；生产集成须先满足w8/m91/t007的公共底资格，不能临时采用逐语言租户底
+ 
+ ## 用户决定 — D1=A，2026-10-29
+ 
+@@ -10,6 +10,14 @@
+ - **当前用户动作：** 这项维护范围决定已完成，无需重复确认。实现、验证及后续具体执行条件由 worker 按既有规则处理。
+ - **状态：** 不再以“等官方镜像更新”为阻塞条件；用户随后执行 `$loopx w1`，已授权并开始实现和发布。当前逐版本验收进度见下文，全部完成前不标记 done。
+ 
++## 已确认的公共底决定及后续分工 — 2026-10-31
++
++- **依据：** 当前主线62a9c2500包含c5ee618ce公共底准备；[w8/m91记录的用户决定](../../w8/m91/README.md)明确选择一个Bookworm公共底，覆盖较早worker推断的逐语言方案。已开始的逐语言发布允许收尾并保留证据，最终生产采用等待[公共底与生成镜像资格](../../w8/m91/t007.md)。D1=A继续要求平台维护补丁、保持同版本；它没有授权临时绕过公共底。
++- **当前处理：** 完成11个旧版本的发布与独立证据，供安全审阅和后续候选runtime donor复用；不在公共底为空时将逐语言C镜像设为租户基础镜像。较早记录中的直接11-pin接入计划已被本段取代，原始证明与失败历史保留。
++- **尚需谁完成什么：** worker8在w8/m91/t007提供已审核的公共底固定digest，以及本项旧11条线的同版本运行时、库/头文件/扩展与companion的真实双架构兼容性证据。仅发布公共镜像、任务勾选或复制旧运行时目录不足以清除此条件。
++- **worker1下一步：** 完成Node18严格最终审阅、11项完整证据与过时恢复授权收尾；维护仅验证产物、拒绝旧逐语言生产写入的检查；将补丁引用、版本和已知限制交接公共底集成。合格集成后才执行六项真实build/HTTP、最终operator Ready及新鲜全量服务清单/明确目标重建。
++- **用户如何帮助：** 维护范围和公共底选型均已决定，无需再选择A/C或交付手动证书。需要调度实现时，先让`$loopx w8`推进m91/t007；上述证据可用后，`$loopx w1`继续生产接入与实际验收。当前仍完成可独立实施的发布、验证和交接，不因CI耗时停放。
++
+ ## Tasks (in order)
+ 
+ | id | title | est | depends_on |
+diff --git a/.pm/w1/m188/t003.md b/.pm/w1/m188/t003.md
+index 9402899a7..c35477316 100644
+--- a/.pm/w1/m188/t003.md
++++ b/.pm/w1/m188/t003.md
+@@ -4,22 +4,23 @@ title: "接入 native pin 与持续维护记录"
+ worker: worker1
+ status: todo
+ estimate: 45m
+-depends_on: [w1/m188/t002]
++depends_on: [w1/m188/t002, w8/m91/t007]
+ ---
+ 
+ ## Objective
+ 
+-让 native 构建使用经过验证的平台补丁镜像，并让原上游来源与平台镜像的后续变化可被跟踪。
++在已合格的统一 Bookworm 公共底上接入同版本补丁运行时，跟踪原上游、公共底与补丁产物的后续变化。
+ 
+ ## Context
+ 
+ - 保留运行时版本信号、精确版本选择和 registry fallback 的既有语义。
+ - w1/136 的 19 个更新及 CNB 发布工作保持独立，避免重复实现。
++- 用户已明确选择统一公共底，见 [w8/m91/t007](../../w8/m91/t007.md)。逐语言发布可以收尾，不能在公共底为空时临时采用 C 租户基础镜像。
+ 
+ ## Steps
+ 
+-1. 按已有版本选择机制接入已发布镜像，保持用户选定的版本语义，更新 image pin 与审阅时间。
+-2. 同步 freshness inventory、相关校验和来源记录，明确原上游修复到来后的复核/回归条件。
++1. 等待 w8/m91/t007 的公共底产物、双架构生成镜像及旧版同版本运行时闭包合格；将本项已验证补丁作为候选 donor 交接，不能用发布成功替代公共底兼容性证明。
++2. 在合格公共底集成中评审补丁运行时 pin、原官方 upstream 和 freshness inventory，保留所有已有条目及用户的精确版本、默认版本和 fallback 语义；明确原上游修复到来后的复核/回归条件。
+ 3. 在 ADR060 的构建维护约定中记录本次用户决定、维护责任、发布验证和失败回退方式。
+ 
+ ## Files
+@@ -35,6 +36,7 @@ depends_on: [w1/m188/t002]
+ - [ ] inventory 与所有生效的 source pin 一致，来源和时间可追溯，平台/上游漂移均有明确检查入口。
+ - [ ] 租户构建直接使用固定镜像，不增加临时补丁下载步骤，也不改变用户应用配置。
+ - [ ] 补丁接入对所有 workspace 一致；不得留成未排定扩面的内部工作区特例。
++- [ ] 实际租户镜像使用同一个已验证 Bookworm 公共底；逐语言 C 发布证据不授权独立或临时 C 生产接入。
+ 
+ ## Out of scope
+ 
+diff --git a/.pm/w1/m188/t004.md b/.pm/w1/m188/t004.md
+index 3475e95f0..265af93f2 100644
+--- a/.pm/w1/m188/t004.md
++++ b/.pm/w1/m188/t004.md
+@@ -18,7 +18,7 @@ depends_on: [w1/m188/t003]
+ 
+ ## Steps
+ 
+-1. 用已发布 digest 验证旧版运行时的代表性原生构建、启动和版本查询；保留健康对照。
++1. 在合格公共底与同版本补丁运行时接入后，用已发布 digest 验证代表性原生构建、启动和版本查询；保留健康对照，并核对最终公共底与 primary/companion 的身份。
+ 2. 确认实际 rollout 与服务使用的镜像，记录这一批的完成时间，不复用 136 或更早批次的 since。
+ 3. 审阅只读 plan，按授权范围分批重建受影响服务并检查结果；记录失败、跳过、未覆盖项及清理情况。
+ 
+@@ -40,9 +40,9 @@ depends_on: [w1/m188/t003]
+ 
+ ## 现有 CI 池的真实应用验收入口
+ 
+-采用全部11个已验证pin后，手动运行 `.github/workflows/native-backport-acceptance.yml`（`workflow_dispatch`、仅main、现有bex-ci、contents-read，无生产凭据）。六项现有Go构建/HTTP fixture按max-parallel1逐项执行，linux/amd64，使用现有Docker default builder；job日志记录源SHA、选中的实际主/companion镜像、daemon架构及前后空间。只复用既有测试资源清理，不新建主机或builder，不做全局prune。
++公共底及本项所需同版本补丁运行时实际合格并接入后，手动运行 `.github/workflows/native-backport-acceptance.yml`（`workflow_dispatch`、仅main、现有bex-ci、contents-read，无生产凭据）。公共底为空或未固定时入口明确失败，不能把逐语言 C 路径当作最终验收。六项现有Go构建/HTTP fixture按max-parallel1逐项执行，linux/amd64，使用现有Docker default builder；job日志记录源SHA、公共底、选中的实际主/companion镜像、daemon架构及前后空间。只复用既有测试资源清理，不新建主机或builder，不做全局prune。
+ 
+-这是为本机组合测试的磁盘峰值未能充分证明时准备的现有执行池路径。当前只完成静态校验和integration变量未设置时的Go编译/正确跳过检查；尚未运行真实Docker/HTTP或计入验收。正式调用必须在实际源码已采用签名pin后，无overlay/模拟ref。
++这是为本机组合测试的磁盘峰值未能充分证明时准备的现有执行池路径。已有本地 C 组合证明保留其历史范围；正式公共底构建/HTTP尚未执行，不计入当前验收。正式调用必须绑定已采用的合格公共底与签名运行时，无overlay/模拟ref；先满足 [w8/m91/t007](../../w8/m91/t007.md) 的兼容性门槛。
+ 
+ 
+ ## 最终清单工具与保留镜像核查 — 2026-10-31
+diff --git a/.pm/w1/m188/t007.md b/.pm/w1/m188/t007.md
+index ade6c8bed..803293658 100644
+--- a/.pm/w1/m188/t007.md
++++ b/.pm/w1/m188/t007.md
+@@ -38,7 +38,7 @@ depends_on: [w1/m188/t005, w1/m188/t006]
+ 
+ `lego/operator/internal/build/nativebackport_test.go` 使用既有 `BEX_BUILDKIT_INTEGRATION=1`，实际构建和启动已审核的四个旧 Node 镜像；系统和自带 decoder 在 build/start 都验证，语言版本必须保持，HTTP 等待及容器清理复用现有 helper。默认 suite 跳过 Docker 集成，不伪造执行结果。
+ 
+-正式 pin 接入后执行：
++统一公共底和同版本补丁运行时合格并接入后执行；公共底为空或未固定时会明确失败，不执行 Docker 构建：
+ 
+ ```sh
+ GOWORK=off BEX_BUILDKIT_INTEGRATION=1 go -C lego/operator test ./internal/build -run '^TestNative(Backports|PythonBackport|RubyBackport)BuildAndStart$' -count=1 -timeout=30m -v
+@@ -55,3 +55,7 @@ Python / Ruby 入口分别为 `nativebackport_python_test.go` 和 `nativebackpor
+ 可移植修复的本地绿对照已完成：两份更新后 Python/Ruby + Node20 真实 build/HTTP fixture 47.459s 通过；Node20 原 Bookworm 主镜像的完整工具与安全检查、真实主运行时 build/HTTP 6.680s 通过。分别见 [组合绿对照](evidence/companion-native-green.json) 和 [主镜像验收](evidence/portable-node20-final-native.json)。正式签名 pin 的直接执行仍待发布接入。
+ 
+ 最终实际pin测试也可通过main上的 `.github/workflows/native-backport-acceptance.yml` 在现有bex-ci逐项执行六个fixture；三个入口会记录实际选择的主镜像及Node20 companion引用。新入口的静态Actions/仓库检查与未启用integration时的Go编译通过，见 [准备阶段校验](evidence/native-backport-acceptance-workflow-validation.json)；不以这次跳过检查代替最终真实构建/HTTP验收。
++
++## 单一公共底约束 — 2026-10-31
++
++按已记录的用户决定，三个入口现在共用公共底前置检查并保留原始程序、数据、build/start 命令和 decoder/HTTP 断言。未启用 integration 仍正常跳过；启用后当前空公共底明确失败。该拒绝仅防止错误路径被当作验收，不证明公共底、兼容性或生产 rollout 已完成；真实六项仍依赖 [w8/m91/t007](../../w8/m91/t007.md) 的合格接入。
+diff --git a/.pm/w1/m188/t008.md b/.pm/w1/m188/t008.md
+index ea64fed27..dec320e61 100644
+--- a/.pm/w1/m188/t008.md
++++ b/.pm/w1/m188/t008.md
+@@ -19,6 +19,7 @@ depends_on: [w1/m188/t007]
+ 
+ 1. 复核逐版本处置与验收，按 pm 同步 frontmatter、README 状态、DONE 行和 workstream checkbox。
+ 2. 将完成任务移到 done/，并将整个里程碑移到 w1/done/m188/，不留 stub。
++3. 逐语言发布作为补丁及候选 donor 证据保留；仅在合格统一公共底集成和本项实际运行验收成立后关闭，不把发布11/11当作生产安全修复完成。
+ 
+ ## Files
+ 
+diff --git a/docs/ADR060-build-worker-reliability-and-performance.md b/docs/ADR060-build-worker-reliability-and-performance.md
+index eeb7850b5..5f8fc35f7 100644
+--- a/docs/ADR060-build-worker-reliability-and-performance.md
++++ b/docs/ADR060-build-worker-reliability-and-performance.md
+@@ -397,6 +397,8 @@ The initial scope is CVE-2026-111497 in eleven reviewed legacy line images. Book
+ 
+ Publication requires behavioral validation on amd64 and arm64, including malformed Brotli input rejected as a permanent block-switch error and a healthy round trip. Candidates retain build provenance, both architecture SBOMs, full vulnerability reports and workflow-identity signatures. Only verified candidates reach a discovery tag; adoption is a separate reviewed immutable-pin change with source/inventory synchronization. Build, scan, signature or compatibility failure never changes an adopted pin. The build-plane maintainer reviews official upstream drift and verified platform releases, reruns these gates on changed sources, and returns to official images only after equivalent fixes are proven. Live rollout and any affected-service rebuild still require their own acceptance evidence.
+ 
++**Common foundation takes precedence (user decision 2026-10-29, applied 2026-10-31).** Final tenant images use one Bookworm tools foundation with the selected exact runtime installed above it. Already-started per-language publications may finish and retain their patch, runtime-donor and security evidence; they do not authorize interim per-language tenant bases. Production adoption waits for the common artifact and actual generated-image qualification, including same-version legacy runtime libraries, headers and companions on both architectures. D1=A retains platform patch maintenance and version preservation within this architecture. An unqualified legacy path remains open; publishing eleven line images does not establish common integration or live remediation.
++
+ ### D8 — Dedicated build pool: tainted lg/burst, serving overflow grows the stable pool
+ 
+ Build capacity is physically reserved, not shared with serving (2026-08-15, follows the live incident below; realizes ADR034 §3 step 4's "dedicated untrusted build node pool"):
+diff --git a/lego/operator/internal/build/nativebackport_python_test.go b/lego/operator/internal/build/nativebackport_python_test.go
+index 274da4310..9ad64cf29 100644
+--- a/lego/operator/internal/build/nativebackport_python_test.go
++++ b/lego/operator/internal/build/nativebackport_python_test.go
+@@ -25,9 +25,7 @@ import (
+ )
+ 
+ func TestNativePythonBackportBuildAndStart(t *testing.T) {
+-	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed Python backport")
+-	}
++	requireNativeBackportCommonFoundation(t)
+ 	line, ok := nativeToolchains[nativePythonRuntime].find("3.7")
+ 	if !ok {
+ 		t.Fatal("missing reviewed Python 3.7 line")
+diff --git a/lego/operator/internal/build/nativebackport_ruby_test.go b/lego/operator/internal/build/nativebackport_ruby_test.go
+index 1d66ea907..0a80e4167 100644
+--- a/lego/operator/internal/build/nativebackport_ruby_test.go
++++ b/lego/operator/internal/build/nativebackport_ruby_test.go
+@@ -25,9 +25,7 @@ import (
+ )
+ 
+ func TestNativeRubyBackportBuildAndStart(t *testing.T) {
+-	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed Ruby backport")
+-	}
++	requireNativeBackportCommonFoundation(t)
+ 	line, ok := nativeToolchains[nativeRubyRuntime].find("3.0")
+ 	if !ok {
+ 		t.Fatal("missing reviewed Ruby 3.0 line")
+diff --git a/lego/operator/internal/build/nativebackport_test.go b/lego/operator/internal/build/nativebackport_test.go
+index 53b6d8265..a8fc663fc 100644
+--- a/lego/operator/internal/build/nativebackport_test.go
++++ b/lego/operator/internal/build/nativebackport_test.go
+@@ -24,12 +24,24 @@ import (
+ 	"testing"
+ )
+ 
+-// Exercise the generated tenant build and start path, not only the publishing
+-// image's probes. Run after adopting verified backports, with Docker available.
+-func TestNativeBackportsBuildAndStart(t *testing.T) {
++func requireNativeBackportCommonFoundation(t *testing.T) {
++	t.Helper()
+ 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed backports")
++		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the reviewed backports on the common foundation")
++	}
++	if nativeCommonBase == "" {
++		t.Fatal("qualify and adopt the common Bookworm foundation and patched runtime donors before backport acceptance")
++	}
++	if err := validateNativeBase(nativeCommonBase); err != nil {
++		t.Fatal(err)
+ 	}
++	t.Logf("common foundation image: %s", nativeCommonBase)
++}
++
++// Exercise the generated tenant build and start path after common-foundation
++// and patched-primary adoption, with Docker available.
++func TestNativeBackportsBuildAndStart(t *testing.T) {
++	requireNativeBackportCommonFoundation(t)
+ 	probe, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "native-base", "node-brotli", "check.js"))
+ 	if err != nil {
+ 		t.Fatal(err)

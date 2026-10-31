@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-31T13:09:28.981923+00:00",
+  "directory": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt",
+  "steps": [
+    {
+      "name": "build-package",
+      "argv": [
+        "go",
+        "test",
+        "./internal/build",
+        "-count=1"
+      ],
+      "cwd": "/Users/tianpan/projects/bex/lego/operator",
+      "started_at": "2026-10-31T13:09:18.220158+00:00",
+      "completed_at": "2026-10-31T13:09:26.631876+00:00",
+      "exit_code": 0,
+      "log": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/build-package.log",
+      "log_sha256": "7f5d34136c01fe937d74ed235b5a4f7dc41762818a2496c1b8a7315ad64e28a4"
+    },
+    {
+      "name": "empty-common-rejected",
+      "argv": [
+        "go",
+        "test",
+        "./internal/build",
+        "-run",
+        "^TestNative(Backports|PythonBackport|RubyBackport)BuildAndStart$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": "/Users/tianpan/projects/bex/lego/operator",
+      "started_at": "2026-10-31T13:09:26.632047+00:00",
+      "completed_at": "2026-10-31T13:09:27.988057+00:00",
+      "exit_code": 1,
+      "log": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/empty-common-rejected.log",
+      "log_sha256": "b3d997c2b79d8d64018a2d4bb98c0fdb31c3441fbdb06904e2bbb9c50e73e35f"
+    },
+    {
+      "name": "actions-validate",
+      "argv": [
+        "bash",
+        "scripts/github-actions-validate.sh"
+      ],
+      "cwd": "/Users/tianpan/projects/bex",
+      "started_at": "2026-10-31T13:09:27.988166+00:00",
+      "completed_at": "2026-10-31T13:09:28.981657+00:00",
+      "exit_code": 0,
+      "log": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/actions-validate.log",
+      "log_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    }
+  ],
+  "negative_is_expected_refusal": true,
+  "passed": true,
+  "scope": "actual package tests and empty-common integration rejection only; no real common image build/HTTP, production adoption or hosted acceptance claimed"
+}
