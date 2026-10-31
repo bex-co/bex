@@ -79,7 +79,7 @@ The `Certificate` emits cert-manager metrics, so `CertificateNotReady` and `Cert
 
 1. **User:** create the D2 token in Cloudflare and set `BEX_CLOUDFLARE_DNS_TOKEN` in `.env` (done 2026-10-31), then push it to `production-deploy`.
 2. **Worker:** in one commit, add the Issuer and Certificate straight against Let's Encrypt production with `secretName: onbex-default-wildcard-tls`, add the token steps and remove the D4 steps and names. No staging pass: cert-manager writes the existing Secret only after a new certificate is issued, so a failed first issuance leaves the edge on the current certificate (which still had 30 days left) and surfaces in the deploy's warning and `CertificateNotReady`. The token's single-zone write/delete was already proven against the live zone (D2).
-3. **After the first issuance is verified at the edge:** delete the two old GitHub environment secrets, the old PEM files and the stale `_acme-challenge.onbex.co` TXT.
+3. **After the first issuance is verified at the edge:** delete the two old GitHub environment secrets, the old PEM files and the stale `_acme-challenge.onbex.co` TXT. Done 2026-10-31: first issuance went live with pin `d147703d7657` (Let's Encrypt `YR1`, valid to 2027-01-29); both secrets and the stale TXT are deleted.
 
 No manual renewal is needed for w4/441. The commit replaces the deploy's certificate preflight with the token preflight, so deploys unblock as soon as it lands, and the first deploy issues the new certificate.
 
