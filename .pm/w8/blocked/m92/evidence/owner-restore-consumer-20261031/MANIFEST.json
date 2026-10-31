@@ -1,0 +1,302 @@
+{
+  "README.md": {
+    "bytes": 1769,
+    "sha256": "678f0a0d35796b7038f91aeb00a3e7c0811288e78e7e932a684f0913d3131622"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 21118,
+    "sha256": "61df0fab62d5ad87c9e1f41bcdb383acca6ce37d8c3a25f1e9832c2b0a2cb8af"
+  },
+  "actual-pg14-complete-job.log.gz": {
+    "bytes": 51326,
+    "sha256": "d493a6bcbfa17273b5ba5e31cf90fe6cc190e1cde95631b919298c6cce3e37ee"
+  },
+  "retained/ACTUAL-PG14-RECEIPT.json": {
+    "bytes": 1148,
+    "sha256": "a51ef990b5fc42319d62a5c8f387eb980986408100cddc664c5f29f538d3eb6f"
+  },
+  "retained/BASELINE-SOURCE-MANIFEST.json": {
+    "bytes": 3416,
+    "sha256": "5315cb05641b8436145b479fde6a2f7a53b53453f680e9a496ba66ee54c1bf11"
+  },
+  "retained/CHECKS.json": {
+    "bytes": 1505,
+    "sha256": "dd18575ae261919886e02bd304f7025dcf1836cbf9c618d3891b8e8d0fcd2f27"
+  },
+  "retained/MANIFEST.json": {
+    "bytes": 12444,
+    "sha256": "e4539124bd452169566fa800788662594ce1b01f67aad6d75f2ee7ff23a6747a"
+  },
+  "retained/ROOT-PLAIN-PG15-CUSTODY.json": {
+    "bytes": 1180,
+    "sha256": "7ebd070e953a74690b79bc652f666b335581d5d111d74efb22f2ba8cddf16437"
+  },
+  "retained/SOURCE-MANIFEST.json": {
+    "bytes": 829,
+    "sha256": "89b2648fc99536d306f0e10ef7063947ec991f2fe9ca3683132a9411c987d88d"
+  },
+  "retained/UPSTREAM-MANIFEST.json": {
+    "bytes": 7854,
+    "sha256": "befd4b2c668e1440ccbba685ba275fc5e8e79859ef5908d4f17f24a1f2b0671f"
+  },
+  "retained/actual-pg14-excerpt.log.gz": {
+    "bytes": 497,
+    "sha256": "d8b1f36945837202eefb178890a71d6772d33f1079a348b17bc22bb6d78c84bc"
+  },
+  "retained/baseline-source/.pm/w8/m92/README.md.gz": {
+    "bytes": 3892,
+    "sha256": "0966ac1d63d8cd19142dc8f236644ee955ec0231ee2f3f06cd32382f9a5863cd"
+  },
+  "retained/baseline-source/.pm/w8/m92/t008.md.gz": {
+    "bytes": 2551,
+    "sha256": "281a29b9a0d6a497d0aea49c5a7f5f22f253eff5eb7a0a2332fb47d759be9f98"
+  },
+  "retained/baseline-source/deploy/pg-operand/Dockerfile.gz": {
+    "bytes": 2149,
+    "sha256": "90326775f02d3199e0f5c87a17fbac70815eec04ee75ed76696eab8be95040f3"
+  },
+  "retained/baseline-source/deploy/pg-operand/README.md.gz": {
+    "bytes": 3370,
+    "sha256": "b523b5c39265d7e9fc0914da0a2d93022998188f2d886af03641f9d0c750c891"
+  },
+  "retained/baseline-source/deploy/pg-operand/check.sh.gz": {
+    "bytes": 4910,
+    "sha256": "185b209e1e2d6d12aad2edffa37cd469e6122d6835bbb1bade77d43ccaf63dd7"
+  },
+  "retained/baseline-source/deploy/pg-operand/config.sh.gz": {
+    "bytes": 609,
+    "sha256": "5c0a5beeae8a352698df7a74c1983407b2353994fbf9eac58d30645ca5c0447a"
+  },
+  "retained/baseline-source/deploy/pg-operand/dump-snapshot.sh.gz": {
+    "bytes": 297,
+    "sha256": "b71c9833d14c7cbe3cb14b355394200565f77ccf858eda5644b981cc6957b5ed"
+  },
+  "retained/baseline-source/deploy/pg-operand/export.sh.gz": {
+    "bytes": 736,
+    "sha256": "13eb1b04b80fdb689a925eee664020e6256ab2ffec265903c0252a72b8e7ffd4"
+  },
+  "retained/baseline-source/deploy/pg-operand/extwlist/pg_partman/after-create.sql.gz": {
+    "bytes": 248,
+    "sha256": "0054051de3b0eec2d7be1fca925100d4c15ff0aada53a6ac7255afaeff876611"
+  },
+  "retained/baseline-source/deploy/pg-operand/extwlist/postgis/after-create.sql.gz": {
+    "bytes": 280,
+    "sha256": "661f158d552ac471a5517dd01432729fa08d919b70565e5dc1a61257babf7419"
+  },
+  "retained/baseline-source/deploy/pg-operand/extwlist/postgis_tiger_geocoder/after-create.sql.gz": {
+    "bytes": 220,
+    "sha256": "b7a638f8bf8e1310920136688121b4d08b1de3005ca13804721750eca857cdf5"
+  },
+  "retained/baseline-source/deploy/pg-operand/extwlist/postgis_topology/after-create.sql.gz": {
+    "bytes": 226,
+    "sha256": "ad2c5bdb69014308dbe848b590c536a15ce04eadb97e25cedbcd62bf70a29f20"
+  },
+  "retained/baseline-source/deploy/pg-operand/matrix.json": {
+    "bytes": 3255,
+    "sha256": "a6b6cd3ced9212aa98f14f4cbefca6b947b59f94f18ab28c115405eb5b1bdffa"
+  },
+  "retained/baseline-source/deploy/pg-operand/operand_test.py.gz": {
+    "bytes": 2307,
+    "sha256": "ca221fc292a2abecf84b7a0d37e7a7a26704eef0191db3f65598738d54100811"
+  },
+  "retained/baseline-source/docs/ADR092-postgres-extension-supply.md.gz": {
+    "bytes": 5557,
+    "sha256": "4b3a808aa963c16b9dc1230342086f385fb8ccfe92614a8391b0154a2a128072"
+  },
+  "retained/baseline-source/lego/operator/internal/controller/database_exports.go.gz": {
+    "bytes": 5847,
+    "sha256": "78000533575ef81705a9949ae02f1cf43622e51ad2423c8795c287fe2ed6d1d3"
+  },
+  "retained/baseline-source/lego/operator/internal/controller/database_operand_cnpg_test.go.gz": {
+    "bytes": 3072,
+    "sha256": "5eb73fbcbe404f4651ac5145c9620e8422f23932c04265b1c049bb485acb5cbf"
+  },
+  "retained/diff-whitespace.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "retained/frozen-restore-controls.log.gz": {
+    "bytes": 54,
+    "sha256": "c6076ce4b532c1f6b81d72cf16d5183377bcf351e4c479a55e023e61b1d50fc0"
+  },
+  "retained/mutation-controls.json": {
+    "bytes": 729,
+    "sha256": "c2f4bda8516ddb08848b0bb0e5f31185eeb59b3f3751bcd6db659cac89e8eadd"
+  },
+  "retained/omit-shared-transaction.log.gz": {
+    "bytes": 679,
+    "sha256": "c137ebeed23e85e4d50f66ef6bd7f5bca0ed868b2a857ad3f0bd61c688b4b80f"
+  },
+  "retained/omit-sidecar.log.gz": {
+    "bytes": 920,
+    "sha256": "cd19a5d933c0f4e190530e18590edb763d056bb9e64aff9d5b1eee3ae3baa0fa"
+  },
+  "retained/operand-protocol-suites.log.gz": {
+    "bytes": 55,
+    "sha256": "2a88d937e4f9412db5d375ca8bed3135f86784ea38a97784a8b97d5774ca52c3"
+  },
+  "retained/proposal.md.gz": {
+    "bytes": 4098,
+    "sha256": "75859f5f6e8fd22f7e4aac7031b3b46df3ab92c3e6c0bfc9eb82388633a82461"
+  },
+  "retained/root-independent-plain-pg15/CLEANUP.json": {
+    "bytes": 197,
+    "sha256": "1ca3b64e70fb39b1bf4782b59ac72077deaa9336859c748d48a90b6341ff9f53"
+  },
+  "retained/root-independent-plain-pg15/RESULT.json": {
+    "bytes": 617,
+    "sha256": "e8c8eb22ff315e78d23eaed6a54c815b0095d3328ce2bd47350a071960e06022"
+  },
+  "retained/root-independent-plain-pg15/commands.json": {
+    "bytes": 10150,
+    "sha256": "ec5945455ac806ab8a4476217cb3b32ecacca3a5b783f712a8ce317daeb80f40"
+  },
+  "retained/root-independent-plain-pg15/run.py.gz": {
+    "bytes": 1937,
+    "sha256": "5923f1428d14a0818ab349aa17123b13f43fdd9ddfe5fb8a5c0b892afbc08bb1"
+  },
+  "retained/shell-syntax.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "retained/skip-large-object-rejection.log.gz": {
+    "bytes": 389,
+    "sha256": "5f44b73ea91c1b5a0ee56d73f71339e6d6ea33cd2782ffcd83856ffddff2f36f"
+  },
+  "retained/skip-timescale-rejection.log.gz": {
+    "bytes": 355,
+    "sha256": "abcfd0605e076a3f2bec93687769d26c0941d073ff7984160c86f3620dabbf04"
+  },
+  "retained/source/deploy/pg-operand/Dockerfile.gz": {
+    "bytes": 2162,
+    "sha256": "bae3d662f1b7aae0526773b0a56b6ff34acc834acfd0240338b4a3ad2a1f1a8b"
+  },
+  "retained/source/deploy/pg-operand/README.md.gz": {
+    "bytes": 3945,
+    "sha256": "cbcbc8e822553fbb7a128f4e6e9111dc486699c7b242a87220e15e9948504d80"
+  },
+  "retained/source/deploy/pg-operand/restore.sh.gz": {
+    "bytes": 1140,
+    "sha256": "bebf8fd12ffe86a282a2eab2c8c9475abd6e81770f3171c6beca15c26f79f690"
+  },
+  "retained/source/deploy/pg-operand/restore_test.py.gz": {
+    "bytes": 2808,
+    "sha256": "de4947f599a9be1047ac61da4a6ce8754434a3fbe16efb807a171849a384f406"
+  },
+  "retained/source.diff.gz": {
+    "bytes": 4896,
+    "sha256": "5e1f6dcaafe20dd504ce82f50404969a6373fcd35e7bfe8a87e0958cc33c95f7"
+  },
+  "retained/upstream/pg_ivm/v1.17/README.md.gz": {
+    "bytes": 8118,
+    "sha256": "74965334a48635f265a2e78c26e99f12999c4a211e2209b49ec6fb61efc4daba"
+  },
+  "retained/upstream/pg_ivm/v1.17/pg_ivm--1.16--1.17.sql.gz": {
+    "bytes": 447,
+    "sha256": "deb5ff676e3ca05d1af96f4a9a9371ff300f9648eb5fe1496e1937137588fc35"
+  },
+  "retained/upstream/pgextwlist/v1.20/README.md.gz": {
+    "bytes": 3127,
+    "sha256": "f8566003a9507969e6dcb336d50d48b7548f476f310ba8bd81a92008669767b9"
+  },
+  "retained/upstream/postgresql/13/pg_backup_archiver.c.gz": {
+    "bytes": 37167,
+    "sha256": "447358421d80c71bc695e9fd92408a660ae2a37d76c3c8b10620b4b507432a65"
+  },
+  "retained/upstream/postgresql/14/alterdatabase.html.gz": {
+    "bytes": 4682,
+    "sha256": "b356a1bb51518a1a55dd13f911ab9e9dd27c1fcbfb33b43de4c0235ad59ae9eb"
+  },
+  "retained/upstream/postgresql/14/pg_backup_archiver.c.gz": {
+    "bytes": 37023,
+    "sha256": "dc6103e74328626c66420fa38d65d65eebf0c27ee6bd157fe56896a973c600ea"
+  },
+  "retained/upstream/postgresql/14/pgrestore.html.gz": {
+    "bytes": 11848,
+    "sha256": "69f2e778c92ac11034f4b92e72680c9d05e71703c2e2df042fa2ac1df9f82aee"
+  },
+  "retained/upstream/postgresql/14/psql.html.gz": {
+    "bytes": 43590,
+    "sha256": "10c45f53f3c74d778743879612b15eddb7e50efb2c07f7b291a93a683c5a617f"
+  },
+  "retained/upstream/postgresql/15/grant.html.gz": {
+    "bytes": 7387,
+    "sha256": "fe45c4e5ef36d915980eca5c2fd9d45999d82e4ca8c11f2f702b7d3923378bc6"
+  },
+  "retained/upstream/postgresql/15/release-15.html.gz": {
+    "bytes": 27765,
+    "sha256": "a6a21fc4679e19bfe70f2cdebc1205f07e4d3cfedd3528bf9ed55e78e3bad6cc"
+  },
+  "retained/upstream/postgresql/18/pg_backup_archiver.c.gz": {
+    "bytes": 40204,
+    "sha256": "ccdcb75fee65645c1ee20a7dcfa03390611dbcf0e31bd1edd31c12d2310c8950"
+  },
+  "retained/upstream/postgresql/18/pg_dump.c.gz": {
+    "bytes": 136427,
+    "sha256": "255e2a798499d16145057bbcac19b9d02e4cff0599a61d18a9b1d7e69b06dfe9"
+  },
+  "retained/upstream/timescale-docs/logical-backup.md.gz": {
+    "bytes": 2340,
+    "sha256": "b8967bfc8afdaec496d0bc24c19153ee1f425da4b3a392d78b85a5a988799cc9"
+  },
+  "retained/upstream/timescale-docs/schema-then-data.md.gz": {
+    "bytes": 3006,
+    "sha256": "cefcc249620239f1b69ee5ef109e02b47fd112e3baa2c88809ad228298c7091d"
+  },
+  "retained/upstream/timescaledb/2.15.3/scripts/ts_dump.sh.gz": {
+    "bytes": 888,
+    "sha256": "8816b2d40f80eabfacdad908ec77271ebb0982838304a98d48dafdd396c61ba5"
+  },
+  "retained/upstream/timescaledb/2.15.3/scripts/ts_restore.sh.gz": {
+    "bytes": 657,
+    "sha256": "6c32ca77af02865f1f4c54b9fc3c0a5a149b0cf8890ad7c57301eeab752fe123"
+  },
+  "retained/upstream/timescaledb/2.15.3/sql/pre_install/tables.sql.gz": {
+    "bytes": 5486,
+    "sha256": "458f8f8f26d0119654fc3583e35dfed6496b67c455b5bd658585e3eb2240a6ed"
+  },
+  "retained/upstream/timescaledb/2.15.3/sql/restoring.sql.gz": {
+    "bytes": 723,
+    "sha256": "e18e5bbe26744595e78f6e8d20253f41902deb48b271f659881fad791b8d3622"
+  },
+  "retained/upstream/timescaledb/2.15.3/src/guc.c.gz": {
+    "bytes": 5788,
+    "sha256": "bdac0ba8cc50109859b9ce426e628a4dee86396f0ecf1b24eba7973ccc7a1f5c"
+  },
+  "retained/upstream/timescaledb/2.15.3/test/sql/create_hypertable.sql.gz": {
+    "bytes": 4872,
+    "sha256": "9b6ef5a5f91c47326ed9a3b064de33e3fbd18af130fef8cca9d2410594701dab"
+  },
+  "retained/upstream/timescaledb/2.15.3/test/sql/pg_dump.sql.gz": {
+    "bytes": 3075,
+    "sha256": "cc2adbb409c77fd280b2ba9062417a52042884cdd21e1d89863e78d94acd8202"
+  },
+  "retained/upstream/timescaledb/2.19.3/scripts/ts_dump.sh.gz": {
+    "bytes": 888,
+    "sha256": "8816b2d40f80eabfacdad908ec77271ebb0982838304a98d48dafdd396c61ba5"
+  },
+  "retained/upstream/timescaledb/2.19.3/scripts/ts_restore.sh.gz": {
+    "bytes": 657,
+    "sha256": "6c32ca77af02865f1f4c54b9fc3c0a5a149b0cf8890ad7c57301eeab752fe123"
+  },
+  "retained/upstream/timescaledb/2.19.3/sql/pre_install/tables.sql.gz": {
+    "bytes": 6142,
+    "sha256": "3f0cbdfc19e4cf244a66aafdc9e3b3eb4c4344d595b198bbb57719b281c3bbae"
+  },
+  "retained/upstream/timescaledb/2.19.3/sql/restoring.sql.gz": {
+    "bytes": 723,
+    "sha256": "e18e5bbe26744595e78f6e8d20253f41902deb48b271f659881fad791b8d3622"
+  },
+  "retained/upstream/timescaledb/2.19.3/src/guc.c.gz": {
+    "bytes": 8532,
+    "sha256": "5f4581ed7350152e9f73c9dc7bba5f6a4e154dca199cbed3f79994d62b828fb2"
+  },
+  "retained/upstream/timescaledb/2.19.3/test/sql/create_hypertable.sql.gz": {
+    "bytes": 5323,
+    "sha256": "5ec908ccca677626fd8ae6e22dae1f190d0b69780f1ea1e832dbb8be689754ab"
+  },
+  "retained/upstream/timescaledb/2.19.3/test/sql/pg_dump.sql.gz": {
+    "bytes": 3075,
+    "sha256": "cc2adbb409c77fd280b2ba9062417a52042884cdd21e1d89863e78d94acd8202"
+  }
+}

@@ -51,6 +51,19 @@ docker run --rm --network none -v "$PWD/deploy/pg-operand:/check:ro" bex-pg:18 \
 
 `TestApplicationDatabaseExtensionsOnCNPG` (`BEX_CNPG_KUBECONFIG`, `BEX_PG_OPERAND_IMAGES="18=<image>"`) repeats the core of the gate through bex's real Cluster projection on a real CloudNativePG.
 
+## Restore consumer
+
+The image installs `bex-postgres-restore` for an extracted operand export. Pass the directory containing `toc.dat`; its parent must contain the original `pg_ivm_restore.sql` sidecar, including an empty sidecar for a database without IMMVs. The target database must already exist. Normal libpq credentials select the actor, and `PGDATABASE` selects the target:
+
+```sh
+PGDATABASE=orders_restored bex-postgres-restore \
+  "/work/extracted-export/orders_prod"
+```
+
+The consumer renders the complete dump with `pg_restore --no-owner --no-privileges`, then passes that SQL and the unchanged sidecar to one `psql --single-transaction --set=ON_ERROR_STOP=1` invocation. It preserves pg_dump's `restrict`/`unrestrict` commands and the caller's database identity. `TMPDIR` needs space for the rendered SQL; the consumer removes only its own temporary directory on success or failure.
+
+**Current limits:** TimescaleDB and large-object archives are rejected before connecting to the target. Timescale's raw restore needs a supported ordinary-owner protocol; pg_restore's large-object SQL contains separate commits that would break the transaction containing the sidecar. The consumer never omits those datasets or substitutes a privileged actor. Its container-free command/failure controls do not qualify SQL rollback, original IMMV maintenance, or the complete D3 gate. Complete Timescale/large-object restore, current CNPG/Free behavior and both architectures remain open.
+
 ## Publish, then pin
 
 The workflow publishes `ghcr.io/bex-co/bex-operator:<pg version>-postgres-<commit>` (the public package the CSI derivative also uses; CNPG reads the major from the tag's leading version) for `linux/amd64` and `linux/arm64`. It signs the image and attests an SBOM. It never pins. Adopting a digest is a reviewed commit to `bexOperandImages` in `lego/operator/internal/controller/database_operand.go`. That commit restarts every managed cluster of the major once, so it follows ADR092 D4: off-peak, health checks before and after each cluster, and the previous pin kept as the rollback.

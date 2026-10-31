@@ -1,6 +1,6 @@
 # w8 · m104 — Supply pg_partman for ordinary partition migrations
 
-**Worker:** worker8 **Goal:** app owners can install and use the documented partition-management extension. **Status:** blocked — waits for [w8/m92/t008](../../m92/t008.md) to deliver qualified per-major operand images and the allowlist; the single ADR092 D4 rolling restart is already approved; no user-decision gate
+**Worker:** worker8 **Goal:** app owners can install and use the documented partition-management extension. **Status:** blocked — waits for [w8/m92/t008](../m92/t008.md) to deliver qualified per-major operand images and the allowlist; the single ADR092 D4 rolling restart is already approved; no user-decision gate
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@ Compatible reviewed immutable SQL-only pg_partman supply for PostgreSQL14..18 pe
 - **Source:** Authorized ordinary functional CLI sweep428,2026-10-17: both native SQL clients fail pg_partman installation on a fresh owned Free PostgreSQL18.6, with matching catalogs and healthy extension/partition controls. A separate ordinary-owner localPG17 SQL-only reference works.
 - **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [managed PostgreSQL ADR009](../../../../docs/ADR009-postgresql-management.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md): supported app migrations should work through normal managed database connections.
 - **Expected outcome:** Partition-management migrations and maintenance run without server-file workarounds or changed app authority.
-- **Why now:** Two original failures and actual missing catalog entry establish a distinct supply gap; no existing pg_partman work was found. Coordinate the shared image rollout with [m92](../../m92/README.md); The m92 plan does not establish pg_partman supply in its future candidate images.
+- **Why now:** Two original failures and actual missing catalog entry establish a distinct supply gap; no existing pg_partman work was found. Coordinate the shared image rollout with [m92](../m92/README.md); The m92 plan does not establish pg_partman supply in its future candidate images.
 - **Render parity:** Included because shared database image supply reaches native/REST/GraphQL/MCP/Blueprint/dashboard consumers. No extension-management product or automatic background-worker service is introduced.
 
 ## 解除阻塞复核（2026-10-29，基于 `99ddf393061a`）
@@ -42,8 +42,8 @@ Compatible reviewed immutable SQL-only pg_partman supply for PostgreSQL14..18 pe
 - **结论来源：** 用户明确决定，补充上一条「当前没有新 rollout 授权」的复核记录。用户先问「Render 是怎么做的」，然后选择方案；之后指出「Render 公开的只是按库 CREATE EXTENSION 这一层契约，背后靠白名单机制放行非 trusted 扩展，需要写 ADR」。
 - **结论：** 采用 [ADR092](../../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
-- **剩余门槛：** 无用户门槛。本项等 [w8/m92/t008](../../m92/t008.md) 的共享镜像和白名单落地（上游依赖），之后恢复，完成本扩展的回归和线上验收。
+- **剩余门槛：** 无用户门槛。本项等 [w8/m92/t008](../m92/t008.md) 的共享镜像和白名单落地（上游依赖），之后恢复，完成本扩展的回归和线上验收。
 
 ## Shared operand qualification checkpoint — 2026-10-31
 
-The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../../m92/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.
+The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../m92/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.

@@ -1,0 +1,19 @@
+{
+  "run": 41196538568,
+  "job": 124586881316,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41196538568/job/124586881316",
+  "raw_log": "/private/tmp/bex-w8-pg14-qualification-failure-20261031/job.log",
+  "raw_sha256": "0b27334d5dcccd24dd2067d80e077b0a1dac89faf383d425399c0277b4dc945c",
+  "raw_bytes": 291554,
+  "excerpt_sha256": "522c34e13fdcf84f3a996aeda99c9343aef51cb2ed085ce954b89e5235f9708f",
+  "status": "Actual ordinary-owner complete restore FAIL. Separate platform recovery is not D3 proof. No retry by reviewer.",
+  "source_commit": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "first_runtime_platform": "linux/arm64",
+  "actual_pulled_manifest": "sha256:7ac274d0258fd869a2b3adc93869b044941187fcdc8ad7155b11096082f6fa32",
+  "timescaledb_package": "postgresql-14-timescaledb=2.19.3+dfsg-1.pgdg120+1",
+  "pg_ivm_package": "postgresql-14-pg-ivm=1.17-1.pgdg12+1",
+  "owner_restore_outcome": "FAIL before raw pg_restore/sidecar (pre_restore permission denied)",
+  "first_error_at": "2026-10-31T16:22:47Z",
+  "cgroup_memory_peak_bytes": 268435456,
+  "other_platform_runtime": "not reached by this job after first-platform exit1"
+}

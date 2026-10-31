@@ -1,0 +1,475 @@
+[
+  {
+    "args": [
+      "docker",
+      "run",
+      "-d",
+      "--name",
+      "bex-w8-restore-ee37da689356",
+      "--network",
+      "none",
+      "--memory",
+      "256m",
+      "--cpus",
+      "1",
+      "--label",
+      "co.bex.w8-restore=bex-w8-restore-ee37da689356",
+      "--tmpfs",
+      "/var/lib/postgresql/data:rw,size=128m",
+      "-e",
+      "POSTGRES_HOST_AUTH_METHOD=trust",
+      "f490b1e1368a"
+    ],
+    "exit": 0,
+    "stdout": "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "pg_isready",
+      "-U",
+      "postgres"
+    ],
+    "exit": 2,
+    "stdout": "/var/run/postgresql:5432 - no response\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "pg_isready",
+      "-U",
+      "postgres"
+    ],
+    "exit": 2,
+    "stdout": "/var/run/postgresql:5432 - no response\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "pg_isready",
+      "-U",
+      "postgres"
+    ],
+    "exit": 0,
+    "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "psql (PostgreSQL) 15.13\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-c",
+      "CREATE ROLE app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+    ],
+    "exit": 0,
+    "stdout": "CREATE ROLE\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-c",
+      "CREATE DATABASE source OWNER app;"
+    ],
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-c",
+      "CREATE DATABASE restored OWNER app;"
+    ],
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-c",
+      "CREATE DATABASE failed OWNER app;"
+    ],
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-c",
+      "CREATE DATABASE lob_target OWNER app;"
+    ],
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "source",
+      "-c",
+      "CREATE TABLE public.base (id integer PRIMARY KEY, payload text); INSERT INTO public.base VALUES(1,'\u4f60\u597d'),(2,'quote '' and $'),(3,'row3');"
+    ],
+    "exit": 0,
+    "stdout": "CREATE TABLE\nINSERT 0 3\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "mkdir",
+      "-p",
+      "/tmp/export dir"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "pg_dump",
+      "-U",
+      "app",
+      "-F",
+      "d",
+      "-f",
+      "/tmp/export dir/source database",
+      "source"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "cp",
+      "/Users/tianpan/projects/bex7/deploy/pg-operand/restore.sh",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0:/tmp/restore.sh"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "sh",
+      "-c",
+      "printf '%s\n' 'SELECT 1/0;' > '/tmp/export dir/pg_ivm_restore.sql'"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "env",
+      "PGUSER=app",
+      "PGDATABASE=failed",
+      "sh",
+      "/tmp/restore.sh",
+      "/tmp/export dir/source database"
+    ],
+    "exit": 3,
+    "stdout": "SET\nSET\nSET\nSET\nSET\n set_config \n------------\n \n(1 row)\n\nSET\nSET\nSET\nSET\nSET\nSET\nCREATE TABLE\nCOPY 3\nALTER TABLE\n",
+    "stderr": "psql:/tmp/export dir/pg_ivm_restore.sql:1: ERROR:  division by zero\n"
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "failed",
+      "-c",
+      "SELECT count(*) FROM pg_tables WHERE schemaname='public';"
+    ],
+    "exit": 0,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "sh",
+      "-c",
+      "printf '%s\n' 'CREATE VIEW public.proof AS SELECT count(*) AS n FROM public.base;' > '/tmp/export dir/pg_ivm_restore.sql'"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "env",
+      "PGUSER=app",
+      "PGDATABASE=restored",
+      "sh",
+      "/tmp/restore.sh",
+      "/tmp/export dir/source database"
+    ],
+    "exit": 0,
+    "stdout": "SET\nSET\nSET\nSET\nSET\n set_config \n------------\n \n(1 row)\n\nSET\nSET\nSET\nSET\nSET\nSET\nCREATE TABLE\nCOPY 3\nALTER TABLE\nCREATE VIEW\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "source",
+      "-c",
+      "SELECT json_agg(t ORDER BY id) FROM public.base t;"
+    ],
+    "exit": 0,
+    "stdout": "[{\"id\":1,\"payload\":\"\u4f60\u597d\"}, \n {\"id\":2,\"payload\":\"quote ' and $\"}, \n {\"id\":3,\"payload\":\"row3\"}]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "restored",
+      "-c",
+      "SELECT json_agg(t ORDER BY id) FROM public.base t;"
+    ],
+    "exit": 0,
+    "stdout": "[{\"id\":1,\"payload\":\"\u4f60\u597d\"}, \n {\"id\":2,\"payload\":\"quote ' and $\"}, \n {\"id\":3,\"payload\":\"row3\"}]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "restored",
+      "-c",
+      "SELECT current_user,current_setting('is_superuser'),n FROM proof;"
+    ],
+    "exit": 0,
+    "stdout": "app|off|3\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "source",
+      "-c",
+      "SELECT lo_from_bytea(0,decode('0102030405','hex'));"
+    ],
+    "exit": 0,
+    "stdout": "16414\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "pg_dump",
+      "-U",
+      "app",
+      "-F",
+      "d",
+      "-f",
+      "/tmp/export dir/large objects",
+      "source"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "env",
+      "PGUSER=app",
+      "PGDATABASE=lob_target",
+      "sh",
+      "/tmp/restore.sh",
+      "/tmp/export dir/large objects"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Large-object archives need an atomic restore protocol with the IMMV sidecar; no database changes were made.\n"
+  },
+  {
+    "args": [
+      "docker",
+      "exec",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "app",
+      "-d",
+      "lob_target",
+      "-c",
+      "SELECT count(*) FROM pg_tables WHERE schemaname='public';"
+    ],
+    "exit": 0,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "docker",
+      "rm",
+      "-f",
+      "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0"
+    ],
+    "exit": 0,
+    "stdout": "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0\n",
+    "stderr": ""
+  }
+]

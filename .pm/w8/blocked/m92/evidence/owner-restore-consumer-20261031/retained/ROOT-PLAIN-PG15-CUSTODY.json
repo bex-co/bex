@@ -1,0 +1,25 @@
+{
+  "scope": "Root performed this real plain PostgreSQL15.13 client proof. This reviewer read and hashed receipts; no PostgreSQL/Docker run by reviewer. No actual pg_ivm/Timescale/CNPG qualification.",
+  "files": [
+    {
+      "original_path": "/private/tmp/bex-w8-restore-client-proof-20261031/run.py",
+      "copy": "root-independent-plain-pg15/run.py",
+      "sha256": "42069fb1cc650b96685749060ac93de355439c4dff02c86bfd398de2c4e78f62"
+    },
+    {
+      "original_path": "/private/tmp/bex-w8-restore-client-proof-20261031/RESULT.json",
+      "copy": "root-independent-plain-pg15/RESULT.json",
+      "sha256": "e8c8eb22ff315e78d23eaed6a54c815b0095d3328ce2bd47350a071960e06022"
+    },
+    {
+      "original_path": "/private/tmp/bex-w8-restore-client-proof-20261031/CLEANUP.json",
+      "copy": "root-independent-plain-pg15/CLEANUP.json",
+      "sha256": "1ca3b64e70fb39b1bf4782b59ac72077deaa9336859c748d48a90b6341ff9f53"
+    },
+    {
+      "original_path": "/private/tmp/bex-w8-restore-client-proof-20261031/commands.json",
+      "copy": "root-independent-plain-pg15/commands.json",
+      "sha256": "ec5945455ac806ab8a4476217cb3b32ecacca3a5b783f712a8ce317daeb80f40"
+    }
+  ]
+}

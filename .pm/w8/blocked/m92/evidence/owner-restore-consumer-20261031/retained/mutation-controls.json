@@ -1,0 +1,26 @@
+[
+  {
+    "mutation": "omit-sidecar",
+    "returncode": 1,
+    "detected": true,
+    "script_sha256": "61ef7a35aab5a6014841d55b32f77eadcc9ec742b2985688356099e24a66b472"
+  },
+  {
+    "mutation": "omit-shared-transaction",
+    "returncode": 1,
+    "detected": true,
+    "script_sha256": "ff37e4c83b7b7c351acc2f358278721d70e5e2600d2bbd90599976119e6dd2b8"
+  },
+  {
+    "mutation": "skip-timescale-rejection",
+    "returncode": 1,
+    "detected": true,
+    "script_sha256": "09e916ee2d464d858d95c761dce01bddc92c6a538e21440da7638adc7fe13a39"
+  },
+  {
+    "mutation": "skip-large-object-rejection",
+    "returncode": 1,
+    "detected": true,
+    "script_sha256": "52be3471ba35c3753b145897b965df6be36fc8c1693f5d8532dfcffcafbefded"
+  }
+]

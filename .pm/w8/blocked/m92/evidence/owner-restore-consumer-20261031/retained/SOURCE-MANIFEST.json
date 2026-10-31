@@ -1,0 +1,29 @@
+{
+  "base_commit": "c921908745ce88e925181c4e9e1bf8ad19892ef2",
+  "files": [
+    {
+      "path": "deploy/pg-operand/Dockerfile",
+      "sha256": "eaac40ba9f1895a9cd7c7aa8e80f81540d9bb242eb142fa6a256fee665bee48f",
+      "bytes": 5071,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/pg-operand/README.md",
+      "sha256": "6372cde22c7363a09f2202e2139575ca76aa52f43dee7908066b2fbf5190bf65",
+      "bytes": 8473,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/pg-operand/restore.sh",
+      "sha256": "caf5e41ee5577cc149e03ba05892e4e518510d0fe43bae4c4aa7dccc2d56ec0f",
+      "bytes": 2469,
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/pg-operand/restore_test.py",
+      "sha256": "9954d8df8bc26a95be35907e28f520164db03cfd4d35375c379cefa08097595c",
+      "bytes": 9008,
+      "mode": "0o644"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "recorded_at": "2026-10-31T16:44:17.870642+00:00",
+  "commands": [
+    {
+      "command": [
+        "sh",
+        "-n",
+        "deploy/pg-operand/restore.sh"
+      ],
+      "exit": 0,
+      "log": "shell-syntax.log"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/pg-operand",
+        "-p",
+        "*_test.py"
+      ],
+      "exit": 0,
+      "log": "operand-protocol-suites.log"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "deploy/pg-operand"
+      ],
+      "exit": 0,
+      "log": "diff-whitespace.log"
+    }
+  ],
+  "protocol_suite_count": 11,
+  "new_restore_control_count": 8,
+  "mutation_controls": 4,
+  "runtime_by_reviewer": false,
+  "root_plain_pg15_result": "REAL_PG_CLIENT_TRANSACTION_CONTROLS_PASS",
+  "original_full_d3": "OPEN; actual PG14 ordinary-owner restore FAIL",
+  "early_history": [
+    {
+      "state": "Source-control test first run FAIL",
+      "detail": "macOS /var vs /private/var canonical path expectation mismatch; test root resolved and rerun PASS."
+    },
+    {
+      "state": "Initial atomicity assumption corrected before final freeze",
+      "detail": "Upstream pg_restore Start/EndRestoreBlobs emits BEGIN/COMMIT in SQL-file mode. psql -1 alone cannot make LOB+sidecar atomic. Consumer now refuses BLOB/BLOBS TOC entries before connecting. No raw SQL footer rewriting and no dataset omission."
+    }
+  ]
+}

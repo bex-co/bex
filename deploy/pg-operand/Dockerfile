@@ -90,6 +90,7 @@ COPY --from=duckdb /out/ /
 COPY extwlist/ /usr/share/bex/extwlist/
 COPY export.sh /usr/local/bin/bex-postgres-export
 COPY dump-snapshot.sh /usr/local/bin/bex-postgres-dump-snapshot
-RUN chmod 755 /usr/local/bin/bex-postgres-export /usr/local/bin/bex-postgres-dump-snapshot
+COPY restore.sh /usr/local/bin/bex-postgres-restore
+RUN chmod 755 /usr/local/bin/bex-postgres-export /usr/local/bin/bex-postgres-dump-snapshot /usr/local/bin/bex-postgres-restore
 
 USER 26

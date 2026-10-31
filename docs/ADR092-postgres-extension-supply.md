@@ -19,7 +19,7 @@ Render documents a fixed set of [Postgres extensions](https://render.com/docs/po
 
 **Render's contract is only the top layer.** Render publishes "the owner runs `CREATE EXTENSION` per database". It does not publish how a non-superuser is allowed to do that. In PostgreSQL 13+ a database owner can create an extension only when its control file is marked `trusted` (hstore is, and works on bex today, w8/m92 finding). PostGIS, TimescaleDB, pg_duckdb, pg_ivm and pg_similarity are not trusted (pg_partman uses its ordinary `superuser=false` path), so a non-superuser creates those through an allowlist mechanism that runs the extension's install script with elevated rights. Render must run such a mechanism. This ADR records bex's choice of mechanism, because it is a security boundary bex owns, not something parity dictates.
 
-Facts carried over from the [m92 design](../.pm/w8/m92/design.md):
+Facts carried over from the [m92 design](../.pm/w8/blocked/m92/design.md):
 
 - The serving operand image comes from `cnpgExportImages` (`lego/operator/internal/controller/database_exports.go`, used at `database_controller.go`). Changing a digest rolls every managed cluster of that major: each pod restarts once. The same map feeds the logical-export `pg_dump` Jobs.
 - No upstream CNPG image carries all six. CNPG publishes PostGIS-only images.
@@ -71,6 +71,10 @@ Required properties:
 TimescaleDB's complete restore uses its pre/post-restore protocol without deleting hypertable data. Ordinary-owner restore remains its own required outcome; platform bootstrap recovery never grants the owner superuser or Timescale catalog rights and is not a substitute. The isolated CNPG gate requires the exact shipped1.30.1 controller and retains Free resources. Its actual PG13 admission/runtime result remains required because CNPG's documentation limits support to PGDG-supported majors.
 
 Primary contracts: [pg_ivm metadata and preload](https://github.com/sraoss/pg_ivm/tree/v1.17), [DuckDB role and per-connection settings](https://github.com/duckdb/pg_duckdb/blob/v1.1.1/docs/settings.md), [Timescale logical restore](https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup), [CNPG image support](https://cloudnative-pg.io/docs/1.30/container_images/).
+
+**Actual D3 result — 2026-10-31.** The PG14 arm64 gate in run41196538568/job124586881316 fails ordinary-owner `timescaledb_pre_restore()` at `ALTER DATABASE … SET timescaledb.restoring`, with the exact permission error retained. The upstream invoker functions and PGC_SUSET/catalog-write requirements are outside pgextwlist's extension-utility elevation. Per D3, m92 is parked on qualified supported raw owner restore; platform recovery and an unimplemented alternative export proposal do not satisfy the criterion. The already-approved single rolling restart is unchanged. [Evidence and next engineering path](../.pm/w8/blocked/m92/evidence/owner-restore-consumer-20261031/README.md).
+
+**Maintained bounded consumer.** `bex-postgres-restore` consumes the existing dump plus original IMMV sidecar as one transaction under the caller's identity. It rejects Timescale and large-object archives before connecting; it never discards their data. Command controls and real plain-PG15.13 rollback/data/actor/large-object-refusal controls pass. Actual pg_ivm, complete Timescale, CNPG and both-architecture qualification for this delta remain open.
 
 **Base distribution.** The bex operand is built on CNPG's `system-bookworm` image of the same major and patch. The earlier upstream pins were bullseye images, and PGDG's bullseye archive has no PostGIS for 18 or TimescaleDB for 13. bex sets no locale, so CNPG initializes each cluster with `C`, whose order is independent of glibc. The rollout still checks for databases created with a glibc locale before the restart.
 
