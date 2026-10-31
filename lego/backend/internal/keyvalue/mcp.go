@@ -56,7 +56,7 @@ type createKeyValueArgs struct {
 	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; assignment also joins its project"`
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
-	Region        string   `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
+	Region        string   `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION); readback reports its public Render region alias. Any other value is refused"`
 	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
 	StorageGB     int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
 	Public        bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`

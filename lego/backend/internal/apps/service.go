@@ -1240,7 +1240,7 @@ func (s *Service) view(a *appv1alpha1.App) AppView {
 		v.URL = s.pendingPublicURL(a)
 	}
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(v.Type), v.ID)
-	v.Region = s.Metadata.PlatformRegion()
+	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
 	if strings.Contains(host, ".") && len(validation.IsDNS1123Subdomain(host)) == 0 && sshEligible(v) {
 		if kind, ok := ids.KindOf(v.ID); ok && kind == ids.Service {
@@ -1861,8 +1861,8 @@ type CreateRequest struct {
 	// Region is the caller's Render region (REST serviceDetails.region, the
 	// GraphQL/MCP region argument). bex runs one region, so Create only checks
 	// it against the shared policy (resourcemeta.CheckRequestedRegion: a Render
-	// region or BEX_REGION) and never persists it; readback reports BEX_REGION
-	// (ADR049 D7, w8/152).
+	// region or BEX_REGION) and never persists it; readback reports its public
+	// Render region alias (ADR049 D7, w8/218).
 	Region string
 	Name   string
 	// Type is the Render serviceType: web_service (default), private_service,

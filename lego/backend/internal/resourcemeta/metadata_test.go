@@ -143,3 +143,23 @@ func TestServiceDashboardRouteMatchesRenderScheme(t *testing.T) {
 		t.Errorf("key-value URL = %q", got)
 	}
 }
+
+func TestRenderRegionPreservesPlacementAndProvidesCLICompatibleReadback(t *testing.T) {
+	for _, tc := range []struct{ input, public string }{
+		{" fsn1 ", "frankfurt"}, {"frankfurt", "frankfurt"}, {"oregon", "oregon"}, {"", ""}, {"  ", ""},
+	} {
+		if got := RenderRegion(tc.input); got != tc.public {
+			t.Errorf("RenderRegion(%q) = %q, want %q", tc.input, got, tc.public)
+		}
+	}
+	configured := Config{Region: "fsn1"}
+	if configured.PlatformRegion() != "fsn1" {
+		t.Fatal("public alias changed internal placement")
+	}
+	if err := configured.CheckRequestedRegion("frankfurt"); err != nil {
+		t.Fatalf("clone readback region cannot be submitted: %v", err)
+	}
+	if err := configured.CheckRequestedRegion("Vietnam"); err == nil {
+		t.Fatal("invalid region accepted")
+	}
+}

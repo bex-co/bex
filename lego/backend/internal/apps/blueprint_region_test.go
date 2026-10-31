@@ -219,9 +219,9 @@ func TestBlueprintRenderExportWithRegionsValidatesAndPlans(t *testing.T) {
 }
 
 // Apply honors the same policy: the declared Render regions are accepted and
-// every resource reads back in BEX_REGION. (Projects need the workspace store,
+// every resource reads back with the public region alias. (Projects need the workspace store,
 // so apply runs the top-level half; validation covers the nested half above.)
-func TestBlueprintApplyWithRenderRegionReadsBackBexRegion(t *testing.T) {
+func TestBlueprintApplyWithRenderRegionReadsBackPublicAlias(t *testing.T) {
 	svc, _ := newService(nil)
 	svc.Metadata = resourcemeta.Config{Region: "fsn1"}
 	ctx := context.Background()
@@ -238,8 +238,8 @@ func TestBlueprintApplyWithRenderRegionReadsBackBexRegion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Get(%s): %v", name, err)
 		}
-		if v.Region != "fsn1" {
-			t.Errorf("%s region = %q, want BEX_REGION fsn1", name, v.Region)
+		if v.Region != "frankfurt" {
+			t.Errorf("%s region = %q, want public region frankfurt", name, v.Region)
 		}
 	}
 }
@@ -314,8 +314,8 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 				}
 				if tc.ok {
 					v, err := svc.Get(context.Background(), fmt.Sprintf("web-%d", i))
-					if err != nil || v.Region != "fsn1" {
-						t.Errorf("region %q: readback region = %q (err %v), want BEX_REGION fsn1", tc.region, v.Region, err)
+					if err != nil || v.Region != "frankfurt" {
+						t.Errorf("region %q: readback region = %q (err %v), want public region frankfurt", tc.region, v.Region, err)
 					}
 				}
 				if !tc.ok && !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") {

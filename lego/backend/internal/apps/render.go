@@ -401,6 +401,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if region == "" {
 		region = a.Region
 	}
+	region = resourcemeta.RenderRegion(region)
 	dashboardURL := metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(svcType), publicID)
 	if dashboardURL == "" {
 		dashboardURL = a.DashboardURL

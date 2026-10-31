@@ -107,11 +107,11 @@ func assertResourceMetadata(t *testing.T, object map[string]any, workspaceName, 
 	}
 	if service {
 		details, _ := object["serviceDetails"].(map[string]any)
-		if details["region"] != "fsn1" {
-			t.Fatalf("serviceDetails.region = %#v, want fsn1", details["region"])
+		if details["region"] != "frankfurt" {
+			t.Fatalf("serviceDetails.region = %#v, want frankfurt", details["region"])
 		}
-	} else if object["region"] != "fsn1" {
-		t.Fatalf("region = %#v, want fsn1", object["region"])
+	} else if object["region"] != "frankfurt" {
+		t.Fatalf("region = %#v, want frankfurt", object["region"])
 	}
 }
 

@@ -106,6 +106,17 @@ type Config struct {
 // configuration as unavailable.
 func (c Config) PlatformRegion() string { return strings.TrimSpace(c.Region) }
 
+// RenderRegion maps physical placement to the public region accepted by the
+// Render CLI. Internal placement stays fsn1; its public alias is frankfurt
+// (user decision D7, 2026-10-29, w8/218).
+func RenderRegion(region string) string {
+	region = strings.TrimSpace(region)
+	if region == "fsn1" {
+		return "frankfurt"
+	}
+	return region
+}
+
 // RenderRegions is Render's region enum, as pinned in both its OpenAPI spec
 // and its Blueprint schema.
 var RenderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virginia"}

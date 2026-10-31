@@ -329,7 +329,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 // the apps.Service.view pattern so GraphQL and MCP return the enriched shape.
 func (s *Service) view(kv *appv1alpha1.KeyValue) KeyValueView {
 	v := kvView(kv)
-	v.Region = s.Metadata.PlatformRegion()
+	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.KeyValueDashboardRoute, v.ID)
 	return v
 }

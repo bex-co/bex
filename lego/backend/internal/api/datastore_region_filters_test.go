@@ -159,32 +159,33 @@ func TestDatastoreRegionFiltersThroughREST(t *testing.T) {
 	}
 }
 
-func TestDatastoreRegionUsesLiteralPlacement(t *testing.T) {
+func TestDatastoreRegionUsesPublicPlacementAlias(t *testing.T) {
 	for _, region := range []string{"fsn1", ""} {
 		t.Run("configured="+region, func(t *testing.T) {
+			publicRegion := ""
+			want := 0
+			if region == "fsn1" {
+				publicRegion, want = "frankfurt", 3
+			}
 			direct := datastoreRegionFixture(t, region, false)
 			composed := datastoreRegionFixture(t, region, true)
 			for _, route := range []struct{ path, key string }{{"/v1/postgres", "postgres"}, {"/v1/key-value", "keyValue"}} {
 				t.Run(route.key, func(t *testing.T) {
 					for _, h := range []http.Handler{direct, composed} {
 						page := readDatastoreRegionPage(t, h, route.path, route.key, "")
-						if len(page) != 3 || page[0].Region != region {
-							t.Fatalf("unfiltered placement = %+v, want 3 resources in %q", page, region)
+						if len(page) != 3 || page[0].Region != publicRegion {
+							t.Fatalf("unfiltered placement = %+v, want 3 resources in %q", page, publicRegion)
 						}
-						if page := readDatastoreRegionPage(t, h, route.path, route.key, "region=frankfurt"); len(page) != 0 {
-							t.Fatalf("frankfurt matched configured %q: %+v", region, page)
+						if page := readDatastoreRegionPage(t, h, route.path, route.key, "region=frankfurt"); len(page) != want {
+							t.Fatalf("public region filter for %q: %+v, want %d", region, page, want)
 						}
 					}
 					page := readDatastoreRegionPage(t, direct, route.path, route.key, "region=fsn1")
-					want := 0
-					if region == "fsn1" {
-						want = 3
-					}
-					if len(page) != want {
-						t.Fatalf("literal handler filter returned %d resources, want %d", len(page), want)
+					if len(page) != 0 {
+						t.Fatalf("physical region leaked into public filter: %+v", page)
 					}
 					// The pinned Render enum remains the public gate. A real bex
-					// placement is not silently admitted or aliased to Frankfurt.
+					// placement remains invalid as a public filter, even when its readback is aliased.
 					for _, query := range []string{
 						"region=fsn1",
 						"region=frankfurt,fsn1",

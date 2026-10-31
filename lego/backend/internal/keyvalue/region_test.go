@@ -121,8 +121,8 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 					continue
 				}
 				v, err := svc.GetKeyValue(context.Background(), got.id)
-				if err != nil || v.Region != "fsn1" {
-					t.Errorf("region %q: readback region = %q (err %v), want BEX_REGION fsn1", tc.region, v.Region, err)
+				if err != nil || v.Region != "frankfurt" {
+					t.Errorf("region %q: readback region = %q (err %v), want public region frankfurt", tc.region, v.Region, err)
 				}
 			}
 		})

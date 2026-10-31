@@ -114,7 +114,7 @@ func TestRESTPostgresMetadataParity_Present(t *testing.T) {
 	check := func(step string, body map[string]any) {
 		t.Helper()
 		assertOwnerPresent(t, step, body, wantOwner)
-		assertStringField(t, step, body, "region", "fsn1")
+		assertStringField(t, step, body, "region", "frankfurt")
 		assertNonEmptyString(t, step, body, "dashboardUrl")
 		assertNonEmptyString(t, step, body, "updatedAt")
 	}

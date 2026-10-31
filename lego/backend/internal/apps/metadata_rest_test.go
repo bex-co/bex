@@ -124,8 +124,8 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 	check := func(step string, body map[string]any) {
 		t.Helper()
 		assertOwnerPresent(t, step, body, wantOwner)
-		if region, ok := serviceDetailsRegion(body); !ok || region != "fsn1" {
-			t.Fatalf("%s: serviceDetails.region = %q (present=%v), want fsn1 (body=%#v)", step, region, ok, body)
+		if region, ok := serviceDetailsRegion(body); !ok || region != "frankfurt" {
+			t.Fatalf("%s: serviceDetails.region = %q (present=%v), want frankfurt (body=%#v)", step, region, ok, body)
 		}
 		assertNonEmptyString(t, step, body, "dashboardUrl")
 		assertNonEmptyString(t, step, body, "updatedAt")
@@ -285,7 +285,7 @@ func TestGraphQLServiceListMetadata(t *testing.T) {
 		region     string
 		wantRegion any
 	}{
-		{name: "configured", region: "fsn1", wantRegion: "fsn1"},
+		{name: "configured", region: "fsn1", wantRegion: "frankfurt"},
 		{name: "unconfigured", wantRegion: ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -324,5 +324,23 @@ func TestGraphQLServiceListMetadata(t *testing.T) {
 				t.Fatalf("updatedAt = %q, want authoritative mutation timestamp", updated)
 			}
 		})
+	}
+}
+
+func TestRenderServiceStoredViewUsesPublicRegionAlias(t *testing.T) {
+	view := AppView{Region: "fsn1", Type: "web_service"}
+	encoded, err := json.Marshal(toRenderService(view))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := serviceDetailsRegion(object); !ok || got != "frankfurt" {
+		t.Fatalf("stored view region = %q (present=%v), want frankfurt", got, ok)
+	}
+	if view.Region != "fsn1" {
+		t.Fatal("public readback mutated stored placement")
 	}
 }
