@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f.bundle.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--digest",
+    "911de2554cbd439271dea5e5ced14993b7da2a757a0e51207c603ae63e59cf77",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "d95dcd88505c5d6825343dbfbc74244242ccad25",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7"
+}

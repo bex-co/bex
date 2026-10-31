@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:eccbe974bc38dd7f457f049aa69286c4f08c7e7852e09d55f33055997b9ac0d4",
+    "native_API_404": true,
+    "unselected_descriptor_count": 0
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:7f1ac99ded1a1753d179e93c3b24107b31aae5809c7d0e5a27d9404b0bdb464d",
+      "bundle_digest": "sha256:677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3",
+      "bundle_bytes": 24128767,
+      "path": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "045fe416304b6654b38262b60d52e842a51c1ac8a589661616c86801b81215a2"
+    },
+    {
+      "manifest_digest": "sha256:85bb0e1a00773d23716ea75d9675cc957fa3aaf3a51ac321586e01ee2d81aee9",
+      "bundle_digest": "sha256:ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879",
+      "bundle_bytes": 30538951,
+      "path": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "798b1fb6942aa84e32350e43c29091da50512439d153789f5a943f51e370e4eb"
+    },
+    {
+      "manifest_digest": "sha256:90c528a961bfa95f6b9905c2d360536af1bf449aec4571e96487fcd3bd4a10fa",
+      "bundle_digest": "sha256:7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f",
+      "bundle_bytes": 9555,
+      "path": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "73edbe2602d4b2ff9e8a4b6ff402a507a5c51f59ab1a4ee17458386aa0f13e2b"
+    },
+    {
+      "manifest_digest": "sha256:c19a77012729e572bc1eaa79b1eaed6e4c07db86ef8e282e43da60dab4a47d61",
+      "bundle_digest": "sha256:9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f",
+      "bundle_bytes": 30526359,
+      "path": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "8d13709310d2f3d4733e847afa125ea1aaea0db3c244b1406f0f1507803ef05f"
+    },
+    {
+      "manifest_digest": "sha256:da5627f2e71cf02c5cc6dfcb52a08f1199e2c63bdf2fc0c5a78f04162e6568cb",
+      "bundle_digest": "sha256:56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2",
+      "bundle_bytes": 24130883,
+      "path": "/private/tmp/bex-w8-python311-v11-case-20261031-d95dcd/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "8f4e69d4424c51dbaf29634a46ccfa66fda8a89825a3dd000ed4c1c3a8d9af1c"
+    }
+  ]
+}
