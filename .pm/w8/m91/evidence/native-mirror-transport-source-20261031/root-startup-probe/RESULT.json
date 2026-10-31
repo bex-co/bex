@@ -1,0 +1,8 @@
+{
+  "outcome": "timed_out_and_owned_probe_reaped",
+  "seconds": 2,
+  "stdout": null,
+  "stderr": null,
+  "interpretation": "server thread start failure enters shutdown wait before serve_forever began",
+  "elapsed_seconds": 2.004792041145265
+}

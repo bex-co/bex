@@ -1,0 +1,21 @@
+{
+  "started_at": "2026-10-31T17:39:56.371045+00:00",
+  "completed_at": "2026-10-31T17:39:56.853541+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "test_native_oci_mirror.MirrorControls.test_config_cleanup_error_after_scan_cannot_leave_complete_receipt_or_report",
+    "test_native_oci_mirror.MirrorControls.test_group_gone_paths_still_wait_for_the_owned_child",
+    "-v"
+  ],
+  "exit_code": 0,
+  "exact_frozen_payloads_verified": 29,
+  "exact_fileset": true,
+  "frozen_live_source_equal": 3,
+  "review_result": "CLEAN: both specific cleanup/receipt/reap findings resolved",
+  "source_manifest_sha256": "b38036641ce3f3cd20135864118343bc00f3479f3fa78c6edfcb0a5fc8ed372a",
+  "full_manifest_sha256": "e36536be27a58e2a769d4f1264c2cc98a9dd4dcf16f3e46027ba96d3a4c68dd8",
+  "limits": "Source and two owned-loopback/mock-child regressions only; pinned actual Trivy/full image/runtime/publication unexecuted. No repo/CI/Docker/resource mutations."
+}

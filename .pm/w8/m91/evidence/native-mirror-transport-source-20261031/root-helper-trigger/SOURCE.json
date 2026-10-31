@@ -1,0 +1,12 @@
+{
+  "files": {
+    ".github/workflows/native-common-image.yml": {
+      "before_sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+      "after_sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9"
+    },
+    "lego/operator/internal/build/nativeutility_qualification_test.go": {
+      "before_sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+      "after_sha256": "bea919bf4ad408134ae7b79c96f3b4e090082f1b13affb5413b682fd8258e636"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "-m",
+    "unittest",
+    "test_native_oci_mirror.MirrorControls.test_startup_failures_close_listener_restore_signals_and_never_spawn_scan",
+    "-v"
+  ],
+  "old_helper_sha256": "2b03dd78d777eb6212242bc312d02fcbd972952caa560773a086b0d96820bfa3",
+  "exit": 1,
+  "expected": "Old g6 helper must fail the new owned-subprocess startup controls, including bounded timeout of original deadlock."
+}

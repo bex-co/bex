@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-31T16:39:37.627287+00:00",
+  "status": "RESEARCH_ONLY_NOT_IMPLEMENTED_OR_APPROVED",
+  "observed_failure": "Three Trivy0.70 remote layer reads failed with unexpected EOF after current bounded retries; no underlying network cause established",
+  "primary_sources": [
+    "https://trivy.dev/docs/v0.70/guide/target/container_image/#oci-layout",
+    "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/fanal/image/oci.go",
+    "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/fanal/image/archive.go",
+    "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/fanal/artifact/image/image.go"
+  ],
+  "findings": [
+    "Trivy0.70 supports an OCI layout directory via --input; existing native-oci-stage.py can produce a selected-platform SHA/size-verified layout",
+    "archiveImage.Name is the input filename; OCI archive RepoDigests and RepoTags are empty",
+    "Blindly replacing remote scan with local input would change raw ArtifactName and invalidate current strict V11 immutable-reference binding",
+    "Any such repair needs independently reviewed signed staging+config/platform binding support and real full raw-report tests; never rewrite reports or weaken the existing gate"
+  ],
+  "actions": "No source/tool/helper hash changes, no scan gate weakening, no manual layer decompression, no resource or CI mutations"
+}

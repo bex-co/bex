@@ -1,0 +1,16 @@
+{
+  "version": "0.70.0",
+  "official_release": "https://github.com/aquasecurity/trivy/releases/tag/v0.70.0",
+  "official_checksums": "https://github.com/aquasecurity/trivy/releases/download/v0.70.0/trivy_0.70.0_checksums.txt",
+  "official_checksums_sha256": "c45281240bb9211ea9e830fc0bf5cf8acf7c0ca830feb64ac8a0aa932c5c92d9",
+  "archive": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-trivy-c4xp6np1/trivy_0.70.0_macOS-ARM64.tar.gz",
+  "archive_bytes": 45331240,
+  "archive_sha256": "68e543c51dcc96e1c344053a4fde9660cf602c25565d9f09dc17dd41e13b838a",
+  "binary": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-trivy-c4xp6np1/trivy",
+  "binary_bytes": 154798866,
+  "binary_sha256": "3122de2c39d6ae433c2355a87508fb18dca637cf7f149e0006b63ddefb0cdc52",
+  "archive_entry_binary_exact_match": true,
+  "new_binary_download_bytes": 0,
+  "new_checksums_download_bytes": 2121,
+  "global_install": false
+}

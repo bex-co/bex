@@ -11,6 +11,7 @@ on:
       - ".github/workflows/native-common-image.yml"
       - ".github/workflows/native-base-image.yml"
       - ".github/scripts/native-oci-stage.py"
+      - ".github/scripts/native-oci-mirror.py"
       - ".github/scripts/test_native_oci_*.py"
       - ".github/scripts/native-common-qualify.py"
       - "lego/operator/internal/build/native*.go"

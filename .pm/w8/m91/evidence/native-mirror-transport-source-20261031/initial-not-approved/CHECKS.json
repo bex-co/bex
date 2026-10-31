@@ -1,0 +1,57 @@
+{
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "label": "full-native-oci-controls",
+      "exit": 0
+    },
+    {
+      "command": [
+        "actionlint",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "label": "actionlint-initial",
+      "exit": 1
+    },
+    {
+      "command": [
+        "actionlint",
+        "-config-file",
+        "/private/tmp/bex-w8-native-oci-mirror-final-20261031-6w6l5oip/actionlint.yaml",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "label": "actionlint",
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".github/workflows/native-base-image.yml",
+        ".github/scripts/native-oci-mirror.py",
+        ".github/scripts/test_native_oci_mirror.py"
+      ],
+      "label": "diff-check",
+      "exit": 0
+    }
+  ],
+  "scope": "Real owned-loopback HTTP and scanner doubles; no actual Trivy/image/runtime/hosted approval. Existing publisher shell controls included.",
+  "initial_actionlint": "Only pre-existing custom runner labels; private per-command config registers the two actual labels, no rules suppressed.",
+  "test_count": 55
+}

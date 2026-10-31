@@ -1,0 +1,1346 @@
+{
+  "reviewed_at": "2026-10-31T18:05:07.377057+00:00",
+  "approved_for_source_ship": true,
+  "initial_payloads_verified": 27,
+  "cleanup_corrected_payloads_verified": 29,
+  "startup_final_payloads_verified": 39,
+  "actual_synthetic_smoke_payloads_verified": 50,
+  "root_live_source_files": 5,
+  "source_review": "original index/config/platform identity; same Trivy args, scans, limits, source/profile and signing; bounded exact owned lifecycle",
+  "independent_final_review": "cli090 CLEAN; six startup scenarios independently rerun without warnings",
+  "root_defect_and_resolution": "server thread startup failure originally hangs at shutdown; exact2s owned root probe retained. Final same probe completes expected failure in0.111s. Signal installation/restoration race also corrected.",
+  "checks": [
+    "58 source controls PASS21.833s;17mirror controls including6startup scenarios",
+    "actionlint and diff checks PASS",
+    "root actual-YAML helper trigger positivePASS0.476s and previous-workflow missing-helper negative exactly1failure"
+  ],
+  "actual_CLI_transport": {
+    "tool": "official checksum-matched cached Trivy0.70.0; binary independently rehashed and equal to archive member",
+    "raw_report": "unchanged ArtifactName/RepoDigests/root/config/linux-arm64/DiffID",
+    "synthetic_graph": "originaltwo-platformroot+selectedchild+config+validtar-layer;4successfulHTTPGETs",
+    "scope": "unpublished tiny synthetic transport/identity only; unsupported-OS warning retained; no production full-vulnerability/image qualification",
+    "cleanup": "own scanner/server/config/cache/DBclone gone; foreign DB/metadata unchanged"
+  },
+  "production_scan_profile_or_V11_changed": false,
+  "production_pins_changed": false,
+  "root_trigger_setup_limit": "First Go command used wrong repository cwd and found no module; corrected operator cwd passed. Setup error is not a product regression.",
+  "original_c5_failure": "3 actual remote-layer unexpectedEOF scan failures; full raw completed job log retained once; underlying network cause unproved",
+  "custody": [
+    {
+      "original": "initial-not-approved/CHECKS.json",
+      "retained": "initial-not-approved/CHECKS.json",
+      "original_bytes": 1445,
+      "original_sha256": "b25c4e5843b366c37e9b4cbbd99dc76b26fa47fadeb43ba4e5d075570973a537",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/MANIFEST.json",
+      "retained": "initial-not-approved/MANIFEST.json",
+      "original_bytes": 4568,
+      "original_sha256": "6a10ad465e0bc6b7cf524b28fecb507f326ebfe3fc39a10a0001df2f0f3299d3",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/SOURCE-MANIFEST.json",
+      "retained": "initial-not-approved/SOURCE-MANIFEST.json",
+      "original_bytes": 674,
+      "original_sha256": "216e9e74d0a2ed038712bd2f12c6d5c804ff3927048b38b816624721bf9724ba",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/SUMMARY.json",
+      "retained": "initial-not-approved/SUMMARY.json",
+      "original_bytes": 1558,
+      "original_sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/UPSTREAM-MANIFEST.json",
+      "retained": "initial-not-approved/UPSTREAM-MANIFEST.json",
+      "original_bytes": 3001,
+      "original_sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/actionlint-initial.log",
+      "retained": "initial-not-approved/actionlint-initial.log.gz",
+      "original_bytes": 1882,
+      "original_sha256": "a7abd2d6dde66bd68ec75556452967a3197983a6b53d8ca7591677e1a219145c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/actionlint.log",
+      "retained": "initial-not-approved/actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/actionlint.yaml",
+      "retained": "initial-not-approved/actionlint.yaml.gz",
+      "original_bytes": 64,
+      "original_sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/diff-check.log",
+      "retained": "initial-not-approved/diff-check.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/full-native-oci-controls.log",
+      "retained": "initial-not-approved/full-native-oci-controls.log.gz",
+      "original_bytes": 155,
+      "original_sha256": "53aa521fcddf3521852b1356722794ba1efbadc5d47f7eea9dc93bc0422e0baf",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/local-oci-alternative-not-adopted.json",
+      "retained": "initial-not-approved/local-oci-alternative-not-adopted.json",
+      "original_bytes": 1358,
+      "original_sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/receipt.json",
+      "retained": "initial-not-approved/receipt.json",
+      "original_bytes": 2536,
+      "original_sha256": "fbb0d4112f7a8a32e25412fb56dfe11e02d7a0e3ba72acd97163733153f8f379",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/review-history.json",
+      "retained": "initial-not-approved/review-history.json",
+      "original_bytes": 977,
+      "original_sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/.github/scripts/native-oci-mirror.py",
+      "retained": "initial-not-approved/source/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15191,
+      "original_sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/source/.github/scripts/test_native_oci_mirror.py",
+      "retained": "initial-not-approved/source/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 22370,
+      "original_sha256": "c3534cbbcfc0641987a103cea668ad60bc97f710b465d5d081975a8158dde882",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/source/.github/workflows/native-base-image.yml",
+      "retained": "initial-not-approved/source/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/source.patch",
+      "retained": "initial-not-approved/source.patch.gz",
+      "original_bytes": 40374,
+      "original_sha256": "b5be5efd76cdcd7c724006028acbda8690d2937807139055e5b8780bd085df2d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/unchanged/.github/scripts/native-oci-stage.py",
+      "retained": "initial-not-approved/unchanged/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py",
+      "retained": "initial-not-approved/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz",
+      "original_bytes": 40661,
+      "original_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/go-containerregistry-v0.21.2-descriptor.go",
+      "retained": "initial-not-approved/upstream/go-containerregistry-v0.21.2-descriptor.go.gz",
+      "original_bytes": 6887,
+      "original_sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/go-containerregistry-v0.21.2-registry.go",
+      "retained": "initial-not-approved/upstream/go-containerregistry-v0.21.2-registry.go.gz",
+      "original_bytes": 4993,
+      "original_sha256": "8cbe3fe3fb540bd623e6a636fe14ed20c856c3a5691c4ac7a6dcde9e5b3ced67",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-fanal-artifact-image.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz",
+      "original_bytes": 19933,
+      "original_sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-fanal-image.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-fanal-image.go.gz",
+      "original_bytes": 4105,
+      "original_sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-fanal-remote.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-fanal-remote.go.gz",
+      "original_bytes": 2290,
+      "original_sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-global_flags.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-global_flags.go.gz",
+      "original_bytes": 5805,
+      "original_sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-go.mod",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-go.mod.gz",
+      "original_bytes": 26601,
+      "original_sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-registry_flags.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-registry_flags.go.gz",
+      "original_bytes": 2909,
+      "original_sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/upstream/trivy-v0.70.0-remote.go",
+      "retained": "initial-not-approved/upstream/trivy-v0.70.0-remote.go.gz",
+      "original_bytes": 8666,
+      "original_sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/CHECKS.json",
+      "retained": "cleanup-corrected/CHECKS.json",
+      "original_bytes": 1244,
+      "original_sha256": "2f256d23b051fe207959e6bf04f50aed1dcbd4777e7dd206472da7a68d17dda2",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/MANIFEST.json",
+      "retained": "cleanup-corrected/MANIFEST.json",
+      "original_bytes": 4932,
+      "original_sha256": "e36536be27a58e2a769d4f1264c2cc98a9dd4dcf16f3e46027ba96d3a4c68dd8",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/SOURCE-MANIFEST.json",
+      "retained": "cleanup-corrected/SOURCE-MANIFEST.json",
+      "original_bytes": 674,
+      "original_sha256": "b38036641ce3f3cd20135864118343bc00f3479f3fa78c6edfcb0a5fc8ed372a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/SUMMARY.json",
+      "retained": "cleanup-corrected/SUMMARY.json",
+      "original_bytes": 1558,
+      "original_sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/UPSTREAM-MANIFEST.json",
+      "retained": "cleanup-corrected/UPSTREAM-MANIFEST.json",
+      "original_bytes": 3001,
+      "original_sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/actionlint-initial.log",
+      "retained": "cleanup-corrected/actionlint-initial.log.gz",
+      "original_bytes": 1882,
+      "original_sha256": "a7abd2d6dde66bd68ec75556452967a3197983a6b53d8ca7591677e1a219145c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/actionlint.log",
+      "retained": "cleanup-corrected/actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/actionlint.yaml",
+      "retained": "cleanup-corrected/actionlint.yaml.gz",
+      "original_bytes": 64,
+      "original_sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/diff-check.log",
+      "retained": "cleanup-corrected/diff-check.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/full-native-oci-controls.log",
+      "retained": "cleanup-corrected/full-native-oci-controls.log.gz",
+      "original_bytes": 157,
+      "original_sha256": "70c559f3d74171c6944891eb7aebdd0e42dc88a27c46bf6b62bbd3a4fce720cd",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/independent-review/cleanup-failure-probe-result.json",
+      "retained": "cleanup-corrected/independent-review/cleanup-failure-probe-result.json",
+      "original_bytes": 607,
+      "original_sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/independent-review/cleanup-failure-probe.py",
+      "retained": "cleanup-corrected/independent-review/cleanup-failure-probe.py.gz",
+      "original_bytes": 1632,
+      "original_sha256": "23351f5e403616718e02eba2d042dba7aeb17b8bc023ff440bea06235c5c4d88",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/local-oci-alternative-not-adopted.json",
+      "retained": "cleanup-corrected/local-oci-alternative-not-adopted.json",
+      "original_bytes": 1358,
+      "original_sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/receipt.json",
+      "retained": "cleanup-corrected/receipt.json",
+      "original_bytes": 3032,
+      "original_sha256": "8b7de3ea8b443df17f625cdaf109f0d6686ca0071adb1595797af06552ac0f49",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/review-history.json",
+      "retained": "cleanup-corrected/review-history.json",
+      "original_bytes": 977,
+      "original_sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d",
+      "lossless_gzip": false
+    },
+    {
+      "original": "cleanup-corrected/source/.github/scripts/native-oci-mirror.py",
+      "retained": "cleanup-corrected/source/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15303,
+      "original_sha256": "2b03dd78d777eb6212242bc312d02fcbd972952caa560773a086b0d96820bfa3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/source/.github/scripts/test_native_oci_mirror.py",
+      "retained": "cleanup-corrected/source/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 23560,
+      "original_sha256": "91926c80854b97d87e43e694cee0c141bee99265b1b33c11bfc412587045c8e3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/source/.github/workflows/native-base-image.yml",
+      "retained": "cleanup-corrected/source/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/source.patch",
+      "retained": "cleanup-corrected/source.patch.gz",
+      "original_bytes": 41704,
+      "original_sha256": "7293b7278b4cfb3d09c76c03e7d1a60a94be56a1b6b9d73a036653e36548ea60",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/unchanged/.github/scripts/native-oci-stage.py",
+      "retained": "cleanup-corrected/unchanged/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py",
+      "retained": "cleanup-corrected/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz",
+      "original_bytes": 40661,
+      "original_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/go-containerregistry-v0.21.2-descriptor.go",
+      "retained": "cleanup-corrected/upstream/go-containerregistry-v0.21.2-descriptor.go.gz",
+      "original_bytes": 6887,
+      "original_sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/go-containerregistry-v0.21.2-registry.go",
+      "retained": "cleanup-corrected/upstream/go-containerregistry-v0.21.2-registry.go.gz",
+      "original_bytes": 4993,
+      "original_sha256": "8cbe3fe3fb540bd623e6a636fe14ed20c856c3a5691c4ac7a6dcde9e5b3ced67",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-artifact-image.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz",
+      "original_bytes": 19933,
+      "original_sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-image.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-image.go.gz",
+      "original_bytes": 4105,
+      "original_sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-remote.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-fanal-remote.go.gz",
+      "original_bytes": 2290,
+      "original_sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-global_flags.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-global_flags.go.gz",
+      "original_bytes": 5805,
+      "original_sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-go.mod",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-go.mod.gz",
+      "original_bytes": 26601,
+      "original_sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-registry_flags.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-registry_flags.go.gz",
+      "original_bytes": 2909,
+      "original_sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "cleanup-corrected/upstream/trivy-v0.70.0-remote.go",
+      "retained": "cleanup-corrected/upstream/trivy-v0.70.0-remote.go.gz",
+      "original_bytes": 8666,
+      "original_sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/CHECKS.json",
+      "retained": "startup-final/CHECKS.json",
+      "original_bytes": 1197,
+      "original_sha256": "484462872dfecced5f68522999c158c31a73a1079104d6f77e3128eb4bb5fd38",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/MANIFEST.json",
+      "retained": "startup-final/MANIFEST.json",
+      "original_bytes": 6583,
+      "original_sha256": "4f940d2fc949be5ef0c085938e49d5203e98ae1bdd5e8ca7ff3524480c39c912",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/SOURCE-MANIFEST.json",
+      "retained": "startup-final/SOURCE-MANIFEST.json",
+      "original_bytes": 674,
+      "original_sha256": "1e30dbf5371217cec0c5a36902322aab8cbdb68652ec7df9ec7459608b8b8197",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/SUMMARY.json",
+      "retained": "startup-final/SUMMARY.json",
+      "original_bytes": 1558,
+      "original_sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/UPSTREAM-MANIFEST.json",
+      "retained": "startup-final/UPSTREAM-MANIFEST.json",
+      "original_bytes": 3001,
+      "original_sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/actionlint-initial.log",
+      "retained": "startup-final/actionlint-initial.log.gz",
+      "original_bytes": 1882,
+      "original_sha256": "a7abd2d6dde66bd68ec75556452967a3197983a6b53d8ca7591677e1a219145c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/actionlint.log",
+      "retained": "startup-final/actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/actionlint.yaml",
+      "retained": "startup-final/actionlint.yaml.gz",
+      "original_bytes": 64,
+      "original_sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/diff-check.log",
+      "retained": "startup-final/diff-check.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/full-native-oci-controls.log",
+      "retained": "startup-final/full-native-oci-controls.log.gz",
+      "original_bytes": 158,
+      "original_sha256": "f19ef27b90f2333b2fd1812432a8066be976febad62e06fb22eea7c5bdc679d0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/independent-review/cleanup-failure-probe-result.json",
+      "retained": "startup-final/independent-review/cleanup-failure-probe-result.json",
+      "original_bytes": 607,
+      "original_sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/independent-review/cleanup-failure-probe.py",
+      "retained": "startup-final/independent-review/cleanup-failure-probe.py.gz",
+      "original_bytes": 1632,
+      "original_sha256": "23351f5e403616718e02eba2d042dba7aeb17b8bc023ff440bea06235c5c4d88",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/independent-review/corrected-focused-review.json",
+      "retained": "startup-final/independent-review/corrected-focused-review.json",
+      "original_bytes": 972,
+      "original_sha256": "69753cc279603cdb6230c94c8202d1f3577820c4ddf4d0d5b2c79a0f883e2231",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/independent-review/corrected-focused.log",
+      "retained": "startup-final/independent-review/corrected-focused.log.gz",
+      "original_bytes": 452,
+      "original_sha256": "4ae64d9c3ae9db005f75889665c882af3031e07745ae098783ca258a2a1e632e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/local-oci-alternative-not-adopted.json",
+      "retained": "startup-final/local-oci-alternative-not-adopted.json",
+      "original_bytes": 1358,
+      "original_sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/receipt.json",
+      "retained": "startup-final/receipt.json",
+      "original_bytes": 4762,
+      "original_sha256": "d29319cd6b59041b372489fd08e8f091d63b456abb852431b13eb58246a7b142",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/review-history.json",
+      "retained": "startup-final/review-history.json",
+      "original_bytes": 977,
+      "original_sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/root-probe-corrected.json",
+      "retained": "startup-final/root-probe-corrected.json",
+      "original_bytes": 337,
+      "original_sha256": "6f93d3857e65f16a9b46950308a778ce59139be68165eb4f1f279950fb1560ce",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/root-probe-corrected.log",
+      "retained": "startup-final/root-probe-corrected.log.gz",
+      "original_bytes": 819,
+      "original_sha256": "cf12b7698e7c24a70ab030990fbeb31dde2e80f269f816b44372b2acd5093515",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/root-startup-failure/RESULT.json",
+      "retained": "startup-final/root-startup-failure/RESULT.json",
+      "original_bytes": 243,
+      "original_sha256": "80ee60e7b20c5837680581faf33b4f4106687ea92daed4fc93f2ab929418e781",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/root-startup-failure/probe.py",
+      "retained": "startup-final/root-startup-failure/probe.py.gz",
+      "original_bytes": 391,
+      "original_sha256": "8f38f27e3cfdbb51a20b07b0bdaa935df2a466d54d258c95f0b452b4f4494bf8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/signal-window-negative/RESULT.json",
+      "retained": "startup-final/signal-window-negative/RESULT.json",
+      "original_bytes": 180,
+      "original_sha256": "73a55eb39c77a4a57e93c2b24e2fb05e420f7b6d6543d264dc9799fe14ac7ae1",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/signal-window-negative/negative.log",
+      "retained": "startup-final/signal-window-negative/negative.log.gz",
+      "original_bytes": 1472,
+      "original_sha256": "7a0cd8d51d787dda5a6960e9ecebdf6854c0b8df8aff249cd34e776f6401f512",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/source/.github/scripts/native-oci-mirror.py",
+      "retained": "startup-final/source/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15940,
+      "original_sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/source/.github/scripts/test_native_oci_mirror.py",
+      "retained": "startup-final/source/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 26789,
+      "original_sha256": "48b170e4243fe53519581350637cc91f63f7deaccbdfac266a417a1ac3ea9445",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/source/.github/workflows/native-base-image.yml",
+      "retained": "startup-final/source/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/source.patch",
+      "retained": "startup-final/source.patch.gz",
+      "original_bytes": 45646,
+      "original_sha256": "c23bfa439985b5db63b13b49194155cd897d453bb338807e0262548e5999ae13",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/startup-negative.json",
+      "retained": "startup-final/startup-negative.json",
+      "original_bytes": 475,
+      "original_sha256": "84c4f146660d54d58f366b997308034957b5f7e0cd5e00655bbf943df3d02b2c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "startup-final/startup-negative.log",
+      "retained": "startup-final/startup-negative.log.gz",
+      "original_bytes": 10902,
+      "original_sha256": "cac2e143972e74f9d206531b54baff1de9985bbaf54141cfe93f2ca5c66ae914",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/unchanged/.github/scripts/native-oci-stage.py",
+      "retained": "startup-final/unchanged/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py",
+      "retained": "startup-final/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz",
+      "original_bytes": 40661,
+      "original_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/go-containerregistry-v0.21.2-descriptor.go",
+      "retained": "startup-final/upstream/go-containerregistry-v0.21.2-descriptor.go.gz",
+      "original_bytes": 6887,
+      "original_sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/go-containerregistry-v0.21.2-registry.go",
+      "retained": "startup-final/upstream/go-containerregistry-v0.21.2-registry.go.gz",
+      "original_bytes": 4993,
+      "original_sha256": "8cbe3fe3fb540bd623e6a636fe14ed20c856c3a5691c4ac7a6dcde9e5b3ced67",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-fanal-artifact-image.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz",
+      "original_bytes": 19933,
+      "original_sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-fanal-image.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-fanal-image.go.gz",
+      "original_bytes": 4105,
+      "original_sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-fanal-remote.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-fanal-remote.go.gz",
+      "original_bytes": 2290,
+      "original_sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-global_flags.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-global_flags.go.gz",
+      "original_bytes": 5805,
+      "original_sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-go.mod",
+      "retained": "startup-final/upstream/trivy-v0.70.0-go.mod.gz",
+      "original_bytes": 26601,
+      "original_sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-registry_flags.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-registry_flags.go.gz",
+      "original_bytes": 2909,
+      "original_sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "startup-final/upstream/trivy-v0.70.0-remote.go",
+      "retained": "startup-final/upstream/trivy-v0.70.0-remote.go.gz",
+      "original_bytes": 8666,
+      "original_sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/scripts/native-oci-mirror.py",
+      "retained": "independent-review/case/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15191,
+      "original_sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/scripts/native-oci-stage.py",
+      "retained": "independent-review/case/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/scripts/test_native_oci_mirror.py",
+      "retained": "independent-review/case/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 22370,
+      "original_sha256": "c3534cbbcfc0641987a103cea668ad60bc97f710b465d5d081975a8158dde882",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/scripts/test_native_oci_stage.py",
+      "retained": "independent-review/case/.github/scripts/test_native_oci_stage.py.gz",
+      "original_bytes": 18679,
+      "original_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/scripts/test_native_oci_workflow.py",
+      "retained": "independent-review/case/.github/scripts/test_native_oci_workflow.py.gz",
+      "original_bytes": 16781,
+      "original_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/case/.github/workflows/native-base-image.yml",
+      "retained": "independent-review/case/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/cleanup-failure-probe-result.json",
+      "retained": "independent-review/cleanup-failure-probe-result.json",
+      "original_bytes": 607,
+      "original_sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/cleanup-failure-probe.py",
+      "retained": "independent-review/cleanup-failure-probe.py.gz",
+      "original_bytes": 1632,
+      "original_sha256": "23351f5e403616718e02eba2d042dba7aeb17b8bc023ff440bea06235c5c4d88",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/controls-result.json",
+      "retained": "independent-review/controls-result.json",
+      "original_bytes": 434,
+      "original_sha256": "ddda7f3f3c230819b9ccd5e98812c5a7b218034ef6f840d25eeb459ab292e21a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/controls.log",
+      "retained": "independent-review/controls.log.gz",
+      "original_bytes": 2903,
+      "original_sha256": "09707cd44d70efebd86198a5d8c2d372cd5887f2f4eadd2ab5a19a98100be1f9",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/scripts/native-oci-mirror.py",
+      "retained": "independent-review/corrected-case/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15303,
+      "original_sha256": "2b03dd78d777eb6212242bc312d02fcbd972952caa560773a086b0d96820bfa3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/scripts/native-oci-stage.py",
+      "retained": "independent-review/corrected-case/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/scripts/test_native_oci_mirror.py",
+      "retained": "independent-review/corrected-case/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 23560,
+      "original_sha256": "91926c80854b97d87e43e694cee0c141bee99265b1b33c11bfc412587045c8e3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/scripts/test_native_oci_stage.py",
+      "retained": "independent-review/corrected-case/.github/scripts/test_native_oci_stage.py.gz",
+      "original_bytes": 18679,
+      "original_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/scripts/test_native_oci_workflow.py",
+      "retained": "independent-review/corrected-case/.github/scripts/test_native_oci_workflow.py.gz",
+      "original_bytes": 16781,
+      "original_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-case/.github/workflows/native-base-image.yml",
+      "retained": "independent-review/corrected-case/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/corrected-focused-review.json",
+      "retained": "independent-review/corrected-focused-review.json",
+      "original_bytes": 972,
+      "original_sha256": "69753cc279603cdb6230c94c8202d1f3577820c4ddf4d0d5b2c79a0f883e2231",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/corrected-focused.log",
+      "retained": "independent-review/corrected-focused.log.gz",
+      "original_bytes": 452,
+      "original_sha256": "4ae64d9c3ae9db005f75889665c882af3031e07745ae098783ca258a2a1e632e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/inputs.json",
+      "retained": "independent-review/inputs.json",
+      "original_bytes": 879,
+      "original_sha256": "395e5649537cb6d6976e6ecdf548bdbd895b40b86f5f067307fb7b0752ffb6b7",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/review-findings.json",
+      "retained": "independent-review/review-findings.json",
+      "original_bytes": 3250,
+      "original_sha256": "e560afcafff68100629ee066de9986b71e9025f264733c2969d2e4e720b29837",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/run-controls.py",
+      "retained": "independent-review/run-controls.py.gz",
+      "original_bytes": 832,
+      "original_sha256": "4ab827ea73c5de90530b91bce64418db512ad65474b0741e920940dee187b9d0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/scripts/native-oci-mirror.py",
+      "retained": "independent-review/startup-case/.github/scripts/native-oci-mirror.py.gz",
+      "original_bytes": 15940,
+      "original_sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/scripts/native-oci-stage.py",
+      "retained": "independent-review/startup-case/.github/scripts/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/scripts/test_native_oci_mirror.py",
+      "retained": "independent-review/startup-case/.github/scripts/test_native_oci_mirror.py.gz",
+      "original_bytes": 26789,
+      "original_sha256": "48b170e4243fe53519581350637cc91f63f7deaccbdfac266a417a1ac3ea9445",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/scripts/test_native_oci_stage.py",
+      "retained": "independent-review/startup-case/.github/scripts/test_native_oci_stage.py.gz",
+      "original_bytes": 18679,
+      "original_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/scripts/test_native_oci_workflow.py",
+      "retained": "independent-review/startup-case/.github/scripts/test_native_oci_workflow.py.gz",
+      "original_bytes": 16781,
+      "original_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-case/.github/workflows/native-base-image.yml",
+      "retained": "independent-review/startup-case/.github/workflows/native-base-image.yml.gz",
+      "original_bytes": 18178,
+      "original_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "independent-review/startup-focused-review.json",
+      "retained": "independent-review/startup-focused-review.json",
+      "original_bytes": 1508,
+      "original_sha256": "0553dc279797942b7002ebac784f5ed86de380405fbeaf52adc7907ef60d90e0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "independent-review/startup-focused.log",
+      "retained": "independent-review/startup-focused.log.gz",
+      "original_bytes": 292,
+      "original_sha256": "a6be596787f7442d1edb7ee9c9b80387bf2ad2634afcdcc8cdc349d7d37e1cff",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-startup-probe/RESULT.json",
+      "retained": "root-startup-probe/RESULT.json",
+      "original_bytes": 243,
+      "original_sha256": "80ee60e7b20c5837680581faf33b4f4106687ea92daed4fc93f2ab929418e781",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-startup-probe/probe.py",
+      "retained": "root-startup-probe/probe.py.gz",
+      "original_bytes": 391,
+      "original_sha256": "8f38f27e3cfdbb51a20b07b0bdaa935df2a466d54d258c95f0b452b4f4494bf8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-helper-trigger/RESULT.json",
+      "retained": "root-helper-trigger/RESULT.json",
+      "original_bytes": 338,
+      "original_sha256": "27a6dc14648128c735e0ad2a5589908ef7b0174c06b3a4b6f488349d78c5c07c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-helper-trigger/SOURCE.json",
+      "retained": "root-helper-trigger/SOURCE.json",
+      "original_bytes": 519,
+      "original_sha256": "dd6723c1c9f067df2fc0ef7075c53e50bc65f47eb5295f9ebc10d2245ab28780",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-helper-trigger/before-test.go",
+      "retained": "root-helper-trigger/before-test.go.gz",
+      "original_bytes": 14819,
+      "original_sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-helper-trigger/before-workflow.yml",
+      "retained": "root-helper-trigger/before-workflow.yml.gz",
+      "original_bytes": 4628,
+      "original_sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-helper-trigger/negative.log",
+      "retained": "root-helper-trigger/negative.log.gz",
+      "original_bytes": 297,
+      "original_sha256": "49a9f05cb54db732aba2c2573964a8574ec263b7f2974761a542c3f45d5b222b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-helper-trigger/old-workflow-overlay-test.go",
+      "retained": "root-helper-trigger/old-workflow-overlay-test.go.gz",
+      "original_bytes": 14853,
+      "original_sha256": "8c8042d4baca2935af5a710d4f0336bba3725ab61a6ba8e4eeb13298bc9b0b76",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-helper-trigger/overlay.json",
+      "retained": "root-helper-trigger/overlay.json",
+      "original_bytes": 206,
+      "original_sha256": "f3cafb931e73b71af36e6c4a170f92c28c49735e8ce0806c6039cb70e3649443",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-helper-trigger/positive.log",
+      "retained": "root-helper-trigger/positive.log.gz",
+      "original_bytes": 63,
+      "original_sha256": "1336ee6e9455697c26173d52ccb68490b066b1786aff359b28681dc76e04e0b9",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/FROZEN-REVIEW.json",
+      "retained": "actual-synthetic-trivy-smoke/FROZEN-REVIEW.json",
+      "original_bytes": 3341,
+      "original_sha256": "98d3a91e498ae12d7e8d5d8bfd4d9efafb55b0b9616597520e5aa664ffe90fe6",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/MANIFEST-SCHEMA.json",
+      "retained": "actual-synthetic-trivy-smoke/MANIFEST-SCHEMA.json",
+      "original_bytes": 445,
+      "original_sha256": "53011bba97900b377fe262f5c784f71263394d13ebbeece37e55b6914ee835d0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/MANIFEST.json",
+      "retained": "actual-synthetic-trivy-smoke/MANIFEST.json",
+      "original_bytes": 7210,
+      "original_sha256": "4ca1f872db0b34770bfad928c7d9e848a785ea87ca6bed908c6b8fe9db07d2b1",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/checksums-fetch.stderr",
+      "retained": "actual-synthetic-trivy-smoke/checksums-fetch.stderr.gz",
+      "original_bytes": 476,
+      "original_sha256": "133ad777acd5ca8ea43df56f907acea7f97035933de04ce943483a6c97629d1c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/checksums-fetch.stdout",
+      "retained": "actual-synthetic-trivy-smoke/checksums-fetch.stdout.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/cleanup.json",
+      "retained": "actual-synthetic-trivy-smoke/cleanup.json",
+      "original_bytes": 499,
+      "original_sha256": "366a42ebedfedf8c110d65c9b707e9f6c364f5846a9b1435738f289eb21256f3",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/command.json",
+      "retained": "actual-synthetic-trivy-smoke/command.json",
+      "original_bytes": 1988,
+      "original_sha256": "7ed61d14cf9045f325032312e76e75c45a2072935cda3d93b72a2c4436d57c08",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/database-before.json",
+      "retained": "actual-synthetic-trivy-smoke/database-before.json",
+      "original_bytes": 314,
+      "original_sha256": "ef791a4640ec26f1d415db92366993a2bf8ae39d5809e9e495059d77b7329ae5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/database-clone.json",
+      "retained": "actual-synthetic-trivy-smoke/database-clone.json",
+      "original_bytes": 285,
+      "original_sha256": "9b40fdfd5b5a2599e298dee223bf12e029a49891ae2da715d9fc8cbbcef49692",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/execution.json",
+      "retained": "actual-synthetic-trivy-smoke/execution.json",
+      "original_bytes": 125,
+      "original_sha256": "806754a509fc1c7df36fc05edf95f1ba608ba8fd7b1de27a524fd57429531720",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/expected-synthetic.json",
+      "retained": "actual-synthetic-trivy-smoke/expected-synthetic.json",
+      "original_bytes": 786,
+      "original_sha256": "e621af36fb6c9a33dc14525a4c7cbb863d366743c3a2b1afef7ded59858a9cee",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/identity-validation.json",
+      "retained": "actual-synthetic-trivy-smoke/identity-validation.json",
+      "original_bytes": 745,
+      "original_sha256": "3648373f1ab69894a56eddd2492efe5194a7556ce5c87643403292091fd2753e",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/.bex-native-oci-stage.json",
+      "retained": "actual-synthetic-trivy-smoke/layout/.bex-native-oci-stage.json",
+      "original_bytes": 169,
+      "original_sha256": "8ef4597be6fc001fec07aa7b82da7334e6f9fea2e482c9ced9d19732d5b6e479",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/blobs/sha256/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d",
+      "retained": "actual-synthetic-trivy-smoke/layout/blobs/sha256/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d.gz",
+      "original_bytes": 442,
+      "original_sha256": "09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/blobs/sha256/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f",
+      "retained": "actual-synthetic-trivy-smoke/layout/blobs/sha256/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f.gz",
+      "original_bytes": 502,
+      "original_sha256": "0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/blobs/sha256/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+      "retained": "actual-synthetic-trivy-smoke/layout/blobs/sha256/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90.gz",
+      "original_bytes": 430,
+      "original_sha256": "e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/blobs/sha256/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+      "retained": "actual-synthetic-trivy-smoke/layout/blobs/sha256/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7.gz",
+      "original_bytes": 704,
+      "original_sha256": "f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/index.json",
+      "retained": "actual-synthetic-trivy-smoke/layout/index.json",
+      "original_bytes": 290,
+      "original_sha256": "45dc65924f2958a71dc7982cccb22d7897ecf47ceddd5ed159f89f086d6a0d8b",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/layout/oci-layout",
+      "retained": "actual-synthetic-trivy-smoke/layout/oci-layout.gz",
+      "original_bytes": 31,
+      "original_sha256": "561356159fc692da9a55978e206a495b7835abcc4778fa9d13138a0530304878",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/mirror.json",
+      "retained": "actual-synthetic-trivy-smoke/mirror.json",
+      "original_bytes": 1103,
+      "original_sha256": "eb4db99e5cc78a83654b7bcb450a470ca6c89dd569944010a5ffc3165411827e",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/official-checksums.txt",
+      "retained": "actual-synthetic-trivy-smoke/official-checksums.txt.gz",
+      "original_bytes": 2121,
+      "original_sha256": "c45281240bb9211ea9e830fc0bf5cf8acf7c0ca830feb64ac8a0aa932c5c92d9",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/options-fetch.stderr",
+      "retained": "actual-synthetic-trivy-smoke/options-fetch.stderr.gz",
+      "original_bytes": 317,
+      "original_sha256": "f0cb7ef42ae505a7f3c97b4bc0b5607d4802cb4503f9445a34ccba8f837ee992",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/options-fetch.stdout",
+      "retained": "actual-synthetic-trivy-smoke/options-fetch.stdout.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/post-cleanup.json",
+      "retained": "actual-synthetic-trivy-smoke/post-cleanup.json",
+      "original_bytes": 279,
+      "original_sha256": "1aa95a647320899248fca44c0241831dfb9aae398c14746b52bc2f203f770a64",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/process.json",
+      "retained": "actual-synthetic-trivy-smoke/process.json",
+      "original_bytes": 49,
+      "original_sha256": "61808c0d6fc04b880e7ead3bdd2275cdbfe81e04d34afb4b7c986d966412649c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/raw-report.json",
+      "retained": "actual-synthetic-trivy-smoke/raw-report.json",
+      "original_bytes": 1795,
+      "original_sha256": "a12c0c316bc1368dd958b992fcc681fd8ccca35f46a92739f9ca258b7fde17cb",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/smoke.py",
+      "retained": "actual-synthetic-trivy-smoke/smoke.py.gz",
+      "original_bytes": 10611,
+      "original_sha256": "0153ef9c38e171d0f8329da41388d92190522a754dd4bb3e645e72b535b1f16b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/smoke.stderr",
+      "retained": "actual-synthetic-trivy-smoke/smoke.stderr.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/smoke.stdout",
+      "retained": "actual-synthetic-trivy-smoke/smoke.stdout.gz",
+      "original_bytes": 276,
+      "original_sha256": "002c946331472046ddcf1485894eed0258b73421c7e720e4dfae42871674cbbe",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/source/native-oci-mirror.py",
+      "retained": "actual-synthetic-trivy-smoke/source/native-oci-mirror.py.gz",
+      "original_bytes": 15940,
+      "original_sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/source/native-oci-stage.py",
+      "retained": "actual-synthetic-trivy-smoke/source/native-oci-stage.py.gz",
+      "original_bytes": 18041,
+      "original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/source-fetch.stderr",
+      "retained": "actual-synthetic-trivy-smoke/source-fetch.stderr.gz",
+      "original_bytes": 317,
+      "original_sha256": "4123af8a6fe6c967a6c16344c620ee50d605645e1a213f8be1cedcdded1c1298",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/source-fetch.stdout",
+      "retained": "actual-synthetic-trivy-smoke/source-fetch.stdout.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/stage.json",
+      "retained": "actual-synthetic-trivy-smoke/stage.json",
+      "original_bytes": 1676,
+      "original_sha256": "f4bd93d6b354541e2224cce543bcad2478545be534c919fed62934448f1a8e6b",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/stderr.log",
+      "retained": "actual-synthetic-trivy-smoke/stderr.log.gz",
+      "original_bytes": 983,
+      "original_sha256": "914fdaf22e34bb5fb3df55ca72c191a2fa2ab45341274da060e0907ffa58114f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/stdout.log",
+      "retained": "actual-synthetic-trivy-smoke/stdout.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d.blob.gz",
+      "original_bytes": 442,
+      "original_sha256": "09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f.blob.gz",
+      "original_bytes": 502,
+      "original_sha256": "0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/41caa867ab9a7aec97972ec9d42f74aaec8e20b261268acddf8dcb9edf48640c.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/41caa867ab9a7aec97972ec9d42f74aaec8e20b261268acddf8dcb9edf48640c.blob.gz",
+      "original_bytes": 502,
+      "original_sha256": "41caa867ab9a7aec97972ec9d42f74aaec8e20b261268acddf8dcb9edf48640c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90.blob.gz",
+      "original_bytes": 430,
+      "original_sha256": "e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7.blob.gz",
+      "original_bytes": 704,
+      "original_sha256": "f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/f8dfd2bf7f722a9b5e27f654a070d829149bd44f1d6c2c0742a65c196b335b79.blob",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/f8dfd2bf7f722a9b5e27f654a070d829149bd44f1d6c2c0742a65c196b335b79.blob.gz",
+      "original_bytes": 430,
+      "original_sha256": "f8dfd2bf7f722a9b5e27f654a070d829149bd44f1d6c2c0742a65c196b335b79",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-payloads/layer.tar",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-payloads/layer.tar.gz",
+      "original_bytes": 10240,
+      "original_sha256": "253c3685a15b53d0111c080230d73cb33e7b494d1f26b4f0b93154d1d313cf12",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/synthetic-stage-input-calls.json",
+      "retained": "actual-synthetic-trivy-smoke/synthetic-stage-input-calls.json",
+      "original_bytes": 683,
+      "original_sha256": "ca8043fc017222ea54bf232728d5eb768445a182b7e59cf25f9a57e5bc7e9025",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/tool-provenance.json",
+      "retained": "actual-synthetic-trivy-smoke/tool-provenance.json",
+      "original_bytes": 910,
+      "original_sha256": "3fd9307626ccf3926f930bf4c9d472a99dca95f952e87a1a28f4020de583e625",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy-image-help.stderr",
+      "retained": "actual-synthetic-trivy-smoke/trivy-image-help.stderr.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy-image-help.txt",
+      "retained": "actual-synthetic-trivy-smoke/trivy-image-help.txt.gz",
+      "original_bytes": 15495,
+      "original_sha256": "223e5d6648f6d8febf95a823d56d00a7ba9b86ea8e1126ac5d963ff5bb7a0270",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy-version.stderr",
+      "retained": "actual-synthetic-trivy-smoke/trivy-version.stderr.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy-version.txt",
+      "retained": "actual-synthetic-trivy-smoke/trivy-version.txt.gz",
+      "original_bytes": 207,
+      "original_sha256": "458215b0ec58f7fb0fb7a6437abea10dca2773d7e8b7e180c904949400ac040b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy070-notice.go",
+      "retained": "actual-synthetic-trivy-smoke/trivy070-notice.go.gz",
+      "original_bytes": 6672,
+      "original_sha256": "034e8cd98ff94e4645ced0bd78c48bd547bbd0d03eaff710ca27ceaf64cc3ff4",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actual-synthetic-trivy-smoke/trivy070-options.go",
+      "retained": "actual-synthetic-trivy-smoke/trivy070-options.go.gz",
+      "original_bytes": 21328,
+      "original_sha256": "775866fe33a49845ed6db0b1db9df05cad2a12f16e64423f01bc867bb53d6daa",
+      "lossless_gzip": true
+    }
+  ]
+}

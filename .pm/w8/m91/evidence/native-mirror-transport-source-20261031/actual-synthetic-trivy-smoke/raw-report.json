@@ -1,0 +1,55 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.70.0"
+  },
+  "ReportID": "01a1931a-2f8d-70f2-86cf-117854a3b262",
+  "CreatedAt": "2026-10-31T10:55:29.293063-07:00",
+  "ArtifactID": "sha256:648560fe89d9cea1182cb7fb8019f0337fca250a5b850194b361ee61a4ee8171",
+  "ArtifactName": "ghcr.io/bex-co/bex-cnb-run@sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "Size": 10240,
+    "OS": {
+      "Family": "none",
+      "Name": ""
+    },
+    "ImageID": "sha256:e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+    "DiffIDs": [
+      "sha256:253c3685a15b53d0111c080230d73cb33e7b494d1f26b4f0b93154d1d313cf12"
+    ],
+    "RepoDigests": [
+      "ghcr.io/bex-co/bex-cnb-run@sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7"
+    ],
+    "Reference": "ghcr.io/bex-co/bex-cnb-run@sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+    "ImageConfig": {
+      "architecture": "arm64",
+      "created": "0001-01-01T00:00:00Z",
+      "history": [
+        {
+          "created": "0001-01-01T00:00:00Z",
+          "created_by": "unpublished synthetic fixture"
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:253c3685a15b53d0111c080230d73cb33e7b494d1f26b4f0b93154d1d313cf12"
+        ]
+      },
+      "config": {
+        "Labels": {
+          "org.opencontainers.image.title": "SYNTHETIC MIRROR TRANSPORT CONTROL ONLY"
+        }
+      }
+    },
+    "Layers": [
+      {
+        "Size": 10240,
+        "Digest": "sha256:09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d",
+        "DiffID": "sha256:253c3685a15b53d0111c080230d73cb33e7b494d1f26b4f0b93154d1d313cf12"
+      }
+    ]
+  }
+}

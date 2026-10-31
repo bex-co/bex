@@ -1,0 +1,4 @@
+{
+  "exit": 1,
+  "finding": "Signal arriving after handler installation but before assignment to previous[] prevents restoration; controlled owned subprocess repro, no scanner."
+}

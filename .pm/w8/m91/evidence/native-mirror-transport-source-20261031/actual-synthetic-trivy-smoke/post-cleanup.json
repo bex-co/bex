@@ -1,0 +1,6 @@
+{
+  "owned_empty_work_directory_removed": true,
+  "private_cache_and_home_absent": true,
+  "retained_inputs": "Only immutable tiny synthetic payload/layout plus source, raw report/logs/provenance; no listeners/processes/DB clone/auth state remain.",
+  "free_bytes": 3062829056
+}

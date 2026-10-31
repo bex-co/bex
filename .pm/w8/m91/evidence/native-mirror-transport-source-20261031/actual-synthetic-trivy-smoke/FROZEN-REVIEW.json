@@ -1,0 +1,65 @@
+{
+  "state": "SYNTHETIC_ACTUAL_TRIVY_CLI_TRANSPORT_IDENTITY_PASS",
+  "synthetic_only": true,
+  "published": false,
+  "tool_version": "0.70.0",
+  "tool_binary_sha256": "3122de2c39d6ae433c2355a87508fb18dca637cf7f149e0006b63ddefb0cdc52",
+  "tool_official_release": "https://github.com/aquasecurity/trivy/releases/tag/v0.70.0",
+  "mirror_sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+  "stager_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+  "actual_execution": {
+    "exit_code": 0,
+    "monitor_stop_reason": null,
+    "duration_seconds": 0.3146894578821957,
+    "owned_mirror_reaped": true
+  },
+  "scope": "Actual CLI on tiny unpublished synthetic OCI bytes only. Not production full-vulnerability scanning, actual common/native image qualification, supplier acceptance or a policy waiver. No production flags or profiles changed.",
+  "raw_report": {
+    "path": "raw-report.json",
+    "bytes": 1795,
+    "sha256": "a12c0c316bc1368dd958b992fcc681fd8ccca35f46a92739f9ca258b7fde17cb"
+  },
+  "raw_identity": {
+    "PASS": true,
+    "SYNTHETIC_ONLY": true,
+    "raw_report_sha256": "a12c0c316bc1368dd958b992fcc681fd8ccca35f46a92739f9ca258b7fde17cb",
+    "ArtifactName": "ghcr.io/bex-co/bex-cnb-run@sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+    "RepoDigests": [
+      "ghcr.io/bex-co/bex-cnb-run@sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7"
+    ],
+    "ImageID": "sha256:e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+    "architecture": "arm64",
+    "os": "linux",
+    "DiffIDs": [
+      "sha256:253c3685a15b53d0111c080230d73cb33e7b494d1f26b4f0b93154d1d313cf12"
+    ],
+    "scope": "Actual pinned CLI transport and raw report identity only, not production/full-vulnerability or image qualification."
+  },
+  "original_two_platform_root_served": true,
+  "projected_layout_index_has_different_digest": true,
+  "mirror_successful_GET_count": 4,
+  "scanner_profile": "Default vuln+secret enabled, private APFS COW copy of existing stale DB; skip DB/Java DB updates, offline dependencies, skip version check and disable telemetry for this private synthetic smoke.",
+  "actual_limitations": [
+    "Scanner reports unsupported OS family none; raw warning and report retained.",
+    "No production image, runtime execution, online dependency/DB update coverage, or full vulnerability qualification is proved."
+  ],
+  "cleanup": {
+    "owned_mirror_reaped": true,
+    "owned_scanner_absent": true,
+    "loopback_port_closed": true,
+    "temporary_config_and_tool_work_empty": true,
+    "private_COW_DB_and_cache_removed": true,
+    "foreign_DB_and_metadata_unchanged": true,
+    "foreign_DB_sha256": "1c66d0d801a194ed5df7a9c334d7991a6529d82952ab07a23cff1047c637c598",
+    "private_clone_unchanged_sha256": "1c66d0d801a194ed5df7a9c334d7991a6529d82952ab07a23cff1047c637c598",
+    "cached_binary_preserved": true,
+    "fresh_free_bytes": 3096100864
+  },
+  "post_cleanup": {
+    "owned_empty_work_directory_removed": true,
+    "private_cache_and_home_absent": true,
+    "retained_inputs": "Only immutable tiny synthetic payload/layout plus source, raw report/logs/provenance; no listeners/processes/DB clone/auth state remain.",
+    "free_bytes": 3062829056
+  },
+  "repository_CI_Docker_provider_pin_changes": false
+}

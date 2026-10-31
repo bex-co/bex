@@ -1,0 +1,49 @@
+{
+  "frozen_at": "2026-10-31T17:51:18.609302+00:00",
+  "state": "SOURCE_AND_REAL_LOOPBACK_CONTROLS_PASS_ACTUAL_TRIVY_UNEXECUTED",
+  "source_manifest_sha256": "1e30dbf5371217cec0c5a36902322aab8cbdb68652ec7df9ec7459608b8b8197",
+  "owned_paths": [
+    ".github/workflows/native-base-image.yml",
+    ".github/scripts/native-oci-mirror.py",
+    ".github/scripts/test_native_oci_mirror.py"
+  ],
+  "actual_c5_failure": {
+    "log_path": "/private/tmp/bex-w8-common-c5-failure-20261031/job.log",
+    "sha256": "6bee6ba048acf65f9ea5ca16c1ee42c4bff8a75485d628ef8c057b446deeaf8e",
+    "result": "3 actual remote-layer EOF failures; cause unproved; no retry or CI action by this worker"
+  },
+  "checks": "58 full OCI controls PASS, including17 mirror controls/6startup scenarios; actionlint/diff PASS.",
+  "protocol": "Original raw root blob, selected child/config/layers SHA+size rechecked; actual config platform checked; fixed127.0.0.1:ephemeral readonlyGET/HEAD server; one per-command registry.mirrors config; originalREF/scanargs/platform/Trivy profile/rawreport bytes retained; no insecureGHCR or TLS/proxy/credential/cache changes",
+  "lifecycle": "Same21m full-scan+10s termination budget. Own process group, server/config cleaned on errors/timeouts/cancellation/parent death. Raw output removed after failed child stops. Existing28GiB capacity and DB21m/Java30m fetch budgets retained.",
+  "fallback": "Trivy mirrors permit origin fallback. Helper requires original-root GET and no native-mirror request failure before accepting successful scan; stage failures stop before Trivy. No claim origin fallback is disabled.",
+  "unchanged": {
+    "native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    "frozen-V11-helper": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "unexecuted": [
+    "Actual pinnedTrivy0.70 full raw report through the mirror",
+    "Actual common candidate/image scanning, botharch publication and signed predicate verification",
+    "Any runtime/hosted/adoption inference"
+  ],
+  "root_trigger_handoff": "Add .github/scripts/native-oci-mirror.py to native-common-image.yml path filters after both source freezes; this worker left that foreign-owned workflow untouched.",
+  "initial_snapshot": "9bjw_8a6 source bytes preserved. Raw-doc download aggregation produced no check receipt; final6w6 bundle independently binds9 cached tagged primary sources plus official web-doc URLs and final checks.",
+  "previous_freeze_preserved": "/private/tmp/bex-w8-native-oci-mirror-corrected-20261031-g6ktf5eb",
+  "independent_findings_corrected": [
+    "A temporary-config cleanup OSError after scan success must mark receipt incomplete and remove raw output. New real-loopback regression injects this failure.",
+    "Both group-gone cleanup returns now wait/reap the owned Popen with a bounded timeout. Regression exercises both early-return paths."
+  ],
+  "independent_probe_scope": "Prior independent CLEAN receipts are historical. New exact startup-final source focused review and actual pinned-Trivy synthetic transport smoke pending.",
+  "startup_finding": {
+    "root_probe": "/private/tmp/bex-w8-mirror-thread-start-review-20261031",
+    "initial": "Server Thread.start failure allocated listener then called shutdown without serve_forever, deadlocking; root owned subprocess timed out2s and was reaped.",
+    "correction": "Protect signal/watch startup in the same try/finally; defer async cancellation during owned thread startup; shutdown only a live server thread, join only actually started threads, always close allocated listener. Watcher startup and partial signal registration restore handlers and write incomplete receipt.",
+    "controls": "Bounded owned subprocesses cover watcher/server failure before and after actual start plus partial signal registration; assert no scanner, closed sockets, no remaining owned threads, restored handlers, incomplete receipt. Old g6 helper fails this new regression. Exact root probe completes promptly with expected failure."
+  },
+  "previous_startup_freeze_preserved": "/private/tmp/bex-w8-native-oci-mirror-startup-20261031-dua3iiz7",
+  "signal_registration_correction": {
+    "finding": "Owned subprocess delivered SIGTERM after handler installation but before previous[] assignment; startup-failure regression failed handler restoration.",
+    "negative_evidence": "/private/tmp/bex-w8-mirror-signal-window-20261031-41aid5n7",
+    "negative_helper_source": "/private/tmp/bex-w8-native-oci-mirror-startup-20261031-dua3iiz7/source/.github/scripts/native-oci-mirror.py",
+    "correction": "Save signal.getsignal() before installing each new handler; the sixth startup scenario now proves restoration at the exact timing window."
+  }
+}

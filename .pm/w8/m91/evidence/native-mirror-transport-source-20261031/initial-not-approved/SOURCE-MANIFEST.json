@@ -1,0 +1,23 @@
+{
+  "base_commit": "e2b34503341b29a4cce224652f639e59f8fdd1d6",
+  "files": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 18178,
+      "mode": "0o644",
+      "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8"
+    },
+    {
+      "path": ".github/scripts/native-oci-mirror.py",
+      "bytes": 15191,
+      "mode": "0o644",
+      "sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_mirror.py",
+      "bytes": 22370,
+      "mode": "0o644",
+      "sha256": "c3534cbbcfc0641987a103cea668ad60bc97f710b465d5d081975a8158dde882"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "source": "/Users/tianpan/Library/Caches/trivy/db/trivy.db",
+  "source_bytes": 1642250240,
+  "clone_result": 0,
+  "errno": 0,
+  "full_copy_fallback": false,
+  "free_before": 3113897984,
+  "free_after": 3113885696,
+  "source_unchanged_by_clone": true,
+  "clone_bytes": 1642250240
+}

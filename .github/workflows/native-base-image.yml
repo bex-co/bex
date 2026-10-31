@@ -221,13 +221,25 @@ jobs:
             if [ "$database" = --download-java-db-only ]; then database_timeout=30m; fi
             TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s "$database_timeout" trivy image "$database"
           done
+          # Retry and SHA/size-verify individual public blobs before Trivy starts.
+          # Keep the original index bytes: a projected OCI index changes identity.
+          [ "$1" = image ] && [ "$#" -ge 2 ]
+          ref="$2"
+          arch="${TRIVY_PLATFORM#linux/}"
+          stage_proof="$PWD/native-$arch-trivy-oci-stage.json"
+          timeout --kill-after=10s 30m python3 .github/scripts/native-oci-stage.py \
+            --ref "$ref" --platform "$TRIVY_PLATFORM" --output "$work_dir/layout" --proof "$stage_proof"
           for attempt in 1 2 3; do
             require_space
             rm -f -- "$TRIVY_OUTPUT"
             attempt_dir="$work_dir/attempt-$attempt"
             mkdir "$attempt_dir"
-            # Stock size validation stages whole remote layers before tar analysis.
-            if TMPDIR="$attempt_dir" timeout --kill-after=10s 21m trivy "$@" --image-src remote --parallel 1 --max-image-size "${max_image_bytes}B"; then
+            # The helper enforces the same complete 21m scan + 10s termination
+            # budget and owns the loopback server, config and scan process group.
+            if TMPDIR="$attempt_dir" python3 .github/scripts/native-oci-mirror.py \
+              --ref "$ref" --platform "$TRIVY_PLATFORM" --layout "$work_dir/layout" \
+              --stage-proof "$stage_proof" --proof "$PWD/native-$arch-trivy-mirror-$attempt.json" \
+              --parent-pid "$$" -- trivy "$@" --image-src remote --parallel 1 --max-image-size "${max_image_bytes}B"; then
               exit 0
             fi
             echo "Trivy scan attempt $attempt failed" >&2
