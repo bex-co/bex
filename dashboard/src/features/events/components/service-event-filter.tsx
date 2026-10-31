@@ -8,7 +8,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/common/components/ui/popover";
-import { ScrollArea } from "@/common/components/ui/scroll-area";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   SERVICE_EVENT_GROUPS,
@@ -111,8 +110,14 @@ export function ServiceEventFilter({
             : t("services.eventsFilterSelected", { count: shownCount })}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
-        <div className="space-y-2 border-b p-3">
+      {/* One scroller: the panel's own height cap (shared PopoverContent),
+          with the search and select-all pinned above the scrolling groups
+          (w4/438). */}
+      <PopoverContent
+        align="end"
+        className="max-h-[min(30rem,var(--radix-popover-content-available-height))] w-80 p-0"
+      >
+        <div className="bg-popover sticky top-0 z-10 space-y-2 border-b p-3">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -134,51 +139,47 @@ export function ServiceEventFilter({
             {t("services.eventsFilterAll")}
           </label>
         </div>
-        <ScrollArea viewportClassName="max-h-80">
-          <div className="space-y-4 p-3">
-            {visible.map((group) => {
-              const shown = group.types.filter((type) => !hidden.has(type));
-              const state = triState(shown.length, group.types.length);
-              const groupLabel = t(`services.eventsFilterGroup.${group.key}`);
-              return (
-                <section key={group.key} aria-label={groupLabel}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-muted/50">
-                    <Checkbox
-                      checked={state}
-                      onCheckedChange={() =>
-                        setMany(group.types, state !== true)
-                      }
-                      aria-label={groupLabel}
-                    />
-                    {groupLabel}
-                  </label>
-                  <div className="space-y-0.5 ps-6">
-                    {group.types.map((type) => (
-                      <label
-                        key={type}
-                        className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                      >
-                        <Checkbox
-                          checked={!hidden.has(type)}
-                          onCheckedChange={(checked) =>
-                            setMany([type], checked === true)
-                          }
-                          aria-label={optionLabel(t, group.key, type)}
-                        />
-                        {optionLabel(t, group.key, type)}
-                      </label>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-            {visible.length === 0 ? (
-              <p className="text-muted-foreground px-2 py-3 text-sm">
-                {t("services.eventsFilterNoMatches")}
-              </p>
-            ) : null}
-          </div>
-        </ScrollArea>
+        <div className="space-y-4 p-3">
+          {visible.map((group) => {
+            const shown = group.types.filter((type) => !hidden.has(type));
+            const state = triState(shown.length, group.types.length);
+            const groupLabel = t(`services.eventsFilterGroup.${group.key}`);
+            return (
+              <section key={group.key} aria-label={groupLabel}>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-muted/50">
+                  <Checkbox
+                    checked={state}
+                    onCheckedChange={() => setMany(group.types, state !== true)}
+                    aria-label={groupLabel}
+                  />
+                  {groupLabel}
+                </label>
+                <div className="space-y-0.5 ps-6">
+                  {group.types.map((type) => (
+                    <label
+                      key={type}
+                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={!hidden.has(type)}
+                        onCheckedChange={(checked) =>
+                          setMany([type], checked === true)
+                        }
+                        aria-label={optionLabel(t, group.key, type)}
+                      />
+                      {optionLabel(t, group.key, type)}
+                    </label>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {visible.length === 0 ? (
+            <p className="text-muted-foreground px-2 py-3 text-sm">
+              {t("services.eventsFilterNoMatches")}
+            </p>
+          ) : null}
+        </div>
       </PopoverContent>
     </Popover>
   );
