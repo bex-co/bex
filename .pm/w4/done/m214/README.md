@@ -1,6 +1,6 @@
 # w4 · m214 — Recover datastore cleanup from transient lock conflicts
 
-**Worker:** worker4 **Goal:** an ordinary project deletion survives an unrelated datastore update, and persistent contention gives a truthful reload-before-retry explanation. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** an ordinary project deletion survives an unrelated datastore update, and persistent contention gives a truthful reload-before-retry explanation. **Status:** done (2026-10-31: move/return controls pass; Delete Project preserves all four children unassigned at 1440 and 390, no internal error)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 10m | t004 |
 | t006 | Test coverage — **DONE** | 35m | t004 |
-| t007 | Closeout | 15m | t005, t006 |
+| t007 | Closeout — **DONE** | 15m | t005, t006 |
 
 ## Definition of done
 
