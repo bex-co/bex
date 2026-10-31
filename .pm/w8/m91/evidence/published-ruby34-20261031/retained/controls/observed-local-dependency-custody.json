@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-31T08:15:43.892983+00:00",
+  "scope": "Local bytes observed during this case. Canonical policy independently requires exact officialCosign hash. No helper/binary modified.",
+  "dependencies": [
+    {
+      "path": "/Users/tianpan/projects/bex7/scripts/lib/toolchain-freshness.py",
+      "sha256": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+      "bytes": 19118,
+      "mtime_ns": 1793378179289508507
+    },
+    {
+      "path": "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+      "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+      "bytes": 99023586,
+      "mtime_ns": 1793321176154489035
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:859c7000a2b76f1f5fd310d389e02c177c91f39da2eca997c7ffbe22515e8b2f",
+    "native_API_404": true,
+    "unselected_descriptor_count": 0
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:420d45397940f3ac52fff0b870f6aa9a9519287eddd0f21dbde55a57dcec1c98",
+      "bundle_digest": "sha256:a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b",
+      "bundle_bytes": 29960079,
+      "path": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "d86c64f1595e6a2bb7cac07cd831ffcfe0960889d1546752d2e4f772102bfd7f"
+    },
+    {
+      "manifest_digest": "sha256:46d7f9c6c42a80f66f7d0c3c7d7aae550a47cb43b2df11d23f6d90fbee460ea6",
+      "bundle_digest": "sha256:a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8",
+      "bundle_bytes": 23924235,
+      "path": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "51b1426ec438a748c6dc95bbeac4ef6382635f4d1a06639c664774fbcefe56dc"
+    },
+    {
+      "manifest_digest": "sha256:6d13bd28a60cd627d7d26abaa85379cad2a644f777d0fd9179a76a5a6ef00ba9",
+      "bundle_digest": "sha256:3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe",
+      "bundle_bytes": 29972599,
+      "path": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "99d5b3d2c6407e8cbb201cf399a67be8f741d9fc31c249c6bfb7e6530ff5598c"
+    },
+    {
+      "manifest_digest": "sha256:8857f3e57191833cdcd0c1f4f6080fe188870a3456c3b75747dd5041c09970c1",
+      "bundle_digest": "sha256:2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9",
+      "bundle_bytes": 23921999,
+      "path": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "cccfe3f63f52be572e6163e451dd6b079054d1ae178d93ebc4fe66c0071b3114"
+    },
+    {
+      "manifest_digest": "sha256:b2d0465bb1a46d94c9c83ef4fbdb24d28ae793784e97fe1b7d9ea26e84e1aca9",
+      "bundle_digest": "sha256:d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11",
+      "bundle_bytes": 9511,
+      "path": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "ce79654f7bb725611920d6db51e0cbb5dba522ab7173297815104b2cf03da9dc"
+    }
+  ]
+}

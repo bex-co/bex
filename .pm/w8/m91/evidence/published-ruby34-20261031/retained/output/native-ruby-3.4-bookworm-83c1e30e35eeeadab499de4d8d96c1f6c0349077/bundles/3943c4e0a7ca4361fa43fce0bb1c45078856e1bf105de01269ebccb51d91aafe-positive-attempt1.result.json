@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe.bundle.json",
+    "--type",
+    "https://spdx.dev/Document",
+    "--digest",
+    "5a206593e305886d5965d13ca65cbdbbbcf3ab1db57b2e94319322ece12bebf5",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7"
+}

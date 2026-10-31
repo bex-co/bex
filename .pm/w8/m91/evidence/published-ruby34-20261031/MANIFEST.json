@@ -1,0 +1,765 @@
+{
+  "scope": "Exact retained capsule; all original raw bundles stay private and full signed-bundle gzips are retained here.",
+  "files": {
+    "README.md": {
+      "bytes": 1349,
+      "sha256": "007fe4236aab4a820a77204fc360354c922a2097088b4325cc786688020d1661"
+    },
+    "ROOT-REVIEW.json": {
+      "bytes": 55719,
+      "sha256": "478946e01551ad6620b0b58def77accaf7645ff8bb5249a76a021dc8cda1586a"
+    },
+    "original-frozen-manifest.json": {
+      "bytes": 94734,
+      "sha256": "651b1ddc3a9f215c0c82aac0905bd1735c0a880fe5cbcb428817920d067ad5bd"
+    },
+    "receipt.json": {
+      "bytes": 35708,
+      "sha256": "aa23c704e273120fba74656fa30f5ef324551904154cf6cfa054d0e986c85fd8"
+    },
+    "retained/cache/anonymous-compressed-v2/116a6df1558b7619918288415ba249e4b101a7b71f86a30fedf16a2ae86a6ced.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/12d7f1bcbe296ea5df8c84a55ab36dd0db0311300cff87776d86bb585f485a87.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/19d5c0fd8bb12965a30c11b55b85d20f1acde145c84e68d21bbc65a916cac7e5.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/1a26a616366e18100d04e77e523b55a51ae2e7b03b995dad4922a78b63fdfb8b.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/2101a15828eb822b45026db40a8afc8ece1d9bf049b4c5f0bf66408b9ea74c44.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/21519d60c1843fac817a1ad115112f8e218ecb3ebe250f153dd5b161ab2e0ff1.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/2223d4d5bff31cc356b8bc6d33e7913e053f130f79fa22e38ec196944ba371a3.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/30c9e0453e2667fa911a6d1178e7c8b84451fc2c4d1f1d3d521988154d79499e.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/3341296371e63f2ebf9b09220a4992639bf6767bd950bb05847df186246c5b6c.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/48d61359e0a76e62508df8d2fd8e7de3b0ec8510c14a620a68a9a17d96f02e5a.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/4c50c741d9ddfd1d8e2f15ebbc15c746404fe1730d6561754fbc9c0c0297c8b9.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/5e83e6ef208b6fbb29591d5a958d1e6f19911c2624dc873f1414f548f7aad995.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/5f5a48ddd9d00f85f7a65b6a591f591cc1b39fb6f3cbe328babc4be33b47d4c7.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/706a288336fbab184c8e08e0f6f10266cd494819e213a27ec25738493300b58d.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/77fab8735d6ee3d8bacf886aa5c664c2f4a32f23b204de8bf8b2a6af466db549.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/83e74fce4cd3d0218b5c2b6a076a711f72421882069ce972bb654f62514fcc6e.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/8cfe1e5f7ef1af8072e33127870a88fbe31f6732133c800b80333d992e5cea7c.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/9df2a62c532554c41870265ba163e8de4afb7dcfec1512e9af6d5963dd8a0c81.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/ac9f505af736e7079d40e13fc73a39e6f061009dbbfa898ffd8a95a89d85cabc.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/b2cd4c0aa56e008ca3be026d19ab3622ddd9e26133c000f7db3bb279c68c2ba8.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/c60b6c4ab6814c23eed61c391d84d29b1e91df4c39e88dbd5a77f653d5125b3c.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/d1298c8799ed7aadaf3de9fd639ff3b7f1900b3699969c75b4d4f398aac0886f.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/dbe740065c344b660c482e2f4722f47adfd2fba97c1254157cde3dfe0edff972.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/f9bf85a705db3c0196f8f419d9647c2f4ef011552a5f32dfda2123b08491339f.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/cache/anonymous-compressed-v2/receipts.json": {
+      "bytes": 12826,
+      "sha256": "5319fb4b8f4b6611bbe8f767a211c3195c4247f9c2522ea1de51baf56bdf5d34"
+    },
+    "retained/cache/anonymous-compressed-v2/receipts.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/controls/body-get-chain.json": {
+      "bytes": 449,
+      "sha256": "12cf5a825ef14138b040246255f6dd2a2efd8b17e697eea0ca74a9c8dd5cd6ce"
+    },
+    "retained/controls/freeze-on-success.py": {
+      "bytes": 8842,
+      "sha256": "8e9fb017f231542e3b57bfa55b634bf7e59195f0f503dc2ef82505dd5ae94e70"
+    },
+    "retained/controls/fresh-source-recipe-context.json": {
+      "bytes": 6076,
+      "sha256": "e87e88852dc7b775cedb94e44014dde426673380f26555e158baec4fbee2eb00"
+    },
+    "retained/controls/frozen-summary.json": {
+      "bytes": 6099,
+      "sha256": "5b8c2e83a3f521a972fdbd1fa5774e1d48ce2b581929a4e2a3ea31ca2fb4cdf0"
+    },
+    "retained/controls/full-signed-bundle-and-predicate-custody.json": {
+      "bytes": 7648,
+      "sha256": "6b21e32d8aa982ff7b71c2c8ba50a6a726681e005fa5eb38f87ad383c8efd72a"
+    },
+    "retained/controls/observed-local-dependency-custody.json": {
+      "bytes": 694,
+      "sha256": "8a25ba73dae872a53053604e33255d1c71dd97d8758d6b480509ce136583a157"
+    },
+    "retained/controls/preflight.json": {
+      "bytes": 2132,
+      "sha256": "ea9679c789e00fee3314d8cd8812de9a981b0ba701634c92e98c06a569ce75bc"
+    },
+    "retained/controls/reviewed-v11-strict-guards-result.json": {
+      "bytes": 1867,
+      "sha256": "ae016e8c8e0fef97da8b491000371e55ca7fa81e2a1db3b0e38343a3d4524186"
+    },
+    "retained/controls/reviewed-v11-strict-guards.log": {
+      "bytes": 1683,
+      "sha256": "56c287b57edf7dadc9bb49e5f7da435fb38919d548f2a5dabe681255be6d21f7"
+    },
+    "retained/controls/reviewed-v11-strict-guards.py": {
+      "bytes": 16687,
+      "sha256": "a1367eec153bf2a1b8c04959ace8fec8aae0f9abc27d7745d8c2b411d5d47b26"
+    },
+    "retained/controls/run-once.py": {
+      "bytes": 3773,
+      "sha256": "9aab2dc1f14425890b3c0457561145b24b60af714b0e0f73c323c0c0616fd000"
+    },
+    "retained/controls/terminal-capacity.json": {
+      "bytes": 442,
+      "sha256": "20cc0b411cddbf098d050c8ecdb739b13f4b95bf812d1cff795fe0a094724a54"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-config.json": {
+      "bytes": 17251,
+      "sha256": "1a26a616366e18100d04e77e523b55a51ae2e7b03b995dad4922a78b63fdfb8b"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-manifest.json": {
+      "bytes": 3525,
+      "sha256": "68e9aae6d0ba6fbaaf95e9e8d7a8542bba56266bbb74af4a4eb576027af52b3b"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-config.json": {
+      "bytes": 7092,
+      "sha256": "6b7ec3348367b26055c0c90a0d1de326dcb1b0e68bfe86d9b54bdaee92ac6644"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-manifest.json": {
+      "bytes": 2315,
+      "sha256": "7456f1f4e0231f63aaf91187e396339b6ce2496fead7b2cecda7e6adbfbb6529"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-config.json": {
+      "bytes": 17247,
+      "sha256": "f9bf85a705db3c0196f8f419d9647c2f4ef011552a5f32dfda2123b08491339f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-manifest.json": {
+      "bytes": 3525,
+      "sha256": "c9e6be53aca23f6561ce1bd43de81c4a8f4da72e77061ca5b1e17b4bc0709bab"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-config.json": {
+      "bytes": 7107,
+      "sha256": "93f9731928321cb869b2f977598b05ce53fb213f0ed9d87ea8b84688f16c8e44"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-manifest.json": {
+      "bytes": 2317,
+      "sha256": "1b4ee3a2e4d38a7c0d31d8736133ddf76ef3bf0e9a3054c544863cbb199cdf7e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1.result.json": {
+      "bytes": 1527,
+      "sha256": "f0df9e9c96d5fa696dee491ae33c171b0af0eb2390bfea09068aa816a62c9208"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1.stderr.log": {
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive.result.json": {
+      "bytes": 3183,
+      "sha256": "18437902e802ed586176eeba6f0473c28658759014784114b9723f1aa6851a6e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9.bundle.json.gz": {
+      "bytes": 4735683,
+      "sha256": "dadb0c75944680e82145d92d063902f7ba66b68a5a5986e0ec59458ba0213e51"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1.result.json": {
+      "bytes": 1496,
+      "sha256": "75d7de5127018f9d8ce08530670f071ee168f6032e64d3831d5a44230d6a9395"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1.stderr.log": {
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive.result.json": {
+      "bytes": 3121,
+      "sha256": "d860bece2f15947d6ba491a1a19f6d2e9483cb35705205daf6a7240add12f5f3"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe.bundle.json.gz": {
+      "bytes": 4432653,
+      "sha256": "a15500add2cf394056320b4d8cf95be47ebfd117f2a659553951c976ac4d707a"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/420d45397940f3ac52fff0b870f6aa9a9519287eddd0f21dbde55a57dcec1c98.manifest.json": {
+      "bytes": 1007,
+      "sha256": "420d45397940f3ac52fff0b870f6aa9a9519287eddd0f21dbde55a57dcec1c98"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/46d7f9c6c42a80f66f7d0c3c7d7aae550a47cb43b2df11d23f6d90fbee460ea6.manifest.json": {
+      "bytes": 1038,
+      "sha256": "46d7f9c6c42a80f66f7d0c3c7d7aae550a47cb43b2df11d23f6d90fbee460ea6"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/6d13bd28a60cd627d7d26abaa85379cad2a644f777d0fd9179a76a5a6ef00ba9.manifest.json": {
+      "bytes": 1007,
+      "sha256": "6d13bd28a60cd627d7d26abaa85379cad2a644f777d0fd9179a76a5a6ef00ba9"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8857f3e57191833cdcd0c1f4f6080fe188870a3456c3b75747dd5041c09970c1.manifest.json": {
+      "bytes": 1038,
+      "sha256": "8857f3e57191833cdcd0c1f4f6080fe188870a3456c3b75747dd5041c09970c1"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1.result.json": {
+      "bytes": 1496,
+      "sha256": "091ec18baf7116791d6e10872d8ea74069248d0a43194a73b2ac51f79c2e80cf"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1.stderr.log": {
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive.result.json": {
+      "bytes": 3121,
+      "sha256": "cc21723606dc5a571ec90b787f031d8539172cde6dde1a5f9058f4f578e5f448"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b.bundle.json.gz": {
+      "bytes": 4432468,
+      "sha256": "62217b6227996ee7838bbc6a478e60ac4c10e3353da142da32bf9bb50f8a7624"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1.result.json": {
+      "bytes": 1527,
+      "sha256": "c32981441206aff874a665aa1f8a0aa6367c814a2ea876e3d9292c421676687c"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1.stderr.log": {
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive.result.json": {
+      "bytes": 3183,
+      "sha256": "dfd84bfb4e95410bab24fe25fd1615cfa806b6bf55a3410b41b831c75568a3e0"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8.bundle.json.gz": {
+      "bytes": 4738115,
+      "sha256": "4ff88788b8bc2b47dab6dc3a1ef0539db95e75be11f4759e68e075b5c0654943"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b2d0465bb1a46d94c9c83ef4fbdb24d28ae793784e97fe1b7d9ea26e84e1aca9.manifest.json": {
+      "bytes": 1013,
+      "sha256": "b2d0465bb1a46d94c9c83ef4fbdb24d28ae793784e97fe1b7d9ea26e84e1aca9"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/2adef8c28136da8dae4dad9fae5cc23e7d9cc57e8f20c465c561f410bb40c3c9-positive-attempt1-yb4k45hz/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "2a2851d34666b8ccd65ab76b75c6552b3f1a2b592277a070137a9d8607fa3825"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/3943c4e0a7ca4361fa43fce0bb1c45078856e1bf105de01269ebccb51d91aafe-positive-attempt1-pnwxr1e7/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "ead97c2f661954716e3d358db1847fd951501307b6918af7aa63ba8841c06fce"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a33f7f7cb05a80d4f4088a672fd298937332060e9107106e2877f98f56f69f5b-positive-attempt1-gvvbvivd/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "cdc3e9595538c798339a85905b0e3d243aa58647340dffa3b3c4ee38323d0d88"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/a67f136116f4e582ebf2b0354576ec3006c16e62b0ac7c2ea0a2f2045281e1f8-positive-attempt1-5b5qq4dh/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "46cc2ee3cc6f2f83af331805ede122f8fa41e31a80fc1d4c5fe3fe869e12fe09"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1-dz0lzrps/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "b9fdde83666a35245a8d5d73d8c36d3354b7c00f49117b6a716c507b809e04a9"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1-dd88uczi/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "08b5baf988d3503e9a0039e43093f574dd0d34cb8c3bdd57443984c6505ec263"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev/root.json": {
+      "bytes": 5630,
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "bytes": 1760,
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "bytes": 6787,
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "bytes": 4942,
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "bytes": 451,
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1-gwat2eye/tuf-repo-cdn.sigstore.dev.json": {
+      "bytes": 52,
+      "sha256": "95c034ee5c6065e2a7d2cf4d4f6e9b6aa185d3b74bfc48736d4dab711594ace7"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/crypto-results.json": {
+      "bytes": 23927,
+      "sha256": "c09947f0086bd069c95e4d819db345daa0afa3ab65de8fad080883572e3c8b51"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1.result.json": {
+      "bytes": 1506,
+      "sha256": "040e4a3b2d6e603c23950e0e4bf77d222428c3cd9689cd80317db4f8658eecfa"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1.stderr.log": {
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-positive.result.json": {
+      "bytes": 3141,
+      "sha256": "242823d44c41021074f0948be3185308c19fd555caa98d1cdcf7aca4df159212"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1.result.json": {
+      "bytes": 1514,
+      "sha256": "e4d89c1f186b7e988cb09701116dff647f9c359cae2a0e5774831ea34c0a7d07"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1.stderr.log": {
+      "bytes": 467,
+      "sha256": "a2f2056858432bc08bdcb0dfcb7658f25c1f5a9e66e860a78a85095d5284fad1"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-source.result.json": {
+      "bytes": 3157,
+      "sha256": "050d6358888045dba2cd7bda4e8710ec8fa4cc6492157b2b1d7c0ac1695fa6f5"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1.result.json": {
+      "bytes": 1516,
+      "sha256": "8ad844bf221ce52f4a5fe8c3a181eb65b3f2924972a4c8bcee5fe2d1d62e8465"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1.stderr.log": {
+      "bytes": 223,
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject-attempt1.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11-wrong-subject.result.json": {
+      "bytes": 3161,
+      "sha256": "bfd013631489f607f07440be29415c0c4cbf00d2c00e358627a35cfef3e235a1"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/d9406eb8bae804504ec344f58cfe004cd789c7218e9cafab2b244fbd7777ec11.bundle.json.gz": {
+      "bytes": 6096,
+      "sha256": "6d4cdeb3d3865049ab22c81871635ff9c63060243511924b428b135f3533763e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/download-receipt.json": {
+      "bytes": 3492,
+      "sha256": "4414aa789fb5e878d49a3f55d9339683812cf00069fb8bd18128429e91a47c4d"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/referrer-index.json": {
+      "bytes": 2164,
+      "sha256": "859c7000a2b76f1f5fd310d389e02c177c91f39da2eca997c7ffbe22515e8b2f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ci-runtime-scan-signing-gates.json": {
+      "bytes": 721,
+      "sha256": "85421177efaae3e23b703c535b3ab824490f83f85fee8495e0a11cff57390f65"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-native-review-v11.py": {
+      "bytes": 43608,
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-verify-native-artifact-ranged.py": {
+      "bytes": 40720,
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/index.json": {
+      "bytes": 1611,
+      "sha256": "5a206593e305886d5965d13ca65cbdbbbcf3ab1db57b2e94319322ece12bebf5"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/official-index.json": {
+      "bytes": 6481,
+      "sha256": "8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/producer-verification-provenance.json": {
+      "bytes": 156,
+      "sha256": "70c93082c0ae7293c5cab7ad14385bee68eeeab1d8d907145c77385c146380e9"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/progress.json": {
+      "bytes": 211,
+      "sha256": "1491baa46edb3507e4a583a0367eaca3fe8b5dea7ec2b41fe53b100e5eabdff3"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-116a6df1558b7619918288415ba249e4b101a7b71f86a30fedf16a2ae86a6ced.json": {
+      "bytes": 611,
+      "sha256": "f086507a3e19bd7b664521b4db0ed57e58bce5955798d82709a0ca343d974465"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-12d7f1bcbe296ea5df8c84a55ab36dd0db0311300cff87776d86bb585f485a87.json": {
+      "bytes": 611,
+      "sha256": "c5b56d7fc2bbbfdafaa2e345dfb097ff7bdfcc62189dfcc93ee046aec361466f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-19d5c0fd8bb12965a30c11b55b85d20f1acde145c84e68d21bbc65a916cac7e5.json": {
+      "bytes": 607,
+      "sha256": "6f559ade711d8de67481572904362aa2c3335510fb863e64dcbc7f9cc05f3ec7"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-1a26a616366e18100d04e77e523b55a51ae2e7b03b995dad4922a78b63fdfb8b.json": {
+      "bytes": 615,
+      "sha256": "51546e1f3ced2c37a7c9931468dc2e2858b9a4386b0529534a836fa300b98d7e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2101a15828eb822b45026db40a8afc8ece1d9bf049b4c5f0bf66408b9ea74c44.json": {
+      "bytes": 611,
+      "sha256": "32400da773e19e4f0d80a82d2f5541a8ef9f5b721ef7daf0ee9dfb43b53bea93"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-21519d60c1843fac817a1ad115112f8e218ecb3ebe250f153dd5b161ab2e0ff1.json": {
+      "bytes": 611,
+      "sha256": "56c5da83a2990fbfa91c05c2fa17064c763ff63a12c6c035026c28c18d55e1d1"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2223d4d5bff31cc356b8bc6d33e7913e053f130f79fa22e38ec196944ba371a3.json": {
+      "bytes": 611,
+      "sha256": "9fed13d6e99368ac1d3b88b9c7c8515327f36b874e0e594e9c6cd8b2d6434182"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-30c9e0453e2667fa911a6d1178e7c8b84451fc2c4d1f1d3d521988154d79499e.json": {
+      "bytes": 607,
+      "sha256": "9800ce41b78b6eeb886fae5d0639a6a5072fb6fd6939fab495f4789b6e122443"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3341296371e63f2ebf9b09220a4992639bf6767bd950bb05847df186246c5b6c.json": {
+      "bytes": 611,
+      "sha256": "1129de7c294da8c299e8e91b592231580e8889753696d7eb6114986038e438bd"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.json": {
+      "bytes": 631,
+      "sha256": "290c276f095fe533a080ef5eeab7ab6ce221b161f92923ebabe56db6ea48f346"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-48d61359e0a76e62508df8d2fd8e7de3b0ec8510c14a620a68a9a17d96f02e5a.json": {
+      "bytes": 607,
+      "sha256": "28d655cdc24e07a2b470eca722752cd464b17c666d5f394ca17867f1f0a7f23e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.json": {
+      "bytes": 627,
+      "sha256": "8ed26557e04ba03cfbc918d924862a550df2ae8476db59d33ff9cef9f143d3b2"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4c50c741d9ddfd1d8e2f15ebbc15c746404fe1730d6561754fbc9c0c0297c8b9.json": {
+      "bytes": 607,
+      "sha256": "8e8d5ad5923d40aafec5f9774496c34353771be88f43d3875762ac714d7c30e8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json": {
+      "bytes": 603,
+      "sha256": "3a7406c67060d13cb88132e003e3a38b4d0115da93249d15d263ba2e7ffb9bc6"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.json": {
+      "bytes": 627,
+      "sha256": "5f4e7efeb813bd1c8b2a21135a6923047e24f21db99746b7e053bfaa6d6619e9"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5e83e6ef208b6fbb29591d5a958d1e6f19911c2624dc873f1414f548f7aad995.json": {
+      "bytes": 607,
+      "sha256": "921cf36b8a2ac2aae99926a17fcfebcd9c90b014a9a58218fc6f2bb8fdf7eee4"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5f5a48ddd9d00f85f7a65b6a591f591cc1b39fb6f3cbe328babc4be33b47d4c7.json": {
+      "bytes": 627,
+      "sha256": "58308666269fbe49d2e3a549b7054dacd9108571aea99c4894713dc6faf8ecd4"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.json": {
+      "bytes": 627,
+      "sha256": "5554c5ea78fc75a5a86feec5baa0e44e2e4af415d0409292c0b78d433ee584e8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-706a288336fbab184c8e08e0f6f10266cd494819e213a27ec25738493300b58d.json": {
+      "bytes": 607,
+      "sha256": "5e0df5c22002de9190c62a81730e05023617ba5ee851b552aa50c7255e231e03"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-77fab8735d6ee3d8bacf886aa5c664c2f4a32f23b204de8bf8b2a6af466db549.json": {
+      "bytes": 631,
+      "sha256": "d56185c1dd33a482da8c12a41a5eb9f3a173ea0c7f2af33d00802cdc5b85a9da"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.json": {
+      "bytes": 627,
+      "sha256": "25d95ace6e9426fc8413a314f57c0906576cffba681c9522e21e2ad3cee3f824"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-83e74fce4cd3d0218b5c2b6a076a711f72421882069ce972bb654f62514fcc6e.json": {
+      "bytes": 627,
+      "sha256": "08bd8512e6ec3ec528ab0694eadb3f914cbfda9a6c5ecd7dee4f5657a6353669"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-8cfe1e5f7ef1af8072e33127870a88fbe31f6732133c800b80333d992e5cea7c.json": {
+      "bytes": 611,
+      "sha256": "6b7b0a83481bc6e5dbcec78383b13a7671bfab9c5af5ed7de1f4249346ec5cf5"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-9df2a62c532554c41870265ba163e8de4afb7dcfec1512e9af6d5963dd8a0c81.json": {
+      "bytes": 607,
+      "sha256": "fb984230308a2f11304f2247c231d03ffe0b774e9c01048c0546ac838e7b7b9c"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.json": {
+      "bytes": 627,
+      "sha256": "f19b2bd7e21f07bd9d05ca4eb17de74c24c42c51ee6f12a2df90b5ea819b5d56"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.json": {
+      "bytes": 627,
+      "sha256": "50a888631a0254c300ea83c337a1b2c563ecf66c60bee465b6d03b3543d29943"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-ac9f505af736e7079d40e13fc73a39e6f061009dbbfa898ffd8a95a89d85cabc.json": {
+      "bytes": 607,
+      "sha256": "54fa8be4ad0f57deec983528607d9b39e0f1e851c1378162c61f424197ec3c2f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-b2cd4c0aa56e008ca3be026d19ab3622ddd9e26133c000f7db3bb279c68c2ba8.json": {
+      "bytes": 611,
+      "sha256": "862cc58c4cfd7dd3aba38d4d96ef58302edadedc1c0cd1088ca314dc07b0767c"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.json": {
+      "bytes": 631,
+      "sha256": "a59f178824eb712e2315c2d853bb254c6926e8b98bea5800db37051653822a20"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c60b6c4ab6814c23eed61c391d84d29b1e91df4c39e88dbd5a77f653d5125b3c.json": {
+      "bytes": 627,
+      "sha256": "3dd9cf69eeffc6bc97f878a0c54108a4b3c935cc8931552a98a436c55289bf3b"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-d1298c8799ed7aadaf3de9fd639ff3b7f1900b3699969c75b4d4f398aac0886f.json": {
+      "bytes": 631,
+      "sha256": "b9e5875809b4376af473c2e6bd100e5ee83e64eb0e70c299a1ea73864ab39ee1"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-dbe740065c344b660c482e2f4722f47adfd2fba97c1254157cde3dfe0edff972.json": {
+      "bytes": 627,
+      "sha256": "ba9947234b6d99fca2796e5def34db7e408a61996dd53da003e576b0ee10b0f5"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f9bf85a705db3c0196f8f419d9647c2f4ef011552a5f32dfda2123b08491339f.json": {
+      "bytes": 615,
+      "sha256": "059374365f7aba9bf58944709673c146c004ab0a3c02c4b3add0416deeccbaca"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/receipt.json": {
+      "bytes": 35708,
+      "sha256": "aa23c704e273120fba74656fa30f5ef324551904154cf6cfa054d0e986c85fd8"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/native-base-recovery.json": {
+      "bytes": 6422,
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/workflows/native-base-image.yml": {
+      "bytes": 14144,
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/deploy/native-base/matrix.py": {
+      "bytes": 2099,
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/lego/operator/internal/build/native.go": {
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+    },
+    "retained/output/native-ruby-3.4-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/source-files.json": {
+      "bytes": 522,
+      "sha256": "a280b57323d3dc20a61509138d26976975d5e816ff207dce9a1ea9f626607c6b"
+    },
+    "retained/output/process-exit-case-attempt1.json": {
+      "bytes": 7203,
+      "sha256": "49cb2201c78aefed925b2e85cd7382f91fb8b8b8b94b670f17c27fb100df9bb9"
+    },
+    "retained/output/v11-case-attempt1.log": {
+      "bytes": 12390,
+      "sha256": "c188a57c7b794ebeb9bc0d90d4e68c12bce61dd70d13ff169746236368e84bbe"
+    }
+  }
+}
