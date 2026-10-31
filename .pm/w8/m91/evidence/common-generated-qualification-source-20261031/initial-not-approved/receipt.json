@@ -1,0 +1,40 @@
+{
+  "frozen_at": "2026-10-31T15:29:14.681147+00:00",
+  "result": "SOURCE_IMPLEMENTED_LOCAL_SOURCE_CHECKS_PASS_REAL_IMAGE_EXECUTION_UNEXECUTED",
+  "owned_file_count": 6,
+  "source_manifest_sha256": "5a3ea7e19420abf1a1a83ccba4f37d7c73abc983cf2dcc9da3543e39aebf21e1",
+  "source_patch_sha256": "f319688d2a3f5f3b6be9134bd0a55afff57923674ca579272a2f5723d6eccf9d",
+  "checks": {
+    "whole_internal_build_go_test": "PASS4.953s",
+    "scoped_internal_build_golangci_lint": "PASS0issues",
+    "python_publication_and_qualification_controls": "PASS40tests",
+    "common_source_controls": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.042s\n\nOK\nExact OTP donor needs same-release source build: lib/odbc-2.16/priv/bin/odbcserver\nExact OTP donor needs same-release source build: lib/odbc-2.16/ebin/odbc.app\nExact OTP donor needs same-release source build: lib/wx-2.5/priv/wxe_driver.so\nExact OTP donor needs same-release source build: lib/wx-2.5/priv/resource.dat\nExact OTP donor needs same-release source build: lib/jinterface-1.0/priv/OtpErlang.jar\nExact OTP donor needs same-release source build: helper (executable permissions)\nExact OTP donor needs same-release source build: helper-link (link destination)\nExact OTP donor needs same-release source build: helper-link (type)",
+    "actionlint": "PASS; private approved-label config",
+    "actions_guard": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "historical_findings_preserved": [
+    "Initial raw actionlint custom labels unconfigured; private standard labels config used, shell redirect style fixed.",
+    "Initial scoped lint gocyclo37 found and fixed with coherent run/export/SBOM helper; prior failure receipt retained.",
+    "Prerequisite wheel ordering corrected before canonical Poetry bootstrap; both actual source-resolved Python recipe regressions pass."
+  ],
+  "scope": [
+    "one fully gated common publication output; no C matrix expansion",
+    "two-architecture ephemeral generated-image jobs, original13replays/omissions preserved",
+    "separate actual canonical Py313 and exact-default3.14.8 wheel preparation with recorded recipes and SHA custody",
+    "exact generated image config/platform/runtime3.14.8/system Brotli SPDX binding, complete gzip and failure evidence",
+    "preassigned owner labels, explicit named builder with use:false, bounded own cleanup only; action global certificate post-cleanup disabled"
+  ],
+  "resources_executed": false,
+  "manual_CI_actions": false,
+  "repo_commit_push_or_index_mutation": false,
+  "production_pins_changed": false,
+  "Node18_prepared_case": "untouched/not started",
+  "real_image_qualification": "UNEXECUTED; requires actual successful common publication and this source workflow execution; no full27matrix or28hosted/adoption/exact222closure claim",
+  "primary_sources_reviewed": [
+    "https://raw.githubusercontent.com/docker/setup-buildx-action/37fe631027851001ddb9b187196cc803df7f5f0e/action.yml",
+    "https://raw.githubusercontent.com/docker/setup-buildx-action/37fe631027851001ddb9b187196cc803df7f5f0e/src/main.ts",
+    "https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#using-outputs-from-a-reusable-workflow"
+  ],
+  "remaining_free_bytes": 3157856256
+}

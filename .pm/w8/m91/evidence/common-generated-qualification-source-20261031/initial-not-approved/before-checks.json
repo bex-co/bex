@@ -1,0 +1,8 @@
+{
+  ".github/workflows/native-base-image.yml": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a",
+  ".github/workflows/native-common-image.yml": "f28222b56bba1da9e4a5e9d6ad031a75120209409362edbc8a335cec6ec0f69d",
+  ".github/scripts/native-common-qualify.py": "84d01569c19b67471f82954ebe9247a88b62dd688a2f9bcd35410c7409df7441",
+  ".github/scripts/test_native_oci_common_qualification.py": "5d0b60733844448582ad2e32e7013663167272dcaa070c3f164da0bcf5287a95",
+  "lego/operator/internal/build/nativeutility_integration_test.go": "76dd1713389869fe4837ac3b65eb4ac2255de73dd8285f2a684d7e9c4c99629e",
+  "lego/operator/internal/build/nativeutility_qualification_test.go": "c54dd405d3351d8b7aeaa2dd00868f42f6da81a219f0e4021f8a484af5373267"
+}

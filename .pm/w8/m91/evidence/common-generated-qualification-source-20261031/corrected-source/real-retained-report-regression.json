@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-31T16:26:01.943804+00:00",
+  "scope": "offline source regression using original retained complete report bytes; no new scan/image/runtime or artifact approval",
+  "syft_report": {
+    "file": "/private/tmp/bex-w8-222-acceptance/generated-image.syft.json.gz",
+    "raw_bytes": 31709370,
+    "raw_sha256": "b28131e964bdc208df13bd911340796fbdef189f2bb8a4528be95a220cd2cdf3"
+  },
+  "spdx_report": {
+    "file": ".pm/w8/m91/evidence/exact-python-default-20261029/generated-image.spdx.json.gz",
+    "raw_bytes": 31740588,
+    "raw_sha256": "49c84f7f330170fb898bdd1a284fbbef98debdf30e28a4dcb69be200ae4c6be2"
+  },
+  "actual_expected_config": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+  "actual_expected_platform": "linux/arm64",
+  "syft_source_metadata": {
+    "imageID": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+    "manifestDigest": "sha256:645172b6476137c42feb86af17c35515aaf9af122dd7b7bab57ae42f2306e287",
+    "architecture": "arm64",
+    "os": "linux"
+  },
+  "syft_embedded_manifest_SHA_and_config_link_verified": true,
+  "syft_embedded_config_SHA_verified": true,
+  "old_actual_failure": "SPDX root differs from actual generated image config",
+  "corrected_identity_binding_result": {
+    "image_config_id": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+    "syft_manifest_digest": "sha256:645172b6476137c42feb86af17c35515aaf9af122dd7b7bab57ae42f2306e287",
+    "platform": "linux/arm64",
+    "python": "3.14.8",
+    "libbrotli1_versions": [
+      "1.0.9-2+deb12u1"
+    ],
+    "packages": 1186
+  },
+  "only_stubbed_operation": {
+    "reason": "source-only macOS control; no Docker or dpkg package action; retained previous real package/runtime proof remains separate",
+    "commands": [
+      [
+        "dpkg",
+        "--compare-versions",
+        "1.0.9-2+deb12u1",
+        "ge",
+        "1.0.9-2+deb12u1"
+      ]
+    ]
+  },
+  "source_sha256": {
+    "old": "bf74c5142668dc79bd7834dd7cea6288badb141ec4d07c54f57fca5b2e310caa",
+    "corrected": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728"
+  }
+}

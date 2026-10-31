@@ -1,0 +1,544 @@
+{
+  "reviewed_at": "2026-10-31T16:31:06.706405+00:00",
+  "result": "CORRECTED_SOURCE_APPROVED_FOR_SHIP_ACTUAL_IMAGE_QUALIFICATION_UNEXECUTED",
+  "live_owned_source_files_verified": 6,
+  "initial_payloads_verified": 43,
+  "corrected_payloads_verified": 30,
+  "scope": "CI/test wiring and Syft identity correction only; no actual new image/SBOM/platform/hosted or production pin approval",
+  "independent_binding_review": "common_review clean after actual config/manifest distinction fixed",
+  "root_checks": [
+    "all6live source bytes/modes match corrected freeze",
+    "all43 initial and30 corrected frozen payload SHA/size",
+    "41publisher/qualification Python tests PASS14.667s",
+    "whole internal/build unit suite PASS5.016s; opt-in Docker disabled",
+    "Actions guard PASS"
+  ],
+  "original_reports": "Actual retained arm64+amd64 Syft/SPDX regression replays existing full reports; dpkg comparator stubbed only on macOS; not a new scan",
+  "custody": [
+    {
+      "original": "initial-not-approved/MANIFEST.json",
+      "retained": "initial-not-approved/MANIFEST.json",
+      "original_bytes": 7114,
+      "original_sha256": "9127c130dea6aed4c9cee356ca715fc2402e602087e71fed40756a737b52ef85",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/SOURCE-MANIFEST.json",
+      "retained": "initial-not-approved/SOURCE-MANIFEST.json",
+      "original_bytes": 1817,
+      "original_sha256": "5a3ea7e19420abf1a1a83ccba4f37d7c73abc983cf2dcc9da3543e39aebf21e1",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/actionlint.log",
+      "retained": "initial-not-approved/actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/actionlint.yaml",
+      "retained": "initial-not-approved/actionlint.yaml",
+      "original_bytes": 55,
+      "original_sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/actions-guard.log",
+      "retained": "initial-not-approved/actions-guard.log.gz",
+      "original_bytes": 290,
+      "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/before-checks.json",
+      "retained": "initial-not-approved/before-checks.json",
+      "original_bytes": 748,
+      "original_sha256": "623e5acef6d6391fb6041b31d573457685a367939edb7d6879b93979a7597531",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/common-controls.log",
+      "retained": "initial-not-approved/common-controls.log.gz",
+      "original_bytes": 737,
+      "original_sha256": "52e6e876f6e414821d2ecfce9513f686cd668950005bb24630b8d2d648be7a20",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-actionlint.log",
+      "retained": "initial-not-approved/final-actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-before-checks.json",
+      "retained": "initial-not-approved/final-before-checks.json",
+      "original_bytes": 748,
+      "original_sha256": "b1c997089c6b3dcc48c40d47588ffb7492eb5bc0815c1bf89757c1f56c1f1184",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-python-controls.log",
+      "retained": "initial-not-approved/final-python-controls.log.gz",
+      "original_bytes": 140,
+      "original_sha256": "cbe71007913a9936c78d0f9b2cf5623c8b8515389e6fdb2823f061be132efe04",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-scoped-build-tests-result.json",
+      "retained": "initial-not-approved/final-scoped-build-tests-result.json",
+      "original_bytes": 446,
+      "original_sha256": "e62207ddf3f5d0ed98e7120e74957b54362adf901c21fa4a8869ebd22f6e0a33",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-scoped-build-tests.log",
+      "retained": "initial-not-approved/final-scoped-build-tests.log.gz",
+      "original_bytes": 64,
+      "original_sha256": "5380e33808b0636568e92afd40b62e31f659bec9f5f46c1b0f8bfa6b7d50ef3a",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-scoped-build-tests2-result.json",
+      "retained": "initial-not-approved/final-scoped-build-tests2-result.json",
+      "original_bytes": 446,
+      "original_sha256": "70a7f0a226b80c395f22926e52ad64662a27d5ac9dea4f79c8c79352265d1cd9",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-scoped-build-tests2.log",
+      "retained": "initial-not-approved/final-scoped-build-tests2.log.gz",
+      "original_bytes": 63,
+      "original_sha256": "8377cabb6895a3837905ee4cc2f863b347e740fb6de954c7a5e77afe9f1c0d46",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-scoped-lint-result.json",
+      "retained": "initial-not-approved/final-scoped-lint-result.json",
+      "original_bytes": 465,
+      "original_sha256": "b721be63aad070fee5b789d82f4bda3bc5f3462a198d45a9d11500eef3c45a00",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-scoped-lint.log",
+      "retained": "initial-not-approved/final-scoped-lint.log.gz",
+      "original_bytes": 227,
+      "original_sha256": "3c553c99c1ada62ff676128d8f4325325cad1ccf2e830e9f8215945924e4e324",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-scoped-lint2-result.json",
+      "retained": "initial-not-approved/final-scoped-lint2-result.json",
+      "original_bytes": 461,
+      "original_sha256": "4aa0e9122708358578717f9993841205f429651161c3a042e9bf936cf1632316",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-scoped-lint2.log",
+      "retained": "initial-not-approved/final-scoped-lint2.log.gz",
+      "original_bytes": 10,
+      "original_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/final-scoped-tests-result.json",
+      "retained": "initial-not-approved/final-scoped-tests-result.json",
+      "original_bytes": 511,
+      "original_sha256": "fb7b4ef8e468f6770bd60552098475af8a2b90522401b671936a87cd99e7192b",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/final-scoped-tests.log",
+      "retained": "initial-not-approved/final-scoped-tests.log.gz",
+      "original_bytes": 63,
+      "original_sha256": "55b74451bd74a9392e8727bbcd1ea8a1aa6ed1068f41f441444e4f09e9440b88",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/head-source/.github/workflows/native-base-image.yml",
+      "retained": "initial-not-approved/head-source/.github/workflows/native-base-image.yml",
+      "original_bytes": 16117,
+      "original_sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/head-source/.github/workflows/native-common-image.yml",
+      "retained": "initial-not-approved/head-source/.github/workflows/native-common-image.yml",
+      "original_bytes": 803,
+      "original_sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/head-source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "retained": "initial-not-approved/head-source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "original_bytes": 18785,
+      "original_sha256": "998bdbcb846be57248b8547660a1aa12faf736fb87cf4a075d48e443ed71bc11",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/owned-paths.json",
+      "retained": "initial-not-approved/owned-paths.json",
+      "original_bytes": 340,
+      "original_sha256": "d279854414d5c380e59e0f8f0b9cdc5348e6f48bbbfac2eddd575d0c8963f4c3",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/python-controls.log",
+      "retained": "initial-not-approved/python-controls.log.gz",
+      "original_bytes": 140,
+      "original_sha256": "45b5dd62e4d80ea7625aa36472019603482c24efe612884f0e29ae16f91bfc07",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/receipt.json",
+      "retained": "initial-not-approved/receipt.json",
+      "original_bytes": 3266,
+      "original_sha256": "3d3d13d8337abae40f2812f015bf04fde130f459745f2aed9d6ca3de0cd8e902",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/run-final-scoped.py",
+      "retained": "initial-not-approved/run-final-scoped.py",
+      "original_bytes": 1983,
+      "original_sha256": "5b3a345b9d71ebf4bafc9a02fdae2edd8c37a2d77a34c39fe9d9d55b59132c6c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/run-scoped-go.py",
+      "retained": "initial-not-approved/run-scoped-go.py",
+      "original_bytes": 1842,
+      "original_sha256": "8fb84e23adb400b97db8ea4f54eb9aa9bdb75a2bf06f8cb7a12c665aab55234c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/scope.json",
+      "retained": "initial-not-approved/scope.json",
+      "original_bytes": 173,
+      "original_sha256": "82401325db7ef9239d9d4e5199ab046f104f786d820665a57de35622d02a2275",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/scoped-go-tests-result.json",
+      "retained": "initial-not-approved/scoped-go-tests-result.json",
+      "original_bytes": 511,
+      "original_sha256": "9c507267ee6a43e034254637c44372c26079c788d5a81971b63cc4f0304068c9",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/scoped-go-tests.log",
+      "retained": "initial-not-approved/scoped-go-tests.log.gz",
+      "original_bytes": 63,
+      "original_sha256": "bb60866f8f72defabdd4ea6ea50f9ca078d0c8f932076f5ee4cdf3326dd2f473",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/source/.github/scripts/native-common-qualify.py",
+      "retained": "initial-not-approved/source/.github/scripts/native-common-qualify.py",
+      "original_bytes": 9562,
+      "original_sha256": "bf74c5142668dc79bd7834dd7cea6288badb141ec4d07c54f57fca5b2e310caa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/.github/scripts/test_native_oci_common_qualification.py",
+      "retained": "initial-not-approved/source/.github/scripts/test_native_oci_common_qualification.py",
+      "original_bytes": 9621,
+      "original_sha256": "f892ec397a9f54094a6511b2685224ddd01980b2dc66e04488040ccf05c04638",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/.github/workflows/native-base-image.yml",
+      "retained": "initial-not-approved/source/.github/workflows/native-base-image.yml",
+      "original_bytes": 17337,
+      "original_sha256": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/.github/workflows/native-common-image.yml",
+      "retained": "initial-not-approved/source/.github/workflows/native-common-image.yml",
+      "original_bytes": 4510,
+      "original_sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "retained": "initial-not-approved/source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "original_bytes": 16556,
+      "original_sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "retained": "initial-not-approved/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "original_bytes": 12652,
+      "original_sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab",
+      "lossless_gzip": false
+    },
+    {
+      "original": "initial-not-approved/source.patch",
+      "retained": "initial-not-approved/source.patch.gz",
+      "original_bytes": 45513,
+      "original_sha256": "f319688d2a3f5f3b6be9134bd0a55afff57923674ca579272a2f5723d6eccf9d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-actionlint.log",
+      "retained": "initial-not-approved/validated-actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-actions-guard.log",
+      "retained": "initial-not-approved/validated-actions-guard.log.gz",
+      "original_bytes": 290,
+      "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-common-controls.log",
+      "retained": "initial-not-approved/validated-common-controls.log.gz",
+      "original_bytes": 737,
+      "original_sha256": "32660b9e666713359fe8fb20cd7bc6b0230c8b6d74fed701fa5be2414c406d15",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-diff-check.log",
+      "retained": "initial-not-approved/validated-diff-check.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-python-controls.log",
+      "retained": "initial-not-approved/validated-python-controls.log.gz",
+      "original_bytes": 140,
+      "original_sha256": "e4757b0a208722eb8ac6881e0d7fe0023aaf7f45a79f20009c651e4c84b502be",
+      "lossless_gzip": true
+    },
+    {
+      "original": "initial-not-approved/validated-source-before.json",
+      "retained": "initial-not-approved/validated-source-before.json",
+      "original_bytes": 748,
+      "original_sha256": "73aa9787fe067e84d123427d980937f4fae748186f8ef3339b403b0d6e44f591",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/MANIFEST.json",
+      "retained": "corrected-source/MANIFEST.json",
+      "original_bytes": 5096,
+      "original_sha256": "fd96952f1dc0d238a4069e9cd0bcd31c54f94b93cd015eaa1d9eab8efdd349c2",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/SOURCE-MANIFEST.json",
+      "retained": "corrected-source/SOURCE-MANIFEST.json",
+      "original_bytes": 2072,
+      "original_sha256": "0bbb74acfb8f9ff5a1cca851c9453d8d4bf82cbc06b7165664bc91e22edd3b64",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/actionlint.log",
+      "retained": "corrected-source/actionlint.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/actionlint.yaml",
+      "retained": "corrected-source/actionlint.yaml",
+      "original_bytes": 55,
+      "original_sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/actions-guard.log",
+      "retained": "corrected-source/actions-guard.log.gz",
+      "original_bytes": 290,
+      "original_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/correction-only.patch",
+      "retained": "corrected-source/correction-only.patch.gz",
+      "original_bytes": 15379,
+      "original_sha256": "5f7becb45ae28312aed58586d7a0c5670505aa53ec7df8df14d25f2e87d8b47a",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/diff-check.log",
+      "retained": "corrected-source/diff-check.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/final-scoped-lint-result.json",
+      "retained": "corrected-source/final-scoped-lint-result.json",
+      "original_bytes": 461,
+      "original_sha256": "8b78dc82e1207d23dddfeb9fbb04206c1360ebab47aa4fef143da7320de48c15",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/final-scoped-lint.log",
+      "retained": "corrected-source/final-scoped-lint.log.gz",
+      "original_bytes": 10,
+      "original_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/final-scoped-tests-result.json",
+      "retained": "corrected-source/final-scoped-tests-result.json",
+      "original_bytes": 446,
+      "original_sha256": "4c4a476e40efdfac94dacb1741947df511d647c7a50feda9b11b05b1b807f52e",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/final-scoped-tests.log",
+      "retained": "corrected-source/final-scoped-tests.log.gz",
+      "original_bytes": 63,
+      "original_sha256": "579f8c01a69f773d93c932235eeb763623ebe3fab44653bc110a2ce4f36ed8f0",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/first-frozen-fileset-recheck.json",
+      "retained": "corrected-source/first-frozen-fileset-recheck.json",
+      "original_bytes": 524,
+      "original_sha256": "d1cd053f49a1ce3bd74d3fe2a3a54996cee12d13cc89cee77e99c3bfbc4380d5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/first-frozen-provenance.json",
+      "retained": "corrected-source/first-frozen-provenance.json",
+      "original_bytes": 411,
+      "original_sha256": "deb3de53d47ec65231996f5c2e9192e09c24465ef5c454a1655439ac8f4dc425",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/focused-independent-review.json",
+      "retained": "corrected-source/focused-independent-review.json",
+      "original_bytes": 502,
+      "original_sha256": "c5d8c0f0abdfe0d01b552c30afefc332ff847b90b3c4fda38ac69672286168a6",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/head-source/.github/workflows/native-base-image.yml",
+      "retained": "corrected-source/head-source/.github/workflows/native-base-image.yml",
+      "original_bytes": 16117,
+      "original_sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/head-source/.github/workflows/native-common-image.yml",
+      "retained": "corrected-source/head-source/.github/workflows/native-common-image.yml",
+      "original_bytes": 803,
+      "original_sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/head-source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "retained": "corrected-source/head-source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "original_bytes": 18785,
+      "original_sha256": "998bdbcb846be57248b8547660a1aa12faf736fb87cf4a075d48e443ed71bc11",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/owned-paths.json",
+      "retained": "corrected-source/owned-paths.json",
+      "original_bytes": 340,
+      "original_sha256": "d279854414d5c380e59e0f8f0b9cdc5348e6f48bbbfac2eddd575d0c8963f4c3",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/python-controls.log",
+      "retained": "corrected-source/python-controls.log.gz",
+      "original_bytes": 141,
+      "original_sha256": "3eafe259582004641af556c41dcca099285aee4435c453c24bc25261da815456",
+      "lossless_gzip": true
+    },
+    {
+      "original": "corrected-source/real-both-architecture-report-regression.json",
+      "retained": "corrected-source/real-both-architecture-report-regression.json",
+      "original_bytes": 3274,
+      "original_sha256": "6a5b8c2cfdcc3032de16ac92116ee119a1a797b329a12ee017ffee0856d77abe",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/real-retained-report-regression.json",
+      "retained": "corrected-source/real-retained-report-regression.json",
+      "original_bytes": 2129,
+      "original_sha256": "dc0d26c6487b5b7a9c4e0b660552231204b1d891462da1fb95fd13bf360eab49",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/receipt.json",
+      "retained": "corrected-source/receipt.json",
+      "original_bytes": 2317,
+      "original_sha256": "2e42694ff0234eac83d8d0aed7b325b2e6e3987eedac526bb96fd640b0318699",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/run-final-scoped.py",
+      "retained": "corrected-source/run-final-scoped.py",
+      "original_bytes": 1983,
+      "original_sha256": "5b3a345b9d71ebf4bafc9a02fdae2edd8c37a2d77a34c39fe9d9d55b59132c6c",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/.github/scripts/native-common-qualify.py",
+      "retained": "corrected-source/source/.github/scripts/native-common-qualify.py",
+      "original_bytes": 10568,
+      "original_sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/.github/scripts/test_native_oci_common_qualification.py",
+      "retained": "corrected-source/source/.github/scripts/test_native_oci_common_qualification.py",
+      "original_bytes": 11732,
+      "original_sha256": "a9e240b0b9f0574c04e73adfbfea78710a7c2fa36afb2926164259fdf5a0bd35",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/.github/workflows/native-base-image.yml",
+      "retained": "corrected-source/source/.github/workflows/native-base-image.yml",
+      "original_bytes": 17337,
+      "original_sha256": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/.github/workflows/native-common-image.yml",
+      "retained": "corrected-source/source/.github/workflows/native-common-image.yml",
+      "original_bytes": 4510,
+      "original_sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "retained": "corrected-source/source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "original_bytes": 16556,
+      "original_sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "retained": "corrected-source/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "original_bytes": 12652,
+      "original_sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source-before-checks.json",
+      "retained": "corrected-source/source-before-checks.json",
+      "original_bytes": 748,
+      "original_sha256": "c83756e30db7771e1e545f1738e3f5442f188e8a35c5a99e7f156ee54430896a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "corrected-source/source.patch",
+      "retained": "corrected-source/source.patch.gz",
+      "original_bytes": 48674,
+      "original_sha256": "dc659c12a61b1287c54675f0a05be1455c74477b95592d8b91cca4fd8cd728a0",
+      "lossless_gzip": true
+    }
+  ]
+}

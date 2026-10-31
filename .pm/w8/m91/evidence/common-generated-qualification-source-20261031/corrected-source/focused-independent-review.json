@@ -1,0 +1,7 @@
+{
+  "reviewer": "/root/common_review",
+  "scope": "focused corrected Syft identity binding only",
+  "result": "concrete config-vs-manifest defect resolved in source; no additional findings",
+  "reviewed_helper_sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728",
+  "statement": "Same scan emits full Syft JSON+SPDX; imageID/os/architecture and manifest-to-SPDX root checked separately; full raw+gzip custody survives binding failures; no actual new scan/image/runtime claim."
+}

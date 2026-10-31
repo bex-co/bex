@@ -1,0 +1,6 @@
+{
+  "directory": "/private/tmp/bex-w8-common-qualification-source-20261031-k3xlarw2",
+  "source_manifest_sha256": "5a3ea7e19420abf1a1a83ccba4f37d7c73abc983cf2dcc9da3543e39aebf21e1",
+  "manifest_sha256": "9127c130dea6aed4c9cee356ca715fc2402e602087e71fed40756a737b52ef85",
+  "disposition": "NOT_APPROVED: independent reviewer found real Syft manifest/config identity mismatch; first snapshot remains unchanged"
+}
