@@ -467,6 +467,14 @@ func TestOperatorManagedParametersAreRefused(t *testing.T) {
 		// The operator re-projects this every reconcile; a tenant value wins the
 		// merge and would blank the top-queries panel (ADR009).
 		{"pg_stat_statements.track", "none"},
+		// The managed extension allowlist (ADR092 D3): a tenant list would
+		// admit an untrusted extension, or drop pgextwlist altogether.
+		{"extwlist.extensions", "file_fdw,adminpack"},
+		{"extwlist.restrict_to_database_owner", "off"},
+		{"local_preload_libraries", ""},
+		{"session_preload_libraries", "auto_explain"},
+		{"timescaledb.license", "timescale"},
+		{"duckdb.enable_external_access", "on"},
 		// Case and whitespace must not slip past.
 		{"  ARCHIVE_COMMAND  ", "/bin/true"},
 	}

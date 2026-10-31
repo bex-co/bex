@@ -1,6 +1,6 @@
 # w8 · m92 — Make PostGIS usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** todo（2026-10-29 用户决定采用 ADR092；从 t008 开始）
+**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** in progress — t008 implemented and verified locally on 13–18 (2026-10-31); publication via `pg-operand-image.yml`, then t001 pins and rolls out (ADR092 D4)
 
 ## Tasks (in order)
 

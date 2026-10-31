@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -495,13 +496,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"topologyKey":           "kubernetes.io/hostname",
 		}
 	}
-	if p.version != "" {
-		// The CRD enum is closed and database_exports.go carries the reviewed
-		// multi-arch digest for every permitted major. A mutable major tag would
-		// let a registry retag silently replace the tenant's database runtime.
-		if image, ok := cnpgExportImages[p.version]; ok {
-			spec["imageName"] = image
-		}
+	// The CRD enum is closed and every permitted major has a reviewed
+	// multi-arch digest (an adopted bex operand, else the upstream pin). A
+	// mutable major tag would let a registry retag silently replace the
+	// tenant's database runtime.
+	image, bexOperand := cnpgOperandImage(p.version)
+	if image != "" {
+		spec["imageName"] = image
 	}
 	// Bootstrap: restore-to-new (PITR) when recovery is requested and a store is
 	// available; otherwise a fresh, empty database.
@@ -558,9 +559,17 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			pgParams[k] = v
 		}
 	}
+	preload := []any{"pg_stat_statements"}
+	// A bex operand's extension allowlist (ADR092 D3) is only projected with
+	// the image that carries it: on any other image these libraries do not
+	// exist and the server would not start.
+	if bexOperand {
+		maps.Copy(pgParams, pgExtensionParameters(p.version))
+		preload = append(preload, pgExtensionPreloadLibraries...)
+	}
 	spec["postgresql"] = map[string]any{
 		"parameters":               pgParams,
-		"shared_preload_libraries": []any{"pg_stat_statements"},
+		"shared_preload_libraries": preload,
 	}
 	if p.serverTLSSecret != "" {
 		spec["certificates"] = map[string]any{

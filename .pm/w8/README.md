@@ -119,7 +119,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (7 tasks;250m) — **READY（2026-10-29 用户决定：ADR092；下一步：t008 构建镜像和白名单）**
+- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (7 tasks;250m) — **IN PROGRESS (2026-10-31: t008 image + pgextwlist allowlist + operator projection shipped, verified on 13–18 locally; next: published digests, then t001 pin + D4 rollout)**
 
 - [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。 **⚠ 待用户裁定（2026-10-29 `/unblock` 主题 1）：** 用户选择了单一 bex native 公共底，与正在实施的按语言线镜像（选项 C）不一致，见 m91 README 末尾。
 

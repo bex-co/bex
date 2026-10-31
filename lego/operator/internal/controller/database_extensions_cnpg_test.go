@@ -68,49 +68,8 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 		t.Run("PG"+major, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			ns := fmt.Sprintf("bex-vector-it-%s-%d", major, os.Getpid())
-			if err := cl.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}); err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = cl.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}) })
 			const dbname, owner = "orders_prod", "orders_app"
-
-			cluster := &unstructured.Unstructured{}
-			cluster.SetGroupVersionKind(cnpgClusterGVK)
-			cluster.SetName("pg")
-			cluster.SetNamespace(ns)
-			// bex's own projection for a Free database on this major, minus what
-			// only the hosted platform provides (its storage class, plan sizing),
-			// so the pg_stat_statements management, roles and bootstrap are the
-			// real ones.
-			plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
-			spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, version: major, dbname: dbname, owner: owner, namespace: ns})
-			delete(spec["storage"].(map[string]any), "storageClass")
-			delete(spec, "resources")
-			if err := projectUnstructuredSpec(cluster, spec); err != nil {
-				t.Fatal(err)
-			}
-			if err := cl.Create(ctx, cluster); err != nil {
-				t.Fatal(err)
-			}
-			waitFor(t, 5*time.Minute, "the cluster to be ready", func() bool {
-				if err := cl.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil {
-					return false
-				}
-				ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
-				return ready == 1
-			})
-			var app corev1.Secret
-			if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: "pg-app"}, &app); err != nil {
-				t.Fatal(err)
-			}
-			asOwner := func(sql string) (string, error) {
-				cmd := exec.Command("kubectl", "--kubeconfig", kubeconfig, "-n", ns, "exec", "pg-1", "-c", "postgres", "--",
-					"env", "PGPASSWORD="+string(app.Data["password"]), "psql", "-X", "-v", "ON_ERROR_STOP=1", "-At",
-					"-h", "localhost", "-U", owner, "-d", dbname, "-c", sql)
-				out, err := cmd.CombinedOutput()
-				return strings.TrimSpace(string(out)), err
-			}
+			ns, asOwner := startCNPGDatabase(t, cl, kubeconfig, "bex-vector-it", major, dbname, owner, nil)
 			const migration = "CREATE EXTENSION IF NOT EXISTS vector"
 			if out, err := asOwner(migration); err == nil || !strings.Contains(out, "permission denied") {
 				t.Fatalf("before the child, the owner's migration = %v %q, want permission denied", err, out)
@@ -192,6 +151,57 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+// startCNPGDatabase runs bex's own Cluster projection for a Free database on
+// major in a fresh namespace, minus what only the hosted platform provides (its
+// storage class, plan sizing), so the pg_stat_statements management, roles,
+// bootstrap and parameters are the real ones. It waits for the instance and
+// returns the namespace and a psql runner connected as the application owner
+// (SQL goes on stdin, so each statement autocommits and prints its own result
+// on every psql major).
+func startCNPGDatabase(t *testing.T, cl client.Client, kubeconfig, prefix, major, dbname, owner string, parameters map[string]string) (string, func(sql string) (string, error)) {
+	t.Helper()
+	ctx := context.Background()
+	ns := fmt.Sprintf("%s-%s-%d", prefix, major, os.Getpid())
+	if err := cl.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cl.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}) })
+
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	cluster.SetName("pg")
+	cluster.SetNamespace(ns)
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
+	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, version: major, dbname: dbname, owner: owner, namespace: ns, parameters: parameters})
+	delete(spec["storage"].(map[string]any), "storageClass")
+	delete(spec, "resources")
+	if err := projectUnstructuredSpec(cluster, spec); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(ctx, cluster); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 5*time.Minute, "the cluster to be ready", func() bool {
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil {
+			return false
+		}
+		ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
+		return ready == 1
+	})
+	var app corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: "pg-app"}, &app); err != nil {
+		t.Fatal(err)
+	}
+	return ns, func(sql string) (string, error) {
+		cmd := exec.Command("kubectl", "--kubeconfig", kubeconfig, "-n", ns, "exec", "-i", "pg-1", "-c", "postgres", "--",
+			"env", "PGPASSWORD="+string(app.Data["password"]), "PGOPTIONS=-c client_min_messages=warning",
+			"psql", "-X", "-v", "ON_ERROR_STOP=1", "-At", "-h", "localhost", "-U", owner, "-d", dbname)
+		cmd.Stdin = strings.NewReader(sql)
+		out, err := cmd.CombinedOutput()
+		return strings.TrimSpace(string(out)), err
 	}
 }
 
