@@ -1,0 +1,61 @@
+{
+  "reviewed_at": "2026-10-31T10:33:59.486256+00:00",
+  "failed_run": 41178940668,
+  "job": 124478896135,
+  "source_phase": "download-syft action initial raw GitHub installer fetch; before installer/archive/checksum/SBOM",
+  "actual_log_lines": "6261-6278",
+  "observed_attempts": 3,
+  "observed_backoff_seconds": [
+    18,
+    17
+  ],
+  "underlying_cause": "empty error message; cannot distinguish TLS/reset/HTTP from retained log",
+  "action_sha": "3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+  "action_inputs": [
+    "run",
+    "syft-version"
+  ],
+  "action_retry_input": false,
+  "kept_syft_version": "1.51.1",
+  "primary_sources": [
+    "https://github.com/anchore/sbom-action/blob/3ad7283483fc7af8ff2b4ea19663c2d5ca935e26/src/github/SyftGithubAction.ts#L244-L265",
+    "https://github.com/anchore/sbom-action/blob/3ad7283483fc7af8ff2b4ea19663c2d5ca935e26/src/SyftVersion.ts",
+    "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_checksums.txt",
+    "https://api.github.com/repos/anchore/syft/releases/tags/v1.51.1"
+  ],
+  "checksums_and_github_asset_digests_agree": true,
+  "installed_tool_version_changed": false,
+  "repair": "Use fixed official release archive directly; SHA256+size pins, verified HTTPS, four fresh bounded transient retries. Keep five SBOM/sign/CVE commands unchanged.",
+  "local_proof": "Hermetic tests only; no real Syft archive/binary download or installation locally",
+  "files": {
+    "scripts/install-syft.py": {
+      "bytes": 4256,
+      "sha256": "cb602572e8908341976c15b5934fe0e094a1c4d8922c7dc41989c420dee5de9f"
+    },
+    "scripts/test_install_syft.py": {
+      "bytes": 7116,
+      "sha256": "d52249c4370d21d8dd1ba43bb9d8023c69c43fcba71e37e97c55664fdcdc46a3"
+    },
+    ".github/workflows/deploy.yml": {
+      "bytes": 58487,
+      "sha256": "3173667873bf6a0829f98494587463a6b12b019d30b5822eca03240ecb135e04"
+    },
+    ".github/workflows/scripts.yml": {
+      "bytes": 10488,
+      "sha256": "77586771200d37c89caa42508583666b975dcaadde5726cc14fda2707c9b0278"
+    }
+  },
+  "completed_at": "2026-10-31T10:35:35.905182+00:00",
+  "checks": {
+    "hermetic_tests": "12PASS0.007s",
+    "actions_validator": "PASS",
+    "actionlint": "No new diagnostics; exact normalized baseline/current match. Existingqueue:max parser support andSC2016 inunrelateddeployscript remain. scripts.yml clean.",
+    "git_diff_check": "PASS"
+  },
+  "preserved_evidence": {
+    "job.log": "0e38f71a500b4e62dfd4fc717b1c0b3bb0ab799908b805b03a8db2848ff83095",
+    "installer-tests.log": "907602f4964cf8dd1b25d44e72d25ab8986c648c3e5ee85328a477499bde4cae",
+    "actionlint-baseline.log": "19ab77be62f4a90053f111d63ee40141382aeccf19f09238a605db3e565c24b0",
+    "actionlint-current.log": "19ab77be62f4a90053f111d63ee40141382aeccf19f09238a605db3e565c24b0"
+  }
+}

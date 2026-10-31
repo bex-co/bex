@@ -1,0 +1,1 @@
+syntax-check:unexpected key "queue" for "concurrency" section. expected one of "cancel-in-progress", "group";shellcheck:shellcheck reported issue in this script: SC2016:info:18:21: Expressions don't expand in single quotes, use double quotes for that;

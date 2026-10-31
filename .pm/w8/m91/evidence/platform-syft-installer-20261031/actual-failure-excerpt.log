@@ -1,0 +1,18 @@
+2026-10-31T10:17:38.1179657Z ##[group]Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+2026-10-31T10:17:38.1179972Z with:
+2026-10-31T10:17:38.1180099Z   run: download-syft
+2026-10-31T10:17:38.1180226Z env:
+2026-10-31T10:17:38.1180340Z   IMAGE: ghcr.io/bex-co/bex-operator
+2026-10-31T10:17:38.1180528Z   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
+2026-10-31T10:17:38.1180763Z   OPENSANDBOX_IMAGE: ghcr.io/bex-co/opensandbox-server
+2026-10-31T10:17:38.1181601Z   OPENSANDBOX_CONTROLLER_IMAGE: ghcr.io/bex-co/opensandbox-controller
+2026-10-31T10:17:38.1181894Z   OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns-terminalpod
+2026-10-31T10:17:38.1182169Z   AGENT_SANDBOX_IMAGE: ghcr.io/bex-co/bex-agent-sandbox
+2026-10-31T10:17:38.1182475Z   TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
+2026-10-31T10:17:38.1182753Z ##[endgroup]
+2026-10-31T10:17:39.2272642Z 
+2026-10-31T10:17:39.2273145Z Waiting 18 seconds before trying again
+2026-10-31T10:17:58.2372019Z 
+2026-10-31T10:17:58.2372353Z Waiting 17 seconds before trying again
+2026-10-31T10:18:16.2525879Z ##[error]Unable to download the Syft installer from https://raw.githubusercontent.com/anchore/syft/v1.51.1/install.sh: . If this is not a transient network failure, check that 'v1.51.1' is a released version of Syft: https://github.com/anchore/syft/releases
+2026-10-31T10:18:16.2703800Z Post job cleanup.

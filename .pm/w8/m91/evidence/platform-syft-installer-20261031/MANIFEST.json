@@ -1,0 +1,38 @@
+{
+  "root-official-asset-digests.json": {
+    "bytes": 284,
+    "sha256": "d4de46e3f2269d5fc3d05b38bf0f0214fd814d5691b274f9711ffcd77da77ef8"
+  },
+  "repair-review.json": {
+    "bytes": 2787,
+    "sha256": "55b3048e56eade1704732698fb5b63a55c2ca3a4e66608fbbd5a305a11fd47d3"
+  },
+  "installer-tests.log": {
+    "bytes": 2358,
+    "sha256": "907602f4964cf8dd1b25d44e72d25ab8986c648c3e5ee85328a477499bde4cae"
+  },
+  "README.md": {
+    "bytes": 935,
+    "sha256": "795179c42fc3c640c7591dc20af858f5d93059d2df14ae754aa8008a63a8ed25"
+  },
+  "actual-failure-excerpt.log": {
+    "bytes": 1428,
+    "sha256": "27a4e68a860c0e1614796730a39149c0d40db7f4e3a142b5976890ce1a085cd4"
+  },
+  "root-installer-tests.log": {
+    "bytes": 2358,
+    "sha256": "9d9b4923d59c260c643768856111c152a922162839a3a38dc6fe9c6c39dbe93c"
+  },
+  "actionlint-baseline.log": {
+    "bytes": 251,
+    "sha256": "19ab77be62f4a90053f111d63ee40141382aeccf19f09238a605db3e565c24b0"
+  },
+  "actionlint-current.log": {
+    "bytes": 251,
+    "sha256": "19ab77be62f4a90053f111d63ee40141382aeccf19f09238a605db3e565c24b0"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 1029,
+    "sha256": "a646b862740c1ed6b5e743acfb017ca3eb4c416316b3d2f36701ae6164ce628b"
+  }
+}

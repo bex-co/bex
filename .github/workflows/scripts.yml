@@ -61,6 +61,8 @@ jobs:
         run: bash scripts/github-actions-validate.sh
       - name: GitHub Actions guard self-test
         run: bash scripts/github-actions-validate.test.sh
+      - name: Platform Syft install transport and integrity controls
+        run: python3 -B -m unittest scripts/test_install_syft.py -v
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       - name: Kubeconfig fetch mid-roll retry self-test
         run: bash scripts/fetch-app-kubeconfig.test.sh

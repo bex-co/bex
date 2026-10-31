@@ -1,0 +1,15 @@
+{
+  "actualFailureRun": 41178940668,
+  "actualFailureJob": 124478896135,
+  "actualLogSha256": "0e38f71a500b4e62dfd4fc717b1c0b3bb0ab799908b805b03a8db2848ff83095",
+  "rootReview": "Functional review clean; all12 hermetic tests and repository actions validator pass. Root independently matched both archive hash/size pins against official release asset digests. Installer/test changes trigger deploy.",
+  "underlyingDownloadError": "Unknown: action supplied an empty error message; no TLS/HTTP/reset attribution invented.",
+  "sameToolVersion": "1.51.1",
+  "actualNewCIExecution": "unexecuted",
+  "sourceSha256": {
+    ".github/workflows/deploy.yml": "8046263dc96677f962971e7186debf4fa060be3531d55957c1646a8aa9f2fd0e",
+    ".github/workflows/scripts.yml": "77586771200d37c89caa42508583666b975dcaadde5726cc14fda2707c9b0278",
+    "scripts/install-syft.py": "cb602572e8908341976c15b5934fe0e094a1c4d8922c7dc41989c420dee5de9f",
+    "scripts/test_install_syft.py": "d52249c4370d21d8dd1ba43bb9d8023c69c43fcba71e37e97c55664fdcdc46a3"
+  }
+}

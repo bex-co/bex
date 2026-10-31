@@ -37,6 +37,8 @@ on:
       - ".github/workflows/operator-test.yml"
       - ".github/workflows/dashboard-test.yml"
       - ".github/workflows/opensandbox-controller-test.yml"
+      - "scripts/install-syft.py"
+      - "scripts/test_install_syft.py"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"
@@ -299,7 +301,9 @@ jobs:
       # identity is available in the build Job, and admission-time verification is out
       # of scope for this task — see docs/security-review.md §supply-chain.
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      - name: Install reviewed Syft with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-syft.py
       - name: sign images + attest SBOM
         env:
           # One content-addressed ref per line. The loop signs each image keyless
