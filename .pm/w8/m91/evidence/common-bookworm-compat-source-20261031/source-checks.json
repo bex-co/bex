@@ -1,0 +1,116 @@
+[
+  {
+    "name": "common-unit",
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "deploy/native-common",
+      "-p",
+      "*_test.py"
+    ],
+    "at": "2026-10-31T13:48:10.798842+00:00",
+    "seconds": 0.10214404109865427,
+    "actual_exit": 0,
+    "log": "common-unit.log"
+  },
+  {
+    "name": "native-installer-unit",
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "deploy/native-base",
+      "-p",
+      "*_test.py"
+    ],
+    "at": "2026-10-31T13:48:10.901073+00:00",
+    "seconds": 5.414286916842684,
+    "actual_exit": 0,
+    "log": "native-installer-unit.log"
+  },
+  {
+    "name": "publisher-controls",
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      ".github/scripts",
+      "-p",
+      "test_native_oci_*.py"
+    ],
+    "at": "2026-10-31T13:48:16.315430+00:00",
+    "seconds": 22.08006775006652,
+    "actual_exit": 0,
+    "log": "publisher-controls.log"
+  },
+  {
+    "name": "freshness",
+    "command": [
+      "bash",
+      "scripts/build-toolchain-freshness.test.sh"
+    ],
+    "at": "2026-10-31T13:48:38.395640+00:00",
+    "seconds": 1.3513500420376658,
+    "actual_exit": 0,
+    "log": "freshness.log"
+  },
+  {
+    "name": "actions",
+    "command": [
+      "bash",
+      "scripts/github-actions-validate.sh"
+    ],
+    "at": "2026-10-31T13:48:39.747093+00:00",
+    "seconds": 0.8318773750215769,
+    "actual_exit": 0,
+    "log": "actions.log"
+  },
+  {
+    "name": "shell-syntax-node",
+    "command": [
+      "sh",
+      "-n",
+      "deploy/native-base/node-brotli/patch.sh"
+    ],
+    "at": "2026-10-31T13:48:40.579056+00:00",
+    "seconds": 0.0038587499875575304,
+    "actual_exit": 0,
+    "log": "shell-syntax-node.log"
+  },
+  {
+    "name": "shell-syntax-otp",
+    "command": [
+      "sh",
+      "-n",
+      "deploy/native-common/build-otp"
+    ],
+    "at": "2026-10-31T13:48:40.582948+00:00",
+    "seconds": 0.003763499902561307,
+    "actual_exit": 0,
+    "log": "shell-syntax-otp.log"
+  },
+  {
+    "name": "shellcheck",
+    "command": [
+      "shellcheck",
+      "-e",
+      "SC1091",
+      "deploy/native-base/node-brotli/patch.sh",
+      "deploy/native-common/build-otp"
+    ],
+    "at": "2026-10-31T13:48:40.586749+00:00",
+    "seconds": 0.13937954208813608,
+    "actual_exit": 0,
+    "log": "shellcheck.log"
+  }
+]

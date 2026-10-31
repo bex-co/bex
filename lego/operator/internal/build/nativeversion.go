@@ -50,6 +50,14 @@ type NativeChoice struct {
 	otp string
 	// elixirImage is the image an exact Erlang's Elixir is copied from.
 	elixirImage string
+	// Common assembly may take the same runtime from a compatible donor or
+	// cached source stage. Image remains the selected upstream identity.
+	primaryImage  string
+	primaryStage  string
+	elixirVersion string
+	commonOTP     string
+	legacySource  bool
+	runtimeCheck  string
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string

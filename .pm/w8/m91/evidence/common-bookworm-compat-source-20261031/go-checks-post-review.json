@@ -1,0 +1,33 @@
+[
+  {
+    "name": "scoped-go-test-post-review",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "./internal/registry",
+      "./cmd/native-resolve",
+      "-count=1"
+    ],
+    "actual_exit": 0,
+    "seconds": 13.527832749998197,
+    "at": "2026-10-31T14:05:44.722650+00:00",
+    "log": "scoped-go-test-post-review.log"
+  },
+  {
+    "name": "scoped-go-lint-post-review",
+    "command": [
+      "./bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "./internal/registry/...",
+      "./cmd/native-resolve/..."
+    ],
+    "actual_exit": 0,
+    "seconds": 1.2591460840776563,
+    "at": "2026-10-31T14:05:45.982086+00:00",
+    "log": "scoped-go-lint-post-review.log"
+  }
+]

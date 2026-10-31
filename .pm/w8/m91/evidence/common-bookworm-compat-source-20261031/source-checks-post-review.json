@@ -1,0 +1,47 @@
+[
+  {
+    "name": "common-unit-final",
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "deploy/native-common",
+      "-p",
+      "*_test.py",
+      "-v"
+    ],
+    "actual_exit": 0,
+    "seconds": 0.09780895779840648,
+    "at": "2026-10-31T14:07:26.854720+00:00",
+    "log": "common-unit-final.log"
+  },
+  {
+    "name": "shellcheck-final",
+    "command": [
+      "shellcheck",
+      "-e",
+      "SC1091",
+      "deploy/native-base/node-brotli/patch.sh",
+      "deploy/native-common/build-otp"
+    ],
+    "actual_exit": 0,
+    "seconds": 0.10998641699552536,
+    "at": "2026-10-31T14:07:26.964954+00:00",
+    "log": "shellcheck-final.log"
+  },
+  {
+    "name": "shell-syntax-final",
+    "command": [
+      "sh",
+      "-n",
+      "deploy/native-base/node-brotli/patch.sh"
+    ],
+    "actual_exit": 0,
+    "seconds": 0.0050296669360250235,
+    "at": "2026-10-31T14:07:26.970023+00:00",
+    "log": "shell-syntax-final.log"
+  }
+]

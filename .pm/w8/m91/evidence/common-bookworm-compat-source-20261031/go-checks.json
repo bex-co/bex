@@ -1,0 +1,35 @@
+[
+  {
+    "name": "scoped-go-test",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "./internal/registry",
+      "./cmd/native-resolve",
+      "-count=1"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "at": "2026-10-31T13:48:09.641604+00:00",
+    "seconds": 19.02661016699858,
+    "actual_exit": 0,
+    "log": "scoped-go-test.log"
+  },
+  {
+    "name": "scoped-go-lint",
+    "command": [
+      "./bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "./internal/registry/...",
+      "./cmd/native-resolve/..."
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "at": "2026-10-31T13:48:28.668415+00:00",
+    "seconds": 1.38041887502186,
+    "actual_exit": 0,
+    "log": "scoped-go-lint.log"
+  }
+]

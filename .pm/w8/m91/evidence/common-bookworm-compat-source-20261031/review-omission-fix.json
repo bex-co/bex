@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-31T13:55:17.621677+00:00",
+  "kind": "synthetic-source-regression-only",
+  "omitted": "lib/odbc-2.16/priv/bin/odbcserver",
+  "old_complete": true,
+  "new_complete": false,
+  "old_helper_sha256": "28949d989a36b98d9ab955d7713ebcd85c17efa640ac30c725c9a6c65fe7e0e4",
+  "new_helper_sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+  "additional_controls": [
+    "application descriptor",
+    "native driver",
+    "priv resource",
+    "JInterface JAR",
+    "entry type",
+    "executable permissions",
+    "symlink destination"
+  ],
+  "scope": "No actual donor/image/compiler/runtime failure or success inferred."
+}

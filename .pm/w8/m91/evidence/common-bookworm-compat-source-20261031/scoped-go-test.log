@@ -1,0 +1,3 @@
+ok  	github.com/bex-co/bex/lego/operator/internal/build	9.509s
+ok  	github.com/bex-co/bex/lego/operator/internal/registry	3.394s
+ok  	github.com/bex-co/bex/lego/operator/cmd/native-resolve	1.374s

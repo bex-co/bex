@@ -1,0 +1,106 @@
+{
+  "stash_preserved": "804d2c2b3afea3b151615f2a83292a6cb2f84a4a",
+  "rows": [
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5056,
+      "sha256": "96b15e0150988a7d27803ad7636357c83892e2f18d8a693221c1921a576b96cd",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "deploy/native-common/Dockerfile",
+      "bytes": 2460,
+      "sha256": "0d60ba986dcb7e5f352f8b8f8a61e3045d8504569e6c65c2812b417f358ddce3",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "deploy/native-common/Dockerfile.dockerignore",
+      "bytes": 608,
+      "sha256": "5126132bbd9bc9b175e03f1d94f1e23e20146435ed660958e438899e42f9154e",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "deploy/native-common/check-common.py",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "deploy/native-common/common_test.py",
+      "bytes": 4403,
+      "sha256": "875e6359c90755bf6796b068ec99f8d35e6349e5df3b9f3581450e326bea2223",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/go.work.sum",
+      "foreign_left_unchanged": true,
+      "current_equals_stash": false
+    },
+    {
+      "path": "lego/operator/cmd/native-resolve/main_test.go",
+      "bytes": 4472,
+      "sha256": "e2ac4aa66fb8a5f3ad30724ca3d5f915015c69c39775da6a64c542a147a2354a",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/dockerhub.go",
+      "bytes": 10873,
+      "sha256": "0224abff06cc142ed8d13c0a1ea80d6460f829c0072f4fefb215f779ade9b4b1",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "bytes": 15042,
+      "sha256": "e280820c73fd4ebcf45827c2563e85ccfa3a6f5f048750794e06d49f5fe244df",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeexact_test.go",
+      "bytes": 14100,
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 13421,
+      "sha256": "44a3eee12d7e1b00cc5dbe81d5690dadfb5f6ac9533b4dc19dd8243b7c019a6f",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion.go",
+      "bytes": 28833,
+      "sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/original-cases.json",
+      "bytes": 83949,
+      "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/original-cases.py",
+      "bytes": 6019,
+      "sha256": "717d8ba9d0231b07014f8033f06c82136049e458c372ede016d519f7a723fd18",
+      "restored_exact_stash": true
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/provenance.json",
+      "bytes": 20859,
+      "sha256": "6a99ee55a0412100b6c7fa472e093e9b1313b4caeab61ebb853b1861c4739323",
+      "restored_exact_stash": true
+    }
+  ]
+}

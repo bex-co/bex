@@ -1,0 +1,429 @@
+{
+  "files": [
+    {
+      "path": "PM-source-checkpoint-proposal.md",
+      "bytes": 1901,
+      "sha256": "72eb5d912c9abc87e64858f6816cdeb9edc1e09ec60cee0d155907cd6e49edb9"
+    },
+    {
+      "path": "actions.log",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "path": "autostash-recovery-context.json",
+      "bytes": 3728,
+      "sha256": "7cd94a6ef31d4dac48f0bdaa5b5c39a3c36a8abcec57083210bb0902c8dd1526"
+    },
+    {
+      "path": "common-factory-intake-final.json",
+      "bytes": 2856,
+      "sha256": "48454d4f5ecff077d112b1376f9ea013806549301c15746e39f216507e689fbb"
+    },
+    {
+      "path": "common-unit-final.log",
+      "bytes": 1695,
+      "sha256": "e00c848091f5886dcabbd4412a046b4472fb16d0b2aa3591f1c9e77d117e45f6"
+    },
+    {
+      "path": "common-unit-post-review.log",
+      "bytes": 1695,
+      "sha256": "f3fdef1c85b556ba70cdcec1a0c6850456418572e55ecf8f8cbd683803c72577"
+    },
+    {
+      "path": "common-unit.log",
+      "bytes": 182,
+      "sha256": "53c3f9f4ead0cf665b05cd8c47ac509d1f9d4054015d389b372efd3f9298843f"
+    },
+    {
+      "path": "freshness.log",
+      "bytes": 1434,
+      "sha256": "4a39f232f8988e88665d7af2bfe30e1b115dbad2850c87f6439edec84c29a09f"
+    },
+    {
+      "path": "go-checks-post-review.json",
+      "bytes": 736,
+      "sha256": "2b793843aa1f9cca8d0d6ead08ccfec0e6938476ec331d70a1f3c0644881b4c5"
+    },
+    {
+      "path": "go-checks.json",
+      "bytes": 799,
+      "sha256": "aa75143188e71e8cf954ec075dbbe448c5fd94aa678c41b2e9eed9d2b7f75cc1"
+    },
+    {
+      "path": "metadata-evidence/bob-erlang-bookworm.dockerfile",
+      "bytes": 1568,
+      "sha256": "a344b597d9eb8da7619e4e0f77abba586f1952c70050c7ebca689c6913a004e1"
+    },
+    {
+      "path": "metadata-evidence/bob-otp28508-amd64-config.json",
+      "bytes": 1213,
+      "sha256": "bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59"
+    },
+    {
+      "path": "metadata-evidence/bob-otp28508-amd64-manifest.json",
+      "bytes": 867,
+      "sha256": "a3228b0ab096c9327ede59310497da6444f6f19663948a3c2ce455c55e3158e3"
+    },
+    {
+      "path": "metadata-evidence/bob-otp28508-index.json",
+      "bytes": 1607,
+      "sha256": "22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f"
+    },
+    {
+      "path": "metadata-evidence/common-factory-jobs.json",
+      "bytes": 1077,
+      "sha256": "cab4daea88d2e52ca7ffd51e8a3814d4cf40291e0f039dcdc424a2a0ad148a54"
+    },
+    {
+      "path": "metadata-evidence/official-elixir118-amd64-config.json",
+      "bytes": 7567,
+      "sha256": "b2c6aa4e4dc28bc20ec3ff88f7c23dcc199973696ef4cc762aaa5fa7498686a8"
+    },
+    {
+      "path": "metadata-evidence/official-elixir118-amd64-manifest.json",
+      "bytes": 2485,
+      "sha256": "a963c55cdd1b84d1ab5433f55a0baa76aaf79e5954d2a229dc0284111116dd85"
+    },
+    {
+      "path": "metadata-evidence/official-elixir118-index.json",
+      "bytes": 5084,
+      "sha256": "17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351"
+    },
+    {
+      "path": "metadata-evidence/official-elixir120-amd64-config.json",
+      "bytes": 7558,
+      "sha256": "4a1889496c66ecbeb1b254304f6ebb0eb53950671fa4ba2757d42ab9f65a73bf"
+    },
+    {
+      "path": "metadata-evidence/official-elixir120-amd64-manifest.json",
+      "bytes": 2485,
+      "sha256": "47acdc80d7e5fbf6389dbe30d50424199ad2b1bbb6d385f28e15e3a81ea21316"
+    },
+    {
+      "path": "metadata-evidence/official-elixir120-index.json",
+      "bytes": 5084,
+      "sha256": "c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb"
+    },
+    {
+      "path": "metadata-evidence/official-otp280-amd64-config.json",
+      "bytes": 6139,
+      "sha256": "b72ed8534bc08325fde5af8d03c9a4a01d297229e02eab5c16e3518da8fc6b83"
+    },
+    {
+      "path": "metadata-evidence/official-otp280-amd64-manifest.json",
+      "bytes": 2312,
+      "sha256": "450ad7b2d721469d7728605b8f19218ac6b90fe1ae634aaf7c70c271646c8b0f"
+    },
+    {
+      "path": "metadata-evidence/official-otp280-index.json",
+      "bytes": 10232,
+      "sha256": "7f5ef6ecbd63f3b65ac306c4e82f3a294d0a3e3ba03de074590e3b8bf0d2fadd"
+    },
+    {
+      "path": "metadata-evidence/otp-28.0-tags.json",
+      "bytes": 57364,
+      "sha256": "0c532c219498744eff44e87913100500176e5f0503677d491cb3147d32c6fb80"
+    },
+    {
+      "path": "metadata-evidence/otp-28.5.0.8-tags.json",
+      "bytes": 15230,
+      "sha256": "dcb6ed47c09cec53fd79b510b4e91a7e060e6f30a929a385d6f298cdaa6c7305"
+    },
+    {
+      "path": "metadata-evidence/otp-29.1.2-tags.json",
+      "bytes": 15218,
+      "sha256": "b9732dbba0274cdffbb7e105685ee151883a472d15359ae50905359347454b75"
+    },
+    {
+      "path": "native-installer-unit.log",
+      "bytes": 113,
+      "sha256": "8b7593141c4f979362d5b444eeb59957e5faf18aa15575c94827d213e911aa32"
+    },
+    {
+      "path": "owned-paths.json",
+      "bytes": 4874,
+      "sha256": "c969ab565e6575e14cc596974dd5a3944ab0fce68ab60480abf5a304184b0bdf"
+    },
+    {
+      "path": "owned-paths.pre-review.json",
+      "bytes": 4436,
+      "sha256": "c252148cfce140d78d9e1a653e483a25db3cfa4d0094c58cf896a41867fdfcc9"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 1588,
+      "sha256": "7127ece1eb0315a66118b00b37a9a9dfcd0346be224332e8756589c2b6a2fb51"
+    },
+    {
+      "path": "publisher-controls.log",
+      "bytes": 134,
+      "sha256": "a881b1708db79c8da29d2ba78b4f7ecdb0085df037b43b8559904d2dbb90bb96"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 8112,
+      "sha256": "49753bae4e37b78e8c35be7ee5b2d3d51e53549fef5e801c233c82a19ae0d2e3"
+    },
+    {
+      "path": "review-fix-paths.json",
+      "bytes": 562,
+      "sha256": "bab299a991dab84eb497e507a19a05376b5d3d8e96a4da2288a0b2d7fa93136a"
+    },
+    {
+      "path": "review-omission-fix.json",
+      "bytes": 656,
+      "sha256": "f2b5e9e9810e7c2b7473846c4459ad019670e95a85f7a60e0c518e2420efb3e2"
+    },
+    {
+      "path": "scoped-go-lint-post-review.log",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    {
+      "path": "scoped-go-lint.log",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    {
+      "path": "scoped-go-test-post-review.log",
+      "bytes": 196,
+      "sha256": "aada9e8b0c1be3c7217e19c536c0886f5f1f953706278f4db2e9e67e772d7b0d"
+    },
+    {
+      "path": "scoped-go-test.log",
+      "bytes": 196,
+      "sha256": "225bec05e8840ba45612fd3b0e91ed01698a395b07e0a1f8b5f1874460343a34"
+    },
+    {
+      "path": "shell-syntax-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "shell-syntax-node.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "shell-syntax-otp.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "shellcheck-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "shellcheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "source/deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5358,
+      "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8"
+    },
+    {
+      "path": "source/deploy/native-common/Dockerfile",
+      "bytes": 2460,
+      "sha256": "0d60ba986dcb7e5f352f8b8f8a61e3045d8504569e6c65c2812b417f358ddce3"
+    },
+    {
+      "path": "source/deploy/native-common/Dockerfile.dockerignore",
+      "bytes": 608,
+      "sha256": "5126132bbd9bc9b175e03f1d94f1e23e20146435ed660958e438899e42f9154e"
+    },
+    {
+      "path": "source/deploy/native-common/build-otp",
+      "bytes": 1983,
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b"
+    },
+    {
+      "path": "source/deploy/native-common/check-common.py",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6"
+    },
+    {
+      "path": "source/deploy/native-common/common_test.py",
+      "bytes": 6051,
+      "sha256": "dab13776b01e12f5841b73eb9cc70f7c3a5746bfd61e9dade61ce08987c41427"
+    },
+    {
+      "path": "source/deploy/native-common/legacy-libs.preferences",
+      "bytes": 124,
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e"
+    },
+    {
+      "path": "source/deploy/native-common/legacy-libs.sources",
+      "bytes": 433,
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1"
+    },
+    {
+      "path": "source/deploy/native-common/otp-features.py",
+      "bytes": 1853,
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2"
+    },
+    {
+      "path": "source/lego/operator/cmd/native-resolve/main_test.go",
+      "bytes": 4472,
+      "sha256": "e2ac4aa66fb8a5f3ad30724ca3d5f915015c69c39775da6a64c542a147a2354a"
+    },
+    {
+      "path": "source/lego/operator/internal/build/dockerhub.go",
+      "bytes": 10873,
+      "sha256": "0224abff06cc142ed8d13c0a1ea80d6460f829c0072f4fefb215f779ade9b4b1"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativecommon.go",
+      "bytes": 7218,
+      "sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativecommon_erlang.go",
+      "bytes": 6162,
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativecommon_erlang_test.go",
+      "bytes": 7354,
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativecommon_test.go",
+      "bytes": 17816,
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeexact_test.go",
+      "bytes": 14100,
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeversion.go",
+      "bytes": 28833,
+      "sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b"
+    },
+    {
+      "path": "source-checks-post-review.json",
+      "bytes": 989,
+      "sha256": "310b253c1d7dc15d944f7c01201557473d8232df1251c022d77e6790814fab50"
+    },
+    {
+      "path": "source-checks.json",
+      "bytes": 2429,
+      "sha256": "337f8398e2c5bcc50778d5710e9e9583211c56426dec580a09936b06bb4bafc8"
+    },
+    {
+      "path": "source-pre-review/deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5056,
+      "sha256": "96b15e0150988a7d27803ad7636357c83892e2f18d8a693221c1921a576b96cd"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/Dockerfile",
+      "bytes": 2460,
+      "sha256": "0d60ba986dcb7e5f352f8b8f8a61e3045d8504569e6c65c2812b417f358ddce3"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/Dockerfile.dockerignore",
+      "bytes": 608,
+      "sha256": "5126132bbd9bc9b175e03f1d94f1e23e20146435ed660958e438899e42f9154e"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/__pycache__/otp-features.cpython-314.pyc",
+      "bytes": 1979,
+      "sha256": "f12740cfbc5e99b4c30407ed3e0b214fea20183c5bf63ee6a0126558fea57b97"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/build-otp",
+      "bytes": 1983,
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/check-common.py",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/common_test.py",
+      "bytes": 4403,
+      "sha256": "875e6359c90755bf6796b068ec99f8d35e6349e5df3b9f3581450e326bea2223"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/legacy-libs.preferences",
+      "bytes": 124,
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/legacy-libs.sources",
+      "bytes": 433,
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1"
+    },
+    {
+      "path": "source-pre-review/deploy/native-common/otp-features.py",
+      "bytes": 940,
+      "sha256": "28949d989a36b98d9ab955d7713ebcd85c17efa640ac30c725c9a6c65fe7e0e4"
+    },
+    {
+      "path": "source-pre-review/lego/operator/cmd/native-resolve/main_test.go",
+      "bytes": 4472,
+      "sha256": "e2ac4aa66fb8a5f3ad30724ca3d5f915015c69c39775da6a64c542a147a2354a"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/dockerhub.go",
+      "bytes": 10873,
+      "sha256": "0224abff06cc142ed8d13c0a1ea80d6460f829c0072f4fefb215f779ade9b4b1"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativecommon.go",
+      "bytes": 5966,
+      "sha256": "044dc03aefb1d045d291f87b465b0dc016231577f5d044e73b7fd4db205ab77c"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativecommon_erlang.go",
+      "bytes": 6162,
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativecommon_erlang_test.go",
+      "bytes": 7354,
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativecommon_test.go",
+      "bytes": 15042,
+      "sha256": "e280820c73fd4ebcf45827c2563e85ccfa3a6f5f048750794e06d49f5fe244df"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativeexact_test.go",
+      "bytes": 14100,
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+    },
+    {
+      "path": "source-pre-review/lego/operator/internal/build/nativeversion.go",
+      "bytes": 28833,
+      "sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b"
+    }
+  ]
+}

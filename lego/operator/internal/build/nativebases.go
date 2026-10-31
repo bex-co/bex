@@ -35,6 +35,12 @@ var nativeSuppliedBases = map[string]string{}
 // the common foundation. Publication and partial-family proof never adopt it.
 var nativeCommonBase string
 
+// nativeRuntimeArtifacts reuses approved runtime TREES, never their final
+// system base. Keys are exact selected upstream identities; a line artifact
+// must not substitute a newer patch for another exact request. Keep empty
+// until each actual artifact and generated common image have been reviewed.
+var nativeRuntimeArtifacts = map[string]string{}
+
 var nativeImageEnvName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var nativeDebianHistory = regexp.MustCompile(`^# debian\.sh --arch '(?:amd64|arm64)' out/ '(bullseye|bookworm|trixie)' '@[0-9]+'$`)
@@ -137,11 +143,7 @@ func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime str
 		// The common image has no primary, including when selection kept the
 		// reviewed default. Never substitute another language patch because its
 		// environment could not be read; preserve identity and report the error.
-		choice.imageEnv, _, err = exact.ImageMetadata(ctx, choice.Image)
-		if err != nil {
-			return NativeChoice{}, fmt.Errorf("read selected native primary environment: %w", err)
-		}
-		return choice, nil
+		return pinCommonNativePrimary(ctx, exact, runtime, choice)
 	}
 	if len(nativeSuppliedBases) == 0 || choice.Image == reviewed.Image {
 		return choice, nil
@@ -211,11 +213,9 @@ func transplantNativePrimary(dockerfile, reviewedImage, image string, choice Nat
 	// patch's modules or extension files cannot survive beside the requested
 	// interpreter. Debian packages and supplied tools live outside /usr/local.
 	var lines strings.Builder
-	lines.WriteString("COPY --link --from=" + choice.Image + " /usr/lib/os-release /opt/bex-primary-os-release\n" +
-		"RUN . /opt/bex-primary-os-release && [ -n \"$VERSION_CODENAME\" ] && primary_os=\"$VERSION_CODENAME\" && . /etc/os-release && [ -n \"$VERSION_CODENAME\" ] && " +
-		"{ [ \"$primary_os\" = \"$VERSION_CODENAME\" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && " +
-		"rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local\n" +
-		"COPY --link --from=" + choice.Image + " /usr/local/ /usr/local/\n" +
+	primary := cmp.Or(choice.primaryImage, choice.Image)
+	lines.WriteString(nativeCommonSourceGuard(primary, choice.legacySource, true) +
+		"COPY --link --from=" + primary + " /usr/local/ /usr/local/\n" + commonRuntimeProvenance(choice) +
 		"RUN --network=none /sbin/ldconfig\n")
 	escaper := strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `\$`)
 	for _, item := range choice.imageEnv {
@@ -226,8 +226,25 @@ func transplantNativePrimary(dockerfile, reviewedImage, image string, choice Nat
 		escaped := escaper.Replace(value)
 		fmt.Fprintf(&lines, "ENV %s=\"%s\"\n", key, escaped)
 	}
+	lines.WriteString(choice.runtimeCheck)
 	if strings.HasPrefix(cmp.Or(choice.upstream, reviewedImage), "python:") {
 		lines.WriteString("RUN --network=none /usr/bin/bex-native-python-tools\n")
 	}
-	return afterNativeBase(out, image, lines.String())
+	lines.WriteString(commonErlangToolLines(choice))
+	out, err = afterNativeBase(out, image, lines.String())
+	if err == nil {
+		out, err = prependNativeRuntimeStage(out, image, choice.primaryStage)
+	}
+	return out, err
+}
+
+func prependNativeRuntimeStage(dockerfile, finalImage, stage string) (string, error) {
+	if stage == "" {
+		return dockerfile, nil
+	}
+	from := "\nFROM " + finalImage + "\n"
+	if strings.Count(dockerfile, from) != 1 {
+		return "", fmt.Errorf("generated runtime stage lacks its unique final base")
+	}
+	return strings.Replace(dockerfile, from, "\n"+stage+from, 1), nil
 }

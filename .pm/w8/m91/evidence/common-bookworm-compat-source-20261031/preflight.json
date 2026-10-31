@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-31T13:46:53.764742+00:00",
+  "git_head": "9a3366f7ed8d4080d53f706a80137edb14aaeba0",
+  "free_bytes": 3895078912,
+  "owned_count": 19,
+  "owned_bytes": 139636,
+  "all12tracked_exact_recovery_receipt": true,
+  "external_context": [
+    {
+      "path": "lego/go.work.sum",
+      "sha256": "b3649e2596f4e388b4ddba9923cf135e0472619974cec0eaaadcc5e2432cc5c1",
+      "ownership": "FOREIGN, fingerprint only, never copied or modified by this phase2 task"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "sha256": "44a3eee12d7e1b00cc5dbe81d5690dadfb5f6ac9533b4dc19dd8243b7c019a6f",
+      "ownership": "FOREIGN, fingerprint only, never copied or modified by this phase2 task"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/original-cases.json",
+      "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+      "ownership": "FOREIGN, fingerprint only, never copied or modified by this phase2 task"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/original-cases.py",
+      "sha256": "717d8ba9d0231b07014f8033f06c82136049e458c372ede016d519f7a723fd18",
+      "ownership": "FOREIGN, fingerprint only, never copied or modified by this phase2 task"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-utilities/provenance.json",
+      "sha256": "6a99ee55a0412100b6c7fa472e093e9b1313b4caeab61ebb853b1861c4739323",
+      "ownership": "FOREIGN, fingerprint only, never copied or modified by this phase2 task"
+    }
+  ]
+}

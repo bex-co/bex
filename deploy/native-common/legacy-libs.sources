@@ -1,0 +1,14 @@
+# Frozen compatibility packages with distinct SONAMEs; never replace Bookworm libc.
+Types: deb
+URIs: https://archive.debian.org/debian
+Suites: bullseye
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+Check-Valid-Until: no
+
+Types: deb
+URIs: https://archive.debian.org/debian-security
+Suites: bullseye-security
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+Check-Valid-Until: no

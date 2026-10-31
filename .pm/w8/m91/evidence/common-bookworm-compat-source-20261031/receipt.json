@@ -1,0 +1,240 @@
+{
+  "at": "2026-10-31T14:08:26.578094+00:00",
+  "kind": "common-Bookworm-phase2-SOURCE-ONLY",
+  "source_files": 19,
+  "source_bytes": 146525,
+  "owned_manifest": "owned-paths.json",
+  "owned_manifest_sha256": "c969ab565e6575e14cc596974dd5a3944ab0fce68ab60480abf5a304184b0bdf",
+  "all_current_source_matches_frozen": true,
+  "root_replay_owned_paths_excluded": true,
+  "go_work_sum_excluded": true,
+  "scope": [
+    "Same common final base for all27 existing reviewed line selections, preserving exact/date defaults and source environment.",
+    "Same selected OTP on Bookworm: strict exact donor/date/digest/root metadata and cached same-release source build; selected Elixir BEAM tree plus rebar/rebar3 retained.",
+    "Complete installed OTP reference payload/type/exec/link inventory forces source build on missing native helpers, application descriptors, resources or JInterface artifacts; bytes need not equal across rebuilds.",
+    "Genuine signed frozen-archive libssl1.1/libffi7 coinstallation, APT limited to those distinct-SONAME packages, removed archive config; Bookworm libc/current development packages retained by intended source policy.",
+    "Exact EOL Node source/Brotli repair reuses existing script; bounded official exact SHASUMS metadata, actual dependency-family preservation, and optional exact approved runtime TREE reuse without C final-base adoption.",
+    "Reviewed Python3.9 Bookworm is a build-only Node compiler input; explicit compatible configure and separate scratch runtime export prevent adding Python to tenant runtime.",
+    "Common-mode exact Node/Ruby companion pinning, matching Node headers, source guards, offline linker/Python hooks before companions/authored commands."
+  ],
+  "checks": {
+    "scoped_go": [
+      {
+        "name": "scoped-go-test-post-review",
+        "command": [
+          "go",
+          "test",
+          "-p",
+          "1",
+          "./internal/build",
+          "./internal/registry",
+          "./cmd/native-resolve",
+          "-count=1"
+        ],
+        "actual_exit": 0,
+        "seconds": 13.527832749998197,
+        "at": "2026-10-31T14:05:44.722650+00:00",
+        "log": "scoped-go-test-post-review.log"
+      },
+      {
+        "name": "scoped-go-lint-post-review",
+        "command": [
+          "./bin/golangci-lint",
+          "run",
+          "./internal/build/...",
+          "./internal/registry/...",
+          "./cmd/native-resolve/..."
+        ],
+        "actual_exit": 0,
+        "seconds": 1.2591460840776563,
+        "at": "2026-10-31T14:05:45.982086+00:00",
+        "log": "scoped-go-lint-post-review.log"
+      }
+    ],
+    "source_regressions": [
+      {
+        "name": "common-unit-final",
+        "command": [
+          "python3",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "deploy/native-common",
+          "-p",
+          "*_test.py",
+          "-v"
+        ],
+        "actual_exit": 0,
+        "seconds": 0.09780895779840648,
+        "at": "2026-10-31T14:07:26.854720+00:00",
+        "log": "common-unit-final.log"
+      },
+      {
+        "name": "shellcheck-final",
+        "command": [
+          "shellcheck",
+          "-e",
+          "SC1091",
+          "deploy/native-base/node-brotli/patch.sh",
+          "deploy/native-common/build-otp"
+        ],
+        "actual_exit": 0,
+        "seconds": 0.10998641699552536,
+        "at": "2026-10-31T14:07:26.964954+00:00",
+        "log": "shellcheck-final.log"
+      },
+      {
+        "name": "shell-syntax-final",
+        "command": [
+          "sh",
+          "-n",
+          "deploy/native-base/node-brotli/patch.sh"
+        ],
+        "actual_exit": 0,
+        "seconds": 0.0050296669360250235,
+        "at": "2026-10-31T14:07:26.970023+00:00",
+        "log": "shell-syntax-final.log"
+      }
+    ],
+    "unaffected_source_controls": [
+      {
+        "name": "common-unit",
+        "command": [
+          "python3",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "deploy/native-common",
+          "-p",
+          "*_test.py"
+        ],
+        "at": "2026-10-31T13:48:10.798842+00:00",
+        "seconds": 0.10214404109865427,
+        "actual_exit": 0,
+        "log": "common-unit.log"
+      },
+      {
+        "name": "native-installer-unit",
+        "command": [
+          "python3",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "deploy/native-base",
+          "-p",
+          "*_test.py"
+        ],
+        "at": "2026-10-31T13:48:10.901073+00:00",
+        "seconds": 5.414286916842684,
+        "actual_exit": 0,
+        "log": "native-installer-unit.log"
+      },
+      {
+        "name": "publisher-controls",
+        "command": [
+          "python3",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          ".github/scripts",
+          "-p",
+          "test_native_oci_*.py"
+        ],
+        "at": "2026-10-31T13:48:16.315430+00:00",
+        "seconds": 22.08006775006652,
+        "actual_exit": 0,
+        "log": "publisher-controls.log"
+      },
+      {
+        "name": "freshness",
+        "command": [
+          "bash",
+          "scripts/build-toolchain-freshness.test.sh"
+        ],
+        "at": "2026-10-31T13:48:38.395640+00:00",
+        "seconds": 1.3513500420376658,
+        "actual_exit": 0,
+        "log": "freshness.log"
+      },
+      {
+        "name": "actions",
+        "command": [
+          "bash",
+          "scripts/github-actions-validate.sh"
+        ],
+        "at": "2026-10-31T13:48:39.747093+00:00",
+        "seconds": 0.8318773750215769,
+        "actual_exit": 0,
+        "log": "actions.log"
+      },
+      {
+        "name": "shell-syntax-node",
+        "command": [
+          "sh",
+          "-n",
+          "deploy/native-base/node-brotli/patch.sh"
+        ],
+        "at": "2026-10-31T13:48:40.579056+00:00",
+        "seconds": 0.0038587499875575304,
+        "actual_exit": 0,
+        "log": "shell-syntax-node.log"
+      },
+      {
+        "name": "shell-syntax-otp",
+        "command": [
+          "sh",
+          "-n",
+          "deploy/native-common/build-otp"
+        ],
+        "at": "2026-10-31T13:48:40.582948+00:00",
+        "seconds": 0.003763499902561307,
+        "actual_exit": 0,
+        "log": "shell-syntax-otp.log"
+      },
+      {
+        "name": "shellcheck",
+        "command": [
+          "shellcheck",
+          "-e",
+          "SC1091",
+          "deploy/native-base/node-brotli/patch.sh",
+          "deploy/native-common/build-otp"
+        ],
+        "at": "2026-10-31T13:48:40.586749+00:00",
+        "seconds": 0.13937954208813608,
+        "actual_exit": 0,
+        "log": "shellcheck.log"
+      }
+    ]
+  },
+  "review_history": [
+    "review-omission-fix.json records actual synthetic oldTrue\u2192newFalse; no actual donor failure inferred.",
+    "Source-only Node configure failure confirmed from upstream14.21.3/16.0.0 contract; fixes tested with default14.21.3 and reachable exact14.21.2 recipe controls. No16.0.0-bookworm reachability claimed.",
+    "Pre-review exact19source snapshots and command outputs retained under source-pre-review/ and owned-paths.pre-review.json."
+  ],
+  "production_state": {
+    "nativeCommonBase": "EMPTY",
+    "nativeRuntimeArtifacts": "EMPTY",
+    "nativeSuppliedBases": "EMPTY",
+    "artifact_pin_changes": false,
+    "CI_mutations": false,
+    "Docker_or_native_runtime_compiler_execution": false
+  },
+  "UNEXECUTED": [
+    "Actual Debian compatibility-package coinstallation and resulting full package findings.",
+    "Actual Node/OTP source compiler builds and unchanged runtime/version/ABI/loader/native-extension behavior.",
+    "Botharchitecture generated images and full original28program/data/command replay.",
+    "Generated exact-default Python3.14.8 actual SBOM and hosted DoD.",
+    "Whole-operator/full-four-module latest-phase2 gates (source checks here are scoped); priorphase1 fulltest is historical, not promoted to this source."
+  ],
+  "free_bytes": 3743731712,
+  "git_head": "9a3366f7ed8d4080d53f706a80137edb14aaeba0"
+}

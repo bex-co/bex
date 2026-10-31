@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:b72ed8534bc08325fde5af8d03c9a4a01d297229e02eab5c16e3518da8fc6b83",
+    "size": 6139
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:0c01110621e0ec1eded421406c9f117f7ae5486c8f7b0a0d1a37cc7bc9317226",
+      "size": 48494272
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:3b1eb73e993990490aa137c00e60ff4ca9d1715bafb8e888dbb0986275edb13f",
+      "size": 24015708
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:b1b8a0660a31403a35d70b276c3c86b1200b8683e83cd77a92ec98744017684a",
+      "size": 64399794
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:48b8862a18fa961ebfbac8484877dd4894e96ee88177d8c4f1f54d9727262b7d",
+      "size": 211370316
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:6b5fd836891b926769f834a88bf7c7be1a5117a9c67271b83114f05937dd60d5",
+      "size": 274143383
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:c7b185a3932f2986924d8dfa7b48a24d369c5a3b164b2ca3f6033efba487bd4e",
+      "size": 191398
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:d80ae5d268a8db6bc022c979831c46fad677367e9534dbf4774784b8736e7c18",
+      "size": 816640
+    }
+  ],
+  "annotations": {
+    "com.docker.official-images.bashbrew.arch": "amd64",
+    "org.opencontainers.image.base.digest": "sha256:4c37ab5f6f0d007c4d897ee58ae3abd40dbdf6ad8d18d9b347cf32e072b57607",
+    "org.opencontainers.image.base.name": "buildpack-deps:bookworm",
+    "org.opencontainers.image.created": "2025-05-22T12:07:47Z",
+    "org.opencontainers.image.revision": "45cb51bc860ee36d497cebc379bf31c2e078710d",
+    "org.opencontainers.image.source": "https://github.com/erlang/docker-erlang-otp.git#45cb51bc860ee36d497cebc379bf31c2e078710d:28",
+    "org.opencontainers.image.url": "https://hub.docker.com/_/erlang",
+    "org.opencontainers.image.version": "28.0.0.0"
+  }
+}

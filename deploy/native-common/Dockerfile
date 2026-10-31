@@ -18,15 +18,21 @@ COPY native-base/python-tools.json native-base/fetch-python-tools.py native-base
 COPY native-base/bex-native-python-tools /usr/bin/
 COPY native-base/install.sh /tmp/bex-native-install.sh
 COPY native-base/patch-system-brotli.sh /tmp/bex-patch-system-brotli.sh
+COPY native-common/legacy-libs.sources /etc/apt/sources.list.d/bex-native-legacy.sources
+COPY native-common/legacy-libs.preferences /etc/apt/preferences.d/bex-native-legacy
 # Language images previously supplied these dependencies themselves. Keep the
 # matching Bookworm libraries/headers in the shared layer, including OTP's
 # optional native applications rather than silently dropping them.
 RUN chmod 755 /usr/bin/tsc /usr/bin/webpack /usr/bin/bex-native-python-tools \
   && sh /tmp/bex-native-install.sh \
     libbluetooth-dev tk-dev uuid-dev libzstd-dev libjemalloc-dev \
-    unixodbc-dev libsctp-dev libwxgtk3.2-dev libwxgtk-webview3.2-dev \
+    unixodbc-dev libsctp-dev libwxgtk3.2-dev libwxgtk-webview3.2-dev libssl1.1 libffi7 \
   && /usr/bin/python3 /opt/bex/python-tools/fetch-python-tools.py \
-  && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh
+  && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh \
+    /etc/apt/sources.list.d/bex-native-legacy.sources /etc/apt/preferences.d/bex-native-legacy
 
 COPY native-common/check-common.py /usr/share/bex-native-common/check-common.py
+COPY --chmod=755 native-common/build-otp /usr/libexec/bex-native/build-otp
+COPY native-common/otp-features.py /usr/libexec/bex-native/otp-features.py
+COPY --chmod=755 native-base/node-brotli/patch.sh /usr/libexec/bex-native/build-node
 RUN --network=none /usr/bin/python3 /usr/share/bex-native-common/check-common.py

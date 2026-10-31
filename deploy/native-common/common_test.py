@@ -20,9 +20,59 @@ def load(name, path):
 
 common = load("native_common_matrix", HERE / "matrix.py")
 checks = load("native_common_checks", HERE / "check-common.py")
+otp = load("native_otp_features", HERE / "otp-features.py")
 
 
 class CommonImageTests(unittest.TestCase):
+    def test_otp_donor_retains_complete_installed_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reference, target = root / "reference", root / "target"
+            names = ("lib/odbc-2.16/ebin/odbc.beam", "usr/include/erl_nif.h",
+                     "lib/odbc-2.16/priv/bin/odbcserver", "lib/odbc-2.16/ebin/odbc.app",
+                     "lib/wx-2.5/priv/wxe_driver.so", "lib/wx-2.5/priv/resource.dat",
+                     "lib/jinterface-1.0/priv/OtpErlang.jar")
+            for name in names:
+                for tree in (reference, target):
+                    path = tree / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"source-only reference" if tree == reference else b"different Bookworm build bytes")
+                    if name.endswith("odbcserver"):
+                        path.chmod(0o755)
+            self.assertTrue(otp.complete(reference, target))
+            for name in names[2:]:
+                with self.subTest(omitted=name):
+                    path = target / name
+                    data, mode = path.read_bytes(), path.stat().st_mode & 0o777
+                    path.unlink()
+                    self.assertFalse(otp.complete(reference, target))
+                    path.write_bytes(data)
+                    path.chmod(mode)
+            empty = root / "empty"
+            empty.mkdir()
+            with self.assertRaises(ValueError):
+                otp.complete(empty, target)
+
+    def test_otp_payload_preserves_types_executable_bits_and_link_destinations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reference, target = root / "reference", root / "target"
+            for tree in (reference, target):
+                tree.mkdir()
+                (tree / "helper").write_bytes(b"source-only helper")
+                (tree / "helper").chmod(0o755)
+                (tree / "helper-link").symlink_to("helper")
+            self.assertTrue(otp.complete(reference, target))
+            (target / "helper").chmod(0o644)
+            self.assertFalse(otp.complete(reference, target))
+            (target / "helper").chmod(0o755)
+            (target / "helper-link").unlink()
+            (target / "helper-link").symlink_to("other")
+            self.assertFalse(otp.complete(reference, target))
+            (target / "helper-link").unlink()
+            (target / "helper-link").write_bytes(b"not a symlink")
+            self.assertFalse(otp.complete(reference, target))
+
     def test_real_cli_supplies_one_common_row_and_reviewed_base(self):
         result = subprocess.run(["python3", str(HERE / "matrix.py")], check=True, capture_output=True)
         rows = json.loads(result.stdout)["include"]
