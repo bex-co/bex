@@ -204,8 +204,16 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	// A pod the workspace quota refuses never exists, so port discovery would
 	// wait on it until the deadline; name the quota instead, as the ordinary
 	// rollout path does.
+	//
+	// Likewise a candidate that crash-loops, cannot resolve its config, or is
+	// stuck unscheduled never reaches Running, so "waiting for the container"
+	// would stand until the deadline: report the same diagnosis the
+	// configured-port path does (w4/437). A failing health check means nothing
+	// before a port is chosen, so it keeps the discovery hint.
 	if quotaReason, quotaMessage := r.rolloutQuotaBlockMessage(ctx, dep); quotaMessage != "" {
 		reason, message = quotaReason, quotaMessage
+	} else if stallReason, stallMessage := r.stuckPodMessage(ctx, dep, port); stallMessage != "" && stallReason != reasonHealthCheckFailing {
+		reason, message = stallReason, stallMessage
 	}
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: message, ObservedGeneration: app.Generation})
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
