@@ -33,8 +33,10 @@ import (
 	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -604,5 +606,50 @@ func TestGenerateBlueprintExportsPendingDomain(t *testing.T) {
 		if action.Operation != BlueprintPlanNoop {
 			t.Errorf("action for %s = %s, want noop (pending domains must not re-plan as update)", action.Name, action.Operation)
 		}
+	}
+}
+
+func TestGenerateBlueprintExportsPublicRegionWhenConfigured(t *testing.T) {
+	for _, tc := range []struct{ placement, public string }{{"fsn1", "frankfurt"}, {"", ""}} {
+		t.Run("placement="+tc.placement, func(t *testing.T) {
+			svc := generateFixtureService()
+			svc.Metadata = resourcemeta.Config{Region: tc.placement}
+			static := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "static", Namespace: "default"},
+				Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/acme/static", Runtime: "static", BuildCommand: "make build", PublishPath: "dist"},
+			}
+			if err := svc.Client.Create(context.Background(), static); err != nil {
+				t.Fatal(err)
+			}
+			out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
+				ServiceIDs: []string{"web", "static"}, PostgresIDs: []string{"dpg-abc123"}, KeyValueIDs: []string{"red-xyz789"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var manifest struct {
+				Services  []map[string]any `json:"services"`
+				Databases []map[string]any `json:"databases"`
+			}
+			if err := yaml.Unmarshal([]byte(out.Manifest), &manifest); err != nil {
+				t.Fatal(err)
+			}
+			if len(manifest.Services) != 3 || len(manifest.Databases) != 1 {
+				t.Fatalf("missing selected resources: %+v", manifest)
+			}
+			for _, entry := range append(manifest.Services, manifest.Databases...) {
+				got, present := entry["region"]
+				if tc.public == "" || entry["runtime"] == "static" {
+					if present {
+						t.Errorf("%s exported an unavailable/static region %v", entry["name"], got)
+					}
+				} else if !present || got != tc.public {
+					t.Errorf("%s region = %v (present=%v), want %s", entry["name"], got, present, tc.public)
+				}
+			}
+			if svc.Metadata.PlatformRegion() != tc.placement {
+				t.Fatal("export mutated internal placement")
+			}
+		})
 	}
 }

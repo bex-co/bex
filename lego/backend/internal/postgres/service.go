@@ -607,7 +607,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 // return the enriched shape through GraphQL and MCP as well as REST.
 func (s *Service) view(d *appv1alpha1.Database) PostgresView {
 	v := pgView(d)
-	v.Region = s.Metadata.PlatformRegion()
+	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, v.ID)
 	return v
 }

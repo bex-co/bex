@@ -73,8 +73,8 @@ func TestGraphQLKeyValueMetadataParity(t *testing.T) {
 		t.Fatalf("GraphQL keyValue nil: %#v", res.Data)
 	}
 
-	if gql["region"] != "fsn1" {
-		t.Errorf("GraphQL region = %v, want fsn1", gql["region"])
+	if gql["region"] != "frankfurt" {
+		t.Errorf("GraphQL region = %v, want frankfurt", gql["region"])
 	}
 	if du, _ := gql["dashboardUrl"].(string); du == "" {
 		t.Errorf("GraphQL dashboardUrl missing or empty")
@@ -110,8 +110,8 @@ func TestMCPKeyValueMetadataParity(t *testing.T) {
 	defer cleanup()
 	got := call("get_key_value", map[string]any{"keyValueId": id})
 
-	if got["region"] != "fsn1" {
-		t.Errorf("MCP region = %v, want fsn1", got["region"])
+	if got["region"] != "frankfurt" {
+		t.Errorf("MCP region = %v, want frankfurt", got["region"])
 	}
 	if du, _ := got["dashboardUrl"].(string); du == "" {
 		t.Errorf("MCP dashboardUrl missing or empty")

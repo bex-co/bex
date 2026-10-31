@@ -39,6 +39,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -203,8 +204,13 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		}
 		services = append(services, entry)
 	}
+	region := resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	for _, kv := range keyValues {
-		services = append(services, generateKeyValueEntry(kv))
+		entry := generateKeyValueEntry(kv)
+		if region != "" {
+			entry["region"] = region
+		}
+		services = append(services, entry)
 	}
 
 	doc := map[string]any{}
@@ -214,7 +220,11 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	if len(databases) > 0 {
 		var out []map[string]any
 		for _, d := range databases {
-			out = append(out, generateDatabaseEntry(d))
+			entry := generateDatabaseEntry(d)
+			if region != "" {
+				entry["region"] = region
+			}
+			out = append(out, entry)
 		}
 		doc["databases"] = out
 	}
@@ -328,6 +338,9 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		"type": blueprintTypeSpelling[svcType],
 	}
 	static := svcType == appv1alpha1.TypeStaticSite
+	if region := resourcemeta.RenderRegion(s.Metadata.PlatformRegion()); !static && region != "" {
+		entry["region"] = region
+	}
 
 	// The read surfaces' runtime (effectiveRuntime), not the raw spec field:
 	// a Dockerfile build commonly leaves spec.runtime empty and says so through

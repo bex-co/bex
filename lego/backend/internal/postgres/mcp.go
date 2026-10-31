@@ -59,7 +59,7 @@ type createPostgresArgs struct {
 	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
 	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
 	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb (high availability needs at least 1 CPU: 1c-2g, pro-4gb or basic-4gb)"`
-	Region        string `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION) that readback reports. Any other value is refused"`
+	Region        string `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION); readback reports its public Render region alias. Any other value is refused"`
 	// Version is a number on Render's MCP server (w5/m145); bex also keeps
 	// accepting the string form.
 	Version any `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (a number, as Render's MCP server sends; \"16\" also accepted). Omit for the default."`

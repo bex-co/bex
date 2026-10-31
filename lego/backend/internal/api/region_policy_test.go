@@ -28,7 +28,7 @@ import (
 // TestCreateRegionPolicyThroughComposedServer drives w8/152's one region
 // policy through the composed server, pinned Render OpenAPI validator
 // included: on services, Postgres and Key Value a Render region creates the
-// resource and the read back reports BEX_REGION, while a value outside
+// resource and the read back reports its public region alias, while a value outside
 // Render's enum is a 400 before any write.
 func TestCreateRegionPolicyThroughComposedServer(t *testing.T) {
 	routes := []struct {
@@ -80,8 +80,8 @@ func TestCreateRegionPolicyThroughComposedServer(t *testing.T) {
 				if err := json.Unmarshal(r.Body.Bytes(), &got); err != nil || r.Code != http.StatusOK {
 					t.Fatalf("GET %s/%s = %d: %s", route.path, id, r.Code, r.Body.String())
 				}
-				if region := got.Region + got.ServiceDetails.Region; region != "fsn1" {
-					t.Errorf("region %q: readback region = %q, want BEX_REGION fsn1", tc.region, region)
+				if region := got.Region + got.ServiceDetails.Region; region != "frankfurt" {
+					t.Errorf("region %q: readback region = %q, want public region frankfurt", tc.region, region)
 				}
 			}
 		})
