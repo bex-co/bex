@@ -1,6 +1,6 @@
 # w4 · m212 — Keep webhook disable intervals consistent
 
-**Worker:** worker4 **Goal:** disabled-period source events never become new webhook notifications after re-enable, while eligible backlog and admitted retries remain durable. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** disabled-period source events never become new webhook notifications after re-enable, while eligible backlog and admitted retries remain durable. **Status:** done (2026-10-31: disabled-interval cases, fresh repeat with B, normal delivery and failing-route resend replayed live; fixtures deleted)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity and surface consistency — **DONE** | 25m | w4/m212/t003 |
 | t005 | Simplify changed code — **DONE** | 15m | w4/m212/t004 |
 | t006 | Prove interval and retry behavior with meaningful tests — **DONE** | 50m | w4/m212/t004 |
-| t007 | Replay live evidence and close out | 15m | w4/m212/t005, w4/m212/t006 |
+| t007 — **DONE** | Replay live evidence and close out | 15m | w4/m212/t005, w4/m212/t006 |
 
 ## Definition of done
 
