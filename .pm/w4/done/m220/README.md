@@ -1,6 +1,6 @@
 # w4 · m220 — Keep list headers readable and loading previews stable
 
-**Worker:** worker4 **Goal:** Environment Groups and Blueprints have readable mobile table headers, and the group and webhook lists reserve their ready header, action, search and table geometry while loading. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** Environment Groups and Blueprints have readable mobile table headers, and the group and webhook lists reserve their ready header, action, search and table geometry while loading. **Status:** done (2026-10-31: Pro webhook-list pending vs ready replayed at 1440/390)
 
 **Estimate:** 3h40 (10 tasks). Implemented 2026-10-16; awaiting the deployed-build replay (t008).
 
@@ -17,7 +17,7 @@
 | t005 | Check Render parity and unchanged API contracts — **DONE** | 15m | t004 |
 | t006 | Simplify the changed code — **DONE** | 10m | t005 |
 | t007 | Test real browser geometry and ready controls — **DONE** | 45m | t005 |
-| t008 | Replay the live evidence and close out | 20m | t006, t007 |
+| t008 — **DONE** | Replay the live evidence and close out | 20m | t006, t007 |
 
 ## Definition of done
 
