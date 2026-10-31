@@ -41,14 +41,28 @@ def initialize():
             or platform not in ("linux/amd64", "linux/arm64")):
         raise ValueError("qualification requires this source's fully gated immutable common image")
     root = Path(tempfile.mkdtemp(prefix="bex-native-qualification-", dir=os.environ["RUNNER_TEMP"]))
+    root = root.resolve(strict=True)
     owner = "bex-nq-" + uuid.uuid4().hex[:24]
+    # A sibling is deliberately outside the only uploaded evidence tree.
+    docker_config = root.parent / (owner + "-docker-config")
     dump(root / "inputs.json", {"owner": owner, "common_image": ref, "producer": producer,
                                "verification": verification, "platform": platform,
+                               "docker_config": str(docker_config),
                                "run_id": os.environ["GITHUB_RUN_ID"],
                                "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
                                "scope": "ephemeral generated-image qualification; no catalog adoption or hosted claim"})
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.write("root=" + str(root) + "\nowner=" + owner + "\n")
+    # Record the exact scope before creating it or allowing any login. If a
+    # later initialization operation fails, the always cleanup has its owner.
+    docker_config.mkdir(mode=0o700)
+    try:
+        dump(docker_config / ".qualification-owner.json", {"owner": owner, "evidence_root": str(root)})
+    except BaseException:
+        shutil.rmtree(docker_config)
+        raise
+    with Path(os.environ["GITHUB_ENV"]).open("a") as environment:
+        environment.write("DOCKER_CONFIG=" + str(docker_config) + "\n")
     capacity(root, "before-builder")
 
 
@@ -95,38 +109,88 @@ def capacity(root, stage):
         "scope": "read-only observations; shared device rows are not additive; no threshold, reservation or expanded-family capacity acceptance"})
 
 
+def owned_docker_config(root, inputs):
+    """Resolve only the exact initialized credential scope, never ambient config."""
+    if "docker_config" not in inputs:  # Receipts from before scoped login.
+        return None
+    root = root.resolve(strict=True)
+    expected = root.parent / (inputs["owner"] + "-docker-config")
+    if inputs["docker_config"] != str(expected) or expected.is_symlink():
+        raise ValueError("refusing foreign or symlinked Docker configuration")
+    if not expected.exists():
+        return expected
+    marker = expected / ".qualification-owner.json"
+    if (not expected.is_dir() or expected.stat().st_uid != os.getuid()
+            or expected.stat().st_mode & 0o077 or marker.is_symlink()
+            or json.loads(marker.read_text()) != {"owner": inputs["owner"], "evidence_root": str(root)}):
+        raise ValueError("Docker configuration ownership differs from qualification")
+    return expected
+
+
 def cleanup(root):
-    owner = json.loads((root / "inputs.json").read_text())["owner"]
+    inputs = json.loads((root / "inputs.json").read_text())
+    owner = inputs["owner"]
     if not OWNER.fullmatch(owner):
         raise ValueError("refusing cleanup without an exact qualification owner")
-    def run(args, timeout):
+    docker_config = owned_docker_config(root, inputs)
+    if docker_config is not None and not docker_config.exists():
+        # An initialization failure may have removed its incomplete scope.
+        # Recreate only that recorded path so Docker cannot fall back to the
+        # runner's config or leave an unmarked config during cleanup.
+        docker_config.mkdir(mode=0o700)
         try:
-            return subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+            dump(docker_config / ".qualification-owner.json", {"owner": owner, "evidence_root": str(root.resolve(strict=True))})
+        except BaseException:
+            shutil.rmtree(docker_config)
+            raise
+    environment = dict(os.environ, DOCKER_CONFIG=str(docker_config)) if docker_config is not None else dict(os.environ)
+
+    def run(args, timeout, quiet=False):
+        try:
+            output = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL} if quiet else {"capture_output": True}
+            return subprocess.run(["docker", *args], **output, text=True, timeout=timeout, env=environment)
         except (subprocess.TimeoutExpired, OSError) as error:
             return subprocess.CompletedProcess(["docker", *args], 124, "", type(error).__name__)
 
-    # Stop this job's builder before enumerating its output images, so an
-    # interrupted client cannot load another image after our final listing.
-    result = run(["buildx", "rm", owner], 60)
-    results = [{"resource": "builder", "identity": owner, "exit_code": result.returncode,
-                "stdout": result.stdout, "stderr": result.stderr}]
-    for resource, listing, removal in (
-            ("container", ["ps", "-aq"], ["rm", "-f"]),
-            ("image", ["image", "ls", "-q"], ["image", "rm", "-f"])):
-        selected = run([*listing, "--filter", "label=" + LABEL + "=" + owner], 20)
-        if selected.returncode:
-            results.append({"resource": resource + "-listing", "exit_code": selected.returncode,
-                            "stdout": selected.stdout, "stderr": selected.stderr})
-            continue
-        for identity in sorted(set(selected.stdout.split())):
-            if not re.fullmatch(r"(?:sha256:)?[a-f0-9]{12,64}", identity):
-                raise ValueError("unexpected owned Docker identity")
-            result = run([*removal, identity], 20)
-            results.append({"resource": resource, "identity": identity, "exit_code": result.returncode,
-                            "stdout": result.stdout, "stderr": result.stderr})
-    # No default builder selection, wildcard removal, foreign cache,
-    # certificate deletion or global prune.
-    dump(root / "cleanup.json", {"owner": owner, "operations": results})
+    results = []
+    try:
+        # Stop this job's builder before enumerating its output images, so an
+        # interrupted client cannot load another image after our final listing.
+        result = run(["buildx", "rm", owner], 60)
+        results.append({"resource": "builder", "identity": owner, "exit_code": result.returncode,
+                        "stdout": result.stdout, "stderr": result.stderr})
+        for resource, listing, removal in (
+                ("container", ["ps", "-aq"], ["rm", "-f"]),
+                ("image", ["image", "ls", "-q"], ["image", "rm", "-f"])):
+            selected = run([*listing, "--filter", "label=" + LABEL + "=" + owner], 20)
+            if selected.returncode:
+                results.append({"resource": resource + "-listing", "exit_code": selected.returncode,
+                                "stdout": selected.stdout, "stderr": selected.stderr})
+                continue
+            for identity in sorted(set(selected.stdout.split())):
+                if not re.fullmatch(r"(?:sha256:)?[a-f0-9]{12,64}", identity):
+                    raise ValueError("unexpected owned Docker identity")
+                result = run([*removal, identity], 20)
+                results.append({"resource": resource, "identity": identity, "exit_code": result.returncode,
+                                "stdout": result.stdout, "stderr": result.stderr})
+    finally:
+        if docker_config is not None:
+            # Do not retain logout output or config contents in evidence. Even
+            # a timeout must not prevent removal of this exact credential tree.
+            logout = run(["logout", "ghcr.io"], 20, quiet=True)
+            auth = {"resource": "docker-auth", "identity": str(docker_config),
+                    "logout_exit_code": logout.returncode, "exit_code": logout.returncode, "removed": False}
+            try:
+                owned_docker_config(root, inputs)
+                if docker_config.exists():
+                    shutil.rmtree(docker_config)
+                auth["removed"] = True
+            except (OSError, ValueError) as error:
+                auth.update(exit_code=1, removal_error=type(error).__name__)
+            results.append(auth)
+        # No default builder selection, wildcard removal, foreign cache,
+        # shared certificate deletion or global prune.
+        dump(root / "cleanup.json", {"owner": owner, "operations": results})
     if any(row["exit_code"] for row in results):
         raise RuntimeError("owned resource cleanup failed; exact results retained")
 

@@ -1,0 +1,152 @@
+{
+  "source/FINAL-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/FINAL-MANIFEST.json",
+    "source_bytes": 1462,
+    "source_sha256": "b206627fe5dcf4497a57e6bbecc3f72c9339a090b5629d11dd0ab6113266fe28",
+    "encoding": "gzip"
+  },
+  "source/FINAL-VERIFICATION.json.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/FINAL-VERIFICATION.json",
+    "source_bytes": 715,
+    "source_sha256": "3113bc074380919fb861611e881b2e069f52bdd6ac25256622d7b07aa304fb80",
+    "encoding": "gzip"
+  },
+  "source/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/MANIFEST.json",
+    "source_bytes": 1201,
+    "source_sha256": "f22e7af25a151b4021cc6b627f97dd7e5c9b4438d8799d4bbd8422dccc13d62f",
+    "encoding": "gzip"
+  },
+  "source/RECEIPT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/RECEIPT.json",
+    "source_bytes": 3610,
+    "source_sha256": "042dfa7bb472dd887e7b5019016937a8031cf87cfcebfcd996c2ffcec2fab7af",
+    "encoding": "gzip"
+  },
+  "source/SOURCE.patch.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/SOURCE.patch",
+    "source_bytes": 23264,
+    "source_sha256": "eca6e7a9c7eb23204a0faeacd04aa1a980a4a599ceda0702d115ea33feccd4f7",
+    "encoding": "gzip"
+  },
+  "source/original-failures/124656974513.raw.log.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/original-failures/124656974513.raw.log",
+    "source_bytes": 41050,
+    "source_sha256": "534912b3644477899a76c93ba9251e637989ad1b1f61201480c607060d041232",
+    "encoding": "gzip"
+  },
+  "source/original-failures/124656974570.raw.log.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/original-failures/124656974570.raw.log",
+    "source_bytes": 83521,
+    "source_sha256": "ae23aef8a5ba2df1923893ccd4baa90ee8377e2a6f72d39f81f7361a87aee957",
+    "encoding": "gzip"
+  },
+  "source/original-failures/RETRIEVAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/original-failures/RETRIEVAL.json",
+    "source_bytes": 1407,
+    "source_sha256": "bc7e7f380d91962b6d6f91e4dd2469d4e621e4eca24fa1440eb1e5f7765300a7",
+    "encoding": "gzip"
+  },
+  "source/source/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/source/.github/scripts/native-common-qualify.py",
+    "source_bytes": 16935,
+    "source_sha256": "701b821ea1193f83c720805df7eebc7ef017530ae4abd51a8098df92d0cd4701",
+    "encoding": "gzip"
+  },
+  "source/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/source/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 25528,
+    "source_sha256": "aa77dcff41053cbe675ff95ba9622f6303c8f5be8827c8f6c046a7cfb6000fbe",
+    "encoding": "gzip"
+  },
+  "source/source/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-qualification-auth-fix-20261031-kf_fm97v/source/.github/workflows/native-common-image.yml",
+    "source_bytes": 5401,
+    "source_sha256": "a3bb3ec32d2719d0a376a14271f6ff10e163581e61b2ec9a5a5462fa957fc70e",
+    "encoding": "gzip"
+  },
+  "independent/EXECUTION.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/EXECUTION.json",
+    "source_bytes": 3363,
+    "source_sha256": "88cb41b92aa78dd6713e09fada641cdd5cdbf871922efb11b16ab17a56aefae7",
+    "encoding": "gzip"
+  },
+  "independent/INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/INPUTS.json",
+    "source_bytes": 1470,
+    "source_sha256": "3ae5f2a1573649d85562a8f0f191d82bb14446e988d08bcc5203781974e2ebfd",
+    "encoding": "gzip"
+  },
+  "independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/MANIFEST.json",
+    "source_bytes": 1834,
+    "source_sha256": "6f1d68b7eea3f510577776f89eefcb6d4a183d45926516d493016b14048f254b",
+    "encoding": "gzip"
+  },
+  "independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/REVIEW.json",
+    "source_bytes": 2841,
+    "source_sha256": "8a21b1b9c70dae6c64264d8acda6bfbd298e29f123ab94bf81875da1bfbbb51f",
+    "encoding": "gzip"
+  },
+  "independent/actionlint.log.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/actionlint.log",
+    "source_bytes": 931,
+    "source_sha256": "ef10b85056f9413a5fb9ccaf2a9e01cbf1470906bb75a687a8264df3b6e9a24d",
+    "encoding": "gzip"
+  },
+  "independent/diff-check.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/diff-check.json",
+    "source_bytes": 280,
+    "source_sha256": "c485910b66652aff5da2895d111faa213c778eccf3632f12a9fc16e4d41be8be",
+    "encoding": "gzip"
+  },
+  "independent/partial_init_probe.json.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/partial_init_probe.json",
+    "source_bytes": 823,
+    "source_sha256": "97ccf97c2313b7feac808c0d205010e10965f98618d4a67b4a7a1078e9f2e98a",
+    "encoding": "gzip"
+  },
+  "independent/partial_init_probe.py.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/partial_init_probe.py",
+    "source_bytes": 3644,
+    "source_sha256": "1d0f07290fcf16aff935d5a3cd7d45f58f9b2b51dec7f6b17e7955338d4a8f35",
+    "encoding": "gzip"
+  },
+  "independent/tests.log.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/tests.log",
+    "source_bytes": 2025,
+    "source_sha256": "ed6d6a2cef36ebf9804629a273c807a7cf48e5ed5623a4fb2c3fedd7f253b1c7",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/work/.github/scripts/native-common-qualify.py",
+    "source_bytes": 16935,
+    "source_sha256": "701b821ea1193f83c720805df7eebc7ef017530ae4abd51a8098df92d0cd4701",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/work/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 25528,
+    "source_sha256": "aa77dcff41053cbe675ff95ba9622f6303c8f5be8827c8f6c046a7cfb6000fbe",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/test_native_oci_workflow.py.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/work/.github/scripts/test_native_oci_workflow.py",
+    "source_bytes": 16781,
+    "source_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/workflows/native-base-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/work/.github/workflows/native-base-image.yml",
+    "source_bytes": 18178,
+    "source_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-auth-independent-review-20261031-f4o0od14/work/.github/workflows/native-common-image.yml",
+    "source_bytes": 5401,
+    "source_sha256": "a3bb3ec32d2719d0a376a14271f6ff10e163581e61b2ec9a5a5462fa957fc70e",
+    "encoding": "gzip"
+  }
+}
