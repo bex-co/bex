@@ -33,7 +33,7 @@ describe("RoutesEditor accessibility", () => {
     expect(source).toHaveAttribute("placeholder", "/old/*");
     expect(destination).toHaveAttribute("placeholder", "/index.html");
     expect(
-      screen.getByRole("button", { name: "Remove rule" }),
+      screen.getByRole("button", { name: "Remove rule 1" }),
     ).toBeInTheDocument();
   });
 });
@@ -58,7 +58,7 @@ describe("HeadersEditor accessibility", () => {
     expect(name).toHaveAttribute("placeholder", "X-Frame-Options");
     expect(value).toHaveAttribute("placeholder", "DENY");
     expect(
-      screen.getByRole("button", { name: "Remove header" }),
+      screen.getByRole("button", { name: "Remove header 1" }),
     ).toBeInTheDocument();
   });
 });
@@ -151,6 +151,12 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
     render(<RoutesEditor routes={routes} onSave={onSave} busy={false} />);
 
     await user.click(screen.getByRole("button", { name: "Add rule" }));
+    // w4/436: each row's Remove button names its own rule.
+    for (const n of [1, 2, 3]) {
+      expect(
+        screen.getByRole("button", { name: `Remove rule ${n}` }),
+      ).toBeInTheDocument();
+    }
     const sources = screen.getAllByRole("textbox", { name: "Source" });
     await user.type(sources[sources.length - 1]!, "/c/*");
     const destinations = screen.getAllByRole("textbox", {

@@ -309,7 +309,7 @@ export function RoutesEditor({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("services.routeRemove")}
+                    aria-label={t("services.routeRemove", { n: String(i + 1) })}
                     onClick={() => removeRow(i)}
                   >
                     <Trash2 />
@@ -435,7 +435,9 @@ export function HeadersEditor({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("services.headerRemove")}
+                    aria-label={t("services.headerRemove", {
+                      n: String(i + 1),
+                    })}
                     onClick={() => removeRow(i)}
                   >
                     <Trash2 />

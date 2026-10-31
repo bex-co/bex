@@ -1608,7 +1608,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Custom-domains status badge: DNS or certificate is not complete",
   },
   "services.domainActionsMenu": {
-    message: "Open domain actions menu",
+    message: "Actions for {domain}",
     description: "Accessible label for the per-domain actions trigger",
   },
   "services.domainDelete": {
@@ -1709,7 +1709,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Toast description after a custom-domain add (async convergence)",
   },
   "services.domainDnsToggle": {
-    message: "Show DNS setup",
+    message: "Show DNS setup for {domain}",
     description:
       "aria-label for the per-domain DNS-instructions disclosure toggle",
   },
@@ -2885,7 +2885,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Route type: redirect",
   },
   "services.routeRemove": {
-    message: "Remove rule",
+    message: "Remove rule {n}",
     description: "Remove a route rule (aria-label)",
   },
   "services.routesSave": {
@@ -2929,7 +2929,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.staticRulePathTooLong": {
     message: "At most 2048 characters",
-    description: "Inline error under an over-long static-site rule path (w4/402)",
+    description:
+      "Inline error under an over-long static-site rule path (w4/402)",
   },
   "services.staticRuleHeaderNameTooLong": {
     message: "At most 256 characters",
@@ -2987,7 +2988,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Header value column",
   },
   "services.headerRemove": {
-    message: "Remove header",
+    message: "Remove header {n}",
     description: "Remove a header (aria-label)",
   },
   "services.headersSave": {
@@ -3980,19 +3981,23 @@ const enServices: Record<string, TranslationEntry> = {
     description: "A disk's most recent nightly snapshot attempt failed",
   },
   "services.diskSnapshotsFailedReadBody": {
-    message: "Part of this disk couldn't be read, so no snapshot was taken and recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
+    message:
+      "Part of this disk couldn't be read, so no snapshot was taken and recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
     description: "Failed snapshot: the volume could not be read",
   },
   "services.diskSnapshotsFailedUploadBody": {
-    message: "The snapshot couldn't be saved to storage, so recent changes aren't backed up. Existing snapshots are unaffected; the next nightly run tries again.",
+    message:
+      "The snapshot couldn't be saved to storage, so recent changes aren't backed up. Existing snapshots are unaffected; the next nightly run tries again.",
     description: "Failed snapshot: the object store did not accept it",
   },
   "services.diskSnapshotsFailedConfigBody": {
-    message: "The snapshot job couldn't start correctly, so recent changes aren't backed up. Existing snapshots are unaffected. Contact support.",
+    message:
+      "The snapshot job couldn't start correctly, so recent changes aren't backed up. Existing snapshots are unaffected. Contact support.",
     description: "Failed snapshot: the job was misconfigured",
   },
   "services.diskSnapshotsFailedOtherBody": {
-    message: "The last snapshot attempt failed, so recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
+    message:
+      "The last snapshot attempt failed, so recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
     description: "Failed snapshot: an unrecognized stage",
   },
   "services.diskSnapshotsOverdueTitle": {
