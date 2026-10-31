@@ -1044,13 +1044,23 @@ func (s AppSpec) EffectiveHosts(name, baseDomain string) []string {
 		}
 	}
 	add(s.Host)
-	if s.Expose && baseDomain != "" && s.SubdomainPolicy != SubdomainPolicyDisabled {
+	if s.UsesPlatformHost(baseDomain) {
 		add(s.PlatformSubdomain(name) + "." + baseDomain)
 	}
 	for _, h := range s.Hosts {
 		add(h)
 	}
 	return hosts
+}
+
+// UsesPlatformHost reports whether the App's routing fields admit the platform
+// hostname `<PlatformSubdomain>.<baseDomain>`: exposed, a permitted subdomain
+// policy, and a known base domain. EffectiveHosts and renderenv's
+// RENDER_EXTERNAL_HOSTNAME both apply this one rule instead of hand-copying it;
+// renderenv additionally requires PubliclyRoutable, which EffectiveHosts has
+// never checked.
+func (s AppSpec) UsesPlatformHost(baseDomain string) bool {
+	return s.Expose && baseDomain != "" && s.SubdomainPolicy != SubdomainPolicyDisabled
 }
 
 // HasPublicHosts reports whether EffectiveHosts yields any host on a platform
