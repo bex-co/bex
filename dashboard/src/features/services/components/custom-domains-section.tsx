@@ -271,7 +271,7 @@ function CustomDomainRow({
             variant="ghost"
             size="icon-sm"
             aria-expanded={open}
-            aria-label={t("services.domainDnsToggle")}
+            aria-label={t("services.domainDnsToggle", { domain: domain.name })}
             onClick={() => setOpen((o) => !o)}
           >
             <ChevronDown
@@ -284,7 +284,9 @@ function CustomDomainRow({
                 variant="ghost"
                 size="icon-sm"
                 disabled={busy}
-                aria-label={t("services.domainActionsMenu")}
+                aria-label={t("services.domainActionsMenu", {
+                  domain: domain.name,
+                })}
               >
                 <MoreHorizontal />
               </Button>
