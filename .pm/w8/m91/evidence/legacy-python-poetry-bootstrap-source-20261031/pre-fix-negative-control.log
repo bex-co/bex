@@ -1,0 +1,38 @@
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-default
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-default
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-exact
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-exact
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-empty-default
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-static
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-uv-unchanged
+    nativepoetry_test.go:107: wrong private tool interpreter or exact Poetry release: RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-compatible-explicit
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-compatible-explicit
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/explicit-compatibility-contract
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python39-unchanged
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python313-unchanged
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/historical-route-unchanged
+--- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap (0.02s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-default (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-default (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-exact (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-exact (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-empty-default (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-static (0.00s)
+    --- FAIL: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-uv-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-compatible-explicit (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-compatible-explicit (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/explicit-compatibility-contract (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python39-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python313-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/historical-route-unchanged (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.339s
+FAIL

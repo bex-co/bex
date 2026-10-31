@@ -1,0 +1,34 @@
+[
+  {
+    "path": "deploy/native-common/Dockerfile",
+    "bytes": 2795,
+    "mode": "0o644",
+    "sha256": "e485a45713039ce913acfc3dc5f5d199908a8732c153ec9d7ab32eb3ea12e9a4",
+    "baseline_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+    "baseline_sha256": "0d60ba986dcb7e5f352f8b8f8a61e3045d8504569e6c65c2812b417f358ddce3"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeresolve.go",
+    "bytes": 18838,
+    "mode": "0o644",
+    "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac",
+    "baseline_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+    "baseline_sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeversion.go",
+    "bytes": 28936,
+    "mode": "0o644",
+    "sha256": "8466dd2cea67f24df1882c594bf62593ba9a8164f6045c2b50be04734d376873",
+    "baseline_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+    "baseline_sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b"
+  },
+  {
+    "path": "lego/operator/internal/build/nativepoetry_test.go",
+    "bytes": 7313,
+    "mode": "0o644",
+    "sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a",
+    "baseline_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+    "baseline_sha256": null
+  }
+]

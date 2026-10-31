@@ -1,0 +1,5 @@
+internal/build/nativeutility_integration_test.go:45:1: cyclomatic complexity 34 of func `TestNativeUtilityGeneratedImages` is high (> 30) (gocyclo)
+func TestNativeUtilityGeneratedImages(t *testing.T) {
+^
+1 issues:
+* gocyclo: 1

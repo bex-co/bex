@@ -25,7 +25,7 @@ COPY native-common/legacy-libs.preferences /etc/apt/preferences.d/bex-native-leg
 # optional native applications rather than silently dropping them.
 RUN chmod 755 /usr/bin/tsc /usr/bin/webpack /usr/bin/bex-native-python-tools \
   && sh /tmp/bex-native-install.sh \
-    libbluetooth-dev tk-dev uuid-dev libzstd-dev libjemalloc-dev \
+    python3-venv libbluetooth-dev tk-dev uuid-dev libzstd-dev libjemalloc-dev \
     unixodbc-dev libsctp-dev libwxgtk3.2-dev libwxgtk-webview3.2-dev libssl1.1 libffi7 \
   && /usr/bin/python3 /opt/bex/python-tools/fetch-python-tools.py \
   && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh \
@@ -35,4 +35,9 @@ COPY native-common/check-common.py /usr/share/bex-native-common/check-common.py
 COPY --chmod=755 native-common/build-otp /usr/libexec/bex-native/build-otp
 COPY native-common/otp-features.py /usr/libexec/bex-native/otp-features.py
 COPY --chmod=755 native-base/node-brotli/patch.sh /usr/libexec/bex-native/build-node
-RUN --network=none /usr/bin/python3 /usr/share/bex-native-common/check-common.py
+# Default Poetry can use this private tool interpreter beside Python 3.7/3.8.
+# Verify Debian's complete venv/ensurepip prerequisite without installing Poetry.
+RUN --network=none /usr/bin/python3 -m venv /tmp/bex-poetry-bootstrap \
+  && /tmp/bex-poetry-bootstrap/bin/python -I -m pip --version \
+  && rm -rf /tmp/bex-poetry-bootstrap \
+  && /usr/bin/python3 /usr/share/bex-native-common/check-common.py

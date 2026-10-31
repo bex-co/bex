@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativeresolve.go": "/private/tmp/bex-native-poetry-default-bootstrap-20261031-z68yy37h/pre-fix-nativeresolve.go"
+  }
+}

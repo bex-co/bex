@@ -1,0 +1,11 @@
+{
+  "reviewed_at": "2026-10-31T14:56:48.749488+00:00",
+  "root_verified_frozen_payloads": 24,
+  "root_verified_owned_source_files": 4,
+  "root_verified_owned_source_bytes": 57882,
+  "source_bytes_and_modes_match": true,
+  "review": "default-only common legacy interpreter selection, exact app/tool identity, explicit compatibility boundary, unchanged uv/companions/commands and factory prerequisite reviewed",
+  "source_tests": "13 recipe controls PASS, pre-fix7 expected failures, scoped3 package tests and final LIVE lint PASS; earlier lint failures retained",
+  "actual_factory_tool_project_image_two_arch_hosted": "UNEXECUTED",
+  "production_pin_or_task_completion_changed": false
+}

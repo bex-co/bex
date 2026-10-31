@@ -1,0 +1,19 @@
+=== RUN   TestNativeUtilityGeneratedImages
+    nativeutility_integration_test.go:47: set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_TEST_NODE_IMAGE to an immutable Node24 supplier
+--- SKIP: TestNativeUtilityGeneratedImages (0.00s)
+=== RUN   TestNativeOriginalReplayHTTPOracles
+--- PASS: TestNativeOriginalReplayHTTPOracles (0.66s)
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/actual_original_failure
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/Dockerfile_echo_is_not_stdout
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/unrelated_later_failure
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/another_probe_cannot_qualify
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/earlier_error_cannot_qualify
+--- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/actual_original_failure (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/Dockerfile_echo_is_not_stdout (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/unrelated_later_failure (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/another_probe_cannot_qualify (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/earlier_error_cannot_qualify (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	1.857s

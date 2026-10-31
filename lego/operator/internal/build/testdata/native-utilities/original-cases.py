@@ -8,11 +8,14 @@ OUTPUT=ROOT/'qa-output'
 ENV=os.environ.copy();ENV['PIP_NO_INDEX']='1';ENV['PIP_DISABLE_PIP_VERSION_CHECK']='1'
 def sha(b):return hashlib.sha256(b).hexdigest()
 
-def selected_cases(mode):
+def selected_cases(mode,mid=None):
  assert mode in ('python','node'),mode
  specs=[x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['runtime']==mode]
  assert {x['mid'] for x in specs}==({94,95,96,97,100,102} if mode=='python' else {91,93,98,99,101,103,107})
  assert len(specs)==(6 if mode=='python' else 7)
+ if mid is not None:
+  specs=[x for x in specs if x['mid']==mid]
+  assert len(specs)==1,(mode,mid,'unknown original case')
  return specs
 
 def validation(x):
@@ -94,9 +97,10 @@ def original_cases():
     process.wait(timeout=5);log.close()
  return results
 if __name__=='__main__':
- PHASE,mode=sys.argv[1:]
+ assert len(sys.argv) in (3,4),sys.argv
+ PHASE,mode=sys.argv[1:3]
  assert PHASE in ('build','runtime','predeploy'),PHASE
  if mode=='python':assert sys.executable.startswith('/usr/local/') and sys.version.startswith('3.13.'),(sys.executable,sys.version)
  else:assert mode=='node' and sys.executable.startswith('/usr/bin/'),(mode,sys.executable)
- SPECS=selected_cases(mode);OUTPUT.mkdir(exist_ok=True)
+ SPECS=selected_cases(mode,int(sys.argv[3]) if len(sys.argv)==4 else None);OUTPUT.mkdir(exist_ok=True)
  print(json.dumps({'phase':PHASE,'mode':mode,'python':sys.version.split()[0],'original_cases':original_cases(),'pass':True},ensure_ascii=False))

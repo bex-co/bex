@@ -499,12 +499,12 @@
       "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5"
     },
     "original-cases.py": {
-      "bytes": 6019,
-      "sha256": "717d8ba9d0231b07014f8033f06c82136049e458c372ede016d519f7a723fd18"
+      "bytes": 6239,
+      "sha256": "c0490ebecc5a4c940aa5d64b6c5c8d70f87527ace424bf5c21a2c45159e608b0"
     },
     "original-cases_test.py": {
-      "bytes": 6275,
-      "sha256": "50b045e21644a45476b0c515bed73b1cc90b582a48ee021f7ccc62207fcd4049"
+      "bytes": 6613,
+      "sha256": "bf7128b692b6d062402665c478bb604a9439e31b7252eb13c5611fef66201159"
     },
     "png-decoder.py": {
       "bytes": 1933,
@@ -531,6 +531,7 @@
     "m91": "Public frozen PG15 archive is verified and placed at its original /etc/secrets/qa402.dump.b64 fixture path inside the owned test image. No live secret is read.",
     "m93": "The unchanged HTTP helper receives a positive-stage healthy-before callback: exact original source/data identity plus actual successful pandoc probe. Its historical missing-supplier valid_before remains byte-for-byte retained and is not used as the expected state after supply.",
     "m107": "The unchanged ZIP HTTP oracle reads the exact shared public source-carrier bytes.",
-    "prepared_markers": "The unchanged prepared command supplies the exact replay marker value. Historical marker-file byte hashes remain in source_file_identities; marker JSON must equal that prepared value (named -marker.json files and m103 qm.json only). Every other materialized authored file retains exact original SHA/size."
+    "prepared_markers": "The unchanged prepared command supplies the exact replay marker value. Historical marker-file byte hashes remain in source_file_identities; marker JSON must equal that prepared value (named -marker.json files and m103 qm.json only). Every other materialized authored file retains exact original SHA/size.",
+    "independent_omission_controls": "Common-only test layers remove jq, rsync, setuptools, pip or Python3.11 headers separately after healthy controls. A fresh emitted BuildKit stdout marker and the later unchanged original-case failure are required; Dockerfile echo text, cached probes, unrelated failures and foreign markers do not qualify. These controls are prepared source, not executed image evidence."
   }
 }

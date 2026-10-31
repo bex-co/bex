@@ -120,7 +120,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 				return nil, err
 			}
 		}
-		if rewritten, err = addNativePoetry(rewritten, choice.Image, poetry.Line); err != nil {
+		if rewritten, err = addNativePoetry(rewritten, choice, poetry); err != nil {
 			return nil, err
 		}
 		choices = append(choices, poetry)
@@ -243,10 +243,23 @@ func nativeRubyToolLines(rubyImage string) string {
 		" PATH=" + nativeRubyGems + "/bin:$PATH\n"
 }
 
-// addNativePoetry installs the chosen Poetry (w8/m72); see
-// nativePythonToolInstall.
-func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
-	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("poetry", version, "poetry"))
+// addNativePoetry keeps Poetry's dependencies private. On the common Bookworm
+// base, its modern default needs the system Python to bootstrap beside an old
+// application Python: Poetry 2.1.3 requires >=3.9, so using Python 3.7/3.8 here
+// would fail even a pip-only build before its authored command. Explicit Poetry
+// choices keep their existing compatible-version requirement.
+func addNativePoetry(dockerfile string, primary, poetry NativeChoice) (string, error) {
+	python := "/usr/local/bin/python"
+	if nativeCommonBase != "" && poetry.Source == "" && poetry.Line == "2.1.3" {
+		version, err := commonImageVariable(primary.imageEnv, "PYTHON_VERSION")
+		if err != nil {
+			return "", err
+		}
+		if strings.HasPrefix(version, "3.7.") || strings.HasPrefix(version, "3.8.") {
+			python = "/usr/bin/python3"
+		}
+	}
+	return afterNativeBase(dockerfile, primary.Image, nativePythonToolInstall(python, "poetry", poetry.Line, "poetry"))
 }
 
 // addNativeUV installs the chosen uv, with uvx (w8/m81); see
@@ -255,26 +268,26 @@ func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
 // project pinning another patch (bex builds a line's reviewed patch) gets the
 // CPython uv downloads for it, as uv does anywhere.
 func addNativeUV(dockerfile, baseImage, version string) (string, error) {
-	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("uv", version, "uv", "uvx"))
+	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("/usr/local/bin/python", "uv", version, "uv", "uvx"))
 }
 
 // nativePythonToolInstall is the step that installs an exact PyPI release of a
 // Python-packaged tool right after the FROM, before the source and the
 // authored build, into its own virtualenv /opt/bex/<pkg> on the selected
-// Python, and links its commands onto the image PATH so the build, the
+// interpreter, and links its commands onto the image PATH so the build, the
 // pre-deploy step and the started service all find them. The application's
 // packages, virtualenvs and PATH never share that virtualenv, and the tool's
 // dependencies never land in the image's site-packages. The step runs under
 // the image's own environment, not the service's, and sits before COPY so a
 // source change reuses it; a changed version is a changed instruction.
-func nativePythonToolInstall(pkg, version string, commands ...string) string {
+func nativePythonToolInstall(python, pkg, version string, commands ...string) string {
 	home := "/opt/bex/" + pkg
 	var links strings.Builder
 	for _, command := range commands {
 		fmt.Fprintf(&links, " && ln -s %s/bin/%s /usr/local/bin/%s", home, command, command)
 	}
-	return fmt.Sprintf("RUN /usr/local/bin/python -m venv %[1]s && %[1]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[2]s==%[3]s%[4]s\n",
-		home, pkg, version, links.String())
+	return fmt.Sprintf("RUN %[1]s -m venv %[2]s && %[2]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[3]s==%[4]s%[5]s\n",
+		python, home, pkg, version, links.String())
 }
 
 // afterNativeBase inserts lines right after the generated Dockerfile's FROM.

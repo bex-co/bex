@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -80,7 +81,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			o := nativeOptions()
 			o.Runtime, o.StaticSite, o.StaticPublishPath = tc.runtime, tc.static, "public"
 			o.BuildCommand, o.StartCommand = tc.interpreter+" "+tc.build, tc.interpreter+" "+tc.start
-			if tc.static || !tc.supplied {
+			if tc.static || !tc.supplied || tc.removal != "" {
 				o.StartCommand = ""
 			}
 			env := map[string]string{"NODE_VERSION": "24"}
@@ -98,14 +99,8 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			evidence := filepath.Join(output, tc.name)
 			must(t, os.Mkdir(evidence, 0o700))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
-			prerequisites := commonImage != "" && tc.runtime == nativePythonRuntime
-			if prerequisites {
-				copyNativeUtilityWheels(t, wheelhouse, source, evidence)
-				overlay, err := afterNativeBase(string(recipe), commonImage, "COPY .bex-test-wheels/ /opt/bex-test-wheels/\nENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n")
-				must(t, err)
-				recipe = []byte(overlay)
-				must(t, os.WriteFile(dockerfile, recipe, 0o600))
-			}
+			recipe, prerequisites, removalProbe := nativeUtilityTestLayers(t, recipe, commonImage, tc, wheelhouse, source, evidence)
+			must(t, os.WriteFile(dockerfile, recipe, 0o600))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile"), recipe, 0o600))
 			must(t, os.Rename(dockerfile, filepath.Join(source, "Dockerfile")))
 			tag := fmt.Sprintf("bex-native-utilities-%s:%d-%d", tc.name, os.Getpid(), time.Now().UnixNano())
@@ -116,6 +111,10 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 			log, buildErr := build.CombinedOutput()
 			must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
+			if tc.removal != "" {
+				nativeUtilityRecordOmission(t, tc, log, buildErr, removalProbe, commonImage, evidence)
+				return
+			}
 			if !tc.supplied {
 				if buildErr == nil || !strings.Contains(string(log), "pg_restore") || !strings.Contains(string(log), "FileNotFoundError") {
 					t.Fatalf("supplier-removed command must fail on pg_restore: %v\n%s", buildErr, log)
@@ -166,6 +165,37 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 	}
 }
 
+func nativeUtilityTestLayers(t *testing.T, recipe []byte, common string, tc nativeUtilityCase, wheelhouse, source, evidence string) ([]byte, bool, string) {
+	t.Helper()
+	prerequisites := common != "" && tc.runtime == nativePythonRuntime
+	if prerequisites {
+		copyNativeUtilityWheels(t, wheelhouse, source, evidence)
+		overlay, err := afterNativeBase(string(recipe), common, "COPY .bex-test-wheels/ /opt/bex-test-wheels/\nENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n")
+		must(t, err)
+		recipe = []byte(overlay)
+	}
+	probe := ""
+	if tc.removal != "" {
+		// A unique test-only RUN key requires fresh controls instead of a
+		// cached layer whose original stdout would no longer be available.
+		probe = fmt.Sprintf("%s-%d", tc.name, time.Now().UnixNano())
+		overlay, err := afterNativeBase(string(recipe), common, nativeUtilityRemovalLayer(tc.removal, probe))
+		must(t, err)
+		recipe = []byte(overlay)
+	}
+	return recipe, prerequisites, probe
+}
+
+func nativeUtilityRecordOmission(t *testing.T, tc nativeUtilityCase, log []byte, buildErr error, probe, common, evidence string) {
+	t.Helper()
+	if buildErr == nil || !nativeUtilityRemovalFailedAtOriginalCommand(string(log), probe, tc.wantFailure) {
+		t.Fatalf("independent %s omission must reach the original command after healthy controls: %v\n%s", tc.removal, buildErr, log)
+	}
+	receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "removed_supplier": tc.removal, "fresh_stdout_probe": probe, "healthy_independent_prerequisites_observed": true, "original_command_expected_failure_observed": true, "expected_failure": tc.wantFailure, "common_base": common, "scope": "test-only removal layer; no runtime or hosted acceptance"}, "", "  ")
+	must(t, err)
+	must(t, os.WriteFile(filepath.Join(evidence, "omission-receipt.json"), receipt, 0o600))
+}
+
 func TestNativeOriginalReplayHTTPOracles(t *testing.T) {
 	python, err := exec.LookPath("python3")
 	if err != nil {
@@ -181,6 +211,7 @@ func TestNativeOriginalReplayHTTPOracles(t *testing.T) {
 
 type nativeUtilityCase struct {
 	name, runtime, interpreter, build, start string
+	removal, wantFailure                     string
 	static, supplied                         bool
 	created                                  time.Time
 }
@@ -196,8 +227,66 @@ func nativeUtilityCases(common, python string) []nativeUtilityCase {
 	}
 	if common != "" {
 		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
+		for _, omitted := range []struct{ name, mid, failure string }{
+			{"jq", "98", "jq: command not found"},
+			{"rsync", "98", "rsync: command not found"},
+			{"python-metadata", "103", "No module named 'setuptools'"},
+			{"python-pip", "103", "No module named pip"},
+			{"python-headers", "103", "Python.h: No such file or directory"},
+		} {
+			cases = append(cases, nativeUtilityCase{name: "missing-" + omitted.name, runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "original-cases.py build node " + omitted.mid, supplied: true, removal: omitted.name, wantFailure: omitted.failure})
+		}
 	}
 	return cases
+}
+
+func nativeUtilityRemovalFailedAtOriginalCommand(log, name, expected string) bool {
+	// Require actual plain-progress stdout, not the echoed Dockerfile RUN
+	// instruction or a preflight failure which happens to name the same tool.
+	ready := regexp.MustCompile(`(?m)^#[0-9]+ [0-9.]+ BEX_SUPPLIER_REMOVAL_READY ` + regexp.QuoteMeta(name) + `$`)
+	at := ready.FindStringIndex(log)
+	return at != nil && strings.Contains(log[at[1]:], expected)
+}
+
+func TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout(t *testing.T) {
+	const probe = "missing-jq-123"
+	const failure = "jq: command not found"
+	for _, tc := range []struct {
+		name, log string
+		want      bool
+	}{
+		{"actual original failure", "#24 0.277 BEX_SUPPLIER_REMOVAL_READY " + probe + "\n#31 0.15 jq: command not found\n", true},
+		{"Dockerfile echo is not stdout", "#24 [7/9] RUN jq --version && echo BEX_SUPPLIER_REMOVAL_READY " + probe + "\n#24 0.1 jq: command not found\n", false},
+		{"unrelated later failure", "#24 0.277 BEX_SUPPLIER_REMOVAL_READY " + probe + "\n#31 0.15 No module named pip\n", false},
+		{"another probe cannot qualify", "#24 0.277 BEX_SUPPLIER_REMOVAL_READY missing-jq-122\n#31 0.15 jq: command not found\n", false},
+		{"earlier error cannot qualify", "#20 0.1 jq: command not found\n#24 0.277 BEX_SUPPLIER_REMOVAL_READY " + probe + "\n#31 0.15 unrelated error\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := nativeUtilityRemovalFailedAtOriginalCommand(tc.log, probe, failure); got != tc.want {
+				t.Fatalf("accepted unrelated or non-executed omission evidence: got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func nativeUtilityRemovalLayer(removed, name string) string {
+	const pythonControls = `/usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version && /usr/bin/python3-config --includes && test -f /usr/include/python3.11/Python.h`
+	var command string
+	switch removed {
+	case "jq":
+		command = "jq --version && rsync --version && rm /usr/bin/jq && test ! -e /usr/bin/jq && rsync --version"
+	case "rsync":
+		command = "jq --version && rsync --version && rm /usr/bin/rsync && test ! -e /usr/bin/rsync && jq --version"
+	case "python-metadata":
+		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
+	case "python-pip":
+		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/pip && test ! -e /usr/lib/python3/dist-packages/pip && /usr/bin/python3 -c 'import setuptools' && test -f /usr/include/python3.11/Python.h"
+	case "python-headers":
+		command = pythonControls + " && rm -r /usr/include/python3.11 && test ! -e /usr/include/python3.11 && /usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version"
+	default:
+		panic("unknown test-only native supplier removal")
+	}
+	return "RUN --network=none " + command + " && echo BEX_SUPPLIER_REMOVAL_READY " + name + "\n"
 }
 
 func nativeUtilityTestImages(t *testing.T) (common, node, python string) {

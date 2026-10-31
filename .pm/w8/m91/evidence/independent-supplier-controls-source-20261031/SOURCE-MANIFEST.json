@@ -1,0 +1,22 @@
+{
+  "lego/operator/internal/build/nativeutility_integration_test.go": {
+    "bytes": 18785,
+    "sha256": "998bdbcb846be57248b8547660a1aa12faf736fb87cf4a075d48e443ed71bc11"
+  },
+  "lego/operator/internal/build/testdata/native-utilities/original-cases.py": {
+    "bytes": 6239,
+    "sha256": "c0490ebecc5a4c940aa5d64b6c5c8d70f87527ace424bf5c21a2c45159e608b0"
+  },
+  "lego/operator/internal/build/testdata/native-utilities/original-cases_test.py": {
+    "bytes": 6613,
+    "sha256": "bf7128b692b6d062402665c478bb604a9439e31b7252eb13c5611fef66201159"
+  },
+  "lego/operator/internal/build/testdata/native-utilities/provenance.json": {
+    "bytes": 21602,
+    "sha256": "48a9fb0691b00879f07b200ffb560dc338b8bb4e2f9a8cd3e875df5fbb9d782d"
+  },
+  "deploy/native-common/README.md": {
+    "bytes": 4438,
+    "sha256": "254c102d6b778eb58e4b2f171f579e8ce7fe247930532ed5f1f1638548b54a48"
+  }
+}

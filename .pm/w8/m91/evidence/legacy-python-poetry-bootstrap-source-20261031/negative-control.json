@@ -1,0 +1,23 @@
+{
+  "pre_fix_source_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+  "method": "go test -overlay; live source not replaced",
+  "expected_failed_subtests": [
+    "python37-default",
+    "python38-default",
+    "python37-exact",
+    "python38-exact",
+    "python37-empty-default",
+    "python38-static",
+    "python38-uv-unchanged"
+  ],
+  "actual_failed_subtests": [
+    "python37-default",
+    "python38-default",
+    "python37-exact",
+    "python38-exact",
+    "python37-empty-default",
+    "python38-static",
+    "python38-uv-unchanged"
+  ],
+  "meaning": "Source recipe regression detects the old bootstrap selection; no actual Python/Poetry image run."
+}
