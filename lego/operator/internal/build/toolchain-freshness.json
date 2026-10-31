@@ -215,6 +215,28 @@
       ]
     },
     {
+      "id": "native-pnpm-linux-x64",
+      "kind": "npm-package",
+      "upstream": "registry.npmjs.org/@pnpm/linux-x64:latest-10",
+      "committed": "linux-x64-10.34.7.tgz@sha256:0ccd4ab9ffee62e9905396dfd9f9c9d67737f58563a4e9199811cf4665965062",
+      "resolved_at": "2026-10-31T21:00:00Z",
+      "source": "npm registry @pnpm/linux-x64@10.34.7 tarball sha256 (registry integrity sha512-D+RMjBPD4XZy9crgZbUfmfe6fxtBHF/s2RWWmVIjVteG9ieklq5o1ZVgtZCp/hPo/g2dW79S4tDCoqL5yCNEdw== verified); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
+      "files": [
+        "lego/operator/internal/build/nativepnpm.go"
+      ]
+    },
+    {
+      "id": "native-pnpm-linux-arm64",
+      "kind": "npm-package",
+      "upstream": "registry.npmjs.org/@pnpm/linux-arm64:latest-10",
+      "committed": "linux-arm64-10.34.7.tgz@sha256:e5f004bc5e0b1acab7b6fda01a7d41f77670f07f0ea45ce9e56878938d898292",
+      "resolved_at": "2026-10-31T21:00:00Z",
+      "source": "npm registry @pnpm/linux-arm64@10.34.7 tarball sha256 (registry integrity sha512-LS6s9RkT+WGBITibm3UyjTTkSNQA/XVrLrkqkZbhepBfchpRFJA8M422iv5U9vWj26KC6+OiWAutG6z7DByfEQ== verified); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
+      "files": [
+        "lego/operator/internal/build/nativepnpm.go"
+      ]
+    },
+    {
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",

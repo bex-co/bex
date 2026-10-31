@@ -58,6 +58,10 @@ if (mode === 'tools') {
   proof.npm_cli = fs.realpathSync('/usr/local/bin/npm');
   proof.yarn_package = JSON.parse(fs.readFileSync(yarnPath, 'utf8'));
   proof.yarn_cli = fs.realpathSync('/usr/local/bin/yarn');
-  proof.pnpm_package = JSON.parse(fs.readFileSync('/usr/local/lib/node_modules/pnpm/package.json', 'utf8'));
+  // Node 14/16 carry pnpm's standalone build instead of the package (w8/226).
+  const pnpmPath = '/usr/local/lib/node_modules/pnpm/package.json';
+  proof.pnpm_package = fs.existsSync(pnpmPath)
+    ? JSON.parse(fs.readFileSync(pnpmPath, 'utf8'))
+    : { name: 'pnpm', standalone: fs.realpathSync('/opt/bex/pnpm/bin/pnpm') };
 }
 console.log('BEX_NODE_PROOF=' + JSON.stringify(proof));

@@ -16,6 +16,8 @@ limitations under the License.
 
 package build
 
+import "strings"
+
 // nativePnpm is the reviewed pnpm every native Node build carries (w8/m73).
 // Render's native Node environment has pnpm at build and runtime with no
 // opt-in, but the official node images ship none: Node 22/24 bundle a Corepack
@@ -55,4 +57,73 @@ func nativePnpmInstall() string {
 		"RUN mkdir -p /usr/local/lib/node_modules/pnpm" +
 		" && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz" +
 		" && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n"
+}
+
+// nativeLegacyPnpm is the same pnpm release as pnpm's official standalone
+// Linux build (@pnpm/linux-x64, @pnpm/linux-arm64), for the Node lines its
+// JavaScript entrypoint refuses (w8/226): pnpm 10 needs Node >= 18.12 to run,
+// so on Node 14 and 16 the package above exits 1 before doing anything. The
+// standalone carries its own Node, so these lines keep pnpm 10 rather than a
+// silent downgrade to an older major. Each checksum is that architecture's
+// tarball sha256, inventoried in toolchain-freshness.json.
+var nativeLegacyPnpm = struct{ amd64, arm64 string }{
+	amd64: "sha256:0ccd4ab9ffee62e9905396dfd9f9c9d67737f58563a4e9199811cf4665965062",
+	arm64: "sha256:e5f004bc5e0b1acab7b6fda01a7d41f77670f07f0ea45ce9e56878938d898292",
+}
+
+// nativeLegacyPnpmLine reports whether a Node line (major or full version)
+// needs the standalone pnpm.
+func nativeLegacyPnpmLine(line string) bool {
+	major, _, _ := strings.Cut(line, ".")
+	return major == "14" || major == "16"
+}
+
+// nativePnpmFor is the pnpm layers for the selected Node line.
+func nativePnpmFor(line string) string {
+	if nativeLegacyPnpmLine(line) {
+		return nativeLegacyPnpmInstall()
+	}
+	return nativePnpmInstall()
+}
+
+// nativeLegacyPnpmInstall puts the standalone under /opt/bex/pnpm and fronts
+// it with launchers on the image PATH where the package would link pnpm and
+// pnpx. The architecture comes from dpkg, not a TARGETARCH build ARG, which
+// would reach the authored build's environment. Two things the JavaScript
+// package does on its own the launcher restores for the standalone:
+//
+//   - Lifecycle scripts get NODE and npm_node_execpath from pnpm's own
+//     executable unless NODE is set, which would point them at the pnpm
+//     binary; the launcher sets NODE to the app's node when the caller has
+//     not set it.
+//   - pnpm puts its bundled node-gyp on a lifecycle script's PATH, but the
+//     standalone's copy lives inside the executable where sh cannot run it,
+//     so `node-gyp rebuild` (every gypfile package's default install) is not
+//     found. The launcher prepends a node-gyp shim that honours an explicit
+//     npm_config_node_gyp naming a real file and otherwise runs the node-gyp
+//     the app's own npm bundles, with the app's node.
+func nativeLegacyPnpmInstall() string {
+	registry := "https://registry.npmjs.org/@pnpm/linux-$arch/-/linux-$arch-" + nativePnpm.version + ".tgz"
+	return "RUN case \"$(dpkg --print-architecture)\" in" +
+		" amd64) arch=x64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.amd64, "sha256:") + " ;;" +
+		" arm64) arch=arm64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.arm64, "sha256:") + " ;;" +
+		" *) echo \"pnpm: no standalone build for $(dpkg --print-architecture)\" >&2; exit 1 ;; esac" +
+		" && mkdir -p /opt/bex/pnpm/bin /opt/bex/pnpm/node-gyp-bin" +
+		" && curl -fsSL --retry 3 -o /opt/bex/pnpm.tgz \"" + registry + "\"" +
+		" && echo \"$sum  /opt/bex/pnpm.tgz\" | sha256sum -c - >/dev/null" +
+		" && tar -xzf /opt/bex/pnpm.tgz -C /opt/bex/pnpm/bin --strip-components=1 --no-same-owner package/pnpm && rm /opt/bex/pnpm.tgz\n" +
+		"COPY --chmod=755 <<'BEX_PNPM' /usr/local/bin/pnpm\n" +
+		"#!/bin/sh\n" +
+		"if [ -z \"${NODE+x}\" ] && node=$(command -v node); then export NODE=\"$node\"; fi\n" +
+		"PATH=\"/opt/bex/pnpm/node-gyp-bin:$PATH\" exec /opt/bex/pnpm/bin/pnpm \"$@\"\n" +
+		"BEX_PNPM\n" +
+		"COPY --chmod=755 <<'BEX_PNPX' /usr/local/bin/pnpx\n" +
+		"#!/bin/sh\n" +
+		"exec /usr/local/bin/pnpm dlx \"$@\"\n" +
+		"BEX_PNPX\n" +
+		"COPY --chmod=755 <<'BEX_NODE_GYP' /opt/bex/pnpm/node-gyp-bin/node-gyp\n" +
+		"#!/bin/sh\n" +
+		"if [ -n \"$npm_config_node_gyp\" ] && [ -f \"$npm_config_node_gyp\" ]; then exec \"$npm_config_node_gyp\" \"$@\"; fi\n" +
+		"exec node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js \"$@\"\n" +
+		"BEX_NODE_GYP\n"
 }

@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence
+- [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
 
 - [x] **225** — [Resuming a service suspended by the Free-hours budget names it by its internal App name (`tea-<workspace>-<slug>`), not the service](done/225.md) (~10m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-30: first live m139 exhaustion (`bex-canary` 750.58/750 h) — the refusal text formats `a.Name`; use `core.AppPublicName` as w8/128 did — **DONE 2026-10-31** (refusal names the public service; regression test)
 

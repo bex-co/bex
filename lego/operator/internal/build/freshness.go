@@ -112,7 +112,9 @@ func validateToolchainImage(i int, img ToolchainImage) error {
 	default:
 		return fmt.Errorf("%s: unknown kind %q", prefix, img.Kind)
 	}
-	if img.Upstream == "" || strings.Contains(img.Upstream, "@") || !strings.Contains(img.Upstream, ":") {
+	// An npm scope (registry.npmjs.org/@pnpm/linux-x64) is a name, not a digest.
+	upstream := strings.Replace(img.Upstream, "registry.npmjs.org/@", "registry.npmjs.org/", 1)
+	if upstream == "" || strings.Contains(upstream, "@") || !strings.Contains(upstream, ":") {
 		return fmt.Errorf("%s: upstream must be a tag reference", prefix)
 	}
 	if toolchainDigestRE.FindString(img.Committed) == "" {

@@ -136,7 +136,9 @@ def parse_inventory(raw: str) -> dict:
         seen.add(ident)
         if image["kind"] not in KINDS:
             fail(f"{prefix}.kind must be one of {sorted(KINDS)}")
-        if not isinstance(image["upstream"], str) or ":" not in image["upstream"] or "@" in image["upstream"]:
+        # An npm scope (registry.npmjs.org/@pnpm/linux-x64) is a name, not a digest.
+        upstream = image["upstream"].replace(NPM_REGISTRY + "/@", NPM_REGISTRY + "/", 1) if isinstance(image["upstream"], str) else None
+        if upstream is None or ":" not in upstream or "@" in upstream:
             fail(f"{prefix}.upstream must be a host/name:tag reference")
         # The resolver routes by upstream host, so a kind's upstream must name
         # the host its kind resolves through.
