@@ -1,6 +1,6 @@
 # w4 · m170 — Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database
 
-**Worker:** worker4 **Goal:** reserved PostgreSQL names are refused with a 400 at create and at add-user. A database whose reconcile fails says why, and a tenant can always undo a user add. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** reserved PostgreSQL names are refused with a 400 at create and at add-user. A database whose reconcile fails says why, and a tenant can always undo a user add. **Status:** done (2026-10-31: reserved-identifier refusals replayed live on REST/GraphQL/MCP/UI; fixtures deleted)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 — **DONE** | Render parity across Postgres create/user/read surfaces             | 30m | w4/m170/t002, w4/m170/t003 |
 | t005 — **DONE** | Simplify changed code                                               | 20m | w4/m170/t004               |
 | t006 — **DONE** | Test coverage for shipped behavior                                  | 45m | w4/m170/t004               |
-| t007 | Closeout                                                            | 15m | w4/m170/t006               |
+| t007 — **DONE** | Closeout                                                            | 15m | w4/m170/t006               |
 
 ## Definition of done
 
