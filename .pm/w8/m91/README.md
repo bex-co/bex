@@ -280,3 +280,7 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 ## Qualification trigger freshness — 2026-10-31
 
 [The three-file trigger repair](evidence/common-trigger-freshness-source-20261031/README.md) makes native generator/assembly/resolver and original-fixture changes trigger the singleton common publication and both-architecture generated qualification. Parsed actual-YAML regression checks fail six required selections on the previous workflow and pass after the narrow path additions; unrelated controller/backend/PM changes remain excluded. Source/unit/lint/Actions checks pass. Actual all-family/common/hosted/default/adoption gates remain open.
+
+## Python3.13 immutable supplier evidence — 2026-10-31
+
+[Root-approved Python3.13](evidence/published-python313-20261031/README.md) binds the same `d95dcd88` producer/verifier source and successful run41190693730/job124506987325. Root checked all186 frozen payloads, four mirrored files plus28 immutable Git source files/modes, all35 fresh complete anonymous blobs/1,193,025,253B, five strict signed proofs, two actual rejected source/subject controls, seven fresh TUF roots and all five full signed-subject/canonical-predicate roundtrips. Both architectures report Python3.13.18; full findings remain retained without waiver. Published supplier approvals are17/27. Common Bookworm qualification, exact Python3.14.8/default, original hosted and production adoption acceptance remain open.

@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:2c3441ada9b9beb6520717e430ec061c3e403f458984ab6b33ee61a5247d1bfb",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/bex-w8-python313-v11-case-20261031-d95dcd/output/native-python-3.13-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/2c3441ada9b9beb6520717e430ec061c3e403f458984ab6b33ee61a5247d1bfb.bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "079dd3137fa77dca198fcc452356e6bc5b4797cd02cfbf7b9ff0333e7c60eb58",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "d95dcd88505c5d6825343dbfbc74244242ccad25",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/bex-w8-python313-v11-case-20261031-d95dcd/output/native-python-3.13-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/2c3441ada9b9beb6520717e430ec061c3e403f458984ab6b33ee61a5247d1bfb-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/bex-w8-python313-v11-case-20261031-d95dcd/output/native-python-3.13-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/2c3441ada9b9beb6520717e430ec061c3e403f458984ab6b33ee61a5247d1bfb-positive-attempt1-hpfpjlbj"
+}
