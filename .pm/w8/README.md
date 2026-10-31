@@ -51,7 +51,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m127** — [Free services cannot send outbound SMTP (25/465/587), as on Render](done/m127/README.md) (7 tasks;210m) ← promoted from `149` on 2026-10-20 (user decision: keep the provider 25/465 block, refuse free services 587). t001–t006 done: operator `app.bex.co/free-plan` pod label (Deployment, cron, pre-deploy; follows plan changes), clusterwide Cilium `egressDeny` of TCP 25/465/587 to `world` with a gitops-validate guard, plan-picker copy (en/zh), ADR018/ADR022. — **DONE 2026-10-29** (free SMTP ports refused, paid 587/2525 open on production)
 
-- [ ] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](blocked/m126/README.md) (9 tasks;380m) ← promoted from `145` on 2026-10-20 (user decision: implement Render's expiry). t001–t008 done: `expiresAt` from the Database CR (rollout clamp 2026-10-27), a replica-safe `FreeExpirySweeper` (warn 7 days ahead, suspend at expiry, delete after 14 days through the user delete path, audit + owner email), upgrade clears it on every plan writer, dashboard Expires row + warning + list hint; ADR009/ADR018. — **BLOCKED（2026-10-29 复核）：** t001–t008 done；等 D3 的 fresh QA Postgres 槽和短时 paid-upgrade fixture；生命周期用 dev 测试时钟，不必等 11–12 月。
+- [ ] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](m126/README.md) (9 tasks;380m) ← promoted from `145` on 2026-10-20 (user decision: implement Render's expiry). t001–t008 done: `expiresAt` from the Database CR (rollout clamp 2026-10-27), a replica-safe `FreeExpirySweeper` (warn 7 days ahead, suspend at expiry, delete after 14 days through the user delete path, audit + owner email), upgrade clears it on every plan writer, dashboard Expires row + warning + list hint; ADR009/ADR018. — **READY（2026-10-31 用户决定；下一步：清理 bex-canary 后做 t009）** t001–t008 done；等 D3 的 fresh QA Postgres 槽和短时 paid-upgrade fixture；生命周期用 dev 测试时钟，不必等 11–12 月。
 
 - [x] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](done/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik ([evidence](done/m125/evidence/README.md)); ADR010/ADR018. — **DONE 2026-10-29** (edge-minted Rndr-Id end to end on production)
 
@@ -137,7 +137,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m84** — [Make packaged pgvector usable in managed Postgres](done/m84/README.md) (6 tasks)（原记录：） t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently [sweep378](evidence/postgres-native-cursors-sweep378/README.md). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified. — **DONE 2026-10-29** (pre-fix parents backfilled, read-only verified on production)
 
-- [ ] **m83** — [Supply automatic compression for web responses](blocked/m83/README.md) (6 tasks) — **BLOCKED (2026-10-16: needs the user to choose — (1) ship Traefik `compress` alone (streaming-safe, but `no-transform` responses get compressed and strong ETags stay strong, which this milestone rejects), (2) authorize an upstream traefik/yaegi `Flusher` wrapper (or Traefik `compress` option) PR first, or (3) keep identity; the guard-plugin design is correct on headers but Yaegi v0.16.1 drops `Flush`, buffering every stream on the route (0 s → 3 s first event). Implementation patch, neighbor matrix, flush timing and Brotli cost in [evidence](blocked/m83/evidence/edge-compression-attempt/README.md); nothing shipped, no task done)**
+- [ ] **m83** — [Supply automatic compression for web responses](m83/README.md) (6 tasks) — **READY（2026-10-31 用户决定；下一步：上线 Traefik compress 并在 ADR018 记录签字差异）**
 
 - [x] **m82** — [Supply FFmpeg in native Python builds and runtime](done/m82/README.md) (6 tasks) — **DONE 2026-10-16:** sweep382 accepts both first original MP3 builds and real runtime/probe/exact decode, live x86_64 plus local pinned aarch64, six shared reads and exact two-parent/child cleanup.
 
@@ -173,7 +173,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](done/m78/README.md).
 
-- [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED（2026-10-29 复核）：** CNPG 1.30.1 + in-place 已由 w7/m156 上线验收；现等 D3 的自有 QA Postgres fixture，随后验证 300/1005 条 burst，不能用 WAL 验收替代。
+- [ ] **m65** — [Retain PostgreSQL process logs during bursts](m65/README.md) — **READY（2026-10-31 用户决定；下一步：清理 bex-canary 后做 300/1005 burst 验收）** CNPG 1.30.1 + in-place 已由 w7/m156 上线验收；现等 D3 的自有 QA Postgres fixture，随后验证 300/1005 条 burst，不能用 WAL 验收替代。
 
 - [x] **m64** — [Keep Blueprint environment copies consistent across applies](done/m64/README.md) — **DONE 2026-10-29** (Blueprint copies consistent; dashboard Validate scoped, on production)
 
@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence
+- [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence
 
 - [x] **225** — [Resuming a service suspended by the Free-hours budget names it by its internal App name (`tea-<workspace>-<slug>`), not the service](done/225.md) (~10m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-30: first live m139 exhaustion (`bex-canary` 750.58/750 h) — the refusal text formats `a.Name`; use `core.AppPublicName` as w8/128 did — **DONE 2026-10-31** (refusal names the public service; regression test)
 

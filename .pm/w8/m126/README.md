@@ -1,6 +1,6 @@
 # w8 · m126 — Free Postgres expires after 30 days and reports `expiresAt`, as on Render
 
-**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** blocked — t001–t008 done；日历不是门槛，待 D3 的 fresh QA Postgres 槽及短时 paid-upgrade fixture，随后完成原 DoD
+**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** todo（2026-10-31 解除阻塞；原记录：t001–t008 done；日历不是门槛，待 D3 的 fresh QA Postgres 槽及短时 paid-upgrade fixture，随后完成原 DoD
 
 ## Tasks (in order)
 
@@ -81,3 +81,13 @@ Live on production after the release pipeline deploys bex-api and the dashboard:
 - **事实：** 新 workspace 的生产 creation policy 为 `all` / `paymentRequired=true`，绑定付款方式是其正常产品门槛。本轮未创建 SetupIntent、workspace 或数据库，未修改任何 payment marker / exemption / 支付方式。
 - **可行更小路径：** `tian-personal`（`tea-da2isimlm39c739m4ofg`）已有付款资格，Postgres used/freeUsed/terminating=0、freeLimit=1，调用者 admin；现有 2 个服务保持原状。已向用户询问是否允许将测试落点改到这里，仅创建和删除本轮 DB fixture；或者坚持新 QA workspace 并由用户在 dashboard 完成付款设置。
 - **状态：** 本项继续 blocked 等这一次范围/实际环境条件确认。原 DoD 和 D3 清理要求全部保留；不是因缺少重复的付费许可而阻塞。
+
+
+## 解除阻塞记录（2026-10-31，`/unblock w8`）
+
+- **涉及 ID：** w8/m126
+- **结论来源：** 用户明确决定（`/unblock w8` A，2026-10-31），回答了上一条「QA 落点待用户确认」。
+- **结论：** QA Postgres fixture 放在 **bex-canary**（用户说明它已经改了 plan，worker 先核实当前 plan 和 Postgres 配额）。动手前，按用户指示清掉 bex-canary 里现有的资源（用户的判断是「似乎都是垃圾」）。
+- **清理做法：** 先列出全部资源并记录 ID、类型和创建时间；跳过最近 2 小时内创建、可能属于正在运行的 QA 会话的资源；其余逐个按 ID 删除并留 404 证据。服务配额回到基线后再建 fixture。不碰 tian-personal 和 bex workspace。
+- **用户门槛：** 无（短时付费 fixture 已在 D4 获批）。
+- **worker 下一步：** 清理 bex-canary 后，用 fresh QA Postgres 加短时 paid-upgrade fixture 完成 t009（`expiresAt` = 创建时间 + 30 天，四个接口一致，升级付费后消失）；生命周期部分用 dev 测试时钟；按 ID 删除 fixture 并留 404 证据。
