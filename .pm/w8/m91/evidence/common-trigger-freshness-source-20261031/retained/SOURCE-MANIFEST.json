@@ -1,0 +1,25 @@
+{
+  "frozen_at": "2026-10-31T16:50:50.547811+00:00",
+  "head": "a3a24cb492493d327f380f3c3eaa59bbbd2d5a12",
+  "files": [
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 4628,
+      "sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+      "head_sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "bytes": 16781,
+      "sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+      "head_sha256": "1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 14819,
+      "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+      "head_sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab"
+    }
+  ],
+  "file_count": 3
+}

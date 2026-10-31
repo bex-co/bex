@@ -1,0 +1,38 @@
+{
+  "frozen_at": "2026-10-31T16:50:50.547811+00:00",
+  "result": "TRIGGER_FRESHNESS_SOURCE_FIX_AND_CONTROLS_PASS",
+  "owned_file_count": 3,
+  "change": "Exact native*.go and native-utilities/** push paths now trigger one common publication plus two-architecture ephemeral qualification; C publication remains explicit singleton manual only",
+  "regression": "Actual committed pre-fix YAML supplied by Go test overlay fails six representative generator/fixture selections; corrected actual parsed YAML passes positives and unrelated controller/backend/PM negatives",
+  "checks": {
+    "whole_internal_build": "PASS5.057s",
+    "scoped_lint": "PASS0issues",
+    "Python_OCI_publisher_controls": ".........................................\n----------------------------------------------------------------------\nRan 41 tests in 14.388s\n\nOK",
+    "actionlint": "PASS private approved-label config",
+    "Actions_guard": "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, public-fork isolation and production-secret confinement intact",
+    "diff_check": "PASS"
+  },
+  "test_dependency": "Uses already pinned go.yaml.in/yaml/v3 v3.0.5 for actual YAML parsing; no dependency version or module-file changes",
+  "module_files": {
+    "lego/operator/go.mod": {
+      "current_sha256": "831374b2e7adfca3c78f82862c25ecfea4ba600f5523f2fdc360e0de3162ca66",
+      "initial_sha256": "831374b2e7adfca3c78f82862c25ecfea4ba600f5523f2fdc360e0de3162ca66",
+      "unchanged": true
+    },
+    "lego/operator/go.sum": {
+      "current_sha256": "334ce02a18708ec1b6204c72f34d94030cc9ba22c01c457eb26d8ba553a98eb5",
+      "initial_sha256": "334ce02a18708ec1b6204c72f34d94030cc9ba22c01c457eb26d8ba553a98eb5",
+      "unchanged": true
+    },
+    "lego/go.work.sum": {
+      "current_sha256": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+      "initial_sha256": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+      "unchanged": true
+    }
+  },
+  "source_manifest_sha256": "d60810ff70f037ede08970b181d0a18f6543b7c4e2c89222192d3389332babfb",
+  "source_patch_sha256": "da649d75438f8ca9f347d994f6fa82a7cd2ac3c52a90664408651fe3a36fac77",
+  "historical_lint_issue": "Initial test path import shadowed the existing recipe-local path variable; renamed only that local, final lint passes; failed receipt retained",
+  "actual_runtime_images": "UNEXECUTED in this source task; no Docker/CI requests/pins/resources/Git mutations",
+  "separate_followup": "Root separately authorized common-default legacy Poetry dependency compatibility repair; not included in this three-file freeze"
+}

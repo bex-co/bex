@@ -1,0 +1,15 @@
+{
+  "started_at": "2026-10-31T16:46:47.205116+00:00",
+  "completed_at": "2026-10-31T16:46:51.248311+00:00",
+  "command": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "run",
+    "./internal/build"
+  ],
+  "exit_code": 1,
+  "stop": null,
+  "start_free_bytes": 4024725504,
+  "minimum_observed_free_bytes": 4022611968,
+  "maximum_owned_tmp_bytes": 0,
+  "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+}

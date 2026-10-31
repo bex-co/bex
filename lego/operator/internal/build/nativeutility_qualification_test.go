@@ -22,15 +22,79 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 )
 
 const nativeUtilityOwnerLabel = "co.bex.native-qualification"
+
+func TestNativeCommonQualificationTracksActualGeneratorAndFixtureChanges(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", ".github", "workflows", "native-common-image.yml"))
+	must(t, err)
+	var workflow struct {
+		On struct {
+			Push struct{ Paths []string }
+		}
+		Jobs map[string]struct {
+			Uses string
+			With map[string]string
+		}
+	}
+	must(t, yaml.Unmarshal(raw, &workflow))
+	// These are the two glob forms used by this actual workflow. Match native
+	// file globs by path segment; a trailing /** also includes nested fixtures.
+	selected := func(file string) bool {
+		for _, pattern := range workflow.On.Push.Paths {
+			if strings.HasSuffix(pattern, "/**") && strings.HasPrefix(file, strings.TrimSuffix(pattern, "**")) {
+				return true
+			}
+			match, err := path.Match(pattern, file)
+			must(t, err)
+			if match {
+				return true
+			}
+		}
+		return false
+	}
+	for _, tc := range []struct {
+		file string
+		want bool
+	}{
+		{"lego/operator/internal/build/native.go", true},
+		{"lego/operator/internal/build/nativeresolve.go", true},
+		{"lego/operator/internal/build/nativecommon_erlang.go", true},
+		{"lego/operator/internal/build/nativeutility_integration_test.go", true},
+		{"lego/operator/internal/build/testdata/native-utilities/original-cases.py", true},
+		{"lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py", true},
+		{"deploy/native-common/Dockerfile", true},
+		{"lego/operator/internal/controller/disk.go", false},
+		{"lego/backend/internal/apps/service.go", false},
+		{".pm/w8/m91/README.md", false},
+	} {
+		if selected(tc.file) != tc.want {
+			t.Errorf("actual common push path selection for %s = %v, want %v", tc.file, !tc.want, tc.want)
+		}
+	}
+	publications := 0
+	for _, job := range workflow.Jobs {
+		if job.Uses == "./.github/workflows/native-base-image.yml" {
+			publications++
+			if job.With["runtime"] != "common-bookworm" {
+				t.Fatal("generator/fixture change would publish a C runtime instead of one common foundation")
+			}
+		}
+	}
+	if publications != 1 {
+		t.Fatalf("common workflow has %d publication calls, want one", publications)
+	}
+}
 
 type nativeUtilityDocker struct{ builder, platform, owner string }
 
@@ -154,12 +218,12 @@ func nativeUtilityPrepareWheels(t *testing.T, d nativeUtilityDocker, recipe []by
 	}
 	prepared, err := nativeUtilityWheelRecipe(string(recipe), common)
 	must(t, err)
-	path := filepath.Join(evidence, "Dockerfile.prerequisites")
-	must(t, os.WriteFile(path, []byte(prepared), 0o600))
+	recipePath := filepath.Join(evidence, "Dockerfile.prerequisites")
+	must(t, os.WriteFile(recipePath, []byte(prepared), 0o600))
 	wheels := filepath.Join(evidence, "prepared-wheels")
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 	defer cancel()
-	args := d.buildArgs([]string{"--file", path, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source, false)
+	args := d.buildArgs([]string{"--file", recipePath, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source, false)
 	command := exec.CommandContext(ctx, "docker", args...)
 	log, err := command.CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "prerequisites.log"), log, 0o600))
