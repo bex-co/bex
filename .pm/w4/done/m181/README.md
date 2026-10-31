@@ -1,6 +1,6 @@
 # w4 · m181 — Keep pre-deploy jobs out of serving endpoints
 
-**Worker:** worker4 **Goal:** a running pre-deploy command cannot receive service traffic or interrupt the previous release. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** a running pre-deploy command cannot receive service traffic or interrupt the previous release. **Status:** done (2026-10-31: failing and canceled pre-deploy steps stay out of both Services; public GETs 200 on the previous image throughout)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity and deploy-surface verification — **DONE** | 20m | w4/m181/t001, w4/m181/t002 |
 | t004 | Simplify changed code — **DONE** | 15m | w4/m181/t003 |
 | t005 | Test coverage for serving endpoint membership — **DONE** | 35m | w4/m181/t003 |
-| t006 | Closeout with the live failure and cancel replays | 20m | w4/m181/t005 |
+| t006 — **DONE** | Closeout with the live failure and cancel replays | 20m | w4/m181/t005 |
 
 ## Definition of done
 
