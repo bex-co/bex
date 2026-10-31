@@ -241,8 +241,9 @@ var poetryRelease = regexp.MustCompile(`^[12]\.\d+\.\d+$`)
 // POETRY_VERSION when set, else the default. Unlike the primary toolchains it
 // is an exact release installed from PyPI rather than a pinned image line —
 // Poetry publishes no reviewed image — so Line is the version itself.
-// Compatibility with the chosen Python is Poetry's own: an incompatible pair
-// fails the install step by name in the build log.
+// Explicit versions retain Poetry's compatibility requirement: an incompatible
+// pair fails the install step by name. Common assembly bootstraps the modern
+// default independently when an old application Python cannot install it.
 func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
 	request := strings.TrimSpace(env["POETRY_VERSION"])
 	if request == "" {
