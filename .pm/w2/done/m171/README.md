@@ -153,6 +153,6 @@ Production `25b99d8a3` (contains every m171 commit), workspace `bex` (Scale). QA
 4. **Pricing.** The dashboard New Postgres picker lists Basic 256MB $4.20, Basic 1GB $13.30, 1c-2g $28.00, Pro 4GB $38.50, Basic 4GB $52.50; the live Stripe catalog is in sync (t003/t012).
 5. **Docs.** ADR018/ADR009 §5/ADR030/CLI checklist corrected in t007.
 
-Found (not a DoD failure, filed as [`w2/059`](../059.md)): the create response and the first reads report `highAvailabilityEnabled: false` until the operator observes the standby, because the view projects `Database.status` (`lego/backend/internal/postgres/service.go:582`); Render returns the configured value.
+Found (not a DoD failure, filed as [`w2/059`](../059.md)): the create response and the first reads report `highAvailabilityEnabled: false` until the operator observes the standby, because the view projects `Database.status` (`lego/backend/internal/postgres/service.go:582`), a recorded ADR009 choice; whether Render differs is unverified and is 059's first step.
 
 Cleanup: both databases (404 after delete), the webhook, the CLI session (`bex logout`) and the extra Kratos session were removed. Remaining work outside this milestone: [`w2/058`](../../blocked/058.md) (swap the 9 subscriptions after 2026-11-16).

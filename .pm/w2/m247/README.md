@@ -1,6 +1,6 @@
 # w2 · m247 — High-availability Postgres fits in any workspace, as on Render
 
-**Worker:** worker2 **Goal:** a Hobby workspace can create and run any sellable Postgres (including a `2c-4g` HA pair) and Key Value, because datastore Pods are not charged against the services' compute quota, and an instance's quota charge matches its plan. **Status:** todo — t001 shipped (`56b2f5063`), t003 verified locally; next t004 on production after the deploy
+**Worker:** worker2 **Goal:** a Hobby workspace can create and run any sellable Postgres (including a `2c-4g` HA pair) and Key Value, because datastore Pods are not charged against the services' compute quota, and an instance's quota charge matches its plan. **Status:** todo — t001, t003–t006 done (production HA pairs in a Hobby workspace 2026-10-31); t007/t008 next
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | t001 | Datastore Pods carry a dedicated PriorityClass, and the compute quota excludes it (new + existing namespaces) — **DONE** | 1h  | —          |
 | t002 | Bounded barman-cloud sidecar resources, so a 1-CPU instance is not charged 3 CPU of limits        — **MOVED to `w2/055`** (not needed for the DoD after t001; its rollout restarts every backed-up tenant Postgres) | 30m | —          |
 | t003 | Prove on the local cluster that a Hobby-quota namespace runs a `2c-4g` HA pair, and that services are still capped — **DONE** | 40m | t001, t002 |
-| t004 | Production: a Hobby workspace runs `1c-2g` and `2c-4g` HA databases with two healthy instances (then delete) | 30m | t003       |
-| t005 | Correct ADR043/ADR009/ADR018 and the `quotaForPlan` rationale                                      | 20m | t004       |
-| t006 | Render parity                                                                                      | 15m | t005       |
+| t004 | Production: a Hobby workspace runs `1c-2g` and `2c-4g` HA databases with two healthy instances (then delete) — **DONE** | 30m | t003       |
+| t005 | Correct ADR043/ADR009/ADR018 and the `quotaForPlan` rationale — **DONE**                                      | 20m | t004       |
+| t006 | Render parity — **DONE**                                                                                      | 15m | t005       |
 | t007 | Simplify                                                                                           | 15m | t006       |
 | t008 | Test coverage                                                                                      | 30m | t006       |
 | t009 | Closeout                                                                                           | 10m | t007, t008 |
@@ -41,3 +41,9 @@ Exempt datastore Pods (CNPG instances, poolers and Key Value) from the services'
 - **t003 (local `dev-2`, throwaway Hobby workspace):** a `2c-4g` HA Postgres with a pooler reached 2/2 healthy instances on distinct nodes (`highAvailabilityEnabled: true`). Its Pods and a Key Value's Pods carried `bex-datastore`, and `tenant-compute-quota` showed 0 CPU used. Services stay capped: a `pro_plus` (4 CPU) web service was refused with `exceeded quota: tenant-compute-quota … limited: requests.cpu=3`. Everything was cleaned up.
 - **Not taken:** t002's commit (bounding the barman-cloud sidecar to 1 CPU / 1 Gi limits). Its rollout recreates every backed-up tenant Postgres Pod once (the operator copies the ObjectStore into each namespace), which is a brief outage for every single-instance customer database. After t001 it no longer matters for quotas, and limits do not affect scheduling. Moved to `w2/055` for a planned window.
 - **Follow-up found:** Hobby `persistentvolumeclaims: 8` and `pods: 50` in `tenant-quota` still count datastore volumes and Pods, so the number of HA databases is capped far below the 25-database count cap. Filed as `w2/056`.
+
+## t004 + t005 + t006 — 2026-10-31
+
+- **t004 (production, PASS).** Hobby workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`), already running two services (`tianpan-v4-web` starter, a free fixture). `POST /v1/postgres {"plan":"1c-2g","enableHighAvailability":true}` → `dpg-dbirn1ilpuls73ei2gg0` and `{"plan":"2c-4g",…}` → `dpg-dbirn1qt5fis7381js80` both reached `available`, `highAvailabilityEnabled: true`, with instances on two nodes each (`bex-tenant-0-tghbn-s67g5` / `-f2fsk`) and `priorityClassName: bex-datastore`. No `exceeded quota` event; `tenant-compute-quota` used stayed `requests.cpu 600m` (the services only). **Services still capped:** a `pro_plus` (4 CPU) image service in the same workspace was refused by `exceeded quota: tenant-compute-quota, requested: requests.cpu=4` (the customer-facing wording of that refusal is poor; filed `w2/060`). The live quota is the post-056 shape (`pods` in the scoped quota, PVCs 208). All three fixtures deleted.
+- **t005.** ADR043 already carried the scoped-quota design (056/057), and `quotaForPlan`'s comment states the services-only budget (`namespaces.go:544`). Added to ADR009 § High availability ("Available in every workspace plan") and the ADR018 HA row, with the production evidence.
+- **t006 (Render parity).** Render gates HA only on a ≥1-CPU plan, not on the workspace plan. The change sits below every surface (API-server quota scope + operator PriorityClass), so REST, GraphQL, MCP, the CLI, Blueprint and the dashboard toggle all reach the same healthy pair; no wire field or error code changed. Remaining divergence, recorded in `w2/060`: Render lets Hobby run any paid instance type, while bex keeps a 3-CPU services quota whose refusal surfaces only as a misleading stall hint.
