@@ -1,0 +1,207 @@
+{
+  "started_at": "2026-10-31T08:14:49.806487+00:00",
+  "completed_at": "2026-10-31T08:21:07.360551+00:00",
+  "actual_returncode": 0,
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v11.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "ruby-3.4-bookworm",
+    "--sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--run",
+    "41129277963",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-ruby34-v11-83c1e30-20261031",
+    "--layer-workers",
+    "2"
+  ],
+  "executed_source_sha256": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "log": "/tmp/loopx-w8-native-review-ruby34-v11-83c1e30-20261031/v11-case-attempt1.log",
+  "resource_policy": {
+    "minimum_free_bytes": 2147483648,
+    "maximum_owned_case_bytes": 2147483648,
+    "proactive_free_stop_bytes": 2281701376,
+    "proactive_owned_stop_bytes": 2080374784,
+    "poll_seconds": 2,
+    "maximum_elapsed_seconds": 7200,
+    "termination_scope": "Only the new local subprocess session/process group created by this supervisor; no CI or other process"
+  },
+  "minimum_observed_free_bytes": 11810402304,
+  "maximum_observed_owned_bytes": 133795985,
+  "stopped_reason": null,
+  "resource_observations": [
+    {
+      "at": "2026-10-31T08:14:49.808898+00:00",
+      "free_bytes": 12642070528,
+      "owned_bytes": 26142,
+      "actual_progress": null
+    },
+    {
+      "at": "2026-10-31T08:15:19.928544+00:00",
+      "free_bytes": 12029251584,
+      "owned_bytes": 90587593,
+      "actual_progress": {
+        "at": "2026-10-31T08:14:56.897292+00:00",
+        "stage": "anonymous-immutable-bundle-download",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm"
+      }
+    },
+    {
+      "at": "2026-10-31T08:15:50.056455+00:00",
+      "free_bytes": 11981238272,
+      "owned_bytes": 120143653,
+      "actual_progress": {
+        "at": "2026-10-31T08:15:38.675806+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038",
+        "expected_bytes": 64432590
+      }
+    },
+    {
+      "at": "2026-10-31T08:16:20.189880+00:00",
+      "free_bytes": 11881938944,
+      "owned_bytes": 120147412,
+      "actual_progress": {
+        "at": "2026-10-31T08:16:00.038909+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:c60b6c4ab6814c23eed61c391d84d29b1e91df4c39e88dbd5a77f653d5125b3c",
+        "expected_bytes": 41623355
+      }
+    },
+    {
+      "at": "2026-10-31T08:16:50.328385+00:00",
+      "free_bytes": 11864399872,
+      "owned_bytes": 120152657,
+      "actual_progress": {
+        "at": "2026-10-31T08:16:27.443064+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:83e74fce4cd3d0218b5c2b6a076a711f72421882069ce972bb654f62514fcc6e",
+        "expected_bytes": 62632981
+      }
+    },
+    {
+      "at": "2026-10-31T08:17:20.420314+00:00",
+      "free_bytes": 12049043456,
+      "owned_bytes": 120162687,
+      "actual_progress": {
+        "at": "2026-10-31T08:17:19.727832+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:706a288336fbab184c8e08e0f6f10266cd494819e213a27ec25738493300b58d",
+        "expected_bytes": 263
+      }
+    },
+    {
+      "at": "2026-10-31T08:17:50.537902+00:00",
+      "free_bytes": 11930664960,
+      "owned_bytes": 120169765,
+      "actual_progress": {
+        "at": "2026-10-31T08:17:29.531957+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:77fab8735d6ee3d8bacf886aa5c664c2f4a32f23b204de8bf8b2a6af466db549",
+        "expected_bytes": 143368207
+      }
+    },
+    {
+      "at": "2026-10-31T08:18:20.679041+00:00",
+      "free_bytes": 11902799872,
+      "owned_bytes": 120170354,
+      "actual_progress": {
+        "at": "2026-10-31T08:18:00.033344+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:77fab8735d6ee3d8bacf886aa5c664c2f4a32f23b204de8bf8b2a6af466db549",
+        "bytes_hashed": 48234496,
+        "expected_bytes": 143368207
+      }
+    },
+    {
+      "at": "2026-10-31T08:18:50.812893+00:00",
+      "free_bytes": 12493496320,
+      "owned_bytes": 120174616,
+      "actual_progress": {
+        "at": "2026-10-31T08:18:47.317324+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212",
+        "expected_bytes": 23439758
+      }
+    },
+    {
+      "at": "2026-10-31T08:19:20.949090+00:00",
+      "free_bytes": 12527677440,
+      "owned_bytes": 120177144,
+      "actual_progress": {
+        "at": "2026-10-31T08:19:00.278315+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc",
+        "expected_bytes": 203339786
+      }
+    },
+    {
+      "at": "2026-10-31T08:19:51.078594+00:00",
+      "free_bytes": 12780933120,
+      "owned_bytes": 120183656,
+      "actual_progress": {
+        "at": "2026-10-31T08:19:39.865780+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:dbe740065c344b660c482e2f4722f47adfd2fba97c1254157cde3dfe0edff972",
+        "expected_bytes": 61850560
+      }
+    },
+    {
+      "at": "2026-10-31T08:20:21.210898+00:00",
+      "free_bytes": 17762869248,
+      "owned_bytes": 120191376,
+      "actual_progress": {
+        "at": "2026-10-31T08:20:15.553636+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:d1298c8799ed7aadaf3de9fd639ff3b7f1900b3699969c75b4d4f398aac0886f",
+        "expected_bytes": 152806135
+      }
+    },
+    {
+      "at": "2026-10-31T08:20:51.309479+00:00",
+      "free_bytes": 17822384128,
+      "owned_bytes": 120192356,
+      "actual_progress": {
+        "at": "2026-10-31T08:20:45.767148+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "ruby-3.4-bookworm",
+        "digest": "sha256:d1298c8799ed7aadaf3de9fd639ff3b7f1900b3699969c75b4d4f398aac0886f",
+        "bytes_hashed": 71303168,
+        "expected_bytes": 152806135
+      }
+    }
+  ],
+  "supervisor_sha256": "9aab2dc1f14425890b3c0457561145b24b60af714b0e0f73c323c0c0616fd000"
+}

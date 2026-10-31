@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-31T08:21:22.890126+00:00",
+  "case_attempt": 1,
+  "new_complete_blob_count": 33,
+  "expected_bytes": 1192208302,
+  "full_bytes_hashed_fresh": 1192208302,
+  "cache_seed_or_prior_receipt_reuse": false,
+  "body_GET_count": 33,
+  "ranged_blob_cases": [],
+  "scope": "All canonical full-SHA/size receipt gates passed. Any range records retain actual responses without changing policy. No manual decompressed-layer proof is implied."
+}
