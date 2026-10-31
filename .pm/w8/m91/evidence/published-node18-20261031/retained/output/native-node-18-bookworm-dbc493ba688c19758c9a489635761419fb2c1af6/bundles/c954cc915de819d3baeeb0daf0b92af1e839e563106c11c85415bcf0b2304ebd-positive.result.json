@@ -1,0 +1,56 @@
+{
+  "bundle_digest": "sha256:c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd.bundle.json",
+    "--type",
+    "https://spdx.dev/Document",
+    "--digest",
+    "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/cosign-tuf-cache/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd-positive-attempt1-awxb61sc",
+  "attempts": [
+    {
+      "bundle_digest": "sha256:c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd.bundle.json",
+        "--type",
+        "https://spdx.dev/Document",
+        "--digest",
+        "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd-positive-attempt1.stderr.log",
+      "tuf_cache": "/private/tmp/bex-w8-node18-v11-case-20261031-dbc493/output/native-node-18-bookworm-dbc493ba688c19758c9a489635761419fb2c1af6/bundles/cosign-tuf-cache/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd-positive-attempt1-awxb61sc"
+    }
+  ]
+}
