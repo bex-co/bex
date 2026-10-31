@@ -1,6 +1,6 @@
 # w8 · m126 — Free Postgres expires after 30 days and reports `expiresAt`, as on Render
 
-**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** todo（2026-10-31 解除阻塞；原记录：t001–t008 done；日历不是门槛，待 D3 的 fresh QA Postgres 槽及短时 paid-upgrade fixture，随后完成原 DoD
+**Worker:** worker8 **Goal:** A free managed Postgres reports Render's `expiresAt` on every surface, warns its owner before it expires, stops serving at expiry, and is deleted after Render's grace period unless upgraded. The ADR009 30-day TTL becomes real. **Status:** done — 2026-10-31 fresh production fixture: `expiresAt` = creation + 30 d on every surface, cleared by a paid upgrade ([evidence](evidence/fresh-fixture-20261031/README.md))
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 — **DONE** | Render parity: expiry fields and lifecycle across REST, GraphQL, MCP, UI       | 20m | w8/m126/t004, w8/m126/t005 |
 | t007 — **DONE** | Simplify the changed code                                                      | 15m | w8/m126/t006               |
 | t008 — **DONE** | Test coverage: dates, sweeper transitions, upgrade, rollout window           | 45m | w8/m126/t006               |
-| t009 | Close out the milestone                                                        | 30m | w8/m126/t007, w8/m126/t008 |
+| t009 — **DONE** | Close out the milestone                                                        | 30m | w8/m126/t007, w8/m126/t008 |
 
 ## Definition of done
 
