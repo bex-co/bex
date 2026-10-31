@@ -139,26 +139,31 @@ func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, a
 	return !differs && err == nil, err
 }
 
+// savedChangePending reports whether a saved configuration change is still
+// waiting to serve, independent of what any runtime record proves.
+func savedChangePending(app *appv1alpha1.App) bool {
+	return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != ""
+}
+
 // servingConfigurationDiffers reports whether the serving release's
 // configuration differs from the saved one, and whether the container image
 // is the ONLY difference (w4/414's image_override reason).
 func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *appv1alpha1.App) (different, imageOnly bool, err error) {
 	gen := successfulReleaseGeneration(app)
 	if gen <= 0 || !releaseHasServed(app) {
-		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
+		return savedChangePending(app), false, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, gen)
 	if apierrors.IsNotFound(err) {
 		// A legacy/missing record cannot prove equality. Do not snapshot today's
 		// mutable values and mislabel them as the values the old release consumed.
-		return app.Status.UndeployedChanges || canceledOverServed(app) || app.ActiveReleaseConfig() != nil ||
-			app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
+		return savedChangePending(app) || canceledOverServed(app) || app.ActiveReleaseConfig() != nil, false, nil
 	}
 	if err != nil {
 		return true, false, err
 	}
 	if app.Status.ConfigSnapshotGeneration == 0 && len(releaseConfigSources(app)) > 0 {
-		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
+		return savedChangePending(app), false, nil
 	}
 	runtime := rec.projectRuntimeApp(app, gen)
 	runtime.Status.ConfigSnapshotGeneration = gen
