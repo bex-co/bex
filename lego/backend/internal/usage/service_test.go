@@ -1783,12 +1783,20 @@ func TestAppMeterUnresolvableAppIsUnavailableNotZero(t *testing.T) {
 // row is still written — a genuinely-down App must not stall the cursor forever
 // — but the source observation stops asserting the zero is sound.
 func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	parked := func(reason string, since time.Time) appv1alpha1.AppStatus {
+		return appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseHibernated, Conditions: []metav1.Condition{{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+			LastTransitionTime: metav1.NewTime(since),
+		}}}
+	}
 	cases := []struct {
-		name  string
-		spec  appv1alpha1.AppSpec
-		pods  float64
-		want  string
-		quant int64
+		name   string
+		spec   appv1alpha1.AppSpec
+		status appv1alpha1.AppStatus
+		pods   float64
+		want   string
+		quant  int64
 	}{{
 		name: "running web App reporting no pods is suspicious",
 		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
@@ -1801,6 +1809,28 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 		name: "suspended App has an honest zero",
 		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 3, Suspended: true},
 		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		// w4/m139 t002: production marked every hour of every hibernated Free
+		// service degraded, pinning usage coverage to the month start.
+		name:   "App auto-hibernated before the window has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: parked(appv1alpha1.ReasonAutoHibernated, window.Add(-3*time.Hour)),
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name:   "App auto-hibernated at the window start has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: parked(appv1alpha1.ReasonAutoHibernated, window),
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name:   "App that ran before hibernating inside the window still needs pods",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: parked(appv1alpha1.ReasonAutoHibernated, window.Add(20*time.Minute)),
+		pods:   0, want: store.UsageSourceDegraded, quant: 0,
+	}, {
+		name:   "App failing for another reason still needs pods",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: parked("CrashLoopBackOff", window.Add(-3*time.Hour)),
+		pods:   0, want: store.UsageSourceDegraded, quant: 0,
 	}, {
 		name: "cron App has pods only during a run",
 		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
@@ -1826,13 +1856,13 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 					Namespace: "tea-h",
 					Labels:    map[string]string{store.LabelAppID: app.ID},
 				},
-				Spec: tc.spec,
+				Spec:   tc.spec,
+				Status: tc.status,
 			}
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(cr).Build()
 
 			st := newMemUsageStore()
 			svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
-			window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
 			if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
 				t.Fatalf("window: want success, got %v", got)
 			}
