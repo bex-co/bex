@@ -340,6 +340,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 - HA can be toggled on an existing database: REST `PATCH /v1/postgres/{id}` `enableHighAvailability`, GraphQL `updateDatabaseHighAvailability`, MCP `update_postgres.enableHighAvailability`, and the dashboard create dialog + HA panel (w2/m171).
 - Each promotion emits one `postgres_cluster_leader_changed` event (`{"leaderId": ...}`, webhook-subscribable). Live acceptance on dev-2 (2026-10-30): failover ~5s, internal URL unchanged.
 - Independent of `readReplicas`: a DB can have read replicas without HA and vice versa (Render's documented independence).
+- **Available in every workspace plan (w2/m247).** Render gates HA only on a ≥1-CPU plan, not on the workspace plan. Datastore Pods (CNPG instances, poolers, Key Value) carry PriorityClass `bex-datastore`, and the services' compute quota (`tenant-compute-quota`) is scoped `PriorityClass NotIn [bex-datastore]`, so a Hobby workspace's 3-CPU service budget never refuses a database instance. Datastores are bounded by their count caps and per-instance billing instead (ADR043 § Per-plan quota dimensions). Verified on production 2026-10-31 in a Hobby workspace that already ran services: `1c-2g` and `2c-4g` HA pairs each reached two healthy instances on distinct nodes with no `exceeded quota`, while a 4-CPU service there was still refused by `tenant-compute-quota`.
 
 ### Failover
 
