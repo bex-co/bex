@@ -1,0 +1,12 @@
+{
+  "state": "REAL_PG_CLIENT_TRANSACTION_CONTROLS_PASS",
+  "at": "2026-10-31T16:42:06.124163+00:00",
+  "psql": "psql (PostgreSQL) 15.13",
+  "restore_source_sha256": "caf5e41ee5577cc149e03ba05892e4e518510d0fe43bae4c4aa7dccc2d56ec0f",
+  "owned_container": "d7197b879163e33752644a260d507e77ff22fdc68782f33d4047f402b4b733d0",
+  "data_equal": true,
+  "actual_sidecar_failure_rolled_back_all_dump_tables": true,
+  "actual_large_object_dump_refused_without_target_tables": true,
+  "actor": "app; is_superuser=off",
+  "limits": "Plain PostgreSQL15 only. No actual pg_ivm/Timescale/CNPG/image/publication/production claim."
+}

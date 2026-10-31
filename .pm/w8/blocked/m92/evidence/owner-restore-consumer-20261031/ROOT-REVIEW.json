@@ -1,0 +1,520 @@
+{
+  "reviewed_at": "2026-10-31T16:49:48.767170+00:00",
+  "source_approved_for_ship": true,
+  "frozen_payloads_verified": 71,
+  "owned_source_files_verified": 4,
+  "root_protocol_controls": "11 tests PASS4.632s and shell syntax",
+  "real_client_controls": "PostgreSQL15.13 sidecar failure rollback, Unicode/quote/dollar data preservation, app/non-superuser actor, genuine LOB dump refused before target writes",
+  "real_client_proof": "retained/root-independent-plain-pg15/RESULT.json",
+  "owned_container_cleanup": "exit0 exact ID recorded in retained/root-independent-plain-pg15/CLEANUP.json",
+  "actual_PG14_raw_log_sha256": "0b27334d5dcccd24dd2067d80e077b0a1dac89faf383d425399c0277b4dc945c",
+  "D3_complete_owner_restore": "FAIL; no retry or privileged-actor substitution",
+  "actual_pg_ivm_or_Timescale_or_CNPG_for_new_consumer": "UNEXECUTED",
+  "production_pins_changed": false,
+  "custody": [
+    {
+      "original": "ACTUAL-PG14-RECEIPT.json",
+      "retained": "retained/ACTUAL-PG14-RECEIPT.json",
+      "bytes": 1148,
+      "sha256": "a51ef990b5fc42319d62a5c8f387eb980986408100cddc664c5f29f538d3eb6f",
+      "lossless_gzip": false
+    },
+    {
+      "original": "BASELINE-SOURCE-MANIFEST.json",
+      "retained": "retained/BASELINE-SOURCE-MANIFEST.json",
+      "bytes": 3416,
+      "sha256": "5315cb05641b8436145b479fde6a2f7a53b53453f680e9a496ba66ee54c1bf11",
+      "lossless_gzip": false
+    },
+    {
+      "original": "CHECKS.json",
+      "retained": "retained/CHECKS.json",
+      "bytes": 1505,
+      "sha256": "dd18575ae261919886e02bd304f7025dcf1836cbf9c618d3891b8e8d0fcd2f27",
+      "lossless_gzip": false
+    },
+    {
+      "original": "MANIFEST.json",
+      "retained": "retained/MANIFEST.json",
+      "bytes": 12444,
+      "sha256": "e4539124bd452169566fa800788662594ce1b01f67aad6d75f2ee7ff23a6747a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "ROOT-PLAIN-PG15-CUSTODY.json",
+      "retained": "retained/ROOT-PLAIN-PG15-CUSTODY.json",
+      "bytes": 1180,
+      "sha256": "7ebd070e953a74690b79bc652f666b335581d5d111d74efb22f2ba8cddf16437",
+      "lossless_gzip": false
+    },
+    {
+      "original": "SOURCE-MANIFEST.json",
+      "retained": "retained/SOURCE-MANIFEST.json",
+      "bytes": 829,
+      "sha256": "89b2648fc99536d306f0e10ef7063947ec991f2fe9ca3683132a9411c987d88d",
+      "lossless_gzip": false
+    },
+    {
+      "original": "UPSTREAM-MANIFEST.json",
+      "retained": "retained/UPSTREAM-MANIFEST.json",
+      "bytes": 7854,
+      "sha256": "befd4b2c668e1440ccbba685ba275fc5e8e79859ef5908d4f17f24a1f2b0671f",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actual-pg14-excerpt.log",
+      "retained": "retained/actual-pg14-excerpt.log.gz",
+      "bytes": 1013,
+      "sha256": "522c34e13fdcf84f3a996aeda99c9343aef51cb2ed085ce954b89e5235f9708f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/.pm/w8/m92/README.md",
+      "retained": "retained/baseline-source/.pm/w8/m92/README.md.gz",
+      "bytes": 7514,
+      "sha256": "2c0a50ec5fd53270bc21fd9f6f06e5bb57e9e8cd33f9424aeb0ce451f423b7ef",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/.pm/w8/m92/t008.md",
+      "retained": "retained/baseline-source/.pm/w8/m92/t008.md.gz",
+      "bytes": 5235,
+      "sha256": "86dace4486216d51808408f703ca14c2f85699786256ff18b2d29c6305dcdb75",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/Dockerfile",
+      "retained": "retained/baseline-source/deploy/pg-operand/Dockerfile.gz",
+      "bytes": 4983,
+      "sha256": "9c8bc99fa19452bf1344973a0d8faebab43c410a957375137aa3915dcbeca3de",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/README.md",
+      "retained": "retained/baseline-source/deploy/pg-operand/README.md.gz",
+      "bytes": 6988,
+      "sha256": "31dd3f59286d5a4d388598d6bceb9c039f5f09a6e7569ff66fcbbe758527c17f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/check.sh",
+      "retained": "retained/baseline-source/deploy/pg-operand/check.sh.gz",
+      "bytes": 13252,
+      "sha256": "553b2fa1e132ab18d83b5cb3d326ec9d483ad0add6f28843eb1ab9d75b72c9ed",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/config.sh",
+      "retained": "retained/baseline-source/deploy/pg-operand/config.sh.gz",
+      "bytes": 1201,
+      "sha256": "fa295495c295a5cd33767bd86fba87b9f2741801592c6de6f2778a04e0f27d47",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/dump-snapshot.sh",
+      "retained": "retained/baseline-source/deploy/pg-operand/dump-snapshot.sh.gz",
+      "bytes": 436,
+      "sha256": "7863cb9a291852220a5af625ba070d6732d2c7efb4577656dec167bfc00ea3b6",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/export.sh",
+      "retained": "retained/baseline-source/deploy/pg-operand/export.sh.gz",
+      "bytes": 1397,
+      "sha256": "e861930010a85c3fe2636096c86de4d87946f4b7f9b0127d8b11dc255b80298a",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/extwlist/pg_partman/after-create.sql",
+      "retained": "retained/baseline-source/deploy/pg-operand/extwlist/pg_partman/after-create.sql.gz",
+      "bytes": 324,
+      "sha256": "c2e9543db851b57500f73a8a7cae60fe76ace69214143c5b1cad9eeb3d80bff3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/extwlist/postgis/after-create.sql",
+      "retained": "retained/baseline-source/deploy/pg-operand/extwlist/postgis/after-create.sql.gz",
+      "bytes": 361,
+      "sha256": "21710269591c3064e3b037804b05013b6de36d80d791d651ce87173be4afc002",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/extwlist/postgis_tiger_geocoder/after-create.sql",
+      "retained": "retained/baseline-source/deploy/pg-operand/extwlist/postgis_tiger_geocoder/after-create.sql.gz",
+      "bytes": 343,
+      "sha256": "2f661121417286dc1238fe7ce13360609afd5acbba19e732860c38eddfa3600a",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/extwlist/postgis_topology/after-create.sql",
+      "retained": "retained/baseline-source/deploy/pg-operand/extwlist/postgis_topology/after-create.sql.gz",
+      "bytes": 372,
+      "sha256": "27bfc929d693348333afee7f393f854792a507bd734420f1a3cb47ef0287ac77",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/matrix.json",
+      "retained": "retained/baseline-source/deploy/pg-operand/matrix.json",
+      "bytes": 3255,
+      "sha256": "a6b6cd3ced9212aa98f14f4cbefca6b947b59f94f18ab28c115405eb5b1bdffa",
+      "lossless_gzip": false
+    },
+    {
+      "original": "baseline-source/deploy/pg-operand/operand_test.py",
+      "retained": "retained/baseline-source/deploy/pg-operand/operand_test.py.gz",
+      "bytes": 5916,
+      "sha256": "65ec0057701cfb363feb7398d89e4528c4094e4b30a2ca2224e69bc10c424c65",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/docs/ADR092-postgres-extension-supply.md",
+      "retained": "retained/baseline-source/docs/ADR092-postgres-extension-supply.md.gz",
+      "bytes": 13069,
+      "sha256": "df55bfcc34d64d8c6d731e163b61f91f72b7b4a000eebd7f04bdf0ee1c9e5088",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/lego/operator/internal/controller/database_exports.go",
+      "retained": "retained/baseline-source/lego/operator/internal/controller/database_exports.go.gz",
+      "bytes": 19611,
+      "sha256": "1bbfb67331a43b869a51b25662a97e75fd1332b26766160cb5be8bb71b7ca78e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "baseline-source/lego/operator/internal/controller/database_operand_cnpg_test.go",
+      "retained": "retained/baseline-source/lego/operator/internal/controller/database_operand_cnpg_test.go.gz",
+      "bytes": 7871,
+      "sha256": "3ffd435a20eaa9abd64514762e55aefeddac1a6c517b6c5fa410372ea8045b6f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "diff-whitespace.log",
+      "retained": "retained/diff-whitespace.log.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "frozen-restore-controls.log",
+      "retained": "retained/frozen-restore-controls.log.gz",
+      "bytes": 106,
+      "sha256": "3e299f72e3d482cea24f3f588e6482e1f1ce15ffb4adde7410d3c28ca3290643",
+      "lossless_gzip": true
+    },
+    {
+      "original": "mutation-controls.json",
+      "retained": "retained/mutation-controls.json",
+      "bytes": 729,
+      "sha256": "c2f4bda8516ddb08848b0bb0e5f31185eeb59b3f3751bcd6db659cac89e8eadd",
+      "lossless_gzip": false
+    },
+    {
+      "original": "omit-shared-transaction.log",
+      "retained": "retained/omit-shared-transaction.log.gz",
+      "bytes": 1901,
+      "sha256": "9f8ebb5e5aef94cd563228bec05011daa9786634a167e233f6222e5e1c39d7ef",
+      "lossless_gzip": true
+    },
+    {
+      "original": "omit-sidecar.log",
+      "retained": "retained/omit-sidecar.log.gz",
+      "bytes": 3196,
+      "sha256": "5d31f5ed962eb9032020a4a54490efad70317921c4e0e5bb1c1c78cccae7b695",
+      "lossless_gzip": true
+    },
+    {
+      "original": "operand-protocol-suites.log",
+      "retained": "retained/operand-protocol-suites.log.gz",
+      "bytes": 110,
+      "sha256": "5238d3ef1f67fca6f6e6d63b8aec531927eedcc1b9fde2c7759ad3c37fc143b1",
+      "lossless_gzip": true
+    },
+    {
+      "original": "proposal.md",
+      "retained": "retained/proposal.md.gz",
+      "bytes": 8931,
+      "sha256": "b4adae9697feff801a9a2f59e95249fea53f90523115294ff7c7efb7fc60777e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "root-independent-plain-pg15/CLEANUP.json",
+      "retained": "retained/root-independent-plain-pg15/CLEANUP.json",
+      "bytes": 197,
+      "sha256": "1ca3b64e70fb39b1bf4782b59ac72077deaa9336859c748d48a90b6341ff9f53",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-independent-plain-pg15/RESULT.json",
+      "retained": "retained/root-independent-plain-pg15/RESULT.json",
+      "bytes": 617,
+      "sha256": "e8c8eb22ff315e78d23eaed6a54c815b0095d3328ce2bd47350a071960e06022",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-independent-plain-pg15/commands.json",
+      "retained": "retained/root-independent-plain-pg15/commands.json",
+      "bytes": 10150,
+      "sha256": "ec5945455ac806ab8a4476217cb3b32ecacca3a5b783f712a8ce317daeb80f40",
+      "lossless_gzip": false
+    },
+    {
+      "original": "root-independent-plain-pg15/run.py",
+      "retained": "retained/root-independent-plain-pg15/run.py.gz",
+      "bytes": 4336,
+      "sha256": "42069fb1cc650b96685749060ac93de355439c4dff02c86bfd398de2c4e78f62",
+      "lossless_gzip": true
+    },
+    {
+      "original": "shell-syntax.log",
+      "retained": "retained/shell-syntax.log.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "skip-large-object-rejection.log",
+      "retained": "retained/skip-large-object-rejection.log.gz",
+      "bytes": 2729,
+      "sha256": "e801c8946db97dd86a42d1f434f1b80bdc14e4ebf0ea4eea92569d706bc654c6",
+      "lossless_gzip": true
+    },
+    {
+      "original": "skip-timescale-rejection.log",
+      "retained": "retained/skip-timescale-rejection.log.gz",
+      "bytes": 2019,
+      "sha256": "917ad2c7c5ac0b5637bac4b71742e3d20e5b958f59e2ec9332b3fa8fe05d169a",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source/deploy/pg-operand/Dockerfile",
+      "retained": "retained/source/deploy/pg-operand/Dockerfile.gz",
+      "bytes": 5071,
+      "sha256": "eaac40ba9f1895a9cd7c7aa8e80f81540d9bb242eb142fa6a256fee665bee48f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source/deploy/pg-operand/README.md",
+      "retained": "retained/source/deploy/pg-operand/README.md.gz",
+      "bytes": 8473,
+      "sha256": "6372cde22c7363a09f2202e2139575ca76aa52f43dee7908066b2fbf5190bf65",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source/deploy/pg-operand/restore.sh",
+      "retained": "retained/source/deploy/pg-operand/restore.sh.gz",
+      "bytes": 2469,
+      "sha256": "caf5e41ee5577cc149e03ba05892e4e518510d0fe43bae4c4aa7dccc2d56ec0f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source/deploy/pg-operand/restore_test.py",
+      "retained": "retained/source/deploy/pg-operand/restore_test.py.gz",
+      "bytes": 9008,
+      "sha256": "9954d8df8bc26a95be35907e28f520164db03cfd4d35375c379cefa08097595c",
+      "lossless_gzip": true
+    },
+    {
+      "original": "source.diff",
+      "retained": "retained/source.diff.gz",
+      "bytes": 14802,
+      "sha256": "e5a96b7ede9b0d8f3384d4ed48b20cebf3c22c00c48fc8b8989305400551e019",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/pg_ivm/v1.17/README.md",
+      "retained": "retained/upstream/pg_ivm/v1.17/README.md.gz",
+      "bytes": 26871,
+      "sha256": "2d16cf963e1469b143b99cefa0cae3cee12a9cc73ea4b18eedb3f433aa81ba2f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/pg_ivm/v1.17/pg_ivm--1.16--1.17.sql",
+      "retained": "retained/upstream/pg_ivm/v1.17/pg_ivm--1.16--1.17.sql.gz",
+      "bytes": 920,
+      "sha256": "50c7c0941284154f9e380d1706859530cbbc4d16ca9541244b35020ec5be20cc",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/pgextwlist/v1.20/README.md",
+      "retained": "retained/upstream/pgextwlist/v1.20/README.md.gz",
+      "bytes": 8925,
+      "sha256": "2833e67e7da029cd4796b960d626f62806259eafa67a864d7713f763ed6742c4",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/13/pg_backup_archiver.c",
+      "retained": "retained/upstream/postgresql/13/pg_backup_archiver.c.gz",
+      "bytes": 130710,
+      "sha256": "178c205b66d4b3a2b00bc392d5381aafcc845afc07bcb8dc346721fc2dd10431",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/14/alterdatabase.html",
+      "retained": "retained/upstream/postgresql/14/alterdatabase.html.gz",
+      "bytes": 21511,
+      "sha256": "294ad6bf1c938a230ba6d14dece2cdf392cc69d7a997b369032a0642839af7bb",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/14/pg_backup_archiver.c",
+      "retained": "retained/upstream/postgresql/14/pg_backup_archiver.c.gz",
+      "bytes": 130275,
+      "sha256": "5f119df327e084f90d6c6c39935f52da29ada7a02387bc495cf769409cecf0b7",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/14/pgrestore.html",
+      "retained": "retained/upstream/postgresql/14/pgrestore.html.gz",
+      "bytes": 53169,
+      "sha256": "6e6d00725105c7a53e410e937b2f1d4d3a570bf83d940ff89f03cfb31074c4a7",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/14/psql.html",
+      "retained": "retained/upstream/postgresql/14/psql.html.gz",
+      "bytes": 221598,
+      "sha256": "252b27e43ce08ab1e0fe28a9a1b87fe8803f9c375038b195f3d1659077e39002",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/15/grant.html",
+      "retained": "retained/upstream/postgresql/15/grant.html.gz",
+      "bytes": 33779,
+      "sha256": "88df3b06d797b5911de78c1c19065257605fa78d42a7656d5be25d270feb6773",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/15/release-15.html",
+      "retained": "retained/upstream/postgresql/15/release-15.html.gz",
+      "bytes": 133885,
+      "sha256": "1d132c86ae090cd4163d90d096655b3a2cc489c21c2811c5ade589000a0f2ae1",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/18/pg_backup_archiver.c",
+      "retained": "retained/upstream/postgresql/18/pg_backup_archiver.c.gz",
+      "bytes": 141518,
+      "sha256": "35fbeefc828799dc5c7b4960e558496bc93625b14a17daecf68cc1aeba578868",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/postgresql/18/pg_dump.c",
+      "retained": "retained/upstream/postgresql/18/pg_dump.c.gz",
+      "bytes": 632767,
+      "sha256": "a43819375cb6c59f351d74e20b25c721165a58b28a729bc82bcec309d3a54a1b",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescale-docs/logical-backup.md",
+      "retained": "retained/upstream/timescale-docs/logical-backup.md.gz",
+      "bytes": 6616,
+      "sha256": "97e6d91c63556adb7dd2ac86dbfc0903ea89dc34ed573861afe4075297dfc814",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescale-docs/schema-then-data.md",
+      "retained": "retained/upstream/timescale-docs/schema-then-data.md.gz",
+      "bytes": 9503,
+      "sha256": "e4163c806e90c7367606254ec74d9934eccc66d481b410b9377c709cf2cf2a30",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/scripts/ts_dump.sh",
+      "retained": "retained/upstream/timescaledb/2.15.3/scripts/ts_dump.sh.gz",
+      "bytes": 1737,
+      "sha256": "bf7c3beefc6d6a0f21609ebbe34eac70c297b2ab1aec57ec445d4ad556556b54",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/scripts/ts_restore.sh",
+      "retained": "retained/upstream/timescaledb/2.15.3/scripts/ts_restore.sh.gz",
+      "bytes": 1315,
+      "sha256": "9178a85d265d985ae6f29e57ec31e795d807663d4e94564387a02c4e9d4e1e3d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/sql/pre_install/tables.sql",
+      "retained": "retained/upstream/timescaledb/2.15.3/sql/pre_install/tables.sql.gz",
+      "bytes": 25695,
+      "sha256": "31aa9ff95e017f8259ae5c48b833759e189015990cf09c4c7b78bf0ee5259ad5",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/sql/restoring.sql",
+      "retained": "retained/upstream/timescaledb/2.15.3/sql/restoring.sql.gz",
+      "bytes": 1550,
+      "sha256": "6b844f5498741249b2cf5b6a8adc1c86d977e019380899fce6bf721c3487668f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/src/guc.c",
+      "retained": "retained/upstream/timescaledb/2.15.3/src/guc.c.gz",
+      "bytes": 27701,
+      "sha256": "1b8ae054e47a869b36a439c21654670c8c8e7491e340cb489232153a942d4048",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/test/sql/create_hypertable.sql",
+      "retained": "retained/upstream/timescaledb/2.15.3/test/sql/create_hypertable.sql.gz",
+      "bytes": 25926,
+      "sha256": "27f615226ba5ccc56d4b4dee6bdb84b0799d27de09a902578b23571f6a153109",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.15.3/test/sql/pg_dump.sql",
+      "retained": "retained/upstream/timescaledb/2.15.3/test/sql/pg_dump.sql.gz",
+      "bytes": 10110,
+      "sha256": "e14b0ccbdb1dee9854997c2b6cb2928b05a9168f6e55ea9af33fe9fd8b12ec05",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/scripts/ts_dump.sh",
+      "retained": "retained/upstream/timescaledb/2.19.3/scripts/ts_dump.sh.gz",
+      "bytes": 1737,
+      "sha256": "bf7c3beefc6d6a0f21609ebbe34eac70c297b2ab1aec57ec445d4ad556556b54",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/scripts/ts_restore.sh",
+      "retained": "retained/upstream/timescaledb/2.19.3/scripts/ts_restore.sh.gz",
+      "bytes": 1315,
+      "sha256": "9178a85d265d985ae6f29e57ec31e795d807663d4e94564387a02c4e9d4e1e3d",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/sql/pre_install/tables.sql",
+      "retained": "retained/upstream/timescaledb/2.19.3/sql/pre_install/tables.sql.gz",
+      "bytes": 28155,
+      "sha256": "4c91992c0e802b8bbd6abb4fe04375318c2fe41fcd0e8376a8eb38c60fd018b1",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/sql/restoring.sql",
+      "retained": "retained/upstream/timescaledb/2.19.3/sql/restoring.sql.gz",
+      "bytes": 1550,
+      "sha256": "6b844f5498741249b2cf5b6a8adc1c86d977e019380899fce6bf721c3487668f",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/src/guc.c",
+      "retained": "retained/upstream/timescaledb/2.19.3/src/guc.c.gz",
+      "bytes": 42248,
+      "sha256": "0b6901099a9f2935388665020082908d2940c264e6ecdb547877bf2b5ee1c977",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/test/sql/create_hypertable.sql",
+      "retained": "retained/upstream/timescaledb/2.19.3/test/sql/create_hypertable.sql.gz",
+      "bytes": 28932,
+      "sha256": "b63dab94a3187ee8785db3c9790326d9941ea2f64bbc004b1597b04e9f4c7c4e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "upstream/timescaledb/2.19.3/test/sql/pg_dump.sql",
+      "retained": "retained/upstream/timescaledb/2.19.3/test/sql/pg_dump.sql.gz",
+      "bytes": 10110,
+      "sha256": "e14b0ccbdb1dee9854997c2b6cb2928b05a9168f6e55ea9af33fe9fd8b12ec05",
+      "lossless_gzip": true
+    }
+  ]
+}
