@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1/3.2 签名发布独立验收通过（9/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Node20、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1/3.2 签名发布独立验收通过（10/11），继续Node18与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -317,3 +317,11 @@ Node18 的6fd4恢复任务 `41113367877` / `124263227234` 已失败：运行门�
 根与独立复核完成实际da0e的完整发布输入闭包，含新增helper及测试、未变27项官方matrix和44项inventory；只将其加入精确producer/verifier来源。守卫只改三个常量行，全部函数字节不变，显式保留旧846和全部历史来源、49ee仅Node18与既有安装配方兼容边界。九项真实完整守卫重放通过，未齐11项仍实际拒绝生成接入副本，85项原证据哈希未变；见[来源、批准、切换及重放原文](evidence/da0e-source-policy/MANIFEST.json)。本次自动全量请求 `41158989325` 只在新鲜确认原生任务尚未分配runner或开始步骤后取消一次，最终cancelled；[全部请求及终态](evidence/da0e-own-batch-cancellation/ARCHIVE-MANIFEST.json)保留，Node20与其他工作流不受影响。
 
 全来源排重与两次精确main检查后，只提交一次Node18正常新建请求；实际[run41159591513](https://github.com/bex-co/bex/actions/runs/41159591513)与原生job `124414471403` 已确认使用da0e/main/attempt1、只选择Node18。截至02:24Z，matrix成功，原生job排队且尚无已开始步骤；见[请求、实际选择器、排重与绑定原文](evidence/node18-oci-normal-request/ARCHIVE-MANIFEST.json)。旧7dd授权保留但实际选择器输出为零，不复用已变配方。请求和排队均不增加验收计数；正式进度仍为9/11，后续继续核对完整产物。
+
+### Node20 正式验收推进至 10/11 — 2026-10-31（UTC 03:04Z）
+
+[Node20验收收据](evidence/node20-published-acceptance/acceptance.json)绑定原BF producer、6fd verifier/证书及不可变2c69d3索引。02:57Z任务成功后，五份原始严格密码学证明、三项真实CLI负向对照、双架构直接registry子镜像/配置绑定、Node20.20.2/Brotli1.1.1、固定系统包及实际Bullseye companion门槛全部通过。目标Brotli发现为零；每架构其他11,171项发现（含72项critical）完整保留，不作全漏洞清零结论。
+
+独立完整2a守卫与四项结构拒绝通过后，根复核精确FINAL `2169a6fe…`，连同独立追加的 `50e2e266…` 说明更正一并批准。更正只说明冻结文件中沿用旧模板的一句来源文字；结构化BF/6fd/da0e、原始证明和实际检查均正确，冻结原文未重写。执行器随后重新匿名核对stable标签并重放冻结守卫，才原子计入第十项。实际8537字节原候选、root批准、说明更正、转换和第十项快照均保存；原九项proof/candidate的18个哈希未变。[92项归档核查](evidence/node20-acceptance-archive-audit.json)确认全部字节、路径及批准锚点。
+
+只删除已验收Node20的临时恢复授权；Node18旧7dd条目及其他工作流的三项Elixir条目保留，见[退休记录](evidence/node20-recovery-retirement.json)及[20项实际选择器隔离Git检查](evidence/recovery-selection-node20-retired.json)。[当前只读接入计划](evidence/adoption-plan-count10.json)仍不完整、27项官方matrix不变，尚未生成接入副本。Node18的da0e正常新建请求继续排队；source pin、六项真实应用测试与生产rollout尚未完成，t002–t008继续开放。
