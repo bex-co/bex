@@ -1,0 +1,27 @@
+{
+  "schema": "bex.m188.frozen-guard-static-review/v1",
+  "base_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "proposal_sha256": "a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e",
+  "diff_sha256": "96b9e1920d605ffae6345a13b115917496a5fc49cc10311ee9a13fc5094b014b",
+  "added_functions": [
+    "reviewed_current_recipe_file",
+    "reviewed_current_workflow",
+    "reviewed_recipe_paths"
+  ],
+  "changed_existing_functions": [
+    "main",
+    "validate_candidate",
+    "verify_v2_source_binding"
+  ],
+  "unchanged_existing_function_count": 21,
+  "existing_global_assignments_all_unchanged": true,
+  "writer_suffix_ast_identical": true,
+  "v2_source_binding_ast_identical_except_checked_current_workflow_read": true,
+  "exact941_recipe_hashes_match": true,
+  "extra_test_paths_exact": {
+    "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+    "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230"
+  },
+  "exact2cc_workflow_hash_and_two_reversals_reconstruct_da0": true,
+  "ancestry_check_in_new_profile": false
+}

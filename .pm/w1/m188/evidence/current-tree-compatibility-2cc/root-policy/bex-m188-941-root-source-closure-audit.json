@@ -1,0 +1,246 @@
+{
+  "schema": "bex.m188.exact-current-tree-source-closure-review/v1",
+  "at": "2026-10-31T08:19:17.217377+00:00",
+  "prior_reviewed_artifact_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_tree_revision": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "changed_input_paths": [
+    ".github/workflows/native-base-image.yml",
+    "deploy/native-base/README.md",
+    "deploy/native-base/fetch-python-tools.py",
+    "deploy/native-base/fetch_pgdg_key_test.py",
+    "deploy/native-base/fetch_python_tools_test.py",
+    "deploy/native-base/install.sh"
+  ],
+  "input_manifest": [
+    {
+      "path": ".github/scripts/native-oci-stage.py",
+      "bytes": 18041,
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "prior_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "changed": false
+    },
+    {
+      "path": ".github/scripts/test_native_oci_stage.py",
+      "bytes": 18679,
+      "sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "prior_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "changed": false
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "bytes": 17915,
+      "sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "prior_sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "changed": false
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 16307,
+      "sha256": "53bfca8777d8efe3f79e768c0fb18730a9e6e8b9b7407ae1405651cbb4cd037b",
+      "prior_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/Dockerfile",
+      "bytes": 2688,
+      "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "prior_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/README.md",
+      "bytes": 10960,
+      "sha256": "cde67144ba93348e9edf9402716e9e29b3fbc335fe34043332911185f3660841",
+      "prior_sha256": "3917785ec9883bd2f5366a661efcc85286c286cbb6b8a4cb2e63b9940bb24c9a",
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/bex-native-python-tools",
+      "bytes": 301,
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "prior_sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/check-brotli.py",
+      "bytes": 4029,
+      "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "prior_sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/check-primary-python.py",
+      "bytes": 5485,
+      "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "prior_sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/check-tools.py",
+      "bytes": 5099,
+      "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "prior_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/check.Dockerfile",
+      "bytes": 2210,
+      "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "prior_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/fetch-python-tools.py",
+      "bytes": 2686,
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "prior_sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6",
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/fetch_pgdg_key_test.py",
+      "bytes": 2421,
+      "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "prior_sha256": null,
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/fetch_python_tools_test.py",
+      "bytes": 5558,
+      "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "prior_sha256": null,
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/install-python-tools.py",
+      "bytes": 2281,
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "prior_sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/install.sh",
+      "bytes": 2433,
+      "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "prior_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "changed": true
+    },
+    {
+      "path": "deploy/native-base/matrix.py",
+      "bytes": 2099,
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "prior_sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/matrix_test.py",
+      "bytes": 2772,
+      "sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "prior_sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/node-brotli/README.md",
+      "bytes": 3519,
+      "sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "prior_sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/node-brotli/check.js",
+      "bytes": 1705,
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "prior_sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 3923,
+      "sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "prior_sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/package-lock.json",
+      "bytes": 57293,
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "prior_sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/package.json",
+      "bytes": 162,
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "prior_sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/patch-system-brotli.sh",
+      "bytes": 2355,
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "prior_sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/python-tools.json",
+      "bytes": 4110,
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "prior_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/testdata/archive.dump.b64",
+      "bytes": 2679,
+      "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "prior_sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/testdata/archive.sql",
+      "bytes": 161,
+      "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "prior_sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/testdata/rows.txt",
+      "bytes": 33,
+      "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "prior_sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/tsc",
+      "bytes": 111,
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "prior_sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "changed": false
+    },
+    {
+      "path": "deploy/native-base/webpack",
+      "bytes": 115,
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "prior_sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "changed": false
+    },
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "prior_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "changed": false
+    },
+    {
+      "path": "lego/operator/internal/build/toolchain-freshness.json",
+      "bytes": 25117,
+      "sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+      "prior_sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+      "changed": false
+    }
+  ],
+  "workflow_change_only_exact_matrix_local_unit_test_block": true,
+  "current_files_match_commit_scoped_input_closure": true,
+  "canonical_artifact_source_and_roles_changed": false,
+  "active_guard_changed": false,
+  "aggregate_changed": false,
+  "scope": "Root read whole six-file diff, checksumming unchanged previously reviewed dependency closure. New current-tree compatibility still requires separately approved exact guard proposal and real ten-candidate replay/negative controls. This is not bit-identical image output, producer/verifier recipe equality exemption, source admission of941, actual candidate proof, or final adoption."
+}

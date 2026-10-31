@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.root-exact-current-tree-profile-approval/v1",
+  "at": "2026-10-31T08:38:18.569655+00:00",
+  "authorization": "Root approves ONLY exact4cfe current-tree compatibility guard after whole diff, minimal ancestry fix, full proposal, actual10/control execution harness/results, independent source and minimal-delta reviews. This does not approve any new candidate, source role, complete receipt, adoption or rollout.",
+  "approved_guard": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+    "sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865"
+  },
+  "proposal_package": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/proposal-final.json",
+    "sha256": "6ebf10b513c7795240ba7c2abe445cd37139dc77e4c91cdc6c04f59c45ff0fd7"
+  },
+  "actual_controls": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-and-negative-controls.json",
+    "sha256": "48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f"
+  },
+  "execution": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/execution.json",
+    "sha256": "942906e7ed9dd3566d10e5815f6f3a7bd130cf45935cb5c91f484e40a3907f44"
+  },
+  "independent_review": {
+    "file": "/tmp/bex-m188-4cfe-independent-review-r1ch760s/review.json",
+    "sha256": "a30b0f42861722f511dcdd540c787842837f14da7a3a00a0351d4ecd7fa882da"
+  },
+  "checked_linked_files": 61,
+  "checked_current_source_inputs": 37,
+  "protected_original_files_verified": 96,
+  "old_guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "aggregate_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "permitted_mutation": "Atomically replace only active /tmp guard with approved exact snapshot; preserve old2a and new4cfe frozen snapshots; Q and all96 originals except the intentionally replaced active guard remain unchanged. Then create honest separate current-profile context/activation receipt and durable PM archive.",
+  "canonical_artifact_source_unchanged": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "new_artifact_roles": [],
+  "producer_verifier_recipe_pair_equality_remains_strict": true,
+  "current_profile_ancestry": "941->2cc->actualHEAD plus all exact reviewed source hashes",
+  "image_or_failure_behavior_byte_identity_claimed": false,
+  "activated": false
+}

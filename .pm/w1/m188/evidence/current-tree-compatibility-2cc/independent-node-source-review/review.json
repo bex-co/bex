@@ -1,0 +1,93 @@
+{
+  "schema": "bex.m188-native-941-2cc-independent-compatibility-review/v1",
+  "at": "2026-10-31T08:23:42.385882+00:00",
+  "scope": "Read-only literal-commit source review plus isolated exact941 synthetic unit controls. No repo/guard/allowlist/aggregate/CI mutation; no image, network, apt or runtime acceptance.",
+  "artifact_profile_roles": {
+    "canonical_workflow_anchor": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "reviewed_recipe_current_tree_anchor": "94165237dbe63f997b0119ce70ad243da74468fa",
+    "latest_reviewed_current_workflow_anchor": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+    "canonical_workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+    "workflow_941_sha256": "53bfca8777d8efe3f79e768c0fb18730a9e6e8b9b7407ae1405651cbb4cd037b",
+    "workflow_2cc_sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+    "rule": "Keep actual immutable artifact producer and verification sources unchanged. These are compatibility anchors, not digest/source aliases."
+  },
+  "verdict": "Successful verified payload and security contract compatible under the exact reviewed changes; transport/error behavior and image bytes are not identical. Current guard2a does not yet accept941/2cc and was not changed.",
+  "python": {
+    "inputs": "Identical python-tools.json and install-python-tools.py. URLs/filenames/version constraints/SHA256 pins unchanged. HTTPS files.pythonhosted.org allow check remains before fetch.",
+    "validation": "AST-identical manifest/destination/URL/8MiB/SHA256/wheel METADATA+WHEEL/write+stdout statements after replacing only the transport assignment.",
+    "transfer": "At most3 whole-body attempts;60s socket timeout;1/2s sleep. Retries bounded transport and selected transient HTTP statuses. Direct/wrapped certificate verification and permanent HTTP stop; size/SHA/ZIP/wheel metadata failures occur outside retry and fail before write.",
+    "byte_identity": "fetch-python-tools.py remains in /opt/bex/python-tools, so recipe/image content changes even when the verified wheels match. No image digest equivalence claim."
+  },
+  "pgdg": {
+    "same_url": "https://www.postgresql.org/media/keys/ACCC4CF8.asc",
+    "same_key_sha256": "0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76",
+    "trust": "Same mandatory SHA256 check before unchanged signed-by source and apt operations; no key, repository, suite, package list, Brotli patch or cleanup change fromDA0. Installer is removed later by unchanged Dockerfile.",
+    "transfer": "At most4 curl transport attempts;connect timeout30s/max-time180s;1/2/3s sleep; fresh curl -o without resume/appending; final nonzero status propagates under set -e.",
+    "failure_behavior_delta": "HTTP/certificate refusals stop immediately. Old curl --retry3 could retry some transient HTTP408/429/5xx; this availability behavior is deliberately different and must not be described as all-behavior equivalence."
+  },
+  "new_tests": {
+    "paths_and_hashes": {
+      "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b"
+    },
+    "production_copy": "Dockerfile unchanged and uses explicit COPY list; neither new test is copied into final image. They still are real non-MD recipe tree additions and must be named/hash-bound in the current-tree check."
+  },
+  "workflow_addendum_2cc": {
+    "only_delta": "JavaDB-only prefetch outer timeout21m\u219230m; vulnerability DB remains21m. Both complete stock full-image scans keep20m input,21m outer deadline,3 attempts,10s kill grace, all findings and same subject/platform/report options, resource caps/prechecks and cleanup.",
+    "semantics": "No image recipe/output payload change versus941, no scan/report field/filter or subject/config binding relaxation. Database content remains naturally time-dependent as before; the timeout changes availability, not equivalence of report bytes.",
+    "proof": "Exact block reversal2cc\u2192941 and941\u2192DA0 matches canonical workflow bytes; no other workflow delta inferred or exempted."
+  },
+  "proposed_current_tree_only_policy": {
+    "activation_anchor": "Require literal reviewed941 ancestry for recipe and exact2cc workflow anchor when accepting its JavaDB budget. Retain canonicalDA0 separately.",
+    "fetch_pair": {
+      "path": "deploy/native-base/fetch-python-tools.py",
+      "historical_sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6",
+      "current_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe"
+    },
+    "install_pairs": {
+      "path": "deploy/native-base/install.sh",
+      "historical_sha256s": [
+        "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+        "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462"
+      ],
+      "current_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "historical_note": "d362\u2192fe880 existing reviewed unzip repair remains a separate semantic exception; this review coversfe880\u21923a83 transport only."
+    },
+    "extra_current_paths": "Only exact two new test paths+their fixed941 SHA256; no broad *_test.py/non-MD path exemption.",
+    "producer_scope": "Existing18 explicitly enumerated guard2a historical producer anchors plus literalDA0; all inspected historical fetch hashes93a532; old install d362 for18 andfe880 forDA0. Future same-source normal equality remains normal, never wildcard historical allowance.",
+    "must_remain_strict": [
+      "Producer\u2194verification deploy/native-base non-MD tree equality",
+      "All unreviewed file-set/blob differences reject",
+      "Original artifact/index/config/platform/signature/source identities",
+      "All existing runtime/scans/full-predicate/bundle verification and adoption gates"
+    ],
+    "not_implemented": true
+  },
+  "tests": {
+    "exit_code": 0,
+    "passed": 9,
+    "kind": "Exact entire new testfiles copied from941, controlled urllib/curl/sleep and synthetic wheels only. No external transfer/apt/build/runtime/security proof.",
+    "receipt": {
+      "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/tests-receipt.json",
+      "sha256": "4dde18f84b901b096beb9ce2d4d606b5a6e28e673cee98ed1c22b42bb7fa412f"
+    }
+  },
+  "source_checks": {
+    "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/source-contract-checks.json",
+    "sha256": "1b57a4d3850913f69d3fb2ccd3930cbc5295bf538a61e54fd374dec7ce495a30"
+  },
+  "historical_profile_receipt": {
+    "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/historical-recipe-profile-hashes.json",
+    "sha256": "f05093d20817d8757815d3337ee3bad53d04e1e381b1c345851d9727f5e8a1de"
+  },
+  "diffs": {
+    "exact-941-vs-da0.diff": {
+      "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff",
+      "sha256": "c8092e1f5bcd6642e57b6a35487c7c0551cee71014f97fdce7c78c8304382554"
+    },
+    "exact-2cc-vs-941.diff": {
+      "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-2cc-vs-941.diff",
+      "sha256": "726e5f65b37051329502e6b52f7661694f1a1cc8367ca4f8e641b9f73ded6077"
+    }
+  }
+}

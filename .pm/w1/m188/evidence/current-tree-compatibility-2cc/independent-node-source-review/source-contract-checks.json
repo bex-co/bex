@@ -1,0 +1,127 @@
+{
+  "python_validation_ast_equal_after_only_transfer_statement_replacement": true,
+  "pgdg_entire_install_sh_equals_da0_after_only_transport_function_and_call_reversal": true,
+  "941_workflow_exactly_equals_da0_after_only_unit_discovery_block_reversal": true,
+  "2cc_workflow_exactly_equals_941_after_only_java_db_timeout_block_reversal": true,
+  "2cc_has_no_deploy_native_base_delta_vs_941": true,
+  "da0_is_ancestor_of_941_and_941_of_2cc": true,
+  "recipe_delta_paths_exact": [
+    "deploy/native-base/README.md",
+    "deploy/native-base/fetch-python-tools.py",
+    "deploy/native-base/fetch_pgdg_key_test.py",
+    "deploy/native-base/fetch_python_tools_test.py",
+    "deploy/native-base/install.sh"
+  ],
+  "files": {
+    "deploy/native-base/Dockerfile": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+        "bytes": 2688
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+        "bytes": 2688
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+        "bytes": 2688
+      }
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6",
+        "bytes": 1786
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+        "bytes": 2686
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+        "bytes": 2686
+      }
+    },
+    "deploy/native-base/install.sh": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+        "bytes": 2003
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+        "bytes": 2433
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+        "bytes": 2433
+      }
+    },
+    "deploy/native-base/python-tools.json": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+        "bytes": 4110
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+        "bytes": 4110
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+        "bytes": 4110
+      }
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+        "bytes": 2281
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+        "bytes": 2281
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+        "bytes": 2281
+      }
+    },
+    "deploy/native-base/fetch_python_tools_test.py": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "absent": true
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+        "bytes": 5558
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+        "bytes": 5558
+      }
+    },
+    "deploy/native-base/fetch_pgdg_key_test.py": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "absent": true
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+        "bytes": 2421
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+        "bytes": 2421
+      }
+    },
+    ".github/workflows/native-base-image.yml": {
+      "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+        "sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+        "bytes": 16216
+      },
+      "94165237dbe63f997b0119ce70ad243da74468fa": {
+        "sha256": "53bfca8777d8efe3f79e768c0fb18730a9e6e8b9b7407ae1405651cbb4cd037b",
+        "bytes": 16307
+      },
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c": {
+        "sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+        "bytes": 16530
+      }
+    }
+  }
+}

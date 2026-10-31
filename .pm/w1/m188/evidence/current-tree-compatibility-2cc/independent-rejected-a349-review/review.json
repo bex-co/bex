@@ -1,0 +1,46 @@
+{
+  "schema": "bex.m188.frozen-guard-independent-review/v1",
+  "at": "2026-10-31T08:34:48.502217+00:00",
+  "proposal": {
+    "path": "/tmp/bex-m188-current-tree-2cc-proposal/a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e.py",
+    "sha256": "a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e"
+  },
+  "diff": {
+    "path": "/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff",
+    "sha256": "96b9e1920d605ffae6345a13b115917496a5fc49cc10311ee9a13fc5094b014b"
+  },
+  "verdict": "One required scope correction before approval: enforce reviewed current checkout ancestry. No artifact/trust or writer regression found in the remaining exact diff.",
+  "findings": [
+    {
+      "id": "current-tree-lineage-not-enforced",
+      "severity": "scope-boundary",
+      "lines": [
+        695,
+        702,
+        706,
+        715,
+        724
+      ],
+      "evidence": "New profile checks byte hashes/source2cc and exact941 recipe hashes, but no CURRENT_TREE_RECIPE_SOURCE/CURRENT_TREE_WORKFLOW_SOURCE\u2192HEAD ancestry.941 is only metadata. Existing merge-base calls check security ancestors against artifact producer/verifier only.",
+      "effect": "Reviewed files copied onto unrelated/older current HEAD can enter compatibility branch; exact bytes still protect content, but requested ancestor-bound checkout policy is not enforced.",
+      "minimal_fix": "In the noncanonical reviewed_current_workflow branch, require git merge-base --is-ancestor941 HEAD and2cc HEAD (or require941\u21922cc and2cc\u2192HEAD), while retaining every existing hash/source/reversal check. Add a controlled wrong-lineage negative to Cnb owned pending harness."
+    }
+  ],
+  "reviewed_boundaries": {
+    "historical_mapping": "Exact18 old producers fetch93a532/install d362; literalDA0fetch93a532/installfe880; current install3a83/fetcheccbb9. No unlisted producer is admitted.",
+    "extra_files": "Only the2 exact named941 test paths+hashes, not wildcard tests. Other paths remain sameblob checked.",
+    "canonical_roles": "RECOVERY_WORKFLOW remains literalDA0 and canonical SHA a856; approved producer/verifier sets/runtime restrictions unchanged.2cc/941 only new current-tree metadata.",
+    "workflow": "Exact current b0e11+source2cc required, both reviewed blocks unique and exact reversal yields literalDA0 canonical bytes. Signing helper hashes pinned.",
+    "crypto": "All other21 existing functions unchanged; verify_v2_source_binding exact AST except replaced checked-current-workflow read; producer\u2194verifier non-MD recipe equality and full proof identity/crypto remain unchanged.",
+    "writer": "Main writer suffix AST identical, including complete11 receipt gate and new/tmp outputdir boundary.",
+    "plan": "Explicit actual hash/raw_matches_canonical false and compatible flag distinguishes current bytes fromDA0. Canonical_artifact_source label is a compatibility anchor; actual per-candidate producer/verifier roles remain unchanged. No adoption/done claim."
+  },
+  "controls": {
+    "kind": "Static exact-byte/AST/commit-source checks only; no proposal execution, real10 replay or negative-control claim. Parent/Cnb own pending harness.",
+    "source_checks": {
+      "path": "/tmp/bex-m188-a349-independent-review-w4eh3k1q/source-checks.json",
+      "sha256": "cbd00021d6dcdbd051809f80d952d240f2327f7589f905b94ffe11f03cd18582"
+    }
+  },
+  "mutations": "Only new owned/tmp receipt files. No guard activation, repository, board, aggregate, frozen evidence, API or CI mutation."
+}

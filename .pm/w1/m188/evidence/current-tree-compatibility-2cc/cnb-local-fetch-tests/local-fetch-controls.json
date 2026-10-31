@@ -1,0 +1,40 @@
+{
+  "schema": "bex.m188.941-local-hermetic-transfer-controls/v1",
+  "at": "2026-10-31T08:18:34.516740+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "deploy/native-base",
+    "-p",
+    "fetch*_test.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "source_hashes_before": {
+    "deploy/native-base/fetch-python-tools.py": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+    "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+    "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+    "deploy/native-base/install.sh": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    ".github/workflows/native-base-image.yml": "53bfca8777d8efe3f79e768c0fb18730a9e6e8b9b7407ae1405651cbb4cd037b"
+  },
+  "source_hashes_after": {
+    "deploy/native-base/fetch-python-tools.py": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+    "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+    "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+    "deploy/native-base/install.sh": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    ".github/workflows/native-base-image.yml": "53bfca8777d8efe3f79e768c0fb18730a9e6e8b9b7407ae1405651cbb4cd037b"
+  },
+  "stdout": {
+    "file": "/tmp/bex-m188-941-source-review/local-fetch-controls.stdout.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-941-source-review/local-fetch-controls.stderr.log",
+    "sha256": "f7bb3cc7d290bb9b1277b5316c7a90623958a17fd0d42bad42092a62f3a7b613"
+  },
+  "scope": "Actualnew9unitmethods usingmockurlopen andcontrolledcurl/sleep; noCI/network/runtimeimages/productioncalls."
+}

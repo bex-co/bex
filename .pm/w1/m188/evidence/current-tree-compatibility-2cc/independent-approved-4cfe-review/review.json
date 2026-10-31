@@ -1,0 +1,28 @@
+{
+  "schema": "bex.m188.frozen-guard-minimal-ancestry-review/v1",
+  "at": "2026-10-31T08:36:05.054231+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+    "sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865"
+  },
+  "full_diff": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff",
+    "sha256": "f0bc8b7ad18ef1d37ab6fc020e6d5873df9520cb66abb28d058aebcdf2645363"
+  },
+  "prior_review": {
+    "file": "/tmp/bex-m188-a349-independent-review-w4eh3k1q/review.json",
+    "sha256": "d18c2508989b126b741270e97e3a7e3d3e16b04cb52f81c439caa185d61da209"
+  },
+  "verdict": "Approve exact4cfe source proposal. The sole required scope correction froma349 is implemented; no other source delta. This receipt does not activate the guard or approve/adopt any candidate.",
+  "checks": {
+    "exact_two_line_delta_only": true,
+    "ast_parse_passed": true,
+    "lineage": "Within the exact noncanonical2cc byte-profile branch, actual git merge-base requires941\u21922cc and2cc\u2192current HEAD. Nonzero/unknown-object/error exits refuse. Transitivity enforces941\u2192HEAD.",
+    "ordering": "Exact workflow hash/source bytes required first, ancestry before canonical reversals/profile return; main and candidate validation both call this checked function before accepting new compatibility.",
+    "scope": "All previously reviewed exact hashes, two test additions, historical18/DA0 mapping and unlisted-source rejection unchanged.",
+    "preservation": "All prior artifact roles, producer\u2194verifier recipe equality, trust/crypto gates and writer suffix unchanged byte-for-byte relative toa349 outside these2lines.",
+    "reported_semantics": "Still reports actual2cc hash/raw canonical mismatch separately from compatibility and canonicalDA0 anchor; no source/digest alias."
+  },
+  "control_limit": "Static exact-delta review only. No9source unit rerun, real10 replay, crypto, negative ancestry execution or candidate approval claimed here; Cnb owns those pending controls.",
+  "mutations": "New owned/tmp receipt only. No active guard, repository/board, accepted proof/aggregate, API or CI changes."
+}

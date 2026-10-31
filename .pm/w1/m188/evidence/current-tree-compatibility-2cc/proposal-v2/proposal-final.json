@@ -1,0 +1,159 @@
+{
+  "schema": "bex.m188.INACTIVE-current-tree-941recipe-2ccworkflow-proposal/v1",
+  "at": "2026-10-31T08:36:45.626088+00:00",
+  "canonical_artifact_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_recipe_source": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "current_workflow_source": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "new_artifact_source_roles": [],
+  "active_guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "proposal": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+    "sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+    "bytes": 92369,
+    "diff": {
+      "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff",
+      "sha256": "f0bc8b7ad18ef1d37ab6fc020e6d5873df9520cb66abb28d058aebcdf2645363",
+      "bytes": 16817
+    }
+  },
+  "whole_current_recipe_hashes": {
+    "deploy/native-base/install.sh": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    "deploy/native-base/fetch-python-tools.py": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+    "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+    "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230"
+  },
+  "literal_extra_test_paths_and_hashes": {
+    "deploy/native-base/fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+    "deploy/native-base/fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230"
+  },
+  "source_mapped_historical_files": {
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "3990b9acf35f62ba1d702387bc2061a83342b2b3": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "4330878c280bc9748444c8e1e50ff7388df1228a": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "4462ee030984637bb765ae560b6ffe38c71f3af4": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "5e89a6076905a91b4496fe36a476774c3f50585c": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "846a56038319f1b5c212d1fcda8291d20e49c2b0": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "99f95c17afd5709365869dfff1408265e5d514ec": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "d94787bb4fb93751e485fe6d47946d82cc6da052": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "d95645e9f054238ec53a4932fac51560ffedd1f8": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": {
+      "deploy/native-base/install.sh": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "e47a2c6157339a3a786118866f28b4ee8b619774": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    },
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6": {
+      "deploy/native-base/install.sh": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+      "deploy/native-base/fetch-python-tools.py": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+    }
+  },
+  "same_verified_inputs_runtime_security_contract_NOT_image_byte_identity": true,
+  "fetch_helper_persists_in_image_and_apt_state_not_claimed_identical": true,
+  "producer_to_verifier_strict_block_byte_identical": true,
+  "all_other_original_functions_byte_identical_except_three_listed": [
+    "verify_v2_source_binding",
+    "validate_candidate",
+    "main"
+  ],
+  "writer_digest_joburl_fix_preserved": true,
+  "main_plan_reports_canonical_DA0_actual_current2cc_recipe941_and_rawfalse_compatibletrue": true,
+  "artifact_source_roles_and_all_runtime_restrictions_unchanged": true,
+  "aggregate_unchanged_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "not_activated": true,
+  "current_profile_ancestry_required": "exact941\u21922cc\u2192actualHEAD plus exact full source/workflow/file bytes",
+  "source_closure_review": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/independent-source-closure-review.json",
+    "sha256": "a52613dd23460cc69e9586807adbb67295433ad8d902c24b33e6c1f574746225",
+    "bytes": 21801
+  },
+  "independent_proposal_review": {
+    "file": "/tmp/bex-m188-4cfe-independent-review-r1ch760s/review.json",
+    "sha256": "a30b0f42861722f511dcdd540c787842837f14da7a3a00a0351d4ecd7fa882da",
+    "bytes": 2232
+  },
+  "actual_ten_and_controls": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-and-negative-controls.json",
+    "sha256": "48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f",
+    "bytes": 28687
+  },
+  "actual_execution": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/execution.json",
+    "sha256": "942906e7ed9dd3566d10e5815f6f3a7bd130cf45935cb5c91f484e40a3907f44",
+    "bytes": 1557
+  },
+  "real10_results": "10/10 actual persisted full validations passed; 16 negative controls and one isolated exact positive passed; actual incomplete11 writer refused/no copies",
+  "protected_original_file_count": 96,
+  "rejected_inactive_history": {
+    "proposal": {
+      "file": "/tmp/bex-m188-current-tree-2cc-proposal/a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e.py",
+      "sha256": "a349f140441def0e14c43c5423f4aa4d146a95fa1b97d5e93515f175920ca55e",
+      "bytes": 92020
+    },
+    "diff": {
+      "file": "/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff",
+      "sha256": "96b9e1920d605ffae6345a13b115917496a5fc49cc10311ee9a13fc5094b014b",
+      "bytes": 16466
+    },
+    "reason": "Exact byte guards lacked explicit current-source ancestry. Superseded by exact2line ancestry addition; no activation occurred."
+  },
+  "activation_authorized_or_performed": false,
+  "aggregate_source_roles_unchanged": true,
+  "runtime_byte_identity_claimed": false
+}

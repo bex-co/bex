@@ -1,0 +1,36 @@
+{
+  "schema": "bex.m188.exact-current-tree-profile-activation/v1",
+  "at": "2026-10-31T08:38:47.357839+00:00",
+  "head": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "root_approval": {
+    "file": "/tmp/bex-m188-current-tree-profile-root-approval.json",
+    "sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08"
+  },
+  "active_guard": {
+    "file": "/tmp/bex-m188-prepare-adoption.py",
+    "before_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+    "after_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865"
+  },
+  "frozen_guard_snapshots": {
+    "old": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+    "new": "/tmp/bex-m188-guard-snapshots/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py"
+  },
+  "aggregate_before_after_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "accepted_count_unchanged": 10,
+  "protected_file_count": 96,
+  "only_protected_file_changed": "/tmp/bex-m188-prepare-adoption.py",
+  "other_95_originals_unchanged": true,
+  "context": {
+    "file": "/tmp/bex-m188-current-tree-profile-context.json",
+    "sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2"
+  },
+  "aggregate_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+    "sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4"
+  },
+  "canonical_artifact_source_unchanged": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "new_artifact_source_roles": [],
+  "current_tree_compatibility_only": true,
+  "source_pins_or_inventory_or_aggregate_or_actual_proofs_changed": false,
+  "candidate_approval_or_adoption_or_rollout": false
+}
