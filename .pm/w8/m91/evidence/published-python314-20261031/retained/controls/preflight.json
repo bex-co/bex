@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-31T07:53:12.109493+00:00",
+  "scope": "ROOT assigned ONE complete Python3.14 supplier validation, FIRST case attempt; no automatic second run. No PM/adoption approval inferred.",
+  "expected_source_hashes": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "initially_absent_paths": [
+    "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031",
+    "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031",
+    "/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031"
+  ],
+  "run": "41129176570",
+  "job_id": 124319850868,
+  "name": "python-3.14-bookworm",
+  "sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "official_base": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+  "free_bytes": 7466459136,
+  "new_full_image_blob_workers": 2,
+  "reuse_policy": "NONE: initially empty cache, no receipt seeding or prior candidate bundle reuse. Every image blob will be freshly anonymously fully read and hashed.",
+  "TUF": "New per-Cosign-invocation TUF_ROOT below this case unique output; no global cache/HOME/credentials changes."
+}

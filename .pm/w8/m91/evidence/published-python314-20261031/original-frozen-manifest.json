@@ -1,0 +1,1009 @@
+{
+  "frozen_at": "2026-10-31T08:04:03.840538+00:00",
+  "payload_files": 200,
+  "payload_bytes": 140583430,
+  "files": {
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-config.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-config.json",
+      "sha256": "15f2d6396ccdf119aca9250846e406dea91f12e69cf6163f641a0ba313ae3d40",
+      "bytes": 16815
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-manifest.json",
+      "sha256": "39e7529fb2737b8055fcf48da08d17695ead9109b69fd5140a08b275a797e8e6",
+      "bytes": 3534
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-config.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-config.json",
+      "sha256": "53512e676f8595b6ccb2c3e14dcda61400e8d10fbd58c08e237d8bfa103155bf",
+      "bytes": 6660
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/amd64-official-manifest.json",
+      "sha256": "0bdd145eed30ab1466e8afbd51a595f5484aa874ac9df5283369ba508a025d2e",
+      "bytes": 2325
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-config.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-config.json",
+      "sha256": "4a4480301451f12f0dddd46218ab42bedca2e449e115e41585184983857d9446",
+      "bytes": 16816
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-manifest.json",
+      "sha256": "82528864bb07f692e00619f3bdd14881a6fa1fbfbb77ac983ff2bc6c61105a3a",
+      "bytes": 3534
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-config.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-config.json",
+      "sha256": "b366d7143706aa5435a55da8fc2d4accc68f969bdc7794def78a6eb704e32b30",
+      "bytes": 6675
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/arm64-official-manifest.json",
+      "sha256": "85721b39ede6757d798fcf9b560418986bc0f8db774ca3469cc655a0c46db349",
+      "bytes": 2327
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/01d50f6e30aaa9e6b5439bbca5bb47ba4753be52f62333e37cce113422fec997.manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/01d50f6e30aaa9e6b5439bbca5bb47ba4753be52f62333e37cce113422fec997.manifest.json",
+      "sha256": "01d50f6e30aaa9e6b5439bbca5bb47ba4753be52f62333e37cce113422fec997",
+      "bytes": 1013
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/0e46221f5e6e4146c27b59a6e5d48fe1fe7dc79aa91da481fbf6aa15b1ebad72.manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/0e46221f5e6e4146c27b59a6e5d48fe1fe7dc79aa91da481fbf6aa15b1ebad72.manifest.json",
+      "sha256": "0e46221f5e6e4146c27b59a6e5d48fe1fe7dc79aa91da481fbf6aa15b1ebad72",
+      "bytes": 1007
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.result.json",
+      "sha256": "b1d2645be0632282d2c2047857776326eefe9b3b2813879a739939be05aa7de3",
+      "bytes": 1545
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.stderr.log",
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive.result.json",
+      "sha256": "9799ed91e3cdd36619d9ece22e1c37df0c6eefbc20fb36ca64c869e287bb5ed0",
+      "bytes": 3219
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a.bundle.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a.bundle.json",
+      "sha256": "457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a",
+      "bytes": 24146051
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a.bundle.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a.bundle.json.gz",
+      "sha256": "5c8a3ba306d5032812a016e3bb237989eba3f43e3e8e74502215a4d6257bb530",
+      "bytes": 4780236
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.result.json",
+      "sha256": "bbade6c976395924b3b27288dfa559277a7d96a677d2f97fe4eff877e3f6d8bd",
+      "bytes": 1514
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.stderr.log",
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive.result.json",
+      "sha256": "5b010531281d53a5afba1a2eeb1c81908acb804f9ac78a6d0f42563e631f8fd4",
+      "bytes": 3157
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3.bundle.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3.bundle.json",
+      "sha256": "8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3",
+      "bytes": 30524711
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3.bundle.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3.bundle.json.gz",
+      "sha256": "1ff91b93a6f66637d89eb219421471782e35aca591dd4ac851184c3aed39496d",
+      "bytes": 4515743
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a779c1ca9e339298d9ac42c5f6b00ad26dea393326a8a3cf2bfe5a170ad01675.manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/a779c1ca9e339298d9ac42c5f6b00ad26dea393326a8a3cf2bfe5a170ad01675.manifest.json",
+      "sha256": "a779c1ca9e339298d9ac42c5f6b00ad26dea393326a8a3cf2bfe5a170ad01675",
+      "bytes": 1038
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.result.json",
+      "sha256": "c61dc187b89c43e9973922f0488168ef6e3af1e2a58175c829b9589db30a4b58",
+      "bytes": 1514
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.stderr.log",
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive.result.json",
+      "sha256": "182192cf71bf31688c575a2e208a933a0d833c7cf0c5d219d117e49b00e211e2",
+      "bytes": 3157
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e.bundle.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e.bundle.json",
+      "sha256": "b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e",
+      "bytes": 30537259
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e.bundle.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e.bundle.json.gz",
+      "sha256": "21b8d073539523fe801f7da7092f1958774e1369fcc961c191c4c86eb631eaf6",
+      "bytes": 4516301
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b12bee363cf8853b82139d8bd478b0c2bb2b192c48ff4b5330c0cfbe83cf32f4.manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b12bee363cf8853b82139d8bd478b0c2bb2b192c48ff4b5330c0cfbe83cf32f4.manifest.json",
+      "sha256": "b12bee363cf8853b82139d8bd478b0c2bb2b192c48ff4b5330c0cfbe83cf32f4",
+      "bytes": 1038
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a-positive-attempt1-wkbzwq_n/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "169bba34ca272e71b2383baec0710b031a867fa84fe9e44b4ba05f7a652f9478",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3-positive-attempt1-gxz9xwdy/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "15d70918866b3ac16f7c6571fe54b7342f17d330bd2eafd0fc9594eeb0175cf1",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e-positive-attempt1-lxu5q7bt/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "f7a1a390bc848ea2a6082710c8a41754a51e3123538d063deabbc3a0e281f030",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1-eo03x5bc/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "efa6a5c133e9f79630c4bb0cee039709344064a76d8159fc93d2ec8e5a7c697e",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1-7grg6_fn/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "d7b411cfcabda66e0d4c5cfcb3f0214d54ed916faea204ac07d56ab76c3e4a60",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1-ytw6mi3o/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "c75bb689aba661e3090904135b856c625938e338c9034e01eab5b1d5256b3c15",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/root.json",
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/snapshot.json",
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json",
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/targets.json",
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev/timestamp.json",
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1-jdnqq4yr/tuf-repo-cdn.sigstore.dev.json",
+      "sha256": "978fe1f614f298fd11f10414e3350bb46f0070bbc71c4e07ed7e05165a1a3410",
+      "bytes": 52
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/crypto-results.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/crypto-results.json",
+      "sha256": "b79b061ae3dde28b12f3457ef1f3da59999c88734192a2210de81a6116616180",
+      "bytes": 24179
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/download-receipt.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/download-receipt.json",
+      "sha256": "e2c14ef599ae20b630a8c2d55fe3199aa7c9bd6fc7bebee65c491dd88f274cd8",
+      "bytes": 3522
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/e2d6a09c634f473233292911261182ba6c4f2e9c7fb0ba5a6c7b417ee44defb2.manifest.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/e2d6a09c634f473233292911261182ba6c4f2e9c7fb0ba5a6c7b417ee44defb2.manifest.json",
+      "sha256": "e2d6a09c634f473233292911261182ba6c4f2e9c7fb0ba5a6c7b417ee44defb2",
+      "bytes": 1007
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.result.json",
+      "sha256": "fa858941f5ae26063be8e00dd95edb1a893aefd17c419f7ef38d5d3264d40b31",
+      "bytes": 1545
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.stderr.log",
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507-positive.result.json",
+      "sha256": "62645c505db9d42f8ff70eb68f28392cf2f91308d073e67ab4cc055e1a580e18",
+      "bytes": 3219
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507.bundle.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507.bundle.json",
+      "sha256": "f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507",
+      "bytes": 24143495
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507.bundle.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507.bundle.json.gz",
+      "sha256": "ae530da73e723b7b5ef018b6069b1bb561b35bad04bb3d627d154e9ab48e6093",
+      "bytes": 4777767
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.result.json",
+      "sha256": "db7072232c69c28f415cbf57166f67d5890786d8a767f798a9bf5788cbb9b68a",
+      "bytes": 1524
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.stderr.log",
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-positive.result.json",
+      "sha256": "121a8f91ffefac6e1d5cf6bc378bcf928114c93dfc16ff9974a8cb5e8e47e45c",
+      "bytes": 3177
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.result.json",
+      "sha256": "814b1ffbcb8717720a4028656948fbe86f2ca7c28261528fded833e0fd403fbc",
+      "bytes": 1532
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.stderr.log",
+      "sha256": "a2f2056858432bc08bdcb0dfcb7658f25c1f5a9e66e860a78a85095d5284fad1",
+      "bytes": 467
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-source.result.json",
+      "sha256": "1c7f89c8b52520a9555ebd2d8662c363aa54fd4c3604ffaf18113e55a3a73495",
+      "bytes": 3193
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.result.json",
+      "sha256": "09c920d7d3174d8d43c4cc17c15766509da123bcfb76dd952d060581ec9c9204",
+      "bytes": 1534
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.stderr.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.stderr.log",
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59",
+      "bytes": 223
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.stdout.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject-attempt1.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject.result.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af-wrong-subject.result.json",
+      "sha256": "643659258e86d252a7f9de6aa558faaf6e7f36c840febf33a3763d645b83aa88",
+      "bytes": 3197
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af.bundle.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af.bundle.json",
+      "sha256": "f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af",
+      "bytes": 9315
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af.bundle.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af.bundle.json.gz",
+      "sha256": "1bbacb61cba054c2534527389cf3792edd42603a86482024f247d173b71eacbe",
+      "bytes": 5984
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/referrer-index.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/referrer-index.json",
+      "sha256": "3b842ef0ee6c40de05ada294c2a691cef63371c81562b099ca9ef32b0b0c861c",
+      "bytes": 2164
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ci-runtime-scan-signing-gates.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ci-runtime-scan-signing-gates.json",
+      "sha256": "8329e2879c018d49315b941ea84f33ac1eddc340b3aadf25448764e35b969a8a",
+      "bytes": 721
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-native-review-v11.py": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-native-review-v11.py",
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+      "bytes": 43608
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-verify-native-artifact-ranged.py": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/executed-tools/loopx-w8-verify-native-artifact-ranged.py",
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+      "bytes": 40720
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/image-signature-None-f6e717f91027.predicate.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/image-signature-None-f6e717f91027.predicate.json.gz",
+      "sha256": "c6605f62bb9d7c028ee30055842151d4eec8469b2b1dfe2355b9f52c3f9c2990",
+      "bytes": 71
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/index.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/index.json",
+      "sha256": "3969f95fbf827f4a985c527e2690f369651faa53a07e73b32761e393b10c0b63",
+      "bytes": 1611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/official-index.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/official-index.json",
+      "sha256": "a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+      "bytes": 6511
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/producer-verification-provenance.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/producer-verification-provenance.json",
+      "sha256": "70c93082c0ae7293c5cab7ad14385bee68eeeab1d8d907145c77385c146380e9",
+      "bytes": 156
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/progress.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/progress.json",
+      "sha256": "351610269573a15ff995a35dea10ad5a9422e205fa8a0a299882f22de926aa80",
+      "bytes": 211
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-15f2d6396ccdf119aca9250846e406dea91f12e69cf6163f641a0ba313ae3d40.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-15f2d6396ccdf119aca9250846e406dea91f12e69cf6163f641a0ba313ae3d40.json",
+      "sha256": "fc57dd2028bb890f2fcac89cc310263d17a9c15dae1bd630840f4fe8413791e9",
+      "bytes": 615
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2442c3568c0d6ec0358a989f289bcd98b5699d691a9b98a6984c01763a4a2581.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2442c3568c0d6ec0358a989f289bcd98b5699d691a9b98a6984c01763a4a2581.json",
+      "sha256": "d22861023bf50727ccf84b5e771c332d1dc0a546af2150a480423a3f8b0fcca8",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2f9584e1252831c6136b47f920862a23f9219601c1a0677973a1ed30b91e56bd.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-2f9584e1252831c6136b47f920862a23f9219601c1a0677973a1ed30b91e56bd.json",
+      "sha256": "68e5eaaf64d06fa19aa6b381640ce14fcb2da7585d0b76a2d954df63c0e6580c",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.json",
+      "sha256": "290c276f095fe533a080ef5eeab7ab6ce221b161f92923ebabe56db6ea48f346",
+      "bytes": 631
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3b43efdd87d3442257ed46f7c225e181aadbe4814640574364506049feaa8b54.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-3b43efdd87d3442257ed46f7c225e181aadbe4814640574364506049feaa8b54.json",
+      "sha256": "6916b5c33ca2c0d52f9fc4e5b3f422912bdbdb2db9c5cda01125a58e36e57e2c",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-437ca3a612f69cb7f5a9966048bea32ed513a1b2ac7ccb266e5f340ffd4f74ba.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-437ca3a612f69cb7f5a9966048bea32ed513a1b2ac7ccb266e5f340ffd4f74ba.json",
+      "sha256": "bf67d8e52b2974671c4d06d29e661e559ff5a338a36d5523cf1fe2857c657f8b",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-48258d8ef7518589d4582e48546c91b1e11c87203212ace376e1d85ed4d0b876.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-48258d8ef7518589d4582e48546c91b1e11c87203212ace376e1d85ed4d0b876.json",
+      "sha256": "8d6a0d3f98521529b2ca28396ff001c757deeb99a9981e1112a85c7e38f08521",
+      "bytes": 631
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.json",
+      "sha256": "8ed26557e04ba03cfbc918d924862a550df2ae8476db59d33ff9cef9f143d3b2",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4a4480301451f12f0dddd46218ab42bedca2e449e115e41585184983857d9446.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4a4480301451f12f0dddd46218ab42bedca2e449e115e41585184983857d9446.json",
+      "sha256": "d137c3e5012073d88edd03d9bab3488c6f429addcf6fcf8f73801352aa9d7f64",
+      "bytes": 615
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4c11f4d50341cba3e95daa94f54f35daa2b673473b92872d3989d8969c461215.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4c11f4d50341cba3e95daa94f54f35daa2b673473b92872d3989d8969c461215.json",
+      "sha256": "9414497166cf6fbf6b5ab164713e46c76898bdb86a9ce60492af8f33f1a33198",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json",
+      "sha256": "3a7406c67060d13cb88132e003e3a38b4d0115da93249d15d263ba2e7ffb9bc6",
+      "bytes": 603
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-51c5a401bb7b5888e92282a83e92e3a2839023a2d00845479ec94949e2d24df6.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-51c5a401bb7b5888e92282a83e92e3a2839023a2d00845479ec94949e2d24df6.json",
+      "sha256": "879032eda9c166d0e770017f455bfe0de1077605eab097a17fd55c2443385180",
+      "bytes": 623
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.json",
+      "sha256": "5f4e7efeb813bd1c8b2a21135a6923047e24f21db99746b7e053bfaa6d6619e9",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5b247410f1ecfe702e2892734db68129ded5784a473aa533c0876c432bb64998.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-5b247410f1ecfe702e2892734db68129ded5784a473aa533c0876c432bb64998.json",
+      "sha256": "9bde3913ed682b87a2f764a41a1344079da8149aae8916ec4f3dbeefba82e7eb",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.json",
+      "sha256": "5554c5ea78fc75a5a86feec5baa0e44e2e4af415d0409292c0b78d433ee584e8",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-6696539aa34bc4478658cf1d0ef014d23965ac16c04afa34544b0ae8d4473420.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-6696539aa34bc4478658cf1d0ef014d23965ac16c04afa34544b0ae8d4473420.json",
+      "sha256": "e12a45f7f8da318cedf8d3a9a168d0a8bfaa7a412969c061f55066fb6d1e8881",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-71b170cb5a06544146f028437f1cc27e640d428d9c2b4f494524083c8b1bc6f1.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-71b170cb5a06544146f028437f1cc27e640d428d9c2b4f494524083c8b1bc6f1.json",
+      "sha256": "2bb47ad1d8afd8e97f7c05ce6d6e5af94e30548950aa234119b3db53a314a6ad",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.json",
+      "sha256": "25d95ace6e9426fc8413a314f57c0906576cffba681c9522e21e2ad3cee3f824",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-8794cc60419e5ac6a99bd5d92aa6d4590a9081b72edb891d3dbb39173d871d8c.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-8794cc60419e5ac6a99bd5d92aa6d4590a9081b72edb891d3dbb39173d871d8c.json",
+      "sha256": "6a1bae9307ee7ca0b7cfdac60c0632a61a222f8c6ff36442aedd98260e79c9f3",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-94d67ca5a28f1d8ddae1615a0d3638c5eab60400e5f56a6d2fc10af7031b4644.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-94d67ca5a28f1d8ddae1615a0d3638c5eab60400e5f56a6d2fc10af7031b4644.json",
+      "sha256": "b000882bb806bb401243036b7c67f80d86c9b2b16b3199ff6f37f201d40e6c75",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.json",
+      "sha256": "f19b2bd7e21f07bd9d05ca4eb17de74c24c42c51ee6f12a2df90b5ea819b5d56",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.json",
+      "sha256": "50a888631a0254c300ea83c337a1b2c563ecf66c60bee465b6d03b3543d29943",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-aa17bf42d73b0fa294c63fba187be7ffb209d88365349f9d9f0062f1ff36ed28.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-aa17bf42d73b0fa294c63fba187be7ffb209d88365349f9d9f0062f1ff36ed28.json",
+      "sha256": "493979d6aa0f415b6810ffd388e58fcdda8ee00af4da27a5f253444f26bcb418",
+      "bytes": 623
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-bc73c8ac7e9cc9bc58b18b4bb03507430779a7f37657f056f40b1ca841d46add.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-bc73c8ac7e9cc9bc58b18b4bb03507430779a7f37657f056f40b1ca841d46add.json",
+      "sha256": "c3266ec6c122d53aa076a34158c666630c122037fc719345232b3685e08936b4",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-bc9cb8406e8d8056fafd3a004da76602c9dfb8b9fffa49e9cafc3f1ba643a451.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-bc9cb8406e8d8056fafd3a004da76602c9dfb8b9fffa49e9cafc3f1ba643a451.json",
+      "sha256": "5947bbbf1179daddc2a1613b3f34db41bb09588842f190c56743d61dbdd59646",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.json",
+      "sha256": "a59f178824eb712e2315c2d853bb254c6926e8b98bea5800db37051653822a20",
+      "bytes": 631
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c3616e9e25d78188a7c0c8d5fb218d94d9a7dc13341adb9c8575ffd9fe735e96.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c3616e9e25d78188a7c0c8d5fb218d94d9a7dc13341adb9c8575ffd9fe735e96.json",
+      "sha256": "ac122d3363ebdba61be8583a0e1c273a94ffc27eb558a7f7836f546fc5b9b359",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c9fc07da82626a3cf8d4acf45fc53748df0b668aa865ef987734a1743e531388.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-c9fc07da82626a3cf8d4acf45fc53748df0b668aa865ef987734a1743e531388.json",
+      "sha256": "0ed1c2505f7522972e9ce12293381669e969ddfe2e655ea1e2d2a0ff284d2eed",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-ce26fe66838cdf406a2b37888b839f77f055f70ffdb5f89744cb0e2fb19f345a.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-ce26fe66838cdf406a2b37888b839f77f055f70ffdb5f89744cb0e2fb19f345a.json",
+      "sha256": "1c13ebceaf7a38181ad5c0d5e54bc7cc0f597cd60d28febcc86eb499cff53fcd",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-db6d895bf7f91e044e179ffa6bc99123fb65b28aa4b7b45b1462dc45088ecdbb.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-db6d895bf7f91e044e179ffa6bc99123fb65b28aa4b7b45b1462dc45088ecdbb.json",
+      "sha256": "c6ed98e663eb9f5dfb489c56623e7a33ba86000198e200e3479b0cd0eb0627e2",
+      "bytes": 623
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-dc7474aeb87c3ffc53656cb528bcc2bd0cd6740b060540875878589db8edd1eb.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-dc7474aeb87c3ffc53656cb528bcc2bd0cd6740b060540875878589db8edd1eb.json",
+      "sha256": "faaf41ec10bed17c3445525f0a4c05f84f3e718a734f57b7564ae97f4d75d95a",
+      "bytes": 607
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f5532f5ac6670154b6349cff61560709a5b73176706f27851db06b61b445ff04.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f5532f5ac6670154b6349cff61560709a5b73176706f27851db06b61b445ff04.json",
+      "sha256": "4c296e08d0355a7b547b3ec31c2f53838385115d97f1220cbcc2e269cfe4df99",
+      "bytes": 611
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f71154acf779b8644233b650f1bb1c53a0aef31eba3737eb1e8d14556713e62d.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f71154acf779b8644233b650f1bb1c53a0aef31eba3737eb1e8d14556713e62d.json",
+      "sha256": "fe262d3999b024ccf8ba9ccffb1817d5f83812456ce2ab2a9884ddecf2639d86",
+      "bytes": 631
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f76aa5987142f4590aa3f9fc7fbc724388421f69ff6ed5a93f65272232505c14.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f76aa5987142f4590aa3f9fc7fbc724388421f69ff6ed5a93f65272232505c14.json",
+      "sha256": "febed8415a3cf85e4869d46ebb72d337d36acfb289281505c3f25a8ff0d33f58",
+      "bytes": 627
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f945025163a3ec8cabf38d6c2e746cb343d9638d8e7dc9175c6d8c9edb4b5d33.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/ranged-body-f945025163a3ec8cabf38d6c2e746cb343d9638d8e7dc9175c6d8c9edb4b5d33.json",
+      "sha256": "1cda3c890fb397b79f7fbad0d5b021c69c3fb6b3473ca709df0ad7acd7d25c83",
+      "bytes": 623
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/receipt.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/receipt.json",
+      "sha256": "d7614d0bf99673f892864ba0ccd7e44da505b26fc724b977b4678a94c07c736c",
+      "bytes": 36725
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/sbom-amd64-8d1d5fa40579.predicate.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/sbom-amd64-8d1d5fa40579.predicate.json.gz",
+      "sha256": "6676c044ddd808bd42dd38571c2023fe149bf5ea665c289e2257f8ac270a4092",
+      "bytes": 3170928
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/sbom-arm64-b01b66b6f5a9.predicate.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/sbom-arm64-b01b66b6f5a9.predicate.json.gz",
+      "sha256": "a2e95fc3b24a6b3e410641ea54bdafb6d88c47509252472ffb33de4702b1a58e",
+      "bytes": 3169669
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/native-base-recovery.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/native-base-recovery.json",
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "bytes": 6422
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/workflows/native-base-image.yml": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/.github/workflows/native-base-image.yml",
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "bytes": 14144
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/deploy/native-base/matrix.py": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/deploy/native-base/matrix.py",
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "bytes": 2099
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/lego/operator/internal/build/native.go": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/lego/operator/internal/build/native.go",
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "bytes": 25979
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/source-files.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/source/source-files.json",
+      "sha256": "a280b57323d3dc20a61509138d26976975d5e816ff207dce9a1ea9f626607c6b",
+      "bytes": 522
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/vulnerability-amd64-f587c2e7f515.predicate.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/vulnerability-amd64-f587c2e7f515.predicate.json.gz",
+      "sha256": "595f96eef45fd981d066dac714fe03ea43e5728b31d05040b16ad0bed5fd429e",
+      "bytes": 2862672
+    },
+    "output/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/vulnerability-arm64-457f795e4ca6.predicate.json.gz": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/vulnerability-arm64-457f795e4ca6.predicate.json.gz",
+      "sha256": "606ca58c49133196e47624dde5b746929fee41786a58286ab2179b318ba6c955",
+      "bytes": 2861092
+    },
+    "output/process-exit-case-attempt1.json": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/process-exit-case-attempt1.json",
+      "sha256": "3b83a45f7c56e0935dc140e793f1358bdece45783d3d713555afe188f5027750",
+      "bytes": 9756
+    },
+    "output/v11-case-attempt1.log": {
+      "path": "/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/v11-case-attempt1.log",
+      "sha256": "5764dd91d788860357db2d3ea6f58e03980ef07f4a85f10ef18b56da301085ef",
+      "bytes": 15837
+    },
+    "cache/anonymous-compressed-v2/15f2d6396ccdf119aca9250846e406dea91f12e69cf6163f641a0ba313ae3d40.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/15f2d6396ccdf119aca9250846e406dea91f12e69cf6163f641a0ba313ae3d40.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/2442c3568c0d6ec0358a989f289bcd98b5699d691a9b98a6984c01763a4a2581.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/2442c3568c0d6ec0358a989f289bcd98b5699d691a9b98a6984c01763a4a2581.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/2f9584e1252831c6136b47f920862a23f9219601c1a0677973a1ed30b91e56bd.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/2f9584e1252831c6136b47f920862a23f9219601c1a0677973a1ed30b91e56bd.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/3b43efdd87d3442257ed46f7c225e181aadbe4814640574364506049feaa8b54.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/3b43efdd87d3442257ed46f7c225e181aadbe4814640574364506049feaa8b54.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/437ca3a612f69cb7f5a9966048bea32ed513a1b2ac7ccb266e5f340ffd4f74ba.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/437ca3a612f69cb7f5a9966048bea32ed513a1b2ac7ccb266e5f340ffd4f74ba.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/48258d8ef7518589d4582e48546c91b1e11c87203212ace376e1d85ed4d0b876.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/48258d8ef7518589d4582e48546c91b1e11c87203212ace376e1d85ed4d0b876.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/4a4480301451f12f0dddd46218ab42bedca2e449e115e41585184983857d9446.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/4a4480301451f12f0dddd46218ab42bedca2e449e115e41585184983857d9446.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/4c11f4d50341cba3e95daa94f54f35daa2b673473b92872d3989d8969c461215.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/4c11f4d50341cba3e95daa94f54f35daa2b673473b92872d3989d8969c461215.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/51c5a401bb7b5888e92282a83e92e3a2839023a2d00845479ec94949e2d24df6.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/51c5a401bb7b5888e92282a83e92e3a2839023a2d00845479ec94949e2d24df6.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/5b247410f1ecfe702e2892734db68129ded5784a473aa533c0876c432bb64998.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/5b247410f1ecfe702e2892734db68129ded5784a473aa533c0876c432bb64998.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/6696539aa34bc4478658cf1d0ef014d23965ac16c04afa34544b0ae8d4473420.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/6696539aa34bc4478658cf1d0ef014d23965ac16c04afa34544b0ae8d4473420.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/71b170cb5a06544146f028437f1cc27e640d428d9c2b4f494524083c8b1bc6f1.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/71b170cb5a06544146f028437f1cc27e640d428d9c2b4f494524083c8b1bc6f1.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/8794cc60419e5ac6a99bd5d92aa6d4590a9081b72edb891d3dbb39173d871d8c.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/8794cc60419e5ac6a99bd5d92aa6d4590a9081b72edb891d3dbb39173d871d8c.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/94d67ca5a28f1d8ddae1615a0d3638c5eab60400e5f56a6d2fc10af7031b4644.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/94d67ca5a28f1d8ddae1615a0d3638c5eab60400e5f56a6d2fc10af7031b4644.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/aa17bf42d73b0fa294c63fba187be7ffb209d88365349f9d9f0062f1ff36ed28.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/aa17bf42d73b0fa294c63fba187be7ffb209d88365349f9d9f0062f1ff36ed28.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/bc73c8ac7e9cc9bc58b18b4bb03507430779a7f37657f056f40b1ca841d46add.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/bc73c8ac7e9cc9bc58b18b4bb03507430779a7f37657f056f40b1ca841d46add.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/bc9cb8406e8d8056fafd3a004da76602c9dfb8b9fffa49e9cafc3f1ba643a451.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/bc9cb8406e8d8056fafd3a004da76602c9dfb8b9fffa49e9cafc3f1ba643a451.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/c3616e9e25d78188a7c0c8d5fb218d94d9a7dc13341adb9c8575ffd9fe735e96.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/c3616e9e25d78188a7c0c8d5fb218d94d9a7dc13341adb9c8575ffd9fe735e96.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/c9fc07da82626a3cf8d4acf45fc53748df0b668aa865ef987734a1743e531388.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/c9fc07da82626a3cf8d4acf45fc53748df0b668aa865ef987734a1743e531388.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/ce26fe66838cdf406a2b37888b839f77f055f70ffdb5f89744cb0e2fb19f345a.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/ce26fe66838cdf406a2b37888b839f77f055f70ffdb5f89744cb0e2fb19f345a.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/db6d895bf7f91e044e179ffa6bc99123fb65b28aa4b7b45b1462dc45088ecdbb.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/db6d895bf7f91e044e179ffa6bc99123fb65b28aa4b7b45b1462dc45088ecdbb.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/dc7474aeb87c3ffc53656cb528bcc2bd0cd6740b060540875878589db8edd1eb.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/dc7474aeb87c3ffc53656cb528bcc2bd0cd6740b060540875878589db8edd1eb.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/f5532f5ac6670154b6349cff61560709a5b73176706f27851db06b61b445ff04.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/f5532f5ac6670154b6349cff61560709a5b73176706f27851db06b61b445ff04.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/f71154acf779b8644233b650f1bb1c53a0aef31eba3737eb1e8d14556713e62d.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/f71154acf779b8644233b650f1bb1c53a0aef31eba3737eb1e8d14556713e62d.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/f76aa5987142f4590aa3f9fc7fbc724388421f69ff6ed5a93f65272232505c14.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/f76aa5987142f4590aa3f9fc7fbc724388421f69ff6ed5a93f65272232505c14.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/f945025163a3ec8cabf38d6c2e746cb343d9638d8e7dc9175c6d8c9edb4b5d33.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/f945025163a3ec8cabf38d6c2e746cb343d9638d8e7dc9175c6d8c9edb4b5d33.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cache/anonymous-compressed-v2/receipts.json": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/receipts.json",
+      "sha256": "b7aabc6a2bf1509b0daf50812b9234081e51094ba458ae3e94e5b540aa04439c",
+      "bytes": 13610
+    },
+    "cache/anonymous-compressed-v2/receipts.lock": {
+      "path": "/tmp/loopx-w8-native-cache-python314-v11-83c1e30-20261031/anonymous-compressed-v2/receipts.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "controls/body-get-chain.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/body-get-chain.json",
+      "sha256": "a2439eec4b36112b61be0ba29d753813a345ebe3c7e8b228fe954436b7fe1293",
+      "bytes": 449
+    },
+    "controls/freeze-on-success.py": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/freeze-on-success.py",
+      "sha256": "e6c55b80a67e35139977bac3547aafaea95b2d0978dd0096854602fd992e9227",
+      "bytes": 8815
+    },
+    "controls/fresh-source-recipe-context.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/fresh-source-recipe-context.json",
+      "sha256": "82c918978514b4f03d178baa64a6475e98dc5b63ca6e288d9419f958a8a280d1",
+      "bytes": 6132
+    },
+    "controls/frozen-summary.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/frozen-summary.json",
+      "sha256": "fd8d10359e400bca49794ab15aa9e4fdbf38bd070b991811ea3276a5c2ef025f",
+      "bytes": 7325
+    },
+    "controls/full-signed-bundle-and-predicate-custody.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/full-signed-bundle-and-predicate-custody.json",
+      "sha256": "df36a730512a3579745f36874b2dc3c83703a5abaf24bc656c607ac49f31c419",
+      "bytes": 7738
+    },
+    "controls/observed-local-dependency-custody.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/observed-local-dependency-custody.json",
+      "sha256": "14d13f05a71618ec53461f4cf04be00eac4ac0c6e8941b99a295b4037558d36c",
+      "bytes": 721
+    },
+    "controls/preflight.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/preflight.json",
+      "sha256": "5b29a5060e8dba87a60ff2cc6a2e9b0e1348541f78dc211ec5511883b520f015",
+      "bytes": 1419
+    },
+    "controls/reviewed-v11-strict-guards-result.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/reviewed-v11-strict-guards-result.json",
+      "sha256": "ae016e8c8e0fef97da8b491000371e55ca7fa81e2a1db3b0e38343a3d4524186",
+      "bytes": 1867
+    },
+    "controls/reviewed-v11-strict-guards.log": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/reviewed-v11-strict-guards.log",
+      "sha256": "56c287b57edf7dadc9bb49e5f7da435fb38919d548f2a5dabe681255be6d21f7",
+      "bytes": 1683
+    },
+    "controls/reviewed-v11-strict-guards.py": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/reviewed-v11-strict-guards.py",
+      "sha256": "a1367eec153bf2a1b8c04959ace8fec8aae0f9abc27d7745d8c2b411d5d47b26",
+      "bytes": 16687
+    },
+    "controls/run-once.py": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/run-once.py",
+      "sha256": "b52cd0e30cca507b39b17badc5b7f6d1623f5922a2886f83854c57f32a82f485",
+      "bytes": 3788
+    },
+    "controls/terminal-capacity.json": {
+      "path": "/private/tmp/loopx-w8-native-controls-python314-v11-83c1e30-20261031/terminal-capacity.json",
+      "sha256": "1b661466e7de3bc6b38a423a3ca2cc4c6e999ac9749f418dfe45dc5d938e4413",
+      "bytes": 446
+    }
+  },
+  "manifest_excludes_only_itself": true,
+  "process_complete_no_further_writes_expected": true
+}
