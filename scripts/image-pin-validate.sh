@@ -127,7 +127,6 @@ lego/operator/config/drain-guard/deployment.yaml	controller:latest	same manager 
 dashboard/deploy/deployment.yaml	dashboard:latest	kustomize `images:` placeholder — deploy/gitops/base/dashboard.yaml rewrites it to the dashboard digest deploy.yml pushed
 deploy/opensandbox/server-in-cluster.yaml	opensandbox-server:0.2.2	kustomize `images:` placeholder — deploy/opensandbox/kustomization.yaml carries the digest
 lego/operator/config/samples/app_v1alpha1_app.yaml	traefik/whoami	sample App CR: a TENANT's image choice in documentation, not an image bex resolves
-.pm/w8/m91/evidence/dev8-predeploy-20261030/predeploy_pull_secret_test.overlay.go	zot.svc:5000/myapp:gen-1	archived Go-overlay fixture for fake-client predeploy tests: models a tenant build-output tag, never pulled by the platform (the canonical *_test.go fixture is already excluded)
 lego/backend/internal/apps/testdata/render-clickhouse/Dockerfile	yandex/clickhouse-server:21	verbatim render-examples/clickhouse@355817b fixture (ADR089): a TENANT's unchanged upstream Dockerfile whose byte-identity TestRenderClickHouseBlueprintUnchanged asserts — pinning it would defeat the fixture; bex never builds it
 deploy/gitops/charts/opensandbox-controller/values.yaml	sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller	upstream chart default; deploy/gitops/base/values/opensandbox-controller.values.yaml overrides it with a digest
 deploy/gitops/charts/opensandbox-controller/values.yaml	image-committer:dev	upstream chart default for a snapshot path production leaves disabled; the same base values file overrides it with a digest
@@ -136,6 +135,9 @@ deploy/cnb-run/node-check.Dockerfile	${RUN_IMAGE}	CI-only regression check, neve
 deploy/cnb-run/node-check.Dockerfile	check-${TARGETARCH}	internal stage reference: TARGETARCH selects one of the two stages declared above it in the same file (check-amd64 / check-arm64), never a registry pull
 deploy/native-base/Dockerfile	${BASE_IMAGE}	publishing input: native-base-image.yml supplies the official image BY DIGEST from matrix.py, which rejects malformed or unpinned native.go inputs; adoption remains a separate reviewed digest pin
 deploy/native-base/check.Dockerfile	${NATIVE_BASE}	CI-only regression check, never pushed: native-base-image.yml supplies the just-published native candidate BY DIGEST before signatures or discovery tags are published
+deploy/native-common/Dockerfile	${BASE_IMAGE}	publishing input: native-common/matrix.py reads this file's own `ARG BASE_IMAGE=buildpack-deps:bookworm@sha256:…` default, rejects anything else, and native-base-image.yml passes it back BY DIGEST
+deploy/pg-operand/Dockerfile	${BASE_IMAGE}	publishing input: pg-operand-image.yml supplies .base from deploy/pg-operand/matrix.json, where every base is a CNPG image pinned BY DIGEST
+deploy/pg-operand/Dockerfile	${DUCKDB_IMAGE}	publishing input: pg-operand-image.yml supplies .duckdb (else .base) from deploy/pg-operand/matrix.json, every value pinned BY DIGEST
 deploy/gitops/charts/barman-cloud-plugin/upstream/manifest-0.13.0.yaml	ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0	vendored upstream v0.13.0 release, kept byte-for-byte reproducible against the SHA-256 in its README; the EXECUTED reference is digest-pinned by the kustomize patch beside it, which scripts/gitops-validate.sh asserts on the RENDERED output
 EOF
 }
@@ -145,8 +147,11 @@ EOF
 # digest-pinned base image as the shape of an ordinary app Dockerfile — so they
 # are excluded from the scan rather than exempted reference by reference.
 # scripts/fixtures/ is test input, built only by the test that owns it.
+# .pm/ is the PM board: its evidence trees archive copies of source files and
+# test overlays as review records, and nothing there is ever built or deployed.
 skip_path() {
   case "$1" in
+    ./.pm/* | .pm/*) return 0 ;;
     ./examples/* | examples/*) return 0 ;;
     ./scripts/fixtures/* | scripts/fixtures/*) return 0 ;;
   esac
