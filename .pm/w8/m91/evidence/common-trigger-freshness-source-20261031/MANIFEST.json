@@ -1,0 +1,146 @@
+{
+  "README.md": {
+    "bytes": 863,
+    "sha256": "d0c13303e30c25b5510965f61e5f160f4db06abbc835d51ffcca250710d9e16b"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 9499,
+    "sha256": "d5e49f7059671acc2d9336bc0ba155603d0a599d9460775652b4d67544a767e7"
+  },
+  "retained/go.sum.initial-sha256.gz": {
+    "bytes": 72,
+    "sha256": "5d4093bd8c22e3f9fa28b8d595a5a8ae2f031532cabf62cf3aef881fc35003ca"
+  },
+  "retained/SOURCE-MANIFEST.json": {
+    "bytes": 966,
+    "sha256": "d60810ff70f037ede08970b181d0a18f6543b7c4e2c89222192d3389332babfb"
+  },
+  "retained/final-scoped-negative-result.json": {
+    "bytes": 640,
+    "sha256": "333996f1d9abace663b8e87a2f0b8bcf686b736330b4215d2fcb13a7363e56ad"
+  },
+  "retained/final-scoped-tests-final.log.gz": {
+    "bytes": 80,
+    "sha256": "d94eb8bf0d675003fd5da092d4e8d7b5082bc9f7abe30d83ffe457ddbcaa327b"
+  },
+  "retained/negative-overlay.json": {
+    "bytes": 211,
+    "sha256": "0a10ebd146f9ecfe907db2003fd91ce0a920dccf9ed13bca8ea94f1ded6ad0ed"
+  },
+  "retained/go.work.sum.initial-sha256.gz": {
+    "bytes": 72,
+    "sha256": "90aba4d7be21ae8a7327707076639bf75827be3fb1af5b20223c45179afb0b53"
+  },
+  "retained/source.patch.gz": {
+    "bytes": 1923,
+    "sha256": "a8d4c347d6d527c625995bb6224db9285a3d639b036e069a3d3854e0f7b1be3c"
+  },
+  "retained/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "retained/owned-paths.json": {
+    "bytes": 169,
+    "sha256": "f2d93b188eb1aa622d23d55284e59eab99c71f9233dd1b296bcdfe1b81772bca"
+  },
+  "retained/actions-guard.log.gz": {
+    "bytes": 221,
+    "sha256": "a6dda6ad2049863b3bd52cff889de55be55061a296b0589ea29194efdfeed723"
+  },
+  "retained/final-scoped-lint.log.gz": {
+    "bytes": 179,
+    "sha256": "2ba0d80db97e84162e6594612c572faf82687aff181a3b92d43ed9cc63716d76"
+  },
+  "retained/go.mod.initial-sha256.gz": {
+    "bytes": 73,
+    "sha256": "04afd474f84ff7980a234481f83d1e66d83cd5a399283cc04684cbad25b68828"
+  },
+  "retained/final-scoped-tests-result.json": {
+    "bytes": 446,
+    "sha256": "0bb5ddf9ec79db80e40f8712c44f8b04a7b6bfc904d4a0c8fe732e4214580422"
+  },
+  "retained/before-checks.json": {
+    "bytes": 373,
+    "sha256": "aea2ae31287fba14d96157a34fa2e0af26fcd1725149a018c73841a607a28664"
+  },
+  "retained/final-scoped-tests-final-result.json": {
+    "bytes": 446,
+    "sha256": "4e022fe01ec6eb0ab279c70f3caa4f55641c6545bf29ca85e30e9bf77aa89c9a"
+  },
+  "retained/run-final-scoped.py": {
+    "bytes": 2184,
+    "sha256": "188363194a16b17e0f4595494882163f8fc91cb7a6410db1b76ecf5d7c29f907"
+  },
+  "retained/MANIFEST.json": {
+    "bytes": 5423,
+    "sha256": "da8b9467749f94000cdd30da6276b30bc21414ee2b89d1f9dfad8a58a181f37d"
+  },
+  "retained/final-scoped-lint-result.json": {
+    "bytes": 461,
+    "sha256": "1ee5859c7099436d065ee9cd8a0367ff905ff9462c5dc2394b27dbd7dc941541"
+  },
+  "retained/python-controls.log.gz": {
+    "bytes": 57,
+    "sha256": "0dd806a8356c099ac1b5d240769bf6daaa6337af18c614f0a342f54b45923081"
+  },
+  "retained/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "retained/final-scoped-tests.log.gz": {
+    "bytes": 80,
+    "sha256": "eee3c2b53cea7999474b40343b0be290f2d1a14cbf59fc00a18e87d03eb04f5d"
+  },
+  "retained/final-scoped-negative.log.gz": {
+    "bytes": 290,
+    "sha256": "c815c1b24016aa929eb8a3972d8bb0302a4f0cc9d92afbe1445e1dfa9dbbcd09"
+  },
+  "retained/actionlint.yaml": {
+    "bytes": 55,
+    "sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0"
+  },
+  "retained/final-scoped-lint-final.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "retained/pre-fix-common-workflow.yml": {
+    "bytes": 4510,
+    "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66"
+  },
+  "retained/negative-trigger-test.go": {
+    "bytes": 14802,
+    "sha256": "2665ec742f8ce3cb29c48ddaf0de24f79f6546e2dd87c6ce35b8ca027693db08"
+  },
+  "retained/final-scoped-lint-final-result.json": {
+    "bytes": 461,
+    "sha256": "c09a64b2978dcc9450a1ac6590d84a63fc972a0727dc6ce9de4a6e0ccfe0c822"
+  },
+  "retained/receipt.json": {
+    "bytes": 2766,
+    "sha256": "73f52fb2c5347fe24b44cc16922360a9b02d12394470db96c9e23f932bdb56b7"
+  },
+  "retained/head-source/.github/workflows/native-common-image.yml": {
+    "bytes": 4510,
+    "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66"
+  },
+  "retained/head-source/.github/scripts/test_native_oci_workflow.py": {
+    "bytes": 16626,
+    "sha256": "1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0"
+  },
+  "retained/head-source/lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 12652,
+    "sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab"
+  },
+  "retained/source/.github/workflows/native-common-image.yml": {
+    "bytes": 4628,
+    "sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471"
+  },
+  "retained/source/.github/scripts/test_native_oci_workflow.py": {
+    "bytes": 16781,
+    "sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696"
+  },
+  "retained/source/lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 14819,
+    "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b"
+  }
+}

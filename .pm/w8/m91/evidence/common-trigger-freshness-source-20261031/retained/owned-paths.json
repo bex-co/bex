@@ -1,0 +1,5 @@
+[
+  ".github/workflows/native-common-image.yml",
+  ".github/scripts/test_native_oci_workflow.py",
+  "lego/operator/internal/build/nativeutility_qualification_test.go"
+]

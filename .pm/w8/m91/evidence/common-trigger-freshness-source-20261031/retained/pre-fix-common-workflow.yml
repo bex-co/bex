@@ -1,0 +1,109 @@
+name: common Bookworm native image (build + verify)
+
+# One tools/system image, followed by independently selected runtime artifacts.
+# Publication never fills the production common-base pin or adopts C images.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/native-common/**"
+      - "deploy/native-base/**"
+      - ".github/workflows/native-common-image.yml"
+      - ".github/workflows/native-base-image.yml"
+      - ".github/scripts/native-oci-stage.py"
+      - ".github/scripts/test_native_oci_*.py"
+      - ".github/scripts/native-common-qualify.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/native-base-image.yml
+    with:
+      runtime: common-bookworm
+
+  qualify:
+    needs: publish
+    if: github.ref == 'refs/heads/main' && needs.publish.outputs.ref != ''
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      GOWORK: "off"
+      GOMAXPROCS: "2"
+      GODEBUG: http2client=0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache: false
+      - id: owned
+        name: record gated inputs and assign ownership before creating resources
+        env:
+          COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}
+          TARGET_PLATFORM: linux/${{ matrix.arch }}
+        run: python3 .github/scripts/native-common-qualify.py init
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        with:
+          name: ${{ steps.owned.outputs.owner }}
+          use: false
+          keep-state: false
+          # The action's post cleanup also removes shared certificate files.
+          # Our always step removes only the exact assigned builder instead.
+          cleanup: false
+      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          syft-version: v1.55.0
+      - name: actual generated offline builds, original replays and exact-default SPDX
+        working-directory: lego/operator
+        env:
+          BEX_BUILDKIT_INTEGRATION: "1"
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
+          BEX_NATIVE_TEST_PREPARE_WHEELS: "1"
+          BEX_NATIVE_TEST_SYFT: syft
+          BEX_NATIVE_TEST_OUTPUT: ${{ steps.owned.outputs.root }}/generated
+        run: |
+          set -o pipefail
+          go test -p 1 -count=1 -timeout 150m ./internal/build \
+            -run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$' -v \
+            2>&1 | tee "${{ steps.owned.outputs.root }}/qualification.log"
+      - name: remove only this job's labeled resources and exact builder
+        if: always() && steps.owned.outputs.root != ''
+        timeout-minutes: 5
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
+      - name: hash retained successes and failures
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py manifest "$QUALIFICATION_ROOT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.owned.outputs.root != ''
+        with:
+          name: common-generated-${{ github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: ${{ steps.owned.outputs.root }}
+          if-no-files-found: error
+          # Only this fresh owned evidence root; render-env secrets stay in
+          # Go's separate temporary fixture tree. Preserve the full manifest.
+          include-hidden-files: true
+          retention-days: 30

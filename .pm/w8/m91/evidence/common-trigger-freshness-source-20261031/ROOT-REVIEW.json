@@ -1,0 +1,251 @@
+{
+  "reviewed_at": "2026-10-31T16:52:57.940692+00:00",
+  "approved_source_fix": true,
+  "original_frozen_payloads_verified": 33,
+  "live_source_files_verified": 3,
+  "source_review": "minimal path additions preserve one common publication plus2architecture qualification",
+  "regression": "parsed actual YAML; previous committed workflow fails6generator/fixture positives; corrected positives and unrelated controller/backend/PM negatives pass",
+  "root_targeted_test": "TestNativeCommonQualificationTracksActualGeneratorAndFixtureChanges PASS",
+  "other_frozen_checks": "wholebuildpackage5.057s/lint0/41Pythoncontrols/actionlint/Actionsguard/diffcheckPASS",
+  "actual_generated_images": "UNEXECUTED; no artifact or hosted acceptance implied",
+  "custody": [
+    {
+      "original": "MANIFEST.json",
+      "retained": "retained/MANIFEST.json",
+      "bytes": 5423,
+      "sha256": "da8b9467749f94000cdd30da6276b30bc21414ee2b89d1f9dfad8a58a181f37d",
+      "lossless_gzip": false
+    },
+    {
+      "original": "SOURCE-MANIFEST.json",
+      "retained": "retained/SOURCE-MANIFEST.json",
+      "bytes": 966,
+      "sha256": "d60810ff70f037ede08970b181d0a18f6543b7c4e2c89222192d3389332babfb",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actionlint.log",
+      "retained": "retained/actionlint.log.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "actionlint.yaml",
+      "retained": "retained/actionlint.yaml",
+      "bytes": 55,
+      "sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "actions-guard.log",
+      "retained": "retained/actions-guard.log.gz",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "before-checks.json",
+      "retained": "retained/before-checks.json",
+      "bytes": 373,
+      "sha256": "aea2ae31287fba14d96157a34fa2e0af26fcd1725149a018c73841a607a28664",
+      "lossless_gzip": false
+    },
+    {
+      "original": "diff-check.log",
+      "retained": "retained/diff-check.log.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-lint-final-result.json",
+      "retained": "retained/final-scoped-lint-final-result.json",
+      "bytes": 461,
+      "sha256": "c09a64b2978dcc9450a1ac6590d84a63fc972a0727dc6ce9de4a6e0ccfe0c822",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-lint-final.log",
+      "retained": "retained/final-scoped-lint-final.log.gz",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-lint-result.json",
+      "retained": "retained/final-scoped-lint-result.json",
+      "bytes": 461,
+      "sha256": "1ee5859c7099436d065ee9cd8a0367ff905ff9462c5dc2394b27dbd7dc941541",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-lint.log",
+      "retained": "retained/final-scoped-lint.log.gz",
+      "bytes": 210,
+      "sha256": "d1f11615359f71eeea2edffda87e2faad38e124620a8dd10b377f6b55f1ab348",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-negative-result.json",
+      "retained": "retained/final-scoped-negative-result.json",
+      "bytes": 640,
+      "sha256": "333996f1d9abace663b8e87a2f0b8bcf686b736330b4215d2fcb13a7363e56ad",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-negative.log",
+      "retained": "retained/final-scoped-negative.log.gz",
+      "bytes": 1112,
+      "sha256": "8341c654828d0a2ac33ae7829b4452e9b754859de9433e46d4363f4b720c2f05",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-tests-final-result.json",
+      "retained": "retained/final-scoped-tests-final-result.json",
+      "bytes": 446,
+      "sha256": "4e022fe01ec6eb0ab279c70f3caa4f55641c6545bf29ca85e30e9bf77aa89c9a",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-tests-final.log",
+      "retained": "retained/final-scoped-tests-final.log.gz",
+      "bytes": 63,
+      "sha256": "905674d80fc466548011318c063e0fb5d919398c9bba17ac3c1dc70786850dd8",
+      "lossless_gzip": true
+    },
+    {
+      "original": "final-scoped-tests-result.json",
+      "retained": "retained/final-scoped-tests-result.json",
+      "bytes": 446,
+      "sha256": "0bb5ddf9ec79db80e40f8712c44f8b04a7b6bfc904d4a0c8fe732e4214580422",
+      "lossless_gzip": false
+    },
+    {
+      "original": "final-scoped-tests.log",
+      "retained": "retained/final-scoped-tests.log.gz",
+      "bytes": 63,
+      "sha256": "99dcf245129fafa482dea3b84692b1bf324289123db79c56f0cfe9dfc7665f19",
+      "lossless_gzip": true
+    },
+    {
+      "original": "go.mod.initial-sha256",
+      "retained": "retained/go.mod.initial-sha256.gz",
+      "bytes": 65,
+      "sha256": "9dff763fa6928bb6124c4202756384f2381d8a5143b6bd449f32cc48b066d320",
+      "lossless_gzip": true
+    },
+    {
+      "original": "go.sum.initial-sha256",
+      "retained": "retained/go.sum.initial-sha256.gz",
+      "bytes": 65,
+      "sha256": "64d7d1ea1bf79d46e0578ab8a8393526ae130d087733e5ad0b45d3f8af1de77e",
+      "lossless_gzip": true
+    },
+    {
+      "original": "go.work.sum.initial-sha256",
+      "retained": "retained/go.work.sum.initial-sha256.gz",
+      "bytes": 65,
+      "sha256": "eb05bb3150a75b65559e2e0c8b4468767db15b243d28e871df664486825b7202",
+      "lossless_gzip": true
+    },
+    {
+      "original": "head-source/.github/scripts/test_native_oci_workflow.py",
+      "retained": "retained/head-source/.github/scripts/test_native_oci_workflow.py",
+      "bytes": 16626,
+      "sha256": "1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0",
+      "lossless_gzip": false
+    },
+    {
+      "original": "head-source/.github/workflows/native-common-image.yml",
+      "retained": "retained/head-source/.github/workflows/native-common-image.yml",
+      "bytes": 4510,
+      "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66",
+      "lossless_gzip": false
+    },
+    {
+      "original": "head-source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "retained": "retained/head-source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 12652,
+      "sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab",
+      "lossless_gzip": false
+    },
+    {
+      "original": "negative-overlay.json",
+      "retained": "retained/negative-overlay.json",
+      "bytes": 211,
+      "sha256": "0a10ebd146f9ecfe907db2003fd91ce0a920dccf9ed13bca8ea94f1ded6ad0ed",
+      "lossless_gzip": false
+    },
+    {
+      "original": "negative-trigger-test.go",
+      "retained": "retained/negative-trigger-test.go",
+      "bytes": 14802,
+      "sha256": "2665ec742f8ce3cb29c48ddaf0de24f79f6546e2dd87c6ce35b8ca027693db08",
+      "lossless_gzip": false
+    },
+    {
+      "original": "owned-paths.json",
+      "retained": "retained/owned-paths.json",
+      "bytes": 169,
+      "sha256": "f2d93b188eb1aa622d23d55284e59eab99c71f9233dd1b296bcdfe1b81772bca",
+      "lossless_gzip": false
+    },
+    {
+      "original": "pre-fix-common-workflow.yml",
+      "retained": "retained/pre-fix-common-workflow.yml",
+      "bytes": 4510,
+      "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66",
+      "lossless_gzip": false
+    },
+    {
+      "original": "python-controls.log",
+      "retained": "retained/python-controls.log.gz",
+      "bytes": 141,
+      "sha256": "c07527883b99b34854e6dd66dc33d0893bad89bb77cf4ae4fa63c1b88d903fc3",
+      "lossless_gzip": true
+    },
+    {
+      "original": "receipt.json",
+      "retained": "retained/receipt.json",
+      "bytes": 2766,
+      "sha256": "73f52fb2c5347fe24b44cc16922360a9b02d12394470db96c9e23f932bdb56b7",
+      "lossless_gzip": false
+    },
+    {
+      "original": "run-final-scoped.py",
+      "retained": "retained/run-final-scoped.py",
+      "bytes": 2184,
+      "sha256": "188363194a16b17e0f4595494882163f8fc91cb7a6410db1b76ecf5d7c29f907",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source/.github/scripts/test_native_oci_workflow.py",
+      "retained": "retained/source/.github/scripts/test_native_oci_workflow.py",
+      "bytes": 16781,
+      "sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source/.github/workflows/native-common-image.yml",
+      "retained": "retained/source/.github/workflows/native-common-image.yml",
+      "bytes": 4628,
+      "sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "retained": "retained/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 14819,
+      "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+      "lossless_gzip": false
+    },
+    {
+      "original": "source.patch",
+      "retained": "retained/source.patch.gz",
+      "bytes": 5547,
+      "sha256": "da649d75438f8ca9f347d994f6fa82a7cd2ac3c52a90664408651fe3a36fac77",
+      "lossless_gzip": true
+    }
+  ]
+}

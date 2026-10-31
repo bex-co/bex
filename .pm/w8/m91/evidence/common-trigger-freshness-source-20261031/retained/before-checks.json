@@ -1,0 +1,5 @@
+{
+  ".github/workflows/native-common-image.yml": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+  ".github/scripts/test_native_oci_workflow.py": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+  "lego/operator/internal/build/nativeutility_qualification_test.go": "c1d82396d1f54e8111c8a14836c4b210b365faa65a5e2de726a6c2ebf7e8230a"
+}
