@@ -1,0 +1,32 @@
+{
+  "node26_diagnosis": {
+    "bytes": 3338,
+    "custody": "Existing original rehashed locally; no log download, mutation or recompression.",
+    "path": "/private/tmp/bex-w8-native-failure-triage-20261031-0805/node26-diagnosis.json",
+    "sha256": "4ae8df2a261764b21073035a08043876d5e601dd128df5293f7e39af2236fb87"
+  },
+  "node26_raw": {
+    "bytes": 1176022,
+    "custody": "Existing original rehashed locally; no log download, mutation or recompression.",
+    "path": "/private/tmp/bex-w8-native-failure-triage-20261031-0805/node26-job.log",
+    "sha256": "913d77dce2abb0a416a370d3281fc6fead6c740f49fa58fbbddb3d2c8a7ace5c"
+  },
+  "previous_triage_receipt": {
+    "bytes": 5895,
+    "custody": "Existing original rehashed locally; no log download, mutation or recompression.",
+    "path": "/private/tmp/bex-w8-native-failure-triage-20261031-0805/receipt.json",
+    "sha256": "bb548eed9af69fd0e5772b2bc56fdffead7ced4c214befe3407c4150dfe1da62"
+  },
+  "python311_raw": {
+    "bytes": 528732,
+    "custody": "Existing original rehashed locally; no log download, mutation or recompression.",
+    "path": "/private/tmp/bex-w8-native-failures-20261031/python311/job.log",
+    "sha256": "40bfa8bfad2a1e2371d964be644c08cf521c80e9d2fac0cf251379a50bdfbc81"
+  },
+  "python313_raw": {
+    "bytes": 419851,
+    "custody": "Existing original rehashed locally; no log download, mutation or recompression.",
+    "path": "/private/tmp/bex-w8-native-failures-20261031/python313/job.log",
+    "sha256": "0b23de3ee7b5f34541edfb8457a5ecd5db6d296271a836a59d4b9b1f99d6738f"
+  }
+}

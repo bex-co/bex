@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/bex/native-node-tools/node /opt/bex/native-node-tools/node_modules/webpack/bin/webpack.js "$@"

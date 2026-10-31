@@ -1,0 +1,264 @@
+{
+  "at": "2026-10-31T09:35:43.281612+00:00",
+  "capacity_and_fit": {
+    "each_payload_selects_exactly_one_existing_reviewed_name": true,
+    "existing_runner_labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-production"
+    ],
+    "local_free_bytes_at_freeze": 8406102016,
+    "new_runners_or_resources": false,
+    "parent_PG_builder_gate": "3GiB floor plus6GiB headroom; no action or cleanup by this agent.",
+    "per_runtime_concurrency_cancel_in_progress": false,
+    "plan_only_no_local_build_or_payload_reads": true,
+    "three_targeted_runs_can_queue_on_existing_runner_capacity": "No throughput or immediate-start promise; matrix max-parallel=2 applies within each run and does not globally cap three singleton runs. Existing production work and parent PG gate remain untouched."
+  },
+  "deduplication": {
+    "active_full_matrix_or_implicit_target_backlog_observed": false,
+    "automatic_fix_runs": [
+      {
+        "conclusion": "cancelled",
+        "run_id": 41182921386,
+        "status": "completed"
+      },
+      {
+        "conclusion": "cancelled",
+        "run_id": 41184126238,
+        "status": "completed"
+      }
+    ],
+    "complete_inventory_run_count": 87,
+    "every_known_run_in_complete_current_inventory": true,
+    "known_historical_run_count": 68,
+    "nonterminal_runs": [
+      {
+        "actual_in_progress_steps": [],
+        "all_materialized_jobs_count": 2,
+        "event": "workflow_dispatch",
+        "head_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "job_conclusion": null,
+        "job_id": 124498652791,
+        "job_name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+        "job_status": "queued",
+        "latent_matrix_assessment": "Exactly matrix + one reviewed targeted runtime job; no active full-matrix run in complete workflow inventory. Existing Go/Elixir/Node18 target ownership is preserved.",
+        "run_attempt": 1,
+        "run_conclusion": null,
+        "run_id": 41187749759,
+        "run_status": "queued",
+        "runtime": "node-18-bookworm"
+      },
+      {
+        "actual_in_progress_steps": [
+          {
+            "name": "scan amd64 candidate",
+            "started_at": "2026-10-31T08:55:19Z"
+          }
+        ],
+        "all_materialized_jobs_count": 2,
+        "event": "workflow_dispatch",
+        "head_sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+        "job_conclusion": null,
+        "job_id": 124367871533,
+        "job_name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+        "job_status": "in_progress",
+        "latent_matrix_assessment": "Exactly matrix + one reviewed targeted runtime job; no active full-matrix run in complete workflow inventory. Existing Go/Elixir/Node18 target ownership is preserved.",
+        "run_attempt": 1,
+        "run_conclusion": null,
+        "run_id": 41144656779,
+        "run_status": "in_progress",
+        "runtime": "elixir-1.20"
+      },
+      {
+        "actual_in_progress_steps": [
+          {
+            "name": "sign and attest the immutable candidate",
+            "started_at": "2026-10-31T09:11:41Z"
+          }
+        ],
+        "all_materialized_jobs_count": 2,
+        "event": "workflow_dispatch",
+        "head_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+        "job_conclusion": null,
+        "job_id": 124361678277,
+        "job_name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+        "job_status": "in_progress",
+        "latent_matrix_assessment": "Exactly matrix + one reviewed targeted runtime job; no active full-matrix run in complete workflow inventory. Existing Go/Elixir/Node18 target ownership is preserved.",
+        "run_attempt": 1,
+        "run_conclusion": null,
+        "run_id": 41142870861,
+        "run_status": "in_progress",
+        "runtime": "golang-1.27-bookworm"
+      }
+    ],
+    "target_nonterminal_duplicates": []
+  },
+  "endpoint_for_parent_review": "POST /repos/bex-co/bex/actions/workflows/native-base-image.yml/dispatches",
+  "existing_failure_evidence": [
+    "/private/tmp/bex-w8-native-failure-triage-20261031-0805",
+    "/private/tmp/bex-w8-native-failures-20261031/python311/job.log",
+    "/private/tmp/bex-w8-native-failures-20261031/python313/job.log"
+  ],
+  "expected_published_main": "0b138600b31ff4294651369109974a538a33310b",
+  "not_authorized": [
+    "No dispatch, cancellation, rerun, new language/base scope, adoption, production pin, source/catalog edit, Docker, fixtures or cleanup performed."
+  ],
+  "original_failed_publications": [
+    {
+      "failed_steps": [
+        "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
+      ],
+      "job_conclusion": "failure",
+      "job_id": 124319471502,
+      "raw_logs": "Previously retained originals only; no log redownload in this plan.",
+      "run_conclusion": "failure",
+      "run_id": 41129044087,
+      "run_status": "completed",
+      "runtime": "python-3.11-bookworm",
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077"
+    },
+    {
+      "failed_steps": [
+        "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
+      ],
+      "job_conclusion": "failure",
+      "job_id": 124319435370,
+      "raw_logs": "Previously retained originals only; no log redownload in this plan.",
+      "run_conclusion": "failure",
+      "run_id": 41129116273,
+      "run_status": "completed",
+      "runtime": "python-3.13-bookworm",
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077"
+    },
+    {
+      "failed_steps": [
+        "scan amd64 candidate"
+      ],
+      "job_conclusion": "failure",
+      "job_id": 124317150933,
+      "raw_logs": "Previously retained originals only; no log redownload in this plan.",
+      "run_conclusion": "failure",
+      "run_id": 41129008590,
+      "run_status": "completed",
+      "runtime": "node-26-bookworm",
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077"
+    }
+  ],
+  "payloads": [
+    {
+      "file": "dispatch-python-3.11-bookworm.json",
+      "mode": "normal source rebuild; no old-index recovery",
+      "official_base": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "payload": {
+        "inputs": {
+          "runtime": "python-3.11-bookworm"
+        },
+        "ref": "main"
+      },
+      "runtime": "python-3.11-bookworm"
+    },
+    {
+      "file": "dispatch-python-3.13-bookworm.json",
+      "mode": "normal source rebuild; no old-index recovery",
+      "official_base": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "payload": {
+        "inputs": {
+          "runtime": "python-3.13-bookworm"
+        },
+        "ref": "main"
+      },
+      "runtime": "python-3.13-bookworm"
+    },
+    {
+      "file": "dispatch-node-26-bookworm.json",
+      "mode": "normal source rebuild; no old-index recovery",
+      "official_base": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "payload": {
+        "inputs": {
+          "runtime": "node-26-bookworm"
+        },
+        "ref": "main"
+      },
+      "runtime": "node-26-bookworm"
+    }
+  ],
+  "reads": [
+    {
+      "bytes": 318,
+      "endpoint": "repos/bex-co/bex/git/ref/heads/main",
+      "file": "final-main-ref.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:40.776090+00:00",
+      "read_started_at": "2026-10-31T09:35:40.399263+00:00",
+      "sha256": "3deb83fbfe9b926a8c4def265bdc5a0d96e75f7af227350b9d9038c9ae3f6cee"
+    },
+    {
+      "bytes": 1007598,
+      "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?per_page=100",
+      "file": "final-runs.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:42.197420+00:00",
+      "read_started_at": "2026-10-31T09:35:40.399524+00:00",
+      "sha256": "691258902bd73f887245a7fa47b0ad79c41df56902068d6704f60eb12da09d10"
+    },
+    {
+      "bytes": 11487,
+      "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?per_page=100&status=queued",
+      "file": "final-queued.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:41.309164+00:00",
+      "read_started_at": "2026-10-31T09:35:40.776207+00:00",
+      "sha256": "c659e32033f06c8692e4d65cb5389df9ea352f103d016c18aaf443290cfe48d9"
+    },
+    {
+      "bytes": 23199,
+      "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?per_page=100&status=in_progress",
+      "file": "final-running.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:41.903997+00:00",
+      "read_started_at": "2026-10-31T09:35:41.309225+00:00",
+      "sha256": "85784b1243283dc2c2e980071b7282986a92f92938a7fd3e10f6c74eaf2e7b36"
+    },
+    {
+      "bytes": 3065,
+      "endpoint": "repos/bex-co/bex/actions/runs/41187749759/jobs?per_page=100",
+      "file": "final-jobs-41187749759.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:42.766024+00:00",
+      "read_started_at": "2026-10-31T09:35:42.198302+00:00",
+      "sha256": "9cb3f2a50f680a4ba317692e5461dbc353ba5867857b0bbacf4d690078969176"
+    },
+    {
+      "bytes": 6482,
+      "endpoint": "repos/bex-co/bex/actions/runs/41144656779/jobs?per_page=100",
+      "file": "final-jobs-41144656779.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:42.821392+00:00",
+      "read_started_at": "2026-10-31T09:35:42.198429+00:00",
+      "sha256": "76ae8269408df746eb379833c3695df3fd82119422df1572eb0a2df93e008343"
+    },
+    {
+      "bytes": 6778,
+      "endpoint": "repos/bex-co/bex/actions/runs/41142870861/jobs?per_page=100",
+      "file": "final-jobs-41142870861.json",
+      "method": "GET",
+      "read_completed_at": "2026-10-31T09:35:43.280234+00:00",
+      "read_started_at": "2026-10-31T09:35:42.766125+00:00",
+      "sha256": "a3a1cf8c1894acc0593c38e2061fbfa4eb6c47b7eb7cf2f6551dd36e2eb67245"
+    }
+  ],
+  "required_just_in_time_parent_guards": [
+    "Fresh-read main SHA and native input closure before any future dispatch; ref=main resolves at dispatch time. If main advances with unchanged reviewed native closure, bind actual resulting source/job identity; if native inputs change, re-review plan.",
+    "Fresh whole-workflow status and jobs inventory, including queued/full matrices and known requests; do not dispatch a target if a peer has already requested it.",
+    "After each authorized dispatch, record actual new run ID, exact head SHA, selected singleton runtime and full base. Do not infer run identity from creation order.",
+    "Retain both architecture probes, both complete scans, full SPDX/signing/attestation/discovery gates; a green job is not independent supplier approval."
+  ],
+  "schema": "bex.native-targeted-normal-rebuild-plan/private-v1",
+  "status": "PREPARED_ONLY_NOT_DISPATCHED",
+  "targets": [
+    "python-3.11-bookworm",
+    "python-3.13-bookworm",
+    "node-26-bookworm"
+  ]
+}

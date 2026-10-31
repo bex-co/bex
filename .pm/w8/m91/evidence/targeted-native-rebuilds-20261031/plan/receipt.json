@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-31T09:36:28.193900+00:00",
+  "current_main": "0b138600b31ff4294651369109974a538a33310b",
+  "data_only_targets": [
+    "python-3.11-bookworm",
+    "python-3.13-bookworm",
+    "node-26-bookworm"
+  ],
+  "global_free_bytes": 8558075904,
+  "key_files": [
+    {
+      "bytes": 11060,
+      "path": "rebuild-plan.json",
+      "sha256": "471b533f37e93e395f576d2567267be2147feb4f3f85c3b2dfa7eccade59f67a"
+    },
+    {
+      "bytes": 15115,
+      "path": "source-input-compatibility-current.json",
+      "sha256": "34413a615927beb43ceec639244bd77a82e0ef32cde1312825bddbf32fef638d"
+    },
+    {
+      "bytes": 1559,
+      "path": "failure-evidence-custody.json",
+      "sha256": "6fa1d3c67fe01208e84984185257f0ae164b4517503b5047b22322b14eaf9585"
+    },
+    {
+      "bytes": 1564,
+      "path": "engineering-receipt.json",
+      "sha256": "f7a0077955c3f5b4a6a4909ec08b705469833d54f1c3611fd3d40b2a381589f5"
+    },
+    {
+      "bytes": 77,
+      "path": "dispatch-python-3.11-bookworm.json",
+      "sha256": "21c7df96e645af8269db28835c5425e09aa2115d725d57cfc53ba94f22ce37f9"
+    },
+    {
+      "bytes": 77,
+      "path": "dispatch-python-3.13-bookworm.json",
+      "sha256": "37a400fc1bcb9fc04438581640b25d85aacc59373ed1b5e8a3951dacb6c15cfa"
+    },
+    {
+      "bytes": 73,
+      "path": "dispatch-node-26-bookworm.json",
+      "sha256": "5ed1e04040a95d1bf65b44381f04be94eee21d1fbc7f1b060ecbe9ef022a2719"
+    }
+  ],
+  "preservation": "All original candidate/failure proofs and raw logs retained unchanged. No cleanup.",
+  "status": "FROZEN_PRIVATE_PLAN_ONLY_NOT_DISPATCHED"
+}

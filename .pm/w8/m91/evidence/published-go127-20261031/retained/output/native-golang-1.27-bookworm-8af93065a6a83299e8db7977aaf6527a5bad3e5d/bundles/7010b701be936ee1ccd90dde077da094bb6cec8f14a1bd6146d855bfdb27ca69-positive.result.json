@@ -1,0 +1,56 @@
+{
+  "bundle_digest": "sha256:7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69.bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0",
+  "attempts": [
+    {
+      "bundle_digest": "sha256:7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1.stderr.log",
+      "tuf_cache": "/private/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0"
+    }
+  ]
+}

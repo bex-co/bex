@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-31T09:53:07.352823+00:00",
+  "authorization": "Root explicitly authorized one successful targeted normal dispatch each for Python3.11, Python3.13 and Node26, sequentially after fresh complete dedupe/current-source guards. No cancel/rerun/full matrix or other CI changes.",
+  "frozen_plan": "/private/tmp/bex-w8-native-targeted-rebuild-plan-20261031-0928",
+  "official_documentation": "https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event",
+  "documented_return_run_details": {
+    "location": "top-level boolean body property",
+    "true_response_status": 200,
+    "false_response_status": 204,
+    "true_response_fields": [
+      "workflow_run_id",
+      "run_url",
+      "html_url"
+    ]
+  },
+  "requested_api_version": "2022-11-28",
+  "notes": "The current official documentation sample displays2026-03-10, but the documented response-detail field is used with the root-requested pinned2022-11-28 header. Actual response/status will decide acceptance. Any uncertain/204 response is resolved through reads without resending.",
+  "scope": "Only response detail changes. Original frozen payload inputs/ref remain identical. No auth material is stored."
+}

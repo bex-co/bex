@@ -229,3 +229,12 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Twelfth published supplier — 2026-10-31
 
 [Root-approved Node22](evidence/published-node22-20261031/README.md) binds source83c run41128855169/job124317237455. Five strict signed proofs, two actual negative controls, seven fresh TUF roots and both complete report pairs pass. Root checked all194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. All35 descriptors/1,228,736,252B are covered:26 new complete reads/540,371,859B and nine genuine prior Python3.14 reads/688,364,393B, each matched to the approved receipt/journal and an actual fresh anonymous HEAD. Both images contain Node22.23.4. Published approvals are12/27; original generated/default and hosted acceptance, common-base implementation and catalog adoption remain open. All findings remain retained.
+
+
+## Thirteenth published supplier — 2026-10-31
+
+[Root-approved Go1.27](evidence/published-go127-20261031/README.md) binds exact8af source, run41142870861/job124361678277 and immutablef5c7b79a. All31 descriptors/1,216,838,007B were fresh complete anonymous reads with exact SHA/size. Root independently checked199 frozen artifacts,22 Git recipe files/modes, five strict signed proofs, two actual negative controls, seven fresh TUF roots and all five signed-subject/canonical-predicate roundtrips. Both images report Go1.27.3; all findings remain retained. Published approvals are13/27; original generated/default, hosted, user-selected common Bookworm implementation and catalog adoption remain open.
+
+## Three fixed publication requests bound — 2026-10-31
+
+[The complete plan and actual dispatch custody](evidence/targeted-native-rebuilds-20261031/README.md) records exactly one singleton normal build each for Python3.11, Python3.13 and Node26. Root independently checked all71 plan and133 execution files, direct HTTP200 returned run identities and all30 native Git inputs against the fixed2cc profile. The actual runs are41190561558/41190693730/41190806242, with successful matrices and queued build jobs at the frozen observation. No CI completion, new supplier approval or hosted acceptance is inferred from dispatch. Earlier actual failures and the stopped preflight remain retained.

@@ -1,0 +1,777 @@
+{
+  "scope": "Exact root-reviewed retained capsule",
+  "files": {
+    "README.md": {
+      "sha256": "9fedff7a76d5851b1e8393d3924ea4b91ce5ea795655895a9814e02b0a69fca6",
+      "bytes": 1280
+    },
+    "ROOT-REVIEW.json": {
+      "sha256": "118be67b0bbd874f159843aa6573080c3ad51896e403ea6aed65be7215e53091",
+      "bytes": 56537
+    },
+    "original-frozen-manifest.json": {
+      "sha256": "92d984ff07e0fc701a6baf783045053a4d2912a639182132769a0dbc2435895d",
+      "bytes": 95493
+    },
+    "receipt.json": {
+      "sha256": "17976150fc2e472fbf1c9dc13e90bd2f6988770ecd47f269ba64b2aa0f53c4df",
+      "bytes": 35015
+    },
+    "retained/cache/anonymous-compressed-v2/07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/14b7ab3e7701901cd3fc78c221b0a572fcbceab333168794879c9f8a537f4750.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/208b2cc696e178c2a3ca9b953c1327bc24067b610806ae2438236a379b28ac4c.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/315b5f22b5a9ab1314075691a31dc6e2d107d6548491f36a9e588c7a237b255b.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/36004d5cf414793334029832abe5f6941e386f23e215ae48d2de916cef2a2d72.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/59613fcaabd6c01e030937a593792f8248a530529062d8e2375584c154615d36.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/600a4386f65ac142c264435c0fb8e00cf6af4083235bb6b2893724fc3e91ff96.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/69447fd8f434e552ccf3c80470fb69d7ef8a3ee87c86f714fe47a7d7a780d175.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/69a3e93d75c87c7f695b87803e9650aefa791029e78919ea1607133dae4d75fe.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/82e0bb27ae78502103ed383ed33346f88a83943fb7bd93977850d5890ee8fb3b.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/8dae6a401a156ebbb25a0b1671866272d84c35cda2939d5e96241486f252cac7.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/9e86fabc1ef2cdeab6a8c18151fab9d2ecf3687ea2273a8655e49aa7c910ddc8.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/af3f157cf7e19e06213d2c64f4dbe3ee1de7c7ab699b63e9d01cf103a20adb17.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/c615bfb2188c5f62d20e6381fbe76144675eb7f4f77cce4bf34a5f5fbf19cdcb.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/caeb699ea75faa74b11d6de515d16348a97707dcf12c2069c74df08255edeec7.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/d93e1e54d29230d8183186e5215d993c0dc04d91d4d07770561c8e3018d96d17.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/def2d168aaa4c1144e65578d3c37410733dbefeec0cebf9cdcee3c6797670f10.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/e2e7dba5c30798b9d70d746d9fb1606b744e5c3baa8015b51dad60cea99c045b.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/e326cf603f4c66e2f2e72b6530be8fae73eb7767d9e9c5d70d30cba187a9f38d.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/ecefd74a6ba2830f8be79208202ad3ba7bc6103609e42b20fed6d5e8c338fd74.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/ed7b07b5ffc5f82c06ee12aa057b6a9352048f270cea9a70f8d383dc8e17e143.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/f0b59a0f5fb4228c5db6f82b2afe060e97dceb0b8a26466222e2e1be9726c3eb.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/fda6925793d2fefed1d70c7d4a4b940d82d081b326eaf24db7bcdb0f06146908.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/cache/anonymous-compressed-v2/receipts.json": {
+      "sha256": "414d20808ef008d836ade1a6d782329266ee3f9bf6281a6409275f2a69167d59",
+      "bytes": 12056
+    },
+    "retained/cache/anonymous-compressed-v2/receipts.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/controls/body-get-chain.json": {
+      "sha256": "d4c7806959a329375fb67f977a98837790cc832c6bb4651919d472791b13b6d0",
+      "bytes": 449
+    },
+    "retained/controls/explicit-unzip-only.diff": {
+      "sha256": "4e9ede3ed0dcb8af33560d7a0bc6f905049936efc1bd8e89d69e51ac4a32d15a",
+      "bytes": 583
+    },
+    "retained/controls/freeze-on-success.py": {
+      "sha256": "9995d2222c1da703be71b93c7387ace1af780c049c1af939c1198337d9b75d1d",
+      "bytes": 9090
+    },
+    "retained/controls/fresh-complete-ci.json": {
+      "sha256": "44c69ee58113d1ac234221233fde4c86548ac72b96e1a67164c03a23b4f8a4fa",
+      "bytes": 6233
+    },
+    "retained/controls/fresh-complete-ci.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/controls/fresh-source-recipe-context.json": {
+      "sha256": "d1d2e7ece60609af48bcdc0e1739934121b78ec0bdf718d0ab938e4a601cb52d",
+      "bytes": 7406
+    },
+    "retained/controls/frozen-summary.json": {
+      "sha256": "47cb1f920c90ee98b5f00aee404f1cc2b2be9fc1e8d0c48a603f88bac67ad54c",
+      "bytes": 9184
+    },
+    "retained/controls/full-signed-bundle-and-predicate-custody.json": {
+      "sha256": "6f7e077a14ae3faf0792e1a0d181c940ffee324a751461cb20b6fe552540b3f9",
+      "bytes": 7678
+    },
+    "retained/controls/observed-local-dependency-custody.json": {
+      "sha256": "13e0e328c0aa49759a806cbd3040cc010ed36a23d360fbb944c694b2ba4b27ca",
+      "bytes": 687
+    },
+    "retained/controls/preflight.json": {
+      "sha256": "45540d8f5cb680dd476bf1c5148c11000ca42c1c35c43b2b3d8bde7f0b26efbe",
+      "bytes": 1594
+    },
+    "retained/controls/prepare-case.py": {
+      "sha256": "2b254418096eb955f1a8cb9e8bff7f0fdf95e6745e821c6c4639ddbe4c5956f8",
+      "bytes": 7507
+    },
+    "retained/controls/prior-reviewed-guard-suite-custody.json": {
+      "sha256": "3511636a87ca4c6ff6788c1f8875d9d5654d94b0e5aa510f27fa7f685bade70d",
+      "bytes": 665
+    },
+    "retained/controls/reviewed-v11-strict-guards-result.json": {
+      "sha256": "ae016e8c8e0fef97da8b491000371e55ca7fa81e2a1db3b0e38343a3d4524186",
+      "bytes": 1867
+    },
+    "retained/controls/reviewed-v11-strict-guards.log": {
+      "sha256": "56c287b57edf7dadc9bb49e5f7da435fb38919d548f2a5dabe681255be6d21f7",
+      "bytes": 1683
+    },
+    "retained/controls/reviewed-v11-strict-guards.py": {
+      "sha256": "a1367eec153bf2a1b8c04959ace8fec8aae0f9abc27d7745d8c2b411d5d47b26",
+      "bytes": 16687
+    },
+    "retained/controls/run-once.py": {
+      "sha256": "3e9eae0c82b9610d44d36062ff75ce29a8cebc3fd8bd82bbc991ca5e3ee15d02",
+      "bytes": 3776
+    },
+    "retained/controls/selected-byte-plan.json": {
+      "sha256": "55341ca0f6a0bd1ceb0a70b610728ee2e1b1ef4ebecc47af1707447f7cff811b",
+      "bytes": 3013
+    },
+    "retained/controls/stopped-source-preflight.json": {
+      "sha256": "db6613a41fd786ef93d406f18a9a1614ec484a34c0bbc57296ea19264aa45a57",
+      "bytes": 671
+    },
+    "retained/controls/terminal-capacity.json": {
+      "sha256": "9ea549cb6dc8439e2b8f9c362d4c72d15abae6abfacfe0aadf61a97009373e82",
+      "bytes": 294
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/amd64-config.json": {
+      "sha256": "36004d5cf414793334029832abe5f6941e386f23e215ae48d2de916cef2a2d72",
+      "bytes": 13215
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/amd64-manifest.json": {
+      "sha256": "155e8ed5595d5803e509a8854e2c4be76ac6d09442a57e8a4ad11bd3ad7059a8",
+      "bytes": 3523
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/amd64-official-config.json": {
+      "sha256": "f5d48661d11d8c3f1e8a3b477f2865c72b4ff7651a7c593d49f4b77b2fc1a804",
+      "bytes": 3065
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/amd64-official-manifest.json": {
+      "sha256": "e482b31b5d30c31f9e495f4b8cbdf41429b2d74955dfbcd9c0a904483d738390",
+      "bytes": 2322
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/arm64-config.json": {
+      "sha256": "59613fcaabd6c01e030937a593792f8248a530529062d8e2375584c154615d36",
+      "bytes": 13220
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/arm64-manifest.json": {
+      "sha256": "0b5c637cb8b306051582a8b09b5541f4f27ee0973de4621edffc209b9c8da071",
+      "bytes": 3523
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/arm64-official-config.json": {
+      "sha256": "dba766c2797d15d2b6e35651bd5acb02764b27611e9b89bba1100a54a0167bf7",
+      "bytes": 3080
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/arm64-official-manifest.json": {
+      "sha256": "ae675cdbf1bb782b6de4a56b157c8f91a5c89a594d8fa6475bb71efc4be3cfcb",
+      "bytes": 2324
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1.result.json": {
+      "sha256": "a5a7886769ab4d6205ce69e71fcbcdee637d87599eae364927da095217f083f4",
+      "bytes": 1512
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1.stderr.log": {
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive.result.json": {
+      "sha256": "09e5746f8e6919a1669d3b0328ac6dba374a12600ca967dcdbb91ff87c8affd5",
+      "bytes": 3153
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1.result.json": {
+      "sha256": "22fa1448e208c760abee4fe81bd3dcdf9b8c22358d519fdf52cf66968c123040",
+      "bytes": 1520
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1.stderr.log": {
+      "sha256": "c3dbe830b05cff3c8e71fc88c8de1d5a3954666b4d0dcead53c8eede15348664",
+      "bytes": 467
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source.result.json": {
+      "sha256": "791e6d00a707ab095d552464f22ff7ea6a857598f78a1080daee2ef3b52be66a",
+      "bytes": 3169
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1.result.json": {
+      "sha256": "6aa2302d18c8ed7f03cfd238624c7c3518d70becad7d827e22c7583c5c2918d5",
+      "bytes": 1522
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1.stderr.log": {
+      "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59",
+      "bytes": 223
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject.result.json": {
+      "sha256": "36d7bff5e75e9a1cb226fa18453c91370250c4de967a507c4c715f9f6d539af5",
+      "bytes": 3173
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf.bundle.json.gz": {
+      "sha256": "debdb5703a3039de143fc7e9bea4afcb59e183033fe66574c5afe1e8ce57307b",
+      "bytes": 6107
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/27bb12350901c587dab6372a4e8cb780b246119e3e0ddf3e24b2b496b68daa99.manifest.json": {
+      "sha256": "27bb12350901c587dab6372a4e8cb780b246119e3e0ddf3e24b2b496b68daa99",
+      "bytes": 1007
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/5f7c83f314a8207007dd08f380f24af96e5b16acddeb4d321bf1bda1f1bed396.manifest.json": {
+      "sha256": "5f7c83f314a8207007dd08f380f24af96e5b16acddeb4d321bf1bda1f1bed396",
+      "bytes": 1038
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1.result.json": {
+      "sha256": "beebc2939e5471c93cd1518996ad383ec2b9f570995215bcf559bd6d6a0ffcc4",
+      "bytes": 1533
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1.stderr.log": {
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive.result.json": {
+      "sha256": "22d03361ece67d66f6aeef06d011e958aef73ca616c8a29322d1ea45b6e4b02f",
+      "bytes": 3195
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69.bundle.json.gz": {
+      "sha256": "9ba601efb1dc901d17f398459f9d777705fcecedb82ba0d9485b64d62ba8b70c",
+      "bytes": 4595402
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1.result.json": {
+      "sha256": "846c95966bfaedcae4cafc1617bd4c611ecc962b96bda3fdb82f6e3376bce1b6",
+      "bytes": 1502
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1.stderr.log": {
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive.result.json": {
+      "sha256": "94d35e564e93bb38676e1435268504e2e695a4c82ce87ac3442848cfcd92ac07",
+      "bytes": 3133
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3.bundle.json.gz": {
+      "sha256": "31a161af268e811abadbe75915099c90b614dfb1ec146af943d4d7c6fcf041e5",
+      "bytes": 4144569
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1.result.json": {
+      "sha256": "a1100b5c985290300c9dd8c6fdccc60be71ad5e33c9e8132ddd35eb6f61eae63",
+      "bytes": 1502
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1.stderr.log": {
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive.result.json": {
+      "sha256": "7c1372a47374b940015eee4bfa3766d08b9d7f8b8ba81a6d8a9b47359c206f57",
+      "bytes": 3133
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f.bundle.json.gz": {
+      "sha256": "bf23f346d50be6e5dcacfe09d9961981edc1368928c8b5e919d484e1f53adda9",
+      "bytes": 4144527
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/a30c817f76472ef31460f3493f3987e3b647b80c002a8f738382661dbc5e7a42.manifest.json": {
+      "sha256": "a30c817f76472ef31460f3493f3987e3b647b80c002a8f738382661dbc5e7a42",
+      "bytes": 1038
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-positive-attempt1-gze5_eik/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "ccd7d44f4ea5cb102307350a085f2f4e3d2cf278785105d1561f6e63a28ec9df",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-source-attempt1-jmzzpe6h/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "f5fb0429b86407c46dec7eaa51206a64db475d70f716dbc080b2aa03c2af2a30",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/14528048e44ead7dfc039010e6f643e3ce77acdfb4029c67ae54d94f558624cf-wrong-subject-attempt1-owrtb_v6/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "d545636fea1cf937d54c0be39de3d34d5a1669d10e2a88306d738c8cff811613",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/7010b701be936ee1ccd90dde077da094bb6cec8f14a1bd6146d855bfdb27ca69-positive-attempt1-2jssb8k0/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "8eae91637a33f62421588e713e227453f650c7eb7edb22eb2a144ffcfda9cd2a",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/797bc08c2b272fcfdb4e50ffe7035df4a755b4679dc114e1351c1ea60c8d46e3-positive-attempt1-ku1wxiyw/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "1c9e7f80863fdf43887493696865811b9e9da6bf643843899da56f18da37c208",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/8eae87cba5eea97fa7e94b21ca7171944750ed6b3fc091f50459c030a2c7770f-positive-attempt1-7qxdd08k/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "babc8aecc3eefc05fd613f7c1a862ee024564dccf46c4092a303295f5987b587",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev/root.json": {
+      "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f",
+      "bytes": 5630
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+      "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224",
+      "bytes": 1760
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+      "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+      "bytes": 6787
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev/targets.json": {
+      "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd",
+      "bytes": 4942
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+      "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec",
+      "bytes": 451
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/cosign-tuf-cache/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1-u1r3dvyv/tuf-repo-cdn.sigstore.dev.json": {
+      "sha256": "0e3695350c7d7766358a09ae333bf0cd68602e94f08f7d97575e75a182846c86",
+      "bytes": 52
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/crypto-results.json": {
+      "sha256": "47f4630fb1eca6a57bd4d1943558de89a51cf16596b87bec71904d4635b43aa2",
+      "bytes": 24011
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1.result.json": {
+      "sha256": "3522e89634612d311006bd4cc6ac429b212ee8f500eaff42166b9e7ee9146592",
+      "bytes": 1533
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1.stderr.log": {
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8",
+      "bytes": 12
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive-attempt1.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f-positive.result.json": {
+      "sha256": "d18921c7a68572b95e2ac962fd28b7eb33e7d92b01b374e9dce28571cb5a7233",
+      "bytes": 3195
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/d9477ee55199fe4e5a1a0546af29da42b91de0fac46b65bfb623106a0cafca5f.bundle.json.gz": {
+      "sha256": "a363647075120558d997516dee402f7d95f8cb07849b2a7de7af75231d009c79",
+      "bytes": 4595164
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/download-receipt.json": {
+      "sha256": "8e38a31433fdb482d88458e70ae93415b8ddf9168aac55a15f81e3e662afa265",
+      "bytes": 3502
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/fa784aed5c5406a3016caf5f548bda7fbf486a00e934b8af7ca9a6b0e7416cc1.manifest.json": {
+      "sha256": "fa784aed5c5406a3016caf5f548bda7fbf486a00e934b8af7ca9a6b0e7416cc1",
+      "bytes": 1007
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/fde86e1d1e176b2e31c8778fe0945048b56200ffd8de4cb9ac30744bfc4526fc.manifest.json": {
+      "sha256": "fde86e1d1e176b2e31c8778fe0945048b56200ffd8de4cb9ac30744bfc4526fc",
+      "bytes": 1013
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/bundles/referrer-index.json": {
+      "sha256": "9f53ea6da3b5b3e29a88616fd33532537009bfcf01d7466ba079d15fd9659a4d",
+      "bytes": 2164
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ci-runtime-scan-signing-gates.json": {
+      "sha256": "97ba2d39db116d77e077f3bdba77ae993d9067efb81226edd54726e4937766b7",
+      "bytes": 721
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/executed-tools/loopx-w8-native-review-v11.py": {
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+      "bytes": 43608
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/executed-tools/loopx-w8-verify-native-artifact-ranged.py": {
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+      "bytes": 40720
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/index.json": {
+      "sha256": "f5c7b79af698435f789b9194695a6e079343310a120781055ce7e82d36e47b1d",
+      "bytes": 1611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/official-index.json": {
+      "sha256": "d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+      "bytes": 6526
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/producer-verification-provenance.json": {
+      "sha256": "8eca0e51f80f65ffdb7d525137f6f01c2c08d86b7efba7dd51cf99bc2d1a90cd",
+      "bytes": 156
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/progress.json": {
+      "sha256": "523cd0dab106f0ebee4e17168ab661fb0502008e4dcfce2ebd7f4465cc36eae7",
+      "bytes": 211
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-07aefb793960fdbb1db3efdf73d2490a9cf882eb7283cecb3b0cbe8363527290.json": {
+      "sha256": "26d3cc0c1a26309cbd7e04500f8c1731ad6a97862dcc2d1676a23a49f1890754",
+      "bytes": 631
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-1101f8346981b609ef2786d4948553aaf7790dcbf54ee94603cfe1d80208c06d.json": {
+      "sha256": "a000b0b2fb818e48f99799bfa773dd2716770a87f72b5625f99283b41ee6987d",
+      "bytes": 631
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-14b7ab3e7701901cd3fc78c221b0a572fcbceab333168794879c9f8a537f4750.json": {
+      "sha256": "7d5a7db8027ee1f5c0e4ce8e7cd3d89cc52a113cc5d9502cfae0e8d93f84f43f",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-208b2cc696e178c2a3ca9b953c1327bc24067b610806ae2438236a379b28ac4c.json": {
+      "sha256": "c2c7b172754c4f2acc81802d3cefc8bdc1b086cc10fc871bd959bf885fd69e27",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-315b5f22b5a9ab1314075691a31dc6e2d107d6548491f36a9e588c7a237b255b.json": {
+      "sha256": "c71969fa1a5c18db0f8c5ec63fcbe59f99ab5120d603f3a99192d32f9e8bc857",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-36004d5cf414793334029832abe5f6941e386f23e215ae48d2de916cef2a2d72.json": {
+      "sha256": "b90bdbd75aa70ce36646fa5e4b0c7fad152ba152010b5fb4fa3dd418d8d22da8",
+      "bytes": 615
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.json": {
+      "sha256": "8ed26557e04ba03cfbc918d924862a550df2ae8476db59d33ff9cef9f143d3b2",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json": {
+      "sha256": "3a7406c67060d13cb88132e003e3a38b4d0115da93249d15d263ba2e7ffb9bc6",
+      "bytes": 603
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-59613fcaabd6c01e030937a593792f8248a530529062d8e2375584c154615d36.json": {
+      "sha256": "10d465e234670805b27bc24878599bfed97e79d41410220f9769c6b4b14643e1",
+      "bytes": 615
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.json": {
+      "sha256": "5f4e7efeb813bd1c8b2a21135a6923047e24f21db99746b7e053bfaa6d6619e9",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-600a4386f65ac142c264435c0fb8e00cf6af4083235bb6b2893724fc3e91ff96.json": {
+      "sha256": "79bb156ed00b0734e977875741d0a01f66af4baeb3917ac15388a84f60dd4135",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.json": {
+      "sha256": "5554c5ea78fc75a5a86feec5baa0e44e2e4af415d0409292c0b78d433ee584e8",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-69447fd8f434e552ccf3c80470fb69d7ef8a3ee87c86f714fe47a7d7a780d175.json": {
+      "sha256": "3fcc6e158d78c8fe1dc2f0c3c4f81e8a9823858b7d81e6b5029f6f824b96df9c",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-69a3e93d75c87c7f695b87803e9650aefa791029e78919ea1607133dae4d75fe.json": {
+      "sha256": "ba3ca2bb44139d7431c3ac6ee90f9df3275316d110cc59260ac508a166b94eee",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.json": {
+      "sha256": "25d95ace6e9426fc8413a314f57c0906576cffba681c9522e21e2ad3cee3f824",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-82e0bb27ae78502103ed383ed33346f88a83943fb7bd93977850d5890ee8fb3b.json": {
+      "sha256": "23c005140174a259cf45772f2f5a917600c841545b73de26196415e3edfd2665",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-8dae6a401a156ebbb25a0b1671866272d84c35cda2939d5e96241486f252cac7.json": {
+      "sha256": "d7871f81c67f262443c83916923617f679acaaf42b7af039a7963ce2c5d2cc57",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.json": {
+      "sha256": "f19b2bd7e21f07bd9d05ca4eb17de74c24c42c51ee6f12a2df90b5ea819b5d56",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-9e86fabc1ef2cdeab6a8c18151fab9d2ecf3687ea2273a8655e49aa7c910ddc8.json": {
+      "sha256": "b9235ed7bfc0533b0e538c33c01f888435e326e0535df6f45eacdb1a6a3097d1",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.json": {
+      "sha256": "50a888631a0254c300ea83c337a1b2c563ecf66c60bee465b6d03b3543d29943",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-af3f157cf7e19e06213d2c64f4dbe3ee1de7c7ab699b63e9d01cf103a20adb17.json": {
+      "sha256": "52a62ec23acd078654e541a61fd74b3b0d3d206605202ddfa54b47c26a8b3e40",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-c615bfb2188c5f62d20e6381fbe76144675eb7f4f77cce4bf34a5f5fbf19cdcb.json": {
+      "sha256": "47866665be5e5759f7471b0afcf2f7bdab1bc9a60ee10bded3dc36a146177306",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-caeb699ea75faa74b11d6de515d16348a97707dcf12c2069c74df08255edeec7.json": {
+      "sha256": "63ea4277632c676bcd196bfe2386ec2701819414740b35e6b157f75d6bec93e1",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-d93e1e54d29230d8183186e5215d993c0dc04d91d4d07770561c8e3018d96d17.json": {
+      "sha256": "ae384729bbede7bb926bfc50500014ab9376b992f9d2ad42001fca295221fac7",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-def2d168aaa4c1144e65578d3c37410733dbefeec0cebf9cdcee3c6797670f10.json": {
+      "sha256": "683bf9d2983f61b1c4991efee8c6a6318def6bc32835b957e0e7a2fd82d18e6b",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-e2e7dba5c30798b9d70d746d9fb1606b744e5c3baa8015b51dad60cea99c045b.json": {
+      "sha256": "0f513037f0b73333b5fb14b8e75c983d089aa8e260fe2fce138ce98f266505ad",
+      "bytes": 627
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-e326cf603f4c66e2f2e72b6530be8fae73eb7767d9e9c5d70d30cba187a9f38d.json": {
+      "sha256": "a7ec356ab18a8a6962de1dc97360549735f7fcfb0a6b6158ffff74326f297f2a",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-ecefd74a6ba2830f8be79208202ad3ba7bc6103609e42b20fed6d5e8c338fd74.json": {
+      "sha256": "693cb63eee0f330fb93ecdd2804b5d1b6c11658e25497f48ed2a71ebe1318d06",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-ed7b07b5ffc5f82c06ee12aa057b6a9352048f270cea9a70f8d383dc8e17e143.json": {
+      "sha256": "aa428690025f3396da3e8901f1008d45587b3424d637a9cd461e4817f3d07fdd",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-f0b59a0f5fb4228c5db6f82b2afe060e97dceb0b8a26466222e2e1be9726c3eb.json": {
+      "sha256": "45fdacab3bb738e3f349d23239d81f38b83f90aa72d82f0caae3ca8fa8b966d0",
+      "bytes": 611
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/ranged-body-fda6925793d2fefed1d70c7d4a4b940d82d081b326eaf24db7bcdb0f06146908.json": {
+      "sha256": "fa474e243666d22465e80ca290459da8cc3f720392c05b3ba6370956732df4e3",
+      "bytes": 607
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/receipt.json": {
+      "sha256": "17976150fc2e472fbf1c9dc13e90bd2f6988770ecd47f269ba64b2aa0f53c4df",
+      "bytes": 35015
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/source/.github/native-base-recovery.json": {
+      "sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+      "bytes": 6422
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/source/.github/workflows/native-base-image.yml": {
+      "sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "bytes": 14144
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/source/deploy/native-base/matrix.py": {
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "bytes": 2099
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/source/lego/operator/internal/build/native.go": {
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "bytes": 25979
+    },
+    "retained/output/native-golang-1.27-bookworm-8af93065a6a83299e8db7977aaf6527a5bad3e5d/source/source-files.json": {
+      "sha256": "8b0b491b09a43cbf1c4cb3e5d5c2d2f68101b6fc980de3f9b04196b01b53a3b2",
+      "bytes": 522
+    },
+    "retained/output/process-exit-case-attempt1.json": {
+      "sha256": "f8d22f3dfc1feb431a6095c408558db4ca154f7dfe33a77ac88dbac15bf4f734",
+      "bytes": 8913
+    },
+    "retained/output/v11-case-attempt1.log": {
+      "sha256": "c4ffb3f490f63e23773957b3a54a66dab76281d297c0231c1b1c6e41a0cf8749",
+      "bytes": 13296
+    }
+  }
+}

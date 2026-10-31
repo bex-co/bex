@@ -1,0 +1,164 @@
+{
+  "actual_runs": [
+    {
+      "POST_process_exit": 0,
+      "POST_response_sha256": "b810be7221bb7e0ac4712b865347f13ba3f343761ca757ff940f10faa0da15af",
+      "active_steps": [],
+      "attempt_count": 1,
+      "base_scope_note": "GitHub job display truncates the digest; the full base is independently derived from the exact reviewed source matrix and bound to the actual singleton runtime, not guessed from truncated text.",
+      "http_status": 200,
+      "job_conclusion": null,
+      "job_id": 124506595632,
+      "job_status": "queued",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41190561558/job/124506595632",
+      "matrix_conclusion": "success",
+      "native_job_name": "build (python-3.11-bookworm, python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93...",
+      "official_base_from_exact_reviewed_source_matrix": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
+      "raw_request": "python-3.11-bookworm/request.json",
+      "raw_response": "python-3.11-bookworm/post-response.raw",
+      "returned_identity": "Documented return_run_details:true response; not creation-order guessing",
+      "run_conclusion": null,
+      "run_id": 41190561558,
+      "run_status": "queued",
+      "run_url": "https://github.com/bex-co/bex/actions/runs/41190561558",
+      "runtime": "python-3.11-bookworm",
+      "source": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+      "source_proofs": [
+        {
+          "path": "python-3.11-bookworm/preflight-source-proof.json",
+          "sha256": "4b2998e48fbc1f2f2fc2df283fa04ccb76684306bbb327f1056901c0a1640419"
+        }
+      ]
+    },
+    {
+      "POST_process_exit": 0,
+      "POST_response_sha256": "a296d709a46c055f9f2745a153e4eccd13224fe5d3840ef29e5382f60c206cb7",
+      "active_steps": [],
+      "attempt_count": 1,
+      "base_scope_note": "GitHub job display truncates the digest; the full base is independently derived from the exact reviewed source matrix and bound to the actual singleton runtime, not guessed from truncated text.",
+      "http_status": 200,
+      "job_conclusion": null,
+      "job_id": 124506987325,
+      "job_status": "queued",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41190693730/job/124506987325",
+      "matrix_conclusion": "success",
+      "native_job_name": "build (python-3.13-bookworm, python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307...",
+      "official_base_from_exact_reviewed_source_matrix": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+      "raw_request": "python-3.13-bookworm/request.json",
+      "raw_response": "python-3.13-bookworm/post-response.raw",
+      "returned_identity": "Documented return_run_details:true response; not creation-order guessing",
+      "run_conclusion": null,
+      "run_id": 41190693730,
+      "run_status": "queued",
+      "run_url": "https://github.com/bex-co/bex/actions/runs/41190693730",
+      "runtime": "python-3.13-bookworm",
+      "source": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+      "source_proofs": [
+        {
+          "path": "python-3.13-bookworm/preflight-source-proof.json",
+          "sha256": "4b2998e48fbc1f2f2fc2df283fa04ccb76684306bbb327f1056901c0a1640419"
+        }
+      ]
+    },
+    {
+      "POST_process_exit": 0,
+      "POST_response_sha256": "097cc8056085301780fedae3db0f6b77c488a21e4f9b857f91681447c71f3d16",
+      "active_steps": [],
+      "attempt_count": 1,
+      "base_scope_note": "GitHub job display truncates the digest; the full base is independently derived from the exact reviewed source matrix and bound to the actual singleton runtime, not guessed from truncated text.",
+      "http_status": 200,
+      "job_conclusion": null,
+      "job_id": 124507306637,
+      "job_status": "queued",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41190806242/job/124507306637",
+      "matrix_conclusion": "success",
+      "native_job_name": "build (node-26-bookworm, node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001...",
+      "official_base_from_exact_reviewed_source_matrix": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
+      "raw_request": "node-26-bookworm/request.json",
+      "raw_response": "node-26-bookworm/post-response.raw",
+      "returned_identity": "Documented return_run_details:true response; not creation-order guessing",
+      "run_conclusion": null,
+      "run_id": 41190806242,
+      "run_status": "queued",
+      "run_url": "https://github.com/bex-co/bex/actions/runs/41190806242",
+      "runtime": "node-26-bookworm",
+      "source": "e48dd4a66d30343d2b5073ce3c210c7e0dd828cc",
+      "source_proofs": [
+        {
+          "path": "node-26-bookworm/preflight-source-proof.json",
+          "sha256": "bdc8befa6cb0fbcba9e1086471645a19bf88b48a17bf49021daf80ef8fbf4933"
+        }
+      ]
+    }
+  ],
+  "all71_original_plan_payload_hashes_unchanged": true,
+  "fresh_final_reads": [
+    {
+      "ended_at": "2026-10-31T10:00:11.774123+00:00",
+      "exit": 0,
+      "kind": "run",
+      "runtime": "python-3.11-bookworm",
+      "started_at": "2026-10-31T10:00:11.084874+00:00",
+      "stdout_sha256": "0f0bff54f3654802fb868a1d4fff5d9e2156bae2f7ecca06303468357616fd70"
+    },
+    {
+      "ended_at": "2026-10-31T10:00:11.962015+00:00",
+      "exit": 0,
+      "kind": "jobs",
+      "runtime": "python-3.11-bookworm",
+      "started_at": "2026-10-31T10:00:11.085127+00:00",
+      "stdout_sha256": "4fcb661750c4e460cd4d00ae618d0412f9f8e839d5a95e7ddefff38a3e02b9aa"
+    },
+    {
+      "ended_at": "2026-10-31T10:00:12.840855+00:00",
+      "exit": 0,
+      "kind": "run",
+      "runtime": "python-3.13-bookworm",
+      "started_at": "2026-10-31T10:00:11.774249+00:00",
+      "stdout_sha256": "0e986d48828474e73d03b30fa4db886e780e5bbdc5a87b45a325c3f60ec2f8c3"
+    },
+    {
+      "ended_at": "2026-10-31T10:00:12.839460+00:00",
+      "exit": 0,
+      "kind": "jobs",
+      "runtime": "python-3.13-bookworm",
+      "started_at": "2026-10-31T10:00:11.962074+00:00",
+      "stdout_sha256": "fb6f99eabcaac7758c2e259b776da4e67fde5016064f03a44b9d351bb4350ff6"
+    },
+    {
+      "ended_at": "2026-10-31T10:00:13.407840+00:00",
+      "exit": 0,
+      "kind": "run",
+      "runtime": "node-26-bookworm",
+      "started_at": "2026-10-31T10:00:12.839527+00:00",
+      "stdout_sha256": "4992535050345b9a790094499d014ddd47c87e120d3befcab256269944abdfae"
+    },
+    {
+      "ended_at": "2026-10-31T10:00:13.523875+00:00",
+      "exit": 0,
+      "kind": "jobs",
+      "runtime": "node-26-bookworm",
+      "started_at": "2026-10-31T10:00:12.840994+00:00",
+      "stdout_sha256": "c685f34a913d9b5dfea5d72d8b428659bfa32918bec3b039ac5a13ae36f7ffe4"
+    }
+  ],
+  "frozen_at": "2026-10-31T10:00:13.595137+00:00",
+  "global_free_bytes": 7125037056,
+  "mutations": {
+    "POST_count": 3,
+    "cancel_count": 0,
+    "full_matrix_dispatch_count": 0,
+    "mutation_retries": 0,
+    "rerun_count": 0,
+    "success_count": 3,
+    "uncertain_or_204_count": 0
+  },
+  "official_response_contract": "https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event",
+  "original_plan": "/private/tmp/bex-w8-native-targeted-rebuild-plan-20261031-0928",
+  "original_plan_manifest_sha256": "bbf0c5cea439ce287b4ba9317cc3c86db4352ae1b6d24b4744d7c13ad3cbaf78",
+  "outcome": "Three authorized singleton normal-source dispatches each accepted once with HTTP200 and direct returned run identity; all3 actual native jobs bound after successful matrices.",
+  "pinned_api_header": "2022-11-28",
+  "schema": "bex.native-targeted-dispatch-actual/private-v1",
+  "scope": "Fresh source/dedupe guards passed separately before each POST. Every actual source retains all30 fixed2cc native inputs. All original proofs/histories preserved. No repository/catalog/Git/Docker/fixtures/cleanup/adoption changes. Neither accepted CI requests nor future green jobs approve a supplier.",
+  "source_mutability": "Dispatch ref was main; actual d95/e48 source identities were captured and independently checked after acceptance. Both were compatible with fixed2cc."
+}

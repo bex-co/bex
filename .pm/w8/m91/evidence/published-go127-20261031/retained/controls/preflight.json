@@ -1,0 +1,24 @@
+{
+  "TUF": "Unique fresh per-Cosign TUF_ROOTs, default production trust/current refresh and strict flags unchanged.",
+  "at": "2026-10-31T10:11:45.981030+00:00",
+  "expected_source_hashes": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "free_bytes": 7247101952,
+  "initially_absent_paths": [
+    "/tmp/loopx-w8-native-review-go127-v11-8af9306-20261031",
+    "/tmp/loopx-w8-native-cache-go127-v11-8af9306-20261031",
+    "/tmp/loopx-w8-native-controls-go127-v11-8af9306-20261031"
+  ],
+  "job_id": 124361678277,
+  "name": "golang-1.27-bookworm",
+  "new_full_image_blob_workers": 2,
+  "official_base": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+  "reuse_policy": "NONE: initially empty cache, no receipt seeding or prior bundle reuse. Every selected image blob must be freshly anonymously fully read and hashed.",
+  "run": "41142870861",
+  "scope": "ROOT assigned ONE complete Go1.27 supplier validation, first case attempt. Setup assumption failure is separately retained; no earlier V11 execution. Actual proof/root artifact approval remain pending.",
+  "sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+  "source_eligibility": "83c reviewed native closure plus explicit unzip only; full source/delta custody retained separately."
+}

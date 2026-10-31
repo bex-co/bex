@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-31T10:19:30.944981+00:00",
+  "owned_case_bytes": 131493713,
+  "global_free_bytes": 6557954048,
+  "maximum_own_bytes": 2147483648,
+  "minimum_global_free_bytes": 2147483648,
+  "scope": "After actual validationexit0, before private freeze/gzip roundtrip checks. No cleanup."
+}

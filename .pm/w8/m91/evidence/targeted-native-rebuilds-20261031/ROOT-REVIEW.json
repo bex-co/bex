@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-31T10:22:35.348315+00:00",
+  "originalFrozenPlanFiles": 71,
+  "originalFrozenExecutionFiles": 133,
+  "allFrozenHashesIndependentlyVerified": true,
+  "actualPOSTCount": 3,
+  "directReturnedRunIdentities": [
+    41190561558,
+    41190693730,
+    41190806242
+  ],
+  "all30SourceGitInputsEqualFixed2cc": true,
+  "CICompletionOrSupplierApproval": false,
+  "sourceRoots": {
+    "plan": "/private/tmp/bex-w8-native-targeted-rebuild-plan-20261031-0928",
+    "execution": "/private/tmp/bex-w8-native-targeted-dispatch-20261031-0952"
+  }
+}
