@@ -1,0 +1,21 @@
+{
+  "files": [
+    {
+      "file": "focused-status.json",
+      "sha256": "8618ac54e345b15e27b565ef700100fe620bdc4a3b7afaa19b6167086da4e701",
+      "bytes": 6947
+    },
+    {
+      "file": "job.raw.json",
+      "sha256": "4d523af0292be5c84e4604346dca735ff7877af4ff27491c84560000d6b10ce7",
+      "bytes": 4529
+    },
+    {
+      "file": "receipt.json",
+      "sha256": "5d41733470328b480e68003224c4016d7b594c6de745475096a2a8e5603d890f",
+      "bytes": 2149
+    }
+  ],
+  "file_count": 3,
+  "bytes": 13625
+}

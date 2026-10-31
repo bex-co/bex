@@ -1,0 +1,22 @@
+{
+  "schema": "bex.m188.c2cfa-source-prereview/v1",
+  "proposal_sha256": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0",
+  "diff_sha256": "0401a035abd014a226f07c17400dd0ccef85b3b7cd77c6170fd1be2ea8d36e3c",
+  "baseline_guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "all_existing_globals_unchanged": true,
+  "added_function": [
+    "verify_common_proof_current_tree"
+  ],
+  "changed_original_functions": [
+    "main",
+    "reviewed_current_recipe_file",
+    "reviewed_current_workflow",
+    "reviewed_recipe_paths"
+  ],
+  "unchanged_functions_full_source": 23,
+  "validate_candidate_v2binding_crypto_full_source_unchanged": true,
+  "all49_profile_hashes_exact_independent_c5_manifest": true,
+  "four_common_plus_two_prior_workflow_reversals_exact_DA0": true,
+  "writer_tail_unchanged_except_proof_only_refusal": true,
+  "writer_refusal_ast": "check(not current_workflow_profile.get('proof_only_common_source'), 'REFUSING legacy per-line C tenant-base copies: ' + COMMON_QUALIFICATION_GATE + '; this proof-only profile never authorizes the legacy writer')"
+}

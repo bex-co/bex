@@ -1,0 +1,18 @@
+{
+  "owned_files": [
+    ".github/workflows/native-backport-acceptance.yml",
+    ".pm/w1/README.md",
+    ".pm/w1/m188/README.md",
+    ".pm/w1/m188/t003.md",
+    ".pm/w1/m188/t004.md",
+    ".pm/w1/m188/t007.md",
+    ".pm/w1/m188/t008.md",
+    "docs/ADR060-build-worker-reliability-and-performance.md",
+    "lego/operator/internal/build/nativebackport_python_test.go",
+    "lego/operator/internal/build/nativebackport_ruby_test.go",
+    "lego/operator/internal/build/nativebackport_test.go"
+  ],
+  "full_diff": "/tmp/bex-m188-common-scope-review-x24vsect/full-owned.diff",
+  "full_diff_sha256": "55bf24a860752004d704c8c89c40de91076a9a4194cf541d3b112c13796fb1f3",
+  "test_receipt": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/receipt.json"
+}

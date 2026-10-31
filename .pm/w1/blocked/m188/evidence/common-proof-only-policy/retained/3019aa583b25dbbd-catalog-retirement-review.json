@@ -1,0 +1,21 @@
+{
+  "schema": "bex.m188.current-catalog-owned-retirement-independent-review/v1",
+  "at": "2026-10-31T13:15:07.397497+00:00",
+  "old_literal_source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "old_whole_file_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+  "proposed_only_file": "/tmp/bex-m188-proposed-old-node18-retirement-htpbdfoa/PROPOSED-ONLY-native-base-recovery.json",
+  "proposed_whole_file_sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+  "verdict": "Exact optional current-tree cleanup variant is only removal of ownedobsoleteNode18/old7dd; all3foreignElixir fullrecords/schema/otherfields unchanged. Safe to propose as a second exact current-tree snapshot, with execution only after separate actualnew6c40 strictacceptance.",
+  "removed_key": "node-18-bookworm",
+  "removed_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+  "remaining_foreign_keys": [
+    "elixir-1.17",
+    "elixir-1.18",
+    "elixir-1.19"
+  ],
+  "no_new_authorization_or_alias": true,
+  "source_pinned_verifier_catalogs_changed": false,
+  "artifact_acceptance_claimed": false,
+  "cleanup_executed": false,
+  "mutation": "NEWowned/tmp review only; no catalog/repo/guard/Q/API/CIwrites."
+}

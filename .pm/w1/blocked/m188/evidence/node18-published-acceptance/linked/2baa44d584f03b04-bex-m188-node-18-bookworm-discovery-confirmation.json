@@ -1,0 +1,11 @@
+{
+  "schema": "native_stable_discovery_confirmation/v1",
+  "checked_at": "2026-10-31T13:40:01.925230+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm",
+  "digest": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "header_digest": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "anonymous_registry_access": true,
+  "raw_bytes": 1611,
+  "raw_file": "/tmp/bex-m188-node-18-bookworm-discovery-confirmation.raw.json",
+  "raw_sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+}

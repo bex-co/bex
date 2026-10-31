@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.actual-INACTIVE-global-proof-only-C5-execution/v2",
+  "recorded_at": "2026-10-31T13:19:14.409704+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "/tmp/bex-m188-test-c5-proof-only-v2.py"
+  ],
+  "harness": {
+    "file": "/tmp/bex-m188-test-c5-proof-only-v2.py",
+    "sha256": "327bb65ff9e3fd3992a86a7a1e3f69a852ffccf6ec5f02e6b173ab165db1420a",
+    "bytes": 15207
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "actual_exit_code": 0,
+  "result": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-and-proof-only-controls.json",
+    "sha256": "c8a9406500b7230a8b2e48bdfbf8dd3ad20109e619bfd57a49055d9b2b0fca26",
+    "bytes": 32490
+  },
+  "stdout": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stdout.log",
+    "sha256": "a12f42ac80677697e263a5f3a074973799fe10780804903a268584a6bcb63789",
+    "bytes": 1336
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "old10_and_pending_Node18_persisted_full_proofs_not_mocked": true,
+  "modeled_complete11_writer_cases_are_NOT_artifact_acceptance": true
+}

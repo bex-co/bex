@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-31T13:39:43.207006+00:00",
+  "attempt": 1,
+  "tool_session": 67727,
+  "actual_exit_code": 1,
+  "record_kind": "root observation of tool-returned error; original stderr was not separately persisted",
+  "failure": "GHCR anonymous pull-token TLS handshake timed out in confirm-discovery before candidate/Q mutation",
+  "FINAL": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation.json",
+  "FINAL_sha256": "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806",
+  "protected_inputs_after_failure_unchanged": {
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+    "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation.json": "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806",
+    "/tmp/bex-m188-published-acceptance.json": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "/tmp/bex-m188-prepare-adoption.py": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097"
+  },
+  "source_adoption_performed": false,
+  "candidate_acceptance_performed": false
+}

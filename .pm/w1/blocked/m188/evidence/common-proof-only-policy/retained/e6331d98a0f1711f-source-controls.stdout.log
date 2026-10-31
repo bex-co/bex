@@ -1,0 +1,4 @@
+SOURCE UNIT OCI-source 34 PASS
+SOURCE UNIT native-base 14 PASS
+SOURCE UNIT native-common 4 PASS
+SOURCE_REPORT /tmp/bex-m188-c5-proof-only-proposal/source-contract-controls.json fccafc78e206b80f8f2aa9b5e37f95fdb02c8e4d9de994613e63cbdd551e76ae

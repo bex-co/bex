@@ -1,0 +1,11 @@
+# C5 proof-only policy: activation evidence
+
+This archive records the exact common-foundation policy and proof-checker activation at 2026-10-31T13:27Z. The accepted artifact count at that activation was **10**. It does not record the later Node18 FINAL acceptance or recovery cleanup, common-image/ABI qualification, tenant-base adoption or live remediation.
+
+The explicit user decision selects one Bookworm tools foundation with exact runtimes above it. Started per-language publications may finish as patch/runtime-donor/security evidence; they do not authorize interim per-language tenant bases. The C writer implementation is globally removed. C2 was an inactive, superseded draft and was never activated; exact65 was independently reviewed, root-approved and activated. Canonical DA0 and literal artifact producer/verifier roles remain separate from current C5 checkout compatibility.
+
+The exact49 C5 source inputs and source-pinned user-decision pages are retained. Recorded tests cover the existing10 proofs, the then-pending real Node18 preflight,17 isolated controls,3 writer refusals and52 source controls. Original times, pending flags, modeled11 labels and raw argv are unchanged. Modeled writer tests are not artifact acceptance. The optional021e catalog is only an exact proposed owned-Node18-removal shape in this policy snapshot; activation still used67fc. Its shape is not authorization to retire anything.
+
+MANIFEST.json binds every retained payload. PORTABLE-LOCATORS.json maps original absolute-path/hash tuples to local retained content or exact prior manifests. Use the expected SHA, never whichever file now occupies an old path. Historical G/Q and Node18 candidate references resolve to frozen snapshots; newest active files were not archival inputs. Relative sibling-manifest references remain valid when the entire milestone moves to done. Git source Markdown retains its original links/bytes; omitted source-tree links can be resolved at the recorded c5 commit.
+
+Only payloads at least128KiB are losslessly gzip-compressed, with both stored and original hashes/sizes. Large full predicates remain in their public immutable OCI/local-gzip custody and prior archives; they are not duplicated here. This is a temporary archive candidate until root audits and copies it to the board.

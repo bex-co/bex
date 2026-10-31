@@ -1,0 +1,79 @@
+{
+  "schema": "bex.m188.c5-explicit-common-decision-independent-review/v1",
+  "at": "2026-10-31T13:08:00.302783+00:00",
+  "literal_source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "verdict": "No interim per-line C tenant-base adoption. Finish/preserve actualDBC and10 existing signed proofs; enable proof-only exactcurrent-tree compatibility, not legacyC writer. Production integration/Ready acceptance depends on w8/m91t007 qualifiedcommon plus sameversion patchedruntime artifacts after all independentw1 work.",
+  "decision_evidence": {
+    ".pm/w8/m91/README.md": {
+      "source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "lines": [
+        200,
+        205
+      ],
+      "whole_file_sha256": "4eee3c59a1da02808ef8292e9932324895d49b8721f5f9271c9ea40574d1f4e7",
+      "quoted_text": "## \u7528\u6237\u51b3\u5b9a\uff082026-10-29\uff0c`/unblock w8` \u4e3b\u9898 1\uff09\u2014\u2014\u5355\u4e00 Bookworm \u516c\u5171\u5e95\u4f18\u5148\n\n- **\u6d89\u53ca ID\uff1a** w8/m91\u3001m93\u3001m94\u3001m95\u3001m96\u3001m97\u3001m98\u3001m99\u3001m100\u3001m101\u3001m102\u3001m103\u3001m107\uff08\u53e6\u89c1 w8/222\uff09\n- **\u7ed3\u8bba\u6765\u6e90\uff1a** \u7528\u6237\u660e\u786e\u51b3\u5b9a\u3002\u7528\u6237\u5148\u95ee\u300cRender \u662f\u600e\u4e48\u505a\u7684\u300d\uff0c\u5f97\u5230\u89e3\u91ca\uff08Render \u53ea\u6709\u4e00\u4e2a Debian 12 \u516c\u5171\u73af\u5883\uff0c\u5de5\u5177\u9884\u88c5\uff0c\u8bed\u8a00\u7248\u672c\u6309\u73af\u5883\u53d8\u91cf\u88c5\u5728\u4e0a\u9762\uff09\u540e\uff0c\u9009\u62e9**\u5355\u4e00 bex native \u516c\u5171\u5e95**\uff1a\u4e00\u4e2a bookworm \u5e95\u9884\u88c5 Render \u5de5\u5177\u8868\uff0c\u8bed\u8a00\u7248\u672c\u88c5\u5728\u4e0a\u9762\uff1b\u6ca1\u6709\u9009 design.md \u7684\u9009\u9879 C\uff08\u6309\u8bed\u8a00\u7ebf\u6784\u5efa\u955c\u50cf\uff09\u3002\n- **\u51b2\u7a81\u5904\u7406\uff1a** \u660e\u786e\u7528\u6237\u51b3\u5b9a\u8986\u76d6\u8f83\u65e9 worker \u6309 parity \u63a8\u65ad\u7684\u9009\u9879 C\u3002\u5df2\u5f00\u59cb\u7684\u6309\u8bed\u8a00\u7ebf\u53d1\u5e03\u53ef\u6536\u5c3e\u5e76\u4fdd\u7559\u771f\u5b9e\u8bc1\u636e\uff0c\u6700\u7ec8\u91c7\u7528\u5355\u4e00 Bookworm \u516c\u5171\u5e95\uff1b\u65e0\u9700\u628a\u540c\u4e00\u51b3\u5b9a\u518d\u4ea4\u56de\u7528\u6237\u3002\n- **\u5269\u4f59\u5de5\u4f5c\uff1a** [t007](t007.md) \u5b9e\u73b0\u5e76\u9a8c\u8bc1\u5171\u540c\u5e95\u4e0e\u7cbe\u786e\u8fd0\u884c\u65f6\u5b89\u88c5\uff0c\u590d\u7528\u5df2\u6709\u5305\u3001\u5de5\u5177\u3001\u4fee\u8865\u548c\u53d1\u5e03\u8bc1\u660e\u3002\u505c\u6b62\u81ea\u52a8\u6269\u5927 C \u53d1\u5e03\uff0c\u4e0d\u53d6\u6d88\u5df2\u5f00\u59cb\u7684\u5de5\u4f5c\uff1b\u5171\u540c\u5e95\u91c7\u7528\u548c\u539f28\u4e2a\u7a0b\u5e8f/\u6570\u636e/\u547d\u4ee4\u7684\u771f\u5b9e\u9a8c\u6536\u4ecd\u7531 worker \u5b8c\u6210\u3002"
+    },
+    ".pm/w8/m91/t007.md": {
+      "source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "lines": [
+        16,
+        26
+      ],
+      "whole_file_sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "quoted_text": "1. Publish-never-pin one multiarch common tools artifact. Reuse existing installers, repairs, private JavaScript tools and offline Python store; include runtime/development closures formerly supplied by language images.\n2. Preserve version/date/default/companion resolution and install every selected primary, including defaults, in the existing primary/environment/linker/Python-hook/companion/authored-command order.\n3. Qualify exact Bookworm, legacy and Elixir/OTP runtime compatibility, matching headers/native extension behavior and rebar. Preserve valid exact choices with same-release compatible donors/builds.\n4. Retire automatic new C publication, retaining manual finish of already-started work and every failed/passed history. Production adoption waits for common artifact/generated-image review.\n5. Run meaningful source/unit and actual both-architecture checks, first a common digest for Node24, Python3.13 and exact default Python3.14.8, then supported families/legacy/exact OTP. Keep all28 frozen programs/data/commands unchanged; original hosted acceptance follows adoption.\n\n## Acceptance criteria\n\n- [ ] One reviewed Bookworm tools image is the final base for every supported selection, preserving exact primary/companion/default semantics.\n- [ ] Libraries, headers, packaging, OTP tooling, shared utilities and existing phase/environment/cache/root boundaries pass real generated-image checks on both architectures.\n- [ ] Retain published provenance, actual findings and unverified limits; C publications do not count as common-base or hosted acceptance."
+    },
+    ".pm/w1/m188/README.md": {
+      "source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "lines": [
+        5,
+        11
+      ],
+      "whole_file_sha256": "463275708323dbb3feec75eb1a786641c2870bf57620820122c0baaed5b2f8f8",
+      "quoted_text": "## \u7528\u6237\u51b3\u5b9a \u2014 D1=A\uff0c2026-10-29\n\n- **\u6765\u6e90\uff1a** \u7528\u6237\u5728 `/unblock w1` \u4e2d\u660e\u786e\u56de\u590d `A`\uff1a\u5141\u8bb8\u5e73\u53f0\u96c6\u4e2d\u4fee\u8865\uff0c\u4f18\u5148\u5b9e\u9645\u5728\u7528\u3001\u786e\u8ba4\u53d7\u5f71\u54cd\u7684\u65e7\u7248\u672c\uff0c\u5e76\u63a5\u53d7\u7531\u5e73\u53f0\u627f\u62c5\u6301\u7eed\u6784\u5efa\u3001\u5b89\u5168\u626b\u63cf\u548c\u517c\u5bb9\u6027\u9a8c\u8bc1\u3002\n- **\u8fb9\u754c\uff1a** \u4fdd\u7559\u7528\u6237\u9009\u5b9a\u7684\u8bed\u8a00\u7248\u672c\uff1b\u8865\u4e01\u5728\u5e73\u53f0\u955c\u50cf\u53d1\u5e03\u65f6\u5236\u4f5c\uff0c\u79df\u6237\u6784\u5efa\u76f4\u63a5\u4f7f\u7528\u56fa\u5b9a\u955c\u50cf\uff0c\u4e0d\u5728\u6bcf\u6b21\u79df\u6237 build \u4e34\u65f6 apt \u5347\u7ea7\u3002\n- **\u4fee\u590d\u8d23\u4efb\uff1a** \u540c\u65f6\u6838\u5b9e\u7cfb\u7edf\u5e93\u548c\u8fd0\u884c\u65f6\u81ea\u5e26\u5e93\uff0c\u4e0d\u80fd\u53ea\u5347\u7ea7\u7cfb\u7edf libbrotli1 \u5c31\u5ba3\u5e03\u6240\u6709\u8fd0\u884c\u65f6\u5df2\u4fee\u590d\u3002\n- **\u5f53\u524d\u7528\u6237\u52a8\u4f5c\uff1a** \u8fd9\u9879\u7ef4\u62a4\u8303\u56f4\u51b3\u5b9a\u5df2\u5b8c\u6210\uff0c\u65e0\u9700\u91cd\u590d\u786e\u8ba4\u3002\u5b9e\u73b0\u3001\u9a8c\u8bc1\u53ca\u540e\u7eed\u5177\u4f53\u6267\u884c\u6761\u4ef6\u7531 worker \u6309\u65e2\u6709\u89c4\u5219\u5904\u7406\u3002\n- **\u72b6\u6001\uff1a** \u4e0d\u518d\u4ee5\u201c\u7b49\u5b98\u65b9\u955c\u50cf\u66f4\u65b0\u201d\u4e3a\u963b\u585e\u6761\u4ef6\uff1b\u7528\u6237\u968f\u540e\u6267\u884c `$loopx w1`\uff0c\u5df2\u6388\u6743\u5e76\u5f00\u59cb\u5b9e\u73b0\u548c\u53d1\u5e03\u3002\u5f53\u524d\u9010\u7248\u672c\u9a8c\u6536\u8fdb\u5ea6\u89c1\u4e0b\u6587\uff0c\u5168\u90e8\u5b8c\u6210\u524d\u4e0d\u6807\u8bb0 done\u3002"
+    },
+    ".pm/w1/done/143.md": {
+      "source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "lines": [
+        26,
+        30
+      ],
+      "whole_file_sha256": "140d16e61aa0f5e07eddb4146130dc7bc5d1719736de15b96c2c114e14c3b3d1",
+      "quoted_text": "## \u7528\u6237\u51b3\u5b9a\u4e0e\u4ea4\u63a5 \u2014 2026-10-29\uff0cD1=A\n\n\u7528\u6237\u660e\u786e\u9009\u62e9\uff1a**\u5141\u8bb8\u5e73\u53f0\u96c6\u4e2d\u4fee\u8865\uff0c\u4f18\u5148\u5904\u7406\u5b9e\u9645\u5728\u7528\u3001\u786e\u8ba4\u53d7\u5f71\u54cd\u7684\u65e7\u7248\u672c**\u3002\u5e73\u53f0\u63a5\u53d7\u6301\u7eed\u6784\u5efa\u3001\u626b\u63cf\u548c\u517c\u5bb9\u6027\u7ef4\u62a4\uff1b\u4fdd\u7559\u7528\u6237\u9009\u5b9a\u7684\u8fd0\u884c\u65f6\u7248\u672c\uff0c\u79df\u6237 build \u4e0d\u4e34\u65f6 apt \u5347\u7ea7\uff1b\u7cfb\u7edf\u5e93\u548c\u8fd0\u884c\u65f6\u81ea\u5e26\u5e93\u5206\u522b\u6838\u5b9e\u3002\n\n\u8fd9\u4e00\u51b3\u5b9a\u89e3\u9664\u4e86\u539f\u5148\u53ea\u5141\u8bb8\u7b49\u5f85\u4e0a\u6e38\u7684\u8303\u56f4\u9650\u5236\u3002\u5b9e\u73b0\u5df2\u8f6c\u4e3a [w1/m188](../m188/README.md)\uff0cworker \u4ece t001 \u7684\u73b0\u72b6\u4e0e\u5e93\u6e05\u70b9\u5f00\u59cb\u3002\u539f\u6709\u9010\u7248\u672c\u9a8c\u8bc1\u4e0e\u670d\u52a1\u91cd\u5efa\u8981\u6c42\u4fdd\u7559\u5728\u8be5\u91cc\u7a0b\u7891\uff0c\u4e0d\u56e0\u672c\u8bb0\u5f55\u664b\u7ea7\u800c\u7b97\u4f5c\u5b8c\u6210\u3002"
+    }
+  },
+  "decision_reason": "m188A authorizes platformmaintenance/sameversion/no tenantapt, not aCarchitecture exception. Explicitw8user choice rejectsC and supersedes earlierworker inference; allows already-startedpublishes tofinish as evidence; t007 requires common artifact/generated-image review and onecommon finalbase. Apply both, no repeatuserchoice.",
+  "source_findings": {
+    "manifest": {
+      "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source-manifest.json",
+      "sha256": "a8bfc2aa37afd03bf42f781ad89726d913228f7066fe2e4bddc76ec6684257a1"
+    },
+    "all19_nonPM_changes_read": true,
+    "official_native_go_resolver_version_unchanged": "All27matrix/old11versions/defaults/upstream source bytes unchanged fromactualDBC.",
+    "production_pins": "nativeCommonBase zero-valued string and nativeSuppliedBases literalempty; exactnativebases.go must be pinned and both empty states required in currentprofile. Common routing remains dormant.",
+    "old_install": "Only comment andquoted \"$@\" adds optionaltrusted packageoperands; unchangedoldDockerfile passeszeroargs. Actualshell stub comparesold/new fullargv equal, withnoninteractive env; additional2trustedargs appendexactly. All PGDG/Brotli/trust/package sequence otherwise unchanged.",
+    "old_pipeline": "Explicitlegacy singleton uses originalmatrixrow/contextdeploy/native-base/Dockerfile; recoveryPython is identical. Entirecandidate\u2192runtime/portability\u2192scans\u2192Syft\u2192signing\u2192discoverytags suffix is byte-identical toactualDBC. Common route is separate; automaticCmatrix intentionally retired.",
+    "inventory": "45currentrows: all44oldIDs/pins unchanged; onlynative-node filesmetadata gainscommonDockerfile; native-common-bookworm-source is newsource-only row. Preserve45; former45\u219256 per-lineCadoption is superseded and notauthorized.",
+    "freshness": "Adds onlycommonDockerfile canonicalpin site pluscoveragecontrols; retainforeigncurrenthelper/inventory ratherthan restoringold44snapshot.",
+    "tests": "Newpublisher controls enforcecommon-onlyauto/singletonmanual/emptyunknownreject; existing signingcontrols retained. Common source/opt-in generated-test changes honestly distinguishcanonical recipes fromtest-only wheel overlays and leaveactualABI/legacy/OTP/hostedproofs open."
+  },
+  "install_controls": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/install-noarg-controls.json",
+    "sha256": "8f52c8c8f580c1a7f89da297a44e4adb267e1ede19377ae98e50ad1db9005cd1"
+  },
+  "required_guard_boundaries": [
+    "Exactc5 current-tree hashes/sourceancestry/newfactory+testinputs only; preserve historicalDA0/941/2cc roles",
+    "No c5 artifactrole oralias; actualNode18 producer/verifier remainsliteralDBC",
+    "QEDA/all10proofs/status immutable",
+    "Require common andsupplied bothEMPTY and preserve45inventory",
+    "Explicitlyrefuse legacyC --prepare-dir even modeledcomplete11; validators/proof-onlyplan maycontinue",
+    "Producer\u2194verifier nonMD equality andallactualcrypto/runtime/report/portabilitygates remainstrict"
+  ],
+  "independent_work_before_real_upstream_dependency": [
+    "FinishDBC andstrict11thproof; preserveallpass/failure histories",
+    "Prepare sameversion patches/sourcecompiler/behavior/runtime-donor evidencehandoff without callingCproofs commonclosure",
+    "Finishremaining independentw1validation; recordexactw8/m91t007 dependency forcommonqualifiedimage/donorclosure/generated/Readyacceptance",
+    "No Ctenantbasepins, broadrebuild, silentupgrade/unsupportederror, repeateduserchoice orDoneclaim"
+  ],
+  "limits": "No commonimage/ABI/legacy/OTP/hosted execution, adoption, CIactions or fullsuitererun. Foreign52controls/operatorPASS are not independentlyrerun. One initial receipt-script assertion used the wronginventoryID(native-node-24); corrected to actualnative-node before anyreceiptfreeze; controlledshell probes thenpassed.",
+  "mutations": "Only NEWowned/tmp sourcecopies/probe/receipts; no sharedrepo/board/guard/Q/aggregate/acceptedproof/API/CIwrites."
+}

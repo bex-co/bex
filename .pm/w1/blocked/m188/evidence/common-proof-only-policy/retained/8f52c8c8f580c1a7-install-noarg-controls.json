@@ -1,0 +1,115 @@
+{
+  "schema": "bex.m188.exact-install-shell-noarg-controls/v1",
+  "controls": [
+    {
+      "case": "DBC-zero",
+      "exit_code": 0,
+      "shell_body_sha256": "25c84150b967c93f6b038f1b62f44141e644c20e331bc358352568807eea6b71",
+      "result": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev"
+        ],
+        "frontend": "noninteractive"
+      },
+      "output_sha256": "3d1cb52033d4a0b858cc9dd0f0421bda8a6e7d4a131b53e3bbe099f33d7160fb"
+    },
+    {
+      "case": "c5-zero",
+      "exit_code": 0,
+      "shell_body_sha256": "1c9ae84b6a7cecc01e768c0cbe17f6cb66119e3c7d0ff88c4be06e1bf5fb749c",
+      "result": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev"
+        ],
+        "frontend": "noninteractive"
+      },
+      "output_sha256": "3d1cb52033d4a0b858cc9dd0f0421bda8a6e7d4a131b53e3bbe099f33d7160fb"
+    },
+    {
+      "case": "c5-two-trusted-extra",
+      "exit_code": 0,
+      "shell_body_sha256": "1c9ae84b6a7cecc01e768c0cbe17f6cb66119e3c7d0ff88c4be06e1bf5fb749c",
+      "result": {
+        "argv": [
+          "install",
+          "-y",
+          "--no-install-recommends",
+          "postgresql-client-18",
+          "gettext",
+          "ghostscript",
+          "jq",
+          "libvips-dev",
+          "libvips-tools",
+          "pandoc",
+          "pigz",
+          "python3-dev",
+          "python3-pip",
+          "python3-setuptools",
+          "rsync",
+          "sqlite3",
+          "swig",
+          "zip",
+          "unzip",
+          "gnupg2",
+          "nano",
+          "vim",
+          "libbrotli1",
+          "libbrotli-dev",
+          "tk-dev",
+          "uuid-dev"
+        ],
+        "frontend": "noninteractive"
+      },
+      "output_sha256": "1c6126c600031121e22ed8e2cb46f2d6526168b73aa1da72cb1e981b3726401c"
+    }
+  ],
+  "zeroarg_old_new_argv_identical": true,
+  "trusted_extra_args_append_exactly": true,
+  "scope": "Exact shell package command blocks with controlled apt-get stub. No apt/network/image/build/security proof."
+}

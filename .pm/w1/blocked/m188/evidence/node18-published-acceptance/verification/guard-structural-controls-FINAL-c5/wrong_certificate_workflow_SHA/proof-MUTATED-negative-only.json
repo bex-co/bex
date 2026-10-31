@@ -1,0 +1,299 @@
+{
+  "schema": "targeted_sigstore_bundles/v1",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "complete": true,
+  "cryptographic_complete": true,
+  "repo": "ghcr.io/bex-co/bex-cnb-run",
+  "verification_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "producer_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "tool": {
+    "file": "/tmp/bex-w1-136-cosign/cosign",
+    "version": "3.1.4",
+    "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "root_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/root-index.raw.json",
+    "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+    "bytes": 1611
+  },
+  "bundles": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "oci_manifest_digest": "sha256:e82405c4a1bd1002446130482edb2f52a704584db45a31dc69d7882814c70930",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/e82405c4a1bd1002446130482edb2f52a704584db45a31dc69d7882814c70930.json",
+      "oci_blob_digest": "sha256:1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176",
+      "raw_sha256": "1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176",
+      "raw_bytes": 9703,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176.json",
+      "statement_sha256": "e2574ea9fd8a3553516ef4103b3038c9258131936d240035bd7f2f4b7e5cfc5c",
+      "subject": {
+        "digest": {
+          "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+        },
+        "annotations": {}
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/wrong_certificate_workflow_SHA/wrong-certificate-workflow-command.json",
+      "command_sha256": "b8a54682f00accf8033b81b2510541d81b52011bb115cad764696e4a3634ae02",
+      "exit_code": 0,
+      "gzip_sha256": "b0dd6a64dc8974e099ee6f930b486b39f9a0cd3681f208bef97f497ec0a47394"
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:9108163291dd9475ee32387102213bcc3e2362e7c4a07685b4bdbd304282e9b1",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/9108163291dd9475ee32387102213bcc3e2362e7c4a07685b4bdbd304282e9b1.json",
+      "oci_blob_digest": "sha256:c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd",
+      "raw_sha256": "c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd",
+      "raw_bytes": 30267663,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd.json",
+      "statement_sha256": "08cd8042b03f509f2543f5bbb1f5aec367da5dcccfe5b89a98ff07f56014d13a",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/commands/c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd.command.json",
+      "command_sha256": "b771cec164f9ce8f451a7e89be783daaf83731b397f70ea32a1ceff6043715ff",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:dec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3Adec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1?arch=amd64",
+        "root_purl_digest": "sha256:dec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1",
+        "expected_registry_child": "sha256:dec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "8674dd46a10a2b78ee305fdc9144c3b7e3106c70c2665a2abad110d9a607d9cf"
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:6b415df76f8626fd580b2449755f5becc976d8498d80023c7db2f0989b443f05",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/6b415df76f8626fd580b2449755f5becc976d8498d80023c7db2f0989b443f05.json",
+      "oci_blob_digest": "sha256:d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c",
+      "raw_sha256": "d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c",
+      "raw_bytes": 30279939,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c.json",
+      "statement_sha256": "992e01588e5d3eadf2c82aedddb8459294fc967a6c9238d27c0b37faf6a3017d",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/commands/d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c.command.json",
+      "command_sha256": "45d5921105af85748acb8afdc621ff966e2509d1db555d5d31e8c857458973e3",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936?arch=arm64",
+        "root_purl_digest": "sha256:3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936",
+        "expected_registry_child": "sha256:3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "5b6cbcab9264e5ee30c732557c8d1e20d449eaa70e9d4f9627dd9e8559854973"
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:895da2227474082f09e9e75e021b70b7172e15aa72c6878ea638f973d2cf4847",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/895da2227474082f09e9e75e021b70b7172e15aa72c6878ea638f973d2cf4847.json",
+      "oci_blob_digest": "sha256:8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e",
+      "raw_sha256": "8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e",
+      "raw_bytes": 61779603,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e.json",
+      "statement_sha256": "284e1c06dfac3f10ec12ef2bd13238b6a71fc80bf8337d5a455c1bc86cf03889",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/commands/8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e.command.json",
+      "command_sha256": "5789752cf5037d8bba4dd4c9dabbbffe62cb91e155dc4236dbfd5a4f16671620",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:3e55b146b57498ff5ac3e7898817f3b9cbce214742d724d414d7298c27b98fc4",
+        "expected_config_digest": "sha256:3e55b146b57498ff5ac3e7898817f3b9cbce214742d724d414d7298c27b98fc4",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "5d25673b502fd87c5ed1c51c02c74189b147a787ffc077fcc0797ea861fbe1a5"
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:9d3666a9d771f99b5a6720173367710a7ff50f88a275b5462e5b4b27130030bc",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/9d3666a9d771f99b5a6720173367710a7ff50f88a275b5462e5b4b27130030bc.json",
+      "oci_blob_digest": "sha256:abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9",
+      "raw_sha256": "abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9",
+      "raw_bytes": 61785027,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/bundles/abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9.json",
+      "statement_sha256": "58fe0a05d01914ff6a3407b1415fbd7b6e4d79e42593763c9522b6595127bfc6",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/commands/abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9.command.json",
+      "command_sha256": "7b413269b360c24e29bf5a73e6108d8f24605effcc9c4e2638a91672021ffcb9",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:60a0541bdb99cad63c4ffd5a8739a7dd73a82a15249f516fb8786da708b6552f",
+        "expected_config_digest": "sha256:60a0541bdb99cad63c4ffd5a8739a7dd73a82a15249f516fb8786da708b6552f",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "9c42ac9589813d3c75da6b428493f21c043a0ebf1070018c05dcbe221e315162"
+    }
+  ],
+  "derived": {
+    "image_statement": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/image-signature.statement.json",
+      "sha256": "e2574ea9fd8a3553516ef4103b3038c9258131936d240035bd7f2f4b7e5cfc5c",
+      "bundle_digest": "sha256:1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176",
+      "derived": false
+    },
+    "sbom": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-sbom.jsonl.gz",
+      "raw_sha256": "d2279b8a8d5569d564646e2578eb308e26b6a48a84e6d806a24777db3e092d04",
+      "raw_bytes": 60529428,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:c954cc915de819d3baeeb0daf0b92af1e839e563106c11c85415bcf0b2304ebd"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:d43c820347b4b1b546c8b70df25eadccfcb49c5ff16b9c0e641a467918edc60c"
+        }
+      ],
+      "gzip_sha256": "fc4f9b377d71a073db9cf6f269eefb6c9d1f6a4284a88e04b291e9ddf4d4a6f3"
+    },
+    "scans": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-scans.jsonl.gz",
+      "raw_sha256": "7ecf4ceda2d8072a6e4646a6f1e2ad9418dbdc61b3fbb792de9180b76ced5834",
+      "raw_bytes": 123546896,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:8e88ee6a1975e8051ca9e2a6050ad46efea7e318b693f45c55415076018c4b9e"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:abecd101d720419c1099e8c5c71fe4ce3dd0a87f2df124cc4f1dfc58e1c229d9"
+        }
+      ],
+      "gzip_sha256": "2b23257ec97d02b955dbf531086f9f429e20c7fa414d4d174a868cc8f3ec3790"
+    }
+  },
+  "controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/controls.json",
+    "sha256": "a9858f2fabdf6277ff354dd9cbf1cd0f27b1d50ecdebd95cb11f9d26dce73317"
+  },
+  "rejected_bundles": [],
+  "updated_at": "2026-10-31T13:09:42.778968+00:00",
+  "architecture_children": {
+    "amd64": {
+      "manifest_digest": "sha256:dec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/dec73961a81d2296864da4f8bf7632a77f75c034e3bdd175019f14a350fc9ee1.registry-child.json",
+      "config_digest": "sha256:3e55b146b57498ff5ac3e7898817f3b9cbce214742d724d414d7298c27b98fc4"
+    },
+    "arm64": {
+      "manifest_digest": "sha256:3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/3a3623b5fb4818d0e270aedf7a8affbccf4c66e5e23f69bf030076112267b936.registry-child.json",
+      "config_digest": "sha256:60a0541bdb99cad63c4ffd5a8739a7dd73a82a15249f516fb8786da708b6552f"
+    }
+  },
+  "collection_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/collection-index.raw.json",
+    "sha256": "1c2334a91510cc237d9d2ca4e386f291aeea6348f7c54c505f2968fd7f14e9ec"
+  },
+  "semantic_checks": {
+    "architecture_binding_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/architecture-binding.json",
+    "architecture_binding_sha256": "a69a918ab7029713e226d0604537ddcda811af6922d8a2fcac6b71f2244b30f6",
+    "official_base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "producer_runtime_approved": true,
+    "both_arch_runtime_versions_verified": true,
+    "both_arch_fixed_brotli_packages_verified": true,
+    "both_arch_scans_disposition_verified": true,
+    "fresh_runtime_scan_sign_gates_passed": true,
+    "fresh_runtime_gate_log_bound_to_index": true,
+    "verification_job_log": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verification-job.log.gz",
+    "verification_job_log_sha256": "fb12494ec4a2a3af420711699bbe2fbae7f9ee6a8533f026a96b89a28d2e2928",
+    "immutable_completed_job_snapshot": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/publisher-job.json",
+      "sha256": "0dfcfc535384ceff152b3a197e795e0773c9f36e8e1b6112a151071b2487609a",
+      "job_id": 124498652791,
+      "run_id": 41187749759,
+      "run_attempt": 1,
+      "head_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+      "completed_at": "2026-10-31T13:06:58Z"
+    },
+    "anonymous_immutable_tag_intake": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/immutable-tag-intake.json",
+      "sha256": "8c632789f39609b295be5b75ae33dad36699a685574f1f0d6f32c614d12b5332"
+    },
+    "raw_registry_configs": {
+      "amd64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/3e55b146b57498ff5ac3e7898817f3b9cbce214742d724d414d7298c27b98fc4.config.json",
+        "sha256": "3e55b146b57498ff5ac3e7898817f3b9cbce214742d724d414d7298c27b98fc4",
+        "bytes": 15514
+      },
+      "arm64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/manifests/60a0541bdb99cad63c4ffd5a8739a7dd73a82a15249f516fb8786da708b6552f.config.json",
+        "sha256": "60a0541bdb99cad63c4ffd5a8739a7dd73a82a15249f516fb8786da708b6552f",
+        "bytes": 15513
+      }
+    },
+    "portable_companion_baseline": {
+      "applicable": true,
+      "verified": true,
+      "distribution": "Debian11 Bullseye",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "legacy_header_major": "18",
+      "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+      "source_record_presence_verified": true,
+      "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+      "success_log_lines": {
+        "amd64": "2026-10-31T12:04:56.7261989Z #15 0.607 Patched Node passed the Bullseye companion baseline",
+        "arm64": "2026-10-31T12:04:57.5982692Z #16 0.228 Patched Node passed the Bullseye companion baseline"
+      }
+    }
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/architecture-binding.json",
+    "sha256": "a69a918ab7029713e226d0604537ddcda811af6922d8a2fcac6b71f2244b30f6",
+    "complete": true
+  },
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json"
+}

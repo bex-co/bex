@@ -1,0 +1,60 @@
+{
+  "schema": "bex.m188.INACTIVE-global-PROOF-ONLY-common-source-context/v2",
+  "at": "2026-10-31T13:15:20.099921+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097"
+  },
+  "source_anchor": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "ancestry_required": "exact941\u21922cc\u2192c5\u2192currentHEAD, plus literal workflow and closed49-file source profile; current catalog is exactly one of two reviewed whole-byte snapshots",
+  "prior_context": {
+    "file": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+    "sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78"
+  },
+  "prior_guard": {
+    "file": "/tmp/bex-m188-prepare-adoption.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "receipt_context": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "count": 10,
+    "unchanged": true
+  },
+  "source_roles_added": [],
+  "legacy_C_tenant_base_writer_authorized": false,
+  "common_adoption_writer_implemented": false,
+  "common_qualification_gate": "w8/m91/t007: user-selected qualified common Bookworm foundation and independently reviewed same-version runtime integration; the legacy C tenant-base writer is superseded",
+  "user_decision_evidence": [
+    {
+      "source_commit": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "path": ".pm/w8/m91/README.md",
+      "sha256": "4eee3c59a1da02808ef8292e9932324895d49b8721f5f9271c9ea40574d1f4e7",
+      "relevant_lines": "200-205: explicit single Bookworm choice overrides inferred C; started publications may finish/evidence only"
+    },
+    {
+      "source_commit": "c5ee618ce95681e09f0201dd682b66270e44f357",
+      "path": ".pm/w8/m91/t007.md",
+      "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "relevant_contract": "step4 production adoption waits common artifact/generated review; one final common base for every supported selection; C publication does not count as common/hosted acceptance"
+    }
+  ],
+  "current_inventory_rows": 45,
+  "current_common_pin": "unset",
+  "current_supplied_map": "empty",
+  "new_common_artifact_or_runtime_safety_claimed": false,
+  "not_activated": true,
+  "legacy_C_tenant_base_writer_globally_retired": true,
+  "current_control_file_snapshots": {
+    "original": {
+      "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "shape": "original_four_entry_control"
+    },
+    "proposed_only_own_Node18_retirement": {
+      "sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+      "shape": "own_Node18_entry_absent_foreign_three_exact",
+      "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/PROPOSED-ONLY-exact-own-Node18-retirement.json",
+      "actual_retirement_performed": false
+    }
+  }
+}

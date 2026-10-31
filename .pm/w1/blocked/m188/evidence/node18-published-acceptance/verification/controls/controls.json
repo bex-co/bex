@@ -1,0 +1,29 @@
+{
+  "schema": "targeted_sigstore_bundle_controls/v1",
+  "passed": true,
+  "verification_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "root_index_sha256": "6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "bundle_sha256": "1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176",
+  "positive": {
+    "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/commands/1c247ee13a5a79ec43a219fd65c8eb4b9e2d2852068f9bbd3612b15d0d137176.command.json",
+    "command_sha256": "20c0ded4ae5eb47a487999a2ca53da08ef071feb7a8dca4592d2692a2903727c",
+    "exit_code": 0
+  },
+  "negatives": {
+    "wrong_verification_sha": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/wrong_verification_sha.command.json",
+      "command_sha256": "2823448756c4f22605a6118f0cba299b527438bad4c7b0d1c43b555a1ffc7995",
+      "exit_code": 1
+    },
+    "wrong_index": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/wrong_index.command.json",
+      "command_sha256": "9607ef8c19fbf1df3a22d22027a324411abe8d7a5f8c680fea0edb5bec6f4688",
+      "exit_code": 1
+    },
+    "wrong_predicate": {
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/wrong_predicate.command.json",
+      "command_sha256": "9b3326f899d0e10520ffee94e894868e0f4f8b3a46df08fc1d8215a4bc426b50",
+      "exit_code": 1
+    }
+  }
+}

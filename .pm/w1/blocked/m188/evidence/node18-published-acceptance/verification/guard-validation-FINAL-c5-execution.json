@@ -1,0 +1,17 @@
+{
+  "schema": "bex.m188.actual-Node18-FINAL-check-execution/v1",
+  "started_at": "2026-10-31T13:32:47.408473+00:00",
+  "finished_at": "2026-10-31T13:32:53.397976+00:00",
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/tmp/bex-m188-node18-FINAL-c5-check.py"
+  ],
+  "harness_file": "/tmp/bex-m188-node18-FINAL-c5-check.py",
+  "harness_sha256": "baef088120b412ca6ffef48c3bd0c6911b0ff3db8cf6fbcfae73594f8b3fdea1",
+  "actual_exit_code": 0,
+  "stdout_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation-FINAL-c5.stdout.log",
+  "stdout_sha256": "0f4d769252b35537d2ab810b2cee4ce4daa6e8fc2a35b506ba910e64ad33875a",
+  "stderr_file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation-FINAL-c5.stderr.log",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

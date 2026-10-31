@@ -1,0 +1,59 @@
+{
+  "schema": "bex.m188.actual-owned-Node18-obsolete-recovery-retirement/v1",
+  "at": "2026-10-31T13:42:26.095920+00:00",
+  "before": {
+    "file": "/tmp/bex-m188-node18-actual-retirement-evidence/catalog-before.json",
+    "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+    "bytes": 4318
+  },
+  "after": {
+    "file": "/tmp/bex-m188-node18-actual-retirement-evidence/catalog-after.json",
+    "sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+    "bytes": 3211
+  },
+  "repository_catalog": ".github/native-base-recovery.json",
+  "actual_accepted_current_artifact": {
+    "file": "/tmp/bex-m188-node-18-bookworm-acceptance.json",
+    "sha256": "8bc7fece88d9b7b3713da76d5730ad8a648ce2ec9dc216047b30e65acb418fe6",
+    "bytes": 4312
+  },
+  "root_exact_FINAL_approval": {
+    "file": "/tmp/bex-m188-node18-root-final-approval.json",
+    "sha256": "e73bb2cd48e6df89d63429ef4ca0301e07363ad0631a1e512fb7cbb68a716598",
+    "bytes": 3913
+  },
+  "retired_entry": {
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+    "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "run_id": 41026904247,
+    "job_id": 123967210277,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  },
+  "retirement_reason": "Superseded by DIFFERENT strictly accepted normal-build current artifact6c40; old7dd itself is NOT verified or accepted. New normal builder never consumed the old recovery authorization.",
+  "foreign_Elixir_records_unchanged": true,
+  "remaining_foreign_keys": [
+    "elixir-1.18",
+    "elixir-1.19",
+    "elixir-1.17"
+  ],
+  "all_m188_11_temporary_recovery_keys_absent": true,
+  "source_roles_unchanged": true,
+  "source_adoption_performed": false,
+  "common_integration_pending": true,
+  "post_promotion_checks": {
+    "prior10_rows_unchanged": true,
+    "candidate_changed_fields": [
+      "accepted_at",
+      "candidate_state",
+      "guard_alignment_required",
+      "guard_validation",
+      "stable_discovery_confirmation"
+    ],
+    "original_proof_and_FINAL_unchanged": true,
+    "unchanged_protected_originals": 174,
+    "Q_candidate_intentional_metadata_transition_only": true
+  }
+}

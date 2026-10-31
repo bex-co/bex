@@ -1,0 +1,63 @@
+{
+  "schema": "bex.m188.common-source-PROOF-ONLY-combined-context/v1",
+  "status": "ACTIVE_ROOT_APPROVED_PROOF_ONLY",
+  "recorded_at": "2026-10-31T13:27:10.686106+00:00",
+  "root_approval": {
+    "file": "/tmp/bex-m188-c5-root-proof-only-approval.json",
+    "sha256": "d0ec36bc07775ba1b1e01d2b81c2fc52fe98682187f31070094651b581d58e8f",
+    "bytes": 1772
+  },
+  "activation_record": {
+    "file": "/tmp/bex-m188-c5-proof-only-policy-activation.json",
+    "sha256": "c92dfc4b712963bd9ea0ace9412cdb98fe8df09b942d2e3887f91476ec097f43",
+    "bytes": 2496
+  },
+  "guard_snapshot": {
+    "file": "/tmp/bex-m188-guard-snapshots/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097"
+  },
+  "previous_guard_snapshot": {
+    "file": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "previous_combined_context": {
+    "file": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+    "sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+    "bytes": 1696
+  },
+  "frozen_artifact_receipt_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-c5-proof-only.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "profile_proposal_context": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/profile-context-proposal.json",
+    "sha256": "6d4287fd5ee5023037db0bfe8a0a2713d8cca01c8bce78935418f279b5f02d55",
+    "bytes": 3047
+  },
+  "current_tree_source_anchor": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "canonical_artifact_workflow_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_checkout_ancestry": "941\u21922cc\u2192c5\u2192HEAD",
+  "artifact_source_roles_changed": false,
+  "Q_mutation_authorized": false,
+  "accepted_artifact_count_at_activation": 10,
+  "source_adoption_authorized": false,
+  "legacy_C_tenant_base_writer_globally_retired": true,
+  "common_adoption_writer_implemented": false,
+  "common_integration_gate": "w8/m91/t007 qualified common foundation and same-version runtime integration; C publications alone do not establish this",
+  "actual_current_catalog_control": {
+    "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+    "shape": "original_four_entry_control",
+    "actual_retirement_performed": false
+  },
+  "reviewed_future_control_shape": {
+    "sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+    "actual_write_only_after_root_approved_Node18_acceptance": true
+  },
+  "new_common_artifact_or_production_rollout_acceptance": false,
+  "root_review": {
+    "file": "/tmp/bex-m188-c5-root-profile-review.json",
+    "sha256": "4f5abd9417a3f9e215d24b8ea588f5f08949ec5e05b6cb548318a14b1d5a99ab",
+    "bytes": 6072
+  }
+}

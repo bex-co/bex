@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "file": "common-integration-handoff.json",
+      "sha256": "5f74a51a549cb5214cf655fae2c3269b4664d9d478d1df6bab966e3f92a0356f",
+      "bytes": 93923
+    },
+    {
+      "file": "handoff.zh.txt",
+      "sha256": "8832a4c138ad49eb4efb189bdc6d02a7598d206aead576e65d443a6dfc5c8af9",
+      "bytes": 2117
+    }
+  ],
+  "source_frozen_receipt": {
+    "file": "/tmp/bex-m188-published-artifacts-complete-donor-only.json",
+    "sha256": "6f9c9dbcfd42a0228aca6c2b027d64002ce141260cda0132df00bb30a1ce2cb1",
+    "bytes": 178559
+  },
+  "validation": "11 exact rows/proof hashes and 5 historical unresolved identities cross-checked; no external action"
+}

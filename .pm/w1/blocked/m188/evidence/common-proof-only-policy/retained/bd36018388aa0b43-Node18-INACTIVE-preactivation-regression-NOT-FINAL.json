@@ -1,0 +1,38 @@
+{
+  "schema": "bex.m188.INACTIVE-proposal-actualDBC-Node18-proof-regression-NOT-FINAL/v1",
+  "at": "2026-10-31T13:12:49.919038+00:00",
+  "guard": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal/c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py",
+    "sha256": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0",
+    "active": false
+  },
+  "candidate": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+    "sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+    "bytes": 6408,
+    "unchanged": true
+  },
+  "proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json",
+    "sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+    "unchanged": true
+  },
+  "receipt_context": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "accepted_count": 10,
+    "unchanged": true
+  },
+  "actual_full_validate_candidate_passed": true,
+  "actual_source_pair": [
+    "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "dbc493ba688c19758c9a489635761419fb2c1af6"
+  ],
+  "seconds": 2.501,
+  "DBC_original_install3a_to_current23ee_mapping_exercised_with_actual_signed_proof": true,
+  "not_FINAL_or_acceptance_or_promotion": true,
+  "no_standard_guard_validation_file_written": true,
+  "requires_root_exact_guard_activation_then_distinct_FINAL_context_and_root_FINAL_approval": true,
+  "legacy_C_tenant_base_writer_superseded": true,
+  "crypto_and_source_validation_mocked": false
+}

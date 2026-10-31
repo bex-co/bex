@@ -1,0 +1,66 @@
+{
+  "schema": "bex.m188.node18.donor-proof-ready-before-final-guard/v1",
+  "at": "2026-10-31T13:10:42.967351+00:00",
+  "runtime": "node-18-bookworm",
+  "run_id": 41187749759,
+  "job_id": 124498652791,
+  "attempt": 1,
+  "producer_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "verification_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "digest": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+  "candidate": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+    "sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+    "bytes": 6408
+  },
+  "immutable_pre_guard_body": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate-pre-guard-body-ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648.json",
+    "sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+    "bytes": 6408
+  },
+  "targeted_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json",
+    "sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+    "bytes": 18474
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/architecture-binding.json",
+    "sha256": "a69a918ab7029713e226d0604537ddcda811af6922d8a2fcac6b71f2244b30f6",
+    "bytes": 11532
+  },
+  "actual_CLI_controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/controls.json",
+    "sha256": "a9858f2fabdf6277ff354dd9cbf1cd0f27b1d50ecdebd95cb11f9d26dce73317",
+    "bytes": 1587
+  },
+  "frozen_receipt_context_before_c5_profile": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-receipt-context-before-c5-profile.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "actual_job_snapshot": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/publisher-job.json",
+    "sha256": "0dfcfc535384ceff152b3a197e795e0773c9f36e8e1b6112a151071b2487609a",
+    "bytes": 6776
+  },
+  "actual_terminal_receipt": {
+    "file": "/tmp/bex-m188-node18-dbc-stage-observations/terminal-success/receipt.json",
+    "sha256": "0f80319266e58530d4c4ef640e2b97318f3968dc6af93b6f0ad28d394ff467d4",
+    "bytes": 3398
+  },
+  "cryptographic_and_semantic_complete": true,
+  "both_arch_spdx_registry_child_binding": "direct",
+  "version": "18.20.8",
+  "bundled_brotli": "1.1.1",
+  "system_brotli": "1.0.9-2+deb12u1",
+  "all_scan_findings_retained_per_arch": 13347,
+  "critical_findings_retained_per_arch": 228,
+  "target_brotli_findings_per_arch": 0,
+  "donor_security_evidence_only": true,
+  "interim_C_tenantbase_production_adoption_prohibited": true,
+  "current_c5_proof_only_guard_activation_pending": true,
+  "full_final_guard_validation_not_run": true,
+  "artifact_promotion_not_authorized": true,
+  "accepted_count": 10,
+  "Q_G_source_role_or_CI_mutations": false
+}

@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "file": "focused-terminal-status.json",
+      "sha256": "2fb94080efd93c79048055a757fe04e441f635d5209f1501791e5be94b9e0dff",
+      "bytes": 8442
+    },
+    {
+      "file": "job.raw.json",
+      "sha256": "db1be3c7b03c0846d98574b5ba0c1a0d20efae01f64acb7203d5298c3673532a",
+      "bytes": 5322
+    },
+    {
+      "file": "receipt.json",
+      "sha256": "0f80319266e58530d4c4ef640e2b97318f3968dc6af93b6f0ad28d394ff467d4",
+      "bytes": 3398
+    },
+    {
+      "file": "run.raw.json",
+      "sha256": "f3afbbc87a822c8db1423735a117addfa08bf1095278c977db1d88f1d7ad84f3",
+      "bytes": 11459
+    }
+  ],
+  "file_count": 4,
+  "bytes": 28621
+}

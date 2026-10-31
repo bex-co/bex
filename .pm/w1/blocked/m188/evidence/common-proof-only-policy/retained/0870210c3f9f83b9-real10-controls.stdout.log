@@ -1,0 +1,25 @@
+node-14-bullseye REAL FULL PASS
+python-3.7-bullseye REAL FULL PASS
+node-16-bookworm REAL FULL PASS
+python-3.8-bookworm REAL FULL PASS
+python-3.10-bookworm REAL FULL PASS
+python-3.9-bookworm REAL FULL PASS
+ruby-3.0-bullseye REAL FULL PASS
+ruby-3.1-bookworm REAL FULL PASS
+ruby-3.2-bookworm REAL FULL PASS
+node-20-bookworm REAL FULL PASS
+WRITER REAL-incomplete10 REFUSED
+WRITER MODEL-NOT-ACCEPTANCE-complete11-rootflags REFUSED
+CONTROL exact C5 positive PASS
+CONTROL extra_workflow_command REJECTED
+CONTROL missing_scan_attestation REJECTED
+CONTROL changed_current_installer_argument_expansion REJECTED
+CONTROL nonempty_common_base_pin REJECTED
+CONTROL nonempty_perline_supplied_map REJECTED
+CONTROL foreign_common_inventory_metadata_mutation REJECTED
+CONTROL unreviewed_common_factory_pin REJECTED
+CONTROL extra_common_factory_file REJECTED
+CONTROL exact_new_files_on_older_actual_DBC_HEAD REJECTED
+CONTROL new_common_source_not_artifact_role REJECTED
+CONTROL BF_to_DBC_recipe_crossing_still_refused REJECTED
+FINAL_REPORT /tmp/bex-m188-c5-proof-only-proposal/real10-and-proof-only-controls.json 5269ceb71d3c85baa62e98271703c18ea56ded18767633a4b2ecd0568785cc2e CONTROLS 13 PROTECTED 116

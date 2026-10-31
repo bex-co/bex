@@ -1,0 +1,112 @@
+{
+  "schema": "bex.m188.structural-candidate-controls/v1",
+  "at": "2026-10-31T13:32:53.297248+00:00",
+  "passed": true,
+  "positive_actual_full_candidate_guard": true,
+  "positive_candidate": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+    "sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+    "bytes": 6408
+  },
+  "positive_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json",
+    "sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+    "bytes": 18474
+  },
+  "guard": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-frozen-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "receipt_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-receipt-context-FINAL-c5-proof-only.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "active_current_tree_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-current-profile-context-FINAL-c5-proof-only.json",
+    "sha256": "18448ee3ed7a6ccc642f45598a75cde0146ff3919a3b6f39764fb4186aeeacfd",
+    "bytes": 2970
+  },
+  "structural_negative_count": 4,
+  "negatives": [
+    {
+      "name": "missing_successful_raw_bundle_verification",
+      "rejected": true,
+      "actual_error": "raw bundle verification did not succeed",
+      "mutated_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/missing_successful_raw_bundle_verification/proof-MUTATED-negative-only.json",
+        "sha256": "c4faa3e40bd87d540f4c60e316d025ab2081532a4852502db71af3e42f9c746b",
+        "bytes": 18502
+      },
+      "mutated_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/missing_successful_raw_bundle_verification/candidate-MUTATED-negative-only.json",
+        "sha256": "06faf269351153091d9d2055f9d966a6e28838e7e6d9f2a501b0bd35cef2c1d9",
+        "bytes": 6508
+      },
+      "candidate_and_proof_hashes_recomputed_to_exercise_semantic_gate": true,
+      "actual_full_guard_function_called": true,
+      "no_crypto_or_source_check_mocked": true
+    },
+    {
+      "name": "wrong_certificate_workflow_SHA",
+      "rejected": true,
+      "actual_error": "bundle verification command differs from exact strict invocation",
+      "mutated_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/wrong_certificate_workflow_SHA/proof-MUTATED-negative-only.json",
+        "sha256": "a23332d44e3ead7b2c6a4ea02c970c73e2c9653f3c9a8156580b149ceed7a0f8",
+        "bytes": 18493
+      },
+      "mutated_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/wrong_certificate_workflow_SHA/candidate-MUTATED-negative-only.json",
+        "sha256": "eb53b565ca10b4ccf512a97c53e7426b80e7093290dc7c6e49267e041b75ae65",
+        "bytes": 6496
+      },
+      "candidate_and_proof_hashes_recomputed_to_exercise_semantic_gate": true,
+      "actual_full_guard_function_called": true,
+      "no_crypto_or_source_check_mocked": true
+    },
+    {
+      "name": "wrong_digest_authenticated_root_index",
+      "rejected": true,
+      "actual_error": "targeted raw root index mismatch",
+      "mutated_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/wrong_digest_authenticated_root_index/proof-MUTATED-negative-only.json",
+        "sha256": "e55b76ce0b63b0a3329a6a8b753aa731a627c899e555a4bb7c732ba62b9039d6",
+        "bytes": 18553
+      },
+      "mutated_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/wrong_digest_authenticated_root_index/candidate-MUTATED-negative-only.json",
+        "sha256": "4630b1a7f353d192cdf9aa7234facd433cbdfecd3766028b14b84bf585f37d6b",
+        "bytes": 6503
+      },
+      "candidate_and_proof_hashes_recomputed_to_exercise_semantic_gate": true,
+      "actual_full_guard_function_called": true,
+      "no_crypto_or_source_check_mocked": true
+    },
+    {
+      "name": "decoded_signed_statement_tamper",
+      "rejected": true,
+      "actual_error": "actual image signature statement mapping mismatch",
+      "mutated_proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/decoded_signed_statement_tamper/proof-MUTATED-negative-only.json",
+        "sha256": "4c176adbb3eece7e0f3ab4e265554cdb925d64c1b19f3e3d3a2a1ab32f3630f7",
+        "bytes": 18548
+      },
+      "mutated_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-structural-controls-FINAL-c5/decoded_signed_statement_tamper/candidate-MUTATED-negative-only.json",
+        "sha256": "ba5c5f262eb3d6b24c1e0024f9d7845eca134a687bb186dab42660ab73517084",
+        "bytes": 6497
+      },
+      "candidate_and_proof_hashes_recomputed_to_exercise_semantic_gate": true,
+      "actual_full_guard_function_called": true,
+      "no_crypto_or_source_check_mocked": true
+    }
+  ],
+  "actual_cosign_CLI_negative_controls_from_original_proof": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/controls/controls.json",
+    "sha256": "a9858f2fabdf6277ff354dd9cbf1cd0f27b1d50ecdebd95cb11f9d26dce73317"
+  },
+  "all_original_three_CLI_negative_causes_checked_by_full_guard": true,
+  "scope": "One actual full persisted source/crypto/runtime/semantic guard plus four small hash-recomputed structural negatives; no new CLI signing/network/build, proof-body rewriting or acceptance"
+}

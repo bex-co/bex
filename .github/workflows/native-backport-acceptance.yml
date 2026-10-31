@@ -1,6 +1,7 @@
 name: native backport acceptance (build + HTTP)
 
-# Run manually after adopting the verified native supplier pins.
+# Run after qualifying and adopting the common Bookworm foundation and patched
+# runtime donors. Per-language publication alone cannot pass this acceptance.
 on:
   workflow_dispatch: {}
 

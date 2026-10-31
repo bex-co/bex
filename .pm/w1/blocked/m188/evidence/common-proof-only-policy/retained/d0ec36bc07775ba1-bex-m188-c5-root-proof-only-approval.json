@@ -1,0 +1,38 @@
+{
+  "schema": "bex.m188.root-exact-proof-only-checker-approval/v1",
+  "at": "2026-10-31T13:27:10.479394+00:00",
+  "root_review": {
+    "file": "/tmp/bex-m188-c5-root-profile-review.json",
+    "sha256": "4f5abd9417a3f9e215d24b8ea588f5f08949ec5e05b6cb548318a14b1d5a99ab",
+    "bytes": 6072
+  },
+  "independent_review": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-65e085-final-review.json",
+    "sha256": "fbe70230c0c168a5abc7e38f5e556d4f717c37052b61b9d8d213fe7d09b02651",
+    "bytes": 4842
+  },
+  "new_guard": {
+    "file": "/tmp/bex-m188-guard-snapshots/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "old_guard": {
+    "file": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+    "bytes": 92910
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/proposal-final.json",
+    "sha256": "0b97ba2aec9e326314e99dbc08dc6c9d6ef505c5edb0f5569631e5dd60aeab46",
+    "bytes": 3936
+  },
+  "authorization": "Activate only exact65 proof-only current-tree checker. No artifact acceptance, source-role grant, Q mutation, source adoption, common qualification, CI action or actual recovery retirement. Global legacy C writer retired.",
+  "source_adoption_authorized": false,
+  "current_receipt_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-c5-proof-only.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "artifact_source_roles_changed": false,
+  "legacy_C_writer_globally_retired": true
+}

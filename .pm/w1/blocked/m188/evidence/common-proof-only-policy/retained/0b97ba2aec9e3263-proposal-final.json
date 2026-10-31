@@ -1,0 +1,72 @@
+{
+  "schema": "bex.m188.FINAL-INACTIVE-C5-global-proof-only-profile-proposal/v2",
+  "created_at": "2026-10-31T13:19:14.410813+00:00",
+  "source_anchor": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "new_artifact_roles": [],
+  "activated": false,
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/guard.diff",
+    "sha256": "3d4c900b5b3c692f1b25827e46e1781ec3ab806a919de57d476744e2278f7e46",
+    "bytes": 29118
+  },
+  "profile_context": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/profile-context-proposal.json",
+    "sha256": "6d4287fd5ee5023037db0bfe8a0a2713d8cca01c8bce78935418f279b5f02d55",
+    "bytes": 3047
+  },
+  "closed49_source_manifest": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/source-input-manifest.json",
+    "sha256": "058f5a9abbe158c40d61a4d9e67bc92111da9307962397fd0f99182397c194c7",
+    "bytes": 14196
+  },
+  "actual_guard_controls": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-and-proof-only-controls.json",
+    "sha256": "c8a9406500b7230a8b2e48bdfbf8dd3ad20109e619bfd57a49055d9b2b0fca26",
+    "bytes": 32490
+  },
+  "actual_execution": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/execution.json",
+    "sha256": "ea8cde127539aa0b31c1e0ff8413e460933f7f04b5077f2950d625595ddf28ee",
+    "bytes": 1413
+  },
+  "builder": {
+    "file": "/tmp/bex-m188-build-c5-proof-only-v2.py",
+    "sha256": "56a7dcecda2870c6164cf1ce41060fcf897f48b41ec0132d81b6ae38da89f36c",
+    "bytes": 7362
+  },
+  "factory_source_controls_reused_unchanged_inputs": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal/source-contract-controls.json",
+    "sha256": "fccafc78e206b80f8f2aa9b5e37f95fdb02c8e4d9de994613e63cbdd551e76ae",
+    "bytes": 9499
+  },
+  "factory_source_control_harness": {
+    "file": "/tmp/bex-m188-test-c5-source-contracts.py",
+    "sha256": "5a8761a2065296ce685b01842eca349ba98337c86777e6cf6694f51b3c9497af",
+    "bytes": 7509
+  },
+  "source_control_scope": "52 real hermetic source tests, actual full installer apt command no-arg argv equality and quoted extra argument control, exact selected perline WF suffix/reconstruction; no image/apt/commonruntime/ABI acceptance",
+  "user_decision": "Single common Bookworm final foundation; started C publications may finish/evidence only; no intermediate Ctenantbase adoption exception",
+  "global_legacy_C_writer": "Implementation removed; --prepare-dir always refuses even a modeled complete11/root/common flags in C5 or historicalDBC checkout; old1690 remains frozen history only",
+  "common_adoption_writer_implemented": false,
+  "current45_foreign_inventory_preserved": true,
+  "both_production_pins_empty": true,
+  "current_recovery_controls": "Only exact67fc original or021e ownNode18 removal shape; actualhash/shape reported, no temporal retirementauthorization inferred; actualcleanup remains root after acceptance",
+  "strict_source_pinned_producer_verifier_recipe_and_crypto_functions": "byte-identical to active1690",
+  "actual_existing10_fullproof_regression": "PASS",
+  "actual_pending_Node18_fullproof_regression": "PASS under inactive proposal only; not FINAL or accepted",
+  "writer_refusal_cases": 3,
+  "isolated_positive_and_negative_controls": 17,
+  "protected_original_count": 116,
+  "old_c2_profile_conditional_writer_draft": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal/c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py",
+    "sha256": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0",
+    "never_active": true,
+    "superseded_reason": "Root required global Cwriter retirement and exact catalog cleanup compatibility plus full ancestry chain"
+  },
+  "no_repo_Q_G_or_CI_or_actual_cleanup_mutation": true
+}

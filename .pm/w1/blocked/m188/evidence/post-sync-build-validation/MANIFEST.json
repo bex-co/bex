@@ -1,0 +1,18 @@
+{
+  "schema": "bex.m188.post-sync-build-package-validation/v1",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-post-sync-build-validation/receipt.json",
+      "archive": "receipt.json",
+      "bytes": 523,
+      "sha256": "8d64e98438e9ecbdcc7baad0f7264b10849148cf65a8e221fe8b828c95812013"
+    },
+    {
+      "source": "/tmp/bex-m188-post-sync-build-validation/build-package.log",
+      "archive": "build-package.log",
+      "bytes": 63,
+      "sha256": "f560e148ea0bff7931880d0dd42031c7017a0f9ced5059a222813b54f9ffe297"
+    }
+  ],
+  "common_or_live_acceptance": false
+}

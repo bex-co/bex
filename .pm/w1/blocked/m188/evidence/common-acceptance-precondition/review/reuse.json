@@ -1,0 +1,38 @@
+{
+  "schema": "bex.m188.simplify-REUSE-common-consumer-scope-review/v1",
+  "at": "2026-10-31T13:20:33.246149+00:00",
+  "diff": {
+    "file": "/tmp/bex-m188-common-scope-review-x24vsect/full-owned.diff",
+    "sha256": "55bf24a860752004d704c8c89c40de91076a9a4194cf541d3b112c13796fb1f3"
+  },
+  "scope_manifest": {
+    "file": "/tmp/bex-m188-common-scope-review-x24vsect/manifest.json",
+    "sha256": "294c1b562a8dd371708b22c73519786d1bdcf5387be7771ecfae89ceeb851ced"
+  },
+  "all11_owned_file_diff_read": true,
+  "role": "Code reuse only; separate from artifact proof/policy validation",
+  "verdict": "clean",
+  "findings": [],
+  "reuse_evidence": [
+    {
+      "file": "lego/operator/internal/build/nativebackport_test.go",
+      "line": 27,
+      "reason": "One shared domain-specific precondition replaces all three repeated opt-in branches; all three runtime fixture entry points call it before image/probe/build operations"
+    },
+    {
+      "file": "lego/operator/internal/build/nativebackport_test.go",
+      "line": 35,
+      "reason": "Reuses production validateNativeBase rather than adding a parallel immutable-reference parser"
+    },
+    {
+      "file": "lego/operator/internal/build/nativebackport_python_test.go",
+      "line": 28,
+      "reason": "Existing buildResolvedImage/runServing and original system/runtime/HTTP probe fixtures remain reused; Ruby and Node follow same shared precondition"
+    }
+  ],
+  "adjacent_search": "Searched BEX_BUILDKIT_INTEGRATION and require*Native/Integration/Foundation helpers across build tests. Existing unrelated integration skips do not implement this common-specific prerequisite; no useful preexisting helper is duplicated.",
+  "docs_review": "Workflow comment, ADR060 amendment and PM task/dependency updates retain self-contained common-foundation scope; no additional reusable-code extraction warranted.",
+  "test_receipt_reviewed": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-m188-common-acceptance-rmph3amt/receipt.json",
+  "tests_or_Docker_or_API_rerun": false,
+  "edits": false
+}

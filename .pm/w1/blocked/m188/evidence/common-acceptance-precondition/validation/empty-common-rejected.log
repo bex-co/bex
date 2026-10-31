@@ -1,0 +1,12 @@
+=== RUN   TestNativePythonBackportBuildAndStart
+    nativebackport_python_test.go:28: qualify and adopt the common Bookworm foundation and patched runtime donors before backport acceptance
+--- FAIL: TestNativePythonBackportBuildAndStart (0.00s)
+=== RUN   TestNativeRubyBackportBuildAndStart
+    nativebackport_ruby_test.go:28: qualify and adopt the common Bookworm foundation and patched runtime donors before backport acceptance
+--- FAIL: TestNativeRubyBackportBuildAndStart (0.00s)
+=== RUN   TestNativeBackportsBuildAndStart
+    nativebackport_test.go:44: qualify and adopt the common Bookworm foundation and patched runtime donors before backport acceptance
+--- FAIL: TestNativeBackportsBuildAndStart (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.399s
+FAIL

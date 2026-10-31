@@ -1,0 +1,31 @@
+{
+  "schema": "bex.m188.readonly-blocked-planner-handoff/v1",
+  "helper": {
+    "file": "/tmp/bex-m188-blocked-links-o2k5ykiw/plan.py",
+    "sha256": "f8d973ec58e946b0fb4d56e9051b3a9ed39698f69d110933cfc9c13e3dbe04e0"
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-blocked-links-o2k5ykiw/planner.diff",
+    "sha256": "cd307198e2f86bdaf23ade6600c15acc787a9bda0b312afaba5e82c4893f34c8"
+  },
+  "locator_proposal": {
+    "file": "/tmp/bex-m188-blocked-links-o2k5ykiw/evidence-locator.PROPOSAL.md",
+    "sha256": "583f1cd8570e341b87e2dccfd01fb9b5daf11ba72cde6d60f2c7733b7379b721"
+  },
+  "old_helper_unchanged_sha256": "4fa9567be74b46a430e37755d797760a734e58337748dd347829c0d0493051a9",
+  "example_readonly_plan": {
+    "file": "/tmp/bex-m188-blocked-links-o2k5ykiw/EXAMPLE-NOT-FINAL-plan.json",
+    "sha256": "dfcecf2b030d6077d6dba6e3c6e66d703fbbbacc7cd42e8421aa40ecdad0c552",
+    "NOT_FOR_EXECUTION": true,
+    "human_link_changes": 21,
+    "preexisting_missing_links": 196,
+    "post_rewrite_move_caused_human_missing": 0,
+    "protected_evidence_files": 3108
+  },
+  "use": "After root actually records/moves t002 and finishes all human/archival writes, run python3 -B /tmp/bex-m188-blocked-links-o2k5ykiw/plan.py --repo /Users/tianpan/projects/bex --output /tmp/m188-blocked-FINAL-UNIQUE.json . It only writes a plan and protected manifest in NEW /tmp files; review input path/hash snapshot immediately before root performs explicit pm/link/move actions. Regenerate after any change; never apply this example.",
+  "destination": ".pm/w1/blocked/m188",
+  "only_new_done_task": "t002",
+  "t001_and_already_done_files_preserved": true,
+  "t003_to_t008_open_unmet_DoD": true,
+  "no_board_or_proof_or_G_Q_or_CI_mutations": true
+}

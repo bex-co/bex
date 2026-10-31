@@ -1,0 +1,1943 @@
+{
+  "schema": "bex.m188.common-integration-candidate-donor-handoff/v1",
+  "created_at": "2026-10-31T14:03:26.740930+00:00",
+  "language": "zh-CN",
+  "scope": "Candidate runtime donors and targeted security evidence only; common integration and live remediation remain unqualified.",
+  "basis": {
+    "frozen_artifact_receipt": {
+      "file": "/tmp/bex-m188-published-artifacts-complete-donor-only.json",
+      "sha256": "6f9c9dbcfd42a0228aca6c2b027d64002ce141260cda0132df00bb30a1ce2cb1",
+      "bytes": 178559
+    },
+    "completion_record": {
+      "file": "/tmp/bex-m188-artifact-publication-complete-common-pending.json",
+      "sha256": "b3c19d572d4117c1751c647e188cb64c1e09992ae547681a088fc92b75061fae",
+      "bytes": 4102
+    },
+    "actual_post_retirement_full11_replay": {
+      "file": "/tmp/bex-m188-root-actual11-post-retirement-replay.json",
+      "sha256": "27d91f721c1839824c37eef77c81135fa301ac4017125b88cf2a34397726b305",
+      "bytes": 5638
+    },
+    "legacy_C_writer_refusal_and_selector_retirement": "Bound through completion record; no new execution in this handoff."
+  },
+  "status": {
+    "artifact_count": 11,
+    "artifact_publication_complete": true,
+    "candidate_donors_only": true,
+    "common_qualified": false,
+    "common_integration_pending": true,
+    "source_adoption_authorized": false,
+    "legacy_C_tenantbase_adoption_prohibited": true,
+    "live_remediation_complete": false
+  },
+  "donors": [
+    {
+      "tag": "node-14-bullseye",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "runtime": "node",
+      "exact_version": "14.21.3",
+      "donor_distribution": "bullseye",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951138,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951138"
+      },
+      "verification": {
+        "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "run_id": 41029596739,
+        "job_id": 123976756119,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41029596739/job/123976756119",
+        "completed_at": "2026-10-30T09:28:59Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+        "sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+        "bytes": 14985
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+        "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+        "bytes": 12319
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-adoption-guard-validation.json",
+        "sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+        "bytes": 1059
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+        "sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.6&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.6&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "14",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T09:15:24.5677262Z #15 1.112 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T09:15:24.7072123Z #16 0.306 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.0.10",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 5146,
+            "HIGH": 3272,
+            "CRITICAL": 250,
+            "MEDIUM": 9630,
+            "UNKNOWN": 198
+          },
+          "retained_total": 18496,
+          "retained_critical": 250,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-scans.jsonl.gz",
+            "sha256": "1addafdf5684ad6a34c7db67d36c23e08f9ee67c025cb4b182b43df1e14163e6",
+            "bytes": 37057020
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 5145,
+            "HIGH": 3272,
+            "CRITICAL": 250,
+            "MEDIUM": 9630,
+            "UNKNOWN": 198
+          },
+          "retained_total": 18495,
+          "retained_critical": 250,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-scans.jsonl.gz",
+            "sha256": "1addafdf5684ad6a34c7db67d36c23e08f9ee67c025cb4b182b43df1e14163e6",
+            "bytes": 37057020
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "node-16-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "runtime": "node",
+      "exact_version": "16.20.2",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123885951331,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123885951331"
+      },
+      "verification": {
+        "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "run_id": 41029599983,
+        "job_id": 123977276970,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41029599983/job/123977276970",
+        "completed_at": "2026-10-30T09:49:23Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+        "bytes": 20034
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+        "bytes": 10041
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+        "sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+        "bytes": 1005
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "d7620941df3e71fc8260a67dcfc853768b9a505edfbdde952914f4906d5b7e65",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.1&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.1&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.1&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.1&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "16",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-30T09:34:59.1247780Z #17 1.263 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-30T09:35:05.7903047Z #26 0.471 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.0.10",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 4096,
+            "HIGH": 3214,
+            "MEDIUM": 9187,
+            "UNKNOWN": 167,
+            "CRITICAL": 253
+          },
+          "retained_total": 16917,
+          "retained_critical": 253,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "31c175d9c431318c72d09292234623523624dc4a8aac6736f2c2d0daf90187dc",
+            "bytes": 36659595
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 4096,
+            "HIGH": 3214,
+            "MEDIUM": 9187,
+            "UNKNOWN": 167,
+            "CRITICAL": 253
+          },
+          "retained_total": 16917,
+          "retained_critical": 253,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "31c175d9c431318c72d09292234623523624dc4a8aac6736f2c2d0daf90187dc",
+            "bytes": 36659595
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "node-18-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+      "runtime": "node",
+      "exact_version": "18.20.8",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "run_id": 41187749759,
+        "job_id": 124498652791,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41187749759/job/124498652791"
+      },
+      "verification": {
+        "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "run_id": 41187749759,
+        "job_id": 124498652791,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41187749759/job/124498652791",
+        "completed_at": "2026-10-31T13:06:58Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "dbc493ba688c19758c9a489635761419fb2c1af6"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json",
+        "sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+        "bytes": 18474
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+        "sha256": "8dd51f97f98f79078d06f7262d0f0a56fea3157fb5351c5f1ad9a3d592e56efc",
+        "bytes": 7914
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/guard-validation-4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806.json",
+        "sha256": "4e3936619fdad6544749ed6c2fcb98309392139246c2dc4c904769b6c7263806",
+        "bytes": 56378
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/architecture-binding.json",
+        "sha256": "a69a918ab7029713e226d0604537ddcda811af6922d8a2fcac6b71f2244b30f6",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.11&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.11&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.11&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.11&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "18",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-31T12:04:56.7261989Z #15 0.607 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-31T12:04:57.5982692Z #16 0.228 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.1.1",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3815,
+            "HIGH": 2279,
+            "MEDIUM": 6898,
+            "UNKNOWN": 127,
+            "CRITICAL": 228
+          },
+          "retained_total": 13347,
+          "retained_critical": 228,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-scans.jsonl.gz",
+            "sha256": "2b23257ec97d02b955dbf531086f9f429e20c7fa414d4d174a868cc8f3ec3790",
+            "bytes": 25360420
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3815,
+            "HIGH": 2279,
+            "MEDIUM": 6898,
+            "UNKNOWN": 127,
+            "CRITICAL": 228
+          },
+          "retained_total": 13347,
+          "retained_critical": 228,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/verified-scans.jsonl.gz",
+            "sha256": "2b23257ec97d02b955dbf531086f9f429e20c7fa414d4d174a868cc8f3ec3790",
+            "bytes": 25360420
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "node-20-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "runtime": "node",
+      "exact_version": "20.20.2",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123932798235,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235"
+      },
+      "verification": {
+        "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+        "run_id": 41113373387,
+        "job_id": 124263887574,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41113373387/job/124263887574",
+        "completed_at": "2026-10-31T02:57:01Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/proof.json",
+        "sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+        "bytes": 18473
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+        "sha256": "205d65f5c178eb80a29554f6f1468daa2d24ea883952e9b02dbd55b289d6bbbb",
+        "bytes": 10043
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+        "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+        "bytes": 4170
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/architecture-binding.json",
+        "sha256": "da17bc93cc66b6de89841ecd38fe41900e8254ab73ffdcfa0725b76757d3b1f1",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.13&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.13&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.13&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.13&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": true,
+          "verified": true,
+          "distribution": "Debian11 Bullseye",
+          "architectures": [
+            "amd64",
+            "arm64"
+          ],
+          "legacy_header_major": "20",
+          "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+          "source_record_presence_verified": true,
+          "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+          "success_log_lines": {
+            "amd64": "2026-10-31T01:42:25.7496432Z #28 1.228 Patched Node passed the Bullseye companion baseline",
+            "arm64": "2026-10-31T01:52:23.6437693Z #39 0.266 Patched Node passed the Bullseye companion baseline"
+          }
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": "1.1.1",
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3744,
+            "HIGH": 1611,
+            "MEDIUM": 5619,
+            "UNKNOWN": 125,
+            "CRITICAL": 72
+          },
+          "retained_total": 11171,
+          "retained_critical": 72,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/verified-scans.jsonl.gz",
+            "sha256": "371921a9911b813a162a329a351bf5fb8f88dd9ee72c4e256a2394f9fcb8a2fd",
+            "bytes": 20667678
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3744,
+            "HIGH": 1611,
+            "MEDIUM": 5619,
+            "UNKNOWN": 125,
+            "CRITICAL": 72
+          },
+          "retained_total": 11171,
+          "retained_critical": 72,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/verified-scans.jsonl.gz",
+            "sha256": "371921a9911b813a162a329a351bf5fb8f88dd9ee72c4e256a2394f9fcb8a2fd",
+            "bytes": 20667678
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "python-3.7-bullseye",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-python-3.7-bullseye@sha256:41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+      "runtime": "python",
+      "exact_version": "3.7.17",
+      "donor_distribution": "bullseye",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123936350542,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123936350542"
+      },
+      "verification": {
+        "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+        "run_id": 41029603442,
+        "job_id": 123977642604,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41029603442/job/123977642604",
+        "completed_at": "2026-10-30T10:05:27Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "4330878c280bc9748444c8e1e50ff7388df1228a"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+        "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+        "bytes": 19519
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+        "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+        "bytes": 12083
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+        "sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+        "bytes": 1009
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.7&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.7&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.7&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.7&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 5024,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "retained_total": 17655,
+          "retained_critical": 249,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "c0e7d366e26f80b5760bad669967baf5b5ae9264c0ca4be2340fccb1f52d5ace",
+            "bytes": 34980929
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 5023,
+            "HIGH": 3082,
+            "CRITICAL": 249,
+            "MEDIUM": 9102,
+            "UNKNOWN": 198
+          },
+          "retained_total": 17654,
+          "retained_critical": 249,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "c0e7d366e26f80b5760bad669967baf5b5ae9264c0ca4be2340fccb1f52d5ace",
+            "bytes": 34980929
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "python-3.8-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-python-3.8-bookworm@sha256:3dd6306d5fc472b2dd7814635f933c6318d17754cb6fa94bd129801f8eefcd02",
+      "runtime": "python",
+      "exact_version": "3.8.20",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123967323852,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123967323852"
+      },
+      "verification": {
+        "source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+        "run_id": 41033903530,
+        "job_id": 123990866360,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41033903530/job/123990866360",
+        "completed_at": "2026-10-30T10:29:27Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "c8ca76473129d092a8d74ada5e09c5c4705987cd"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+        "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+        "bytes": 19657
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+        "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+        "bytes": 8912
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+        "sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+        "bytes": 2673
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/architecture-binding.json",
+        "sha256": "9c33da49c59249ce9999872e15ca1b8acdb02ca697aba1a76d9885b03ba09d82",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.7&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.7&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.7&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.7&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3900,
+            "HIGH": 2657,
+            "MEDIUM": 7849,
+            "UNKNOWN": 157,
+            "CRITICAL": 229
+          },
+          "retained_total": 14792,
+          "retained_critical": 229,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "d635fb5aeaee5cfdf5be85f4b2d7f2c3ddce87c040d6e18f7cfeb46b3d4bd7b2",
+            "bytes": 29449757
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3900,
+            "HIGH": 2657,
+            "MEDIUM": 7849,
+            "UNKNOWN": 157,
+            "CRITICAL": 229
+          },
+          "retained_total": 14792,
+          "retained_critical": 229,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/verified-scans.jsonl.gz",
+            "sha256": "d635fb5aeaee5cfdf5be85f4b2d7f2c3ddce87c040d6e18f7cfeb46b3d4bd7b2",
+            "bytes": 29449757
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "python-3.9-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-python-3.9-bookworm@sha256:6b4ec79defb88e6646bc0bb6038b2d162761decc930d22aaf812e68098ed609b",
+      "runtime": "python",
+      "exact_version": "3.9.25",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 123982303737,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123982303737"
+      },
+      "verification": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063720126,
+        "job_id": 124090465681,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063720126/job/124090465681",
+        "completed_at": "2026-10-30T15:07:14Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+        "bytes": 17955
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+        "bytes": 8833
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+        "sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+        "bytes": 3034
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "6d445c720f19fbabe955a6373dd8c358e815a9a584a551a3c0c998aa9e27c70c",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.12&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.12&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.12&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.12&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3844,
+            "HIGH": 1988,
+            "MEDIUM": 6471,
+            "UNKNOWN": 151,
+            "CRITICAL": 184
+          },
+          "retained_total": 12638,
+          "retained_critical": 184,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "74b27f0f2b9f352c10b4c9b8e5e75512a562edca5129ffecf3d78c216bb9329f",
+            "bytes": 23157321
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3844,
+            "HIGH": 1988,
+            "MEDIUM": 6471,
+            "UNKNOWN": 151,
+            "CRITICAL": 184
+          },
+          "retained_total": 12638,
+          "retained_critical": 184,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "74b27f0f2b9f352c10b4c9b8e5e75512a562edca5129ffecf3d78c216bb9329f",
+            "bytes": 23157321
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "python-3.10-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-python-3.10-bookworm@sha256:b02a639bada113f1b64024c23d5dce1ecb12b67ef4c75b1650999f2bf1732df9",
+      "runtime": "python",
+      "exact_version": "3.10.22",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+        "run_id": 41000570846,
+        "job_id": 124001233726,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/124001233726"
+      },
+      "verification": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063724329,
+        "job_id": 124091064696,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063724329/job/124091064696",
+        "completed_at": "2026-10-30T15:06:50Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+        "bytes": 17991
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+        "bytes": 8915
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+        "sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+        "bytes": 2561
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.15&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3227,
+            "HIGH": 829,
+            "MEDIUM": 3258,
+            "UNKNOWN": 128,
+            "CRITICAL": 35
+          },
+          "retained_total": 7477,
+          "retained_critical": 35,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "f4e246017da312bdf394feaa4caf88afa74e32e89d0b45aebfca28a7d25dd667",
+            "bytes": 12277801
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3227,
+            "HIGH": 829,
+            "MEDIUM": 3258,
+            "UNKNOWN": 128,
+            "CRITICAL": 35
+          },
+          "retained_total": 7477,
+          "retained_critical": 35,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "f4e246017da312bdf394feaa4caf88afa74e32e89d0b45aebfca28a7d25dd667",
+            "bytes": 12277801
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "ruby-3.0-bullseye",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.0-bullseye@sha256:792ce74757b2928f0af4b8e0bd0cbd244cdbf60c9dd3eea9fb4b96db824076bd",
+      "runtime": "ruby",
+      "exact_version": "3.0.7",
+      "donor_distribution": "bullseye",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063729208,
+        "job_id": 124090806988,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988"
+      },
+      "verification": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063729208,
+        "job_id": 124090806988,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063729208/job/124090806988",
+        "completed_at": "2026-10-30T15:27:16Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+        "bytes": 17881
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+        "bytes": 10417
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+        "sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+        "bytes": 3255
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "3c98bb4e4b050ad9f30e7dabf3e8ca62578a52e5fb5ec0eea880e8be05d86c73",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=amd64&distro=debian-11.9&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1+bex11u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1%2Bbex11u1?arch=arm64&distro=debian-11.9&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 4901,
+            "HIGH": 2741,
+            "CRITICAL": 242,
+            "MEDIUM": 8429,
+            "UNKNOWN": 190
+          },
+          "retained_total": 16503,
+          "retained_critical": 242,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "65e9347a66ae444d931de53bd9ccf5d528273b062e3226950193f4a8b6706129",
+            "bytes": 31849664
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 4900,
+            "HIGH": 2741,
+            "CRITICAL": 242,
+            "MEDIUM": 8429,
+            "UNKNOWN": 190
+          },
+          "retained_total": 16502,
+          "retained_critical": 242,
+          "retained_target_Brotli_findings": [
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "brotli",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli-dev",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            },
+            {
+              "vulnerability_id": "CVE-2026-111497",
+              "package": "libbrotli1",
+              "path": "",
+              "installed_version": "1.0.9-2+deb12u1+bex11u1",
+              "fixed_version": null,
+              "severity": "CRITICAL",
+              "result_type": "debian",
+              "disposition": "Debian security source/package backport: signed SBOM package identity plus malformed-stream and healthy-round-trip probes establish this targeted fix; retain scanner report without ignore rules."
+            }
+          ],
+          "version_only_target_finding_count": 3,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "65e9347a66ae444d931de53bd9ccf5d528273b062e3226950193f4a8b6706129",
+            "bytes": 31849664
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "ruby-3.1-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.1-bookworm@sha256:5f4dc113a6b3e98217f98b98f99824e8245c74b45dff760aaace3983cecd9bfe",
+      "runtime": "ruby",
+      "exact_version": "3.1.7",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063733348,
+        "job_id": 124090808291,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063733348/job/124090808291"
+      },
+      "verification": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063733348,
+        "job_id": 124090808291,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063733348/job/124090808291",
+        "completed_at": "2026-10-30T17:19:32Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "fd358d2010f8b5e2715250d7148a505ba12c1cb6"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+        "sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+        "bytes": 17881
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+        "sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0",
+        "bytes": 7285
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19.json",
+        "sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+        "bytes": 3681
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+        "sha256": "29149ae33ddf088cb44b441dad3f1779a05cb54a16cfa4464f2e8d7d0fce3ef7",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.10&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.10&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.10&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.10&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3848,
+            "HIGH": 2344,
+            "MEDIUM": 7113,
+            "UNKNOWN": 157,
+            "CRITICAL": 228
+          },
+          "retained_total": 13690,
+          "retained_critical": 228,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "e463632bb5911f465ab71e9efe1fd130fa8084d366667164d98abbfefc95bc50",
+            "bytes": 26092495
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3848,
+            "HIGH": 2344,
+            "MEDIUM": 7113,
+            "UNKNOWN": 157,
+            "CRITICAL": 228
+          },
+          "retained_total": 13690,
+          "retained_critical": 228,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/verified-scans.jsonl.gz",
+            "sha256": "e463632bb5911f465ab71e9efe1fd130fa8084d366667164d98abbfefc95bc50",
+            "bytes": 26092495
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    },
+    {
+      "tag": "ruby-3.2-bookworm",
+      "discovery_tag": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm",
+      "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+      "tagged_digest_ref": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+      "runtime": "ruby",
+      "exact_version": "3.2.11",
+      "donor_distribution": "bookworm",
+      "candidate_donor_only": true,
+      "qualified_on_common_Bookworm": false,
+      "producer": {
+        "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+        "run_id": 41063737101,
+        "job_id": 124091095086,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41063737101/job/124091095086"
+      },
+      "verification": {
+        "source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+        "run_id": 41101339222,
+        "job_id": 124219760224,
+        "job_url": "https://github.com/bex-co/bex/actions/runs/41101339222/job/124219760224",
+        "completed_at": "2026-10-31T00:43:47Z",
+        "signature_identity": "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "certificate_workflow_sha": "4462ee030984637bb765ae560b6ffe38c71f3af4"
+      },
+      "proof": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/proof.json",
+        "sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+        "bytes": 17881
+      },
+      "accepted_candidate": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+        "sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+        "bytes": 8851
+      },
+      "accepting_full_guard_record": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+        "sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+        "bytes": 3674
+      },
+      "architecture_binding": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/architecture-binding.json",
+        "sha256": "d94dbf091f3dc68940e02b56197afbe93beef62b795e9eae2ad77c5609dfcbea",
+        "complete": true
+      },
+      "signed_system_Brotli_packages_by_arch": {
+        "amd64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.13&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=amd64&distro=debian-12.13&upstream=brotli"
+          }
+        ],
+        "arm64": [
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli-dev@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.13&upstream=brotli"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1",
+            "purl": "pkg:deb/debian/libbrotli1@1.0.9-2%2Bdeb12u1?arch=arm64&distro=debian-12.13&upstream=brotli"
+          }
+        ]
+      },
+      "runtime_security_scope": {
+        "portable_companion_baseline": {
+          "applicable": false,
+          "reason": "not a legacy Node primary"
+        },
+        "cve": "CVE-2026-111497",
+        "behavioral_gates_verified": true,
+        "architectures": [
+          "amd64",
+          "arm64"
+        ],
+        "permanent_decoder_error": -17,
+        "healthy_round_trip_verified": true,
+        "bundled_brotli_version": null,
+        "scope": "system and platform-bundled decoders; tenant dependencies and other EOL vulnerabilities are not included"
+      },
+      "retained_full_scan_findings": {
+        "amd64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3742,
+            "HIGH": 1694,
+            "MEDIUM": 5823,
+            "UNKNOWN": 125,
+            "CRITICAL": 88
+          },
+          "retained_total": 11472,
+          "retained_critical": 88,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/verified-scans.jsonl.gz",
+            "sha256": "4c44971a120374c804f8949357c9556a0bbed8db260e915807e0a13b136f55a7",
+            "bytes": 20899331
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        },
+        "arm64": {
+          "attestation_verified": true,
+          "retained_severity_counts": {
+            "LOW": 3742,
+            "HIGH": 1694,
+            "MEDIUM": 5823,
+            "UNKNOWN": 125,
+            "CRITICAL": 88
+          },
+          "retained_total": 11472,
+          "retained_critical": 88,
+          "retained_target_Brotli_findings": [],
+          "version_only_target_finding_count": 0,
+          "full_signed_reports_derived_file": {
+            "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/verified-scans.jsonl.gz",
+            "sha256": "4c44971a120374c804f8949357c9556a0bbed8db260e915807e0a13b136f55a7",
+            "bytes": 20899331
+          },
+          "no_ignore_or_zero_other_CVE_claim": true
+        }
+      },
+      "transfer_limit": "This proves the signed donor image and its stated security scope. It does not qualify a generated image on the common foundation or transfer donor OS packages outside /usr/local."
+    }
+  ],
+  "security_summary": {
+    "target": "CVE-2026-111497",
+    "established_scope": "Signed donor system and platform-bundled Brotli decoder checks on amd64+arm64, including permanent malformed-stream error and healthy round trip; retain each exact package/source record and workflow proof.",
+    "not_established": [
+      "Common image system/private-tool decoders",
+      "Generated same-version primary/companion closure on common",
+      "Tenant dependencies",
+      "Absence of other EOL/runtime/system vulnerabilities",
+      "Production rollout or current fleet safety"
+    ],
+    "retained_findings_policy": "All signed full reports and all severities remain. Bullseye Node14/Python3.7/Ruby3.0 each retain three target version-only findings per architecture with explicit backport dispositions, not ignore rules. No zero-other-CVE claim."
+  },
+  "current_gate": {
+    "owner": "worker8",
+    "task": "w8/m91/t007",
+    "task_file": {
+      "file": "/Users/tianpan/projects/bex/.pm/w8/m91/t007.md",
+      "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "bytes": 2197
+    },
+    "blocking_condition": "Common Bookworm foundation and legacy same-version generated-image integration are unimplemented/unqualified; Node18 CI and all eleven donor artifact reviews are complete.",
+    "root_reported_remote_observation": {
+      "approximately_at": "2026-10-31T13:45:00Z",
+      "origin_main_short_sha": "9a3366f7e",
+      "source_of_fact": "ROOT read-only remote inspection supplied to this child; child performed no API/remote probe",
+      "reported_state": "t007 in-progress; three acceptance criteria unchecked; nativeCommonBase unset/nativeSuppliedBases empty; suite guard retained. Root will refresh again at park/ship."
+    },
+    "local_source_constraints": [
+      {
+        "file": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebases.go",
+        "sha256": "97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a",
+        "bytes": 9582
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/deploy/native-common/Dockerfile",
+        "sha256": "892243ea603a5fa5bf2cede1b2248dfa84c902c98832cc0ee3ee06adbe58d21e",
+        "bytes": 1937
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/deploy/native-common/README.md",
+        "sha256": "fe03e5dc7f810e7e8eded94209127fb08738923ac48a03ef063993ee8f67dbaf",
+        "bytes": 3931
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/deploy/native-base/install.sh",
+        "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+        "bytes": 2516
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/.pm/w8/m91/t007.md",
+        "sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+        "bytes": 2197
+      }
+    ],
+    "suite_guard": {
+      "file": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativebases.go",
+      "lines": "215-218",
+      "contract": "Require donor /usr/lib/os-release VERSION_CODENAME to match common /etc/os-release before copying /usr/local and running offline ldconfig.",
+      "do_not_weaken": true,
+      "source_constraint_not_executed_common_failure": true,
+      "bullseye_candidates": [
+        "node-14-bullseye",
+        "python-3.7-bullseye",
+        "ruby-3.0-bullseye"
+      ],
+      "same_suite_is_not_sufficient_qualification": true
+    },
+    "evidence_required_before_gate_clears": [
+      {
+        "area": "Common artifact authority and content",
+        "requirement": "An actual reviewed signed immutable multiarch common Bookworm digest with provenance, both architecture SBOMs and retained full scan reports. Bind actual native-common caller AND reusable native-base workflow runs/inputs/source/observed certificate identity and digest subjects; do not guess the identity or reuse per-line source/identity aliases. c5 is current-tree compatibility only, never m188 artifact producer/verifier admission."
+      },
+      {
+        "area": "Common-owned decoders and tools",
+        "requirement": "Prove common system Brotli and each platform/private Node decoder (including /opt/bex/native-node-tools/node) fixed on both architectures. Donor Debian libraries under /usr/lib and private tools under /opt do not arrive via the primary /usr/local copy; donor package attestations cannot certify common packages."
+      },
+      {
+        "area": "Exact primary versions, Node headers and ABI",
+        "requirement": "Keep all eleven exact selected versions and existing default/version-date semantics. Qualify selected Node executable, matching development headers/module ABI and actual generated build/start/native-extension behavior on amd64+arm64. Existing Bullseye companion portability proof is donor scope, not Bookworm common qualification."
+      },
+      {
+        "area": "Legacy Python/Ruby runtime closures",
+        "requirement": "Provide compatible same-version donors/builds with required runtime/development libraries, SSL/zlib and actual extension/import/load behavior; prove loader/SONAME resolution and primary/environment/linker/offline-Python-hook/companion/authored-command order in generated common images. Do not copy an old tree and assume its external libraries travel."
+      },
+      {
+        "area": "Poetry and Node20 companions",
+        "requirement": "Execute the retained Python3.7/Poetry1.5.1 and Ruby3.0 programs with the exact Node20.20.2 companion and working decoders on both architectures, preserving all original programs/data/build/start/HTTP assertions. Keep actual common, primary, companion, platform and image-config identity evidence."
+      }
+    ],
+    "forbidden_shortcuts": [
+      "Runtime downgrades",
+      "New unsupported-version errors for retained valid choices",
+      "Tenant apt/network patch-install steps",
+      "New hosts/builders/cloud resources",
+      "Weakening or bypassing the Debian suite guard",
+      "Treating source preparation, a task checkbox or publication alone as generated/common qualification",
+      "Interim per-language C tenant FROM adoption",
+      "Guessing or aliasing future common signing identity/source"
+    ]
+  },
+  "worker1_after_actual_gate": [
+    {
+      "step": 1,
+      "owner": "worker1 with worker8 qualification evidence",
+      "action": "Review and jointly adopt the qualified common foundation plus patched exact primary/runtime/companion refs through the common path. Never use a per-language C image as tenant FROM. Preserve all current and foreign inventory entries and exact/default/fallback semantics."
+    },
+    {
+      "step": 2,
+      "owner": "worker1",
+      "action": "Review a NEW common-aware collector and execute the six actual existing-CI build/HTTP fixtures only after qualified integration. Bind common/primary/companion/source/platform/config identities; retain frozen original programs/data/commands. The old collector-v2 and eleven-pin C adoption plans are frozen history and MUST NOT execute."
+    },
+    {
+      "step": 3,
+      "owner": "worker1",
+      "action": "Bind the actual adopted source to its completed signed deploy job and immutable operator image; use reviewed Ready-v2 checks on actual current Pods/template/self-image/environment routing and a NEW rollout SINCE. No historical operator/source/Ready result substitutes."
+    },
+    {
+      "step": 4,
+      "owner": "worker1",
+      "action": "After actual expected-image Ready, run a fresh full census-v2 against that exact deployed source, including Apps created after the old census, current UID-associated unlabeled/scale-zero/CronJob workloads and primary+companion versions. Resolve the five retained rows below individually; no Pod, canceled/failed phase or old config declaration alone proves safety."
+    },
+    {
+      "step": 5,
+      "owner": "worker1",
+      "action": "For any freshly confirmed affected service, review the exact release/commit/image/runtime plan and perform only the needed authorized rebuild, then verify each outcome. Record exclusions, skipped/failed cases and unresolved rows explicitly; zero targets requires fresh evidence with no unresolved eligible row."
+    }
+  ],
+  "future_tool_pointers_not_execution": {
+    "operator_ready_v2": {
+      "file": "/tmp/bex-m188-final-operator-ready-v2.py",
+      "sha256": "7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc",
+      "bytes": 8435
+    },
+    "census_v2": {
+      "file": "/tmp/bex-m188-final-live-census-v2.py",
+      "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+      "bytes": 10356
+    },
+    "legacy_fixture_collector_v2": {
+      "file": "/tmp/bex-m188-collect-native-acceptance-v2.py",
+      "status": "FROZEN HISTORY; superseded for common integration; do not execute"
+    },
+    "recheck_tools_against_actual_future_adopted_source": true
+  },
+  "historical_fleet_limits": {
+    "initial_strict_five_row_receipt": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/priority-census-owner-uid-refresh/initial-strict-priority/assessment-receipt.json",
+      "sha256": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956",
+      "bytes": 5251
+    },
+    "supplemental_classification": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/priority-census-owner-uid-refresh/supplemental-classification/supplemental-findings.json",
+      "sha256": "cd99f5c2f11f5d81b318fd3ee5b9003b3331e556bf027cb6d74fea0fe7359d92",
+      "bytes": 13877
+    },
+    "latest_historical_cloneix_config_addendum": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/priority-census-owner-uid-refresh/supplemental-classification/authenticated-image-addendum.json",
+      "sha256": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213",
+      "bytes": 5183
+    },
+    "no_historical_census_as_current_common_or_live_acceptance": true,
+    "five_fresh_row_conclusions_required": [
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+        "historical_only": true,
+        "fresh_post_Ready_conclusion_required": true,
+        "historical_reason": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "required_fresh_conclusion": "Bind current App UID, actual serving immutable image/revision, primary/companion runtime versions and build-origin evidence. Preserve any customer-Docker origin inference as inference; never infer decoder safety or a served commit from a desired/status-only image."
+      },
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+        "historical_only": true,
+        "fresh_post_Ready_conclusion_required": true,
+        "historical_reason": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "required_fresh_conclusion": "Bind current App UID, actual serving immutable image/revision, primary/companion runtime versions and build-origin evidence. Preserve any customer-Docker origin inference as inference; never infer decoder safety or a served commit from a desired/status-only image."
+      },
+      {
+        "namespace": "tea-d98210cbbpdc73dcrkvg",
+        "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+        "historical_only": true,
+        "fresh_post_Ready_conclusion_required": true,
+        "historical_reason": [
+          "Legacy auto strategy requires actual serving-artifact/build-strategy review; auto alone proves neither CNB nor Dockerfile."
+        ],
+        "required_fresh_conclusion": "Bind current App UID, actual serving immutable image/revision, primary/companion runtime versions and build-origin evidence. Preserve any customer-Docker origin inference as inference; never infer decoder safety or a served commit from a desired/status-only image."
+      },
+      {
+        "namespace": "tea-da1eg9gbiuuc73bd8uag",
+        "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+        "historical_only": true,
+        "fresh_post_Ready_conclusion_required": true,
+        "historical_reason": [
+          "No running pod or active-image pointer; establish current active-release/no-live-deploy evidence. Failed/canceled phase alone is not exclusion."
+        ],
+        "required_fresh_conclusion": "Establish current active release/artifact and UID-owned workloads or a concrete no-live-deploy conclusion. Failed phase/no Pod alone is not exclusion or patch proof; resolve actual selected runtime if a new release exists."
+      },
+      {
+        "namespace": "tea-db3nth8gu8gc73cl11t0",
+        "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+        "historical_only": true,
+        "fresh_post_Ready_conclusion_required": true,
+        "historical_reason": [
+          "No running pod; resolve actual active status/CronJob/scale-zero template immutable image and primary+companion versions via existing release/registry metadata. No-pod is not safe."
+        ],
+        "required_fresh_conclusion": "Resolve current UID-owned scale-zero/canceled/suspended retained release image and requested resume/rebuild version. Historical gen3 config only declared Node26.10.0; it was not an executed runtime/healthy-serving proof and says nothing conclusive about future source/secret version signals."
+      }
+    ],
+    "all_new_Apps_in_scope_of_fresh_full_census": true
+  },
+  "user_action": {
+    "no_repeat_architecture_or_maintenance_decision": true,
+    "no_manual_certificate_delivery_requested": true,
+    "suggested_priority": "先让 $loopx w8 推进 m91/t007 的实际公共底与同版本兼容证据；证据合格后 $loopx w1 继续接入与真实验收。",
+    "no_new_infrastructure_requested": true
+  },
+  "handoff_creation_effects": {
+    "repository_writes": 0,
+    "API_calls": 0,
+    "CI_dispatch_cancel_rerun": 0,
+    "source_pin_or_inventory_changes": 0,
+    "artifact_proof_or_candidate_changes": 0
+  }
+}

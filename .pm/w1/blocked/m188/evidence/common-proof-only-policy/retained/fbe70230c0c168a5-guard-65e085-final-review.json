@@ -1,0 +1,95 @@
+{
+  "schema": "bex.m188.independent-FINAL-65e085-proof-only-review/v1",
+  "at": "2026-10-31T13:22:54.779134+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+    "sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+    "bytes": 108183
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/guard.diff",
+    "sha256": "3d4c900b5b3c692f1b25827e46e1781ec3ab806a919de57d476744e2278f7e46",
+    "bytes": 29118
+  },
+  "verdict": "APPROVE exact65e085 source and demonstrated controls for activation as proof-only checker. This review does not activate it, accept Node18/aggregate, retire recovery entry, adopt a common/Ctenantbase or satisfy any live-remediation DoD.",
+  "findings": [],
+  "reviewed_source_and_decision": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/review.json",
+    "sha256": "5c67fcf91483ea68e630a759464c2797f4fd4a68b57eb65e71a552731a504908",
+    "bytes": 12085
+  },
+  "catalog_variant_review": {
+    "file": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/catalog-retirement-review.json",
+    "sha256": "3019aa583b25dbbdbbe07bb28b4b5a615295d7996d0e7aeaa69d8195c37c5052",
+    "bytes": 1291
+  },
+  "source_boundary_checks": {
+    "all_prior_global_roles_and_runtime_restrictions_unchanged": true,
+    "full_validate_candidate_v2_source_binding_crypto_source_unchanged": true,
+    "other_existing_functions_full_source_unchanged": 23,
+    "exact49_c5_profile_hashes_match_independent_manifest": true,
+    "941_to_2cc_to_c5_to_HEAD_explicit": true,
+    "both_common_and_supplied_pins_empty_and_45_inventory_required": true,
+    "four_unique_c5_plus_two_prior_reversals_exact_canonicalDA0": true,
+    "only_two_whole_current_catalog_controls": [
+      "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+      "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e"
+    ],
+    "source_pinned_verifier_catalogs_unaffected": true,
+    "global_Cwriter_body_removed_all_profiles_and_every_plan_proof_only": true
+  },
+  "actual_execution_review": {
+    "proposal_final": {
+      "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/proposal-final.json",
+      "sha256": "0b97ba2aec9e326314e99dbc08dc6c9d6ef505c5edb0f5569631e5dd60aeab46",
+      "bytes": 3936
+    },
+    "execution": {
+      "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/execution.json",
+      "sha256": "ea8cde127539aa0b31c1e0ff8413e460933f7f04b5077f2950d625595ddf28ee",
+      "bytes": 1413
+    },
+    "harness": {
+      "file": "/tmp/bex-m188-test-c5-proof-only-v2.py",
+      "sha256": "327bb65ff9e3fd3992a86a7a1e3f69a852ffccf6ec5f02e6b173ab165db1420a",
+      "bytes": 15207
+    },
+    "results": {
+      "file": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-and-proof-only-controls.json",
+      "sha256": "c8a9406500b7230a8b2e48bdfbf8dd3ad20109e619bfd57a49055d9b2b0fca26",
+      "bytes": 32490
+    },
+    "stdout_stderr_hashes_verified": true,
+    "harness_full_source_read": true,
+    "actual_existing10_full_proof_guards_pass": 10,
+    "real_pending_Node18_full_proof_regression_pass": true,
+    "Node18_not_FINAL_or_accepted_by_this_receipt": true,
+    "isolated_controls_pass": 17,
+    "writer_refusal_cases": {
+      "incomplete_actual10": true,
+      "modeled_complete11_root_common_flags": true,
+      "actual_historical_DBC_checkout_main_modeled_complete11": true
+    },
+    "modeled11_not_artifact_proof_or_acceptance": true,
+    "protected116_current_hashes_independently_rechecked": true,
+    "pending_Node18_candidate_and_proof_current_hashes_rechecked": true,
+    "source_factory_controls_reused": {
+      "receipt": {
+        "file": "/tmp/bex-m188-c5-proof-only-proposal/source-contract-controls.json",
+        "sha256": "fccafc78e206b80f8f2aa9b5e37f95fdb02c8e4d9de994613e63cbdd551e76ae",
+        "bytes": 9499
+      },
+      "harness": {
+        "file": "/tmp/bex-m188-test-c5-source-contracts.py",
+        "sha256": "5a8761a2065296ce685b01842eca349ba98337c86777e6cf6694f51b3c9497af",
+        "bytes": 7509
+      },
+      "tests": 52,
+      "whole49_input_tree_rechecked": true,
+      "all_recorded_testlog_hashes_and_pass_counts_verified": true,
+      "noarg_shell_and_fullgate_suffix_controls_read": true
+    }
+  },
+  "limits": "Existing actual crypto command/bundle outputs are replayed through unchanged full validator; no freshcosign/TUF/network replay by this reviewer. Source52 controls are controlled-loopback/stubs and no commonimage/ABI/legacy/OTP/hosted proof. No suite reruns, CI, Docker, production, guard/Q/board/repo/frozenproof writes. Sourcecopied retirement021e shape is not temporal cleanup authorization.",
+  "mutation": "Only NEWowned/tmp finalreview receipt. Active guard1690 andQEDA were among116 unchanged protected originals at this review."
+}

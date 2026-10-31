@@ -1,0 +1,2309 @@
+{
+  "schema": "bex.m188.common-proof-only-policy-portable-locators/v1",
+  "local_records": [
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/native-base-recovery.json",
+      "expected_original_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "archive_path": "retained/67fc5ddb290f0cdf-native-base-recovery.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/scripts/native-oci-stage.py",
+      "expected_original_sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "archive_path": "retained/891d6581c29c8d3d-native-oci-stage.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/scripts/test_native_oci_stage.py",
+      "expected_original_sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "archive_path": "retained/d1e7f01511863391-test_native_oci_stage.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/scripts/test_native_oci_workflow.py",
+      "expected_original_sha256": "1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0",
+      "archive_path": "retained/1844c03df6ef8070-test_native_oci_workflow.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/workflows/native-base-image.yml",
+      "expected_original_sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2",
+      "archive_path": "retained/8818d2772520078c-native-base-image.yml",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/.github/workflows/native-common-image.yml",
+      "expected_original_sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5",
+      "archive_path": "retained/64e94c6cad042819-native-common-image.yml",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/Dockerfile",
+      "expected_original_sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "archive_path": "retained/edd59a2ddd7f3b7e-Dockerfile",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/README.md",
+      "expected_original_sha256": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1",
+      "archive_path": "retained/86d64ef2e4d4fe9d-README.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/bex-native-python-tools",
+      "expected_original_sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "archive_path": "retained/931e2ed7afe93968-bex-native-python-tools",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/check-brotli.py",
+      "expected_original_sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "archive_path": "retained/9daf1e2193245a27-check-brotli.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/check-primary-python.py",
+      "expected_original_sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "archive_path": "retained/b2333b1944698ee7-check-primary-python.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/check-tools.py",
+      "expected_original_sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "archive_path": "retained/cd4b2cde2a8325f4-check-tools.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/check.Dockerfile",
+      "expected_original_sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "archive_path": "retained/866cd357970d4357-check.Dockerfile",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/fetch-python-tools.py",
+      "expected_original_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "archive_path": "retained/eccbb9cb2befa6b3-fetch-python-tools.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/fetch_pgdg_key_test.py",
+      "expected_original_sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "archive_path": "retained/562af6c74af5e071-fetch_pgdg_key_test.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/fetch_python_tools_test.py",
+      "expected_original_sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "archive_path": "retained/f27a4bbd7491a85b-fetch_python_tools_test.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/install-python-tools.py",
+      "expected_original_sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "archive_path": "retained/718230b4678fe451-install-python-tools.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/install.sh",
+      "expected_original_sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "archive_path": "retained/23ee0d1507d5bcec-install.sh",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/matrix.py",
+      "expected_original_sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "archive_path": "retained/ad83d94a0a7c565c-matrix.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/matrix_test.py",
+      "expected_original_sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "archive_path": "retained/357458c96255de97-matrix_test.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/node-brotli/README.md",
+      "expected_original_sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "archive_path": "retained/b37da28020daef7a-README.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/node-brotli/check.js",
+      "expected_original_sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "archive_path": "retained/ef25b3362fb17e97-check.js",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/node-brotli/patch.sh",
+      "expected_original_sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "archive_path": "retained/d614c1ecb0c1c611-patch.sh",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/package-lock.json",
+      "expected_original_sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "archive_path": "retained/8e94bcf0a4cec803-package-lock.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/package.json",
+      "expected_original_sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "archive_path": "retained/3a9e094241a1fca4-package.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/patch-system-brotli.sh",
+      "expected_original_sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "archive_path": "retained/8b1bab19a877d177-patch-system-brotli.sh",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/python-tools.json",
+      "expected_original_sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "archive_path": "retained/a7af6bfaa41c98de-python-tools.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/testdata/archive.dump.b64",
+      "expected_original_sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "archive_path": "retained/5f2c6098b9b6b796-archive.dump.b64",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/testdata/archive.sql",
+      "expected_original_sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "archive_path": "retained/5a3165fae984ca77-archive.sql",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/testdata/rows.txt",
+      "expected_original_sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "archive_path": "retained/504f196d8a6cbc57-rows.txt",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/tsc",
+      "expected_original_sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "archive_path": "retained/92b8ebd1f88da573-tsc",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-base/webpack",
+      "expected_original_sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "archive_path": "retained/fc36859deda37230-webpack",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/Dockerfile",
+      "expected_original_sha256": "892243ea603a5fa5bf2cede1b2248dfa84c902c98832cc0ee3ee06adbe58d21e",
+      "archive_path": "retained/892243ea603a5fa5-Dockerfile",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/Dockerfile.dockerignore",
+      "expected_original_sha256": "0c961bdd8d555f115d5663e1972b6b69ae73b5a03ff7dabf17ee74d2dd4ef552",
+      "archive_path": "retained/0c961bdd8d555f11-Dockerfile.dockerignore",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/README.md",
+      "expected_original_sha256": "fe03e5dc7f810e7e8eded94209127fb08738923ac48a03ef063993ee8f67dbaf",
+      "archive_path": "retained/fe03e5dc7f810e7e-README.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/check-common.py",
+      "expected_original_sha256": "ea9271091cc48c14ec9d77e471601b862eafcd0a09d13621dd8ea444c5bd282f",
+      "archive_path": "retained/ea9271091cc48c14-check-common.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/check-runtime.py",
+      "expected_original_sha256": "7913748f1b9a52b57653efb4ac3efe6974c8151427a9145fa9544ec3c01c000f",
+      "archive_path": "retained/7913748f1b9a52b5-check-runtime.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/common_test.py",
+      "expected_original_sha256": "a83f4a2046f86174c6597005f13fe40b2804499bddbe7a38832a8bd1a6d1df10",
+      "archive_path": "retained/a83f4a2046f86174-common_test.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/matrix.py",
+      "expected_original_sha256": "0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c",
+      "archive_path": "retained/0254b2efab94b82d-matrix.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/deploy/native-common/upstream.json",
+      "expected_original_sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "archive_path": "retained/fc2828c54271282b-upstream.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/native.go",
+      "expected_original_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "archive_path": "retained/9ca4584da9af225d-native.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/nativebases.go",
+      "expected_original_sha256": "97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a",
+      "archive_path": "retained/97a30d61ca667e1d-nativebases.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/nativecommon_test.go",
+      "expected_original_sha256": "e33a80a5c1cb275160c97cf6b62e385a931973a742ea72e6c94d6a8535aca95c",
+      "archive_path": "retained/e33a80a5c1cb2751-nativecommon_test.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/nativeresolve.go",
+      "expected_original_sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "archive_path": "retained/6ca5d2bf04bd7461-nativeresolve.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "expected_original_sha256": "01ba707d411140520fa3e18693882c95d94d2257e6e1e257610225705be79d13",
+      "archive_path": "retained/01ba707d41114052-nativeutility_integration_test.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/nativeversion.go",
+      "expected_original_sha256": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "archive_path": "retained/70816ec45450abc0-nativeversion.go",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/lego/operator/internal/build/toolchain-freshness.json",
+      "expected_original_sha256": "6f2e510380e1cb6b258c2eced486f1b8c90ae16be09116930c4a4ea704cc2bbd",
+      "archive_path": "retained/6f2e510380e1cb6b-toolchain-freshness.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/scripts/build-toolchain-freshness.test.sh",
+      "expected_original_sha256": "2cf0039b055d44178eeb4a7043d3448090153c3ab99156b275fdb59173c81f4c",
+      "archive_path": "retained/2cf0039b055d4417-build-toolchain-freshness.test.sh",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source/scripts/lib/toolchain-freshness.py",
+      "expected_original_sha256": "02fadcf55da0c580a5e679b2157a83be0e44edd7380f379b9ce333bf2979371c",
+      "archive_path": "retained/02fadcf55da0c580-toolchain-freshness.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "git:c5ee618ce95681e09f0201dd682b66270e44f357:.pm/w8/m91/README.md",
+      "expected_original_sha256": "4eee3c59a1da02808ef8292e9932324895d49b8721f5f9271c9ea40574d1f4e7",
+      "archive_path": "retained/4eee3c59a1da0280-README.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "git:c5ee618ce95681e09f0201dd682b66270e44f357:.pm/w8/m91/t007.md",
+      "expected_original_sha256": "faa68b50283ff964602beed17f76b318f15f091feb031ff1c2d1585346a38e41",
+      "archive_path": "retained/faa68b50283ff964-t007.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "git:c5ee618ce95681e09f0201dd682b66270e44f357:.pm/w1/m188/README.md",
+      "expected_original_sha256": "463275708323dbb3feec75eb1a786641c2870bf57620820122c0baaed5b2f8f8",
+      "archive_path": "retained/463275708323dbb3-README.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "git:c5ee618ce95681e09f0201dd682b66270e44f357:.pm/w1/done/143.md",
+      "expected_original_sha256": "140d16e61aa0f5e07eddb4146130dc7bc5d1719736de15b96c2c114e14c3b3d1",
+      "archive_path": "retained/140d16e61aa0f5e0-143.md",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/MODEL-NOT-ACCEPTANCE-complete11-rootflags-plan.json",
+      "expected_original_sha256": "2aa39b29d1883600f1e9a2c3fc94bbbc1e309dad48f147ddaad532bc39b5baa9",
+      "archive_path": "retained/2aa39b29d1883600-MODEL-NOT-ACCEPTANCE-complete11-rootflags-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/MODEL-NOT-ACCEPTANCE-complete11-rootflags.stderr.log",
+      "expected_original_sha256": "89e2d3b4db0af9d8097644568aa40a89336e5c4d438b7d3b8b2cb76a1137b6b8",
+      "archive_path": "retained/89e2d3b4db0af9d8-MODEL-NOT-ACCEPTANCE-complete11-rootflags.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/MODEL-NOT-ACCEPTANCE-complete11-rootflags.stdout.log",
+      "expected_original_sha256": "acb3bdb86d976bbcf02542a1cac002432d74ce0437552c83c3bc7086a20bb0e6",
+      "archive_path": "retained/acb3bdb86d976bbc-MODEL-NOT-ACCEPTANCE-complete11-rootflags.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/MODEL-ONLY-NOT-VERIFIED-complete11-rootflags.json",
+      "expected_original_sha256": "fa2e7d16a406bba705499e4faf8deda050436044e114fae59402fa2ebf2bc096",
+      "archive_path": "retained/fa2e7d16a406bba7-MODEL-ONLY-NOT-VERIFIED-complete11-rootflags.json.gz",
+      "encoding": "gzip"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/Node18-INACTIVE-preactivation-regression-NOT-FINAL.json",
+      "expected_original_sha256": "bd36018388aa0b435d723c47b12c15e5cec7e8465befdac1ee1a93bf39133dbc",
+      "archive_path": "retained/bd36018388aa0b43-Node18-INACTIVE-preactivation-regression-NOT-FINAL.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stderr.log",
+      "expected_original_sha256": "99a4429322642a4963f79e8ab29bb6091bdc8a2695474b739ad798e9a4ea7fb4",
+      "archive_path": "retained/99a4429322642a49-OCI-source-units.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/OCI-source-units.stdout.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/REAL-incomplete10-plan.json",
+      "expected_original_sha256": "708401acdb7cd3cc95a869fe2e174d0ed5a27e4978dee83b6fbc5db8c06eb81e",
+      "archive_path": "retained/708401acdb7cd3cc-REAL-incomplete10-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/REAL-incomplete10.stderr.log",
+      "expected_original_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "archive_path": "retained/fb4539e0df58d543-REAL-incomplete10.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/REAL-incomplete10.stdout.log",
+      "expected_original_sha256": "0ddd275a579bc05ff6f487d87717ac909bb3b071b226453149bfad5b23be0adc",
+      "archive_path": "retained/0ddd275a579bc05f-REAL-incomplete10.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py",
+      "expected_original_sha256": "c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0",
+      "archive_path": "retained/c2cfa30cda352ecf-c2cfa30cda352ecfc8188ec8e9142827fd57f82e36acce3cf9f20bb381134ab0.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/guard.diff",
+      "expected_original_sha256": "0401a035abd014a226f07c17400dd0ccef85b3b7cd77c6170fd1be2ea8d36e3c",
+      "archive_path": "retained/0401a035abd014a2-guard.diff",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stderr.log",
+      "expected_original_sha256": "b7a7f63319e5c72a540d583dfef79f5cd6961179d593cf5034d5b2d065787731",
+      "archive_path": "retained/b7a7f63319e5c72a-native-base-units.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/native-base-units.stdout.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stderr.log",
+      "expected_original_sha256": "a8d743b03243c0ccb9b078c4fcba8a98bbcaf391afc9b95130525dd514e88330",
+      "archive_path": "retained/a8d743b03243c0cc-native-common-units.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/native-common-units.stdout.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/profile-context-proposal.json",
+      "expected_original_sha256": "8d207c4a95239b96bede50f07585ace79b292fcdf23340f12886e0e6b9173d17",
+      "archive_path": "retained/8d207c4a95239b96-profile-context-proposal.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-PROOF-ONLY-plan.json",
+      "expected_original_sha256": "4acad6f6d99fe9e8400d6abee3db8a7432927cbc0e5b80322bdd84dfa97b4dcc",
+      "archive_path": "retained/4acad6f6d99fe9e8-real10-PROOF-ONLY-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-and-proof-only-controls.json",
+      "expected_original_sha256": "5269ceb71d3c85baa62e98271703c18ea56ded18767633a4b2ecd0568785cc2e",
+      "archive_path": "retained/5269ceb71d3c85ba-real10-and-proof-only-controls.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-controls.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-controls.stdout.log",
+      "expected_original_sha256": "0870210c3f9f83b9758a2650b7f3b54ec3948435f19a9ff3cafac890eafac0ee",
+      "archive_path": "retained/0870210c3f9f83b9-real10-controls.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-plan.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/real10-plan.stdout.log",
+      "expected_original_sha256": "393c7b992628fc2b12637105650a968be291b961385bdc9582c52c8bbf9586d2",
+      "archive_path": "retained/393c7b992628fc2b-real10-plan.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/source-contract-controls.json",
+      "expected_original_sha256": "fccafc78e206b80f8f2aa9b5e37f95fdb02c8e4d9de994613e63cbdd551e76ae",
+      "archive_path": "retained/fccafc78e206b80f-source-contract-controls.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/source-controls.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/source-controls.stdout.log",
+      "expected_original_sha256": "e6331d98a0f1711f98f09674d4b1666b229a1c2644209943427605fc9b36ed19",
+      "archive_path": "retained/e6331d98a0f1711f-source-controls.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal/source-input-manifest.json",
+      "expected_original_sha256": "058f5a9abbe158c40d61a4d9e67bc92111da9307962397fd0f99182397c194c7",
+      "archive_path": "retained/058f5a9abbe158c4-source-input-manifest.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+      "expected_original_sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+      "archive_path": "retained/65e08564d837b0cd-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-NOT-ACCEPTANCE-complete11-rootflags-plan.json",
+      "expected_original_sha256": "5bbd26add45828332a000fe4a15c163e7e75c79f7022196b4efc3ee93d2ca619",
+      "archive_path": "retained/5bbd26add4582833-MODEL-NOT-ACCEPTANCE-complete11-rootflags-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-NOT-ACCEPTANCE-complete11-rootflags.stderr.log",
+      "expected_original_sha256": "8f9e9503e2662f1807c8123831adef7bf82fd4e7c2571ba6d8f66fdf20e90077",
+      "archive_path": "retained/8f9e9503e2662f18-MODEL-NOT-ACCEPTANCE-complete11-rootflags.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-NOT-ACCEPTANCE-complete11-rootflags.stdout.log",
+      "expected_original_sha256": "2341a852ebbf5abec273fe8498917fea6d9acb098751c78fc889768e53314497",
+      "archive_path": "retained/2341a852ebbf5abe-MODEL-NOT-ACCEPTANCE-complete11-rootflags.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-ONLY-NOT-VERIFIED-complete11-rootflags.json",
+      "expected_original_sha256": "fa2e7d16a406bba705499e4faf8deda050436044e114fae59402fa2ebf2bc096",
+      "archive_path": "retained/fa2e7d16a406bba7-MODEL-ONLY-NOT-VERIFIED-complete11-rootflags.json.gz",
+      "encoding": "gzip"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-old-DBC-global-proof-plan.json",
+      "expected_original_sha256": "882a3276b1495ada463332821464a89d6b613f72e74c9c3fb581b3f11c61e86a",
+      "archive_path": "retained/882a3276b1495ada-MODEL-old-DBC-global-proof-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/MODEL-old-DBC-global-writer.stdout.log",
+      "expected_original_sha256": "09851523dbbbec9331eccab44763d79f8c08821548b311161400ffd81b6aadb6",
+      "archive_path": "retained/09851523dbbbec93-MODEL-old-DBC-global-writer.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/PROPOSED-ONLY-exact-own-Node18-retirement.json",
+      "expected_original_sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+      "archive_path": "retained/021e39af6a948df0-PROPOSED-ONLY-exact-own-Node18-retirement.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/REAL-incomplete10-plan.json",
+      "expected_original_sha256": "ecbad260205209d21fdf94163a4b4225f5ba12e4cc219fa524f42c01c4b16f45",
+      "archive_path": "retained/ecbad260205209d2-REAL-incomplete10-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/REAL-incomplete10.stderr.log",
+      "expected_original_sha256": "fb4539e0df58d5435bcc353e7eb45fe864453395e4a6b2cf81363cbe23b76508",
+      "archive_path": "retained/fb4539e0df58d543-REAL-incomplete10.stderr.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/REAL-incomplete10.stdout.log",
+      "expected_original_sha256": "5510c24c46cd465420047fa3dd1f7fd78d5ebb3c662a582960ce64b3d7a1fa2c",
+      "archive_path": "retained/5510c24c46cd4654-REAL-incomplete10.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/execution.json",
+      "expected_original_sha256": "ea8cde127539aa0b31c1e0ff8413e460933f7f04b5077f2950d625595ddf28ee",
+      "archive_path": "retained/ea8cde127539aa0b-execution.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/guard.diff",
+      "expected_original_sha256": "3d4c900b5b3c692f1b25827e46e1781ec3ab806a919de57d476744e2278f7e46",
+      "archive_path": "retained/3d4c900b5b3c692f-guard.diff",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/profile-context-proposal.json",
+      "expected_original_sha256": "6d4287fd5ee5023037db0bfe8a0a2713d8cca01c8bce78935418f279b5f02d55",
+      "archive_path": "retained/6d4287fd5ee50230-profile-context-proposal.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/proposal-final.json",
+      "expected_original_sha256": "0b97ba2aec9e326314e99dbc08dc6c9d6ef505c5edb0f5569631e5dd60aeab46",
+      "archive_path": "retained/0b97ba2aec9e3263-proposal-final.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-PROOF-ONLY-plan.json",
+      "expected_original_sha256": "759da7007e8792e18dc80d75936f67b49f6782851182f3ecd22edc19199f15fe",
+      "archive_path": "retained/759da7007e8792e1-real10-PROOF-ONLY-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-and-proof-only-controls.json",
+      "expected_original_sha256": "c8a9406500b7230a8b2e48bdfbf8dd3ad20109e619bfd57a49055d9b2b0fca26",
+      "archive_path": "retained/c8a9406500b7230a-real10-and-proof-only-controls.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-controls.stdout.log",
+      "expected_original_sha256": "a12f42ac80677697e263a5f3a074973799fe10780804903a268584a6bcb63789",
+      "archive_path": "retained/a12f42ac80677697-real10-controls.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-plan.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/real10-plan.stdout.log",
+      "expected_original_sha256": "063be12eefb726726c33fbe69c36c3f82238a41c03f41f770a936795b3e51d41",
+      "archive_path": "retained/063be12eefb72672-real10-plan.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/root-proposed-retirement-context.json",
+      "expected_original_sha256": "80e63163d86b80a7a4c4de5c1f614382428716da7089616d87c7e81c1728106f",
+      "archive_path": "retained/80e63163d86b80a7-root-proposed-retirement-context.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-proposal-v2/source-input-manifest.json",
+      "expected_original_sha256": "058f5a9abbe158c40d61a4d9e67bc92111da9307962397fd0f99182397c194c7",
+      "archive_path": "retained/058f5a9abbe158c4-source-input-manifest.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/DBC-zero.json",
+      "expected_original_sha256": "3d1cb52033d4a0b858cc9dd0f0421bda8a6e7d4a131b53e3bbe099f33d7160fb",
+      "archive_path": "retained/3d1cb52033d4a0b8-DBC-zero.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/c5-two-trusted-extra.json",
+      "expected_original_sha256": "1c6126c600031121e22ed8e2cb46f2d6526168b73aa1da72cb1e981b3726401c",
+      "archive_path": "retained/1c6126c600031121-c5-two-trusted-extra.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/c5-zero.json",
+      "expected_original_sha256": "3d1cb52033d4a0b858cc9dd0f0421bda8a6e7d4a131b53e3bbe099f33d7160fb",
+      "archive_path": "retained/3d1cb52033d4a0b8-DBC-zero.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/catalog-retirement-review.json",
+      "expected_original_sha256": "3019aa583b25dbbdbbe07bb28b4b5a615295d7996d0e7aeaa69d8195c37c5052",
+      "archive_path": "retained/3019aa583b25dbbd-catalog-retirement-review.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-65e085-final-review.json",
+      "expected_original_sha256": "fbe70230c0c168a5abc7e38f5e556d4f717c37052b61b9d8d213fe7d09b02651",
+      "archive_path": "retained/fbe70230c0c168a5-guard-65e085-final-review.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-c2cfa-source-checks.json",
+      "expected_original_sha256": "32ac915c8848db29a61fbebd506bd8fcdbbae4134293ea50905106ceb5d09071",
+      "archive_path": "retained/32ac915c8848db29-guard-c2cfa-source-checks.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/guard-c2cfa-source-review.json",
+      "expected_original_sha256": "808df37103f9e84b541e256a5b237d4727180ddb8bd303840466b3a94946ec2c",
+      "archive_path": "retained/808df37103f9e84b-guard-c2cfa-source-review.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/install-noarg-controls.json",
+      "expected_original_sha256": "8f52c8c8f580c1a7f89da297a44e4adb267e1ede19377ae98e50ad1db9005cd1",
+      "archive_path": "retained/8f52c8c8f580c1a7-install-noarg-controls.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/review.json",
+      "expected_original_sha256": "5c67fcf91483ea68e630a759464c2797f4fd4a68b57eb65e71a552731a504908",
+      "archive_path": "retained/5c67fcf91483ea68-review.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-common-decision-review-pvqcjh8f/source-manifest.json",
+      "expected_original_sha256": "a8bfc2aa37afd03bf42f781ad89726d913228f7066fe2e4bddc76ec6684257a1",
+      "archive_path": "retained/a8bfc2aa37afd03b-source-manifest.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-proposed-old-node18-retirement-htpbdfoa/PROPOSED-ONLY-native-base-recovery.json",
+      "expected_original_sha256": "021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1",
+      "archive_path": "retained/021e39af6a948df0-PROPOSED-ONLY-exact-own-Node18-retirement.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-proposed-old-node18-retirement-htpbdfoa/proposal.json",
+      "expected_original_sha256": "80e63163d86b80a7a4c4de5c1f614382428716da7089616d87c7e81c1728106f",
+      "archive_path": "retained/80e63163d86b80a7-root-proposed-retirement-context.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-test-c5-proof-only-v2.py",
+      "expected_original_sha256": "327bb65ff9e3fd3992a86a7a1e3f69a852ffccf6ec5f02e6b173ab165db1420a",
+      "archive_path": "retained/327bb65ff9e3fd39-bex-m188-test-c5-proof-only-v2.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-build-c5-proof-only-v2.py",
+      "expected_original_sha256": "56a7dcecda2870c6164cf1ce41060fcf897f48b41ec0132d81b6ae38da89f36c",
+      "archive_path": "retained/56a7dcecda2870c6-bex-m188-build-c5-proof-only-v2.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-test-c5-source-contracts.py",
+      "expected_original_sha256": "5a8761a2065296ce685b01842eca349ba98337c86777e6cf6694f51b3c9497af",
+      "archive_path": "retained/5a8761a2065296ce-bex-m188-test-c5-source-contracts.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-context-after-c5-proof-only.json",
+      "expected_original_sha256": "18448ee3ed7a6ccc642f45598a75cde0146ff3919a3b6f39764fb4186aeeacfd",
+      "archive_path": "retained/18448ee3ed7a6ccc-bex-m188-current-tree-profile-context-after-c5-proof-only.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-root-proof-only-approval.json",
+      "expected_original_sha256": "d0ec36bc07775ba1b1e01d2b81c2fc52fe98682187f31070094651b581d58e8f",
+      "archive_path": "retained/d0ec36bc07775ba1-bex-m188-c5-root-proof-only-approval.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-proof-only-policy-activation.json",
+      "expected_original_sha256": "c92dfc4b712963bd9ea0ace9412cdb98fe8df09b942d2e3887f91476ec097f43",
+      "archive_path": "retained/c92dfc4b712963bd-bex-m188-c5-proof-only-policy-activation.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+      "expected_original_sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+      "archive_path": "retained/65e08564d837b0cd-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "expected_original_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "archive_path": "retained/1690cdaa16217890-1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+      "expected_original_sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+      "archive_path": "retained/7041b3b963ea2a07-bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-receipt-context-after-c5-proof-only.json",
+      "expected_original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "archive_path": "retained/eda68128b60a5b8b-bex-m188-guard-receipt-context-after-c5-proof-only.json.gz",
+      "encoding": "gzip"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-root-profile-review.json",
+      "expected_original_sha256": "4f5abd9417a3f9e215d24b8ea588f5f08949ec5e05b6cb548318a14b1d5a99ab",
+      "archive_path": "retained/4f5abd9417a3f9e2-bex-m188-c5-root-profile-review.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-root-activation-evidence/historical-default-plan-8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2.json",
+      "expected_original_sha256": "8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2",
+      "archive_path": "retained/8bc0371399fe7d04-historical-default-plan-8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-adoption-plan.json",
+      "expected_original_sha256": "69f861e09b8843a065e00287a27bb37cb8ee039b4642c2ef1b14a2db3724d726",
+      "archive_path": "retained/69f861e09b8843a0-bex-m188-adoption-plan.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-root-activation-evidence/actual-readonly-plan.stdout.log",
+      "expected_original_sha256": "fa8e7142438fe263560959721820bbdd05ac441e195d25d5f1fdb4af1ddfa6f4",
+      "archive_path": "retained/fa8e7142438fe263-actual-readonly-plan.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-c5-root-activation-evidence/actual-readonly-plan.stderr.log",
+      "expected_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_path": "retained/e3b0c44298fc1c14-OCI-source-units.stdout.log",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate-validated-body-ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648.json",
+      "expected_original_sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+      "archive_path": "retained/ffa5e72c748d0b76-candidate-validated-body-ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/proof.json",
+      "expected_original_sha256": "e8e151c4dadb62e59fcc7d43c72a5bfa4f8586384c6af3bed1ccb0892a1ccfc7",
+      "archive_path": "retained/e8e151c4dadb62e5-proof.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/1d42114ad3c28c7643c71a9e7faeaea7a4efb0f8a21d885d89e0c6b784ddaf26.py",
+      "expected_original_sha256": "1d42114ad3c28c7643c71a9e7faeaea7a4efb0f8a21d885d89e0c6b784ddaf26",
+      "archive_path": "retained/1d42114ad3c28c76-1d42114ad3c28c7643c71a9e7faeaea7a4efb0f8a21d885d89e0c6b784ddaf26.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c.py",
+      "expected_original_sha256": "5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c",
+      "archive_path": "retained/5e671d491a77c786-5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8.py",
+      "expected_original_sha256": "98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8",
+      "archive_path": "retained/98265e61e7ff5316-98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4.py",
+      "expected_original_sha256": "da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4",
+      "archive_path": "retained/da1cfc79c934632e-da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+      "expected_original_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+      "archive_path": "retained/0bfb0d9e5541614b-0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-portable-archive-9z55rc7t/MANIFEST.json",
+      "expected_original_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "archive_path": "retained/e7561875ce967382-MANIFEST.json",
+      "encoding": "identity"
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-portable-archive-v2-4pnr28gc/MANIFEST.json",
+      "expected_original_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "archive_path": "retained/d2ad74a494366364-MANIFEST.json",
+      "encoding": "identity"
+    }
+  ],
+  "historical_content_aliases": [
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "archive_path": "retained/1690cdaa16217890-1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+      "resolution": "Captured hash to frozen snapshot; newest active G/Q paths were never read for archive input"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "expected_original_sha256": "65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097",
+      "archive_path": "retained/65e08564d837b0cd-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097.py",
+      "resolution": "Captured hash to frozen snapshot; newest active G/Q paths were never read for archive input"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-published-acceptance.json",
+      "expected_original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "archive_path": "retained/eda68128b60a5b8b-bex-m188-guard-receipt-context-after-c5-proof-only.json.gz",
+      "resolution": "Captured hash to frozen snapshot; newest active G/Q paths were never read for archive input"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-18-bookworm/dbc493ba688c19758c9a489635761419fb2c1af6/candidate.json",
+      "expected_original_sha256": "ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648",
+      "archive_path": "retained/ffa5e72c748d0b76-candidate-validated-body-ffa5e72c748d0b76cf3b95701489cb5b6a0564306ed2d1f367c33d9229215648.json",
+      "resolution": "Exact frozen preflight body; latest promoted candidate.json was not read"
+    }
+  ],
+  "external_protected_inputs": [
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+      "expected_original_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "expected_original_bytes": 14985,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/37586d35de6b-proof.json",
+      "referenced_stored_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "referenced_stored_bytes": 14985,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-adoption-guard-validation.json",
+      "expected_original_sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+      "expected_original_bytes": 1059,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node14-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node14-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "bddec92fbc1b9168bb711a6e271e21487c202129db63cc4eb98d551a4bd1d224",
+      "referenced_archive_path": "guard-validation.json",
+      "referenced_stored_sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+      "referenced_stored_bytes": 1059,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+      "expected_original_sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+      "expected_original_bytes": 12319,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/4a5760aab67d-candidate.json",
+      "referenced_stored_sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+      "referenced_stored_bytes": 12319,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "expected_original_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "expected_original_bytes": 19519,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/57ff2d1a32c4-proof.json",
+      "referenced_stored_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "referenced_stored_bytes": 19519,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+      "expected_original_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "expected_original_bytes": 1009,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python37-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python37-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61",
+      "referenced_archive_path": "verification/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+      "referenced_stored_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "referenced_stored_bytes": 1009,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "expected_original_sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+      "expected_original_bytes": 12083,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/1730744aa0e9-candidate.json",
+      "referenced_stored_sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+      "referenced_stored_bytes": 12083,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+      "expected_original_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+      "expected_original_bytes": 68751,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "linked/8c284bc98623-8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+      "referenced_stored_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+      "referenced_stored_bytes": 68751,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+      "expected_original_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "expected_original_bytes": 1005,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "verification/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+      "referenced_stored_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "referenced_stored_bytes": 1005,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "expected_original_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "expected_original_bytes": 20034,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "referenced_stored_bytes": 20034,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "expected_original_sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+      "expected_original_bytes": 10041,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+      "referenced_stored_bytes": 10041,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "expected_original_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "expected_original_bytes": 19657,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "referenced_stored_bytes": 19657,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+      "expected_original_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+      "expected_original_bytes": 7405,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "metadata-transition/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+      "referenced_stored_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+      "referenced_stored_bytes": 7405,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+      "expected_original_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "expected_original_bytes": 2673,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "verification/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+      "referenced_stored_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "referenced_stored_bytes": 2673,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+      "expected_original_sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+      "expected_original_bytes": 8912,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+      "referenced_stored_bytes": 8912,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/acceptance-metadata-transition-hash-recovery.json",
+      "expected_original_sha256": "a9466e004686b9f61b84afc124e12d8787f3c8ace79b67ff2e3454d1de6cb5c1",
+      "expected_original_bytes": 5017,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "metadata-transition/acceptance-metadata-transition-hash-recovery.json",
+      "referenced_stored_sha256": "a9466e004686b9f61b84afc124e12d8787f3c8ace79b67ff2e3454d1de6cb5c1",
+      "referenced_stored_bytes": 5017,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+      "expected_original_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+      "expected_original_bytes": 84103,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "linked/c739a4fc5053-c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+      "referenced_stored_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+      "referenced_stored_bytes": 84103,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "expected_original_sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+      "expected_original_bytes": 8915,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+      "referenced_stored_bytes": 8915,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "expected_original_sha256": "641af3da2294425abfb351d7b00015a2f61474afc0122811e58eac267248de48",
+      "expected_original_bytes": 3753,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "641af3da2294425abfb351d7b00015a2f61474afc0122811e58eac267248de48",
+      "referenced_stored_bytes": 3753,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+      "expected_original_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "expected_original_bytes": 2561,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+      "referenced_stored_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "referenced_stored_bytes": 2561,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "expected_original_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "expected_original_bytes": 17991,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "referenced_stored_bytes": 17991,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c.json",
+      "expected_original_sha256": "b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c",
+      "expected_original_bytes": 7389,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/candidate-validated-body-b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c.json",
+      "referenced_stored_sha256": "b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c",
+      "referenced_stored_bytes": 7389,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "expected_original_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "expected_original_bytes": 84147,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "referenced_stored_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "referenced_stored_bytes": 84147,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "expected_original_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "expected_original_bytes": 17955,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "referenced_stored_bytes": 17955,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13.json",
+      "expected_original_sha256": "4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13",
+      "expected_original_bytes": 7312,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/candidate-validated-body-4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13.json",
+      "referenced_stored_sha256": "4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13",
+      "referenced_stored_bytes": 7312,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "expected_original_sha256": "77a95e31942af4193ff9e46f2ba49e6d4db5b9cbef1fe5abf1070dbe4cfdd7fa",
+      "expected_original_bytes": 3744,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "77a95e31942af4193ff9e46f2ba49e6d4db5b9cbef1fe5abf1070dbe4cfdd7fa",
+      "referenced_stored_bytes": 3744,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "expected_original_sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+      "expected_original_bytes": 8833,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+      "referenced_stored_bytes": 8833,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+      "expected_original_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "expected_original_bytes": 3034,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+      "referenced_stored_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "referenced_stored_bytes": 3034,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "expected_original_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "expected_original_bytes": 84147,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "referenced_stored_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "referenced_stored_bytes": 84147,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "expected_original_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "expected_original_bytes": 3255,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "referenced_stored_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "referenced_stored_bytes": 3255,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "expected_original_sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+      "expected_original_bytes": 10417,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+      "referenced_stored_bytes": 10417,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "expected_original_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "expected_original_bytes": 17881,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "referenced_stored_bytes": 17881,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "expected_original_sha256": "e2e3c9d006c1e11eec73e4b03e908471a05fa15d309b66f70f127a6e73052514",
+      "expected_original_bytes": 3726,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "e2e3c9d006c1e11eec73e4b03e908471a05fa15d309b66f70f127a6e73052514",
+      "referenced_stored_bytes": 3726,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a.json",
+      "expected_original_sha256": "2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a",
+      "expected_original_bytes": 8906,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/candidate-validated-body-2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a.json",
+      "referenced_stored_sha256": "2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a",
+      "referenced_stored_bytes": 8906,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "expected_original_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "expected_original_bytes": 84147,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "referenced_stored_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "referenced_stored_bytes": 84147,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "expected_original_sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0",
+      "expected_original_bytes": 7285,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/95b5fedff26b-candidate.json",
+      "referenced_stored_sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0",
+      "referenced_stored_bytes": 7285,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "expected_original_sha256": "68cc3ffc40ac7eb3c3ce49705ba5ae4bf4e03146966770d3892c9b69d83d90af",
+      "expected_original_bytes": 3726,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "68cc3ffc40ac7eb3c3ce49705ba5ae4bf4e03146966770d3892c9b69d83d90af",
+      "referenced_stored_bytes": 3726,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19.json",
+      "expected_original_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "expected_original_bytes": 3681,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/guard-validation-65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19.json",
+      "referenced_stored_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "referenced_stored_bytes": 3681,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "expected_original_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+      "expected_original_bytes": 17881,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/9bcc5825c595-proof.json",
+      "referenced_stored_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+      "referenced_stored_bytes": 17881,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242.json",
+      "expected_original_sha256": "34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242",
+      "expected_original_bytes": 5774,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/candidate-validated-body-34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242.json",
+      "referenced_stored_sha256": "34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242",
+      "referenced_stored_bytes": 5774,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "expected_original_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "expected_original_bytes": 84191,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/accepting-guard-7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "referenced_stored_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "referenced_stored_bytes": 84191,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "expected_original_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "expected_original_bytes": 84191,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "linked/7fb52e8a7de2-7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "referenced_stored_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "referenced_stored_bytes": 84191,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "expected_original_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "expected_original_bytes": 84147,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "linked/f595ccb110e3-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "referenced_stored_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "referenced_stored_bytes": 84147,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76.py",
+      "expected_original_sha256": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76",
+      "expected_original_bytes": 84279,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf",
+      "referenced_archive_path": "guard-before.py",
+      "referenced_stored_sha256": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76",
+      "referenced_stored_bytes": 84279,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93.py",
+      "expected_original_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+      "expected_original_bytes": 56531,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node14-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node14-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "bddec92fbc1b9168bb711a6e271e21487c202129db63cc4eb98d551a4bd1d224",
+      "referenced_archive_path": "adoption-guard.py",
+      "referenced_stored_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+      "referenced_stored_bytes": 56531,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-node14-acceptance.json",
+      "expected_original_sha256": "535edeae8a0840df4d8978675df7af25cbe14832143c0bfc18e87e6f50e9ba03",
+      "expected_original_bytes": 3048,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node14-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node14-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "bddec92fbc1b9168bb711a6e271e21487c202129db63cc4eb98d551a4bd1d224",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "535edeae8a0840df4d8978675df7af25cbe14832143c0bfc18e87e6f50e9ba03",
+      "referenced_stored_bytes": 3048,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-node-16-bookworm-acceptance.json",
+      "expected_original_sha256": "0a7f01b6fd6730d32be046411dc6165b8c7ad1fb9b261c85aa1c3b60955cbb1f",
+      "expected_original_bytes": 3635,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "0a7f01b6fd6730d32be046411dc6165b8c7ad1fb9b261c85aa1c3b60955cbb1f",
+      "referenced_stored_bytes": 3635,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-python-3.7-bullseye-acceptance.json",
+      "expected_original_sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346",
+      "expected_original_bytes": 3686,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python37-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python37-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346",
+      "referenced_stored_bytes": 3686,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-python-3.8-bookworm-acceptance.json",
+      "expected_original_sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20",
+      "expected_original_bytes": 3635,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20",
+      "referenced_stored_bytes": 3635,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-python-3.10-bookworm-acceptance.json",
+      "expected_original_sha256": "608363e390ae125cc5fb89c77a9d11c524a5c2ccd1a9154ccb438d8183c32630",
+      "expected_original_bytes": 4966,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "608363e390ae125cc5fb89c77a9d11c524a5c2ccd1a9154ccb438d8183c32630",
+      "referenced_stored_bytes": 4966,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-python-3.9-bookworm-acceptance.json",
+      "expected_original_sha256": "a478c5505793f72f4697908a8275dddaef6844f36644283127e764eb7ed08612",
+      "expected_original_bytes": 4924,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "a478c5505793f72f4697908a8275dddaef6844f36644283127e764eb7ed08612",
+      "referenced_stored_bytes": 4924,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-ruby-3.0-bullseye-acceptance.json",
+      "expected_original_sha256": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177",
+      "expected_original_bytes": 4869,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177",
+      "referenced_stored_bytes": 4869,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-ruby-3.1-bookworm-acceptance.json",
+      "expected_original_sha256": "8c2e63bed428a37f6501fcf115d73174e8e3ca5fc25f9e18535c306e385cdc6f",
+      "expected_original_bytes": 4844,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "8c2e63bed428a37f6501fcf115d73174e8e3ca5fc25f9e18535c306e385cdc6f",
+      "referenced_stored_bytes": 4844,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-846a-root-source-admission.json",
+      "expected_original_sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1",
+      "expected_original_bytes": 2390,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf",
+      "referenced_archive_path": "root-admission.json",
+      "referenced_stored_sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1",
+      "referenced_stored_bytes": 2390,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-846a-cnb-semantic-review.json",
+      "expected_original_sha256": "770f74787ec460e9a0913fb9292e8a860e3a070b5daae1eb88d7a8dbb6ed1aa9",
+      "expected_original_bytes": 9767,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf",
+      "referenced_archive_path": "semantic-review.json",
+      "referenced_stored_sha256": "770f74787ec460e9a0913fb9292e8a860e3a070b5daae1eb88d7a8dbb6ed1aa9",
+      "referenced_stored_bytes": 9767,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-846a-source-review.json",
+      "expected_original_sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5",
+      "expected_original_bytes": 2522,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf",
+      "referenced_archive_path": "pending-review.json",
+      "referenced_stored_sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5",
+      "referenced_stored_bytes": 2522,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa.py",
+      "expected_original_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+      "expected_original_bytes": 84323,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf",
+      "referenced_archive_path": "guard-after.py",
+      "referenced_stored_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+      "referenced_stored_bytes": 84323,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+      "expected_original_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "expected_original_bytes": 1009,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python37-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python37-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "referenced_stored_bytes": 1009,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "expected_original_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "expected_original_bytes": 5322,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python37-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python37-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61",
+      "referenced_archive_path": "verification/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "referenced_stored_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "referenced_stored_bytes": 5322,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "expected_original_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "expected_original_bytes": 5322,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "verification/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "referenced_stored_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "referenced_stored_bytes": 5322,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+      "expected_original_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "expected_original_bytes": 1005,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "referenced_stored_bytes": 1005,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+      "expected_original_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "expected_original_bytes": 2673,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "referenced_stored_bytes": 2673,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "expected_original_sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6",
+      "expected_original_bytes": 4437,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16",
+      "referenced_archive_path": "verification/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "referenced_stored_sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6",
+      "referenced_stored_bytes": 4437,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05.json",
+      "expected_original_sha256": "1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05",
+      "expected_original_bytes": 1785,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/generic-controls-1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05.json",
+      "referenced_stored_sha256": "1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05",
+      "referenced_stored_bytes": 1785,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "expected_original_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "expected_original_bytes": 2561,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "referenced_stored_bytes": 2561,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "expected_original_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "expected_original_bytes": 3034,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "referenced_stored_bytes": 3034,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691.json",
+      "expected_original_sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691",
+      "expected_original_bytes": 1783,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb",
+      "referenced_archive_path": "verification/generic-controls-06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691.json",
+      "referenced_stored_sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691",
+      "referenced_stored_bytes": 1783,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "expected_original_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "expected_original_bytes": 3255,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "referenced_stored_bytes": 3255,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+      "expected_original_sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005",
+      "expected_original_bytes": 2127,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f",
+      "referenced_archive_path": "verification/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+      "referenced_stored_sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005",
+      "referenced_stored_bytes": 2127,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "expected_original_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "expected_original_bytes": 3681,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "referenced_stored_bytes": 3681,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d.json",
+      "expected_original_sha256": "1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d",
+      "expected_original_bytes": 1729,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3",
+      "referenced_archive_path": "verification/generic-controls-1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d.json",
+      "referenced_stored_sha256": "1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d",
+      "referenced_stored_bytes": 1729,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/generic-controls-ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0.json",
+      "expected_original_sha256": "ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0",
+      "expected_original_bytes": 1742,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/generic-controls-ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0.json",
+      "referenced_stored_sha256": "ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0",
+      "referenced_stored_bytes": 1742,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/accepting-guard-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "expected_original_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "expected_original_bytes": 86114,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/accepting-guard-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "referenced_stored_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "referenced_stored_bytes": 86114,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate-validated-body-b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43.json",
+      "expected_original_sha256": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43",
+      "expected_original_bytes": 7340,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/candidate-validated-body-b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43.json",
+      "referenced_stored_sha256": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43",
+      "referenced_stored_bytes": 7340,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+      "expected_original_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "expected_original_bytes": 3674,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+      "referenced_stored_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "referenced_stored_bytes": 3674,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/proof.json",
+      "expected_original_sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+      "expected_original_bytes": 17881,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/bdcddaface86-proof.json",
+      "referenced_stored_sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+      "referenced_stored_bytes": 17881,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation.json",
+      "expected_original_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "expected_original_bytes": 3674,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/guard-validation.json",
+      "referenced_stored_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "referenced_stored_bytes": 3674,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/acceptance-metadata-transition.json",
+      "expected_original_sha256": "79af9031f4e8bbe89b5bf8bad1f521a47589a8ba619b459da2fbc6ca232717a2",
+      "expected_original_bytes": 3726,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "79af9031f4e8bbe89b5bf8bad1f521a47589a8ba619b459da2fbc6ca232717a2",
+      "referenced_stored_bytes": 3726,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+      "expected_original_sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+      "expected_original_bytes": 8851,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/a27600c2d00d-candidate.json",
+      "referenced_stored_sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+      "referenced_stored_bytes": 8851,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "expected_original_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "expected_original_bytes": 86114,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/da0e-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../da0e-source-policy/MANIFEST.json",
+      "manifest_sha256": "ae7386e5c50e4ba3331879015cce6d637f0844e22b12760f08310a7368022b49",
+      "referenced_archive_path": "3fe1b2bd1a5a-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "referenced_stored_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "referenced_stored_bytes": 86114,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-ruby-3.2-bookworm-acceptance.json",
+      "expected_original_sha256": "bbd38bfcff390c3e87442d5300e023020882437923beb799c00b7b08bdcb1207",
+      "expected_original_bytes": 4819,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "bbd38bfcff390c3e87442d5300e023020882437923beb799c00b7b08bdcb1207",
+      "referenced_stored_bytes": 4819,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/proof.json",
+      "expected_original_sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+      "expected_original_bytes": 18473,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/proof.json",
+      "referenced_stored_sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+      "referenced_stored_bytes": 18473,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+      "expected_original_sha256": "205d65f5c178eb80a29554f6f1468daa2d24ea883952e9b02dbd55b289d6bbbb",
+      "expected_original_bytes": 10043,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/candidate.json",
+      "referenced_stored_sha256": "205d65f5c178eb80a29554f6f1468daa2d24ea883952e9b02dbd55b289d6bbbb",
+      "referenced_stored_bytes": 10043,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "expected_original_sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+      "expected_original_bytes": 4170,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "referenced_stored_sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+      "referenced_stored_bytes": 4170,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/accepting-guard-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "expected_original_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "expected_original_bytes": 86158,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/accepting-guard-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "referenced_stored_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "referenced_stored_bytes": 86158,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/generic-controls-adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3.json",
+      "expected_original_sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+      "expected_original_bytes": 1740,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/generic-controls-adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3.json",
+      "referenced_stored_sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+      "referenced_stored_bytes": 1740,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "expected_original_sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+      "expected_original_bytes": 8537,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "referenced_stored_sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+      "referenced_stored_bytes": 8537,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/acceptance-metadata-transition.json",
+      "expected_original_sha256": "8fc2033e29b394391e36546113f6f6241a14a31cc9b9dcfcb5b3dbe190c52ee4",
+      "expected_original_bytes": 3717,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/acceptance-metadata-transition.json",
+      "referenced_stored_sha256": "8fc2033e29b394391e36546113f6f6241a14a31cc9b9dcfcb5b3dbe190c52ee4",
+      "referenced_stored_bytes": 3717,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-context-scope-clarification.json",
+      "expected_original_sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+      "expected_original_bytes": 2146,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "verification/guard-validation-context-scope-clarification.json",
+      "referenced_stored_sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+      "referenced_stored_bytes": 2146,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-node-20-bookworm-acceptance.json",
+      "expected_original_sha256": "d39c2f6422956390324df0ae9a47a6117c7e9d53fbb8745dab979c3502e97b76",
+      "expected_original_bytes": 4338,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "acceptance.json",
+      "referenced_stored_sha256": "d39c2f6422956390324df0ae9a47a6117c7e9d53fbb8745dab979c3502e97b76",
+      "referenced_stored_bytes": 4338,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-root-approval.json",
+      "expected_original_sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08",
+      "expected_original_bytes": 2392,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "future_archive_relative_manifest": "../current-tree-compatibility-2cc/MANIFEST.json",
+      "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "referenced_archive_path": "root-policy/bex-m188-current-tree-profile-root-approval.json",
+      "referenced_stored_sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08",
+      "referenced_stored_bytes": 2392,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-activation.json",
+      "expected_original_sha256": "85683153b7a17b4548226ed64e2950e83c52448850105dba7ac63e305770493a",
+      "expected_original_bytes": 1787,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "future_archive_relative_manifest": "../current-tree-compatibility-2cc/MANIFEST.json",
+      "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "referenced_archive_path": "root-policy/bex-m188-current-tree-profile-activation.json",
+      "referenced_stored_sha256": "85683153b7a17b4548226ed64e2950e83c52448850105dba7ac63e305770493a",
+      "referenced_stored_bytes": 1787,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-profile-context.json",
+      "expected_original_sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2",
+      "expected_original_bytes": 1071,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "future_archive_relative_manifest": "../current-tree-compatibility-2cc/MANIFEST.json",
+      "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "referenced_archive_path": "root-policy/bex-m188-current-tree-profile-context.json",
+      "referenced_stored_sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2",
+      "referenced_stored_bytes": 1071,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+      "expected_original_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "expected_original_bytes": 167376,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "future_archive_relative_manifest": "../current-tree-compatibility-2cc/MANIFEST.json",
+      "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "referenced_archive_path": "root-policy/bex-m188-guard-receipt-context-after-2cc-current-tree-compatibility.json",
+      "referenced_stored_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "referenced_stored_bytes": 167376,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "expected_original_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "expected_original_bytes": 86158,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5",
+      "referenced_archive_path": "linked/2a8363b55421-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "referenced_stored_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "referenced_stored_bytes": 86158,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-snapshots/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "expected_original_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "expected_original_bytes": 92369,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "frozen-guards/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+      "referenced_stored_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "referenced_stored_bytes": 92369,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+      "expected_original_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+      "expected_original_bytes": 92910,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+      "referenced_stored_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+      "referenced_stored_bytes": 92910,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff",
+      "expected_original_sha256": "123017e5b122704b727d7e07b55dec0b7ace5b9c0e2c2ea8cbf0f21429af84f6",
+      "expected_original_bytes": 10267,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/guard.diff.gz",
+      "referenced_stored_sha256": "bd6a150dfa1b8d9d843df2b55eff0e8c354a7bef049235842a2e00f5450c0d1e",
+      "referenced_stored_bytes": 2865,
+      "referenced_encoding": "gzip",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "expected_original_sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+      "expected_original_bytes": 167424,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/PROPOSED-only-not-live-receipt-context.json",
+      "referenced_stored_sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+      "referenced_stored_bytes": 167424,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/source-closure-review.json",
+      "expected_original_sha256": "ddacb1ca8a6f1efbc0036f0e560f46227446c237033eec26dd435cb95791de82",
+      "expected_original_bytes": 11730,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/source-closure-review.json",
+      "referenced_stored_sha256": "ddacb1ca8a6f1efbc0036f0e560f46227446c237033eec26dd435cb95791de82",
+      "referenced_stored_bytes": 11730,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/real10-and-source-boundary-controls.json",
+      "expected_original_sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+      "expected_original_bytes": 27913,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/real10-and-source-boundary-controls.json",
+      "referenced_stored_sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+      "referenced_stored_bytes": 27913,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/execution.json",
+      "expected_original_sha256": "55d74ecee91a8d912d103a9797f6e02fcb6d1f439c55b12209fda37e6fa6b0d5",
+      "expected_original_bytes": 1420,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/execution.json",
+      "referenced_stored_sha256": "55d74ecee91a8d912d103a9797f6e02fcb6d1f439c55b12209fda37e6fa6b0d5",
+      "referenced_stored_bytes": 1420,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/proposal-final.json",
+      "expected_original_sha256": "2ceda36d06fe6a6c4f0e0b135512638a7f56e65bcbd236318d4bb4bf90f5cb0e",
+      "expected_original_bytes": 2367,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "NEVER-ACTIVE-unused9fe-proposal/proposal-final.json",
+      "referenced_stored_sha256": "2ceda36d06fe6a6c4f0e0b135512638a7f56e65bcbd236318d4bb4bf90f5cb0e",
+      "referenced_stored_bytes": 2367,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-root-source-admission.json",
+      "expected_original_sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+      "expected_original_bytes": 2636,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "root-policy-and-dispatch/bex-m188-dbc-root-source-admission.json",
+      "referenced_stored_sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+      "referenced_stored_bytes": 2636,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-source-policy-activation.json",
+      "expected_original_sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+      "expected_original_bytes": 2082,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "root-policy-and-dispatch/bex-m188-dbc-source-policy-activation.json",
+      "referenced_stored_sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+      "referenced_stored_bytes": 2082,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    },
+    {
+      "original_source": "/tmp/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+      "expected_original_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "expected_original_bytes": 167424,
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849",
+      "referenced_archive_path": "root-policy-and-dispatch/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+      "referenced_stored_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+      "referenced_stored_bytes": 167424,
+      "referenced_encoding": "identity",
+      "resolution": "Exact original path and expected hash matched retained prior manifest and decoded payload; no newest-path or digest-only selection"
+    }
+  ],
+  "protected_input_count": 116,
+  "local_protected_inputs": 11,
+  "prior_archive_protected_inputs": 105,
+  "prior_manifests": [
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node20-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node20-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "42ca42ecc86ae6e149c0b21ac93735dedfd4fd8a924bf8bff6d60a8a7be3fcb5"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node14-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node14-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "bddec92fbc1b9168bb711a6e271e21487c202129db63cc4eb98d551a4bd1d224"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python37-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python37-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7172dc80f833b0011085db239fa2ba899ea46faa892be4bd7c2672acfaa9cc61"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node16-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../node16-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7e5ac7b59bf88cfb73d25029418fadd385b09353a37b4c94d1635a55561a8f5e"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python38-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python38-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "eedaa1101b53dad0656192fcc52809bf750755fd4407a7764f74956991a93b16"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python310-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python310-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "26ab13050e1b667af3ffdd297f40691299b325c8a06b646b8f06f1dca765ed14"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/python39-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../python39-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "c7aba9746e0581f1d491acea60d9e80b654544cb163c6bf55c4e6e7e0e90fcfb"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby30-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby30-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "7a6972b89653d57151226e89ccb31ae4858e3dcdd4bfd799fe3d1673c930d64f"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby31-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby31-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "76b55cd0cc94b9a1f0e8eb45029cc21ebe924d0297daae54937aea253a323de3"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/846a-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../846a-source-policy/MANIFEST.json",
+      "manifest_sha256": "66f787ceb99ad79fc5b3476ce8412c3a13e5ce7d1b9790375384dee4989079cf"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/ruby32-published-acceptance/MANIFEST.json",
+      "future_archive_relative_manifest": "../ruby32-published-acceptance/MANIFEST.json",
+      "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/da0e-source-policy/MANIFEST.json",
+      "future_archive_relative_manifest": "../da0e-source-policy/MANIFEST.json",
+      "manifest_sha256": "ae7386e5c50e4ba3331879015cce6d637f0844e22b12760f08310a7368022b49"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/current-tree-compatibility-2cc/MANIFEST.json",
+      "future_archive_relative_manifest": "../current-tree-compatibility-2cc/MANIFEST.json",
+      "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8"
+    },
+    {
+      "repository_relative_manifest": ".pm/w1/m188/evidence/node18-dbc-recovery-source/MANIFEST.json",
+      "future_archive_relative_manifest": "../node18-dbc-recovery-source/MANIFEST.json",
+      "manifest_sha256": "d2ad74a494366364b9e5bc243b433dc7cb60f318b44f374cffdb5c29de32c849"
+    }
+  ],
+  "no_latest_active_G_Q_or_candidate_read": true,
+  "large_full_predicates_copied": false
+}

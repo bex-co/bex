@@ -1,0 +1,153 @@
+--- ACTIVE-1690-frozen-history
++++ INACTIVE-global-proof-only-65e08564d837b0cd41b12ff1f30fa175507046c9827a238a97c2edebee52b097
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Read-only m188 proposal generator. Repository changes always require root review."""
++"""Read-only m188 artifact proof checker. The legacy C tenant-base writer is retired."""
+ import argparse, base64, datetime, gzip, hashlib, importlib.util, json, re, subprocess, sys
+ from urllib.parse import unquote, urlparse, parse_qs
+ from pathlib import Path
+@@ -38,6 +38,18 @@
+ CURRENT_TREE_SIGNING_INPUTS = {'.github/scripts/native-oci-stage.py': '891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59', '.github/scripts/test_native_oci_stage.py': 'd1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803', '.github/scripts/test_native_oci_workflow.py': '6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad'}
+ CURRENT_TREE_OLD_FETCH_SHA256 = '93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6'
+ CURRENT_TREE_WORKFLOW_REVERSALS = ((b"      - name: test verified OCI staging and publication gates\n        run: |\n          python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'\n          python3 -B -m unittest discover -s deploy/native-base -p '*_test.py'\n", b"      - name: test verified OCI staging and publication gates\n        run: python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'\n"), (b'            # JavaDB is almost 1GiB; keep its fetch outside the complete scan budget.\n            database_timeout=21m\n            if [ "$database" = --download-java-db-only ]; then database_timeout=30m; fi\n            TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s "$database_timeout" trivy image "$database"\n', b'            TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s 21m trivy image "$database"\n'))
++
++# Exact checkout proof profile only. The explicit common-foundation decision supersedes the C tenant-base writer.
++COMMON_PROOF_SOURCE = 'c5ee618ce95681e09f0201dd682b66270e44f357'
++COMMON_PROOF_WORKFLOW_SHA256 = '8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2'
++COMMON_PROOF_FILES = {'.github/native-base-recovery.json': '67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e', '.github/scripts/native-oci-stage.py': '891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59', '.github/scripts/test_native_oci_stage.py': 'd1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803', '.github/scripts/test_native_oci_workflow.py': '1844c03df6ef8070610b68d377b2dbafeb96000891ffbd5d5e052b63917e16c0', '.github/workflows/native-base-image.yml': '8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2', '.github/workflows/native-common-image.yml': '64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5', 'deploy/native-base/Dockerfile': 'edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11', 'deploy/native-base/README.md': '86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1', 'deploy/native-base/bex-native-python-tools': '931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92', 'deploy/native-base/check-brotli.py': '9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814', 'deploy/native-base/check-primary-python.py': 'b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c', 'deploy/native-base/check-tools.py': 'cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932', 'deploy/native-base/check.Dockerfile': '866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e', 'deploy/native-base/fetch-python-tools.py': 'eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe', 'deploy/native-base/fetch_pgdg_key_test.py': '562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b', 'deploy/native-base/fetch_python_tools_test.py': 'f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230', 'deploy/native-base/install-python-tools.py': '718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608', 'deploy/native-base/install.sh': '23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b', 'deploy/native-base/matrix.py': 'ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06', 'deploy/native-base/matrix_test.py': '357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18', 'deploy/native-base/node-brotli/README.md': 'b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb', 'deploy/native-base/node-brotli/check.js': 'ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e', 'deploy/native-base/node-brotli/patch.sh': 'd614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717', 'deploy/native-base/package-lock.json': '8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2', 'deploy/native-base/package.json': '3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703', 'deploy/native-base/patch-system-brotli.sh': '8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b', 'deploy/native-base/python-tools.json': 'a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e', 'deploy/native-base/testdata/archive.dump.b64': '5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0', 'deploy/native-base/testdata/archive.sql': '5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73', 'deploy/native-base/testdata/rows.txt': '504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b', 'deploy/native-base/tsc': '92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30', 'deploy/native-base/webpack': 'fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0', 'deploy/native-common/Dockerfile': '892243ea603a5fa5bf2cede1b2248dfa84c902c98832cc0ee3ee06adbe58d21e', 'deploy/native-common/Dockerfile.dockerignore': '0c961bdd8d555f115d5663e1972b6b69ae73b5a03ff7dabf17ee74d2dd4ef552', 'deploy/native-common/README.md': 'fe03e5dc7f810e7e8eded94209127fb08738923ac48a03ef063993ee8f67dbaf', 'deploy/native-common/check-common.py': 'ea9271091cc48c14ec9d77e471601b862eafcd0a09d13621dd8ea444c5bd282f', 'deploy/native-common/check-runtime.py': '7913748f1b9a52b57653efb4ac3efe6974c8151427a9145fa9544ec3c01c000f', 'deploy/native-common/common_test.py': 'a83f4a2046f86174c6597005f13fe40b2804499bddbe7a38832a8bd1a6d1df10', 'deploy/native-common/matrix.py': '0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c', 'deploy/native-common/upstream.json': 'fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98', 'lego/operator/internal/build/native.go': '9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3', 'lego/operator/internal/build/nativebases.go': '97a30d61ca667e1dc2c72fd27ed6fbea17dad1b327e0bb065859a7e96c19184a', 'lego/operator/internal/build/nativecommon_test.go': 'e33a80a5c1cb275160c97cf6b62e385a931973a742ea72e6c94d6a8535aca95c', 'lego/operator/internal/build/nativeresolve.go': '6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3', 'lego/operator/internal/build/nativeutility_integration_test.go': '01ba707d411140520fa3e18693882c95d94d2257e6e1e257610225705be79d13', 'lego/operator/internal/build/nativeversion.go': '70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825', 'lego/operator/internal/build/toolchain-freshness.json': '6f2e510380e1cb6b258c2eced486f1b8c90ae16be09116930c4a4ea704cc2bbd', 'scripts/build-toolchain-freshness.test.sh': '2cf0039b055d44178eeb4a7043d3448090153c3ab99156b275fdb59173c81f4c', 'scripts/lib/toolchain-freshness.py': '02fadcf55da0c580a5e679b2157a83be0e44edd7380f379b9ce333bf2979371c'}
++COMMON_PROOF_PRODUCERS = CURRENT_TREE_RECIPE_PRODUCERS | frozenset({'dbc493ba688c19758c9a489635761419fb2c1af6'})
++COMMON_PROOF_RECOVERY_CONTROLS = {'67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e': 'original_four_entry_control', '021e39af6a948df0e5853b99dc4c98969f4ff6a55277b3282fbe0164373aa6e1': 'own_Node18_entry_absent_foreign_three_exact'}
++COMMON_PROOF_DBC_INSTALL_SHA256 = '3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3'
++COMMON_PROOF_DBC_FETCH_SHA256 = 'eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe'
++COMMON_PROOF_WORKFLOW_REVERSALS = ((b'name: native base images (build + verify)\n\n# Shared publication gates. The user selected one common Bookworm foundation.\n# Existing per-line requests may finish through explicit singleton dispatches;\n# changing a runtime or recipe must never launch another automatic C matrix.\non:\n  workflow_dispatch:\n    inputs:\n      runtime:\n        description: "One existing reviewed runtime to finish, or common-bookworm; never an empty/full C matrix"\n        required: true\n        type: string\n  workflow_call:\n    inputs:\n      runtime:\n        required: true\n        type: string\n\n', b'name: native base images (build + verify)\n\n# Publishes immutable candidates. The operator adopts only reviewed digests\n# in a subsequent commit, per ADR060 D7.\non:\n  push:\n    branches: [main]\n    paths:\n      - "deploy/native-base/**"\n      - ".github/workflows/native-base-image.yml"\n      - ".github/scripts/native-oci-stage.py"\n      - ".github/scripts/test_native_oci_*.py"\n      - "lego/operator/internal/build/native.go"\n  workflow_dispatch:\n    inputs:\n      runtime:\n        description: "Optional reviewed matrix name (for example node-14-bullseye); empty publishes all"\n        required: false\n        type: string\n\n'), (b'  matrix:\n    if: github.ref == \'refs/heads/main\'\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    outputs:\n      images: ${{ steps.matrix.outputs.images }}\n      publish: ${{ steps.matrix.outputs.publish }}\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n          fetch-depth: 2\n      - name: test verified OCI staging and publication gates\n        run: |\n          python3 -B -m unittest discover -s .github/scripts -p \'test_native_oci_*.py\'\n          python3 -B -m unittest discover -s deploy/native-base -p \'*_test.py\'\n          python3 -B -m unittest discover -s deploy/native-common -p \'*_test.py\'\n      - id: matrix\n        env:\n          TARGET_RUNTIME: ${{ inputs.runtime }}\n        run: |\n          if [ "$TARGET_RUNTIME" = common-bookworm ]; then\n            images=$(python3 deploy/native-common/matrix.py)\n          else\n            images=$(python3 deploy/native-base/matrix.py)\n            images=$(IMAGES="$images" python3 - <<\'PY\'\n          import json, os\n          matrix = json.loads(os.environ[\'IMAGES\'])\n          rows = [row for row in matrix[\'include\'] if row[\'name\'] == os.environ[\'TARGET_RUNTIME\']]\n          if len(rows) != 1:\n              raise SystemExit(\'runtime must match one reviewed matrix name\')\n          print(json.dumps({\'include\': rows}, separators=(\',\', \':\')))\n          PY\n            )\n          fi\n          echo "images=$images" >> "$GITHUB_OUTPUT"\n          echo "publish=true" >> "$GITHUB_OUTPUT"\n\n', b'  matrix:\n    if: github.ref == \'refs/heads/main\'\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    outputs:\n      images: ${{ steps.matrix.outputs.images }}\n      publish: ${{ steps.matrix.outputs.publish }}\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n          fetch-depth: 2\n      - name: test verified OCI staging and publication gates\n        run: |\n          python3 -B -m unittest discover -s .github/scripts -p \'test_native_oci_*.py\'\n          python3 -B -m unittest discover -s deploy/native-base -p \'*_test.py\'\n      - id: matrix\n        env:\n          BEFORE: ${{ github.event.before }}\n          EVENT_NAME: ${{ github.event_name }}\n          TARGET_RUNTIME: ${{ inputs.runtime }}\n        run: |\n          images=$(python3 deploy/native-base/matrix.py)\n          if [ -n "$TARGET_RUNTIME" ]; then\n            images=$(IMAGES="$images" python3 - <<\'PY\'\n          import json, os\n          matrix = json.loads(os.environ[\'IMAGES\'])\n          rows = [row for row in matrix[\'include\'] if row[\'name\'] == os.environ[\'TARGET_RUNTIME\']]\n          if len(rows) != 1:\n              raise SystemExit(\'runtime must match one reviewed matrix name\')\n          print(json.dumps({\'include\': rows}, separators=(\',\', \':\')))\n          PY\n            )\n          fi\n          echo "images=$images" >> "$GITHUB_OUTPUT"\n          publish=true\n          if [ "$EVENT_NAME" = push ] && [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then\n            if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then\n              git fetch --no-tags --depth=1 origin "$BEFORE"\n            fi\n            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml .github/scripts/native-oci-stage.py; then\n              git show "$BEFORE:lego/operator/internal/build/native.go" > "$RUNNER_TEMP/previous-native.go"\n              publish=$(python3 deploy/native-base/matrix.py --changed-from "$RUNNER_TEMP/previous-native.go")\n            fi\n          fi\n          echo "publish=$publish" >> "$GITHUB_OUTPUT"\n\n'), (b"        id: recovery\n        if: matrix.name != 'common-bookworm'\n        env:\n", b'        id: recovery\n        env:\n'), (b"      - id: build\n        if: steps.recovery.outputs.digest == ''\n        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0\n        with:\n          context: ${{ matrix.name == 'common-bookworm' && 'deploy' || 'deploy/native-base' }}\n          file: ${{ matrix.name == 'common-bookworm' && 'deploy/native-common/Dockerfile' || 'deploy/native-base/Dockerfile' }}\n", b"      - id: build\n        if: steps.recovery.outputs.digest == ''\n        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0\n        with:\n          context: deploy/native-base\n"))
++COMMON_QUALIFICATION_GATE = 'w8/m91/t007: user-selected qualified common Bookworm foundation and independently reviewed same-version runtime integration; the legacy C tenant-base writer is superseded'
++
+ LOCAL_GREEN_PROOFS = {
+     'portable-node20-compiler': '1df61ff850304884c6aade1130fc79a6cab8c77436be306d0c7f150f42b7eeaa',
+     'companion-native-green': '259145659edd6435b9e298d69340572ef57c42d57b7f2bd8711dfcb2748bac76',
+@@ -693,13 +705,43 @@
+ 
+ 
+ 
++def verify_common_proof_current_tree():
++    supplied = (ROOT / 'lego/operator/internal/build/nativebases.go').read_text()
++    check(re.search(r'^var nativeSuppliedBases = map\[string\]string\{\s*\}$', supplied, re.MULTILINE), 'proof-only profile requires an empty nativeSuppliedBases map')
++    check(re.search(r'^var nativeCommonBase string$', supplied, re.MULTILINE), 'proof-only profile requires the nativeCommonBase pin to remain unset')
++    for ancestor, descendant in ((CURRENT_TREE_RECIPE_SOURCE, CURRENT_TREE_WORKFLOW_SOURCE), (CURRENT_TREE_WORKFLOW_SOURCE, COMMON_PROOF_SOURCE), (COMMON_PROOF_SOURCE, 'HEAD')):
++        check(subprocess.run(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', ancestor, descendant], capture_output=True).returncode == 0, 'current checkout lacks reviewed common-source ancestry')
++    for path, digest in COMMON_PROOF_FILES.items():
++        actual = hashlib.sha256((ROOT / path).read_bytes()).hexdigest() if (ROOT / path).is_file() else ''
++        allowed = set(COMMON_PROOF_RECOVERY_CONTROLS) if path == '.github/native-base-recovery.json' else {digest}
++        check(actual in allowed, 'current file exceeds exact proof-only common-source profile: ' + path)
++    expected_common = {path for path in COMMON_PROOF_FILES if path.startswith('deploy/native-common/')}
++    actual_common = set(git('ls-files', '--cached', '--others', '--exclude-standard', '--', 'deploy/native-common').splitlines())
++    check(actual_common == expected_common, 'common factory file set exceeds exact reviewed proof-only profile')
++    inventory = json.loads((ROOT / INVENTORY).read_text())
++    check(len(inventory['images']) == 45, 'proof-only common-source inventory must retain all45 reviewed rows')
++    digest = hashlib.sha256((ROOT / '.github/native-base-recovery.json').read_bytes()).hexdigest()
++    return {'path': '.github/native-base-recovery.json', 'actual_sha256': digest, 'exact_reviewed_shape': COMMON_PROOF_RECOVERY_CONTROLS[digest], 'shape_is_not_proof_of_retirement_authorization': True}
++
++
+ def reviewed_current_workflow():
+     """Return the exact reviewed signing flow and honest current-checkout metadata."""
+     actual = (ROOT / WORKFLOW).read_bytes()
+     actual_hash = hashlib.sha256(actual).hexdigest()
+     canonical = actual
+     profile = {'canonical_artifact_source': RECOVERY_WORKFLOW, 'canonical_workflow_sha256': REVIEWED_WORKFLOW_SHA256, 'actual_workflow_sha256': actual_hash, 'artifact_source_roles_added': []}
+-    if actual_hash != REVIEWED_WORKFLOW_SHA256:
++    if actual_hash == COMMON_PROOF_WORKFLOW_SHA256:
++        check(actual == source(COMMON_PROOF_SOURCE, WORKFLOW).encode(), 'common-source workflow differs from its literal reviewed source')
++        recovery_control = verify_common_proof_current_tree()
++        for current, previous in COMMON_PROOF_WORKFLOW_REVERSALS:
++            check(canonical.count(current) == 1, 'reviewed common-source workflow block is missing or ambiguous')
++            canonical = canonical.replace(current, previous, 1)
++        check(hashlib.sha256(canonical).hexdigest() == CURRENT_TREE_WORKFLOW_SHA256 and canonical == source(CURRENT_TREE_WORKFLOW_SOURCE, WORKFLOW).encode(), 'per-line common-source gate reconstruction differs from exact prior workflow')
++        for current, previous in CURRENT_TREE_WORKFLOW_REVERSALS:
++            check(canonical.count(current) == 1, 'prior checkout workflow block is missing or ambiguous')
++            canonical = canonical.replace(current, previous, 1)
++        profile.update(current_tree_workflow_source=COMMON_PROOF_SOURCE, current_tree_recipe_source=COMMON_PROOF_SOURCE, prior_recipe_anchor=CURRENT_TREE_RECIPE_SOURCE, prior_workflow_anchor=CURRENT_TREE_WORKFLOW_SOURCE, proof_only_common_source=True, recovery_control=recovery_control, legacy_C_tenant_base_writer_authorized=False, common_qualification_gate=COMMON_QUALIFICATION_GATE, compatibility_scope='Historical selected per-line artifact proof gates only; common artifacts and production adoption require separate review')
++    elif actual_hash != REVIEWED_WORKFLOW_SHA256:
+         check(actual_hash == CURRENT_TREE_WORKFLOW_SHA256 and actual == source(CURRENT_TREE_WORKFLOW_SOURCE, WORKFLOW).encode(), 'current workflow exceeds exact reviewed checkout compatibility')
+         for ancestor, descendant in ((CURRENT_TREE_RECIPE_SOURCE, CURRENT_TREE_WORKFLOW_SOURCE), (CURRENT_TREE_WORKFLOW_SOURCE, 'HEAD')):
+             check(subprocess.run(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', ancestor, descendant], capture_output=True).returncode == 0, 'current checkout lacks the exact reviewed source ancestry')
+@@ -715,7 +757,9 @@
+ 
+ 
+ def reviewed_recipe_paths(producer, publisher_paths, current_paths):
+-    if producer in CURRENT_TREE_RECIPE_PRODUCERS and hashlib.sha256((ROOT / WORKFLOW).read_bytes()).hexdigest() == CURRENT_TREE_WORKFLOW_SHA256:
++    if producer in COMMON_PROOF_PRODUCERS and hashlib.sha256((ROOT / WORKFLOW).read_bytes()).hexdigest() == COMMON_PROOF_WORKFLOW_SHA256:
++        check(current_paths == publisher_paths | set(CURRENT_TREE_EXTRA_RECIPE_FILES), 'proof-only current recipe file set exceeds reviewed historical test additions')
++    elif producer in CURRENT_TREE_RECIPE_PRODUCERS and hashlib.sha256((ROOT / WORKFLOW).read_bytes()).hexdigest() == CURRENT_TREE_WORKFLOW_SHA256:
+         check(current_paths == publisher_paths | set(CURRENT_TREE_EXTRA_RECIPE_FILES), 'current recipe file set exceeds exact reviewed test additions')
+         for path, digest in CURRENT_TREE_RECIPE_FILES.items():
+             check((ROOT / path).is_file() and hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest, 'current recipe file differs from exact reviewed checkout: ' + path)
+@@ -724,6 +768,12 @@
+ 
+ 
+ def reviewed_current_recipe_file(producer, path, objectid, current_bytes):
++    if producer in COMMON_PROOF_PRODUCERS and path in (INSTALL_RECIPE_PATH, 'deploy/native-base/fetch-python-tools.py') and hashlib.sha256((ROOT / WORKFLOW).read_bytes()).hexdigest() == COMMON_PROOF_WORKFLOW_SHA256:
++        if path == INSTALL_RECIPE_PATH:
++            expected = COMMON_PROOF_DBC_INSTALL_SHA256 if producer == 'dbc493ba688c19758c9a489635761419fb2c1af6' else REVIEWED_CURRENT_INSTALL_SHA256 if producer == RECOVERY_WORKFLOW else HISTORICAL_INSTALL_SHA256
++        else:
++            expected = COMMON_PROOF_DBC_FETCH_SHA256 if producer == 'dbc493ba688c19758c9a489635761419fb2c1af6' else CURRENT_TREE_OLD_FETCH_SHA256
++        return hashlib.sha256(current_bytes).hexdigest() == COMMON_PROOF_FILES[path] and hashlib.sha256(subprocess.check_output(['git', '-C', str(ROOT), 'cat-file', 'blob', objectid])).hexdigest() == expected
+     if producer not in CURRENT_TREE_RECIPE_PRODUCERS or path not in ('deploy/native-base/install.sh', 'deploy/native-base/fetch-python-tools.py') or hashlib.sha256((ROOT / WORKFLOW).read_bytes()).hexdigest() != CURRENT_TREE_WORKFLOW_SHA256:
+         return False
+     expected = CURRENT_TREE_OLD_FETCH_SHA256
+@@ -851,7 +901,7 @@
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument('--receipt', default='/tmp/bex-m188-published-acceptance.json')
+     parser.add_argument('--plan', default='/tmp/bex-m188-adoption-plan.json')
+-    parser.add_argument('--prepare-dir', help='Only after complete verified receipt: write review copies into a NEW /tmp directory')
++    parser.add_argument('--prepare-dir', help='Retired legacy option: always refuses; common integration requires separate review')
+     args = parser.parse_args()
+     native = (ROOT / NATIVE).read_text()
+     inventory_text = (ROOT / INVENTORY).read_text()
+@@ -892,6 +942,9 @@
+     expected_tags = {row['receipt_key'] for row in mappings}
+     complete = receipt.get('source_model') == SOURCE_MODEL and receipt.get('state') == 'complete' and not receipt.get('remaining') and not receipt.get('failures') and set(receipt.get('verified', {})) == expected_tags
+     plan = {'schema': 'bex.m188.readonly-adoption-plan/v1', 'created_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'repository': str(ROOT), 'head': git('rev-parse', 'HEAD').strip(), 'source_sha256': {NATIVE: hashlib.sha256(native.encode()).hexdigest(), INVENTORY: hashlib.sha256(inventory_text.encode()).hexdigest()}, 'receipt': str(Path(args.receipt)), 'receipt_checked_at': receipt.get('checked_at'), 'receipt_state': receipt.get('state'), 'receipt_verified_count': len(receipt.get('verified', {})), 'complete_receipt_available': complete, 'required_portable_recipe_ancestor': FIXED_RECIPE, 'required_source_model': SOURCE_MODEL, 'approved_producer_sources': sorted(APPROVED_PRODUCER_SOURCES), 'approved_verification_sources': sorted(APPROVED_VERIFICATION_SOURCES), 'producer_runtime_restrictions': {sha: sorted(tags) for sha, tags in PRODUCER_RUNTIME_RESTRICTIONS.items()}, 'verification_runtime_restrictions': {sha: sorted(tags) for sha, tags in VERIFICATION_RUNTIME_RESTRICTIONS.items()}, 'current_reviewed_workflow_source': RECOVERY_WORKFLOW, 'current_reviewed_workflow_sha256': REVIEWED_WORKFLOW_SHA256, 'current_workflow_matches_reviewed_recovery': current_workflow_profile['compatible_with_canonical'], 'current_workflow_raw_matches_reviewed_recovery': current_workflow_profile['raw_matches_canonical'], 'current_workflow_compatible_with_reviewed_recovery': True, 'current_tree_workflow_compatibility': current_workflow_profile, 'source_binding': 'Producer OCI labels/recipe/official inputs remain separate from verification workflow SHA/signature/gates. Recovered authorization is loaded from verification commit; Earlier approved normal candidates retain their source-pinned original verifier; recovered producer may be any explicitly approved producer only with exact source-pinned authorization.', 'local_green_proofs_verified': local_green_proofs, 'supported_targeted_proof_mode': TARGETED_MODE, 'root_approved_layer_custody': {'file': str(LAYER_CUSTODY_FILE), 'sha256': LAYER_CUSTODY_SHA256}, 'targeted_proof_requirements': 'Digest-authenticated original gzip bundles/index/commands; unchanged derived DSSE; exact SPDX child or root-approved full-stream content reconstruction and exact Trivy config binding; no arbitrary alias or reconstructed signed DockerReference', 'published_node_portability_required': {'receipt_field': 'verified[node_tag].security.portable_companion_baseline', 'distribution': 'Debian11 Bullseye', 'architectures': ['amd64', 'arm64'], 'header_major': 'must equal selected 14/16/18/20 line', 'source_record_path': '/usr/share/bex-node-brotli/sources.txt', 'actual_per_architecture_log_lines_required': True}, 'adoption_only_matrix_equal': True, 'native_supplied_bases_empty': True, 'official_inventory_entries_retained_unchanged': True, 'mappings': mappings, 'scope': 'Data-only 11 reviewed native lines; preserve versions/defaults/official provenance. Other exact patches keep official lookup and existing reviewed fallback. No production deployment or repository writes.'}
++    plan.update(scope='Proof-only validation of historical per-line artifacts; the legacy C tenant-base writer is globally retired', mappings_purpose='Artifact identity/proof validation only; legacy inventory templates are not adoption permission', legacy_C_tenant_base_writer_authorized=False, legacy_C_writer_implementation_removed=True, common_adoption_writer_implemented=False, common_qualification_gate=COMMON_QUALIFICATION_GATE)
++    if current_workflow_profile.get('proof_only_common_source'):
++        plan.update(inventory_current_rows=45, native_common_base_empty=True)
+     planpath = Path(args.plan).resolve()
+     check(planpath.is_relative_to(Path('/tmp').resolve()), 'plan output must stay in /tmp')
+     planpath.write_text(json.dumps(plan, indent=2) + '\n')
+@@ -899,35 +952,7 @@
+     if not args.prepare_dir:
+         return
+     check(complete, 'REFUSING adoption copies: receipt is incomplete; all 11 independently verified published candidates are required')
+-    check(receipt.get('source_model') == SOURCE_MODEL, 'receipt must use source-separated verification model v2')
+-    check(receipt.get('registry_repository') == REPO and receipt.get('tag_prefix') == 'native-' and receipt.get('workflow') == IDENTITY and receipt.get('required_security_ancestor') == ANCESTOR, 'receipt publication identity mismatch')
+-    prepared = native
+-    additions = []
+-    for row in mappings:
+-        verified = receipt['verified'][row['receipt_key']]
+-        sha, verification_sha = validate_candidate(verified, row, receipt, matrix, native)
+-        digest = verified['digest']
+-        joburl = verified['job_url']
+-        image = row['inventory_template']['upstream'] + '@' + digest
+-        token = 'image: "' + row['upstream'] + '"'
+-        check(prepared.count(token) == 1, 'native row changed during preparation')
+-        prepared = prepared.replace(token, 'image: "' + image + '", upstream: "' + row['upstream'] + '"', 1)
+-        entry = dict(row['inventory_template'], committed=image, resolved_at=datetime.datetime.fromisoformat(receipt['checked_at'].replace('Z', '+00:00')).astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), source=f'Verified native Brotli backport; {joburl}; producer {sha}; verification {verification_sha}; amd64+arm64 signature, SPDX, signed scans and offline runtime gates')
+-        additions.append(entry)
+-    check(matrix.matrix(prepared) == matrix.matrix(native), 'adoption changed publishing inputs')
+-    proposed_inventory = dict(inventory, images=inventory['images'] + additions)
+-    freshness.parse_inventory(json.dumps(proposed_inventory))
+-    for entry in proposed_inventory['images']:
+-        if NATIVE in entry['files']:
+-            check(freshness.digest_of(entry['committed']) in prepared, 'inventory pin absent from prepared source')
+-    check((ROOT / NATIVE).read_text() == native and (ROOT / INVENTORY).read_text() == inventory_text, 'repository changed during preparation: retry against latest state')
+-    output = Path(args.prepare_dir).resolve()
+-    check(output.is_relative_to(Path('/tmp').resolve()) and not output.exists(), 'prepare output must be a NEW /tmp directory')
+-    output.mkdir()
+-    (output / 'native.go').write_text(prepared)
+-    (output / 'toolchain-freshness.json').write_text(json.dumps(proposed_inventory, indent=2) + '\n')
+-    (output / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
+-    print('Prepared review copies only: ' + str(output))
++    check(False, 'REFUSING legacy per-line C tenant-base copies: ' + COMMON_QUALIFICATION_GATE + '; this helper never authorizes the retired legacy writer in any checkout mode')
+ 
+ 
+ if __name__ == '__main__':
