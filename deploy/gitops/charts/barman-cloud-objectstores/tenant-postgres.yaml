@@ -30,3 +30,33 @@ spec:
       compression: gzip
       encryption: AES256
   retentionPolicy: 30d
+  # The plugin's native sidecar (initContainers[plugin-barman-cloud], restart
+  # Always) runs WAL archiving, base backups and WAL restore inside every
+  # tenant instance Pod. Left unset, its resources came from the workspace
+  # LimitRange's tierless defaults (100m/128Mi requests, 2 CPU/4Gi limits), so
+  # a 1-CPU `1c-2g` instance Pod was charged 3 CPU / 6Gi of limits, which with
+  # a standby is what refused HA in a Hobby workspace (w2/m247, production
+  # 2026-10-30). The Pod is no longer charged to the compute quota at all
+  # (bex-datastore PriorityClass), but its limits still size the Pod, so the
+  # sidecar gets an explicit, documented allowance:
+  #   - requests 100m/128Mi: unchanged from what it ran with, so node packing
+  #     is unchanged.
+  #   - limits 1 CPU/1Gi: barman-cloud compresses with single-threaded gzip,
+  #     so one CPU is all a base backup or WAL push can use, and it spools
+  #     multipart upload parts to disk (ephemeral storage keeps the
+  #     LimitRange's 1Gi/10Gi), so its memory is the Python/boto3 process,
+  #     well under 1Gi. A memory-limit hit OOM-kills only this sidecar, which
+  #     restarts in place; PostgreSQL keeps serving and archiving resumes.
+  # QoS stays Burstable, as it has been since the plugin shipped: requests !=
+  # limits on the sidecar. Making it Guaranteed would reserve the full sidecar
+  # limit on the node for every instance and CPU-cap backups at the request.
+  # The ObjectStore is copied verbatim into each tenant namespace by the
+  # operator (reconcileTenantBackupStore), so this is the single source.
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
