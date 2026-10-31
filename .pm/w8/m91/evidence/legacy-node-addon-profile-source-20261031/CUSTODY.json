@@ -1,0 +1,1226 @@
+{
+  "source/ADDON-FINAL-CHECKS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/ADDON-FINAL-CHECKS.json",
+    "source_bytes": 837,
+    "source_sha256": "4cfc8823151bc6842ca2cd12641cee4d7331263064253fce54a0eff3307cff3a",
+    "encoding": "gzip"
+  },
+  "source/BASELINE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/BASELINE.json",
+    "source_bytes": 14099,
+    "source_sha256": "25d03841f227114198832ad84cac0b2ab8e6df253c70bb2e047683482a7e1a5e",
+    "encoding": "gzip"
+  },
+  "source/CONTEXT-INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/CONTEXT-INPUTS.json",
+    "source_bytes": 15545,
+    "source_sha256": "7813de90e3ebd90b0b34fad8d0b4a28c5827e545ddec57dacc58ba997fe5b3b4",
+    "encoding": "gzip"
+  },
+  "source/DATED-CORRECTIONS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/DATED-CORRECTIONS.json",
+    "source_bytes": 1704,
+    "source_sha256": "e64c70677ea65c22efa734fb0bd8ac981cd3f16f59873333dd848a35609d5f4e",
+    "encoding": "gzip"
+  },
+  "source/FINAL-CHECKS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/FINAL-CHECKS.json",
+    "source_bytes": 1060,
+    "source_sha256": "e2664b326a66e6a01efd899d4b24214103ee2f0e6dc727e4ac3bfe04aaac6cea",
+    "encoding": "gzip"
+  },
+  "source/FROZEN-FIXTURE-GUARD.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/FROZEN-FIXTURE-GUARD.json",
+    "source_bytes": 12843,
+    "source_sha256": "01a48dab99be89b4bae6ab267b545004ef3ec1862d5f9dad285b507c8dfbbb93",
+    "encoding": "gzip"
+  },
+  "source/INITIAL-CHECKS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/INITIAL-CHECKS.json",
+    "source_bytes": 987,
+    "source_sha256": "ffa475b089fc1e74d6182ce763c4d7a5cc00af3d8050bd86de26f8a0d590d6ce",
+    "encoding": "gzip"
+  },
+  "source/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/MANIFEST.json",
+    "source_bytes": 18502,
+    "source_sha256": "542ef1942a36747958a6d63d3a4d5e398e0813c42c396a1ae62196991d6fad3c",
+    "encoding": "gzip"
+  },
+  "source/ORIGINAL28-READONLY-HASHES.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/ORIGINAL28-READONLY-HASHES.json",
+    "source_bytes": 527,
+    "source_sha256": "3cc2886076ba0f033f58de5966bfab3a06f2acfc276eaebe3e39583381078ef7",
+    "encoding": "gzip"
+  },
+  "source/POSITIVE9-GUARD.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/POSITIVE9-GUARD.json",
+    "source_bytes": 2680,
+    "source_sha256": "857c195d5ebe13e7e89a8efb741fbd6d090a83d4c9c39aa6e269718d952b492c",
+    "encoding": "gzip"
+  },
+  "source/PRESERVATION-GUARD.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/PRESERVATION-GUARD.json",
+    "source_bytes": 14851,
+    "source_sha256": "dd3b8c493e8e6992431cf35a0cb3924d420766129d17a397724488e0533642bd",
+    "encoding": "gzip"
+  },
+  "source/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/REVIEW.json",
+    "source_bytes": 6795,
+    "source_sha256": "73970d0d47c34db5027da2647671b054510d1f230074fa5ca1ceba1f14f3c984",
+    "encoding": "gzip"
+  },
+  "source/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/SOURCE-MANIFEST.json",
+    "source_bytes": 1395,
+    "source_sha256": "b686c379f1af4c3421eb1643563258c59d5e5bbb08835246bb925391299a1fed",
+    "encoding": "gzip"
+  },
+  "source/actionlint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/actionlint-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "source/actionlint.yaml.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/actionlint.yaml",
+    "source_bytes": 55,
+    "source_sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+    "encoding": "gzip"
+  },
+  "source/addon-host-closure-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/addon-host-closure-final.log",
+    "source_bytes": 2551,
+    "source_sha256": "ec50e5957f0711a4ad9c50e690f72d92f73df2f2b259f19a75da0b12d90c5166",
+    "encoding": "gzip"
+  },
+  "source/addon-host-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/addon-host-final.log",
+    "source_bytes": 2551,
+    "source_sha256": "ec50e5957f0711a4ad9c50e690f72d92f73df2f2b259f19a75da0b12d90c5166",
+    "encoding": "gzip"
+  },
+  "source/addon-host-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/addon-host-initial.log",
+    "source_bytes": 2025,
+    "source_sha256": "02475822c20b19d5fef4856a9bce1d354f125083277f22fdf5ece1fb72cdd2e3",
+    "encoding": "gzip"
+  },
+  "source/before/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/before/.github/scripts/native-common-qualify.py",
+    "source_bytes": 21735,
+    "source_sha256": "8d9261c1969348615827bdc3e09555e38e94182a05b0b5814c397c3c512f5f26",
+    "encoding": "gzip"
+  },
+  "source/before/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/before/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 41993,
+    "source_sha256": "949d61236af1c9fbb8e9165cf39546bb9342b97900e73062b05d5af446d8ecab",
+    "encoding": "gzip"
+  },
+  "source/before/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/before/.github/workflows/native-common-image.yml",
+    "source_bytes": 11286,
+    "source_sha256": "5973097a7205ca5c11203a4312660bf8a9de2f3ec0cd228f6098b60fab5b1753",
+    "encoding": "gzip"
+  },
+  "source/initial-common-distutils-assumption-check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/initial-common-distutils-assumption-check.py",
+    "source_bytes": 14171,
+    "source_sha256": "ec723081280f4eb1ce70841cd92acc63eb851be3a9558844b52599e49aa44d7b",
+    "encoding": "gzip"
+  },
+  "source/initial-common-distutils-assumption-check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/initial-common-distutils-assumption-check_test.py",
+    "source_bytes": 14877,
+    "source_sha256": "c2297e00e3895cc9afbaca628d73759b380eb695cbaff6b45fec3fee591fea17",
+    "encoding": "gzip"
+  },
+  "source/initial-weak-explicit-check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/initial-weak-explicit-check.py",
+    "source_bytes": 12689,
+    "source_sha256": "8f78833c1a1dd4a64e7e3746f981641addb3a3b8ef894ca0c8375ea5a581a361",
+    "encoding": "gzip"
+  },
+  "source/initial-weak-explicit-check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/initial-weak-explicit-check_test.py",
+    "source_bytes": 12386,
+    "source_sha256": "ea5131747150b0bd2e72416f2b8cff3da93185160d90fa744d30a63c7aabe10f",
+    "encoding": "gzip"
+  },
+  "source/node-syntax-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/node-syntax-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "source/node-syntax.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/node-syntax.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "source/old-node-host.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/old-node-host.log",
+    "source_bytes": 1556,
+    "source_sha256": "c0a50a4ac239fa457615b33b2f86fb6761788229b9d998e9e636b2cc0826ceb6",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/14.21.2/npm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/14.21.2/npm-project/package.json",
+    "source_bytes": 289,
+    "source_sha256": "cad72aed61d01b1936a6dea05cf2ea662932e890e167fb5c9fe19b0e1b50646c",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/14.21.2/pnpm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/14.21.2/pnpm-project/package.json",
+    "source_bytes": 329,
+    "source_sha256": "6b4b32887175a4dcc56f91d5bf07c72da12b957880694bc27583318d8187c2da",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/14.21.2/yarn-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/14.21.2/yarn-project/package.json",
+    "source_bytes": 293,
+    "source_sha256": "fb7ae3e356f7ddb4909b0b7355a9369df276f484ec4d64d9da998c5965eaa6aa",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/16.20.2/npm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/16.20.2/npm-project/package.json",
+    "source_bytes": 289,
+    "source_sha256": "ec1f5608f7d2196ab6c1877fbb25a391bbabeda1cf6f3c3ab50be4ecec9b633f",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/16.20.2/pnpm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/16.20.2/pnpm-project/package.json",
+    "source_bytes": 329,
+    "source_sha256": "bb092c360d4162dd646c32a5265c8b0297ab3e4d8a61e3826ff7b34966b9304b",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/16.20.2/yarn-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/16.20.2/yarn-project/package.json",
+    "source_bytes": 293,
+    "source_sha256": "37ac57c056b3866d1860351341057530165d73b56f0696f1f84a55f743769104",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/26.12.1/npm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/26.12.1/npm-project/package.json",
+    "source_bytes": 289,
+    "source_sha256": "f30a84c84fd07a574dc069e5ab62b1bea11282067a42e4f2ffead2591864f36e",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/26.12.1/pnpm-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/26.12.1/pnpm-project/package.json",
+    "source_bytes": 329,
+    "source_sha256": "4741210986559462046f2db5bf7c5a7d0f04da45c6dfc8f71ec02f706c727fa9",
+    "encoding": "gzip"
+  },
+  "source/positive-projects/26.12.1/yarn-project/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/positive-projects/26.12.1/yarn-project/package.json",
+    "source_bytes": 293,
+    "source_sha256": "2c75619be12a7aafc6d5206a1038ec100ccb9fcfa6e5358db78937f207db19e2",
+    "encoding": "gzip"
+  },
+  "source/routing-host-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/routing-host-final.log",
+    "source_bytes": 4077,
+    "source_sha256": "c46951b1c5ca322fecb037bf91926336b569687e8f5f9704bdac5ff068af21ff",
+    "encoding": "gzip"
+  },
+  "source/routing-host-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/routing-host-initial.log",
+    "source_bytes": 4077,
+    "source_sha256": "222f440f3512f2a6e4169f0971c9ff6c76829778c997f6ab4631173fcddc7103",
+    "encoding": "gzip"
+  },
+  "source/source/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/.github/scripts/native-common-qualify.py",
+    "source_bytes": 22134,
+    "source_sha256": "778ba78b7512df0482045acfc0860362d6d1d6c25829f89b12e2151ed85a84c5",
+    "encoding": "gzip"
+  },
+  "source/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 42321,
+    "source_sha256": "faf275c08e64e18ad6f0eb3e079a89aafc0c0b025181a0e704d2cd6ba1b595e7",
+    "encoding": "gzip"
+  },
+  "source/source/.github/scripts/test_native_oci_workflow.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/.github/scripts/test_native_oci_workflow.py",
+    "source_bytes": 16781,
+    "source_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+    "encoding": "gzip"
+  },
+  "source/source/.github/workflows/native-base-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/.github/workflows/native-base-image.yml",
+    "source_bytes": 18178,
+    "source_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "encoding": "gzip"
+  },
+  "source/source/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/.github/workflows/native-common-image.yml",
+    "source_bytes": 11298,
+    "source_sha256": "f105e01f57229813d39e840ccf45730f86fe150896da9f17d1fdfa8f03e8b0a0",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/native.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/native.go",
+    "source_bytes": 25979,
+    "source_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "source_bytes": 10725,
+    "source_sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativecommon_gorust_test.go",
+    "source_bytes": 12042,
+    "source_sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "source_bytes": 12423,
+    "source_sha256": "b63449f2ab7d90c3a11dc0ed52c903f99f4c0c73a912d61c4ad07750d7444f3c",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativecommon_ruby_test.go",
+    "source_bytes": 16847,
+    "source_sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativelegacy_python_test.go",
+    "source_bytes": 6537,
+    "source_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativemodern_python_test.go",
+    "source_bytes": 7506,
+    "source_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "source_bytes": 33494,
+    "source_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js",
+    "source_bytes": 1132,
+    "source_sha256": "5fc86c2def067543f01189ab9e46aa6e72575b24fe3c08c1394c1d9809cdbcc1",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py",
+    "source_bytes": 16634,
+    "source_sha256": "98f23e2a4b9a86b39920644b140f65c944345907d5f430ad8e2d49bbcc386cba",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py",
+    "source_bytes": 15916,
+    "source_sha256": "0d495f1f6bb579325e9dfa500d8396b958af933507b8d0b620e3829d7c6224c4",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3401,
+    "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 13299,
+    "source_sha256": "25e8aa2a394f51177f9b0e2fc65cae07a8f56799c4246a6b9a373c7e02488024",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 12226,
+    "source_sha256": "c29641b16e918740ec946c71091f28d4a4a47e4ee1191106570d8f97cfd97187",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node14-addon/addon.c",
+    "source_bytes": 588,
+    "source_sha256": "f5a64ddf893528ef6560d80c9c3967294a58f4cb14ade393de1fe263c56d0ed5",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp",
+    "source_bytes": 64,
+    "source_sha256": "875af09b39571267156015c97590b0cf2a47203de771908719b0ee7d008dedf5",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/check-build.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node14-addon/check-build.py",
+    "source_bytes": 1787,
+    "source_sha256": "305ae15aecdd106e912d7bd905d96f0740df92a55223ec27d7ed2077647e8ff0",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node14-addon/check.js",
+    "source_bytes": 526,
+    "source_sha256": "c45e315fcb9daf50a104d7e703f5f7cb2d46cb1eea0f22a2d307d5026b115f7c",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-node14-addon/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-node14-addon/package.json",
+    "source_bytes": 92,
+    "source_sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py",
+    "source_bytes": 1301,
+    "source_sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py",
+    "source_bytes": 784,
+    "source_sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py",
+    "source_bytes": 1224,
+    "source_sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py",
+    "source_bytes": 794,
+    "source_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py",
+    "source_bytes": 1782,
+    "source_sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py",
+    "source_bytes": 846,
+    "source_sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py",
+    "source_bytes": 1346,
+    "source_sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py",
+    "source_bytes": 1007,
+    "source_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py",
+    "source_bytes": 2704,
+    "source_sha256": "f659f8a44cd73db33da8902ab4e3dbad4f5713ca91677a67a48a5696b34db06d",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py",
+    "source_bytes": 444,
+    "source_sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py",
+    "source_bytes": 760,
+    "source_sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64",
+    "source_bytes": 2297,
+    "source_sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py",
+    "source_bytes": 868,
+    "source_sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py",
+    "source_bytes": 1490,
+    "source_sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py",
+    "source_bytes": 918,
+    "source_sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py",
+    "source_bytes": 903,
+    "source_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py",
+    "source_bytes": 823,
+    "source_sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py",
+    "source_bytes": 1513,
+    "source_sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py",
+    "source_bytes": 950,
+    "source_sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py",
+    "source_bytes": 729,
+    "source_sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py",
+    "source_bytes": 1769,
+    "source_sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py",
+    "source_bytes": 951,
+    "source_sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py",
+    "source_bytes": 1901,
+    "source_sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py",
+    "source_bytes": 950,
+    "source_sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py",
+    "source_bytes": 537,
+    "source_sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py",
+    "source_bytes": 1179,
+    "source_sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py",
+    "source_bytes": 1132,
+    "source_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py",
+    "source_bytes": 1188,
+    "source_sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py",
+    "source_bytes": 708,
+    "source_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json",
+    "source_bytes": 777,
+    "source_sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/messages.po.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/messages.po",
+    "source_bytes": 508,
+    "source_sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/original-cases.json",
+    "source_bytes": 83949,
+    "source_sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py",
+    "source_bytes": 6239,
+    "source_sha256": "c0490ebecc5a4c940aa5d64b6c5c8d70f87527ace424bf5c21a2c45159e608b0",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py",
+    "source_bytes": 6613,
+    "source_sha256": "bf7128b692b6d062402665c478bb604a9439e31b7252eb13c5611fef66201159",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/png-decoder.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/png-decoder.py",
+    "source_bytes": 1933,
+    "source_sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/provenance.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/provenance.json",
+    "source_bytes": 21602,
+    "source_sha256": "48a9fb0691b00879f07b200ffb560dc338b8bb4e2f9a8cd3e875df5fbb9d782d",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz",
+    "source_bytes": 12008,
+    "source_sha256": "5510f0dfe1fa2838cdc7213dc94a631c93056bb08c10b48481e6617f62b3564e",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG",
+    "source_bytes": 18,
+    "source_sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE",
+    "source_bytes": 1072,
+    "source_sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/testdata/native-utilities/utility-check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source/lego/operator/internal/build/testdata/native-utilities/utility-check.py",
+    "source_bytes": 11577,
+    "source_sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb",
+    "encoding": "gzip"
+  },
+  "source/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/source.diff",
+    "source_bytes": 51465,
+    "source_sha256": "a1f5037632faaaca7c8f696061d8c12da99c90d657a9d41ab13ccca3d7eb3b85",
+    "encoding": "gzip"
+  },
+  "source/verify.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-source-20261031-syszjt21/verify.py",
+    "source_bytes": 3954,
+    "source_sha256": "872410711f221c621b928b2abaa7d5f810de8a0ed493ebc7cab244fd4effa8aa",
+    "encoding": "gzip"
+  },
+  "independent/EXTRA-PRESERVATION.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/EXTRA-PRESERVATION.json",
+    "source_bytes": 352,
+    "source_sha256": "e7ac829945011358066b85932bed5fcadc6741af02a93724e621e8b7a32e963b",
+    "encoding": "gzip"
+  },
+  "independent/INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/INPUTS.json",
+    "source_bytes": 1943,
+    "source_sha256": "db1cf8c7b15d0ec2a34f3dcf9c224b29d724f7907498d554520df4476c363676",
+    "encoding": "gzip"
+  },
+  "independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/MANIFEST.json",
+    "source_bytes": 13768,
+    "source_sha256": "683e86e2ef6fd2bd275f015b8002d85b4bdc571370eebfb22ee2f2e2ed355402",
+    "encoding": "gzip"
+  },
+  "independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/REVIEW.json",
+    "source_bytes": 6284,
+    "source_sha256": "05dc8871a8abd11111239859cc2d9a6d6542e608b5391fe99b76e38583515b3f",
+    "encoding": "gzip"
+  },
+  "independent/actionlint.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/actionlint.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "independent/actionlint.yaml.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/actionlint.yaml",
+    "source_bytes": 55,
+    "source_sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0",
+    "encoding": "gzip"
+  },
+  "independent/addon-tests.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/addon-tests.log",
+    "source_bytes": 1682,
+    "source_sha256": "7c1c01b82f5cf1731175c043aaa2650db5321b60b3a080f5bb9595e77d224ccc",
+    "encoding": "gzip"
+  },
+  "independent/node-syntax.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/node-syntax.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "independent/old-node-tests.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/old-node-tests.log",
+    "source_bytes": 1048,
+    "source_sha256": "182b6953d986abbf3be305ae856da958f35c2f7a80e26de055e603422bffbfc2",
+    "encoding": "gzip"
+  },
+  "independent/routing-tests.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/routing-tests.log",
+    "source_bytes": 2532,
+    "source_sha256": "d2dc65555cb302b35e4c829e93db42c8fced466680f054effea2bec0876f9b25",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/.github/scripts/native-common-qualify.py",
+    "source_bytes": 22134,
+    "source_sha256": "778ba78b7512df0482045acfc0860362d6d1d6c25829f89b12e2151ed85a84c5",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 42321,
+    "source_sha256": "faf275c08e64e18ad6f0eb3e079a89aafc0c0b025181a0e704d2cd6ba1b595e7",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/scripts/test_native_oci_workflow.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/.github/scripts/test_native_oci_workflow.py",
+    "source_bytes": 16781,
+    "source_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/workflows/native-base-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/.github/workflows/native-base-image.yml",
+    "source_bytes": 18178,
+    "source_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "encoding": "gzip"
+  },
+  "independent/work/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/.github/workflows/native-common-image.yml",
+    "source_bytes": 11298,
+    "source_sha256": "f105e01f57229813d39e840ccf45730f86fe150896da9f17d1fdfa8f03e8b0a0",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/native.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/native.go",
+    "source_bytes": 25979,
+    "source_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "source_bytes": 10725,
+    "source_sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativecommon_gorust_test.go",
+    "source_bytes": 12042,
+    "source_sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "source_bytes": 12423,
+    "source_sha256": "b63449f2ab7d90c3a11dc0ed52c903f99f4c0c73a912d61c4ad07750d7444f3c",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativecommon_ruby_test.go",
+    "source_bytes": 16847,
+    "source_sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativelegacy_python_test.go",
+    "source_bytes": 6537,
+    "source_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativemodern_python_test.go",
+    "source_bytes": 7506,
+    "source_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/nativequalification_init_test.go",
+    "source_bytes": 33494,
+    "source_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.js",
+    "source_bytes": 1132,
+    "source_sha256": "5fc86c2def067543f01189ab9e46aa6e72575b24fe3c08c1394c1d9809cdbcc1",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check.py",
+    "source_bytes": 16634,
+    "source_sha256": "98f23e2a4b9a86b39920644b140f65c944345907d5f430ad8e2d49bbcc386cba",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py",
+    "source_bytes": 15916,
+    "source_sha256": "0d495f1f6bb579325e9dfa500d8396b958af933507b8d0b620e3829d7c6224c4",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3401,
+    "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 13299,
+    "source_sha256": "25e8aa2a394f51177f9b0e2fc65cae07a8f56799c4246a6b9a373c7e02488024",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 12226,
+    "source_sha256": "c29641b16e918740ec946c71091f28d4a4a47e4ee1191106570d8f97cfd97187",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node14-addon/addon.c",
+    "source_bytes": 588,
+    "source_sha256": "f5a64ddf893528ef6560d80c9c3967294a58f4cb14ade393de1fe263c56d0ed5",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node14-addon/binding.gyp",
+    "source_bytes": 64,
+    "source_sha256": "875af09b39571267156015c97590b0cf2a47203de771908719b0ee7d008dedf5",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/check-build.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node14-addon/check-build.py",
+    "source_bytes": 1787,
+    "source_sha256": "305ae15aecdd106e912d7bd905d96f0740df92a55223ec27d7ed2077647e8ff0",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/check.js.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node14-addon/check.js",
+    "source_bytes": 526,
+    "source_sha256": "c45e315fcb9daf50a104d7e703f5f7cb2d46cb1eea0f22a2d307d5026b115f7c",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-node14-addon/package.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-node14-addon/package.json",
+    "source_bytes": 92,
+    "source_sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py",
+    "source_bytes": 1301,
+    "source_sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py",
+    "source_bytes": 784,
+    "source_sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py",
+    "source_bytes": 1224,
+    "source_sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py",
+    "source_bytes": 794,
+    "source_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py",
+    "source_bytes": 1782,
+    "source_sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py",
+    "source_bytes": 846,
+    "source_sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py",
+    "source_bytes": 1346,
+    "source_sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py",
+    "source_bytes": 1007,
+    "source_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py",
+    "source_bytes": 2704,
+    "source_sha256": "f659f8a44cd73db33da8902ab4e3dbad4f5713ca91677a67a48a5696b34db06d",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py",
+    "source_bytes": 444,
+    "source_sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py",
+    "source_bytes": 760,
+    "source_sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64",
+    "source_bytes": 2297,
+    "source_sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py",
+    "source_bytes": 868,
+    "source_sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py",
+    "source_bytes": 1490,
+    "source_sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py",
+    "source_bytes": 918,
+    "source_sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py",
+    "source_bytes": 903,
+    "source_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py",
+    "source_bytes": 823,
+    "source_sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py",
+    "source_bytes": 1513,
+    "source_sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py",
+    "source_bytes": 950,
+    "source_sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py",
+    "source_bytes": 729,
+    "source_sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py",
+    "source_bytes": 1769,
+    "source_sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py",
+    "source_bytes": 951,
+    "source_sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py",
+    "source_bytes": 1901,
+    "source_sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py",
+    "source_bytes": 950,
+    "source_sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py",
+    "source_bytes": 537,
+    "source_sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py",
+    "source_bytes": 1179,
+    "source_sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py",
+    "source_bytes": 1132,
+    "source_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py",
+    "source_bytes": 1188,
+    "source_sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py",
+    "source_bytes": 708,
+    "source_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/gettext-reference.json",
+    "source_bytes": 777,
+    "source_sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/messages.po.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/messages.po",
+    "source_bytes": 508,
+    "source_sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/original-cases.json",
+    "source_bytes": 83949,
+    "source_sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/original-cases.py",
+    "source_bytes": 6239,
+    "source_sha256": "c0490ebecc5a4c940aa5d64b6c5c8d70f87527ace424bf5c21a2c45159e608b0",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py",
+    "source_bytes": 6613,
+    "source_sha256": "bf7128b692b6d062402665c478bb604a9439e31b7252eb13c5611fef66201159",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/png-decoder.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/png-decoder.py",
+    "source_bytes": 1933,
+    "source_sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/provenance.json.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/provenance.json",
+    "source_bytes": 21602,
+    "source_sha256": "48a9fb0691b00879f07b200ffb560dc338b8bb4e2f9a8cd3e875df5fbb9d782d",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz",
+    "source_bytes": 12008,
+    "source_sha256": "5510f0dfe1fa2838cdc7213dc94a631c93056bb08c10b48481e6617f62b3564e",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG",
+    "source_bytes": 18,
+    "source_sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE",
+    "source_bytes": 1072,
+    "source_sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "encoding": "gzip"
+  },
+  "independent/work/lego/operator/internal/build/testdata/native-utilities/utility-check.py.gz": {
+    "source": "/private/tmp/bex-w8-addon-independent-review-20261031-h2q2l95x/work/lego/operator/internal/build/testdata/native-utilities/utility-check.py",
+    "source_bytes": 11577,
+    "source_sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb",
+    "encoding": "gzip"
+  },
+  "postapply/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/MANIFEST.json",
+    "source_bytes": 1069,
+    "source_sha256": "76b978e3fc5d9e7ffc0ceee7de051bc0e289385f22ea33985feed787d845195d",
+    "encoding": "gzip"
+  },
+  "postapply/PRESERVATION-REBIND.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/PRESERVATION-REBIND.json",
+    "source_bytes": 11830,
+    "source_sha256": "5d048b72ffa428fe820669496d411ed002ff5e541e9c30fb83a78f52d03b3c56",
+    "encoding": "gzip"
+  },
+  "postapply/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/REVIEW.json",
+    "source_bytes": 2539,
+    "source_sha256": "36f40cf89f5ef8a6ab091d94855e4aaea372f0fb78b97a67d864a6bcca14caf7",
+    "encoding": "gzip"
+  },
+  "postapply/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/SOURCE-MANIFEST.json",
+    "source_bytes": 1395,
+    "source_sha256": "2ed701c54cf42d7a750d1a22ca4768124183a0409e241cd79db8d8b5931e9c0f",
+    "encoding": "gzip"
+  },
+  "postapply/applied-delta.diff.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/applied-delta.diff",
+    "source_bytes": 1642,
+    "source_sha256": "f2e16dd1b3595899bd420a9f9c39253b8298746eb1534bfee1c24f5f646cfe7b",
+    "encoding": "gzip"
+  },
+  "postapply/checkout-observation.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/checkout-observation.json",
+    "source_bytes": 1079,
+    "source_sha256": "cbffa454869e5fd4ef7fb3042250c058ec0421844e89a298323fa8f81f07f5e1",
+    "encoding": "gzip"
+  },
+  "postapply/inventory-job-metadata.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/inventory-job-metadata.json",
+    "source_bytes": 5400,
+    "source_sha256": "0e983d373a8ea893c7326ae7799ea1e17d9a1ee97f256e6f4604ae391ebe9a43",
+    "encoding": "gzip"
+  },
+  "postapply/root-Go-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/root-Go-RESULT.json",
+    "source_bytes": 3709,
+    "source_sha256": "448449ac10fce316a53a1280fb4b33a31566f7508afa9a20b6d805e6329c960b",
+    "encoding": "gzip"
+  },
+  "postapply/root-routing22.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-postapply-review-20261031-d54gaqtz/root-routing22.log",
+    "source_bytes": 121,
+    "source_sha256": "bd7242842fb8e6dcc06b082b90146e2ccd64d7b9a29d54060a4c480e24690d6d",
+    "encoding": "gzip"
+  },
+  "root-go/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/RESULT.json",
+    "source_bytes": 3709,
+    "source_sha256": "448449ac10fce316a53a1280fb4b33a31566f7508afa9a20b6d805e6329c960b",
+    "encoding": "gzip"
+  },
+  "root-go/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/SCOPE.json",
+    "source_bytes": 3392,
+    "source_sha256": "8595af21f410bb86f2c71144cacf6e36f8f6f43f01f754b87781871cc691419c",
+    "encoding": "gzip"
+  },
+  "root-go/build-lint-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-lint-PROCESS.json",
+    "source_bytes": 151,
+    "source_sha256": "f5832c39b28c3c2783a08002737bcdf639e162ecbf0031c4967483ce00b63a3c",
+    "encoding": "gzip"
+  },
+  "root-go/build-lint-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-lint-RESULT.json",
+    "source_bytes": 251,
+    "source_sha256": "07d5abd45b5c88c97220ca817eaca03cf1e501c5da507fe2bfd27ab5e09340ce",
+    "encoding": "gzip"
+  },
+  "root-go/build-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-lint.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "root-go/build-unit-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-unit-PROCESS.json",
+    "source_bytes": 136,
+    "source_sha256": "632f69c7d469c77c8ab42dd966fbc6b0d41615a65f0944ff8f902af5744fcdf9",
+    "encoding": "gzip"
+  },
+  "root-go/build-unit-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-unit-RESULT.json",
+    "source_bytes": 236,
+    "source_sha256": "4e953ffe2672ea98dc7a06a67a251443e11b808c8655442769f262fed83441c8",
+    "encoding": "gzip"
+  },
+  "root-go/build-unit.log.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/build-unit.log",
+    "source_bytes": 63,
+    "source_sha256": "eb8a9adf1d6748644425c2e3a81aa42b91171f3cf7789ce54320c97b37b56348",
+    "encoding": "gzip"
+  },
+  "root-go/run.py.gz": {
+    "source": "/private/tmp/bex-w8-node-addon-go-20261031-z_haqrh4/run.py",
+    "source_bytes": 4646,
+    "source_sha256": "06540db9185761e5e0024d95ef34adb7d8e5506df1960354a69f5a81915c776a",
+    "encoding": "gzip"
+  },
+  "root-checkout-budget-tests.log.gz": {
+    "source": "/private/tmp/bex-w8-addon-plan-budget-tests-20261031.log",
+    "source_bytes": 121,
+    "source_sha256": "bd7242842fb8e6dcc06b082b90146e2ccd64d7b9a29d54060a4c480e24690d6d",
+    "encoding": "gzip"
+  }
+}
