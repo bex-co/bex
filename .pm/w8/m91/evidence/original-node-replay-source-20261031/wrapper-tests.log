@@ -1,0 +1,12 @@
+test_HTTP200_does_not_accept_foreign_runtime_identity (__main__.OriginalNodeHTTPControls.test_HTTP200_does_not_accept_foreign_runtime_identity) ... ok
+test_HTTP200_marker_cannot_borrow_another_prepared_case (__main__.OriginalNodeHTTPControls.test_HTTP200_marker_cannot_borrow_another_prepared_case) ... ok
+test_all_six_original_node_oracles_accept_retained_valid_bodies (__main__.OriginalNodeHTTPControls.test_all_six_original_node_oracles_accept_retained_valid_bodies) ... ok
+test_original_packaging_compressed_marker_is_preserved (__main__.OriginalNodeHTTPControls.test_original_packaging_compressed_marker_is_preserved) ... ok
+test_pandoc_positive_callback_requires_a_healthy_before_probe (__main__.OriginalNodeHTTPControls.test_pandoc_positive_callback_requires_a_healthy_before_probe) ... ok
+test_prepared_marker_is_accepted_and_authored_program_tampering_rejected (__main__.OriginalNodeHTTPControls.test_prepared_marker_is_accepted_and_authored_program_tampering_rejected) ... ok
+test_unknown_primary_never_runs_node_cases (__main__.OriginalNodeHTTPControls.test_unknown_primary_never_runs_node_cases) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.502s
+
+OK

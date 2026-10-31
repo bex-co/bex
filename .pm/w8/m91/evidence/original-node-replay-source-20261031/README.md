@@ -1,0 +1,9 @@
+# Original Node replay source checkpoint — 2026-10-31
+
+The maintained generated-image harness now includes all13 original one-client tool programs: seven Node24 cases and six exact-primary Python3.13 cases. The six added Node cases cover PostgreSQL clients, Pandoc, jq/rsync, TypeScript, Webpack and ZIP. Existing seven specs remain object-identical, added fields/helpers match the frozen committed13-case custody, and the original28 two-client hosted specs retain raw SHA256 `ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb`.
+
+The seven offline tests exercise all18 retained Node HTTP frames, reject six foreign HTTP200 runtime identities, require a healthy supplied Pandoc pre-probe, and verify prepared marker/program tampering (including the original compressed packaging fixture). Review found two mistakes in a new authored-file check: prepared marker hashes differ from historical markers, and packaging names its marker `qm.json`. Both were corrected without editing frozen commands/programs/data. Every other authored-file SHA/size remains mandatory. PostgreSQL reuses the original public PG15 archive at its authored fixture path; ZIP reads the exact source-carrier bytes.
+
+The full Go build-package suite passes. The generated-image test remains opt-in and was **skipped**: no new image execution, both-architecture ABI proof, Kubernetes pre-deploy, publication, SBOM or hosted result is claimed. This prepares the common-image qualification; independent per-supplier omission controls and actual image/hosted acceptance remain open. The HTTP corpus is explicitly historical replay; m91 bodies are marked as test-only JSON reserializations because only their decoded form was retained.
+
+`SOURCE-MANIFEST.json` binds the exact41 maintained source/input files. Logs and the independent-review scope are retained here; no production image pin or runtime version changed.
