@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-31T00:33:33.278596+00:00",
+  "approver": "root",
+  "approved_new_helper_sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913",
+  "old_helper_sha256": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+  "diff_sha256": "3f1b6b0f29aef23cbc121ee0b2a161388a419c63df5d481a1812eca9905a8b33",
+  "isolated_controls_sha256": "5585102af2f8213706b3a27303bc6f4c10d13eed67b6c75004c8838d89901f28",
+  "root_read_exactdiff_and13_controls": true,
+  "authorization": "Create separate final-live-census-v2.py exactproposal and immutableactivation/finalplanaddendum, preserveoriginalhelper andallstrictpriorityreports. No productioncensus inthisactivation. Existingallunknown/noPod/retainedimage predicates unchanged.",
+  "review": "Namespace thenconsistent currentAppUID/name/apiGroup ownership, or existing owner-less label association. Conflictingowners refused; no exactnamefallback. Actual retainedimage/healthy/runtime/security status never inferredfromownerassociation.",
+  "fixture_source_scope_qualification": "85de actualgit/source_scope exercised only in synthetic fixture; it is not a claim of actual deployedsource or Ready/rollout.",
+  "old_plan_file": "/tmp/bex-m188-final-t004-plan.json",
+  "scope": "Future read-only finalcensus tool selection only, not t004 completion, source/candidate adoption, published proof or image safety"
+}

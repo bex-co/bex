@@ -1,0 +1,429 @@
+{
+  "scope": "Supplemental read-only current App/source/status classification; initial strict5unresolved snapshot unchanged; no Pod probes/rebuilds",
+  "checked_at": "2026-10-31T00:24:59.756624+00:00",
+  "queries": [
+    {
+      "queried_at": "2026-10-31T00:24:59.756370+00:00",
+      "namespace": "tea-d98210cbbpdc73dcrkvg",
+      "rows": [
+        {
+          "metadata": {
+            "name": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+            "namespace": "tea-d98210cbbpdc73dcrkvg",
+            "uid": "533ccfb0-49af-438e-b78e-ad6ab3f63883",
+            "generation": 233,
+            "creationTimestamp": "2026-07-28T19:36:15Z"
+          },
+          "release_annotations_numeric_only": {
+            "app.bex.co/release-generation": "229"
+          },
+          "spec": {
+            "runtime": null,
+            "builder": "auto",
+            "type": null,
+            "suspended": null,
+            "rootDir": null,
+            "dockerfilePath": null,
+            "dockerContext": null,
+            "image": null,
+            "replicas": 1,
+            "repo_without_credentials_or_query": "https://github.com/bex-co/agentmarketcap.git",
+            "repo_raw_sha256": "1d04c55b43fd15961cc7600fb0ad3f6702fe4143dc007672a26b07ca62e0e424",
+            "buildCommit": null,
+            "buildCommit_is_nonimmutable_ref": false,
+            "branch": "main"
+          },
+          "status": {
+            "phase": "Running",
+            "activeRevision": "rev-230",
+            "observedGeneration": 233,
+            "releaseGeneration": 230,
+            "selectedReleaseGeneration": null,
+            "pendingReleaseGeneration": null,
+            "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+            "artifactImage": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+            "imageDigest": {
+              "digest": "sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+              "generation": 230
+            },
+            "imageRevision": {
+              "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1:gen-230@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d"
+            },
+            "buildRun": null,
+            "configSnapshotGeneration": 230,
+            "undeployedChanges": null,
+            "undeployedChangesReason": null,
+            "condition_types_reasons": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "reason": "Deployed",
+                "lastTransitionTime": "2026-10-28T17:21:49Z",
+                "observedGeneration": 233
+              },
+              {
+                "type": "PublicRouting",
+                "status": "True",
+                "reason": "Routed",
+                "lastTransitionTime": "2026-08-09T22:52:41Z",
+                "observedGeneration": 233
+              },
+              {
+                "type": "Serving",
+                "status": "False",
+                "reason": "ServingRevisionUnavailable",
+                "lastTransitionTime": "2026-10-28T17:21:46Z",
+                "observedGeneration": 233
+              }
+            ]
+          },
+          "build_command_present": false,
+          "start_command_present": false,
+          "literal_env_count": 0,
+          "secret_refs_present": false,
+          "no_env_or_secret_contents_exported": true
+        },
+        {
+          "metadata": {
+            "name": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+            "namespace": "tea-d98210cbbpdc73dcrkvg",
+            "uid": "92a0fedf-4f7f-49c4-8a44-1de66545a9e8",
+            "generation": 1448,
+            "creationTimestamp": "2026-07-28T19:49:15Z"
+          },
+          "release_annotations_numeric_only": {
+            "app.bex.co/canceled-release-generation": "1321",
+            "app.bex.co/release-generation": "1448"
+          },
+          "spec": {
+            "runtime": null,
+            "builder": "auto",
+            "type": null,
+            "suspended": null,
+            "rootDir": null,
+            "dockerfilePath": null,
+            "dockerContext": null,
+            "image": null,
+            "replicas": 1,
+            "repo_without_credentials_or_query": "https://github.com/bex-co/beancount-cms-v2.git",
+            "repo_raw_sha256": "e807d20f5501b7dbbe4d4c33951bae267832cbc7f74fe8195699a570c34a429d",
+            "buildCommit": "2b2f6442e7eb76d3f354e7e42b54a8107da3ad03",
+            "buildCommit_is_nonimmutable_ref": false,
+            "branch": "main"
+          },
+          "status": {
+            "phase": "Running",
+            "activeRevision": "rev-1448",
+            "observedGeneration": 1448,
+            "releaseGeneration": 1448,
+            "selectedReleaseGeneration": null,
+            "pendingReleaseGeneration": null,
+            "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+            "artifactImage": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+            "imageDigest": {
+              "digest": "sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+              "generation": 1448
+            },
+            "imageRevision": {
+              "commit": "2b2f6442e7eb76d3f354e7e42b54a8107da3ad03",
+              "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2:gen-1448@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1"
+            },
+            "buildRun": {
+              "finishedAt": "2026-10-24T09:05:54Z",
+              "generation": 1444,
+              "startedAt": "2026-10-24T08:35:25Z"
+            },
+            "configSnapshotGeneration": 1448,
+            "undeployedChanges": null,
+            "undeployedChangesReason": null,
+            "condition_types_reasons": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "reason": "Deployed",
+                "lastTransitionTime": "2026-10-30T18:10:32Z",
+                "observedGeneration": 1448
+              },
+              {
+                "type": "PublicRouting",
+                "status": "True",
+                "reason": "Routed",
+                "lastTransitionTime": "2026-08-17T05:06:40Z",
+                "observedGeneration": 1448
+              },
+              {
+                "type": "Build",
+                "status": "False",
+                "reason": "BuildFailed",
+                "lastTransitionTime": "2026-08-27T06:42:08Z",
+                "observedGeneration": 1444
+              },
+              {
+                "type": "Serving",
+                "status": "False",
+                "reason": "ServingRevisionUnavailable",
+                "lastTransitionTime": "2026-10-29T03:57:48Z",
+                "observedGeneration": 1448
+              },
+              {
+                "type": "Rollout",
+                "status": "False",
+                "reason": "Unschedulable",
+                "lastTransitionTime": "2026-10-03T10:17:07Z",
+                "observedGeneration": 1438
+              }
+            ]
+          },
+          "build_command_present": false,
+          "start_command_present": false,
+          "literal_env_count": 0,
+          "secret_refs_present": false,
+          "no_env_or_secret_contents_exported": true
+        },
+        {
+          "metadata": {
+            "name": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+            "namespace": "tea-d98210cbbpdc73dcrkvg",
+            "uid": "3f6acfee-ba77-4708-8acb-1a4e78d63d3f",
+            "generation": 724,
+            "creationTimestamp": "2026-07-28T19:40:45Z"
+          },
+          "release_annotations_numeric_only": {
+            "app.bex.co/release-generation": "724"
+          },
+          "spec": {
+            "runtime": null,
+            "builder": "auto",
+            "type": null,
+            "suspended": null,
+            "rootDir": null,
+            "dockerfilePath": null,
+            "dockerContext": null,
+            "image": null,
+            "replicas": 1,
+            "repo_without_credentials_or_query": "https://github.com/bex-co/eden-cms-v2",
+            "repo_raw_sha256": "012f3e588442cbc93a23b7e156042e02785a46690fa8167d33c1e998e8eb5108",
+            "buildCommit": "ef60afbfe03dfe8fe29665a22da1849f30d207a5",
+            "buildCommit_is_nonimmutable_ref": false,
+            "branch": "main"
+          },
+          "status": {
+            "phase": "Running",
+            "activeRevision": "rev-723",
+            "observedGeneration": 723,
+            "releaseGeneration": 724,
+            "selectedReleaseGeneration": null,
+            "pendingReleaseGeneration": null,
+            "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+            "artifactImage": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15",
+            "imageDigest": {
+              "digest": "sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+              "generation": 723
+            },
+            "imageRevision": {
+              "commit": "ef60afbfe03dfe8fe29665a22da1849f30d207a5",
+              "image": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2:gen-724@sha256:65dd8e9cda0f53506f609ede21ce2fe31cf71dc82dc819e59b3ed609ea8c6b15"
+            },
+            "buildRun": {
+              "finishedAt": "2026-09-17T08:36:50Z",
+              "generation": 512,
+              "startedAt": "2026-09-17T08:30:39Z"
+            },
+            "configSnapshotGeneration": 724,
+            "undeployedChanges": null,
+            "undeployedChangesReason": null,
+            "condition_types_reasons": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "reason": "PriorReleaseServing",
+                "lastTransitionTime": "2026-10-23T09:22:25Z",
+                "observedGeneration": 724
+              },
+              {
+                "type": "PublicRouting",
+                "status": "True",
+                "reason": "Routed",
+                "lastTransitionTime": "2026-08-17T05:06:41Z",
+                "observedGeneration": 724
+              },
+              {
+                "type": "Build",
+                "status": "False",
+                "reason": "BuildFailedUserError",
+                "lastTransitionTime": "2026-08-29T19:21:28Z",
+                "observedGeneration": 512
+              },
+              {
+                "type": "Serving",
+                "status": "True",
+                "reason": "PriorReleaseServing",
+                "lastTransitionTime": "2026-10-23T09:07:24Z",
+                "observedGeneration": 724
+              },
+              {
+                "type": "Rollout",
+                "status": "False",
+                "reason": "Unschedulable",
+                "lastTransitionTime": "2026-10-23T09:22:25Z",
+                "observedGeneration": 724
+              }
+            ]
+          },
+          "build_command_present": false,
+          "start_command_present": false,
+          "literal_env_count": 0,
+          "secret_refs_present": false,
+          "no_env_or_secret_contents_exported": true
+        }
+      ],
+      "response_sha256_not_body": "e30f84f293ee6929a4c11999a238c61e5d5f8721dfc57ffdcbe9d3df31b2cca6",
+      "stderr_bytes": 0
+    },
+    {
+      "queried_at": "2026-10-31T00:24:59.357389+00:00",
+      "namespace": "tea-da1eg9gbiuuc73bd8uag",
+      "rows": [
+        {
+          "metadata": {
+            "name": "tea-da1eg9gbiuuc73bd8uag-market-size",
+            "namespace": "tea-da1eg9gbiuuc73bd8uag",
+            "uid": "1e3e18bb-8844-4b42-87f0-5c52982ee2ce",
+            "generation": 1,
+            "creationTimestamp": "2026-08-17T11:00:04Z"
+          },
+          "release_annotations_numeric_only": {},
+          "spec": {
+            "runtime": "node",
+            "builder": "native",
+            "type": "web_service",
+            "suspended": null,
+            "rootDir": null,
+            "dockerfilePath": null,
+            "dockerContext": null,
+            "image": null,
+            "replicas": 1,
+            "repo_without_credentials_or_query": "https://github.com/marketsizeforecast/Market-Size",
+            "repo_raw_sha256": "9c6f21d5ecfc8e0858cc32346b730739d0d7c21229bfda23b2ac1345148b91d2",
+            "buildCommit": null,
+            "buildCommit_is_nonimmutable_ref": false,
+            "branch": "main"
+          },
+          "status": {
+            "phase": "Failed",
+            "activeRevision": null,
+            "observedGeneration": null,
+            "releaseGeneration": 1,
+            "selectedReleaseGeneration": null,
+            "pendingReleaseGeneration": null,
+            "image": null,
+            "artifactImage": null,
+            "imageDigest": null,
+            "imageRevision": null,
+            "buildRun": null,
+            "configSnapshotGeneration": null,
+            "undeployedChanges": null,
+            "undeployedChangesReason": null,
+            "condition_types_reasons": [
+              {
+                "type": "Ready",
+                "status": "False",
+                "reason": "BuildFailedUserError",
+                "lastTransitionTime": "2026-08-17T11:00:04Z",
+                "observedGeneration": 1
+              }
+            ]
+          },
+          "build_command_present": true,
+          "start_command_present": true,
+          "literal_env_count": 0,
+          "secret_refs_present": false,
+          "no_env_or_secret_contents_exported": true
+        }
+      ],
+      "response_sha256_not_body": "e4f933b6fa6e359a3251394e0cd7a209e2000031a937c9ceffe5918ebf8e589f",
+      "stderr_bytes": 0
+    },
+    {
+      "queried_at": "2026-10-31T00:24:59.357626+00:00",
+      "namespace": "tea-db3nth8gu8gc73cl11t0",
+      "rows": [
+        {
+          "metadata": {
+            "name": "tea-db3nth8gu8gc73cl11t0-cloneix",
+            "namespace": "tea-db3nth8gu8gc73cl11t0",
+            "uid": "235b8621-095e-4814-8dff-a768ef56b95b",
+            "generation": 6,
+            "creationTimestamp": "2026-10-08T11:50:39Z"
+          },
+          "release_annotations_numeric_only": {
+            "app.bex.co/canceled-release-generation": "3",
+            "app.bex.co/release-generation": "3"
+          },
+          "spec": {
+            "runtime": "node",
+            "builder": "native",
+            "type": "web_service",
+            "suspended": true,
+            "rootDir": null,
+            "dockerfilePath": null,
+            "dockerContext": null,
+            "image": null,
+            "replicas": 1,
+            "repo_without_credentials_or_query": "https://github.com/rajmavani19-wq/Cloneix.git",
+            "repo_raw_sha256": "607d339bcb915c5eaf51da9653b789354b890cc8b646fcea89d3483ae5f78415",
+            "buildCommit": "c9b04900c4cdabf9b568d46413efa797b7e18369",
+            "buildCommit_is_nonimmutable_ref": false,
+            "branch": "main"
+          },
+          "status": {
+            "phase": "Canceled",
+            "activeRevision": null,
+            "observedGeneration": 6,
+            "releaseGeneration": null,
+            "selectedReleaseGeneration": null,
+            "pendingReleaseGeneration": null,
+            "image": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+            "artifactImage": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+            "imageDigest": null,
+            "imageRevision": null,
+            "buildRun": null,
+            "configSnapshotGeneration": 3,
+            "undeployedChanges": null,
+            "undeployedChangesReason": null,
+            "condition_types_reasons": [
+              {
+                "type": "Ready",
+                "status": "False",
+                "reason": "BuildCanceled",
+                "lastTransitionTime": "2026-10-08T11:50:40Z",
+                "observedGeneration": 6
+              },
+              {
+                "type": "PublicRouting",
+                "status": "True",
+                "reason": "Routed",
+                "lastTransitionTime": "2026-10-08T11:54:42Z",
+                "observedGeneration": 4
+              },
+              {
+                "type": "Serving",
+                "status": "Unknown",
+                "reason": "ServingUnobserved",
+                "lastTransitionTime": "2026-10-08T11:54:42Z",
+                "observedGeneration": 3
+              }
+            ]
+          },
+          "build_command_present": true,
+          "start_command_present": true,
+          "literal_env_count": 0,
+          "secret_refs_present": true,
+          "no_env_or_secret_contents_exported": true
+        }
+      ],
+      "response_sha256_not_body": "b4178499670b7d0a2b048bc188f5c281c26a34cb4f31053b9ce2d780caad3321",
+      "stderr_bytes": 0
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "bex.m188-final-t004-nonexecuted-plan/v1",
+  "at": "2026-10-30T15:55:08.884322+00:00",
+  "no_final_acceptance_or_production_execution": true,
+  "no_repo_board_write": true,
+  "helpers_sha256": {
+    "/tmp/bex-m188-final-live-census.py": "c06ec446e5313729d8177d70d7cbd0627050a139a1af612a4a2571b66356f1ff",
+    "/tmp/bex-m188-final-operator-ready.py": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a"
+  },
+  "historical_helpers_preserved": {
+    "/tmp/bex-m188-live-census.py": "07bd6c29b471baff28da23ff6f8bc7470b4880402997f9f96ebe777af738bc9e",
+    "/tmp/bex-w1-136-snapshot.py": "f0e7af7c2dfaa2c7e219b1413f14e806795b7911965a814def3b8129534c1f22",
+    "/tmp/bex-w1-136-runtime-proof.py": "9e8d2dddec15327815f2d6ec30e97db7c27c48e86419d6efde1bd49e239651ad"
+  },
+  "existing_reuse": "GHAexact-job logs/officialCosign from136; same boundedkubectl-get/exec/snapshot patterns; existing final-native-fixture collector adopted_pins binder; platform-rebuild CLI read-onlyplan only. No new infrastructure or fleetapply.",
+  "commands_in_order_not_executed": [
+    {
+      "phase": "after actual11adoption and six fixture acceptance, select real deploy run",
+      "commands": [
+        "gh api \"repos/bex-co/bex/actions/runs/$M188_DEPLOY_RUN\" > \"$M188_FINAL_DIR/deploy-run.json\"",
+        "gh api \"repos/bex-co/bex/actions/runs/$M188_DEPLOY_RUN/jobs?filter=latest&per_page=100\" > \"$M188_FINAL_DIR/deploy-jobs.json\"",
+        "gh api \"repos/bex-co/bex/actions/jobs/$M188_BUILD_JOB/logs\" > \"$M188_FINAL_DIR/build-job.log\"",
+        "gh api \"repos/bex-co/bex/actions/jobs/$M188_DEPLOY_JOB/logs\" > \"$M188_FINAL_DIR/deploy-job.log\"",
+        "gh api \"repos/bex-co/bex/compare/$M188_ADOPTED_SHA...$M188_DEPLOY_SOURCE\" > \"$M188_FINAL_DIR/adoption-to-deploy.json\""
+      ],
+      "checks": "Exact completed main deploy.yml source/run/attempt/job identity; all required build/sign/deploy steps success and noSUPERSEDED. Head contains adoptionSHA and its native.go has same11acceptedrefs. Save raw/gzip/API hashes; do not print full logs/env."
+    },
+    {
+      "phase": "bind build source -> immutable signed operator",
+      "commands": [
+        "git show \"$M188_DEPLOY_SOURCE:lego/operator/internal/build/native.go\" > \"$M188_FINAL_DIR/deployed-native.go\"",
+        "/tmp/bex-w1-136-cosign/cosign verify --certificate-identity https://github.com/bex-co/bex/.github/workflows/deploy.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-github-workflow-sha \"$M188_DEPLOY_SOURCE\" --timeout 5m \"$M188_EXPECTED_OPERATOR_IMAGE\" > \"$M188_FINAL_DIR/operator-signature.json\" 2> \"$M188_FINAL_DIR/operator-signature.stderr.txt\"",
+        "python3 - \"$M188_EXPECTED_OPERATOR_IMAGE\" \"$M188_FINAL_DIR\" <<'PYMETA'\nimport importlib.util, pathlib, sys\n\ndef load(name,path):\n    spec=importlib.util.spec_from_file_location(name,path)\n    module=importlib.util.module_from_spec(spec)\n    spec.loader.exec_module(module)\n    return module\nv=load(\"retained_registry_policy\",\"/tmp/loopx-w8-verify-native-artifact.py\")\nf=load(\"freshness\",\"scripts/lib/toolchain-freshness.py\")\nimage,out=sys.argv[1],pathlib.Path(sys.argv[2])\nassert image.startswith(\"ghcr.io/bex-co/bex-operator@sha256:\")\nurl,headers=v.public_registry(f,\"ghcr.io\",\"bex-co/bex-operator\")\nroot,raw,digest=v.manifest_document(url,headers,image.split(\"@\",1)[1])\n(out/\"operator-root.raw.json\").write_bytes(raw)\nif \"manifests\" in root:\n    children=[x for x in root[\"manifests\"] if x.get(\"platform\")=={\"os\":\"linux\",\"architecture\":\"amd64\"}]\n    assert len(children)==1\n    desc=children[0]\n    child,raw,digest=v.manifest_document(url,headers,desc[\"digest\"])\n    assert len(raw)==desc[\"size\"]\nelse:\n    assert \"config\" in root\n(out/\"operator-amd64.raw.json\").write_bytes(raw)\n# Token/header values never printed or persisted; no config/env or filesystem reads.\nPYMETA"
+      ],
+      "checks": "Get exactlyone operator ref from build signstep REFS and matchfirst build_operator containerimage.digest in same exactjob. Existing cached comparator proves this extraction pattern. Independently verify exact source SHA/keyless issuer/workflow/transparency; noignore flags. RootrawSHA must equal expected image digest; if OCIindex, fetch only its exactlinux/amd64 child rawmanifest and validate descriptor SHA/size (noFSbody/imagepull). Retain GitOps writebackcommit/file showing controller=expectedimage and its relation to source. Do not just resolve latest tag or trust greenrun. Exact HTTPmanifest bytes come from retained SHA-verifying registry helpers, not reserialized CLI output. Both helper modules are read-only reuse; anonymous token staysinmemory."
+    },
+    {
+      "phase": "read-only final rollout/Ready evidence",
+      "commands": [
+        "python3 /tmp/bex-m188-final-operator-ready.py --kubeconfig \"$M188_PRIVATE_KUBECONFIG\" --expected-image \"$M188_EXPECTED_OPERATOR_IMAGE\" --root-manifest \"$M188_FINAL_DIR/operator-root.raw.json\" --amd64-manifest \"$M188_FINAL_DIR/operator-amd64.raw.json\" --output \"$M188_FINAL_DIR/operator-ready.json\""
+      ],
+      "checks": "Requires GitOpsApplication Synced/Healthy expected controllerimage; Deploymentgeneration observed/newreadycounts; owner-linked nondeleting managerpods allnewimage/Running/Ready; runtime imageIDs must be authenticatedroot orlinuxamd64child. Freshly reject BEX_BACKUP_HELPER_IMAGE/envFrom presence without exposingvalues. SINCE=maxactual Ready.lastTransitionTime among expectednewimagepods, never DeploymentAvailable or runcompletion. Nonmatching ID remains unresolved, noalias."
+    },
+    {
+      "phase": "final fresh version/active-artifact census; no automatic mutation",
+      "commands": [
+        "python3 /tmp/bex-m188-final-live-census.py --source-sha \"$M188_DEPLOY_SOURCE\" --kubeconfig \"$M188_PRIVATE_KUBECONFIG\" --output \"$M188_FINAL_DIR/final-census.json\""
+      ],
+      "checks": "Derives currentJScompanionprimaries from exact deployedsource; includesRuby/Python/Go/Rust/Elixir plusprimaryNode andbuildpack/legacyauto candidates. Whitelists publicversion/OS/imageID metadata. No-pod activeCronJob/scale-zero/statusimage records require actualrelease+immutableimage metadata; no-pod/Failed/Canceled/suspended alone doesnotmean safe. Explicitstatic/build-only/customerDocker scopes arenotdeclaredpatched. Review exactunresolvedrows. Historical29App census had noRust/cron classes; root separatelyassessed market-sizeFailed/cloneixCanceled+suspended had nolivecommit; refreshthese facts ifstillpresent."
+    },
+    {
+      "phase": "only if useful, existing read-only rebuild plan",
+      "commands": [
+        "kubectl --kubeconfig \"$M188_PRIVATE_KUBECONFIG\" -n bex-system exec deploy/bex-api -c api -- /api platform-rebuild --since \"$M188_SINCE_READY\" --limit 10 > \"$M188_FINAL_DIR/global-read-only-plan.json\""
+      ],
+      "checks": "No --apply. Existing plan includes all managedtoolchains, not justchanged11; cannot serve asaffectedversionfilter. Zero affected afterresolvedcensus -> recordzero-target/noapply. Ifnewgenuinelyaffectedtargetexists, rootimplements/tests exactservice/versiontargeting within authorizedt004; limitfirstN isnot narrowselection."
+    }
+  ],
+  "precheck_basis": {
+    "file": "/tmp/bex-m188-operator-resolver-pre-adoption.json",
+    "sha256": "e1caf353754908001da62023e8fe02ca3e3639f33fd197842cf607011ea40498",
+    "observed": "No BEX_BACKUP_HELPER_IMAGE/envFrom at15:26:44Z; mustrecheck on finalexpectedimage, notfinalproof."
+  },
+  "concrete_prerequisites": [
+    "All11publishedcandidates independentlyaccepted, sourceadopted, and six actualfixtures pass withoutskip beforefinaloperatoracceptance.",
+    "A completednon-superseded deploy.yml build/sign/writeback/rollout containingadoptionSHA; expectedimmutableoperator image/source signature and GitOpswritebackmustbind.",
+    "Fresh Readynewimagepods/imageIDchain and zeroresolveroverride/envFrom; noAvailable-basedcutoff.",
+    "Fresh censusincludesRust/allcompanionprimaries. Anyeligibleactiveversionunknown requires exactrowresolution fromcurrentrelease/status/CronJob immutableimage metadata beforezero-targetconclusion.",
+    "If nonzeroaffectedtargets, existing global --since/--limit lacks scope: rootcan implement/testtargetedcapability within t004; notexternal/usergate."
+  ],
+  "zero_target_disposition": "Only after allcandidateactiveversions classified and affectedsetempty: recordzeroaffectedtargets; no customerrebuildrequested/performed. Failed/canceledwithoutverifiedactivereleaseexcludedwithfreshfacts, notcountedaspatched. Static/build-only/customerDocker exclusions explicit; no broadfleetrebuild.",
+  "local_validation_only": {
+    "helpers_ast_parse": "PASS",
+    "dynamic_scope_describe": "PASS source74c47437c45e8c18c043f5d67762b02b2e9472b3 -> elixir/go/python/ruby/rust",
+    "cached_deploy_operator_ref_vs_first_builddigest": "PASS usingonlypreviouscompletedloggzip",
+    "actual_final_rollout_or_census": "NOTRUN"
+  },
+  "limits": "Helpers collect narrowlywhitelisted data and conservativeunresolvedrows, notsource/signaturecryptoapproval. Rootreviews finalrawchain. Readinesshelper doesnotcopyenvvalues/secret/kubeconfigbytes. No-generalregistryfallbackmachinery: currentno-podrows retainedfor exactexisting-release review; addnothing unless actualnewrow requires it.",
+  "reused_metadata_module_sha256": {
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+    "scripts/lib/toolchain-freshness.py": "18de49aec5981c659e067362065c546398b04a896b52db225a6ca4c8e0885c37"
+  },
+  "temp_census_predicate_adjustment": {
+    "at": "2026-10-30T15:59:50.074361+00:00",
+    "scope": "builder=native with runtime empty/auto is included and explicitly unresolved pending actual resolved primary/companion evidence",
+    "historical_29_app_evidence": "Unchanged; no such row existed in prior census",
+    "validation": "AST parse and both predicate branches checked locally only; no final helper execution or production query"
+  }
+}

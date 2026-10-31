@@ -1,0 +1,83 @@
+{
+  "schema": "bex.pre-adoption-priority-classification-authenticated-addendum/v1",
+  "checked_at": "2026-10-31T00:32:44.309645+00:00",
+  "scope": "New supplemental addendum only; initial strict5unresolved census and pre-auth supplemental remain unchanged. No final rollout/deployed-source/security acceptance.",
+  "initial_frozen_hashes": {
+    "priority-comparison.json": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21",
+    "assessment-receipt.json": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956",
+    "pre-adoption-priority-census.raw.json": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f"
+  },
+  "pre_auth_supplement": {
+    "path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/supplemental-findings.json",
+    "sha256": "cd99f5c2f11f5d81b318fd3ee5b9003b3331e556bf027cb6d74fea0fe7359d92"
+  },
+  "authenticated_metadata_receipt": {
+    "path": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/cloneix-authenticated-config-whitelist.json",
+    "sha256": "e96db5d5fdeea0a5b96d9c78558671e6caa5e0aef9a969ce06faf697eb81beb5"
+  },
+  "cloneix_retained_image": {
+    "ref": "zot.bex-registry.svc:5000/tea-db3nth8gu8gc73cl11t0/tea-db3nth8gu8gc73cl11t0-cloneix:gen-3@sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+    "root_manifest_digest_verified": "sha256:54b849ddcea161e23ba1270507dc3601cad7187920c2135840f86d8c515c6ec6",
+    "config_digest_verified": "sha256:af0dfd0b4869a710bd1c4f6e24433b73fcb314107aeebe6ab612683d246eab1a",
+    "metadata_bytes_total": 8759,
+    "config_descriptor_size_verified": 6364,
+    "OS": "linux",
+    "architecture": "amd64",
+    "image_declared_NODE_VERSION": "26.10.0",
+    "NODE_VERSION_entries": 1,
+    "declared_Node_is_one_of_old11": false,
+    "limit": "Image config runtime declaration, not extracted/executed binary version, decoder regression, signature verification or all future builds proof. No approved provenance labels present."
+  },
+  "current_effective_priority_classification": {
+    "legacy_auto_customer_origin": {
+      "count": 3,
+      "qualification": "Carry prior high-confidence customer-Dockerfile inference by exact unchanged serving image, Alpine OS, same spec generations and repository Dockerfile dispatch. No platform patch claim or new retained-buildJob provenance.",
+      "serving_Node_versions": [
+        "22.23.2",
+        "22.23.4",
+        "22.23.3"
+      ]
+    },
+    "market_size": {
+      "requested_strategy": "native Node",
+      "current_active_deploy": false,
+      "evidence": "No activeRevision/image/artifact or matching Deployment/CronJob; Failed release1, not merely noPod.",
+      "observed_current_source": "Main87b6ec2\u2026 has no supported Node version files/package.json; configuredenv count0 and noSecretrefs; current85de resolver would default Node24 if that source/spec is built. No executed-build or futurebranch claim.",
+      "old11_current_serving_target": false
+    },
+    "cloneix": {
+      "requested_strategy": "native Node",
+      "current_active_deploy": false,
+      "evidence": "Canceled before activeRevision; suspended; exactAppUID-owned Deployment0. Retained gen3image config declares Node26.10.0, outside old11.",
+      "operational_resume_contract": "Currentrepo Resume only clears suspension, not canceled release stamp; never-served canceled release remains0. No production resume performed or currentdeployedsource assertion.",
+      "old11_current_serving_target": false,
+      "retained_image_declared_old11_target": false,
+      "new_source_build_version": "STILL UNRESOLVED: pinnedc9bGitHub source404 and AppSecretrefs exist; did not inspect those environment Secret contents. A future explicit rebuild could select an old11 line; adopted reviewed pins must cover that choice rather than assuming default."
+    },
+    "new_running_old11_signals": 0,
+    "old11_current_running_or_declared_retained_target_identified": 0,
+    "remaining_actual_image_version_residuals": [],
+    "remaining_future_build_version_residuals": [
+      {
+        "app": "cloneix",
+        "reason": "Unavailable pinned source and unread environment Secret refs; unknown effective future Node version",
+        "does_not_create_current_serving_target": true,
+        "not_user_decision_by_default": true
+      }
+    ]
+  },
+  "auth_and_cleanup": {
+    "authority": "Parent explicit per-App existing imagePullSecret in-memory-only authorization",
+    "exact_Deployment_App_owner_UID_verified": true,
+    "registry_host_matches_existing_config_key": true,
+    "only_own_App_registry_credential_used": true,
+    "no_Admin_or_other_App_credentials": true,
+    "only_existing_Zot_Service_loopback_forward": true,
+    "redirects_disabled_and_no_credential_forwarding": true,
+    "raw_credential_or_image_config_Env_saved_or_printed": false,
+    "App_environment_or_other_Secret_refs_read": false,
+    "filesystem_layers_downloaded": 0,
+    "own_port_forward_terminated": true
+  },
+  "no_mutations": "No production workload/config/credential/CI/catalog/source/board changes, no rebuild/resume/deploy; only owned local metadata connection was opened and closed."
+}
