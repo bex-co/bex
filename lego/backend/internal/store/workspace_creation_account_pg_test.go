@@ -79,6 +79,10 @@ func TestAccountDeletionAnonymizesWorkspaceCreationAttemptsPG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin deletion: %v", err)
 	}
+	var dbNow time.Time
+	if err := st.Pool.QueryRow(ctx, `SELECT now()`).Scan(&dbNow); err != nil {
+		t.Fatal(err)
+	}
 	anonymousEmail := strings.ReplaceAll(deletion.DeletedMarker, ":", "-") + "@invalid"
 	afterBegin := make(map[string]WorkspaceCreationAttempt)
 	for state, previous := range before {
@@ -89,7 +93,7 @@ func TestAccountDeletionAnonymizesWorkspaceCreationAttemptsPG(t *testing.T) {
 		wantState := state
 		if state == WorkspaceCreationPrepared || state == WorkspaceCreationSetupPending || state == WorkspaceCreationSetupSucceeded {
 			wantState = WorkspaceCreationCleanupPending
-			if a.ExpiresAt.After(time.Now()) || a.CleanupClaimedUntil != nil {
+			if a.ExpiresAt.After(dbNow) || a.CleanupClaimedUntil != nil {
 				t.Errorf("%s was not made immediately eligible for cleanup: %+v", state, a)
 			}
 		} else if !a.UpdatedAt.Equal(previous.UpdatedAt) || !reflect.DeepEqual(a.CleanupClaimedUntil, previous.CleanupClaimedUntil) {
@@ -162,7 +166,13 @@ func TestAccountDeletionAnonymizesWorkspaceCreationAttemptsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	failed, err := st.GetWorkspaceCreationAttempt(ctx, target.ID, deletion.DeletedMarker)
-	if err != nil || failed.State != WorkspaceCreationCleanupPending || failed.CleanupClaimedUntil == nil || !failed.CleanupClaimedUntil.After(time.Now()) {
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Pool.QueryRow(ctx, `SELECT now()`).Scan(&dbNow); err != nil {
+		t.Fatal(err)
+	}
+	if failed.State != WorkspaceCreationCleanupPending || failed.CleanupClaimedUntil == nil || !failed.CleanupClaimedUntil.After(dbNow) {
 		t.Fatalf("failed cleanup is not retryable: %+v err=%v", failed, err)
 	}
 	if _, err := st.Pool.Exec(ctx, `UPDATE workspace_creation_attempts SET cleanup_claimed_until=now()-interval '1 second' WHERE id=$1`, target.ID); err != nil {

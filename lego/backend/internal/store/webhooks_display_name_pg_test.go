@@ -62,7 +62,11 @@ func TestPGWebhookFeedReportsDisplayNameAfterRename(t *testing.T) {
 	if closed, err := st.CloseDeploy(ctx, deploys[0].ID, DeployLive, "traefik/whoami"); err != nil || !closed {
 		t.Fatalf("close deploy = (%v, %v)", closed, err)
 	}
-	at := time.Now().UTC().Truncate(time.Microsecond)
+	// Legacy-name audits exclude events older than the current app. Use its
+	// database timestamp to exercise the inclusive boundary independently of
+	// the host clock, and keep the feed cutoff in the same clock domain.
+	at := app.CreatedAt
+	until := at.Add(time.Hour)
 	if err := st.Record(ctx, core.AuditEvent{
 		Caller: "alice", Verb: "apps.Restart", Resource: core.WorkspaceObject(tenant.ID),
 		Target: core.ServiceTarget(core.CRName(tenant.Name, app.Name)), Outcome: core.AuditAllowed, At: at,
@@ -87,7 +91,7 @@ func TestPGWebhookFeedReportsDisplayNameAfterRename(t *testing.T) {
 	// so a miss names the arm instead of just the row.
 	names := func() map[string]string {
 		t.Helper()
-		rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().UTC().Add(time.Hour), verbs, []string{tenant.ID}, 100)
+		rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", until, verbs, []string{tenant.ID}, 100)
 		if err != nil {
 			t.Fatalf("list webhook events: %v", err)
 		}
@@ -124,7 +128,7 @@ func TestPGWebhookFeedReportsDisplayNameAfterRename(t *testing.T) {
 	// The public service id is the App's CR name — built from the tenant id
 	// (CRName, w3/m246), never the mutable workspace slug — and must not move
 	// with the label: receivers call the API back with it.
-	rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().UTC().Add(time.Hour), verbs, []string{tenant.ID}, 100)
+	rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", until, verbs, []string{tenant.ID}, 100)
 	if err != nil {
 		t.Fatalf("list webhook events: %v", err)
 	}

@@ -128,6 +128,7 @@ func TestPGAuditSurvivesConcurrentWorkspaceDeletion(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			eventAt := tenant.CreatedAt
 			t.Cleanup(func() {
 				_ = st.DeleteTenant(context.Background(), tenant.ID)
 				_, _ = st.Pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, tenant.ID)
@@ -141,6 +142,10 @@ func TestPGAuditSurvivesConcurrentWorkspaceDeletion(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				// Legacy-name audits must belong to the current app incarnation.
+				// Use its database timestamp so host clock skew cannot make this
+				// lock test exercise the stale-event exclusion instead.
+				eventAt = app.CreatedAt
 				target = core.ServiceTarget(app.ID)
 				if targetKind == "service_name" {
 					target = core.ServiceTarget(app.Name)
@@ -175,7 +180,7 @@ func TestPGAuditSurvivesConcurrentWorkspaceDeletion(t *testing.T) {
 			go func() {
 				recorded <- NewPGStore(writerPool).Record(ctx, core.AuditEvent{
 					Verb: "Update", Resource: core.WorkspaceObject(tenant.ID), Target: target,
-					Outcome: core.AuditAllowed, At: time.Now().UTC(),
+					Outcome: core.AuditAllowed, At: eventAt,
 				})
 			}()
 			for {
