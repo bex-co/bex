@@ -1,0 +1,21 @@
+{
+  "scope": "Exact retained capsule only; original private frozen manifest is separately named and preserved.",
+  "files": {
+    "README.md": {
+      "bytes": 1283,
+      "sha256": "04cf3ce405a038a656e5654d22dcbdfee767b1148cb4a68c02984d2338343399"
+    },
+    "node26-diagnosis.json": {
+      "bytes": 3338,
+      "sha256": "4ae8df2a261764b21073035a08043876d5e601dd128df5293f7e39af2236fb87"
+    },
+    "private-original-manifest.json": {
+      "bytes": 2578,
+      "sha256": "d4531104833f392b5c4629018923d7ee6e9b370da6ba6e99bf1522beca9e3590"
+    },
+    "receipt.json": {
+      "bytes": 5895,
+      "sha256": "bb548eed9af69fd0e5772b2bc56fdffead7ced4c214befe3407c4150dfe1da62"
+    }
+  }
+}

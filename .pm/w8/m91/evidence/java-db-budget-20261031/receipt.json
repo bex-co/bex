@@ -1,0 +1,129 @@
+{
+  "frozen_at": "2026-10-31T08:12:06.323991+00:00",
+  "mode": "READ_ONLY_NATIVE_FAILURE_TRIAGE",
+  "current_source_fix": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "node26_diagnosis": "/private/tmp/bex-w8-native-failure-triage-20261031-0805/node26-diagnosis.json",
+  "node26_diagnosis_sha256": "4ae8df2a261764b21073035a08043876d5e601dd128df5293f7e39af2236fb87",
+  "python_existing_logs": [
+    {
+      "name": "python311",
+      "run": 41129044087,
+      "job": 124319471502,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "existing_log": "/private/tmp/bex-w8-native-failures-20261031/python311/job.log",
+      "bytes": 528732,
+      "sha256": "40bfa8bfad2a1e2371d964be644c08cf521c80e9d2fac0cf251379a50bdfbc81",
+      "metadata": "/private/tmp/bex-w8-native-failures-20261031/python311/job.json",
+      "metadata_sha256": "ddfab4b6a6542e93523579e325cc0dd60a54b05aaa6fb958bba23eb82f0125f4",
+      "selected_failure_lines": [
+        "2026-10-31T05:10:24.0337623Z #51 279.2 TimeoutError: _ssl.c:975: The handshake operation timed out",
+        "2026-10-31T05:10:24.0348480Z #51 279.2 urllib.error.URLError: <urlopen error _ssl.c:975: The handshake operation timed out>",
+        "2026-10-31T05:10:24.9135595Z 279.2 urllib.error.URLError: <urlopen error _ssl.c:975: The handshake operation timed out>"
+      ],
+      "new_log_downloads": 0
+    },
+    {
+      "name": "python313",
+      "run": 41129116273,
+      "job": 124319435370,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "existing_log": "/private/tmp/bex-w8-native-failures-20261031/python313/job.log",
+      "bytes": 419851,
+      "sha256": "0b23de3ee7b5f34541edfb8457a5ecd5db6d296271a836a59d4b9b1f99d6738f",
+      "metadata": "/private/tmp/bex-w8-native-failures-20261031/python313/job.json",
+      "metadata_sha256": "d185e8454b1cd9bb26b9c92acda32c5ffdc1dd7eba0cddd66bcf7b39e5a64a97",
+      "selected_failure_lines": [
+        "2026-10-31T05:35:12.9347658Z #35 150.4 curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.postgresql.org:443 ",
+        "2026-10-31T05:35:13.0190223Z 150.4 curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.postgresql.org:443 "
+      ],
+      "new_log_downloads": 0
+    }
+  ],
+  "python_relation_to941": {
+    "python311": "Observed PyPI wheel fetch TLS handshake timeout;941 adds bounded fresh transfer retries with checksum/metadata failures final",
+    "python313": "Observed PGDG pinned-key curl35 SSL_ERROR_SYSCALL;941 adds bounded selected transport retries and retains pinned key SHA/TLS checks"
+  },
+  "newer_request_identity_checks": [
+    {
+      "run": 41159591513,
+      "observed_at": "2026-10-31T08:10:54.359962+00:00",
+      "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+      "status": "queued",
+      "conclusion": "",
+      "build_jobs": [
+        {
+          "id": 124414471403,
+          "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+          "status": "queued",
+          "conclusion": ""
+        }
+      ]
+    },
+    {
+      "run": 41144656779,
+      "observed_at": "2026-10-31T08:10:54.360216+00:00",
+      "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+      "status": "in_progress",
+      "conclusion": "",
+      "build_jobs": [
+        {
+          "id": 124367871533,
+          "name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+          "status": "in_progress",
+          "conclusion": ""
+        }
+      ]
+    },
+    {
+      "run": 41142870861,
+      "observed_at": "2026-10-31T08:10:54.361800+00:00",
+      "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+      "status": "in_progress",
+      "conclusion": "",
+      "build_jobs": [
+        {
+          "id": 124361678277,
+          "name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+          "status": "in_progress",
+          "conclusion": ""
+        }
+      ]
+    }
+  ],
+  "newer_targeted_Node26_Py311_Py313_request_observed": false,
+  "coverage": "Fresh50 workflow-run metadata includes every run created after original Node26 request21:10:29; all three later manual sources are independently job-name disambiguated. No inference from displayTitle alone. This is a bounded observation, not a permanent no-duplicates claim.",
+  "only941_automatic_request": {
+    "conclusion": "cancelled",
+    "createdAt": "2026-10-31T08:01:56Z",
+    "databaseId": 41182921386,
+    "displayTitle": "fix(ci): retry bounded native dependency transfers",
+    "event": "push",
+    "headSha": "94165237dbe63f997b0119ce70ad243da74468fa",
+    "status": "completed",
+    "updatedAt": "2026-10-31T08:02:33Z",
+    "url": "https://github.com/bex-co/bex/actions/runs/41182921386"
+  },
+  "941_automatic_request_scope": "Root already confirmed canceled before native jobs; this triage did not cancel or dispatch anything.",
+  "new_green_metadata_only": {
+    "conclusion": "success",
+    "createdAt": "2026-10-30T21:12:31Z",
+    "databaseId": 41129277963,
+    "displayTitle": "native base images (build + verify)",
+    "event": "workflow_dispatch",
+    "headSha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "status": "completed",
+    "updatedAt": "2026-10-31T08:04:52Z",
+    "url": "https://github.com/bex-co/bex/actions/runs/41129277963"
+  },
+  "next_step": "Ready for root assignment. Source/CI changes require root assignment; do not rerun HTTP1 or scan-retry fixes as if they address this DB-prefetch timeout. Existing Go/Elixir/Node18 requests untouched.",
+  "counts": {
+    "new_job_log_download_commands": 1,
+    "reused_existing_python_logs": 2,
+    "new_python_log_downloads": 0,
+    "dispatch_cancel_rerun": 0,
+    "source_or_repo_edits": 0,
+    "new_artifact_review_cases": 0,
+    "Docker_or_fixtures": 0,
+    "approvals_added_by_triage": 0
+  }
+}

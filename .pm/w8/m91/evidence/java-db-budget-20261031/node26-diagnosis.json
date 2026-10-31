@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-31T08:12:06.323991+00:00",
+  "runtime": "node-26-bookworm",
+  "run": 41129008590,
+  "job": 124317150933,
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "status": "completed",
+  "conclusion": "failure",
+  "candidate_approved": false,
+  "build_and_dual_arch_offline_runtime": "PASS",
+  "amd64_scan": "FAIL",
+  "arm64_scan": "SKIPPED",
+  "signing_and_attestations": "SKIPPED",
+  "observed_terminal_exit": 137,
+  "actual_failure_phase": "Before image analysis, while prefetching Java DB",
+  "events": [
+    {
+      "line": 5472,
+      "text": "2026-10-31T04:42:49.8137897Z 2026-10-31T04:42:49Z\tINFO\t[javadb] Downloading Java DB..."
+    },
+    {
+      "line": 5475,
+      "text": "2026-10-31T05:03:49.8835122Z 2026-10-31T05:03:49Z\tINFO\tPress Ctrl+C again to force exit"
+    },
+    {
+      "line": 5477,
+      "text": "2026-10-31T05:03:59.6765782Z ##[error]Process completed with exit code 137."
+    },
+    {
+      "line": 5464,
+      "text": "2026-10-31T04:41:21.0694872Z Running Trivy with options: /home/docker/actions-runner/_work/_temp/native-trivy image ghcr.io/bex-co/bex-cnb-run@sha256:9757a54cda794310e340524d585a575106438f41924b73940d5f5659b90e5c4f"
+    }
+  ],
+  "java_db_progress": [
+    {
+      "line": 5474,
+      "recorded_at": "2026-10-31T05:03:49.7795495Z",
+      "last_received_mib": "803.50",
+      "total_mib": "946.43",
+      "last_percent": "84.90"
+    },
+    {
+      "line": 5476,
+      "recorded_at": "2026-10-31T05:03:59.6732678Z",
+      "last_received_mib": "814.65",
+      "total_mib": "946.43",
+      "last_percent": "86.08"
+    }
+  ],
+  "seconds_java_download_log_to_signal_log": 1260.069723,
+  "seconds_signal_log_to_exit137": 9.793066,
+  "source_timeout_command": "TMPDIR=\"$work_dir/db\" env -u TRIVY_OUTPUT timeout --kill-after=10s 21m trivy image \"$database\"",
+  "source_prefetch_location": "Outside the three complete image-scan attempts; set-e exits if a DB prefetch fails",
+  "source_wrapper_83c_and_941_byte_identical": true,
+  "wrapper_sha256": "54057bf3dca95917e5119cc7448db6376cedd518db88a9298a91c8c9cb1079a0",
+  "classification": "Source-correlated bounded Java DB prefetch timeout and10-second kill escalation strongly supported by exact timing; no direct kernel termination trace was collected. Do not classify exit137 alone as OOM.",
+  "excluded_observations": {
+    "Trivy_FATAL_lines": 0,
+    "HTTP2_PROTOCOL_ERROR_lines": 0,
+    "scan_attempt_failed_lines": 1,
+    "kernel_or_runner_OOM_proof_collected": false,
+    "image_analysis_started_message_observed": false
+  },
+  "existing_guards_retained": "Explicitamd64, HTTP1GODEBUG, Trivy0.70.0; this failed prefetch does not establish full scan/report success. Disk df shows176135944KiB available at wrapper entry; noENOSPC observed.",
+  "repair_941_relation": "941 changes PyPI/PGDG dependency transfers and does not change this Trivy prefetch wrapper. No Node26 recovery success/retry was claimed or requested.",
+  "raw_log": "/private/tmp/bex-w8-native-failure-triage-20261031-0805/node26-job.log",
+  "raw_log_sha256": "913d77dce2abb0a416a370d3281fc6fead6c740f49fa58fbbddb3d2c8a7ace5c",
+  "raw_log_bytes": 1176022,
+  "gzip_log_sha256": "93a244834cd71f98d2d3c5d27fd51b0572c73f6c0db1693ed9ff505e39aa9f41",
+  "gzip_lossless_roundtrip_verified": true,
+  "actual_new_log_read_commands": 1,
+  "new_log_retries": 0
+}

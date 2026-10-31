@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:3b842ef0ee6c40de05ada294c2a691cef63371c81562b099ca9ef32b0b0c861c",
+    "native_API_404": true,
+    "unselected_descriptor_count": 0
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:01d50f6e30aaa9e6b5439bbca5bb47ba4753be52f62333e37cce113422fec997",
+      "bundle_digest": "sha256:f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af",
+      "bundle_bytes": 9315,
+      "path": "/private/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f6e717f91027ba47f3fcc7cb356c379dee5085efa9ae6fde3faa478797e574af.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "99eaa2abd25eccbf9d015679def59b4b8bfc52e97f8dd767a2d87f9750155a32"
+    },
+    {
+      "manifest_digest": "sha256:0e46221f5e6e4146c27b59a6e5d48fe1fe7dc79aa91da481fbf6aa15b1ebad72",
+      "bundle_digest": "sha256:8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3",
+      "bundle_bytes": 30524711,
+      "path": "/private/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/8d1d5fa40579778bc7f7e6a94b04ce8f4a287f0ad455e2dada46301332b315f3.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "51ecafc69c454ce2df8ad91f5060f7712f62d7eb13fc6a9538da853d2dacc0ce"
+    },
+    {
+      "manifest_digest": "sha256:a779c1ca9e339298d9ac42c5f6b00ad26dea393326a8a3cf2bfe5a170ad01675",
+      "bundle_digest": "sha256:f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507",
+      "bundle_bytes": 24143495,
+      "path": "/private/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/f587c2e7f515ddc16f3867e7b0cf519833671715663b4e41bcb62137c9c8d507.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "d87e2ce55c2b6ae2fbd4ad7eb665767726934f8fb81483ec96e758cad584fd36"
+    },
+    {
+      "manifest_digest": "sha256:b12bee363cf8853b82139d8bd478b0c2bb2b192c48ff4b5330c0cfbe83cf32f4",
+      "bundle_digest": "sha256:457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a",
+      "bundle_bytes": 24146051,
+      "path": "/private/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/457f795e4ca612fbea44baf5f8bc0687ef6aa6d662c72ee2f6e9f338e12ee31a.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "7241ecbb38bef1b82fc94d19c88a22d9095268f43a6f56ee7025d95f851df768"
+    },
+    {
+      "manifest_digest": "sha256:e2d6a09c634f473233292911261182ba6c4f2e9c7fb0ba5a6c7b417ee44defb2",
+      "bundle_digest": "sha256:b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e",
+      "bundle_bytes": 30537259,
+      "path": "/private/tmp/loopx-w8-native-review-python314-v11-83c1e30-20261031/native-python-3.14-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b01b66b6f5a9dbf55265610f4cd5f443d8884a036ab8028a08b1b0cc0692360e.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "1b9cdf577306f1fa530fee3ecae44a8b5d0a38535442fe279f2d7759ed980973"
+    }
+  ]
+}

@@ -207,3 +207,10 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Bounded dependency-transfer repair — 2026-10-31
 
 [Actual Python3.11/Python3.13 download failures and repair](evidence/native-fetch-transport-20261031/README.md) retain the terminal job identities and private raw-log hashes. Wheel transfer retries are bounded to three fresh attempts and keep checksum/metadata checks final; PGDG's pinned key fetch now retries TLS transport failures within explicit time limits. Native matrix/transfer and OCI staging regressions pass. The old Rust installer failure remains recorded separately. This is recovery of already-started publication work; no new supplier approval, common-base design choice, adoption or hosted/task closure is claimed.
+
+
+## Ninth supplier and JavaDB deadline repair — 2026-10-31
+
+[Python3.14's exact published supplier](evidence/published-python314-20261031/README.md) is root-approved after the complete genuine V11 review:35 full blobs/1,197,437,263B, five strict proofs, two actual negative controls and both report bindings. Approvals are9/27; its Python3.14.10 does not close the exact3.14.8 default/222. All original hosted cases and catalog adoption remain open.
+
+[Node26's actual JavaDB transfer](evidence/java-db-budget-20261031/README.md) reached86.08% before the21-minute deadline/10-second kill grace. Only the separate JavaDB-prefetch outer budget grows to30minutes; all complete image-scan gates stay unchanged. This fixes an existing publication budget; replacement execution remains unproved.

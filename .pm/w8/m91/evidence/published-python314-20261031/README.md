@@ -1,0 +1,7 @@
+# Published Python3.14 supplier — 2026-10-31
+
+Root approved immutable index `3969f95f…` from successful source83c run41129176570/job124319850868 after independently checking all200 frozen payload hashes,22 Git recipe files/modes,35 genuine anonymous full-blob receipts totaling1,197,437,263B, five strict keyless positive results and two actual rejected source/subject controls. Both architectures bind their signed full SPDX/Trivy report pairs independently; seven separate TUF roots and real Rekorv2/TSA proofs are retained. All35 bodies were fresh complete reads; no range recovery or prior-body reuse occurred.
+
+The [root approval](ROOT-REVIEW.json) and [original frozen manifest](original-frozen-manifest.json) retain exact custody. The capsule keeps all five complete authoritative signed bundle gzips plus compact receipts; original raw bundles and separately derived predicate gzips remain private. Root independently checked all five raw/gzip roundtrips, signed subjects and exact canonical predicates.
+
+Both images contain Python3.14.10, so this explicit-line supplier does not satisfy the separate exact-default3.14.8 requirement or close222. SPDX counts are719/717; each complete Trivy report retains5,970 findings including22critical and no Brotli finding. No waiver or zero-finding claim is made. Published supplier approvals are now9/27; production catalog/adoption, the common-base decision and original hosted cases remain open.
