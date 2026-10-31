@@ -1,0 +1,80 @@
+{
+  "final/run.py.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/run.py",
+    "source_bytes": 7204,
+    "source_sha256": "f808543c1b52f4cbd085f53815f7ca9cf14a4399415f2d9a28099ca71145ef7c",
+    "encoding": "gzip"
+  },
+  "final/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/SCOPE.json",
+    "source_bytes": 1390,
+    "source_sha256": "69b79b9e49cf6ac31892edac0c9d3d832e20e89d6270b8f4514827faee86a9fa",
+    "encoding": "gzip"
+  },
+  "final/OWNED-RESET-HANDOFF.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/OWNED-RESET-HANDOFF.json",
+    "source_bytes": 187,
+    "source_sha256": "06148d0698a9ec4d023d686626e62860d3dbeb0bf51bdeffec6a85f4ef8bae60",
+    "encoding": "gzip"
+  },
+  "final/BUDGET.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/BUDGET.json",
+    "source_bytes": 1451,
+    "source_sha256": "194b735092b57ce364f282f756341bd5428d80e51791097916f253ccc6bb690d",
+    "encoding": "gzip"
+  },
+  "final/PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/PROCESS.json",
+    "source_bytes": 72,
+    "source_sha256": "5915114df4c89c6476e598ee7fadc7acb24ee3da2d1ca372a9047d756913b31d",
+    "encoding": "gzip"
+  },
+  "final/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/RESULT.json",
+    "source_bytes": 563,
+    "source_sha256": "5dfb83e2a5fd164618b3b2c591e7653ccc2026ecd8cdbf1de5e8eb3f32dab32e",
+    "encoding": "gzip"
+  },
+  "final/full-gate.log.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/full-gate.log",
+    "source_bytes": 8454,
+    "source_sha256": "d96dafbb39a7d9d77b662a4169c7e833d4d93aa01c98ba0347e9d77bf218cea1",
+    "encoding": "gzip"
+  },
+  "final/PUSH.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/PUSH.json",
+    "source_bytes": 590,
+    "source_sha256": "681cd724075c377ed789b1c8dff54bad30ac962284d2a6920a7bf36bc08a079a",
+    "encoding": "gzip"
+  },
+  "final/REBASE-EQUIVALENCE.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/REBASE-EQUIVALENCE.json",
+    "source_bytes": 1370,
+    "source_sha256": "9eb99dff225d6728b5827f5fcd6fc4282e58b7cb95c77436952515cd9ef2b5ad",
+    "encoding": "gzip"
+  },
+  "final/incremental-gate.log.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/incremental-gate.log",
+    "source_bytes": 15,
+    "source_sha256": "9c12a2f03029426c4a96d6ce51e62b2d15da8dfee1f9d834e6de315b9ad5d0a8",
+    "encoding": "gzip"
+  },
+  "final/PUSH-SUCCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-current-full-realdb-20261031-33t185l3/PUSH-SUCCESS.json",
+    "source_bytes": 603,
+    "source_sha256": "1ebc0feb6bba66bace6dd465434ce26334574150c10d3066ee9b17eca51b01fc",
+    "encoding": "gzip"
+  },
+  "previous-full-pass/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-clock-warm-full-realdb-20261031-m4jkr2tg/RESULT.json",
+    "source_bytes": 563,
+    "source_sha256": "fe09c08dec04ac2af8a17ec5454f32d6d56a88cb5c3c67d341d6e58669bf7d89",
+    "encoding": "gzip"
+  },
+  "previous-full-pass/full-gate.log.gz": {
+    "source": "/private/tmp/bex-w8-clock-warm-full-realdb-20261031-m4jkr2tg/full-gate.log",
+    "source_bytes": 5691,
+    "source_sha256": "5023586ad50e2788ccea116ed3824ac768b44aa06bb0b6464421288de7c215c6",
+    "encoding": "gzip"
+  }
+}
