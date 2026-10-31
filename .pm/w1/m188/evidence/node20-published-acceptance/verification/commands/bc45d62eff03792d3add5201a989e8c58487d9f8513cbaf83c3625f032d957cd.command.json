@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-31T02:58:18.480326+00:00",
+  "argv": [
+    "/tmp/bex-w1-136-cosign/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/bundles/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.json",
+    "--type",
+    "https://spdx.dev/Document",
+    "--check-claims=true",
+    "--use-signed-timestamps=true",
+    "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha=6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "--timeout=120s",
+    "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/root-index.raw.json"
+  ],
+  "exit_code": 0,
+  "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "root_index_file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/root-index.raw.json",
+  "root_index_sha256": "2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "bundle_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/bundles/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.json",
+  "bundle_raw_sha256": "bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd",
+  "stdout_file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stderr",
+  "stderr_sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+}

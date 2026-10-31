@@ -1,0 +1,23 @@
+{
+  "schema": "bex.m188.add-only-validation-explanatory-scope-clarification/v1",
+  "at": "2026-10-31T03:02:05.137599+00:00",
+  "validation": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation.json",
+    "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566"
+  },
+  "incorrect_explanatory_field": "/approved_source_guard_receipt_context/scope",
+  "preserved_original_text": "Historical producerFD/verifier4462 profile and source-pinned recovery, canonical846 workflow, exact approved installer compatibility. No proof source retrofit.",
+  "corrected_explanation": "Actual originalproducerBF bfdeb62211ae5c4a875f5474a51c63c036e1d4dd, verifier/certificate6fd4f45536a2574c404b05539dacb6aaafb781f8, currentcanonicalda0e56e80a1e4eb08cacabd67efde3c768a6ae81 workflowa8567365. Historical same-recipe recovery and exact approved installer compatibility remain strict; no proof source retrofit.",
+  "cause": "One explanatory string was copied from the Ruby32 harness. It was noticed during final metadata audit after immutable standardfile publication but BEFORE any handoff or promotion approval. Do not rewrite frozen validation bytes.",
+  "authoritative_structured_bindings_already_correct": {
+    "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "current_workflow_baseline": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+    "actual_proof_sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+    "context_sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367"
+  },
+  "no_candidate_proof_guard_validation_context_or_aggregate_bytes_changed": true,
+  "candidate_promoted": false,
+  "scope": "Add-only correction to human-readable explanatory context only. Actual fullguard/source/crypto results and structured binding fields unchanged. Parent must review exact frozen validation together with this clarification before any promotion."
+}

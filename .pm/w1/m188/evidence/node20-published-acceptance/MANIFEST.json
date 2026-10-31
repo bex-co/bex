@@ -1,0 +1,563 @@
+{
+  "schema": "native_acceptance_archive/v1",
+  "archived_at": "2026-10-31T03:05:20.807800+00:00",
+  "candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "accepted_count_at_promotion": 10,
+  "required_count": 11,
+  "source_adoption_performed": false,
+  "files": [
+    {
+      "source": "/tmp/bex-m188-node-20-bookworm-acceptance.json",
+      "archive": "acceptance.json",
+      "bytes": 4338,
+      "sha256": "d39c2f6422956390324df0ae9a47a6117c7e9d53fbb8745dab979c3502e97b76"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/proof.json",
+      "archive": "verification/proof.json",
+      "bytes": 18473,
+      "sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+      "archive": "verification/candidate.json",
+      "bytes": 10043,
+      "sha256": "205d65f5c178eb80a29554f6f1468daa2d24ea883952e9b02dbd55b289d6bbbb"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "archive": "verification/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "bytes": 4170,
+      "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/architecture-binding.json",
+      "archive": "verification/architecture-binding.json",
+      "bytes": 11532,
+      "sha256": "da17bc93cc66b6de89841ecd38fe41900e8254ab73ffdcfa0725b76757d3b1f1"
+    },
+    {
+      "source": "/tmp/bex-m188-node-20-bookworm-discovery-confirmation.json",
+      "archive": "linked/9c767c00dfb2-bex-m188-node-20-bookworm-discovery-confirmation.json",
+      "bytes": 576,
+      "sha256": "9c767c00dfb2fd54e0eb9311eef2487db77e56ac05b395c88a0086fee52fb3f0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/aggregate-at-promotion-10.json",
+      "archive": "verification/aggregate-at-promotion-10.json",
+      "bytes": 167376,
+      "sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/accepting-guard-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "archive": "verification/accepting-guard-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "bytes": 86158,
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/generic-controls-adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3.json",
+      "archive": "verification/generic-controls-adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3.json",
+      "bytes": 1740,
+      "sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-structural-controls.json",
+      "archive": "verification/guard-structural-controls.json",
+      "bytes": 1740,
+      "sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-context-scope-clarification.json",
+      "archive": "verification/guard-validation-context-scope-clarification.json",
+      "bytes": 2146,
+      "sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/publisher-job.json",
+      "archive": "verification/publisher-job.json",
+      "bytes": 6502,
+      "sha256": "11fac03676c3d15c4d834fa464d11af852a760a7061f6d4cbb5efb263e737b8a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-draft-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "archive": "verification/guard-validation-draft-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "bytes": 4170,
+      "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/publisher-job-snapshot.json",
+      "archive": "verification/publisher-job-snapshot.json",
+      "bytes": 549,
+      "sha256": "84daa72c5f73e8eff1c0c9f011a39b798ad7fa7573ade5864d404c8950700c17"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+      "archive": "verification/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+      "bytes": 9749,
+      "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/verification-job.log.gz",
+      "archive": "verification/verification-job.log.gz",
+      "bytes": 139660,
+      "sha256": "9c446df5ad37b47be01f88bdd149334a67776dbceef09051ccbf29362916b369"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation.json",
+      "archive": "verification/guard-validation.json",
+      "bytes": 4170,
+      "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/image-signature.statement.json",
+      "archive": "verification/image-signature.statement.json",
+      "bytes": 234,
+      "sha256": "5a3dd04a026602fb79332bbb6769ae69cef7ac1a46499020531a97aef6b1cb28"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/producer-job.json",
+      "archive": "verification/producer-job.json",
+      "bytes": 6109,
+      "sha256": "d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/collection-index.raw.json",
+      "archive": "verification/collection-index.raw.json",
+      "bytes": 2368,
+      "sha256": "5b0edd5784cb4df40ad0533cf14ce010e908c354b4ec4cbd53501bb59b843f59"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/immutable-tag-intake.json",
+      "archive": "verification/immutable-tag-intake.json",
+      "bytes": 368,
+      "sha256": "a1ccdafefcd94232b979bf9e89211e3a41f52dd915dcbf79b32959135fa51f9c"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/promotion-execution-preflight.json",
+      "archive": "verification/promotion-execution-preflight.json",
+      "bytes": 7619,
+      "sha256": "461c6f708cb6f8cb635c086ac8ef8992a2e14fc327997dbf1f56ae221078a9f3"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/root-approval-promotion-link.json",
+      "archive": "verification/root-approval-promotion-link.json",
+      "bytes": 3323,
+      "sha256": "0bf6e201e3ff0dce6d5004e61a0ee37a4a22f1dc926a8cb5a700e3d2763e88ea"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/acceptance-metadata-transition.json",
+      "archive": "verification/acceptance-metadata-transition.json",
+      "bytes": 3717,
+      "sha256": "8fc2033e29b394391e36546113f6f6241a14a31cc9b9dcfcb5b3dbe190c52ee4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/producer-job-snapshot.json",
+      "archive": "verification/producer-job-snapshot.json",
+      "bytes": 603,
+      "sha256": "284eca4a8f24f5c3f0d867861fe3d20a6bfdf7da9662a6d71805abe1ccfa179e"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/root-promotion-approval.json",
+      "archive": "verification/root-promotion-approval.json",
+      "bytes": 2031,
+      "sha256": "9c15393ee2ac48884d8568a0710a4a3e65d0abf4206cf428f5a402c9404ea007"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "archive": "verification/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "bytes": 8537,
+      "sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/producer-job.log.gz",
+      "archive": "verification/producer-job.log.gz",
+      "bytes": 140888,
+      "sha256": "2b5429d06533b35d92f33bbd11fff799015bcd21e1ffd1c0a601872c090dcdf8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-receipt-context.json",
+      "archive": "verification/guard-receipt-context.json",
+      "bytes": 154640,
+      "sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/root-index.raw.json",
+      "archive": "verification/root-index.raw.json",
+      "bytes": 1611,
+      "sha256": "2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/controls.json",
+      "archive": "verification/controls/controls.json",
+      "bytes": 1587,
+      "sha256": "6e6ed8821154a029272418d9c05fb77a947ee3365d96779ea509ae027f6b2ab4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_index.stderr",
+      "archive": "verification/controls/wrong_index.stderr",
+      "bytes": 215,
+      "sha256": "25a997f2deb6fa634d3152a43719691fdde5d7e5c21c888406419fe4ca8a2fec"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_predicate.stderr",
+      "archive": "verification/controls/wrong_predicate.stderr",
+      "bytes": 237,
+      "sha256": "fcee4a2f6e49050826a87a0211049dc9a25599f3910383e79ea487c85da42b36"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_predicate.command.json",
+      "archive": "verification/controls/wrong_predicate.command.json",
+      "bytes": 1935,
+      "sha256": "c0d34ed556b857c7e3c81faf5169d3a3f71cf28f9da87d2cbd40b8bf8ae554ee"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_predicate.stdout",
+      "archive": "verification/controls/wrong_predicate.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_index.stdout",
+      "archive": "verification/controls/wrong_index.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_verification_sha.stdout",
+      "archive": "verification/controls/wrong_verification_sha.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_index.command.json",
+      "archive": "verification/controls/wrong_index.command.json",
+      "bytes": 1957,
+      "sha256": "cf8f1bb5fc8ccd49a3f02b03e4d13815f44239bed448ac36e3ec7101e18e8f56"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_verification_sha.command.json",
+      "archive": "verification/controls/wrong_verification_sha.command.json",
+      "bytes": 1959,
+      "sha256": "b8b01c2ab5567c09fbdcd3e4eed685347c47cfc88bc7c702ca4e874e7cdf9240"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong-index.raw.json",
+      "archive": "verification/controls/wrong-index.raw.json",
+      "bytes": 1612,
+      "sha256": "88f2cae8d2be143d2182ec33fa7576abe98a7daad0571c376452f7a624fb9318"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/controls/wrong_verification_sha.stderr",
+      "archive": "verification/controls/wrong_verification_sha.stderr",
+      "bytes": 467,
+      "sha256": "763294b18105e6697ea36966239eea2b812d8d0cf039305549e6e26f21144d4a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.stderr",
+      "archive": "verification/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.stdout",
+      "archive": "verification/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.command.json",
+      "archive": "verification/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.command.json",
+      "bytes": 2064,
+      "sha256": "7e51a73e831992cac4795e2d65d72c58ba054de03e958b90f621bd4903400df1"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.command.json",
+      "archive": "verification/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.command.json",
+      "bytes": 2033,
+      "sha256": "f3f7a7c12f179221019cf550f3549ff70cec9552fe5fd4b4f4da411a4df3fdeb"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.stdout",
+      "archive": "verification/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.stderr",
+      "archive": "verification/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.command.json",
+      "archive": "verification/commands/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.command.json",
+      "bytes": 2043,
+      "sha256": "aef7a596b418e40683a5896417cd7c7b40e1e497f900dddf8c5133ecb2e84235"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.command.json",
+      "archive": "verification/commands/6baa1389673bcc588c80424bc4f1e7ba6e110b681a06eb5696542682f3766bb1.command.json",
+      "bytes": 2064,
+      "sha256": "6327f405e8e49ba51dbf7f96129f70e195f0e4699b8dda359752f73b3df32f27"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.command.json",
+      "archive": "verification/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.command.json",
+      "bytes": 2033,
+      "sha256": "5bb1bf830045cbb0a7e51f2f512352b07ca59c0fbcc85f8213b64b84ed863c04"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stderr",
+      "archive": "verification/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.stderr",
+      "archive": "verification/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.stdout",
+      "archive": "verification/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.stdout",
+      "archive": "verification/commands/f7bc77a4c45708a3dfb46a228d1e0730c9ecc1a2a7981ab8328ac8560343577a.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.stderr",
+      "archive": "verification/commands/2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7.stderr",
+      "bytes": 12,
+      "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stdout",
+      "archive": "verification/commands/bc45d62eff03792d3add5201a989e8c58487d9f8513cbaf83c3625f032d957cd.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/5e2d9d5460385b92967398a037dc18af3ae082049a79a56901b1b31cee4da1a5.json",
+      "archive": "verification/manifests/5e2d9d5460385b92967398a037dc18af3ae082049a79a56901b1b31cee4da1a5.json",
+      "bytes": 1007,
+      "sha256": "5e2d9d5460385b92967398a037dc18af3ae082049a79a56901b1b31cee4da1a5"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/878615164af51e33e88869d7a310f749c064da7af77aa1f39589febeea2daa2f.registry-child.json",
+      "archive": "verification/manifests/878615164af51e33e88869d7a310f749c064da7af77aa1f39589febeea2daa2f.registry-child.json",
+      "bytes": 3724,
+      "sha256": "878615164af51e33e88869d7a310f749c064da7af77aa1f39589febeea2daa2f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/5a4f93b082a7d71ab44ff991375e5fd73475b92b75d5d4b2d603c915d4c567b0.json",
+      "archive": "verification/manifests/5a4f93b082a7d71ab44ff991375e5fd73475b92b75d5d4b2d603c915d4c567b0.json",
+      "bytes": 877,
+      "sha256": "5a4f93b082a7d71ab44ff991375e5fd73475b92b75d5d4b2d603c915d4c567b0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/782ed1ee1667e200f14e18ebc2c0f6be05e16f3ca61755f53cb6b9b2769cec7c.json",
+      "archive": "verification/manifests/782ed1ee1667e200f14e18ebc2c0f6be05e16f3ca61755f53cb6b9b2769cec7c.json",
+      "bytes": 1038,
+      "sha256": "782ed1ee1667e200f14e18ebc2c0f6be05e16f3ca61755f53cb6b9b2769cec7c"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/7140b02899feada52dae9fff866f40a938bc94dc23ff1c069269b0354259c5c9.config.json",
+      "archive": "verification/manifests/7140b02899feada52dae9fff866f40a938bc94dc23ff1c069269b0354259c5c9.config.json",
+      "bytes": 15865,
+      "sha256": "7140b02899feada52dae9fff866f40a938bc94dc23ff1c069269b0354259c5c9"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/60800bba1012596ad25dea149a8086b944a61d9f0d1349cd6286df33f2d4c640.config.json",
+      "archive": "verification/manifests/60800bba1012596ad25dea149a8086b944a61d9f0d1349cd6286df33f2d4c640.config.json",
+      "bytes": 15859,
+      "sha256": "60800bba1012596ad25dea149a8086b944a61d9f0d1349cd6286df33f2d4c640"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/e93f85760db910b619127963da58d44f3d146fe41bdb41092f9b71d7a0864a1d.registry-child.json",
+      "archive": "verification/manifests/e93f85760db910b619127963da58d44f3d146fe41bdb41092f9b71d7a0864a1d.registry-child.json",
+      "bytes": 3724,
+      "sha256": "e93f85760db910b619127963da58d44f3d146fe41bdb41092f9b71d7a0864a1d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/23b60ddac2964707776c94532a2fcdc0ca6e883266875e0112feac423fbc2c1a.json",
+      "archive": "verification/manifests/23b60ddac2964707776c94532a2fcdc0ca6e883266875e0112feac423fbc2c1a.json",
+      "bytes": 1007,
+      "sha256": "23b60ddac2964707776c94532a2fcdc0ca6e883266875e0112feac423fbc2c1a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/5796c97554aabc2b4b1fedd37ac7f38dd2e4d971aa8c7451c69d3afc77d46112.json",
+      "archive": "verification/manifests/5796c97554aabc2b4b1fedd37ac7f38dd2e4d971aa8c7451c69d3afc77d46112.json",
+      "bytes": 1038,
+      "sha256": "5796c97554aabc2b4b1fedd37ac7f38dd2e4d971aa8c7451c69d3afc77d46112"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/manifests/cab4ed3bba818bae3e922e48f5fad62c536c3f30fee1e63a579ff5a4997f2ba4.json",
+      "archive": "verification/manifests/cab4ed3bba818bae3e922e48f5fad62c536c3f30fee1e63a579ff5a4997f2ba4.json",
+      "bytes": 1013,
+      "sha256": "cab4ed3bba818bae3e922e48f5fad62c536c3f30fee1e63a579ff5a4997f2ba4"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/bundles/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.json.gz",
+      "archive": "verification/bundles/80dc55957f560cf4e62ee4892bc2d36a8d84734419b557b65ea7363cd6ddba6d.json.gz",
+      "bytes": 6103,
+      "sha256": "c1df1464743537a2dd2ccd060ead5b1caae85e2c635e679b549e69ebbe9f726f"
+    },
+    {
+      "source": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "archive": "linked/2a8363b55421-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "bytes": 86158,
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2"
+    },
+    {
+      "source": "/tmp/bex-m188-published-acceptance.json",
+      "archive": "linked/8c9bf1fee66d-bex-m188-published-acceptance.json",
+      "bytes": 167376,
+      "sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4"
+    },
+    {
+      "source": "/tmp/bex-m188-da0e-source-policy-activation.json",
+      "archive": "linked/dfc8b32cba48-bex-m188-da0e-source-policy-activation.json",
+      "bytes": 20083,
+      "sha256": "dfc8b32cba48f4ac34be0b678f1fb78aa5fe20adf997fba101e084977b935e23"
+    },
+    {
+      "source": "/tmp/bex-m188-publisher-job-snapshots/124263887574-11fac03676c3d15c4d834fa464d11af852a760a7061f6d4cbb5efb263e737b8a.json",
+      "archive": "linked/11fac03676c3-124263887574-11fac03676c3d15c4d834fa464d11af852a760a7061f6d4cbb5efb263e737b8a.json",
+      "bytes": 6502,
+      "sha256": "11fac03676c3d15c4d834fa464d11af852a760a7061f6d4cbb5efb263e737b8a"
+    },
+    {
+      "source": "/tmp/bex-m188-promote-reviewed-candidate.py",
+      "archive": "linked/9667976e86bc-bex-m188-promote-reviewed-candidate.py",
+      "bytes": 9749,
+      "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084"
+    },
+    {
+      "source": "/tmp/bex-m188-prepare-adoption.py",
+      "archive": "linked/2a8363b55421-bex-m188-prepare-adoption.py",
+      "bytes": 86158,
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+      "archive": "linked/4a5760aab67d-candidate.json",
+      "bytes": 12319,
+      "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+      "archive": "linked/37586d35de6b-proof.json",
+      "bytes": 14985,
+      "sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "archive": "linked/cbf87b16a7e0-candidate.json",
+      "bytes": 10041,
+      "sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "archive": "linked/8c472199aa2b-proof.json",
+      "bytes": 20034,
+      "sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "archive": "linked/1730744aa0e9-candidate.json",
+      "bytes": 12083,
+      "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "archive": "linked/57ff2d1a32c4-proof.json",
+      "bytes": 19519,
+      "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+      "archive": "linked/4540a299f2ea-candidate.json",
+      "bytes": 8912,
+      "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "archive": "linked/c9893b73e5e8-proof.json",
+      "bytes": 19657,
+      "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "archive": "linked/49f3323c136d-candidate.json",
+      "bytes": 8833,
+      "sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "archive": "linked/950c7cef1303-proof.json",
+      "bytes": 17955,
+      "sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "archive": "linked/a93a8c93d7cc-candidate.json",
+      "bytes": 8915,
+      "sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "archive": "linked/ebc401609867-proof.json",
+      "bytes": 17991,
+      "sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "archive": "linked/a0166d03cdd7-candidate.json",
+      "bytes": 10417,
+      "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "archive": "linked/e1ea3d741054-proof.json",
+      "bytes": 17881,
+      "sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "archive": "linked/95b5fedff26b-candidate.json",
+      "bytes": 7285,
+      "sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "archive": "linked/9bcc5825c595-proof.json",
+      "bytes": 17881,
+      "sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+      "archive": "linked/a27600c2d00d-candidate.json",
+      "bytes": 8851,
+      "sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf"
+    },
+    {
+      "source": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/proof.json",
+      "archive": "linked/bdcddaface86-proof.json",
+      "bytes": 17881,
+      "sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428"
+    },
+    {
+      "source": "/tmp/bex-m188-publisher-job-snapshots/123932798235-d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5.json",
+      "archive": "linked/d8f419384f12-123932798235-d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5.json",
+      "bytes": 6109,
+      "sha256": "d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5"
+    }
+  ],
+  "large_predicates": "Full signed predicates remain in digest-addressed public OCI objects and local verified gzip caches, referenced by proof.json. Exact original paths are retained; this manifest maps archived metadata."
+}

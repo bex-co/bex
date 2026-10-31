@@ -1,0 +1,28 @@
+{
+  "schema": "bex.m188.exact-FINAL-root-candidate-promotion-approval/v1",
+  "at": "2026-10-31T03:03:28.260852+00:00",
+  "candidate": "node-20-bookworm",
+  "approved": true,
+  "exact_FINAL_validation_sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+  "reviewed_clarification_sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+  "reviewed_immutable_inputs": {
+    "guard-validation.json": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+    "guard-validation-context-scope-clarification.json": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+    "guard-structural-controls.json": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+    "candidate.json": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+    "proof.json": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f"
+  },
+  "root_review": "Read whole frozen validation, actual candidate/prebody, proof semantic/source/architecture records, 3 actual CLI negatives and 4 structural controls. Independently checked five successful exact signed-timestamp/claims/source CLI records and immutable hashes.",
+  "explanatory_string_disposition": "2169 contains one stale Ruby32 explanatory scope string; the separate immutable50e2 clarification corrects ONLY that description. Actual BF producer, 6fd verifier/certificate, da0e canonical workflow, rawproof, guard2a/context06 and full checks are independently confirmed. Approve exact2169 together with50e2; do not rewrite either.",
+  "authorized_operation": "One helper966 root-approved promotion using EXACT2169, requiring fresh anonymous discovery and frozen2a replay; preserve prior9 rows/proofs/receipts, upgrade only allowed candidate metadata.",
+  "all_other_findings_retained": {
+    "per_arch_total": 11171,
+    "per_arch_critical": 72
+  },
+  "acceptance_before": 9,
+  "expected_after": 10,
+  "remaining_after": [
+    "node-18-bookworm"
+  ],
+  "source_adoption_authorized": false
+}

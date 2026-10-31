@@ -1,0 +1,33 @@
+{
+  "schema": "bex.m188.verified-candidate-recovery-retirement/v1",
+  "at": "2026-10-31T03:06:13.562726+00:00",
+  "retired": "node-20-bookworm",
+  "accepted_receipt": {
+    "file": "/tmp/bex-m188-node-20-bookworm-acceptance.json",
+    "sha256": "d39c2f6422956390324df0ae9a47a6117c7e9d53fbb8745dab979c3502e97b76"
+  },
+  "exact_original_entry": {
+    "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+    "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "run_id": 41000570846,
+    "job_id": 123932798235,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  },
+  "catalog_sha256_before": "4fa8a9dbb23fdce6585415298e42b9f268cfb132dca39f501f76c1c15639671c",
+  "catalog_sha256_after": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+  "retained_names": [
+    "node-18-bookworm",
+    "elixir-1.18",
+    "elixir-1.19",
+    "elixir-1.17"
+  ],
+  "all_retained_entries_unchanged": true,
+  "remaining_own_authorizations": [
+    "node-18-bookworm"
+  ],
+  "foreign_Elixir_authorizations_preserved": true,
+  "source_adoption_performed": false
+}

@@ -1,0 +1,157 @@
+{
+  "at": "2026-10-31T03:04:18.970890+00:00",
+  "root_approval_sha256": "9c15393ee2ac48884d8568a0710a4a3e65d0abf4206cf428f5a402c9404ea007",
+  "exact_FINAL_validation_sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+  "clarification_included": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+  "all_checks_passed": true,
+  "checks": [
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation.json",
+      "sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+      "bytes": 4170
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-context-scope-clarification.json",
+      "sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+      "bytes": 2146
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-structural-controls.json",
+      "sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+      "bytes": 1740
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+      "sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+      "bytes": 8537
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/proof.json",
+      "sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+      "bytes": 18473
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+      "bytes": 8537
+    },
+    {
+      "file": "/tmp/bex-m188-promote-reviewed-candidate.py",
+      "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084",
+      "bytes": 9749
+    },
+    {
+      "file": "/tmp/bex-m188-prepare-adoption.py",
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "bytes": 86158
+    },
+    {
+      "file": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "bytes": 86158
+    },
+    {
+      "file": "/tmp/bex-m188-published-acceptance.json",
+      "sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+      "bytes": 154640
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-receipt-context.json",
+      "sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+      "bytes": 154640
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+      "sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+      "bytes": 12319
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+      "sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "bytes": 14985
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+      "bytes": 10041
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "bytes": 20034
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+      "bytes": 12083
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "bytes": 19519
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+      "sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+      "bytes": 8912
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "bytes": 19657
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+      "bytes": 8833
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "bytes": 17955
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+      "bytes": 8915
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "bytes": 17991
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+      "bytes": 10417
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "bytes": 17881
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0",
+      "bytes": 7285
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+      "bytes": 17881
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+      "sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+      "bytes": 8851
+    },
+    {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/proof.json",
+      "sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+      "bytes": 17881
+    }
+  ],
+  "prior_verified_rows": 9,
+  "source_adoption_authorized": false,
+  "promotion_not_yet_executed": true
+}
