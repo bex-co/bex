@@ -1,0 +1,37 @@
+{
+  "authorized": true,
+  "expected_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "runtime": "node-18-bookworm",
+  "max_dispatch_posts": 1,
+  "execution_eligibility_sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+  "expected_helper_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+  "artifact_admission_deferred_until_actual_binding": true,
+  "frozen_inputs": {
+    "/tmp/bex-m188-prepare-adoption.py": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+    "/tmp/bex-m188-published-acceptance.json": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+    "/tmp/bex-m188-current-tree-profile-context.json": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2"
+  },
+  "scope": "Root authorizes exactly ONE execution of the named immutable helper command, with at most ONE workflow_dispatch POST for Node18 normal publication. Helper must perform fresh all-source dedupe, exact37 source eligibility+actual normal selector, two literalDBC main checks. No cancellation, rerun or uncertain retry. Artifact-source role admission remains deferred until actual immutable run/head binding and must precede artifact acceptance.",
+  "root_reviewed_at": "2026-10-31T09:12:16.601904+00:00",
+  "authorized_command": [
+    "python3",
+    "-B",
+    "/tmp/bex-m188-dispatch-node18-dbc.py",
+    "--execute",
+    "--authorization",
+    "/tmp/bex-m188-node18-dbc-dispatch-root-authorization.json"
+  ],
+  "reviewed_proposal": {
+    "file": "/tmp/bex-m188-node18-dbc-dispatch-proposal.json",
+    "sha256": "0ab7808cce5c0fe133ff209fefe99cec3ccb2da450fee73813d56449104376ab"
+  },
+  "dispatcher_controls": {
+    "file": "/tmp/bex-m188-node18-dbc-dispatch-controls.json",
+    "sha256": "4632fc5dae53a1799b321d93ba981e78444e87acd1ce82ff372c8ba6eb4ac9ec"
+  },
+  "prior_cancellation_dedupe": {
+    "file": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/summary.json",
+    "sha256": "c09d634f7cc40924bc8989ed4a8e5216f59954ba6a3de9a3fdde8722671d2fb6"
+  },
+  "no_source_guard_Q_or_actual_artifact_approval": true
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "bex.m188.root-exact-source-admission-approval/v1",
+  "at": "2026-10-31T09:20:18.528135+00:00",
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "roles": {
+    "producer": [
+      "node-18-bookworm"
+    ],
+    "verification": [
+      "node-18-bookworm"
+    ]
+  },
+  "approved_guard": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "approved_proposed_Q": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f"
+  },
+  "proposal_package": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/proposal-final.json",
+    "sha256": "81f9b1fbc736450d859c865c16654e057e4a15996e2eeabd3884f83b8dada453"
+  },
+  "actual_controls": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/real10-and-source-boundary-controls.json",
+    "sha256": "743ea7fdc9c4060b9262d1ee71ea1d9689d1121740d7acf03e93c61acf94b5aa"
+  },
+  "independent_review": {
+    "file": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/guard-1690-review.json",
+    "sha256": "d2cf0bbd1ed44bc273e2fa97e2ba1e2a5ea18bebb7fbd03d9a5b16f374143387"
+  },
+  "actual_run_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+    "sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b"
+  },
+  "root_review": "Whole704role diff and1690 exact3source-substitution, actualDBC37source closure/run binding/normal selector, full proposal/execution+harness/ten real guards/eight source-boundary negatives/incomplete11 refusal/Node independent review read before approval. Linked hashes and110 protected originals verified.",
+  "checked_linked_files": 55,
+  "permitted_activation": "Only activeG4cfe->exact1690 plus Qaccepted_sources append literalDBC. Preserve other108 protected originals and all10 candidate rows/status/proofs; freeze old/new guards and newQcontext. Newcontext source rules Node18 only; old49ee semantics unchanged.",
+  "old_guard_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+  "old_Q_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "new_Q_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+  "candidate_approval_or_artifact_acceptance_or_source_adoption": false,
+  "new_CI_actions_authorized": false,
+  "CI_mutation_budget_already_spent": true,
+  "activated": false,
+  "unused9fe_proposal_never_admitted": true
+}

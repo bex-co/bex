@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T09:12:35.112921+00:00",
+  "finished_at": "2026-10-31T09:12:37.173924+00:00",
+  "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?branch=main&per_page=100&page=1",
+  "exit_code": 0,
+  "stderr": "",
+  "raw_sha256": "a0dadbdbd73c2d78cdc83127e96c4fdf647dc1c3f074df845ef126d9a4b7b45f"
+}

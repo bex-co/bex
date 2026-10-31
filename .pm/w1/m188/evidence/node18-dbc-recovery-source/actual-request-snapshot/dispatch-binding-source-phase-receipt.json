@@ -1,0 +1,110 @@
+{
+  "schema": "bex.m188.node18.normal-dispatch-and-source-registration/v1",
+  "frozen_at": "2026-10-31T09:29:02.770582+00:00",
+  "runtime": "node-18-bookworm",
+  "run_id": 41187749759,
+  "job_id": 124498652791,
+  "run_attempt": 1,
+  "actual_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "event": "workflow_dispatch",
+  "branch": "main",
+  "request_actor": "ROOT executed reviewed helper once; child performed read-only binding and local observer registration",
+  "dispatch_posts": 1,
+  "dispatch_http_status": 204,
+  "source_build_required": true,
+  "actual_native_status_at_binding": "queued",
+  "runner_id_at_binding": 0,
+  "started_steps_at_binding": 0,
+  "dispatch_result": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-result.json",
+    "sha256": "5889020939ea9ffa40435a8cb142bd4c019a1fda0df18c2edb0ed0e1b3c40c2f",
+    "bytes": 1826
+  },
+  "root_dispatch_authorization": {
+    "file": "/tmp/bex-m188-node18-dbc-dispatch-root-authorization.json",
+    "sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+    "bytes": 2108
+  },
+  "execution_source_eligibility": {
+    "file": "/tmp/bex-m188-dbc-root-execution-source-eligibility.json",
+    "sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+    "bytes": 7639
+  },
+  "executed_helper": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/executed-helper.py",
+    "sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+    "bytes": 12819
+  },
+  "dispatcher_offline_controls": {
+    "file": "/tmp/bex-m188-node18-dbc-dispatch-controls.json",
+    "sha256": "4632fc5dae53a1799b321d93ba981e78444e87acd1ce82ff372c8ba6eb4ac9ec",
+    "bytes": 984
+  },
+  "run_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+    "sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+    "bytes": 870
+  },
+  "native_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-native-binding.json",
+    "sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2",
+    "bytes": 2001
+  },
+  "normal_selector_proof": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+    "bytes": 8233
+  },
+  "source_admission": {
+    "file": "/tmp/bex-m188-dbc-root-source-admission.json",
+    "sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+    "bytes": 2636
+  },
+  "source_activation": {
+    "file": "/tmp/bex-m188-dbc-source-policy-activation.json",
+    "sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+    "bytes": 2082
+  },
+  "source_roles": {
+    "producer": [
+      "node-18-bookworm"
+    ],
+    "verification": [
+      "node-18-bookworm"
+    ]
+  },
+  "observer_registration": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-admission-observer-registration.json",
+    "sha256": "209183d1b3688e8d72af45d9941bcac3c5801be46fdbe21d1d5aedfcd1086fa4",
+    "bytes": 2150
+  },
+  "observer_primary_handoff": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/observer-primary-handoff.json",
+    "sha256": "3c3be6071056bf319df8df382cd80831e63460fb9bfbf0bad0996c5ee323dc48",
+    "bytes": 260
+  },
+  "passive_reader": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/passive-reader-v4.py",
+    "sha256": "8b4c606eb6508d2a99236b32182db73aadec45343d9d598803a4a885f3098cd7",
+    "bytes": 2109
+  },
+  "active_guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "frozen_receipt_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "combined_current_tree_context": {
+    "file": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+    "sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+    "bytes": 1696
+  },
+  "accepted_count": 10,
+  "artifact_acceptance_performed": false,
+  "artifact_source_adoption_performed": false,
+  "historical_pending_run_native_binding_bytes_preserved": true,
+  "historical_DA0_cancelled_zero_work_snapshot_preserved": true,
+  "mutable_status_files_excluded_from_phase_manifest": true,
+  "remaining_CI_mutation_budget": 0,
+  "next_gate": "actual Node18 SUCCESS then strict five bundle verification and three actual semantic negatives; Cnb FINAL1690/QEDA/currentcontext7041; ROOT exact FINAL approval before helper966"
+}

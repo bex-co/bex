@@ -1,0 +1,45 @@
+{
+  "schema": "bex.m188.exact-DBC-Node18-source-policy-activation/v1",
+  "at": "2026-10-31T09:21:12.674660+00:00",
+  "root_approval": {
+    "file": "/tmp/bex-m188-dbc-root-source-admission.json",
+    "sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2"
+  },
+  "active_guard": {
+    "file": "/tmp/bex-m188-prepare-adoption.py",
+    "before_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+    "after_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "aggregate": {
+    "file": "/tmp/bex-m188-published-acceptance.json",
+    "before_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+    "after_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "only_semantic_change": "accepted_sources append literalDBC; allotherfields/10candidate rows/status/proofs unchanged"
+  },
+  "new_frozen_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f"
+  },
+  "combined_context": {
+    "file": "/tmp/bex-m188-current-tree-profile-context-after-dbc-source-admission.json",
+    "sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78"
+  },
+  "actual_native_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-native-binding.json",
+    "sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2"
+  },
+  "new_source_roles": {
+    "producer:node-18-bookworm": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "verification:node-18-bookworm": "dbc493ba688c19758c9a489635761419fb2c1af6"
+  },
+  "accepted_count_unchanged": 10,
+  "protected_file_count": 110,
+  "only_protected_paths_changed": [
+    "/tmp/bex-m188-prepare-adoption.py",
+    "/tmp/bex-m188-published-acceptance.json"
+  ],
+  "other108_originals_unchanged": true,
+  "unused9fe_not_admitted": true,
+  "canonical_DA0_and_current941_2cc_profile_unchanged": true,
+  "source_adoption_or_candidate_acceptance_or_CI_action": false
+}

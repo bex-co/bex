@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-31T09:14:55.816045+00:00",
+  "run_id": 41187749759,
+  "actual_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "event": "workflow_dispatch",
+  "head_branch": "main",
+  "run_attempt": 1,
+  "created_at": "2026-10-31T09:12:40Z",
+  "source_matches_execution_eligibility": true,
+  "artifact_source_admitted": false,
+  "native_selection_pending": true,
+  "jobs": [
+    {
+      "id": 124498016763,
+      "name": "matrix",
+      "status": "in_progress",
+      "runner_id": 22145,
+      "started_steps": [
+        "Set up job",
+        "Set up runner",
+        "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+      ]
+    }
+  ],
+  "raw_run_sha256": "ee2eedab3d641abff1e9e8f912e4b5fcf1f65643aaaa5059ebeb0f525a075259",
+  "raw_jobs_sha256": "dc5a7ca61f3f5e914979804dd0190f5b37dc09f9f55a9913c8b7cbb1c34fc29d",
+  "additional_CI_mutations": 0
+}

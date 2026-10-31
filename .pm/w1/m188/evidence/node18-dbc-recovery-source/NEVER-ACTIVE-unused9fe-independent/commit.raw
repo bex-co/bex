@@ -1,0 +1,10 @@
+tree 6f269f2f6533966d30cd9f9eeb32966b2e3de94d
+parent c780382d6911246b981dbbe3ac3a366234edae5f
+author Tian Pan <puncsky@gmail.com> 1793436844 -0700
+committer Tian Pan <puncsky@gmail.com> 1793436844 -0700
+
+fix(api): report the Render region alias for single-region placement
+
+The pinned CLI validates a source service region before cloning, so physical fsn1 stopped --from clones before an API request. Apply user D7: publish frankfurt for fsn1 across service/Postgres/Key Value views, stored-view fallback and Blueprint generation, keeping internal placement and create normalization unchanged. Omit regions for static Blueprint entries and unconfigured metadata; public filters match the alias and retain enum validation.
+
+Focused feature/composed-server suites, configured and unconfigured actual Blueprint generation, stored-view fallback and backend lint pass. Real database verification is required before push; original two-client live clones and cleanup remain open until deployment.

@@ -1,0 +1,41 @@
+{
+  "schema": "bex.m188.current-tree-and-exact-source-role-context/v1",
+  "at": "2026-10-31T09:21:12.673950+00:00",
+  "root_source_admission": {
+    "file": "/tmp/bex-m188-dbc-root-source-admission.json",
+    "sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2"
+  },
+  "guard_snapshot": {
+    "file": "/tmp/bex-m188-guard-snapshots/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "aggregate_context": {
+    "file": "/tmp/bex-m188-guard-receipt-context-after-dbc-source-admission.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "verified_count": 10
+  },
+  "baseline_current_tree_profile": {
+    "file": "/tmp/bex-m188-current-tree-profile-context.json",
+    "sha256": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2"
+  },
+  "current_recipe_anchor": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "current_workflow_anchor": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "canonical_workflow_anchor": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "new_artifact_source_roles": {
+    "dbc493ba688c19758c9a489635761419fb2c1af6": {
+      "producer": [
+        "node-18-bookworm"
+      ],
+      "verification": [
+        "node-18-bookworm"
+      ]
+    }
+  },
+  "actual_native_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-native-binding.json",
+    "sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2"
+  },
+  "historical_binding_admission_pending_flag_preserved": true,
+  "artifact_candidate_approval_or_adoption": false,
+  "unused9fe_never_admitted": true
+}

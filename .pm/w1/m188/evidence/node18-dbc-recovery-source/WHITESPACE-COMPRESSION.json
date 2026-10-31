@@ -1,0 +1,15 @@
+{
+  "schema": "bex.m188.lossless-whitespace-compression/v1",
+  "records": [
+    {
+      "original_source": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff",
+      "archive_path": "NEVER-ACTIVE-unused9fe-proposal/guard.diff.gz",
+      "actual_git_diff_check_diagnostic": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff:15: trailing whitespace.\n+ \n"
+    },
+    {
+      "original_source": "/tmp/bex-m188-dbc-node18-source-proposal/guard.diff",
+      "archive_path": "actual-DBC-proposal/guard.diff.gz",
+      "actual_git_diff_check_diagnostic": "/tmp/bex-m188-dbc-node18-source-proposal/guard.diff:15: trailing whitespace.\n+ \n"
+    }
+  ]
+}

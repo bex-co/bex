@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.actual-INACTIVE9fe-proposal-execution/v1",
+  "recorded_at": "2026-10-31T09:04:50.188946+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "/tmp/bex-m188-test-9fe-node18-source-proposal.py"
+  ],
+  "actual_exit_code": 0,
+  "harness": {
+    "file": "/tmp/bex-m188-test-9fe-node18-source-proposal.py",
+    "sha256": "70c59d0de805c62939bb175dfbc13bec60666fe0038474e6622a6cdc5a9932e7",
+    "bytes": 7220
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+    "sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+    "bytes": 92910
+  },
+  "result": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/real10-and-source-boundary-controls.json",
+    "sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+    "bytes": 27913
+  },
+  "stdout": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/real10-controls.stdout.log",
+    "sha256": "cb6c41c7542126bb4e879fef09ef12ee853077591fbd1add17548e6fa10c42b1",
+    "bytes": 923
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/real10-controls.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "actual_old10_full_proof_validations_not_mocked": true,
+  "prospective9fe_controls_negative_only_no_artifact_pass_claim": true
+}

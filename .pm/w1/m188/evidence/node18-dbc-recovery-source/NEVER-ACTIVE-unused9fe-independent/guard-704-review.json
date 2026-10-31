@@ -1,0 +1,36 @@
+{
+  "schema": "bex.m188.independent-frozen704-normal9fe-approval/v1",
+  "at": "2026-10-31T09:05:15.023867+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+    "sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8"
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff",
+    "sha256": "123017e5b122704b727d7e07b55dec0b7ace5b9c0e2c2ea8cbf0f21429af84f6"
+  },
+  "verdict": "Approve exact704 source proposal and proposed-only receipt context change. Adds only literal9fe producer/verifier roles restricted to Node18; no artifact acceptance/adoption or active policy change is performed by this review.",
+  "literal_source_closure": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/review.json",
+    "sha256": "32442ca091a6b4cb8358b4d1c85f9f0edd401a6301fb02c914bcb3ad469b854c"
+  },
+  "actual_selector": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector-receipt.json",
+    "sha256": "28cb4d720a8a250c42a691b1b290fa61759642a4ed91ffa59e92c470ba020b20",
+    "outcome": "exit0;0outputbytes; normal from-source build, stale7dd ignored"
+  },
+  "checks": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/guard-704-source-checks.json",
+    "sha256": "6d6b784af3586585b6c1bc74fb93f0b8000dc09ff8adba3f69c5209e8aadbe79"
+  },
+  "boundaries": [
+    "Only literal9fe added; no941/2cc/435 aliases or ancestry-wide artifact role",
+    "Separate9fe-only verifier restriction; historical49ee producer restriction and verifier behavior unchanged",
+    "CanonicalDA0/current941/current2cc anchor roles unchanged",
+    "9fe normal build must producer=verifier=9fe; strict producer\u2194verifier nonMD recipe equality preserved",
+    "All trust/crypto/full-predicate/runtime/portable-companion/scan gates and new/tmp writer protections unchanged",
+    "Proposed Q changes only accepted_sources; all10 existing candidate records/statuses/cryptographic evidence remain exact"
+  ],
+  "control_limits": "Static exact guard/JSON/AST review and actual embedded selector execution only. Cnb owns real10/refusal/source-boundary negative controls; no result from those is claimed here. No new build/export/scan/signature/artifact proof exists in this review.",
+  "mutations": "Only new owned/tmp review files. No active guard/source admission/Q, shared repository/board, accepted evidence, API or CI changes."
+}

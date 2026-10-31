@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-10-31T08:57:20.039811+00:00",
+  "finished_at": "2026-10-31T08:57:20.637385+00:00",
+  "method": "GET",
+  "endpoint": "repos/bex-co/bex/check-runs/124414471403",
+  "exit_code": 0,
+  "stderr": "",
+  "raw": {
+    "file": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-run.raw.json",
+    "sha256": "8f35872d87c159d506484f489ee65e1ded81b3574019a97c54cc80eb874e3284",
+    "bytes": 3112
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "files": [
+    {
+      "file": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/existing-observer-publisher.json",
+      "sha256": "fb056883f8d4361fd5d8471d7b1c29f202f7217773a8982d9324b3010e41caa9",
+      "bytes": 2219
+    },
+    {
+      "file": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/observation.json",
+      "sha256": "f2bf0793c750ba98af348acdf7c9e3b7e9ac6185f7ca1925b8c638fd50fe28d7",
+      "bytes": 1185
+    },
+    {
+      "file": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/terminal-job.json",
+      "sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+      "bytes": 1067
+    }
+  ],
+  "file_count": 3,
+  "total_bytes": 4471
+}

@@ -1,0 +1,783 @@
+{
+  "schema": "bex.m188.Node18-cancellation-and-all-source-dedupe/v1",
+  "finished_at": "2026-10-31T08:57:21.086597+00:00",
+  "DA0_run": {
+    "id": 41159591513,
+    "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "head_branch": "main",
+    "path": ".github/workflows/native-base-image.yml",
+    "event": "workflow_dispatch",
+    "run_attempt": 1,
+    "created_at": "2026-10-31T02:20:59Z",
+    "status": "completed",
+    "conclusion": "cancelled"
+  },
+  "DA0_job": {
+    "id": 124414471403,
+    "run_id": 41159591513,
+    "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "run_attempt": 1,
+    "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "started_at": "2026-10-31T02:23:05Z",
+    "completed_at": "2026-10-31T08:51:55Z",
+    "runner_id": 0,
+    "runner_name": "",
+    "started_steps": []
+  },
+  "DA0_cancellation_output": {
+    "check_id": 124414471403,
+    "check_status": "completed",
+    "check_conclusion": "cancelled",
+    "title": null,
+    "summary": null,
+    "text": null,
+    "annotations": [
+      {
+        "annotation_level": "failure",
+        "message": "The run was canceled by @puncsky.",
+        "title": "",
+        "raw_details": ""
+      }
+    ],
+    "check_api_error": null,
+    "cancelling_actor_not_inferred_from_dispatch_actor": true
+  },
+  "run2cc": {
+    "run": {
+      "id": 41184126238,
+      "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "head_branch": "main",
+      "path": ".github/workflows/native-base-image.yml",
+      "event": "push",
+      "run_attempt": 1,
+      "created_at": "2026-10-31T08:19:28Z",
+      "status": "completed",
+      "conclusion": "cancelled"
+    },
+    "jobs": [
+      {
+        "id": 124487429080,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-31T08:19:33Z",
+        "completed_at": "2026-10-31T08:21:43Z",
+        "runner_id": 22129,
+        "runner_name": "8f8245b11ab6",
+        "started_steps": [
+          {
+            "name": "Set up job",
+            "started_at": "2026-10-31T08:19:35Z",
+            "status": "completed"
+          },
+          {
+            "name": "Set up runner",
+            "started_at": "2026-10-31T08:19:39Z",
+            "status": "completed"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "started_at": "2026-10-31T08:19:39Z",
+            "status": "completed"
+          },
+          {
+            "name": "test verified OCI staging and publication gates",
+            "started_at": "2026-10-31T08:21:33Z",
+            "status": "completed"
+          },
+          {
+            "name": "Run images=$(python3 deploy/native-base/matrix.py)",
+            "started_at": "2026-10-31T08:21:37Z",
+            "status": "completed"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "started_at": "2026-10-31T08:21:37Z",
+            "status": "completed"
+          },
+          {
+            "name": "Complete job",
+            "started_at": "2026-10-31T08:21:37Z",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "id": 124487885905,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-16-bookworm, node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:44Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": 0,
+        "runner_name": "",
+        "started_steps": []
+      },
+      {
+        "id": 124487885921,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-14-bullseye, node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:44Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": 0,
+        "runner_name": "",
+        "started_steps": []
+      },
+      {
+        "id": 124487894744,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487894804,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.9-bookworm, python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe9...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487894821,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-20-bookworm, node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895083,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (elixir-1.17, elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd3...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895092,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.7-bullseye, python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d62...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895220,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-3.1-bookworm, ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803d...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895276,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-3.0-bullseye, ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb08895...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895292,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.10-bookworm, python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895335,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.8-bookworm, python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6af...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895532,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-3.2-bookworm, ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895587,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (elixir-1.19, elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895593,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (elixir-1.18, elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487895875,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-24-bookworm, node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:46Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896145,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-22-bookworm, node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896154,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.11-bookworm, python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896200,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (node-26-bookworm, node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896372,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896444,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-3.3-bookworm, ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a028...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896472,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.13-bookworm, python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896537,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.12-bookworm, python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896635,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-3.4-bookworm, ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb272046...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896761,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (python-3.14-bookworm, python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad4...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896803,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487896944,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (ruby-4.0-bookworm, ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fec...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      },
+      {
+        "id": 124487897264,
+        "run_id": 41184126238,
+        "head_sha": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+        "run_attempt": 1,
+        "name": "build (rust-1-bookworm, rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141...",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-10-31T08:21:47Z",
+        "completed_at": "2026-10-31T08:21:46Z",
+        "runner_id": null,
+        "runner_name": null,
+        "started_steps": []
+      }
+    ]
+  },
+  "latest_list_total": 85,
+  "listed_and_active_union_count": 85,
+  "nonterminal_run_count": 3,
+  "current_Node18_jobs": [],
+  "unknown_matrix_input_risks": [],
+  "current_active_native_runs": [
+    {
+      "run": {
+        "id": 41144656779,
+        "head_sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+        "head_branch": "main",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "run_attempt": 1,
+        "created_at": "2026-10-30T23:28:15Z",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "ongoing_native_jobs": [
+        {
+          "id": 124367871533,
+          "run_id": 41144656779,
+          "head_sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+          "run_attempt": 1,
+          "name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-31T08:05:19Z",
+          "completed_at": null,
+          "runner_id": 22130,
+          "runner_name": "45e29ad2967e",
+          "started_steps": [
+            {
+              "name": "Set up job",
+              "started_at": "2026-10-31T08:05:22Z",
+              "status": "completed"
+            },
+            {
+              "name": "Set up runner",
+              "started_at": "2026-10-31T08:06:00Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "started_at": "2026-10-31T08:06:00Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+              "started_at": "2026-10-31T08:07:23Z",
+              "status": "completed"
+            },
+            {
+              "name": "log in to GHCR with bounded transport retries",
+              "started_at": "2026-10-31T08:08:25Z",
+              "status": "completed"
+            },
+            {
+              "name": "select a reviewed recovery artifact when its recipe is unchanged",
+              "started_at": "2026-10-31T08:08:27Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+              "started_at": "2026-10-31T08:08:27Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+              "started_at": "2026-10-31T08:47:32Z",
+              "status": "completed"
+            },
+            {
+              "name": "verify real native tool transformations without network on both architectures",
+              "started_at": "2026-10-31T08:47:32Z",
+              "status": "completed"
+            },
+            {
+              "name": "prepare bounded full-scan retries",
+              "started_at": "2026-10-31T08:55:19Z",
+              "status": "completed"
+            },
+            {
+              "name": "scan amd64 candidate",
+              "started_at": "2026-10-31T08:55:19Z",
+              "status": "in_progress"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": {
+        "id": 41142870861,
+        "head_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+        "head_branch": "main",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "run_attempt": 1,
+        "created_at": "2026-10-30T23:10:46Z",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "ongoing_native_jobs": [
+        {
+          "id": 124361678277,
+          "run_id": 41142870861,
+          "head_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+          "run_attempt": 1,
+          "name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-31T07:48:19Z",
+          "completed_at": null,
+          "runner_id": 22127,
+          "runner_name": "9e5b2bd9ddc1",
+          "started_steps": [
+            {
+              "name": "Set up job",
+              "started_at": "2026-10-31T07:48:21Z",
+              "status": "completed"
+            },
+            {
+              "name": "Set up runner",
+              "started_at": "2026-10-31T07:48:44Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "started_at": "2026-10-31T07:48:44Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+              "started_at": "2026-10-31T07:49:26Z",
+              "status": "completed"
+            },
+            {
+              "name": "log in to GHCR with bounded transport retries",
+              "started_at": "2026-10-31T07:51:47Z",
+              "status": "completed"
+            },
+            {
+              "name": "select a reviewed recovery artifact when its recipe is unchanged",
+              "started_at": "2026-10-31T07:51:48Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+              "started_at": "2026-10-31T07:51:48Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+              "started_at": "2026-10-31T08:25:56Z",
+              "status": "completed"
+            },
+            {
+              "name": "verify real native tool transformations without network on both architectures",
+              "started_at": "2026-10-31T08:25:56Z",
+              "status": "completed"
+            },
+            {
+              "name": "prepare bounded full-scan retries",
+              "started_at": "2026-10-31T08:26:44Z",
+              "status": "completed"
+            },
+            {
+              "name": "scan amd64 candidate",
+              "started_at": "2026-10-31T08:26:44Z",
+              "status": "completed"
+            },
+            {
+              "name": "scan arm64 candidate",
+              "started_at": "2026-10-31T08:42:58Z",
+              "status": "in_progress"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": {
+        "id": 41129321189,
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "head_branch": "main",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "run_attempt": 1,
+        "created_at": "2026-10-30T21:12:53Z",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "ongoing_native_jobs": [
+        {
+          "id": 124322916655,
+          "run_id": 41129321189,
+          "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+          "run_attempt": 1,
+          "name": "build (ruby-4.0-bookworm, ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fec...",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-31T07:36:46Z",
+          "completed_at": null,
+          "runner_id": 22126,
+          "runner_name": "49aefcdc6924",
+          "started_steps": [
+            {
+              "name": "Set up job",
+              "started_at": "2026-10-31T07:36:47Z",
+              "status": "completed"
+            },
+            {
+              "name": "Set up runner",
+              "started_at": "2026-10-31T07:37:03Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "started_at": "2026-10-31T07:37:03Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+              "started_at": "2026-10-31T07:37:53Z",
+              "status": "completed"
+            },
+            {
+              "name": "log in to GHCR with bounded transport retries",
+              "started_at": "2026-10-31T07:38:34Z",
+              "status": "completed"
+            },
+            {
+              "name": "select a reviewed recovery artifact when its recipe is unchanged",
+              "started_at": "2026-10-31T07:38:36Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+              "started_at": "2026-10-31T07:38:36Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+              "started_at": "2026-10-31T08:06:42Z",
+              "status": "completed"
+            },
+            {
+              "name": "verify real native tool transformations without network on both architectures",
+              "started_at": "2026-10-31T08:06:42Z",
+              "status": "completed"
+            },
+            {
+              "name": "prepare bounded full-scan retries",
+              "started_at": "2026-10-31T08:07:31Z",
+              "status": "completed"
+            },
+            {
+              "name": "scan amd64 candidate",
+              "started_at": "2026-10-31T08:07:31Z",
+              "status": "completed"
+            },
+            {
+              "name": "scan arm64 candidate",
+              "started_at": "2026-10-31T08:21:30Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+              "started_at": "2026-10-31T08:28:36Z",
+              "status": "completed"
+            },
+            {
+              "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+              "started_at": "2026-10-31T08:32:51Z",
+              "status": "completed"
+            },
+            {
+              "name": "sign and attest the immutable candidate",
+              "started_at": "2026-10-31T08:33:29Z",
+              "status": "in_progress"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "remote_mutations": 0,
+  "artifact_source_Q_guard_or_aggregate_written": false,
+  "limits": [
+    "Exact job/check output is evidence of cancellation text, not an attribution from triggering actor.",
+    "Read-only snapshots are not atomic. No CI action or source admission has been performed."
+  ]
+}

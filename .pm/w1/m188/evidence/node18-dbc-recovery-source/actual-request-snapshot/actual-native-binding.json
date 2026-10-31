@@ -1,0 +1,50 @@
+{
+  "schema": "bex.m188.actual-normal-Node18-native-binding/v1",
+  "at": "2026-10-31T09:20:24.519047+00:00",
+  "run_id": 41187749759,
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "head_branch": "main",
+  "event": "workflow_dispatch",
+  "run_attempt": 1,
+  "runtime": "node-18-bookworm",
+  "native_job_id": 124498652791,
+  "native_job_name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+  "native_status": "queued",
+  "runner_id": 0,
+  "started_steps": [],
+  "exactly_one_selected_native_job": true,
+  "normal_build_required": true,
+  "artifact_admission_pending": true,
+  "artifact_role_granted_by_this_record": false,
+  "raw_run": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-run.raw.json",
+    "sha256": "f6f30fb51a60aa919248643ac82871067038201663918c035236fc6d871e8d10",
+    "bytes": 11451
+  },
+  "raw_jobs": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/binding-2-jobs.raw.json",
+    "sha256": "9cb3f2a50f680a4ba317692e5461dbc353ba5867857b0bbacf4d690078969176",
+    "bytes": 3065
+  },
+  "root_execution_eligibility": {
+    "file": "/tmp/bex-m188-dbc-root-execution-source-eligibility.json",
+    "sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+    "bytes": 7639
+  },
+  "root_CI_authorization": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/authorization.json",
+    "sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de",
+    "bytes": 2108
+  },
+  "dispatch_result": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-result.json",
+    "sha256": "5889020939ea9ffa40435a8cb142bd4c019a1fda0df18c2edb0ed0e1b3c40c2f",
+    "bytes": 1826
+  },
+  "source_and_normal_selector_proof": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+    "bytes": 8233
+  },
+  "additional_CI_actions_by_this_agent": 0
+}

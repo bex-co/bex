@@ -1,0 +1,36 @@
+{
+  "schema": "bex.m188.independent-frozen1690-actualDBC-source-approval/v1",
+  "at": "2026-10-31T09:17:45.249963+00:00",
+  "proposal": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546"
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/guard.diff",
+    "sha256": "c10847227891760e554ff5fe08b1ad91244e328eb4995f7d1e8774c0ec67bc47"
+  },
+  "verdict": "Approve exact1690 inactive source proposal and proposed-only Q context. Actual immutable run41187749759 binds literalDBC/main/dispatch/attempt1; the exact only3 source substitutions from fully reviewed704 restrict both new roles to Node18. This does not activate policy or accept any artifact.",
+  "full_source_closure_review": {
+    "file": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/review.json",
+    "sha256": "e15cc2110d3e330631d8fcf02b3daa88a6379604b3797b8ee4ad21e41a0e5d56"
+  },
+  "prior_role_template_review": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/guard-704-review.json",
+    "sha256": "66d08380f9cd3da04c061a45c548a6b22bf3674c65178988107c4d096920ec6a"
+  },
+  "checks": {
+    "file": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/guard-1690-source-checks.json",
+    "sha256": "adda7f6f7ace1b232e535437d8ab8c21b0d0c65b5526754c7fbf1d2fb058cbd6"
+  },
+  "preserved_boundaries": [
+    "Unused9fe never admitted; absent in new guard/Q",
+    "Only literalDBC new producer+verifier; both runtime restricted node-18-bookworm",
+    "CanonicalDA0/current941/current2cc exact profile+ancestry unchanged, no alias or wildcard source admission",
+    "Historical49ee producer-onlyNode18 and separate old verifier semantics unchanged",
+    "Strict producer\u2194verifier nonMD recipe equality, crypto/fullreport/runtime/portablecompanion/scan checks unchanged",
+    "Q proposed metadata-only DBC addition; all10 accepted candidate/evidence/status records untouched",
+    "Writer current/tmp protections identical to reviewed4cfe/704"
+  ],
+  "control_limits": "No Cnb real10/refusal/8source-boundary-negative results claimed or duplicated here; no new candidate build/runtime/scans/signature acceptance. All actual proof checks remain required before accepting any DBC artifact.",
+  "mutations": "Only NEWowned/tmp receipts. No active guard/admission/Q/aggregate/repository/board/frozen evidence/API/CI changes."
+}

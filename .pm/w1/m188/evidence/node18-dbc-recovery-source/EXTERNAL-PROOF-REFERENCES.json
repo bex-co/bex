@@ -1,0 +1,676 @@
+{
+  "schema": "bex.m188.external-existing-proof-reference-index/v1",
+  "scope": "Original references retained without reading/copying large accepted10 proof bodies. Advertised hashes are historical metadata, not a new proof verification. Parent may add a later content-bound portable locator.",
+  "references": [
+    {
+      "original_reference": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/companion-native-green.json",
+      "advertised_sha256": "259145659edd6435b9e298d69340572ef57c42d57b7f2bd8711dfcb2748bac76",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/node14-layer-equivalence/MANIFEST.json",
+      "advertised_sha256": "31c634c9ccc1ec493148162c187d19a3b512284ddca7b863527d2f7b7d9caf89",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-node20-compiler.json",
+      "advertised_sha256": "1df61ff850304884c6aade1130fc79a6cab8c77436be306d0c7f150f42b7eeaa",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-node20-final-native.json",
+      "advertised_sha256": "a8b2aa02a8b1077c8ff2fe1a39b7b57dac985b4258d76c34b708aabfd615aa37",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/portable-python-ruby-suppliers.json",
+      "advertised_sha256": "be27636357048f167a32ab1842e9ce11bd718274f071317c511b9139ebb9ea3d",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-846a-cnb-semantic-review.json",
+      "advertised_sha256": "770f74787ec460e9a0913fb9292e8a860e3a070b5daae1eb88d7a8dbb6ed1aa9",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-846a-root-source-admission.json",
+      "advertised_sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-846a-source-review.json",
+      "advertised_sha256": "0d0cf8688954245bf557c34cc323b2a4a4db3a504b18324ffab5a25cb14ff6b5",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-adoption-guard-validation.json",
+      "advertised_sha256": "bb6a51652e8e27cb2fbb4f7d14ffc7f8c8c769dfef748e4b821f734fe8c2a037",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-current-tree-2cc-proposal-v2/independent-source-closure-review.json",
+      "advertised_sha256": "a52613dd23460cc69e9586807adbb67295433ad8d902c24b33e6c1f574746225",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-current-tree-portable-archive-9z55rc7t/MANIFEST.json",
+      "advertised_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-current-tree-profile-activation.json",
+      "advertised_sha256": "85683153b7a17b4548226ed64e2950e83c52448850105dba7ac63e305770493a",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-current-tree-profile-root-approval.json",
+      "advertised_sha256": "98b53a544d1867d92de07737e5a6070d09a2e364ef907fbbf57402ff1bbeee08",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-da0e-root-source-admission.json",
+      "advertised_sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107.py",
+      "advertised_sha256": "0bfb0d9e5541614baf87e07065b58c2c5ea849d6c83c152fb2ed698e42c75107",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93.py",
+      "advertised_sha256": "166f5bccb501df43ef8e64c6894f80d1decded3deea0b3e1b8cb2380f4079d93",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/1d42114ad3c28c7643c71a9e7faeaea7a4efb0f8a21d885d89e0c6b784ddaf26.py",
+      "advertised_sha256": "1d42114ad3c28c7643c71a9e7faeaea7a4efb0f8a21d885d89e0c6b784ddaf26",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "advertised_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "advertised_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c.py",
+      "advertised_sha256": "5e671d491a77c78655be764d271f1edb8eaf79f6b977484338498762037ab10c",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa.py",
+      "advertised_sha256": "7a4a814fcdf5fa76a1f5ec74467c288a99ae2c24f864948704b70558db6ad4fa",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "advertised_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87.py",
+      "advertised_sha256": "8c284bc98623276aabd4a7dc1bb86cab0cd306d16bd91803dd2e507df2093b87",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8.py",
+      "advertised_sha256": "98265e61e7ff5316142c40ec0b265c158aa05891f6b8baab0d0d07d24a366ba8",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f.py",
+      "advertised_sha256": "c739a4fc5053973f3b17cf17c2cbde504ead55e903579a12f23f7cdf8334566f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4.py",
+      "advertised_sha256": "da1cfc79c934632e1ad7fba5ec3899d03865ec5ec4f5ac7fe9f15ba26aa982c4",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "advertised_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-guard-snapshots/fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76.py",
+      "advertised_sha256": "fd579bbd157e42ed621bd79aa6852b1e948c19c9baf6ce0abaa3f183b24e4c76",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+      "advertised_sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+      "advertised_sha256": "4a5760aab67de694a1922a90edb5e9c71165a3fef41d599cfabd54bfc371c697",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/proof.json",
+      "advertised_sha256": "37586d35de6b7bbe8c5413117ec6f30c96afb3d7005712d4bd3b7d3653605b0a",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+      "advertised_sha256": "d7620941df3e71fc8260a67dcfc853768b9a505edfbdde952914f4906d5b7e65",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "advertised_sha256": "cbf87b16a7e04d5a535ba6742e64d6cd0cf33ce185dead0c5f616f7e69bebffd",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "advertised_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455.json",
+      "advertised_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+      "advertised_sha256": "710714f1b54674d814fd95903413e10822a475f0269a64030c2d42c6cdbce455",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-16-bookworm/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "advertised_sha256": "8c472199aa2b1468af1c5bd85f7a26ea0b75c6ecdc273b946175dc5a0d73b78d",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/acceptance-metadata-transition.json",
+      "advertised_sha256": "8fc2033e29b394391e36546113f6f6241a14a31cc9b9dcfcb5b3dbe190c52ee4",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/accepting-guard-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "advertised_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/architecture-binding.json",
+      "advertised_sha256": "da17bc93cc66b6de89841ecd38fe41900e8254ab73ffdcfa0725b76757d3b1f1",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+      "advertised_sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+      "advertised_sha256": "205d65f5c178eb80a29554f6f1468daa2d24ea883952e9b02dbd55b289d6bbbb",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/generic-controls-adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3.json",
+      "advertised_sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566.json",
+      "advertised_sha256": "2169a6fe88102e381b6f3825150f94d4136d6e2332bb0e0eb8e2c3630f4dd566",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-validation-context-scope-clarification.json",
+      "advertised_sha256": "50e2e266090c8b7076c114855a1242293c4bf809e2435495964309a5cfc34148",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/proof.json",
+      "advertised_sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "advertised_sha256": "641af3da2294425abfb351d7b00015a2f61474afc0122811e58eac267248de48",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "advertised_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+      "advertised_sha256": "6dc1ff32a260485a64bede428fb24e3b398d00493673e030ad2a07180613c81f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c.json",
+      "advertised_sha256": "b5f9107bcb17bd5aab8a256e336dbb42fe6a37a902a1a8f10c7b023a8c9f610c",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "advertised_sha256": "a93a8c93d7cc476daa311bd554cfefc0d200b7aad320a1b948603545843fe836",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05.json",
+      "advertised_sha256": "1c697669802a0d31940882e66639fe3080bcfdba2d8d1675de1184c1edae7a05",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf.json",
+      "advertised_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "advertised_sha256": "2f041026a9ed3e3aba9c969d597a08ca04cdae7fcce2bc3352828ac7ecf933cf",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.10-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "advertised_sha256": "ebc4016098671e170b42de6d8ee7601f169a3f9e1a23a1d2d365cb9b9f1ce81b",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+      "advertised_sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json",
+      "advertised_sha256": "1730744aa0e985fab43520738e8b9fd1a22733fc41ad0e81fc60b1e66cd45ac6",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/generic-controls-4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f.json",
+      "advertised_sha256": "4e94b9145d9d724d8228149a55180b367710b4b5958ead6357d04a6f650a1d7f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation-dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6.json",
+      "advertised_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/guard-validation.json",
+      "advertised_sha256": "dc89946bdd1dc4886c0c66817b5b2036814933038f3a01ed64332b9cc8cba4e6",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/proof.json",
+      "advertised_sha256": "57ff2d1a32c412248389424c51337e23e3406abfb40652f1a74b75b390e9f72f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/acceptance-metadata-transition-hash-recovery.json",
+      "advertised_sha256": "a9466e004686b9f61b84afc124e12d8787f3c8ace79b67ff2e3454d1de6cb5c1",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/architecture-binding.json",
+      "advertised_sha256": "9c33da49c59249ce9999872e15ca1b8acdb02ca697aba1a76d9885b03ba09d82",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate-validated-body-hash-recovered-ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe.json",
+      "advertised_sha256": "ace338eecc5d488f61a485fd7d0bb950fbab98ce83d74aabe8cbc882d328cebe",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/candidate.json",
+      "advertised_sha256": "4540a299f2ea796ab7a73ca0ad2430a25065a10910a0050ff6d49630f6ee58b8",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/generic-controls-258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6.json",
+      "advertised_sha256": "258b2edd111d62ff9719314162363f1737f8078d17069c6665198aa19d1fb0b6",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation-f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944.json",
+      "advertised_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/guard-validation.json",
+      "advertised_sha256": "f51380639f601d577556b958a6b8a2871a8bc5066217cf7e4e0b6803d4d27944",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.8-bookworm/c8ca76473129d092a8d74ada5e09c5c4705987cd/archive-reuse-20261030/proof.json",
+      "advertised_sha256": "c9893b73e5e819062b9c444e3b4961cb3aa8397bbe2663a8659046ccd7777c59",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "advertised_sha256": "77a95e31942af4193ff9e46f2ba49e6d4db5b9cbef1fe5abf1070dbe4cfdd7fa",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "advertised_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+      "advertised_sha256": "6d445c720f19fbabe955a6373dd8c358e815a9a584a551a3c0c998aa9e27c70c",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13.json",
+      "advertised_sha256": "4de14d082f003851d65dae983ce57b1e9817f765ea547060b2ccabe7938dda13",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "advertised_sha256": "49f3323c136d62cd7fc1afc73b5fd55e5eb6819a5266ab6ee9285aa76577ed83",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691.json",
+      "advertised_sha256": "06a13bf8a3540aabffa17a4aba831f813295fbb2b8d0a31aa99a312d3366a691",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50.json",
+      "advertised_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "advertised_sha256": "9b8aa3eab98566ff1e540ad19bcf4657e1c4b2fc40f4e1460ec9ed52b4ee8d50",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/python-3.9-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "advertised_sha256": "950c7cef130364bf9477388a3ce13c8d1784e38b477092041be471d43ba8b130",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "advertised_sha256": "e2e3c9d006c1e11eec73e4b03e908471a05fa15d309b66f70f127a6e73052514",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f.py",
+      "advertised_sha256": "f595ccb110e3d8eeb175054b12e6801d91124598cdfdc2ed0c85def9684f3e6f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+      "advertised_sha256": "3c98bb4e4b050ad9f30e7dabf3e8ca62578a52e5fb5ec0eea880e8be05d86c73",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a.json",
+      "advertised_sha256": "2bc27652855d8ac54ca28e1689750a81f380814823e5739c9f9086e3cfe7334a",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "advertised_sha256": "a0166d03cdd7dad070b5457e3f5fc2e0c0009dc3f967e87236433e74f9f86d84",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005.json",
+      "advertised_sha256": "17caa0d441bc46a53b98cd23e0b2749822249dcd296d6eb7a8afb24eaa656005",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df.json",
+      "advertised_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "advertised_sha256": "c3d03649af3f1e973f0462aa34a59d31b7593bb8a13f60e02d1d3784125f51df",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.0-bullseye/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "advertised_sha256": "e1ea3d7410543ef4cee3d70133aba10b3c41d92739e31bb5966fb84038c6ae9f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/acceptance-metadata-transition.json",
+      "advertised_sha256": "68cc3ffc40ac7eb3c3ce49705ba5ae4bf4e03146966770d3892c9b69d83d90af",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/accepting-guard-7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2.py",
+      "advertised_sha256": "7fb52e8a7de2b96d214d2771229a0633ac8c58345d44ea8fe5de30be1f9e9cd2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/architecture-binding.json",
+      "advertised_sha256": "29149ae33ddf088cb44b441dad3f1779a05cb54a16cfa4464f2e8d7d0fce3ef7",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate-validated-body-34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242.json",
+      "advertised_sha256": "34b745de271a31fde417ef896c5d99ea8b8bc7c92e12fc1f129b1877f92eb242",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/candidate.json",
+      "advertised_sha256": "95b5fedff26bbe2e9eda30291680baddf37b36417df6564a14fc407863e275a0",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/generic-controls-1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d.json",
+      "advertised_sha256": "1ac0ed6c8d60f854fcf5733abe1454ee28ce293bcb7ec83b0f36477f288ebb0d",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation-65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19.json",
+      "advertised_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/guard-validation.json",
+      "advertised_sha256": "65bcdf5307a175af877ccfd7d93f3d60efb70cb38a9d1ec5064235f4b1304e19",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.1-bookworm/fd358d2010f8b5e2715250d7148a505ba12c1cb6/proof.json",
+      "advertised_sha256": "9bcc5825c5952826e6e93304e496fd356ee99aab08553e5f0ecb0af4d7857da7",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/acceptance-metadata-transition.json",
+      "advertised_sha256": "79af9031f4e8bbe89b5bf8bad1f521a47589a8ba619b459da2fbc6ca232717a2",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/accepting-guard-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "advertised_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/architecture-binding.json",
+      "advertised_sha256": "d94dbf091f3dc68940e02b56197afbe93beef62b795e9eae2ad77c5609dfcbea",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate-validated-body-b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43.json",
+      "advertised_sha256": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+      "advertised_sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/generic-controls-ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0.json",
+      "advertised_sha256": "ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+      "advertised_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation.json",
+      "advertised_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/proof.json",
+      "advertised_sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node-16-bookworm-acceptance.json",
+      "advertised_sha256": "0a7f01b6fd6730d32be046411dc6165b8c7ad1fb9b261c85aa1c3b60955cbb1f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node-16-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "c20fba64dc1a0dfe0c93ab9f1ddd582d63a97bb4f77b03e11849ba9aae1c861b",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node-20-bookworm-acceptance.json",
+      "advertised_sha256": "d39c2f6422956390324df0ae9a47a6117c7e9d53fbb8745dab979c3502e97b76",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node-20-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "9c767c00dfb2fd54e0eb9311eef2487db77e56ac05b395c88a0086fee52fb3f0",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node14-acceptance.json",
+      "advertised_sha256": "535edeae8a0840df4d8978675df7af25cbe14832143c0bfc18e87e6f50e9ba03",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node14-discovery-confirmation.json",
+      "advertised_sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node16-binding-hold.json",
+      "advertised_sha256": "c63a4db2686a7229efaca657e47f0aea8f50d2440eb6f15909c9a06681916c0a",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-node18-dbc-metadata-observer/watch-node18-dbc.py",
+      "advertised_sha256": "cd5cc59c2908bbf21ed5038a21b8191eac177edf3baf47d2c73a7aba2a687e96",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-prepare-adoption.py",
+      "advertised_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-published-acceptance.json",
+      "advertised_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-publisher-job-snapshots/124413952693-ec9cac253d799ea3e0aa31d6191dbf5fb379758fa56fed25372800cd7e5d9063.json",
+      "advertised_sha256": "ec9cac253d799ea3e0aa31d6191dbf5fb379758fa56fed25372800cd7e5d9063",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-publisher-job-snapshots/124414471403-32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7.json",
+      "advertised_sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.10-bookworm-acceptance.json",
+      "advertised_sha256": "608363e390ae125cc5fb89c77a9d11c524a5c2ccd1a9154ccb438d8183c32630",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.10-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "3024aff37b2c604f06c8d8c291971ee970b034d9690a9fd8b1d25ba98e2ea6ee",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.7-bullseye-acceptance.json",
+      "advertised_sha256": "1b6d69df46d5e6b05ffb4bf4075a975d47255621deac48dc24d8b5fa89689346",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.7-bullseye-binding-hold.json",
+      "advertised_sha256": "64668a36d2e95a6c9da03d2f5a0d81e2727abd64f28c9654331572301c89ce3f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.7-bullseye-discovery-confirmation.json",
+      "advertised_sha256": "7a4ce5bd0f55bf3d4a4f3b7ed270440e503b0e7da48d15e817e4c8da401ecafb",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.8-bookworm-acceptance.json",
+      "advertised_sha256": "b1046c4fb5a42c5efd69a305853d314ac8f4f160ea721c1b6e717d6fc341dd20",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.8-bookworm-binding-hold.json",
+      "advertised_sha256": "21e964034161c8646fd33fd58ccd9b2e028914c4997f9f9abf18b5d06c93afd5",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.8-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "1a8917af537f36b17aeac0fa0c6f35557e41470f2e6b2c184d334aab616d81d5",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.9-bookworm-acceptance.json",
+      "advertised_sha256": "a478c5505793f72f4697908a8275dddaef6844f36644283127e764eb7ed08612",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-python-3.9-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "fd482b524607ac7d5d5cd78e36a20271fc1e3453c82279d7db16631969c7ef73",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-read-core-deltas-v4.py",
+      "advertised_sha256": "8b4c606eb6508d2a99236b32182db73aadec45343d9d598803a4a885f3098cd7",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.0-bullseye-acceptance.json",
+      "advertised_sha256": "1fd32480a6fd3fc4f73649612539ac3ce2be182d4f28cd0fd2745efe890ea177",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.0-bullseye-discovery-confirmation.json",
+      "advertised_sha256": "f8362ec9f9d7de5715a59cdfa4ff17f19698165f45b604d0c2e6df896a00ec55",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.1-bookworm-acceptance.json",
+      "advertised_sha256": "8c2e63bed428a37f6501fcf115d73174e8e3ca5fc25f9e18535c306e385cdc6f",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.1-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "33a5300758ed7ec338588142026b3e33ef9c5a7e1e20d338022d7a47431ea7af",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.2-bookworm-acceptance.json",
+      "advertised_sha256": "bbd38bfcff390c3e87442d5300e023020882437923beb799c00b7b08bdcb1207",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    },
+    {
+      "original_reference": "/tmp/bex-m188-ruby-3.2-bookworm-discovery-confirmation.json",
+      "advertised_sha256": "4b9b701626d33be7d8e731f6922dd520534ff0314c4593d6990de7d1eb597f99",
+      "status": "Not copied; existing durable proof custody/parent portable locator required"
+    }
+  ]
+}

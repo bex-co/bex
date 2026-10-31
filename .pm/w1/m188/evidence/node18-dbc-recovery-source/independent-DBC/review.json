@@ -1,0 +1,64 @@
+{
+  "schema": "bex.m188.actualDBC-source-independent-review/v1",
+  "at": "2026-10-31T09:16:56.997826+00:00",
+  "literal_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "verdict": "Approve source closure for proposing only literal actualDBC Node18 producer/verifier roles; not an artifact or active-policy approval. Unused9fe proposal stays historical, not admitted.",
+  "source_closure": {
+    "path": "/tmp/bex-m188-dbc-source-closure-srk1e1yx/input-manifest.json",
+    "sha256": "9f14fda120a2f602ba0444861ee8dbe6b62dd1b74a815f313eaa049252c58839",
+    "inputs": 37,
+    "whole_containing_closure_diff_empty_vs2cc": true
+  },
+  "root_eligibility": {
+    "path": "/tmp/bex-m188-dbc-root-execution-source-eligibility.json",
+    "sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+    "all37_recomputed_from_actual_commit": true
+  },
+  "actual_run_binding": {
+    "path": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+    "sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+    "run_id": 41187749759,
+    "head_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "event": "workflow_dispatch",
+    "branch": "main",
+    "attempt": 1,
+    "workflow": ".github/workflows/native-base-image.yml",
+    "raw_run_sha256": "ee2eedab3d641abff1e9e8f912e4b5fcf1f65643aaaa5059ebeb0f525a075259",
+    "raw_jobs_sha256": "dc5a7ca61f3f5e914979804dd0190f5b37dc09f9f55a9913c8b7cbb1c34fc29d",
+    "limits": "Existing immutable observation snapshot only. Matrix checkout active then; no native-build/runtime/signature completion claim, no freshAPI."
+  },
+  "normal_selector": {
+    "root_actual_execution_proof": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+    "exact_embedded_script_hash_bound": true,
+    "exit_code": 0,
+    "output_bytes": 0,
+    "normal_source_build": true,
+    "stale_7dd_selected": false,
+    "independent_prior9fe_execution": "Actual exactsame script/catalog/recipe difference behavior independently executed in earlier isolated9fe review; not redundantly rerun here."
+  },
+  "official_contract": {
+    "matrix_entries": 27,
+    "inventory_entries": 44,
+    "node18_base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "version": "18.20.8",
+    "global_nativeSuppliedBases_empty": true,
+    "workflow_sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+    "install_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    "fetch_sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe"
+  },
+  "proposal_boundary": {
+    "only_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "producer_runtime": [
+      "node-18-bookworm"
+    ],
+    "verifier_runtime": [
+      "node-18-bookworm"
+    ],
+    "canonicalDA0_and_current941_2cc_profiles_unchanged": true,
+    "do_not_admit_unused9fe_or941_2cc_435_aliases": true,
+    "strict_producer_to_verifier_recipe_equality_required": true,
+    "all_actual_artifact_runtime_scan_signature_fullpredicate_gates_still_pending": true
+  },
+  "mutations": "Only new owned/tmp source copies/manifest/review. No source admission, active guard/Q/aggregate/repo/board/API/CI changes."
+}

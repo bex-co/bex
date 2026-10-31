@@ -1,0 +1,53 @@
+{
+  "schema": "bex.m188.literal9fe-publisher-independent-review/v1",
+  "at": "2026-10-31T09:03:53.236192+00:00",
+  "literal_source": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "verdict": "Source-closure APPROVAL for proposing only literal9fe as producer+verifier restricted to node-18-bookworm normal builds. Does not itself admit source, activate guard, approve artifact or dispatch.",
+  "source_closure": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/input-manifest.json",
+    "sha256": "0cd94737737bd3ec4b462f3bf9a461648f89bdb3aa5767b5465c44b5dec19ff9",
+    "inputs": 37,
+    "all_inputs_byte_equal_to_reviewed2cc": true,
+    "new_or_deleted_containing_inputs": []
+  },
+  "official_inputs": {
+    "matrix_entries": 27,
+    "matrix_byte_canonical_sha256": "58d89fd72ecad0183d151b8edec573d7279780791dd45368b4e5dd166df791df",
+    "unchanged_from2cc": true,
+    "inventory_entries": 44,
+    "inventory_bytes_unchanged_from2cc": true,
+    "node18": {
+      "name": "node-18-bookworm",
+      "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783"
+    },
+    "node18_runtime_version": "18.20.8",
+    "global_nativeSuppliedBases_empty": true
+  },
+  "normal_node18_selector": {
+    "receipt": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector-receipt.json",
+    "sha256": "28cb4d720a8a250c42a691b1b290fa61759642a4ed91ffa59e92c470ba020b20",
+    "exit_code": 0,
+    "output_bytes": 0,
+    "normal_build_expected": true,
+    "old_index_not_selected": "sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb"
+  },
+  "source_roles_proposed_not_implemented": {
+    "add_producer": "9fe393b77814dc5199372419d10dad974e7b27e1",
+    "add_verifier": "9fe393b77814dc5199372419d10dad974e7b27e1",
+    "runtime_restriction": [
+      "node-18-bookworm"
+    ],
+    "canonical_workflow_DA0_unchanged": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "current_recipe_anchor941_unchanged": "94165237dbe63f997b0119ce70ad243da74468fa",
+    "current_workflow_anchor2cc_unchanged": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+    "no_roles_or_aliases_added_for": [
+      "94165237dbe63f997b0119ce70ad243da74468fa",
+      "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+      "435"
+    ],
+    "normal_candidate_requirements": "actual producer==verifier==literal9fe, no recovery authorization, actual full passing dual-architecture runtime/portable-companion gates, both complete signed reports and all5 strict verified predicates before artifact acceptance"
+  },
+  "preserve_policy": "Current-tree exact941/2cc compatibility remains separate. Normal9fe recipe is identical2cc; historical18 andDA0 mappings unchanged. Keep strict producer\u2194verification non-MD recipe equality; add only literal runtime-restricted role, not ancestor wildcard.",
+  "limitations": "Only source and selector review. No build/export/runtime/fullscan/signature/registry artifact acceptance or timing/capacity claim. No repeated prior mock suites.",
+  "mutations": "Only newly owned/tmp source copies, isolated local .git metadata and receipts; no shared repo, source/guard/Q/aggregate/board, remote API or CI mutations."
+}

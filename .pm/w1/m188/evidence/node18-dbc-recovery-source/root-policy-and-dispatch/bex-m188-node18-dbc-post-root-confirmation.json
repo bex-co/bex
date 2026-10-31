@@ -1,0 +1,28 @@
+{
+  "schema": "bex.m188.root-single-dispatch-confirmation/v1",
+  "at": "2026-10-31T09:13:29.332834+00:00",
+  "executed_helper": {
+    "file": "/tmp/bex-m188-dispatch-node18-dbc.py",
+    "sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744"
+  },
+  "authorization": {
+    "file": "/tmp/bex-m188-node18-dbc-dispatch-root-authorization.json",
+    "sha256": "9041a28832eb0377b5787afe960f70fcfd7e981eeaa6144c7d371410f6da30de"
+  },
+  "dispatch_result": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/dispatch-result.json",
+    "sha256": "5889020939ea9ffa40435a8cb142bd4c019a1fda0df18c2edb0ed0e1b3c40c2f"
+  },
+  "HTTP_status": 204,
+  "executed_POST_count": 1,
+  "all_CI_mutation_budget_spent": true,
+  "requested_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "runtime": "node-18-bookworm",
+  "actual_run_head_binding_pending": true,
+  "no_repost_cancel_or_rerun_authorized": true,
+  "root_EXEC_session_finished": 79701,
+  "guard_current_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+  "Q_current_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "no_artifact_source_admission_or_candidate_acceptance_yet": true,
+  "next": "Rreadonlyactualrun/head/nativejobbindingthenliteralactualsourceNode18-onlyadmissionbeforeproofacceptance;9fe704proposalremainsunusedneveractive. Archiveactualrequestafterbinding/admission thenPMship."
+}

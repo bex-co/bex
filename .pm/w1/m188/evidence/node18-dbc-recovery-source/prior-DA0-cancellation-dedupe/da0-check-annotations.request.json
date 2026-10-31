@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-10-31T08:57:20.637685+00:00",
+  "finished_at": "2026-10-31T08:57:21.086103+00:00",
+  "method": "GET",
+  "endpoint": "repos/bex-co/bex/check-runs/124414471403/annotations?per_page=100",
+  "exit_code": 0,
+  "stderr": "",
+  "raw": {
+    "file": "/tmp/bex-m188-node18-cancellation-dedupe-20261031T085714/da0-check-annotations.raw.json",
+    "sha256": "7586dea7b586c348e6b0bc2b4770c01cefcfb96bb1ac611c58c473a03aa87c0d",
+    "bytes": 287
+  }
+}

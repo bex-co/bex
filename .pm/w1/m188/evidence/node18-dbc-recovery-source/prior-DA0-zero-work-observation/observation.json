@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.existing-Node18-terminal-zero-work-observation/v1",
+  "recorded_at": "2026-10-31T08:54:53.019833+00:00",
+  "run_id": 41159591513,
+  "job_id": 124414471403,
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_attempt": 1,
+  "completed_at": "2026-10-31T08:51:55Z",
+  "conclusion": "cancelled",
+  "runner_id": 0,
+  "started_steps": [],
+  "actual_native_work_started": false,
+  "old_started_at_is_scheduling_metadata_only": "2026-10-31T02:23:05Z",
+  "cancellation_actor_and_cause_established": false,
+  "terminal_job": {
+    "file": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/terminal-job.json",
+    "sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+    "bytes": 1067
+  },
+  "existing_observer_publisher": {
+    "file": "/tmp/bex-m188-node18-da0e-zero-work-cancelled-20261031T085155/existing-observer-publisher.json",
+    "sha256": "fb056883f8d4361fd5d8471d7b1c29f202f7217773a8982d9324b3010e41caa9",
+    "bytes": 2219
+  },
+  "accepted_count": 10,
+  "aggregate_written": false,
+  "source_guard_or_Q_written": false,
+  "remote_mutations_by_this_agent": 0,
+  "replacement_source_or_job_not_yet_bound": true
+}
