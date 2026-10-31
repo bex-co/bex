@@ -214,3 +214,8 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 [Python3.14's exact published supplier](evidence/published-python314-20261031/README.md) is root-approved after the complete genuine V11 review:35 full blobs/1,197,437,263B, five strict proofs, two actual negative controls and both report bindings. Approvals are9/27; its Python3.14.10 does not close the exact3.14.8 default/222. All original hosted cases and catalog adoption remain open.
 
 [Node26's actual JavaDB transfer](evidence/java-db-budget-20261031/README.md) reached86.08% before the21-minute deadline/10-second kill grace. Only the separate JavaDB-prefetch outer budget grows to30minutes; all complete image-scan gates stay unchanged. This fixes an existing publication budget; replacement execution remains unproved.
+
+
+## Tenth published supplier — 2026-10-31
+
+[Root-approved Ruby3.4](evidence/published-ruby34-20261031/README.md) binds source83c run41129277963/job124323020658, five strict signed proofs, two actual negative controls, both full report pairs and33 fresh complete anonymous blobs/1,192,208,302B. Root independently checked196 frozen payloads,22 Git recipe files/modes, all five signed-subject/canonical-predicate roundtrips and seven TUF roots. Both images report Ruby3.4.12; original generated/default and hosted cases remain separate. Published approvals are10/27, with catalog adoption and the common-base decision still open. All findings remain retained.
