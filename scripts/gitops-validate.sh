@@ -586,6 +586,17 @@ for expected in \
     fail=1
   fi
 done
+# The tenant sidecar's resources are explicit (w2/m247): unset, the workspace
+# LimitRange's tierless defaults (2 CPU/4Gi limits) inflated every instance Pod.
+tenant_sidecar="$(yq -N \
+  'select(.kind == "ObjectStore" and .metadata.name == "bex-tenant-postgres") |
+    .spec.instanceSidecarConfiguration.resources |
+    [.requests.cpu, .requests.memory, .limits.cpu, .limits.memory] | join("|")' \
+  - <<<"$objectstores_render" | tr -d '\n')"
+if [ "$tenant_sidecar" != '100m|128Mi|1|1Gi' ]; then
+  echo "FAIL: bex-tenant-postgres sidecar resources are '$tenant_sidecar' (want 100m|128Mi|1|1Gi, documented in tenant-postgres.yaml)" >&2
+  fail=1
+fi
 if yq -e 'select(.kind == "Secret")' - <<<"$objectstores_render" >/dev/null 2>&1; then
   echo "FAIL: ObjectStore manifests must reference out-of-band Secrets, never render a Secret" >&2
   fail=1
