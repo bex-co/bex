@@ -2885,11 +2885,7 @@ func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1al
 		if err != nil || !done {
 			return ctrl.Result{RequeueAfter: settleRequeue}, true, err
 		}
-		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
-			delete(meta.Annotations, annotDiskSnapshots)
-			delete(meta.Annotations, annotDiskPurgePending)
-			delete(meta.Annotations, annotDiskPurgeComplete)
-		}); err != nil {
+		if err := r.patchAppMeta(ctx, app, clearDiskSnapshotMarkers); err != nil {
 			return ctrl.Result{}, true, err
 		}
 	}

@@ -410,15 +410,19 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 	// instead of leaving a volume nobody is looking for.
 	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
 		delete(meta.Annotations, annotDiskProvisioned)
-		delete(meta.Annotations, annotDiskSnapshots)
-		delete(meta.Annotations, annotDiskPurgeComplete)
-		delete(meta.Annotations, annotDiskPurgePending)
+		clearDiskSnapshotMarkers(meta)
 	}); err != nil {
 		return err
 	}
 	app.Status.Disk = nil
 	meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionDiskReady)
 	return nil
+}
+
+func clearDiskSnapshotMarkers(metadata *metav1.ObjectMeta) {
+	delete(metadata.Annotations, annotDiskSnapshots)
+	delete(metadata.Annotations, annotDiskPurgePending)
+	delete(metadata.Annotations, annotDiskPurgeComplete)
 }
 
 // markDiskProvisioned stamps the App before its first disk child is created.

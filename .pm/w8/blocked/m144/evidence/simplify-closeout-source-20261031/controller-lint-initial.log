@@ -1,0 +1,5 @@
+internal/controller/disk.go:422:31: import-shadowing: The name 'meta' shadows an import name (revive)
+func clearDiskSnapshotMarkers(meta *metav1.ObjectMeta) {
+                              ^
+1 issues:
+* revive: 1

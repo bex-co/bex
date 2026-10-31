@@ -1,0 +1,53 @@
+{
+  "scope": "Actual post-DELETE selected cluster metadata; not UID-bound cleanup proof",
+  "run": 41197243038,
+  "job": 124526099401,
+  "source": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "cluster_started_at": "2026-10-31T13:07:13Z",
+  "cluster_completed_at": "2026-10-31T13:09:20Z",
+  "report_first_log_timestamp": "2026-10-31T13:09:14.9653586Z",
+  "DELETE_response_at": "2026-10-31T12:37:11.326800+00:00",
+  "job_start_after_DELETE_seconds": 1801.6732,
+  "report_after_DELETE_seconds": 1923.638558,
+  "expected_original_fixture": {
+    "serviceId": "srv-dbit2iat5fis7381jscg",
+    "diskId": "dsk-dbit2iat5fis7381jsdg",
+    "workspace": "tea-da2isimlm39c739m4ofg",
+    "service_name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c"
+  },
+  "projection_observations": {
+    "reported_disk_bearing_apps_total": 2,
+    "reported_requested_sizes_gb": [
+      10,
+      10
+    ],
+    "matching_original_service_id_rows": 0,
+    "fixture_namespace_disk_app_rows": 0,
+    "reported_App_controller_PVC_rows_total": 2,
+    "fixture_namespace_App_controller_PVC_rows": 0,
+    "unmatched_App_controller_PVC_rows_total": 0,
+    "all_reported_claim_bindings_match": true
+  },
+  "disk_id_not_in_inventory_projection": true,
+  "no_previous_UID_or_handle_inferred": true,
+  "unproved": [
+    "all-kind App absence",
+    "exact former App UID absence",
+    "exact former PVC UID absence",
+    "former PV UID/name absence",
+    "LUKS Secret absence",
+    "backup/purge CronJob Job Pod absence",
+    "VolumeAttachment absence",
+    "provider volume absence with prior same-token200 baseline",
+    "S3 prefix purge/completion",
+    "original hosted full/grow/remount/backup/restore/billing acceptance"
+  ],
+  "limits": [
+    "App list output filters spec.disk; it is not all-App absence",
+    "PVC report keeps controller-owner kind App; ownerless or differently owned PVCs are omitted",
+    "PV reads are only names referenced by current reported App-controller claims; orphan PVs are not enumerated",
+    "Disk IDs are not projected; substring absence is not a disk cleanup check",
+    "No fixture Secret, workload, VolumeAttachment, provider-volume or object-store observation is made",
+    "The previously missing pre-DELETE UID binding/provider baseline/purge watch cannot be recovered from this later aggregate inventory"
+  ]
+}

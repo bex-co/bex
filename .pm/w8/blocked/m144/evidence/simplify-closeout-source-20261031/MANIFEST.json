@@ -1,0 +1,44 @@
+{
+  "files": {
+    "SOURCE-MANIFEST.json": {
+      "bytes": 4337,
+      "sha256": "1b413fa14a457cad4dde7fb658e6b368045bdbe6eb7febf682fe242227744819"
+    },
+    "SUPPLEMENT-MANIFEST.json": {
+      "bytes": 2529,
+      "sha256": "7fc79434f4ac0c276768af7b534585676af15214d29f4b8bc38280ce1516a7a1"
+    },
+    "README.md": {
+      "bytes": 1173,
+      "sha256": "720d6ab565ac9f004f951af62769c803e39609c4bc7ed6d810865d3641e451e6"
+    },
+    "controller-lint-final.log": {
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    "REVIEW-SUMMARY.json": {
+      "bytes": 1257,
+      "sha256": "cacc9a7f80f6e2857ac9bcc729996af92c4d60202296280daf07f20034a86ddc"
+    },
+    "fixed.diff.gz": {
+      "bytes": 972,
+      "sha256": "6615e78e62086a3b8d90935fc8e78275ac9a0c11416d1051c8eedefc9b75906f"
+    },
+    "fixture-tests.log": {
+      "bytes": 148,
+      "sha256": "ee89a6c2df6bed2e7081da2247af72c90c0a636d4ef13bcf450f852c90faa37f"
+    },
+    "AFTER-SOURCE-MANIFEST.json": {
+      "bytes": 461,
+      "sha256": "f7ca53f45bd53b95b2e4e9092e7775c65d1f7e1c49516dd7a4d501942d20ed56"
+    },
+    "controller-lint-initial.log": {
+      "bytes": 213,
+      "sha256": "5fab056b61ac7d10aa872d8d6b88e653ee06f260ee2db106e5c67c754295814d"
+    },
+    "controller-tests.log": {
+      "bytes": 68,
+      "sha256": "ad669d3aee3d5e710e7a0f3649fa9469d75b33f3b8b305ae7c4f0e67891267ef"
+    }
+  }
+}
