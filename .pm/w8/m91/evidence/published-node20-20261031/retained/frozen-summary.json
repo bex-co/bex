@@ -1,0 +1,279 @@
+{
+  "frozen_at": "2026-10-31T11:48:49.576151+00:00",
+  "result": "ONE_COMPLETE_STRICT_SUPPLIER_ARTIFACT_VALIDATION_EXIT0",
+  "root_artifact_review_pending": true,
+  "case_attempt": 1,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "official_base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "producer_mode": "reviewed-immutable-recovery",
+  "run": "41113373387",
+  "job": 124263887574,
+  "actual_exit": 0,
+  "all_five_full_bundles_strict_PKI_tlog_TSA": true,
+  "actual_wrong_source_and_subject_controls_rejected": true,
+  "distinct_TUF_roots": 7,
+  "two_architecture_report_pairs_bound_independently": true,
+  "unique_fresh_full_blob_count": 37,
+  "unique_fresh_full_blob_bytes": 1311620069,
+  "prior_receipt_reuse_bytes": 0,
+  "actual_body_GET_count": 37,
+  "actual_range_resume_cases": 0,
+  "manual_decompressed_layer_reads": 0,
+  "all_trivy_summaries_retained": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "config_digest": "sha256:60800bba1012596ad25dea149a8086b944a61d9f0d1349cd6286df33f2d4c640",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T02:33:59.829074428Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.13"
+        },
+        "result_count": 3,
+        "vulnerability_count": 11171,
+        "severity_counts": {
+          "LOW": 3744,
+          "HIGH": 1611,
+          "MEDIUM": 5619,
+          "UNKNOWN": 125,
+          "CRITICAL": 72
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "config_digest": "sha256:7140b02899feada52dae9fff866f40a938bc94dc23ff1c069269b0354259c5c9",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-10-31T02:25:23.621172716Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.13"
+        },
+        "result_count": 3,
+        "vulnerability_count": 11171,
+        "severity_counts": {
+          "LOW": 3744,
+          "HIGH": 1611,
+          "MEDIUM": 5619,
+          "UNKNOWN": 125,
+          "CRITICAL": 72
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ]
+  },
+  "package_summaries_by_architecture": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "root_identities": [
+          "sha256:878615164af51e33e88869d7a310f749c064da7af77aa1f39589febeea2daa2f"
+        ],
+        "package_count": 872,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-12"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "10.0.0~dfsg-11+deb12u8"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb12u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.14.1-3+deb12u3"
+          },
+          {
+            "name": "node",
+            "version": "20.20.2"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.17.1.1-2~deb12u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg12+2"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.11.2-1+b1"
+          },
+          {
+            "name": "python3-pip",
+            "version": "23.0.1+dfsg-1"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "66.1.1-1+deb12u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.7-1+deb12u6"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.40.1-2+deb12u2"
+          },
+          {
+            "name": "swig",
+            "version": "4.1.0-0.2"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-13+deb12u1"
+          }
+        ]
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "root_identities": [
+          "sha256:e93f85760db910b619127963da58d44f3d146fe41bdb41092f9b71d7a0864a1d"
+        ],
+        "package_count": 874,
+        "packages": [
+          {
+            "name": "gettext",
+            "version": "0.21-12"
+          },
+          {
+            "name": "gettext",
+            "version": "UNKNOWN"
+          },
+          {
+            "name": "ghostscript",
+            "version": "10.0.0~dfsg-11+deb12u8"
+          },
+          {
+            "name": "jq",
+            "version": "1.6-2.1+deb12u3"
+          },
+          {
+            "name": "libbrotli-dev",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libbrotli1",
+            "version": "1.0.9-2+deb12u1"
+          },
+          {
+            "name": "libvips42",
+            "version": "8.14.1-3+deb12u3"
+          },
+          {
+            "name": "node",
+            "version": "20.20.2"
+          },
+          {
+            "name": "node",
+            "version": "24.22.1"
+          },
+          {
+            "name": "pandoc",
+            "version": "2.17.1.1-2~deb12u1"
+          },
+          {
+            "name": "pigz",
+            "version": "2.6-1"
+          },
+          {
+            "name": "postgresql-client-18",
+            "version": "18.6-1.pgdg12+2"
+          },
+          {
+            "name": "python3-dev",
+            "version": "3.11.2-1+b1"
+          },
+          {
+            "name": "python3-pip",
+            "version": "23.0.1+dfsg-1"
+          },
+          {
+            "name": "python3-setuptools",
+            "version": "66.1.1-1+deb12u2"
+          },
+          {
+            "name": "rsync",
+            "version": "3.2.7-1+deb12u6"
+          },
+          {
+            "name": "sqlite3",
+            "version": "3.40.1-2+deb12u2"
+          },
+          {
+            "name": "swig",
+            "version": "4.1.0-0.2"
+          },
+          {
+            "name": "typescript",
+            "version": "7.0.2"
+          },
+          {
+            "name": "webpack",
+            "version": "5.112.2"
+          },
+          {
+            "name": "zip",
+            "version": "3.0-13+deb12u1"
+          }
+        ]
+      }
+    ]
+  },
+  "resource_minimum_observed_free_bytes": 4006277120,
+  "resource_maximum_observed_owned_bytes": 210034688,
+  "full_raw_signed_bundles_preserved": true,
+  "all_gzip_roundtrips_verified": true,
+  "receipt_sha256": "fd646df9aa96c83c4de9acd9ce4bf29598b0b6e68353eb1f7e255bf6604f3503",
+  "process_receipt_sha256": "e3ba52ff83ad2adae7b5f871f6bdcde4d1e7a0a3c663e0d3f5f191c8aa012a22",
+  "executed_tools": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "scope": "Historical recovered published supplier proof only: BF producer is distinct from 6fd verifier. Current common-base sources, catalog adoption, generated and hosted acceptance remain separate. No new source authorization, publication, repo, CI, Docker, provider, paid resource or production mutation. Root approval remains pending."
+}

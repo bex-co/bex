@@ -1,0 +1,9 @@
+{
+  "sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "files_sha256": {
+    ".github/workflows/native-base-image.yml": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+    ".github/native-base-recovery.json": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+    "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "deploy/native-base/matrix.py": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+  }
+}

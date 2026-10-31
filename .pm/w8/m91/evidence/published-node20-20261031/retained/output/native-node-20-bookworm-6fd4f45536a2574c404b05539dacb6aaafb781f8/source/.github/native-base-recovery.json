@@ -1,0 +1,35 @@
+{
+  "schema": "bex.native-publisher-recovery/v1",
+  "images": {
+    "node-20-bookworm": {
+      "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "run_id": 41000570846,
+      "job_id": 123932798235,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye gates and Trivy scans; initial image sign succeeded, then first amd64 SPDX attestation failed posting to Rekor v1. Reuse only this immutable same-recipe/base artifact and rerun all current probes, scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "node-18-bookworm": {
+      "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+      "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "run_id": 41026904247,
+      "job_id": 123967210277,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "ruby-3.2-bookworm": {
+      "base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+      "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "run_id": 41063737101,
+      "job_id": 124091095086,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41063737101/job/124091095086",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Ruby3.2.11 gates and both full Trivy scans. Image signing and amd64 SPDX/Trivy attestations completed; arm64 registry-Syft SBOM generation then failed reading a layer with HTTP2 PROTOCOL_ERROR. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, complete SBOMs, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    }
+  }
+}
