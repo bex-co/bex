@@ -10,7 +10,6 @@ import type {
   WebhookDeliveryView,
   WebhookDeliveryStatus,
 } from "@/features/webhooks/types";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 const PAGE_SIZE = 20;
 
@@ -178,8 +177,7 @@ export function useWebhookDeliveries(
   filter: WebhookDeliveryFilter = {},
 ): UseWebhookDeliveriesResult {
   const client = useApolloClient();
-  const { currentWorkspaceId } = useWorkspace();
-  const filterKey = `${currentWorkspaceId ?? ""}\n${endpointId}\n${filter.status ?? ""}\n${filter.sentAfter ?? ""}\n${filter.sentBefore ?? ""}`;
+  const filterKey = `${endpointId}\n${filter.status ?? ""}\n${filter.sentAfter ?? ""}\n${filter.sentBefore ?? ""}`;
   const [pageState, setPageState] = useState<PageState>({
     key: filterKey,
     retained: [],
@@ -206,13 +204,11 @@ export function useWebhookDeliveries(
     {
       variables: {
         endpointId,
-        ownerId: currentWorkspaceId,
         limit: PAGE_SIZE,
         status: filter.status,
         sentAfter: filter.sentAfter,
         sentBefore: filter.sentBefore,
       },
-      skip: currentWorkspaceId == null,
       fetchPolicy: "network-only",
       errorPolicy: "all",
       // Only this cursor-less newest page polls. Imperatively loaded older
@@ -255,7 +251,6 @@ export function useWebhookDeliveries(
         query: WebhookDeliveriesDocument,
         variables: {
           endpointId,
-          ownerId: currentWorkspaceId,
           cursor: tail.cursor,
           limit: PAGE_SIZE,
           status: filter.status,
@@ -284,7 +279,6 @@ export function useWebhookDeliveries(
     client,
     deliveries,
     endpointId,
-    currentWorkspaceId,
     filter.sentAfter,
     filter.sentBefore,
     filter.status,
