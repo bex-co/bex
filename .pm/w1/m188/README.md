@@ -289,3 +289,11 @@ w8/m91的十项现代运行时工作全部保留并继续在修复流程上执�
 当前采用准备工具的完整生成路径还存在两个未定义的局部变量；未满11项时的既有拒绝发生在该路径之前，因此先前没有执行到。仅在同一候选完成验证后显式读取其digest和jobURL，验证函数及全部安全/来源规则保持原字节。[明确标注的合成writer回归](evidence/SYNTHETIC-writer-locals-regression/MANIFEST.json)用同一fixture实际复现旧版NameError、新版11行/55项及各行独立digest/来源正确；只mock候选验证函数，不构成真实镜像或签名验收。真实八项收据仍拒绝生成，61项原文件哈希经根复核不变；guard为3fe1b2bd，context仍8/11且未增加现代来源角色。
 
 Ruby3.2已于23:30Z完成双架构运行验证并进入AMD全扫描；Node18继续运行验证，Node20保持队列。共享池空出的第三个runner已于23:21:44Z执行更早的生产部署；原始API观察随本节归档，不把排队当作任务失联，也不取消已开始工作。实际11项pin接入、六项应用测试和线上rollout仍未完成。
+
+### 刷新实际使用优先级与零副本对象识别 — 2026-10-31（UTC 00:21–00:34Z）
+
+采用前只读刷新仍为29个App、8项候选、6个运行Pod；候选身份、实际服务镜像和版本与原09:11快照相同，两次Pod替换仍使用相同镜像。未观察到新增的运行中旧11条线。初始严格报告仍保留5项unresolved，未回填为安全或零目标；见[初始快照、分开的补充结论与全部工具记录](evidence/priority-census-owner-uid-refresh/MANIFEST.json)。
+
+三项legacy auto的Alpine/Node22实际观察未变，客户Dockerfile来源沿用旧记录中的高置信推断，不能改写为已保留的构建Job证明。market-size为nativeNode失败状态，没有活动发布、镜像或工作负载。cloneix为nativeNode、取消且尚无活动发布，仍有当前App UID归属的零副本Deployment；通过该App现有专属拉取凭据在内存中读取固定gen3 manifest/config，验证digest与大小后，仅保留Node26.10.0/Linuxamd64版本声明。没有读取文件系统层、保存凭据或完整Env/config，也没有执行该镜像或声称安全；专属loopback连接已清理。cloneix未来重建的有效版本仍因源文件不可用及未读取的环境Secret引用而未知，不能假设未来版本或未来安全。
+
+原清单工具只按workload标签关联，漏记该无标签的零副本Deployment；新独立v2优先核对namespace和当前App UID/name/API group，拒绝冲突归属，不增加仅名称匹配的回退，并保留原无owner标签路径。13项隔离控制复现旧漏记、新识别及错误UID等拒绝；无Pod、未知运行时或保留镜像仍保持unresolved。旧helper、原计划与初始5项快照保持原字节。后续t004改用02231095的v2及追加计划，必须在真实operator Ready后用实际部署源码重新采集并结合明确范围证据；本节不是最终rollout、零目标、安全或任务完成证明。正式发布验收仍为8/11，Node18与Ruby3.2继续签名，Node20排队。
