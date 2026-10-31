@@ -1,4 +1,4 @@
-# Native tool supply — C selected by parity rule (reviewed 2026-10-29)
+# Native tool supply — one common Bookworm base (user decision 2026-10-29)
 
 **Gate for:** m91, m93, m94, m95, m96, m97, m98, m99, m100, m101, m102, m103, m107. All 13 milestones ask native builds and runtimes to carry a tool from [Render's native tools table](https://render.com/docs/native-runtimes#tools-and-utilities). The table says "all native runtimes include the tools listed below" (Debian 12 bookworm). Render's alternative for anything missing is "deploy with Docker instead."
 
@@ -17,6 +17,16 @@
 | m102 | `pigz` (build only) |
 | m103 | `python3-dev`, `python3-pip`, `python3-setuptools` |
 | m107 | `zip` |
+
+## Controlling user decision — 2026-10-31
+
+The explicit2026-10-29 user decision is one Bookworm environment carrying shared tools, with the selected language version installed above it. It overrides the earlier worker-derived option C below. Render documents Debian12/Bookworm for every native runtime and per-service version selection ([native runtimes](https://render.com/docs/native-runtimes), [Python](https://render.com/docs/python-version), [Elixir/OTP](https://render.com/docs/elixir-erlang-versions)). This is implementation work, not an unresolved user choice.
+
+[t007](t007.md) builds one reviewed common tools image from pinned`buildpack-deps:bookworm`, reusing existing installers, repairs, private JavaScript tools and the offline Python store. Include the runtime dependency union formerly inherited from language images. Every generated native image uses this common final base and installs exact runtime trees/environment before companions and authored commands. Preserve date defaults, version precedence, supported exact choices, native init, environment/PATH/cache/root/static/pre-deploy behavior and exact Python3.14.8.
+
+Runtime donors must be Bookworm-compatible. Qualify legacy dependencies and matching native build behavior without replacing Bookworm libc or silently changing a runtime. Combine exact Bookworm OTP donors with the exact Elixir tree and rebar tools where necessary; a missing combined artifact must not downgrade OTP or reject a previously valid choice. Use a cached same-Bookworm source build of the same release when needed, without tenant apt installation.
+
+Finish already-started C publications as historical candidates and reusable inputs; retire automatic new C matrices. Their approvals do not qualify the common generated image. Preserve all28 frozen programs/data/client commands and each original hosted DoD. First demonstrate the same common digest for Node24, Python3.13 and no-signal Python3.14.8, then legacy and exact OTP cases before adoption. The alternatives below remain historical evidence.
 
 ## What the bases have
 
@@ -88,7 +98,7 @@ Choose A, B, C or D. For C, this also approves:
 
 With C or A approved, the 13 milestones' implementation and per-tool regression tasks proceed. Each milestone's own hosted acceptance task then follows its rollout.
 
-## 2026-10-29 复核结论
+## Historical worker review — superseded by the explicit user decision
 
 采用 C；来源为现有 parity 规则和工程判断，不是用户新授权。上述 A/B/C/D 是历史对比。新增发布工作流、共享镜像和版本锁定属于实现工作，不再作为用户选型门槛。m91 先建立供应机制，m93–m103、m107 复用；每项仍须分别满足原 DoD。不得据此新增云资源或提交/push。
 
