@@ -1,0 +1,74 @@
+{
+  "checks": [
+    {
+      "name": "common-python",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-common",
+        "-p",
+        "*_test.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "started_at": "2026-10-31T17:22:54.771974+00:00",
+      "completed_at": "2026-10-31T17:22:54.962465+00:00"
+    },
+    {
+      "name": "workflow-python",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "exit_code": 0,
+      "started_at": "2026-10-31T17:22:54.962560+00:00",
+      "completed_at": "2026-10-31T17:23:09.905613+00:00"
+    },
+    {
+      "name": "actionlint",
+      "command": [
+        "/opt/homebrew/bin/actionlint",
+        "-config-file",
+        "/private/tmp/bex-w8-node14-addon-source-20261031-vmwxia0l/actionlint.yaml",
+        ".github/workflows/native-base-image.yml",
+        ".github/workflows/native-common-image.yml"
+      ],
+      "exit_code": 0,
+      "started_at": "2026-10-31T17:23:09.905782+00:00",
+      "completed_at": "2026-10-31T17:23:10.090003+00:00"
+    },
+    {
+      "name": "actions-guard",
+      "command": [
+        "bash",
+        "scripts/github-actions-validate.sh"
+      ],
+      "exit_code": 0,
+      "started_at": "2026-10-31T17:23:10.090103+00:00",
+      "completed_at": "2026-10-31T17:23:11.112674+00:00"
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "started_at": "2026-10-31T17:23:11.112838+00:00",
+      "completed_at": "2026-10-31T17:23:11.201685+00:00"
+    }
+  ],
+  "owned_source_unchanged": true
+}

@@ -1,0 +1,84 @@
+{
+  "head": "e2b34503341b29a4cce224652f639e59f8fdd1d6",
+  "owned_paths": [
+    {
+      "path": "deploy/native-common/Dockerfile",
+      "bytes": 2886,
+      "sha256": "b2241bca632cd565d0fb22e6abedb6cb1bfaaeaa87e3562701019edfea1cd0e6",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/Dockerfile.dockerignore",
+      "bytes": 647,
+      "sha256": "06e4a655846e6992d952c3af42b518612af72a0c824e8e7a8291cb90772ea9d9",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/prepare-node14-tools.py",
+      "bytes": 2465,
+      "sha256": "7801f8ab9d676dd72d8b659e2799e07ddb2dcc6026c45fb1ba969f670bcbe320",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/node14_tools_test.py",
+      "bytes": 5225,
+      "sha256": "4957653c1bf2689a3d545bb7a195777c5fdf4b0655ba67ae4d3219ac322a6522",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/testdata/node14-find-python.js",
+      "bytes": 3572,
+      "sha256": "aa0a10bae53e878212c92c82e967c9085d78d5ba4903996379e8afab5ac85360",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/native-common/testdata/LICENSE.node-gyp",
+      "bytes": 1165,
+      "sha256": "476fb2afbd71b4bad218af22e2cf1e16b745ba372152df7742525eede3c93a0f",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon.go",
+      "bytes": 8178,
+      "sha256": "dd7b9366271f0832e0eec4c577897fb25715943e462d9eb7c3d5522bbdd37f03",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_node14_test.go",
+      "bytes": 7057,
+      "sha256": "8aa9f2699faf2e51687173a0d18710a10a49ad57ddd6df5f9dad4424d47f2489",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-node14-addon/addon.c",
+      "bytes": 588,
+      "sha256": "f5a64ddf893528ef6560d80c9c3967294a58f4cb14ade393de1fe263c56d0ed5",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-node14-addon/binding.gyp",
+      "bytes": 64,
+      "sha256": "875af09b39571267156015c97590b0cf2a47203de771908719b0ee7d008dedf5",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-node14-addon/check-build.py",
+      "bytes": 1787,
+      "sha256": "305ae15aecdd106e912d7bd905d96f0740df92a55223ec27d7ed2077647e8ff0",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-node14-addon/check.js",
+      "bytes": 526,
+      "sha256": "c45e315fcb9daf50a104d7e703f5f7cb2d46cb1eea0f22a2d307d5026b115f7c",
+      "mode": "0o644"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-node14-addon/package.json",
+      "bytes": 92,
+      "sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e",
+      "mode": "0o644"
+    }
+  ],
+  "scope": "Node14 default-only private addon interpreter source; no image/CI/resource execution, production pins unchanged"
+}

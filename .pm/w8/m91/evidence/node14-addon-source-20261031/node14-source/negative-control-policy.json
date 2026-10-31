@@ -1,0 +1,6 @@
+{
+  "initial_setup_failure": "Whole old source overlay could not compile new helper-referencing tests. Retained as setup failure, not a regression result.",
+  "meaningful_control": "Remove ONLY the Node14 addon fallback insertion from current production source, retaining shared reviewed donor helper so all tests compile. Expected four primary/companion addon regressions, modern controls stay green.",
+  "candidate_sha256": "dd7b9366271f0832e0eec4c577897fb25715943e462d9eb7c3d5522bbdd37f03",
+  "omitted_source_sha256": "175ca8e0018b8dc547e319d397cd9d51243d4edba5c14b983a3f18a52dab4670"
+}

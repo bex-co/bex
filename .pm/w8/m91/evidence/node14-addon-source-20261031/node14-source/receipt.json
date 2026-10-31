@@ -1,0 +1,164 @@
+{
+  "at": "2026-10-31T17:26:46.456356+00:00",
+  "source_manifest_sha256": "f192d57003121fdf63b5aa02fc787dda6b10f3a0d9808c294ef679d6ede3e1d5",
+  "scope": "Separate common-Bookworm Node14 default npm/node-gyp compatible interpreter SOURCE slice. No production common/adoption pin and no actual image/npm/addon qualification.",
+  "source_change": {
+    "selected_runtime_versions": "unchanged Node14/npm, primary and companion Python; no GYP API backport",
+    "reviewed_private_interpreter": "Python3.9.25 from python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+    "destination": "/opt/bex/native-node-python; complete upstream /usr/local copied ONLY into private prefix",
+    "finder_order": "NODE_GYP_FORCE_PYTHON keeps upstream exclusive branch; explicit npm/config Python then PYTHON; inserted private default; original generic fallbacks",
+    "environment": "no PATH, PYTHONHOME, PYTHONPATH, LD_LIBRARY_PATH or npm_config_python addition",
+    "assembly": "both primary and exact/line Node14 companions, after runtime/header installation and before authored build",
+    "guard": "network-none exact private version/prefix/executable and ssl/ctypes imports must pass before patching actual bundled finder",
+    "default_build_interpreter": "same reviewed donor helper reused by Node source builder; build-only merged tree is still excluded from exported runtime tree"
+  },
+  "checks": {
+    "full_build_package": {
+      "started_at": "2026-10-31T17:22:13.662679+00:00",
+      "completed_at": "2026-10-31T17:22:23.885725+00:00",
+      "command": [
+        "go",
+        "test",
+        "-p",
+        "1",
+        "./internal/build",
+        "-count=1"
+      ],
+      "exit_code": 0,
+      "stop": null,
+      "start_free_bytes": 3232784384,
+      "minimum_observed_free_bytes": 3181236224,
+      "maximum_owned_tmp_bytes": 41889792,
+      "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+    },
+    "scoped_build_lint": {
+      "started_at": "2026-10-31T17:23:39.780887+00:00",
+      "completed_at": "2026-10-31T17:23:43.814099+00:00",
+      "command": [
+        "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+        "run",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "stop": null,
+      "start_free_bytes": 3121242112,
+      "minimum_observed_free_bytes": 3110350848,
+      "maximum_owned_tmp_bytes": 4096,
+      "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+    },
+    "common_python": "10 tests PASS, including8 actual retained upstream findPython/runChecks behavioral controls",
+    "workflow_python": "41 controls PASS at recorded time; concurrent mirror work is separately owned",
+    "workflow_checks": {
+      "checks": [
+        {
+          "name": "common-python",
+          "command": [
+            "python3",
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "deploy/native-common",
+            "-p",
+            "*_test.py",
+            "-v"
+          ],
+          "exit_code": 0,
+          "started_at": "2026-10-31T17:22:54.771974+00:00",
+          "completed_at": "2026-10-31T17:22:54.962465+00:00"
+        },
+        {
+          "name": "workflow-python",
+          "command": [
+            "python3",
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            ".github/scripts",
+            "-p",
+            "test_native_oci_*.py"
+          ],
+          "exit_code": 0,
+          "started_at": "2026-10-31T17:22:54.962560+00:00",
+          "completed_at": "2026-10-31T17:23:09.905613+00:00"
+        },
+        {
+          "name": "actionlint",
+          "command": [
+            "/opt/homebrew/bin/actionlint",
+            "-config-file",
+            "/private/tmp/bex-w8-node14-addon-source-20261031-vmwxia0l/actionlint.yaml",
+            ".github/workflows/native-base-image.yml",
+            ".github/workflows/native-common-image.yml"
+          ],
+          "exit_code": 0,
+          "started_at": "2026-10-31T17:23:09.905782+00:00",
+          "completed_at": "2026-10-31T17:23:10.090003+00:00"
+        },
+        {
+          "name": "actions-guard",
+          "command": [
+            "bash",
+            "scripts/github-actions-validate.sh"
+          ],
+          "exit_code": 0,
+          "started_at": "2026-10-31T17:23:10.090103+00:00",
+          "completed_at": "2026-10-31T17:23:11.112674+00:00"
+        },
+        {
+          "name": "diff-check",
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit_code": 0,
+          "started_at": "2026-10-31T17:23:11.112838+00:00",
+          "completed_at": "2026-10-31T17:23:11.201685+00:00"
+        }
+      ],
+      "owned_source_unchanged": true
+    },
+    "meaningful_negative": {
+      "actual_go_exit": 1,
+      "expected_failing_cases": 4,
+      "mutation": "remove only addon fallback insertion, retain shared donor helper to allow compilation",
+      "modern_cases": "remain green"
+    },
+    "earlier_control_setup_failure": {
+      "actual_go_exit": 1,
+      "classification": "negative-control setup compile failure, not a tested product failure or accepted regression; raw setup source/log/receipt retained"
+    }
+  },
+  "custody": {
+    "tagged_first_and_last_node14_finders": "identical full-source SHA53831c0a095229a397e6b3aba18c0fb4644bb2bdc4f8be31f6dd69e06061c5d7; exact retained method executed; full source patch/idempotence checked",
+    "private_relocation_basis": "both previously verified official Python3.9 config histories use ORIGIN/../lib; full config bytes retained, no new ELF execution claim",
+    "prior_api_probe": "copied unchanged frozen source-function probe on hostPython3.14.3 gives invalid rU mode; not a Bex npm/addon dynamic reproduction",
+    "original_13_programs": "tracked native-utilities directory diff against HEAD empty; no original28 hosted programs/specs modified",
+    "production_catalog": "nativebases.go diff against HEAD empty; all common/runtime/supplier adoption pins remain unfilled"
+  },
+  "not_executed": [
+    "relocated private Python3.9 runtime/import preflight",
+    "actual npm/node-gyp addon compilation/import",
+    "generated common image build/runtime on either architecture",
+    "same-release Node source fallback with this addon control",
+    "Node14 companion real image",
+    "full27 family/default/exact/companion generated qualification",
+    "original28 hosted/build/predeploy/runtime/static acceptance"
+  ],
+  "future_opt_in": "TestCommonNode14OfflineAddon requires separately reviewed immutable common ref and approved same-release Node14 runtime TREE; uses canonical resolver plus test-only runtime-artifact map, offline build with matching /usr/local headers, existing owner/builder/platform/run/cleanup helpers; automatic first-cohort selector unchanged. This proves tree assembly/addon only, not same-release source fallback.",
+  "review": "frozen source sent to common_review; independent focused review pending",
+  "capacity": {
+    "final_free_bytes": 3189956608,
+    "all_owned_compiler_tmp_directories_empty": true
+  },
+  "primary_links": [
+    "https://github.com/nodejs/node/blob/v14.21.3/deps/npm/node_modules/node-gyp/lib/find-python.js",
+    "https://github.com/nodejs/node/blob/v14.0.0/deps/npm/node_modules/node-gyp/lib/find-python.js",
+    "https://github.com/nodejs/node/blob/v14.21.3/deps/npm/node_modules/node-gyp/gyp/pylib/gyp/input.py",
+    "https://docs.python.org/3.11/whatsnew/3.11.html#porting-to-python-3-11"
+  ]
+}

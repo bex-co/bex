@@ -1,0 +1,26 @@
+[
+  {
+    "path": "lego/operator/internal/build/native.go",
+    "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "bytes": 25979,
+    "scope": "unchanged caller/input context; not owned or proposed source"
+  },
+  {
+    "path": "lego/operator/internal/build/nativebases.go",
+    "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+    "bytes": 10006,
+    "scope": "unchanged caller/input context; not owned or proposed source"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeresolve.go",
+    "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+    "bytes": 19222,
+    "scope": "unchanged caller/input context; not owned or proposed source"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+    "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+    "bytes": 14819,
+    "scope": "unchanged caller/input context; not owned or proposed source"
+  }
+]

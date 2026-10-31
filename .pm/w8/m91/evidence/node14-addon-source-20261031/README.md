@@ -1,0 +1,9 @@
+# Node14 default native-addon interpreter source — 2026-10-31
+
+Generated common Node14 images now copy the complete reviewed Bookworm Python3.9 installation into a private `/opt/bex/native-node-python` prefix. The factory carries a small helper that verifies the relocated exact interpreter and SSL/ctypes before inserting it into the bundled node-gyp finder. Explicit npm/config/PYTHON choices and FORCE semantics retain priority. Selected Node/npm, app or companion Python, PATH and global loader settings are preserved; modern Node routes are unchanged.
+
+[Root review and custody](ROOT-REVIEW.json) bind all64 frozen source/evidence payloads, nine prior runtime-audit payloads and thirteen live source files/modes. Root's full operator suite passes, including codegen/vet and controller/envtest (212.003s). Scoped lint, ten common Python controls, eight actual retained-finder order behaviors and four expected omission failures pass. Independent review is clean. An earlier counterfactual setup compile failure is retained and is not counted as a product regression.
+
+The separate opt-in offline addon fixture compiles/imports against matching selected Node headers and preserves the original13 tool programs and28 hosted cases. Its immutable runtime TREE input does not qualify the empty-artifact source-rebuild route. Actual relocated Python/addon/npm/image/architecture/companion/hosted execution remains unexecuted. No production pin changes or milestone completion are implied.
+
+The preserved prior all27/phase audit records its own baseline and missing execution coverage. Its Node14 closure finding is addressed by this source change; the remaining family/default/exact/companion, native-init, Kubernetes and original hosted qualifications stay open. Frozen non-JSON/Go files and logs use lossless gzip with original SHA/size custody.

@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-31T17:19:26.868748+00:00",
+  "rows": [
+    {
+      "tag": "v14.0.0",
+      "url": "https://raw.githubusercontent.com/nodejs/node/v14.0.0/deps/npm/node_modules/node-gyp/lib/find-python.js",
+      "sha256": "53831c0a095229a397e6b3aba18c0fb4644bb2bdc4f8be31f6dd69e06061c5d7",
+      "bytes": 11145,
+      "custody": "fresh public HTTPS tagged upstream read",
+      "exact_finder_method_matches_executed_fixture": true,
+      "actual_complete_source_patch_and_idempotence": true
+    },
+    {
+      "tag": "v14.21.3",
+      "url": "https://raw.githubusercontent.com/nodejs/node/v14.21.3/deps/npm/node_modules/node-gyp/lib/find-python.js",
+      "sha256": "53831c0a095229a397e6b3aba18c0fb4644bb2bdc4f8be31f6dd69e06061c5d7",
+      "bytes": 11145,
+      "custody": "exact original cached tagged upstream bytes; no refetch",
+      "exact_finder_method_matches_executed_fixture": true,
+      "actual_complete_source_patch_and_idempotence": true
+    }
+  ],
+  "scope": "tagged finder source transformation and same method custody only; no image/npm/addon execution"
+}

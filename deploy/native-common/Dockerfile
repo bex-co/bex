@@ -34,6 +34,7 @@ RUN chmod 755 /usr/bin/tsc /usr/bin/webpack /usr/bin/bex-native-python-tools \
 COPY native-common/check-common.py /usr/share/bex-native-common/check-common.py
 COPY --chmod=755 native-common/build-otp /usr/libexec/bex-native/build-otp
 COPY native-common/otp-features.py /usr/libexec/bex-native/otp-features.py
+COPY native-common/prepare-node14-tools.py /usr/libexec/bex-native/prepare-node14-tools.py
 COPY --chmod=755 native-base/node-brotli/patch.sh /usr/libexec/bex-native/build-node
 # Default Poetry can use this private tool interpreter beside Python 3.7/3.8.
 # Verify Debian's complete venv/ensurepip prerequisite without installing Poetry.

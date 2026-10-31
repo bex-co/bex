@@ -1,0 +1,301 @@
+{
+  "head": "72999a4e34a874475b162d9f4fad811e1acd1f5a",
+  "baseline_audit": "/private/tmp/bex-native-caller-phase-audit-37ec75d71-20261031",
+  "files": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 17337,
+      "sha256": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 4628,
+      "sha256": "f86a4db737cf19a62c5e583595575ceabddd11eeb24277804d3f4318184bd471",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "bytes": 22862,
+      "sha256": "2f05d17fe040c6ed99964c976597091f094194f5ea2265132712525dc63eac51",
+      "baseline37ec_sha256": "2f05d17fe040c6ed99964c976597091f094194f5ea2265132712525dc63eac51",
+      "same_as_37ec": true
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-create-service.ts",
+      "bytes": 7059,
+      "sha256": "927fe1713500768435ae83259e64d00f721fd1bd28a0379f0879b86ab02952ff",
+      "baseline37ec_sha256": "927fe1713500768435ae83259e64d00f721fd1bd28a0379f0879b86ab02952ff",
+      "same_as_37ec": true
+    },
+    {
+      "path": "dashboard/src/features/services/lib/create-service-input.ts",
+      "bytes": 10812,
+      "sha256": "fe2fa91938f5a67f713652c64a43ab324f40fb6d1b46d8fea1bd951681ceb803",
+      "baseline37ec_sha256": "fe2fa91938f5a67f713652c64a43ab324f40fb6d1b46d8fea1bd951681ceb803",
+      "same_as_37ec": true
+    },
+    {
+      "path": "deploy/native-base/install.sh",
+      "bytes": 2516,
+      "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5358,
+      "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/Dockerfile",
+      "bytes": 2795,
+      "sha256": "e485a45713039ce913acfc3dc5f5d199908a8732c153ec9d7ab32eb3ea12e9a4",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/build-otp",
+      "bytes": 1983,
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/check-common.py",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/legacy-libs.preferences",
+      "bytes": 124,
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/legacy-libs.sources",
+      "bytes": 433,
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "deploy/native-common/otp-features.py",
+      "bytes": 1853,
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint_compiler.go",
+      "bytes": 72735,
+      "sha256": "c58716f37dd5f610cd8f4830aed0b86758381ec9e3831416b0caae65a0027051",
+      "baseline37ec_sha256": "c58716f37dd5f610cd8f4830aed0b86758381ec9e3831416b0caae65a0027051",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/blueprint_generate.go",
+      "bytes": 31036,
+      "sha256": "c3e5ebe3f5e1f4ef888b57e6851987ec08ffde6b5a40b13ba81201044dce3c78",
+      "baseline37ec_sha256": "c3e5ebe3f5e1f4ef888b57e6851987ec08ffde6b5a40b13ba81201044dce3c78",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/build_strategy.go",
+      "bytes": 10184,
+      "sha256": "2fe9d5f83cb02dc990f2bf2f523932b504ec1c10d13d2be8288cc5fa17d9c41c",
+      "baseline37ec_sha256": "2fe9d5f83cb02dc990f2bf2f523932b504ec1c10d13d2be8288cc5fa17d9c41c",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go",
+      "bytes": 183526,
+      "sha256": "8bae81079ea830e0740e1f6d0f8bc581b7e8d0a2103aaec61ef8cb051eb20743",
+      "baseline37ec_sha256": "8bae81079ea830e0740e1f6d0f8bc581b7e8d0a2103aaec61ef8cb051eb20743",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/graphql.go",
+      "bytes": 96137,
+      "sha256": "32d375c166664dc3c5e36ef51d4de032b59c2aaad318df6edcbdd2ae65fecb10",
+      "baseline37ec_sha256": "32d375c166664dc3c5e36ef51d4de032b59c2aaad318df6edcbdd2ae65fecb10",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/mcp.go",
+      "bytes": 79811,
+      "sha256": "05dea7fe5d2940ed5c5702a1af0079febdb449bf8f38e19bc024648f5bcc4747",
+      "baseline37ec_sha256": "05dea7fe5d2940ed5c5702a1af0079febdb449bf8f38e19bc024648f5bcc4747",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/rest.go",
+      "bytes": 86398,
+      "sha256": "5c50d33e2c4650f1afd8a869fd5aba22589867ed908de603e7c345d22d049cb1",
+      "baseline37ec_sha256": "5c50d33e2c4650f1afd8a869fd5aba22589867ed908de603e7c345d22d049cb1",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/backend/internal/apps/service.go",
+      "bytes": 266906,
+      "sha256": "ba20876970489c9d0398b38eb5294818a196ef4db2bd43565c26245b96023848",
+      "baseline37ec_sha256": "ba20876970489c9d0398b38eb5294818a196ef4db2bd43565c26245b96023848",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/build.go",
+      "bytes": 82371,
+      "sha256": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061",
+      "baseline37ec_sha256": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "baseline37ec_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/native_test.go",
+      "bytes": 52736,
+      "sha256": "f91fc04b4fa7c8bb39dc4491394c0ab483992439bfa898612f38acee5c201378",
+      "baseline37ec_sha256": "f91fc04b4fa7c8bb39dc4491394c0ab483992439bfa898612f38acee5c201378",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "baseline37ec_sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon.go",
+      "bytes": 7218,
+      "sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce",
+      "baseline37ec_sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_erlang.go",
+      "bytes": 6162,
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a",
+      "baseline37ec_sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_erlang_test.go",
+      "bytes": 7354,
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c",
+      "baseline37ec_sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "bytes": 17816,
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "baseline37ec_sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeffmpeg.go",
+      "bytes": 2098,
+      "sha256": "5e2a25677c4cbd6f70d63206d80a8761b2a101ec03e1c7dba52af4289e77c72b",
+      "baseline37ec_sha256": "5e2a25677c4cbd6f70d63206d80a8761b2a101ec03e1c7dba52af4289e77c72b",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeinit.go",
+      "bytes": 3182,
+      "sha256": "c6e0015f340bbc482a3922a6c5ee16f9c7531e3e5cadde09f0d0efdd6b3452a4",
+      "baseline37ec_sha256": "c6e0015f340bbc482a3922a6c5ee16f9c7531e3e5cadde09f0d0efdd6b3452a4",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativepnpm.go",
+      "bytes": 3030,
+      "sha256": "d3ff66994ad7d9f8cb08b47b396056741c3bc153346ae71009a1411782dfb5da",
+      "baseline37ec_sha256": "d3ff66994ad7d9f8cb08b47b396056741c3bc153346ae71009a1411782dfb5da",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativepoetry_test.go",
+      "bytes": 7970,
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 19222,
+      "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+      "baseline37ec_sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1",
+      "same_as_37ec": false
+    },
+    {
+      "path": "lego/operator/internal/build/nativestaticdeps.go",
+      "bytes": 6413,
+      "sha256": "2ec3c3cc70262a89825629154c93b8a18c84d892a76b5e8498c266ac59988d05",
+      "baseline37ec_sha256": "2ec3c3cc70262a89825629154c93b8a18c84d892a76b5e8498c266ac59988d05",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 16556,
+      "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 14819,
+      "sha256": "eab7226ff92bb7b694d9810a1c3be7f9c118537e29ca48ce0100a8c6e5896e5b",
+      "baseline37ec_sha256": null,
+      "same_as_37ec": null
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion.go",
+      "bytes": 28936,
+      "sha256": "8466dd2cea67f24df1882c594bf62593ba9a8164f6045c2b50be04734d376873",
+      "baseline37ec_sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b",
+      "same_as_37ec": false
+    },
+    {
+      "path": "lego/operator/internal/controller/app_controller.go",
+      "bytes": 366848,
+      "sha256": "207cea361972d2bf491178147b8f976b1108a6dd757e403bd4147356387b811e",
+      "baseline37ec_sha256": "c23131f26fba6d13be8b313217797d6fddcbf3812fd421a1c12df4e4ff1ead87",
+      "same_as_37ec": false
+    },
+    {
+      "path": "lego/operator/internal/controller/deployment_projection.go",
+      "bytes": 30287,
+      "sha256": "fe00a6fc3deac657ec2687c15b9bbb08dea36c12c3b7f368dffeec361feccb23",
+      "baseline37ec_sha256": "fe00a6fc3deac657ec2687c15b9bbb08dea36c12c3b7f368dffeec361feccb23",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/predeploy/predeploy.go",
+      "bytes": 18984,
+      "sha256": "58733801fc517ec0b15abe2969a99b76f527c6371bcca82b6f392346f557b95c",
+      "baseline37ec_sha256": "58733801fc517ec0b15abe2969a99b76f527c6371bcca82b6f392346f557b95c",
+      "same_as_37ec": true
+    },
+    {
+      "path": "lego/operator/internal/publish/publish.go",
+      "bytes": 33250,
+      "sha256": "18d2919ea3d318510e27dc13727e2c9d8fd8d3962625f5a72c66c338a879734b",
+      "baseline37ec_sha256": "18d2919ea3d318510e27dc13727e2c9d8fd8d3962625f5a72c66c338a879734b",
+      "same_as_37ec": true
+    }
+  ],
+  "scope": "runtime assembly/current boundaries audit; source only, no current image or CI execution"
+}
