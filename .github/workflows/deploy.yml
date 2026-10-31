@@ -474,14 +474,12 @@ jobs:
         with:
           version: v1.36.1
 
-      # Reject absent, malformed, untrusted, mismatched, or near-expiry
-      # certificate material before GitOps write-back and rollout. The
-      # installer repeats these checks immediately before its cluster write.
-      - name: validate onbex.co fallback TLS certificate
+      # Reject an absent or malformed Cloudflare DNS-01 token before GitOps
+      # write-back and rollout (docs/ADR093).
+      - name: validate onbex.co DNS-01 token
         env:
-          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
-          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
-        run: bash scripts/onbex-default-tls-secret.sh --validate-only
+          BEX_CLOUDFLARE_DNS_TOKEN: ${{ secrets.BEX_CLOUDFLARE_DNS_TOKEN }}
+        run: bash scripts/onbex-dns01-token-secret.sh --validate-only
 
       # helm/oras read the ambient docker credential store; the chart mirror
       # below pushes to GHCR, so this job needs its own registry login.
@@ -668,24 +666,33 @@ jobs:
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
-      # The externally issued wildcard is not Git-owned. Validate and install
-      # it before Argo sees the TLSStore. The protected environment scopes the
-      # material to this job; stdin keeps the private key out of argv and logs.
-      - name: install onbex.co fallback TLS certificate
+      # cert-manager renews the *.onbex.co fallback wildcard over DNS-01 with
+      # this Cloudflare token (docs/ADR093). The token is not Git-owned:
+      # install it before the onbex-dns01 Issuer can need it. The protected
+      # environment scopes it to this job; stdin keeps it out of argv and logs.
+      - name: install onbex.co DNS-01 token
         if: ${{ env.SUPERSEDED != 'true' }}
         env:
-          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
-          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
-        run: bash scripts/onbex-default-tls-secret.sh
+          BEX_CLOUDFLARE_DNS_TOKEN: ${{ secrets.BEX_CLOUDFLARE_DNS_TOKEN }}
+        run: bash scripts/onbex-dns01-token-secret.sh
 
-      # Bootstrap the Git-owned TLSStore immediately after its out-of-band
-      # Secret. Argo adopts the same manifest below, but waiting for a newly
+      # Bootstrap the Git-owned Issuer, Certificate and TLSStore right after
+      # the token. Argo adopts the same manifests below, but waiting for a newly
       # created child Application made the first trusted fallback dependent on
-      # its asynchronous refresh interval.
+      # its asynchronous refresh interval. The certificate's readiness is
+      # reported, not gated: a stuck renewal pages through CertificateNotReady
+      # and CertificateExpiringSoon with weeks of slack (ADR093 D4/D5), while
+      # the public probe below still fails the deploy if the edge is untrusted.
       - name: apply and verify onbex.co fallback TLS store
         if: ${{ env.SUPERSEDED != 'true' }}
         run: |
           kubectl apply -k deploy/gitops/charts/onbex-default-tls
+          if ! kubectl -n traefik wait certificate/onbex-wildcard \
+            --for=condition=Ready --timeout=5m; then
+            echo "::warning::traefik/onbex-wildcard is not Ready yet; the edge keeps serving the current certificate"
+            kubectl -n traefik describe certificate onbex-wildcard || true
+            kubectl -n traefik get orders.acme.cert-manager.io,challenges.acme.cert-manager.io || true
+          fi
           for attempt_index in {1..18}; do
             if bash scripts/onbex-default-tls-verify.sh notfound.onbex.co; then
               exit 0

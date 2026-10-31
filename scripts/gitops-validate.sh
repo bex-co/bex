@@ -224,8 +224,8 @@ bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" 
 echo "==> analytics reader SealedSecret custody contract"
 bash scripts/analytics-bootstrap.test.sh || { echo "FAIL: analytics reader SealedSecret custody contract" >&2; fail=1; }
 
-echo "==> onbex fallback TLS secret installation safety gates"
-bash scripts/onbex-default-tls-secret.test.sh || { echo "FAIL: onbex fallback TLS secret installation safety gates" >&2; fail=1; }
+echo "==> onbex DNS-01 token installation safety gates"
+bash scripts/onbex-dns01-token-secret.test.sh || { echo "FAIL: onbex DNS-01 token installation safety gates" >&2; fail=1; }
 
 for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
@@ -235,8 +235,9 @@ done
 
 # Unknown *.onbex.co SNI must get a public wildcard instead of
 # Traefik's generated self-signed certificate, without adding a catch-all route.
-# These checks prove the Git-owned contract only; the scheduled synthetic and
-# closeout probes prove live trust, expiry, and the intentional 404.
+# cert-manager issues and renews that wildcard over DNS-01 through Cloudflare
+# (docs/ADR093). These checks prove the Git-owned contract only; the scheduled
+# synthetic and closeout probes prove live trust, expiry, and the intentional 404.
 echo "==> production onbex.co wildcard/default TLS contract"
 onbex_tls_render="$(kubectl kustomize deploy/gitops/charts/onbex-default-tls)"
 tlsstore_shape="$(yq -N '
@@ -247,9 +248,35 @@ if [ "$tlsstore_shape" != '0|onbex-default-wildcard-tls' ]; then
   echo "FAIL: Traefik default TLSStore contract is '$tlsstore_shape'" >&2
   fail=1
 fi
-if yq -N 'select(.kind == "Secret" or .kind == "Certificate" or .kind == "Issuer") | .kind' \
-  - <<<"$onbex_tls_render" | grep -q .; then
-  echo "FAIL: onbex TLS GitOps may render only the TLSStore; certificate material and issuance stay out of band" >&2
+if [ "$(yq -N '.kind' - <<<"$onbex_tls_render" | sort | paste -sd, -)" != 'Certificate,Issuer,TLSStore' ]; then
+  echo "FAIL: onbex TLS GitOps must render exactly the DNS-01 Issuer, the wildcard Certificate and the TLSStore (never the token Secret)" >&2
+  fail=1
+fi
+# ADR093 D1: the Certificate fills the very Secret the TLSStore serves, for
+# exactly *.onbex.co, from the namespaced Issuer.
+onbex_cert_shape="$(yq -N ea '
+  [select(.kind == "Certificate" and .metadata.namespace == "traefik" and .metadata.name == "onbex-wildcard")] | .[0] |
+  [.spec.secretName, (.spec.dnsNames | join(",")), .spec.issuerRef.kind, .spec.issuerRef.name,
+   .spec.privateKey.rotationPolicy, (.spec.renewBefore // "default")] | join("|")
+' - <<<"$onbex_tls_render")"
+scalar onbex_cert_shape "$onbex_cert_shape" || fail=1
+if [ "$onbex_cert_shape" != 'onbex-default-wildcard-tls|*.onbex.co|Issuer|onbex-dns01|Always|default' ]; then
+  echo "FAIL: onbex wildcard Certificate contract is '$onbex_cert_shape'" >&2
+  fail=1
+fi
+# ADR093 D1/D2: a namespaced Issuer (only traefik Certificates can spend the
+# token), Let's Encrypt production, one Cloudflare DNS-01 solver limited to the
+# onbex.co zone, reading the deploy-installed token Secret.
+onbex_issuer_shape="$(yq -N ea '
+  [select(.kind == "Issuer" and .metadata.namespace == "traefik" and .metadata.name == "onbex-dns01")] | .[0] |
+  [.spec.acme.server, (.spec.acme.solvers | length), (.spec.acme.solvers[0].selector.dnsZones | join(",")),
+   .spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.name,
+   .spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.key,
+   (.spec.acme.solvers[0].dns01.cloudflare.apiKeySecretRef // "none")] | join("|")
+' - <<<"$onbex_tls_render")"
+scalar onbex_issuer_shape "$onbex_issuer_shape" || fail=1
+if [ "$onbex_issuer_shape" != 'https://acme-v02.api.letsencrypt.org/directory|1|onbex.co|cloudflare-dns-token|api-token|none' ]; then
+  echo "FAIL: onbex DNS-01 Issuer contract is '$onbex_issuer_shape'" >&2
   fail=1
 fi
 if grep -qiF -- '--providers.kubernetescrd.defaulttlsresourcesnamespace=' \
@@ -286,33 +313,35 @@ require_onbex_literal() {
     fail=1
   }
 }
-require_onbex_literal .env.example 'BEX_ONBEX_TLS_CERT_FILE='
-require_onbex_literal .env.example 'BEX_ONBEX_TLS_KEY_FILE='
+require_onbex_literal .env.example 'BEX_CLOUDFLARE_DNS_TOKEN='
 # gh-secrets.sh pushes from scripts/production-secrets.txt (w3/m173): the
-# certificate material is required and lands in production-deploy alone.
-for onbex_secret in BEX_ONBEX_TLS_CERT BEX_ONBEX_TLS_KEY; do
-  if [ "$(sed -e 's/#.*//' scripts/production-secrets.txt | awk -v n="$onbex_secret" '$1 == n { print $2 }')" != production-deploy ]; then
-    echo "FAIL: onbex TLS inventory: $onbex_secret must be assigned to production-deploy alone in scripts/production-secrets.txt" >&2
-    fail=1
-  fi
-  require_onbex_literal scripts/gh-secrets.sh " $onbex_secret "
-done
+# DNS-01 token is required and lands in production-deploy alone.
+if [ "$(sed -e 's/#.*//' scripts/production-secrets.txt | awk '$1 == "BEX_CLOUDFLARE_DNS_TOKEN" { print $2 }')" != production-deploy ]; then
+  echo "FAIL: onbex TLS inventory: BEX_CLOUDFLARE_DNS_TOKEN must be assigned to production-deploy alone in scripts/production-secrets.txt" >&2
+  fail=1
+fi
+require_onbex_literal scripts/gh-secrets.sh " BEX_CLOUDFLARE_DNS_TOKEN "
+# ADR093 D4: no certificate material travels through the deploy any more.
+if grep -rqF 'BEX_ONBEX_TLS_' .env.example scripts/production-secrets.txt scripts/gh-secrets.sh .github/workflows; then
+  echo "FAIL: the hand-issued BEX_ONBEX_TLS_* certificate material returned (docs/ADR093 D4)" >&2
+  fail=1
+fi
 deploy_tls_shape="$(yq -N '
   .jobs."deploy".steps[] |
-  select(.name == "install onbex.co fallback TLS certificate") |
-  [.env.BEX_ONBEX_TLS_CERT, .env.BEX_ONBEX_TLS_KEY, .run] | join("|")
+  select(.name == "install onbex.co DNS-01 token") |
+  [.env.BEX_CLOUDFLARE_DNS_TOKEN, .run] | join("|")
 ' .github/workflows/deploy.yml | tr -d '\n')"
-if [ "$deploy_tls_shape" != '${{ secrets.BEX_ONBEX_TLS_CERT }}|${{ secrets.BEX_ONBEX_TLS_KEY }}|bash scripts/onbex-default-tls-secret.sh' ]; then
-  echo "FAIL: deploy workflow onbex TLS installation step drifted" >&2
+if [ "$deploy_tls_shape" != '${{ secrets.BEX_CLOUDFLARE_DNS_TOKEN }}|bash scripts/onbex-dns01-token-secret.sh' ]; then
+  echo "FAIL: deploy workflow onbex DNS-01 token installation step drifted" >&2
   fail=1
 fi
 deploy_tls_preflight_shape="$(yq -N '
   .jobs."deploy".steps[] |
-  select(.name == "validate onbex.co fallback TLS certificate") |
-  [.env.BEX_ONBEX_TLS_CERT, .env.BEX_ONBEX_TLS_KEY, .run] | join("|")
+  select(.name == "validate onbex.co DNS-01 token") |
+  [.env.BEX_CLOUDFLARE_DNS_TOKEN, .run] | join("|")
 ' .github/workflows/deploy.yml | tr -d '\n')"
-if [ "$deploy_tls_preflight_shape" != '${{ secrets.BEX_ONBEX_TLS_CERT }}|${{ secrets.BEX_ONBEX_TLS_KEY }}|bash scripts/onbex-default-tls-secret.sh --validate-only' ]; then
-  echo "FAIL: deploy workflow onbex TLS preflight step drifted" >&2
+if [ "$deploy_tls_preflight_shape" != '${{ secrets.BEX_CLOUDFLARE_DNS_TOKEN }}|bash scripts/onbex-dns01-token-secret.sh --validate-only' ]; then
+  echo "FAIL: deploy workflow onbex DNS-01 token preflight step drifted" >&2
   fail=1
 fi
 liveness_probe="$(yq -N '
@@ -329,11 +358,14 @@ if [ "$(yq -N 'select(.kind == "ClusterIssuer") | .spec.acme.solvers[0].http01.i
   echo "FAIL: existing staging/prod HTTP-01 ClusterIssuers drifted while adding fallback TLS" >&2
   fail=1
 fi
-if grep -Eirq 'cloudflare|dns-?01|BEX_ONBEX_DNS' \
-  .env.example scripts/lib/onbex-default-tls.sh \
-  scripts/onbex-default-tls-secret.sh scripts/onbex-default-tls-verify.sh \
-  deploy/gitops/charts/onbex-default-tls deploy/gitops/overlays/prod/onbex-default-tls.yaml; then
-  echo "FAIL: onbex fallback TLS must not depend on a DNS provider" >&2
+# ADR093 D3: bex may call Cloudflare only to renew, never to serve. The token
+# is consumed by the onbex-dns01 Issuer alone; nothing else may reference it.
+stray_token_refs="$(git grep -lF 'cloudflare-dns-token' -- deploy lego scripts .github \
+  | grep -vxF -e deploy/gitops/charts/onbex-default-tls/issuer.yaml \
+    -e scripts/onbex-dns01-token-secret.sh -e scripts/onbex-dns01-token-secret.test.sh \
+    -e scripts/gitops-validate.sh -e .github/workflows/ssh-edge-liveness.yml || true)"
+if [ -n "$stray_token_refs" ]; then
+  echo "FAIL: traefik/cloudflare-dns-token is referenced outside the onbex DNS-01 renewal path (docs/ADR093 D3): $stray_token_refs" >&2
   fail=1
 fi
 

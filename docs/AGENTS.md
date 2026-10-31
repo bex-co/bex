@@ -17,6 +17,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR001-go-and-gitops.md](ADR001-go-and-gitops.md) — why product (Go) ≠ GitOps (platform infra)
 - [ADR003-control-plane.md](ADR003-control-plane.md) — Postgres source of truth vs operator mechanism
 - [ADR019-infra-credentials.md](ADR019-infra-credentials.md) — bootstrap credential inventory + trust chain
+- [ADR093-onbex-wildcard-tls.md](ADR093-onbex-wildcard-tls.md) — accepted (2026-10-30), implemented (2026-10-31) `*.onbex.co` fallback certificate renewed by cert-manager over DNS-01 with a Cloudflare token scoped to `onbex.co`; bex may call Cloudflare only to renew, never to serve; deploys stop carrying certificate PEMs (w4/441)
 - [ADR053-node-instance-types.md](ADR053-node-instance-types.md) — Hetzner cx33/cpx32 policy
 
 ### API, parity, Blueprint

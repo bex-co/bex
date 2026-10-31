@@ -1,5 +1,6 @@
-# Production-only fallback TLS. The externally issued certificate is installed
-# before this Application; local/CAPD never require production key material.
+# Production-only fallback TLS: the cert-manager DNS-01 Issuer, the wildcard
+# Certificate and the TLSStore (ADR093). deploy.yml installs the Cloudflare
+# token before this Application; local/CAPD never need production credentials.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
