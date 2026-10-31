@@ -79,13 +79,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m113** — [Services list times out (524/502) for the bex workspace](done/m113/README.md) (6 tasks) ← from `/qa-find-bugs-cli` sweep 2026-10-18: `bex services` in workspace bex exceeds the edge timeout (110s→502, 125s→524) while small workspaces and sibling lists answer in ~1s — **DONE (2026-10-18: two human-device-login CLI runs 0.811/0.875 s; REST/GraphQL/MCP return the same 5 service IDs)**
 
-- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major; no CNPG image carries TimescaleDB), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65 — TimescaleDB also needs shared_preload_libraries, Apache mode only; no task started)**
+- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
+- [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m110** — [Make incremental views usable in managed Postgres](blocked/m110/README.md) (7 tasks;285m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
+- [ ] **m110** — [Make incremental views usable in managed Postgres](blocked/m110/README.md) (7 tasks;285m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
+- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
 - [x] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](done/m108/README.md) (6 tasks;210m) — **SUPERSEDED 2026-10-29（被 w8/207 的 `readTimeout: 6000s` 取代）**
 
@@ -95,7 +95,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m105** — [Make the Jekyll static quickstart build normally](done/m105/README.md) (7 tasks;260m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Jekyll quickstart unchanged; exact cleanup ([evidence](done/m105/evidence/hosted-2026-10-18/README.md)).
 
-- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
+- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
 - [ ] **m103** — [Supply native Python packaging and development tools](m103/README.md) (8 tasks, 335m, 3 major omissions) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
@@ -119,9 +119,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (7 tasks;250m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
+- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (7 tasks;250m) — **READY（2026-10-29 用户决定：ADR092；下一步：t008 构建镜像和白名单）**
 
-- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。 **⚠ 待用户裁定（2026-10-29 `/unblock` 主题 1）：** 用户选择了单一 bex native 公共底，与正在实施的按语言线镜像（选项 C）不一致，见 m91 README 末尾。
 
 - [x] **m90** — [Install Yarn dependencies before static builds](done/m90/README.md) (6 tasks;140m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built with the bare dependency-using command and no installer prefix; exact cleanup ([evidence](done/m90/evidence/hosted-2026-10-18/README.md)).
 
@@ -416,7 +416,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
-- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](blocked/218.md) — **BLOCKED (2026-10-29: traced to the pinned CLI copying the source region `fsn1` and rejecting it client-side. Needs the user to decide whether the Render-shaped readback reports a Render region value such as `frankfurt` (clone parity) or stays `fsn1` per D1, with `--from` requiring `--region` recorded as a divergence)**
+- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](218.md) — **READY（2026-10-29 用户决定；下一步：按 D7 对外报 `frankfurt`，实施 region 映射）**
 
 - [x] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](done/217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — option 1 implemented 2026-10-29 (exact 3.14.8 default; live acceptance pending; the keep-3.14.10 alternative is 222) — **DONE 2026-10-29** (no-signal Python runs 3.14.8, explicit 3.14 runs 3.14.10, on production)
 
