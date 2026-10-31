@@ -1,0 +1,286 @@
+{
+  "schema": "targeted_sigstore_bundles/v1",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "complete": true,
+  "cryptographic_complete": true,
+  "repo": "ghcr.io/bex-co/bex-cnb-run",
+  "verification_source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+  "producer_source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+  "tool": {
+    "file": "/tmp/bex-w1-136-cosign/cosign",
+    "version": "3.1.4",
+    "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "root_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/root-index.raw.json",
+    "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+    "bytes": 1611
+  },
+  "bundles": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "oci_manifest_digest": "sha256:9764c0ad1f1823cd952e89d6f20bca4ccee3bf712e58d7157d6aad915caf77ad",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/9764c0ad1f1823cd952e89d6f20bca4ccee3bf712e58d7157d6aad915caf77ad.json",
+      "oci_blob_digest": "sha256:3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738",
+      "raw_sha256": "3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738",
+      "raw_bytes": 9459,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738.json",
+      "statement_sha256": "ce9eee2105cdc1e1e4873e43b432dbc8bf4410bfa51a1dc0ddae412bdc0690e9",
+      "subject": {
+        "digest": {
+          "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+        },
+        "annotations": {}
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/commands/3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738.command.json",
+      "command_sha256": "f228ca7fab20fab7b6624ed62ef81ed0756e8fc4a110837b7037f11d902cf6af",
+      "exit_code": 0,
+      "gzip_sha256": "ab458eaaf01cf8bd9a18c5f0a5701fb8d5a852019405a360b41ae189b151e927"
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:cb63b4ee9f803b23aae476dd836897a2df9d33b0ac05b4f885f728ba23396f59",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/cb63b4ee9f803b23aae476dd836897a2df9d33b0ac05b4f885f728ba23396f59.json",
+      "oci_blob_digest": "sha256:d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4",
+      "raw_sha256": "d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4",
+      "raw_bytes": 29950963,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4.json",
+      "statement_sha256": "678467cc70b40b6933e9212b1ddb3d445f1747de3b3be1454525c470e3ac9f78",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/commands/d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4.command.json",
+      "command_sha256": "3b1320353495f6751fdf40b65b08ff616c6e6069c99d8feb072e0801e157f933",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e?arch=amd64",
+        "root_purl_digest": "sha256:25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+        "expected_registry_child": "sha256:25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "3107260054003a01281983c10fa3f40cf95ca7df049128972f6aded401e3db55"
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:ad5d268c405bd6b627af0633494a3324fa0a74ea2330414b8c46e03570e92db5",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/ad5d268c405bd6b627af0633494a3324fa0a74ea2330414b8c46e03570e92db5.json",
+      "oci_blob_digest": "sha256:dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4",
+      "raw_sha256": "dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4",
+      "raw_bytes": 29963435,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4.json",
+      "statement_sha256": "32ca59c7c4ca7d4e7f1c958df2ee56772ab9f24e0bbadc58edac707cdaf3eeda",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/commands/dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4.command.json",
+      "command_sha256": "ca01c791e87567bf22630c8108d23f32eb3909b07f7f9c5c8f6b4403e0339965",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3Ab523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa?arch=arm64",
+        "root_purl_digest": "sha256:b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+        "expected_registry_child": "sha256:b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      },
+      "gzip_sha256": "1bfef25e98d9ad13775ab37c69fc8980f0357f1574e6dfe3466607fa4fc97ced"
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:dbd113219f7bedaa9592ef58335a415c1aafb7a172ef1d9726df9a44323b16b6",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/dbd113219f7bedaa9592ef58335a415c1aafb7a172ef1d9726df9a44323b16b6.json",
+      "oci_blob_digest": "sha256:d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a",
+      "raw_sha256": "d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a",
+      "raw_bytes": 50843511,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a.json",
+      "statement_sha256": "e3a19fbaf716ce27025e431c2d195177b4be51b8e0ce7abd6b5a826371b2c211",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/commands/d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a.command.json",
+      "command_sha256": "8a67d2b94f3041c36c06f23ec733bc7cf91b4db6638f4b9a27bb7ca18e322c1f",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871",
+        "expected_config_digest": "sha256:93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "9afb17a53268dd107343e36c34cb41421684e544aed2ed156a8ba3dafb5f895f"
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:c7cbde1fba6aae02c2c7cc7d4442d4a81c929d45513587568d41f857f026c7df",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/c7cbde1fba6aae02c2c7cc7d4442d4a81c929d45513587568d41f857f026c7df.json",
+      "oci_blob_digest": "sha256:eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224",
+      "raw_sha256": "eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224",
+      "raw_bytes": 50848983,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/bundles/eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224.json",
+      "statement_sha256": "d691a8cbd6b5d606386f8fad295c444d44d0bf3bd185786e6fbcfc73f4279d6e",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/commands/eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224.command.json",
+      "command_sha256": "c5b949e821308fbb71bcca35a9ff9d688bbe26f5abdf8ac2a166657c5edf7b95",
+      "exit_code": 0,
+      "child_binding": {
+        "image_id": "sha256:e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9",
+        "expected_config_digest": "sha256:e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9",
+        "binding": "exact_registry_config",
+        "verified": true
+      },
+      "gzip_sha256": "e2c57cf76ac909aa99ad2f256d6967331753a9afdf465539c3996a395320b134"
+    }
+  ],
+  "derived": {
+    "image_statement": {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/image-signature.statement.json",
+      "sha256": "ce9eee2105cdc1e1e4873e43b432dbc8bf4410bfa51a1dc0ddae412bdc0690e9",
+      "bundle_digest": "sha256:3ce4995ce7ce18465c311726dc62b29e85a99173c7c8254d0b411247a1a5e738",
+      "derived": false
+    },
+    "sbom": {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/verified-sbom.jsonl.gz",
+      "raw_sha256": "bc168f8b0eb7ea1deade99cf32b101d25a4a26df8acd289e71500b8116b1870d",
+      "raw_bytes": 59896232,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:d5fb0ab64184168f54a54550d54ba087f0f9b708fed43dd67665d73f48d477e4"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:dac84398e19b3f62e98bd2aa3d89baddee769e06178c693786f1a5db72b3dac4"
+        }
+      ],
+      "gzip_sha256": "91cf76bc64bb71a655a30202e17d36c9879bbaadd0b00d1569fc16c2bec7bc42"
+    },
+    "scans": {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/verified-scans.jsonl.gz",
+      "raw_sha256": "46a07618c30eff55652b46b8c13d8e9cbde9259a4ab2ecca5d89422a3a934562",
+      "raw_bytes": 101674512,
+      "derived": true,
+      "compression": "gzip",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:d747939189752efa13f2101b376c7e8b083f827b15d2e15e3a2e425f772e887a"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:eaf335655e19eab5ccc544f98cd1b72eb95708c28f8da6072df638ae1f74d224"
+        }
+      ],
+      "gzip_sha256": "4c44971a120374c804f8949357c9556a0bbed8db260e915807e0a13b136f55a7"
+    }
+  },
+  "controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/controls/controls.json",
+    "sha256": "6df6f945d4e053616abd04f04bb9138b04d7e96e85db78967cbe26aa62ddf361"
+  },
+  "rejected_bundles": [],
+  "updated_at": "2026-10-31T00:52:12.006538+00:00",
+  "architecture_children": {
+    "amd64": {
+      "manifest_digest": "sha256:25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/25140fc34a4cbfc175269229808c24128d513fb71d3408e18cd6b0c7edc18c4e.registry-child.json",
+      "config_digest": "sha256:93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871"
+    },
+    "arm64": {
+      "manifest_digest": "sha256:b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/b523796e58fca1b8b22deb36873f33ae32d00ee1263234807f3fca8065e604fa.registry-child.json",
+      "config_digest": "sha256:e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9"
+    }
+  },
+  "collection_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/collection-index.raw.json",
+    "sha256": "6a6116878252c991e8d781ba08d982ea5299a44de9264925f8fc677b5c7d9524"
+  },
+  "semantic_checks": {
+    "architecture_binding_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/architecture-binding.json",
+    "architecture_binding_sha256": "d94dbf091f3dc68940e02b56197afbe93beef62b795e9eae2ad77c5609dfcbea",
+    "official_base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+    "producer_runtime_approved": true,
+    "both_arch_runtime_versions_verified": true,
+    "both_arch_fixed_brotli_packages_verified": true,
+    "both_arch_scans_disposition_verified": true,
+    "fresh_runtime_scan_sign_gates_passed": true,
+    "fresh_runtime_gate_log_bound_to_index": true,
+    "verification_job_log": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/verification-job.log.gz",
+    "verification_job_log_sha256": "aeab8ceb8f30b828582b4bbe798f077c7cbbdae8a8170338b78580e98bff1ce7",
+    "immutable_completed_job_snapshot": {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/publisher-job.json",
+      "sha256": "53009b1d0c73c98952fc51e3958448a9d67fa643b641ce20da6aff2f52af3e68",
+      "job_id": 124219760224,
+      "run_id": 41101339222,
+      "run_attempt": 1,
+      "head_sha": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+      "completed_at": "2026-10-31T00:43:47Z"
+    },
+    "anonymous_immutable_tag_intake": {
+      "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/immutable-tag-intake.json",
+      "sha256": "84ab8beef2b5c96162263e0d068425cea2df224109c4478f424d69c509f80795"
+    },
+    "raw_registry_configs": {
+      "amd64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871.config.json",
+        "sha256": "93e598f6babb1e5dfd987973c8e53077ef55789f6dfe742d1a872d33ad188871",
+        "bytes": 17211
+      },
+      "arm64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/manifests/e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9.config.json",
+        "sha256": "e34755b76797594f7a035cf11c31e25125903094544f654d0af3a1ac67683aa9",
+        "bytes": 17218
+      }
+    },
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    }
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/architecture-binding.json",
+    "sha256": "d94dbf091f3dc68940e02b56197afbe93beef62b795e9eae2ad77c5609dfcbea",
+    "complete": true
+  },
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json"
+}

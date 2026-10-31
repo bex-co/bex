@@ -1,0 +1,71 @@
+{
+  "schema": "bex.m188.full-candidate-guard-validation/v1",
+  "at": "2026-10-31T03:00:55.125919+00:00",
+  "full_candidate_guard_passed": true,
+  "candidate": "node-20-bookworm",
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate.json",
+  "candidate_sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+  "validated_candidate_snapshot": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/candidate-validated-body-4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2.json",
+    "sha256": "4cbadc9a03657c8d781ee2445d70b3689d8bc56ace9a50581bd520a248299ba2",
+    "bytes": 8537,
+    "capture_kind": "actual_input_bytes_captured_after_successful_validation_before_any_promotion"
+  },
+  "actual_proof_sha256": "a04a2e18042592ee32fd4762e778c0a2c2c74b0ab372d53fdc747d46da36642f",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "recovered_exact_index": true,
+  "original_BF_producer_6fd_verifier_certificate_preserved": true,
+  "producer_to_verifier_recipe_identical": true,
+  "current_workflow_baseline": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+  "guard_file": "/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+  "guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "seconds": 2.11,
+  "candidate_digest": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "all_five_original_crypto_records_and_derived_linkage_checked": true,
+  "amd64_binding": "exact_registry_manifest",
+  "arm64_binding": "exact_registry_manifest",
+  "direct_architecture_child_config_bindings_checked": true,
+  "target_CVE_findings_retained_per_architecture": 0,
+  "all_other_signed_findings_retained_per_architecture": {
+    "amd64": {
+      "LOW": 3744,
+      "HIGH": 1611,
+      "MEDIUM": 5619,
+      "UNKNOWN": 125,
+      "CRITICAL": 72
+    },
+    "arm64": {
+      "LOW": 3744,
+      "HIGH": 1611,
+      "MEDIUM": 5619,
+      "UNKNOWN": 125,
+      "CRITICAL": 72
+    }
+  },
+  "all_findings_total_per_architecture": {
+    "amd64": 11171,
+    "arm64": 11171
+  },
+  "both_original_and_fresh_architecture_Bullseye_companion_gates_verified_by_full_guard": true,
+  "target_CVE_dispositions_verified_against_full_signed_reports": true,
+  "controls_file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-structural-controls.json",
+  "controls_sha256": "adf574816fb1c735ced95daaf2288b9d9ae4793373f6ba55dcd30f15464d7be3",
+  "approved_source_guard_receipt_context": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/guard-receipt-context.json",
+    "sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+    "live_aggregate_file": "/tmp/bex-m188-published-acceptance.json",
+    "live_aggregate_sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+    "only_live_receipt_delta": "none; exact unchanged accepted9 context; no source aliases appended",
+    "policy_activation_file": "/tmp/bex-m188-da0e-source-policy-activation.json",
+    "policy_activation_sha256": "dfc8b32cba48f4ac34be0b678f1fb78aa5fe20adf997fba101e084977b935e23",
+    "scope": "Historical producerFD/verifier4462 profile and source-pinned recovery, canonical846 workflow, exact approved installer compatibility. No proof source retrofit."
+  },
+  "receipt_count_not_modified": 9,
+  "protected_artifact_count": 86,
+  "all_prior_artifacts_unchanged": true,
+  "no_adoption_copies": true,
+  "publication": "Standard guard-validation.json atomically published only ONCE after all checks. Root must approve exactFINAL hash before promotion.",
+  "scope": "Full persisted source/crypto/semantic candidate guard validation only; accepted9/candidate/proof/aggregate unchanged. No promotion/adoption/repository or remote mutation."
+}

@@ -1,0 +1,306 @@
+{
+  "schema": "targeted_sigstore_bundles/v1",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "complete": true,
+  "cryptographic_complete": true,
+  "repo": "ghcr.io/bex-co/bex-cnb-run",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "tool": {
+    "file": "/tmp/bex-w1-136-cosign/cosign",
+    "version": "3.1.4",
+    "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "root_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/root-index.raw.json",
+    "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0",
+    "bytes": 1611
+  },
+  "bundles": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "oci_manifest_digest": "sha256:0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/0f4ed49ff3cde090ccf3c54620146abc7d1dbd694b0903315440cb8c192a6be2.json",
+      "oci_blob_digest": "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "raw_sha256": "6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "raw_bytes": 9507,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.json",
+      "statement_sha256": "b50d27d7f09ec347250fdcd25752c6057269db75b2c38884eb1550063530a9f5",
+      "subject": {
+        "digest": {
+          "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+        },
+        "annotations": {}
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c.command.json",
+      "command_sha256": "35816dfeb589e54b1536bcfe8a5cb9c9dca1d7901e90bf42b368c7359f2cdbda",
+      "exit_code": 0,
+      "gzip_sha256": "b5f51668ed2b706cebe8475f84834826957429ca90dcfcf1404467036b322edd"
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/e87cb8b8cbc5c6266b746e1619392721ed79c3f50f8994c1dd796f9207da3561.json",
+      "oci_blob_digest": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "raw_sha256": "8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054",
+      "raw_bytes": 33232391,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.json",
+      "statement_sha256": "1e1cc450be8dc3d01c06550787502593277c8f87d4a3d5b9323c7f4846961e83",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054.command.json",
+      "command_sha256": "77c1195ff854b0332f63d655beca599135e8838bfd5014f5a689211fe0ed49a0",
+      "exit_code": 0,
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d?arch=amd64",
+        "root_purl_digest": "sha256:057b368900deaac25ed4b173bf522cb1aa9528495dd6792ceb18bd9f55e8d76d",
+        "expected_registry_child": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+        "binding": "unresolved_mismatch",
+        "verified": false
+      },
+      "gzip_sha256": "b8184de6c44741bc5fa07a60f98b83ab2d30988f23d421a616bc8747e65aea71"
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/4fe9188341d0fcdbe6542a3299b8e452128e08582bf3a29c7ec29b2edb462837.json",
+      "oci_blob_digest": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "raw_sha256": "f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "raw_bytes": 33210519,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.json.gz",
+      "gzip_sha256": "233a1fde294be120bf9f2d02ed8d49952a0226758ce36d0cf67a4db1eec53e0c",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.json",
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031.command.json",
+      "command_sha256": "a0b00c0cc076bdc07a141b4ad410a1e7fed49348009e5615a09bcdca417f901a",
+      "exit_code": 0,
+      "statement_sha256": "4c3bf49c1fc12168f9638224abe3e26c442b16fb1d552905ef401f5e43e85a75",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+        }
+      },
+      "child_binding": {
+        "root_package_spdx_id": "SPDXRef-DocumentRoot-Image-ghcr.io-bex-co-bex-cnb-run",
+        "root_package_name": "ghcr.io/bex-co/bex-cnb-run",
+        "root_checksum": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "root_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1?arch=arm64",
+        "root_purl_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "expected_registry_child": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+        "binding": "exact_registry_manifest",
+        "verified": true
+      }
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/d61ea4d4a2ef7d8451e91b1f23c3413064e92a14b8166c21a68c8c18e0e55788.json",
+      "oci_blob_digest": "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "raw_sha256": "882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "raw_bytes": 86999443,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.json.gz",
+      "gzip_sha256": "aea9bbb69f098e94fe8fa60e9c282589dc637546851969796d9b9f2188f58e5f",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.json",
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541.command.json",
+      "command_sha256": "544955c3b613258937eebfd541c34aef99653336672d5aec0b1a480710b906f4",
+      "exit_code": 0,
+      "statement_sha256": "fecb29287f7e0498ff2e7be43e5277d0981c2e5a2e57cd0e525ac0619d917235",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+        }
+      },
+      "child_binding": {
+        "image_id": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "expected_config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "binding": "exact_registry_config",
+        "verified": true
+      }
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/8100c1ca8a79a8daad3af6e0a31dc7e47322d91d4e84ea967b5b8f0717099758.json",
+      "oci_blob_digest": "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "raw_sha256": "479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8",
+      "raw_bytes": 86996735,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.json.gz",
+      "gzip_sha256": "889a78496f3c897aee911e02fad598235544c86267134cb878dd525dd16fa9ad",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/bundles/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.json",
+      "command_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/commands/479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8.command.json",
+      "command_sha256": "3e5eb847915b532f5dcd9ade3d44cc87742840cea49fe0b467710e202657bddc",
+      "exit_code": 0,
+      "statement_sha256": "3b064aa73c8a8584c506bcf5f68f9ac0646e32dae47207bcc72bdebbf2e0815c",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "41a74a7d36f4b04cd87d8539c74736babb217e51f5dd25b778a957d9288274a0"
+        }
+      },
+      "child_binding": {
+        "image_id": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "expected_config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "binding": "exact_registry_config",
+        "verified": true
+      }
+    }
+  ],
+  "derived": {
+    "image_statement": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/image-signature.statement.json",
+      "sha256": "b50d27d7f09ec347250fdcd25752c6057269db75b2c38884eb1550063530a9f5",
+      "bundle_digest": "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "derived": false
+    },
+    "sbom": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-sbom.jsonl.gz",
+      "raw_sha256": "a6cfd1de3ae7c2d7db608cbda45a3df7d3750a056c936a11f9ff1d0f286d7844",
+      "raw_bytes": 66424688,
+      "derived": true,
+      "compression": "gzip",
+      "gzip_sha256": "1d6c057d8592ef14ee596e576bde16d90b8971a4876c0943a775ed85b469d28d",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031"
+        }
+      ]
+    },
+    "scans": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verified-scans.jsonl.gz",
+      "raw_sha256": "dcd43e6372b706b75ca39b55869a4f61d5322bbff004dcfc9ced0b21f6fad1a8",
+      "raw_bytes": 173977772,
+      "derived": true,
+      "compression": "gzip",
+      "gzip_sha256": "c0e7d366e26f80b5760bad669967baf5b5ae9264c0ca4be2340fccb1f52d5ace",
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8"
+        }
+      ]
+    }
+  },
+  "controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/controls.json",
+    "sha256": "12dbbf4200a5f03149129a525b450a317d21cce7ecb6c8e89e4408ad11380159"
+  },
+  "rejected_bundles": [],
+  "collection_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/collection-index.raw.json",
+    "sha256": "0b397d15e087a5017924a96b5a5806a46cdd2d0c396375fa612ff20f2a2bd972"
+  },
+  "architecture_children": {
+    "amd64": {
+      "manifest_digest": "sha256:380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/380dd7ea00222dba8651cda33a02895a9e55d985b63384af2422c9f5f04c9710.registry-child.json",
+      "config_digest": "sha256:4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce"
+    },
+    "arm64": {
+      "manifest_digest": "sha256:28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1",
+      "manifest_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/28dce4a858fd3c51d93669b2e149d5e1a7a4b1c6f57cccddff91f4112626baf1.registry-child.json",
+      "config_digest": "sha256:3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee"
+    }
+  },
+  "local_reuse": {
+    "archive_manifest": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/MANIFEST.json",
+      "sha256": "1e3c903e037743db9ed8e3de606cc0b4306d7814ffb35ff021e171629574e21a"
+    },
+    "archive_receipt": {
+      "file": "/Users/tianpan/projects/bex/.pm/w1/m188/evidence/python37-source-archive/receipt.json",
+      "sha256": "b3be963a5f4bb3668a7f299b6b0faffc38129805f570a405b4ad96ecb3e248bd"
+    },
+    "new_large_downloads": false,
+    "existing_own_verified_records_reused": [
+      "sha256:6550f13a128b5ab84a61bcea6467909aa066a21b86dcbfc66443e059e2c5818c",
+      "sha256:8d3ef79f2dfecd8ac81fef92f0e0dc448f083275d75e1e33f11c638df7208054"
+    ],
+    "new_local_crypto_replays": [
+      "sha256:f4d91e938902086d486ddd66f3d195509366c12b90791fec2a10fce1a9951031",
+      "sha256:882463fa09b7214824a1b9742f704be0d33d5390a6d2c03ceec3fca7af170541",
+      "sha256:479faaf7930f764d14a49b8f29a6cf037817c3ad85060c31e80afe63153204c8"
+    ]
+  },
+  "updated_at": "2026-10-30T12:36:42.568702+00:00",
+  "semantic_checks": {
+    "architecture_binding_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+    "architecture_binding_sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98",
+    "official_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+    "producer_runtime_approved": true,
+    "both_arch_runtime_versions_verified": true,
+    "both_arch_fixed_brotli_packages_verified": true,
+    "both_arch_scans_disposition_verified": true,
+    "fresh_runtime_scan_sign_gates_passed": true,
+    "fresh_runtime_gate_log_bound_to_index": true,
+    "verification_job_log": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/verification-job.log.gz",
+    "verification_job_log_sha256": "e370b5711966b8196f6fc67b89f295ea682c7d24e38aef0a2c1c8cbd986fc5b7",
+    "immutable_completed_job_snapshot": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/publisher-job.json",
+      "sha256": "778ba899839e4b9bc62210a3a3f438ab13015bdc8f44ad906fb34b5a747a1e72",
+      "job_id": 123977642604,
+      "run_id": 41029603442,
+      "run_attempt": 1,
+      "head_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "completed_at": "2026-10-30T10:05:27Z"
+    },
+    "anonymous_immutable_tag_intake": {
+      "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/immutable-tag-intake.json",
+      "sha256": "5fb8e89689f454c59e0478a6981e970ff6220e48850c37034fcbb1d93d3dd2b3"
+    },
+    "raw_registry_configs": {
+      "amd64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce.config.json",
+        "sha256": "4f8346ff12b917f8d5142d218c28a3bc3c08d8fa772144e577767c4219105dce",
+        "bytes": 18275
+      },
+      "arm64": {
+        "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/manifests/3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee.config.json",
+        "sha256": "3ad27959ed3475234891e87253209f9c3f7a08d1f42046564fce9940738aa8ee",
+        "bytes": 18276
+      }
+    },
+    "portable_companion_baseline": {
+      "applicable": false,
+      "reason": "not a legacy Node primary"
+    }
+  },
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/architecture-binding.json",
+    "sha256": "20a77048858ab22b5ae36d906306d6d50a113576eb3cd8f46fb93b30fd4eda98",
+    "complete": true
+  },
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/python-3.7-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/archive-reuse-20261030/candidate.json"
+}

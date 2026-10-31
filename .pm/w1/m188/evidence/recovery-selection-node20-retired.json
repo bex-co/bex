@@ -1,0 +1,147 @@
+{
+  "checked_at": "2026-10-31T03:06:14.338224+00:00",
+  "method": "Actual current workflow embedded selector against isolated temporary Git commits; producer rewritten only inside fixture copy. No Docker, signing, network, production or repository mutation",
+  "workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+  "selector_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+  "catalog": "/Users/tianpan/projects/bex/.github/native-base-recovery.json",
+  "catalog_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+  "actual_repository_catalog_read": true,
+  "input_authorization_count": 4,
+  "retired_tags_checked": [
+    "node-14-bullseye",
+    "node-16-bookworm",
+    "node-20-bookworm",
+    "python-3.7-bullseye",
+    "python-3.8-bookworm",
+    "python-3.9-bookworm",
+    "python-3.10-bookworm",
+    "ruby-3.0-bullseye",
+    "ruby-3.1-bookworm",
+    "ruby-3.2-bookworm"
+  ],
+  "all_11_retired_in_input": false,
+  "actual_empty_catalog_all_authorizations_retired": false,
+  "active_recovery_cases_applicable": true,
+  "results": [
+    {
+      "case": "verified node-14-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-16-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified node-20-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.7-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.8-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.9-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified python-3.10-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.0-bullseye authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.1-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "verified ruby-3.2-bookworm authorization retired",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "authorized node-18-bookworm same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized elixir-1.18 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized elixir-1.19 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "authorized elixir-1.17 same recipe",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "unlisted runtime",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "changed upstream base",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "different package rejected",
+      "expected": "reject",
+      "observed": "reject",
+      "exit": 1
+    },
+    {
+      "case": "documentation-only delta remains eligible",
+      "expected": "recover",
+      "observed": "recover",
+      "exit": 0
+    },
+    {
+      "case": "nonMD to MD rename invalidates recovery",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    },
+    {
+      "case": "removed authorization rebuilds",
+      "expected": "build",
+      "observed": "build",
+      "exit": 0
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-10-31T02:57:50.680556+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm-6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "digest": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "header_digest": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "anonymous_access": true
+}

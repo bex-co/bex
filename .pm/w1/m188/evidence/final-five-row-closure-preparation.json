@@ -1,0 +1,134 @@
+{
+  "schema": "bex.m188.readonly-five-row-final-t004-closure-preparation/v1",
+  "at": "2026-10-31T02:37:39.037303+00:00",
+  "inputs": {
+    "original_plan": {
+      "file": "/tmp/bex-m188-final-t004-plan.json",
+      "sha256": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086"
+    },
+    "v2_addendum": {
+      "file": "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json",
+      "sha256": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e"
+    },
+    "v2_helper": {
+      "file": "/tmp/bex-m188-final-live-census-v2.py",
+      "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+    },
+    "strict_snapshot": {
+      "file": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/pre-adoption-priority-census.raw.json",
+      "sha256": "f185407036de27f362f74302847549664a8738d247f9c41a43e668a621ceae6f"
+    },
+    "strict_comparison": {
+      "file": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/priority-comparison.json",
+      "sha256": "838dbc6615b630cdd1052bb84681ff1f1e43d3a8d9d41b9baa1373854234ba21"
+    },
+    "strict_receipt": {
+      "file": "/tmp/bex-m188-priority-census-20261031-002113Z-5k8yle4y/assessment-receipt.json",
+      "sha256": "a760718760d2b2206c2d345342c5d0dd8246a95a9f142e260ea4460392156956"
+    },
+    "pre_auth_followup": {
+      "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/supplemental-findings.json",
+      "sha256": "cd99f5c2f11f5d81b318fd3ee5b9003b3331e556bf027cb6d74fea0fe7359d92"
+    },
+    "authenticated_followup": {
+      "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/authenticated-image-addendum.json",
+      "sha256": "92dbd28bc303bb431b6677c2cd8776f747222efc8e9cc3e1ee5749ccc2d76213"
+    },
+    "public_version_signals": {
+      "file": "/tmp/bex-m188-priority-classification-followup-20261031-002457Z-gc4vz495/public-source-version-signals.json",
+      "sha256": "fdc477f90e5f3f4debb5691ae46b6037c8790dc0afead26fed13f8533a9b11bb"
+    },
+    "t004": {
+      "file": ".pm/w1/m188/t004.md",
+      "sha256": "9e4d66f332e3fc32d8dc9ac918c5d319d0480635cf19a1d5f0752d63042d15f6"
+    },
+    "milestone_readme": {
+      "file": ".pm/w1/m188/README.md",
+      "sha256": "70eb8438d2bdaa410a5189d3067d90344f8f4c88babef509100686e37a1b243c"
+    }
+  },
+  "preparation_only_not_final_t004_acceptance": true,
+  "initial_strict_unresolved5_preserved": true,
+  "row_plans": [
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-agentmarketcap-1",
+      "class": "legacy-auto currently serving artifact",
+      "actual_prior_serving_node": "22.23.2",
+      "actual_prior_serving_OS": "alpine3.24.1",
+      "actual_prior_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-agentmarketcap-1@sha256:07d198c223b5aca4403f119dc509d746d3f68e734672a223a81edba58d2edc1d",
+      "what_is_fact": "Bounded public node runtime/OS probe and exact serving Pod image/imageID; all three observed Node22, no oldNode14/16/18/20 signal.",
+      "what_remains_inference": "Customer repository Dockerfile origin is high-confidence inference from unchanged exactimage/Alpine and auto Dockerfile dispatch, not retainedbuildJob/signedOCIstrategy provenance. Node22 alone does not prove absence of any oldPython/Rubyprimary or all vulnerablelibraries.",
+      "post_Ready_minimum": [
+        "Refresh App UID/spec/generation, actual serving Pod image+imageID+activeRevision and public primary/JS runtime versions; if digest changes do not carry stale version/origin evidence.",
+        "For exact platform-old11 scope, bind actual serving buildstrategy/runtimeorigin if retained BuildRun/job/config/history evidence exists; otherwise keep Dockerorigin explicitlyqualified and obtain minimal actual servingprimary evidence if any ambiguity remains. Do not erase genericauto unresolved solelyfrom spec orNode22."
+      ],
+      "not_needed_for_m188": "No generalcustomerimage vulnerabilityaudit or tenantcode change; neverdeclareNode22/Brotli1.1.0 safe from versions."
+    },
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-beancount-cms-v2",
+      "class": "legacy-auto currently serving artifact",
+      "actual_prior_serving_node": "22.23.4",
+      "actual_prior_serving_OS": "alpine3.24.3",
+      "actual_prior_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-beancount-cms-v2@sha256:f9a96df8676f5998f15548b22bea66f432856aebea0738fb7d0337e4411297c1",
+      "what_is_fact": "Bounded public node runtime/OS probe and exact serving Pod image/imageID; all three observed Node22, no oldNode14/16/18/20 signal.",
+      "what_remains_inference": "Customer repository Dockerfile origin is high-confidence inference from unchanged exactimage/Alpine and auto Dockerfile dispatch, not retainedbuildJob/signedOCIstrategy provenance. Node22 alone does not prove absence of any oldPython/Rubyprimary or all vulnerablelibraries.",
+      "post_Ready_minimum": [
+        "Refresh App UID/spec/generation, actual serving Pod image+imageID+activeRevision and public primary/JS runtime versions; if digest changes do not carry stale version/origin evidence.",
+        "For exact platform-old11 scope, bind actual serving buildstrategy/runtimeorigin if retained BuildRun/job/config/history evidence exists; otherwise keep Dockerorigin explicitlyqualified and obtain minimal actual servingprimary evidence if any ambiguity remains. Do not erase genericauto unresolved solelyfrom spec orNode22."
+      ],
+      "not_needed_for_m188": "No generalcustomerimage vulnerabilityaudit or tenantcode change; neverdeclareNode22/Brotli1.1.0 safe from versions."
+    },
+    {
+      "app": "tea-d98210cbbpdc73dcrkvg-eden-cms-v2",
+      "class": "legacy-auto currently serving artifact",
+      "actual_prior_serving_node": "22.23.3",
+      "actual_prior_serving_OS": "alpine3.24.2",
+      "actual_prior_serving_imageID": "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/tea-d98210cbbpdc73dcrkvg-eden-cms-v2@sha256:f5f31cf5db5bec9b89fc7e2b38ba8a2defb0ce8cbd03a3bdee48644d09a43e4b",
+      "what_is_fact": "Bounded public node runtime/OS probe and exact serving Pod image/imageID; all three observed Node22, no oldNode14/16/18/20 signal.",
+      "what_remains_inference": "Customer repository Dockerfile origin is high-confidence inference from unchanged exactimage/Alpine and auto Dockerfile dispatch, not retainedbuildJob/signedOCIstrategy provenance. Node22 alone does not prove absence of any oldPython/Rubyprimary or all vulnerablelibraries.",
+      "post_Ready_minimum": [
+        "Refresh App UID/spec/generation, actual serving Pod image+imageID+activeRevision and public primary/JS runtime versions; if digest changes do not carry stale version/origin evidence.",
+        "For exact platform-old11 scope, bind actual serving buildstrategy/runtimeorigin if retained BuildRun/job/config/history evidence exists; otherwise keep Dockerorigin explicitlyqualified and obtain minimal actual servingprimary evidence if any ambiguity remains. Do not erase genericauto unresolved solelyfrom spec orNode22.",
+        "Retain Eden rev723/servingf5f31 versus status/candidategen724/65dd difference until freshstate proves otherwise; never assign gen724 commit/version evidence to older servinggen723."
+      ],
+      "not_needed_for_m188": "No generalcustomerimage vulnerabilityaudit or tenantcode change; neverdeclareNode22/Brotli1.1.0 safe from versions."
+    },
+    {
+      "app": "tea-da1eg9gbiuuc73bd8uag-market-size",
+      "class": "nativeNode requested, no observed successful active deployment/artifact",
+      "facts": "Failedrelease1; noactiveRevision/image/artifactImage/Pod/matchingDeploymentorCronJob in retainedsnapshot/followup. This is morethan phaseFailed ornoPod.",
+      "post_Ready_minimum": [
+        "Refresh exactApp UID/status and UID-owned+legitlabel workloads/Pods/Jobs and currentactive-release/image pointers; confirm absenceofactualactiveartifact, not justabsenceofrunningPod.",
+        "If still no activeartifact, record no currentm188in-use rebuildtarget and no rebuilt/patchedsuccess; if image/release appears, resolve its actualprimary/companion versions and reevaluateregardlesscurrentphase."
+      ],
+      "future_version_limit": "Observedpublicmain87b6 has no rootsignals and noenv/Secretrefs; resolver85de would defaultNode24 for that exactinput. This is conditional source-selection inference, not executedbuild or futurebranch guarantee, and is not needed to prove no-current-target.",
+      "not_needed_for_m188": "Do not force a newbuild/fixcustomerBuildFailedUserError or repeatedlyquerymutablemain solelytoconvert no-artifact into artificialacceptance."
+    },
+    {
+      "app": "tea-db3nth8gu8gc73cl11t0-cloneix",
+      "class": "nativeNode requested, never-served canceled+suspended with retainedscale-zero artifact",
+      "facts": "Freshfollowup found exactcurrentAppUID-owned label-lessDeploymentreplicas0, metadata generation5, retainedimagegen3/root54b849. Authenticatedrawmanifest/config hashesbindLinuxamd64 and declarationNODE_VERSION26.10.0; no executedbinary, servedrelease orsecurityproof.",
+      "post_Ready_minimum": [
+        "Usev2 namespace/currentUID ownership to retain exactDeployment/CronJob image pointers evenwithmetadata labels empty; refreshnoactiveRevision/canceledbefore-served marker/suspension/replicas andabsenceoflivePods oractiveJobs.",
+        "Recheck actualdeployedsource resume/cancellation contract (Resume clears suspension only; never-served canceled release remains0) if usingthat source reasoning; 85de is not deploymentproof. No realresume isneededjustforacceptance.",
+        "Bind currentretainedimage digest topriorauthenticated54b849/configaf0d onlyifidentical; ifchanged orifactualserving becomespossible, resolve newactualruntime/arch ratherthanreuseolddeclaration.",
+        "Onlyafter currentno-active-release evidence can this be noCURRENTin-use rebuildtarget; keepretaineddeclaration-only andunknownfuturebuildversion as explicitlimitations, neverlabelretainedimage patched/safe orrewrite strictunresolved5."
+      ],
+      "future_version_limit": "Pinnedc9b source404 and unreadAppSecretrefs leavefutureeffectiveNodeversionunknown; NODE_VERSION26 configdoesnotresolvefuturerebuild. Do not assumedefault/readSecretsorrequestuserdecision merelytoerasefutureuncertainty. Adoptedall11pins/version-selection+fixtures mustcoverthecaseifafuturebuildselectsanyofthose11.",
+      "not_needed_for_current_scope": "No executing retainedNode26 image, readingcustomerSecretcontents, forcedresume orcustomerrebuild merelytoproveabsenceofcurrentservingtarget. If finalfreshstateshowspotentialactiveold11, thatnewfactrequiresactualrowresolution beforezero-target."
+    }
+  ],
+  "global_real_prerequisites_still_required": [
+    "All11genuinesignedpublishedcandidates accepted; realsource/inventoryadoption then six actualsigned-pin build/HTTP fixtures without overlays/skips.",
+    "Bind completedmain deploy source+operator signature/root/amd64child+GitOpswriteback to adopted11; finalReady newimagepods/imageIDs and noresolveroverride/envFrom. Derive thisbatchSINCE fromactualnewPodReady, never136/DeploymentAvailable.",
+    "Runv2freshcensus afterthatReady usingexactdeployedsource, notfixed85de orpre-adoptioncapturedsource. Refresh everyeligibleApp includingnewapps/changedprimaries/companions, notonlyfivepriorrows.",
+    "For everyunresolved finalrow, append fresh factualresolution withexact image/release/runtimebasis andlimits; preserve raw census. Unknowncurrentactiveversion/nopodimage isnot automatically outside scope.",
+    "If allCURRENTaffectedtargets genuinelyempty afterrowresolution, recordzerotarget/noapply; no customerrebuildsuccess claim. Ifnonempty, implement/useexactservice/versiontargeting and validateeachresult/failed/skipped explicitly. Global --since/--limit10 isnot exactold11filter andmustnot beapplied asone."
+  ],
+  "scope_interpretation": "t004 requires actualin-use affectedservices toreceivepatch/rebuild/runtimeproof. No-current-target disposition needs positive currentrelease/workload evidence, notNoPod/Failed/Suspended shortcuts. Futureunknowncustomerconfiguration is explicitlynotverified, whileall11supportedpatchpins/selectionacceptance coverfutureold-linebuilds; itisnotpermissiontoignoreanactualunknownactiveimage.",
+  "current_helper_limits": "v2 fixesworkloadAppUIDassociation only. Itintentionallykeepsgenericauto unresolved andnopod retainedimages unresolved. Neitherhistoricalfollowup norconfigversiondeclaration should beusedtofliphelperzeroflagautomatically; rootmustcombinefreshpostReadyevidence with explicit row-level conclusions.",
+  "no_production_calls_or_secret_reads": true,
+  "no_guard_scope_board_or_report_mutation": true,
+  "guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "aggregate_sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367"
+}

@@ -1,0 +1,243 @@
+{
+  "schema": "targeted_sigstore_bundles/v1",
+  "proof_mode": "targeted_sigstore_bundles/v1",
+  "complete": true,
+  "cryptographic_complete": true,
+  "repo": "ghcr.io/bex-co/bex-cnb-run",
+  "verification_source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+  "producer_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "tool": {
+    "file": "/tmp/bex-w1-136-cosign/cosign",
+    "version": "3.1.4",
+    "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "root_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/root-index.raw.json",
+    "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+    "bytes": 1611
+  },
+  "bundles": [
+    {
+      "role": "image_signature",
+      "arch": null,
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "oci_manifest_digest": "sha256:532cd499659b5af9d619f09cbd2d6c90d14381a94913913cf6262d675e6a033a",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/532cd499659b5af9d619f09cbd2d6c90d14381a94913913cf6262d675e6a033a.json",
+      "oci_blob_digest": "sha256:76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+      "raw_sha256": "76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+      "raw_bytes": 9803,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.json",
+      "statement_sha256": "07ebf0dc063b2d8b5b449437ae673ea7bf6c21f1a6e33a3e9d85febfd132db48",
+      "subject": {
+        "digest": {
+          "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        },
+        "annotations": {}
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f.command.json",
+      "command_sha256": "3ff423aa3725b639bce63a2d30cf00154eb616fd4f4df1c6385355ae0890ef47",
+      "exit_code": 0,
+      "gzip_sha256": "dbf3f9bf1786b96309732c9596ee57d73a6d0662804c2d3bd2eecf62aadce881"
+    },
+    {
+      "role": "spdx",
+      "arch": "amd64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:5c8b5abd043c58800c4b38126b74d2f180ee39189f9e74eac26c4cf334fdfae3",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/5c8b5abd043c58800c4b38126b74d2f180ee39189f9e74eac26c4cf334fdfae3.json",
+      "oci_blob_digest": "sha256:946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb",
+      "raw_sha256": "946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb",
+      "raw_bytes": 34172403,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.json",
+      "statement_sha256": "3c804e872b212c27f07e2c0b0c0fce10495c6004447ef1660476cccbdd8d13a9",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb.command.json",
+      "command_sha256": "7963b7cf93e2482c293423a2efef8c703c3c52630ffd15bc356a305c4c9db2d6",
+      "exit_code": 0,
+      "gzip_sha256": "c2449473175d706e408704be462d6446e9073495f3f81e9987034cf6fab8a00e"
+    },
+    {
+      "role": "spdx",
+      "arch": "arm64",
+      "predicate_type": "https://spdx.dev/Document",
+      "oci_manifest_digest": "sha256:509302cc420c140d5c83ab10df8a4c5e1951846c1e71c5c7b7b5456cc08b14fe",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/509302cc420c140d5c83ab10df8a4c5e1951846c1e71c5c7b7b5456cc08b14fe.json",
+      "oci_blob_digest": "sha256:68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152",
+      "raw_sha256": "68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152",
+      "raw_bytes": 34150313,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.json",
+      "statement_sha256": "a4d13357fc489a0cc090315a8b78f7bcc1d5b6728d2ee409370c15c4d6e2e7ab",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152.command.json",
+      "command_sha256": "08af61afec78a62c7a07216324d28d13a49fdda61cd6e48529916083b772d210",
+      "exit_code": 0,
+      "gzip_sha256": "dbd1bb04c005f809bc4a59f7ba564ecbbe752cad12a93ae19912024ffba73699"
+    },
+    {
+      "role": "trivy",
+      "arch": "amd64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:5bcaf886dc9633a824ec0c595e7196527d4d2664943f208569a0401c2abdcc6a",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/5bcaf886dc9633a824ec0c595e7196527d4d2664943f208569a0401c2abdcc6a.json",
+      "oci_blob_digest": "sha256:dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2",
+      "raw_sha256": "dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2",
+      "raw_bytes": 91251399,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.json",
+      "statement_sha256": "4c87bf35f890cfc79141649d91b9ed33c0f97946015cbadddf2ab0fcf7d10e55",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2.command.json",
+      "command_sha256": "0e9789e7da6807deb09c736e56db1a3c3f6049a28f10ac9195cdc35f8acdb261",
+      "exit_code": 0,
+      "gzip_sha256": "26ebdcbd68a78f8dd8d6e54c7c1d54d95b05c78f86d3ddb197d88d73b07dbf03"
+    },
+    {
+      "role": "trivy",
+      "arch": "arm64",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "oci_manifest_digest": "sha256:d9898fb80b3f69bad5889e7a57d62825c429abb57669dd19f8bd1b6a1deb6bcf",
+      "oci_manifest_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/manifests/d9898fb80b3f69bad5889e7a57d62825c429abb57669dd19f8bd1b6a1deb6bcf.json",
+      "oci_blob_digest": "sha256:b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3",
+      "raw_sha256": "b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3",
+      "raw_bytes": 91249797,
+      "gzip_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.json.gz",
+      "raw_file_at_verification": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/bundles/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.json",
+      "statement_sha256": "c9408bd6c973c3b2fa34f08b71af541d58413b1b9db6745cd79eaf852acbd2fa",
+      "subject": {
+        "name": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": {
+          "sha256": "4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+        }
+      },
+      "command_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/commands/b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3.command.json",
+      "command_sha256": "b53129cd5f9436653cff64187e97da9079ba06d24f388a49d4a0a9d0873489fe",
+      "exit_code": 0,
+      "gzip_sha256": "5432eba6e8f920f6fe25523561165588a6f9b0790334bb6393884b15a92b8d0c"
+    }
+  ],
+  "derived": {
+    "image_statement": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/image-signature.statement.json",
+      "sha256": "07ebf0dc063b2d8b5b449437ae673ea7bf6c21f1a6e33a3e9d85febfd132db48",
+      "bundle_digest": "sha256:76a3c5382bb6f60b8e932bb3951bdde3f6dc17c301e9ff27c0dcc2a2c0c3067f",
+      "derived": false
+    },
+    "sbom": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-sbom.jsonl.gz",
+      "raw_sha256": "664118d0fd6b03048401385e95dd6ea0e793797f864c31c55641113c52beb9f0",
+      "raw_bytes": 68304592,
+      "derived": true,
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:946b2795f7c3d94b4c83630d514f4a39f76ed735948724f0aa55cc63894219fb"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:68ce98780369d545d1d9d7f4ced6f744e119725255aaebe9edcb79f4327a9152"
+        }
+      ],
+      "compression": "gzip",
+      "gzip_sha256": "565846aed678bb55a056a09de2bef348be9fb024d86b2c85fbed1f189195a806"
+    },
+    "scans": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verified-scans.jsonl.gz",
+      "raw_sha256": "515c8d071b6978574a2e1eda4d8c1ea8b7e09ad430ac0a6e2c33f6a56fe8dd49",
+      "raw_bytes": 182482688,
+      "derived": true,
+      "line_map": [
+        {
+          "line": 1,
+          "arch": "amd64",
+          "bundle_digest": "sha256:dbfd72faaee6c26b43cd5e7c3f1caf432924fb2b03fba380340fe6dcd70d29e2"
+        },
+        {
+          "line": 2,
+          "arch": "arm64",
+          "bundle_digest": "sha256:b91532297e3b87d523717463e9261862e472214c0336180eaf6f7d6c5e5e10d3"
+        }
+      ],
+      "gzip_sha256": "1addafdf5684ad6a34c7db67d36c23e08f9ee67c025cb4b182b43df1e14163e6"
+    }
+  },
+  "controls": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/controls/controls.json",
+    "sha256": "e4523ab4c7b84674e00e85a8b3163102e68f7d620d458ea122872f0277b2dbfb"
+  },
+  "rejected_bundles": [],
+  "updated_at": "2026-10-30T11:21:03.286219+00:00",
+  "collection_index": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/collection-index.raw.json",
+    "sha256": "1627179c8446563b6c4d12a8970109deb08d498fba05e38c8a5e92748ba91419"
+  },
+  "semantic_checks": {
+    "official_base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+    "producer_runtime_approved": true,
+    "both_arch_runtime_versions_verified": true,
+    "both_arch_fixed_brotli_packages_verified": true,
+    "both_arch_scans_disposition_verified": true,
+    "fresh_runtime_scan_sign_gates_passed": true,
+    "fresh_runtime_gate_log_bound_to_index": true,
+    "verification_job_log": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/verification-job.log.gz",
+    "verification_job_log_sha256": "154e41ff86a2841546e8e242566b459b5a9a274e8caf5148603710d51dccd4ed",
+    "portable_companion_baseline": {
+      "applicable": true,
+      "verified": true,
+      "distribution": "Debian11 Bullseye",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "legacy_header_major": "14",
+      "source_record_path": "/usr/share/bex-node-brotli/sources.txt",
+      "source_record_presence_verified": true,
+      "source_record_content_basis": "copied from checksum-locked compiler recipe; presence checked before interpreter execution",
+      "success_log_lines": {
+        "amd64": "2026-10-30T09:15:24.5677262Z #15 1.112 Patched Node passed the Bullseye companion baseline",
+        "arm64": "2026-10-30T09:15:24.7072123Z #16 0.306 Patched Node passed the Bullseye companion baseline"
+      }
+    },
+    "architecture_binding_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+    "architecture_binding_sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+    "completed_job_snapshot": {
+      "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/publisher-job.json",
+      "sha256": "907449a00a37c23f49688c7e81082df42ce05f2cee6d12476e84e6a1c57166a6",
+      "bytes": 6269,
+      "job_id": 123976756119,
+      "run_id": 41029596739,
+      "run_attempt": 1,
+      "head_sha": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "completed_at": "2026-10-30T09:28:59Z",
+      "previous_semantic_validation_at": "2026-10-30T10:17:58.480288+00:00",
+      "original_file_mtime_utc": "2026-10-30T10:11:11.319589+00:00",
+      "reused_at": "2026-10-30T11:21:03.286219+00:00",
+      "retrieval_timestamp_basis": "Original retained snapshot file mtime; exact HTTP retrieval timestamp was not recorded. Same immutable job ID/run attempt/source/steps as prior successful semantic validation; no fresh remote-status claim."
+    }
+  },
+  "candidate_file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/candidate.json",
+  "architecture_binding": {
+    "file": "/tmp/bex-m188-native-proof-targeted/node-14-bullseye/4330878c280bc9748444c8e1e50ff7388df1228a/architecture-binding.json",
+    "sha256": "6e380be11f3dd617d0620a0f593f1c8870e1a82ceafb03bb97cc8a44964f4028",
+    "complete": true
+  }
+}

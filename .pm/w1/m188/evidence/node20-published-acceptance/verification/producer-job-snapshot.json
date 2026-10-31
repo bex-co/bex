@@ -1,0 +1,9 @@
+{
+  "reused_at": "2026-10-31T02:59:17.745686+00:00",
+  "source_snapshot_file": "/tmp/bex-m188-publisher-job-snapshots/123932798235-d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5.json",
+  "source_snapshot_sha256": "d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5",
+  "source_snapshot_file_mtime_utc": "2026-10-30T11:56:08.408051+00:00",
+  "job_id": 123932798235,
+  "file": "/tmp/bex-m188-native-proof-targeted/node-20-bookworm/6fd4f45536a2574c404b05539dacb6aaafb781f8/producer-job.json",
+  "sha256": "d8f419384f12cba7069cebe29624b9a85ae041ebe0ff465b0e40cc5780cd2ad5"
+}
