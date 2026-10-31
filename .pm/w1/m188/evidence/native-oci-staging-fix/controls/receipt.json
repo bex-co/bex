@@ -1,0 +1,43 @@
+{
+  "schema": "bex.native-oci-stage-workflow-controls/v3",
+  "created_at": "2026-10-31T02:10:58.270610+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    ".github/scripts",
+    "-p",
+    "test_native_oci_*.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 11.785,
+  "test_methods": 32,
+  "sources_before": {
+    ".github/scripts/native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    ".github/scripts/test_native_oci_stage.py": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+    ".github/scripts/test_native_oci_workflow.py": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+    ".github/workflows/native-base-image.yml": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547"
+  },
+  "sources_after": {
+    ".github/scripts/native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    ".github/scripts/test_native_oci_stage.py": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+    ".github/scripts/test_native_oci_workflow.py": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+    ".github/workflows/native-base-image.yml": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547"
+  },
+  "sources_unchanged_during_test": true,
+  "raw_log": {
+    "path": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/tests.raw.log",
+    "sha256": "715650fb557673a9e9384fea7229602eedb8fec2c060e14e591f8a1a3f232246"
+  },
+  "extracted_shells": {
+    "actual-signing.raw.sh": "9742b58e9278b25c919de0c6db05f23568bf97a006329ffd07da59cfa3af8e73",
+    "actual-signing.rendered.sh": "a2381c19d6478af45fa3deab1b1f1f00b62c24ff006d8dbc88d06aa7b2064b14",
+    "actual-matrix.sh": "761164dc4f341ea3535f3f3f224071e3a8be0785fb4910a6973756747e5f5f70"
+  },
+  "cache_regression": "Every fakeSyft attempt writes dirtyextractioncache. Nextattempt must seeemptyownedcache, sameverifiedlayoutdigest, andstageonceperarch even3Syft attempts. Existingalloutcomeownedcleanupchecks remain.",
+  "limits": "Controlledstubs/syntheticmetadata+isolatedGit only; no real network/image/scanner/crypto/runtime/capacity/time acceptance. Earlierfrozenreceipts intact."
+}

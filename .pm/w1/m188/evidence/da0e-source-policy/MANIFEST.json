@@ -1,0 +1,137 @@
+{
+  "schema": "bex.m188.exact-source-policy-archive/v1",
+  "at": "2026-10-31T02:20:08.347527+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "files": [
+    {
+      "source": "/private/tmp/bex-m188-da0e-source-policy-activation.json",
+      "archive": "dfc8b32cba48-bex-m188-da0e-source-policy-activation.json",
+      "bytes": 20083,
+      "sha256": "dfc8b32cba48f4ac34be0b678f1fb78aa5fe20adf997fba101e084977b935e23"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-root-source-closure-audit.json",
+      "archive": "670bddf6e542-bex-m188-da0e-root-source-closure-audit.json",
+      "bytes": 2524,
+      "sha256": "670bddf6e542de12e29a65d81d49827e5098b6582d0e0eca94a0839ff2161a65"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-source-closure-review.json",
+      "archive": "fe76d390a601-bex-m188-da0e-source-closure-review.json",
+      "bytes": 7633,
+      "sha256": "fe76d390a601b5ea164165671bb4bc91029629bba6ab7e628685933cf9a4c1ee"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-root-source-admission.json",
+      "archive": "28630810ac0b-bex-m188-da0e-root-source-admission.json",
+      "bytes": 2386,
+      "sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-root-source-activation-approval.json",
+      "archive": "906317241eec-bex-m188-da0e-root-source-activation-approval.json",
+      "bytes": 1382,
+      "sha256": "906317241eec1cab06205c4a216b57c7cbc77687f86905be4430a4ae5fedd9e8"
+    },
+    {
+      "source": "/private/tmp/bex-m188-propose-oci-source-migration.py",
+      "archive": "0896ddd04104-bex-m188-propose-oci-source-migration.py",
+      "bytes": 6129,
+      "sha256": "0896ddd04104a950622fb4dfae751e6635e5a5d65a4777e1eaff50f59b8e429a"
+    },
+    {
+      "source": "/private/tmp/bex-m188-activate-da0e-policy.py",
+      "archive": "8f44458d4198-bex-m188-activate-da0e-policy.py",
+      "bytes": 6181,
+      "sha256": "8f44458d4198646ac6c1c4dcb52db26cb640228f07542047d85ecaa930f0d540"
+    },
+    {
+      "source": "/private/tmp/bex-m188-revalidate-nine-da0e.py",
+      "archive": "09faf56164c7-bex-m188-revalidate-nine-da0e.py",
+      "bytes": 3722,
+      "sha256": "09faf56164c7b0eecfe6ec00551647eb6624f0d22fda7f9292d55a095f537b20"
+    },
+    {
+      "source": "/private/tmp/bex-m188-review-da0e-source.py",
+      "archive": "c0227fc3d098-bex-m188-review-da0e-source.py",
+      "bytes": 10598,
+      "sha256": "c0227fc3d098eba0751c90acafb5673aa0e6b9a7f1949cdb7c2f619060e7287a"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-nine-candidate-regressions.json",
+      "archive": "fe3d793cb32c-bex-m188-da0e-nine-candidate-regressions.json",
+      "bytes": 5557,
+      "sha256": "fe3d793cb32cf91f749963fff9870f51f063226797257da54517581bc718a7e1"
+    },
+    {
+      "source": "/private/tmp/bex-m188-adoption-plan.json",
+      "archive": "8bc0371399fe-bex-m188-adoption-plan.json",
+      "bytes": 17266,
+      "sha256": "8bc0371399fe7d045c7d80f0b41208c5b97b282b48da38ad949ac3ed8121eec2"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-snapshots/3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "archive": "3fe1b2bd1a5a-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+      "bytes": 86114,
+      "sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-snapshots/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "archive": "2a8363b55421-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "bytes": 86158,
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2"
+    },
+    {
+      "source": "/private/tmp/bex-m188-aggregate-before-da0e-source-policy-64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78.json",
+      "archive": "64249b676294-bex-m188-aggregate-before-da0e-source-policy-64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78.json",
+      "bytes": 154592,
+      "sha256": "64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78"
+    },
+    {
+      "source": "/private/tmp/bex-m188-guard-receipt-context-after-da0e-source-admission.json",
+      "archive": "06b40d0d9623-bex-m188-guard-receipt-context-after-da0e-source-admission.json",
+      "bytes": 154640,
+      "sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-source-proposal/2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "archive": "2a8363b55421-proposal-2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2.py",
+      "bytes": 86158,
+      "sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-source-proposal/guard.diff",
+      "archive": "a55ac0c3cda8-guard.diff",
+      "bytes": 2524,
+      "sha256": "a55ac0c3cda802b8187c5df7451df40264ff72bd7be23f4ec0181fc7a4132b25"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-source-proposal/proposal.json",
+      "archive": "05995f593349-proposal.json",
+      "bytes": 2396,
+      "sha256": "05995f5933498ad5c81ae1ac615abb85683eb56e2cf9ea6cd966d37e3ee9d79f"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-full-nine-execution/stderr.log",
+      "archive": "e3b0c44298fc-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-full-nine-execution/stdout.log",
+      "archive": "1ea735dc2031-stdout.log",
+      "bytes": 584,
+      "sha256": "1ea735dc203179cc292ca22b1cd4bf4a336fab4c2980b77b94cd7743e063fb4e"
+    },
+    {
+      "source": "/private/tmp/bex-m188-da0e-full-nine-execution/execution.json",
+      "archive": "fe607cc837c2-execution.json",
+      "bytes": 612,
+      "sha256": "fe607cc837c26f6e694722856bf016f606e054a94f3af1011c76e7b655f7272f"
+    }
+  ],
+  "activated_guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "aggregate_after_sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+  "accepted_count": 9,
+  "claim": "Exact source policy activation, actual nine guard replays and real incomplete11 refusal. No new artifact promotion, source pin adoption, crypto CLI rerun or production acceptance."
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "bex.m188.actual-full-nine-execution/v1",
+  "at": "2026-10-31T02:18:35.882717+00:00",
+  "argv": [
+    "python3",
+    "/tmp/bex-m188-revalidate-nine-da0e.py"
+  ],
+  "script_sha256": "09faf56164c7b0eecfe6ec00551647eb6624f0d22fda7f9292d55a095f537b20",
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-da0e-full-nine-execution/stdout.log",
+    "sha256": "1ea735dc203179cc292ca22b1cd4bf4a336fab4c2980b77b94cd7743e063fb4e"
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-da0e-full-nine-execution/stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

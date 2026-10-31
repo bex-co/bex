@@ -1,0 +1,24 @@
+{
+   "architecture": "amd64",
+   "os": "linux",
+   "created": "1970-01-01T00:00:00Z",
+   "config": {
+      "Env": [
+         "SYNTHETIC_ONLY=1"
+      ],
+      "Labels": {
+         "org.opencontainers.image.revision": "ffffffffffffffffffffffffffffffffffffffff"
+      }
+   },
+   "rootfs": {
+      "type": "layers",
+      "diff_ids": [
+         "sha256:64c24782840163fc3f7f32f8ca16759086c966d976aa53369540d86be9f5eb91"
+      ]
+   },
+   "history": [
+      {
+         "created_by": "SYNTHETIC OCI behavior fixture"
+      }
+   ]
+}

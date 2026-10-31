@@ -1,0 +1,141 @@
+{
+  "schema": "bex.m188.syft-1.51.1-OCI-dir-primary-and-SYNTHETIC-behavior-review/v1",
+  "at": "2026-10-31T01:44:57.843234+00:00",
+  "tool_behavior_fixture_only": true,
+  "published_or_runtime_security_acceptance": false,
+  "raw_actual_tool_behavior": {
+    "file": "/tmp/bex-m188-syft-oci-behavior/tool-behavior.raw.json",
+    "sha256": "beb2e0ac43cc5d7d5a27c34de732306bab7553c6fe680ae7db4c3d8acd92ae96"
+  },
+  "binary": {
+    "file": "/tmp/bex-m188-syft-oci-behavior/syft",
+    "sha256": "47cd0bc89537c80eed48f34766743d54574e5830deff243cf54d99696a8e9ce0",
+    "version": {
+      "application": "syft",
+      "buildDate": "2026-08-27T16:55:02Z",
+      "compiler": "gc",
+      "gitCommit": "91a0032987d91b7411b52f6f5c185c5e7f775495",
+      "gitDescription": "v1.51.1",
+      "goVersion": "go1.26.3",
+      "platform": "darwin/arm64",
+      "schemaVersion": "16.1.10",
+      "version": "1.51.1"
+    }
+  },
+  "official_checksum_verification": {
+    "url": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_checksums.txt",
+    "file": "/tmp/bex-m188-syft-oci-behavior/syft_1.51.1_checksums.txt",
+    "sha256": "105346699e7cb694afa37a21e2386432df6278c99f71331c24b1e0bb0f38cc75",
+    "tar_sha256": "ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1"
+  },
+  "checks": [
+    {
+      "case": "amd64-correct",
+      "selected_original_child_checksum_and_purl_digest_preserved": true,
+      "raw_manifest_bytes_sha256": "a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "raw_config_bytes_sha256": "1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "raw_config_exact_and_imageID_matches": true,
+      "actual_config_platform": "linux/amd64",
+      "source_optional_platform_fields_empty": true,
+      "SPDX_root_purl_arch_empty": true,
+      "SPDX_root_name": "ghcr.io/bex-co/bex-cnb-run",
+      "current_guard_purl_arch_compatibility": false
+    },
+    {
+      "case": "arm64-correct",
+      "selected_original_child_checksum_and_purl_digest_preserved": true,
+      "raw_manifest_bytes_sha256": "373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "raw_config_bytes_sha256": "947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "raw_config_exact_and_imageID_matches": true,
+      "actual_config_platform": "linux/arm64",
+      "source_optional_platform_fields_empty": true,
+      "SPDX_root_purl_arch_empty": true,
+      "SPDX_root_name": "ghcr.io/bex-co/bex-cnb-run",
+      "current_guard_purl_arch_compatibility": false
+    },
+    {
+      "case": "full-ref-name-trait",
+      "selected_original_child_checksum_and_purl_digest_preserved": true,
+      "raw_manifest_bytes_sha256": "a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "raw_config_bytes_sha256": "1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "raw_config_exact_and_imageID_matches": true,
+      "actual_config_platform": "linux/amd64",
+      "source_optional_platform_fields_empty": true,
+      "SPDX_root_purl_arch_empty": true,
+      "SPDX_root_name": "ghcr.io/bex-co/bex-cnb-run@sha256:10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "current_guard_purl_arch_compatibility": false
+    },
+    {
+      "case": "single-child-wrong-platform-trait",
+      "selected_original_child_checksum_and_purl_digest_preserved": true,
+      "raw_manifest_bytes_sha256": "a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "raw_config_bytes_sha256": "1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "raw_config_exact_and_imageID_matches": true,
+      "actual_config_platform": "linux/amd64",
+      "source_optional_platform_fields_empty": true,
+      "SPDX_root_purl_arch_empty": true,
+      "SPDX_root_name": "ghcr.io/bex-co/bex-cnb-run",
+      "current_guard_purl_arch_compatibility": false
+    }
+  ],
+  "selected_manifest_and_config_preservation": "PASS: each emitted checksum/purl digest equals original noncanonical-whitespace selectedchild bytes, source.imageID equals exact raw config and embedded raw metadata is byte-exact. Layout index/original rootdigest differs; no Docker-save normalization or signedpayload rewriting.",
+  "full_current_3fe_guard_compatibility": "FAIL: pinnedStereoscope OCI-dir provider omits optionalArchitecture/OS; both correct-platform runs emit rootpurlarch empty. Active strictguard refuses, no relaxation proposed or executed.",
+  "primary_cause": "Stereoscope0.3.1 readImageMetadata returns only ID/Config/MediaType/RawConfig; OCI directory provider adds only actualManifestDigest/RawManifest. Syft copies optional img.Metadata.Architecture into source.ImageMetadata and SPDXpurl qualifier. --platform selects image ifmultiple but never populates optionalmetadata forOCI-dir; singleimage branch ignoresrequestedplatform.",
+  "source_naming_contract": "--source-name ghcr.io/bex-co/bex-cnb-run --source-version ORIGINAL_ROOT_INDEX_DIGEST preserves current rootname and versionInfo. --source-name FULLREF is literal and produces a differentrootname/purlname, so is unsuitable. Neither fixes missingarch.",
+  "source_profile_impact": [
+    "Do not admit or sign OCI-dir predicates ascompatiblewith3fe until an actuallytested producer solution preserves all strictdirectchild/config/arch bindings.",
+    "Currentcollector arch checker infersarch from signedlibbrotli packagepurls and may passdirectchild before fullguardrejects emptyrootpurlarch; do not claimcollectorcomplete equals FINALguard.",
+    "Keep all9 accepted candidate/proof/receipt/source/guard snapshots untouched. Any futureworkflow/profile requires exact shippedSHA/hash admission beforechangingcanonicalbaseline; do not invent aliases or rewrite signedpredicates.",
+    "Currentunzipfixed install fe880 differs old Node18producer7dd profile, so normalnewbuild isrequired; strictproducer/verifier recipeequality and source/runtime gates remain.",
+    "Stagehelper .github/scripts code and versionpin become publisherclosure inputs, even when outside deploy/native-base; sourceadmission must inspect/pin actualhelper/test/workflow, not assume oldrecipe-onlyequivalence covers helper.",
+    "Actioninput is syft-version. Explicit v1.51.1 is accepted; exactaction sourcealready defaults to hardcodedv1.51.1 via VERSION (not latest), so explicitpin clarifiesprofile without upgradingexistingtool."
+  ],
+  "primary_sources": [
+    {
+      "url": "https://raw.githubusercontent.com/anchore/syft/v1.51.1/syft/source/stereoscopesource/image_source.go",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/syft-image-source.go",
+      "sha256": "6cc1b59c3af80ae598d45964633f474f75603a043220ef510feedb2779e13779",
+      "bytes": 4543
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/syft/v1.51.1/cmd/syft/internal/commands/scan.go",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/syft-scan.go",
+      "sha256": "94cf004d26ddec55c9ab282b29e4066ac232bcd229c8eeff1f1f1c32555f5652",
+      "bytes": 14860
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/stereoscope/v0.3.1/pkg/image/oci/directory_provider.go",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/stereoscope-oci-directory.go",
+      "sha256": "df807545edef8c8a13c73fa957fff10ceeb9bb12b10830c407ec41ccd45462a9",
+      "bytes": 6104
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/stereoscope/v0.3.1/pkg/image/image_metadata.go",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/stereoscope-image-metadata.go",
+      "sha256": "f4a2bff20862e9b22eee60d7b684f9db958e621b96746501481a645a283a41c9",
+      "bytes": 1353
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/sbom-action/3ad7283483fc7af8ff2b4ea19663c2d5ca935e26/download-syft/action.yml",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-download-syft.yml",
+      "sha256": "7713f2a7187fcda00f449002e54cbe4d20fb3282d8d12339f21f4106ce019faf",
+      "bytes": 502
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/sbom-action/3ad7283483fc7af8ff2b4ea19663c2d5ca935e26/src/SyftVersion.ts",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-SyftVersion.ts",
+      "sha256": "dd52f4ae128588b94b53940f3f48b629ed7eaeb75aadba56f91ebef72016e8ec",
+      "bytes": 34
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/sbom-action/3ad7283483fc7af8ff2b4ea19663c2d5ca935e26/src/github/SyftGithubAction.ts",
+      "file": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-SyftGithubAction.ts",
+      "sha256": "79655e72aedf52de532b1ebc2f7acf74fe6e4480f1452ee0b9e440c8e5ef80a7",
+      "bytes": 20028
+    }
+  ],
+  "guard_unchanged_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "aggregate9_unchanged_sha256": "64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78",
+  "no_Docker_or_image_pull_or_production_or_CI_actions": true,
+  "scope": "Read-only primarysource review and tiny local syntheticOCI tool-execution only. Publicofficial releasebinary/source downloads, no runtimeimages/fullproductionblobs, no repository/guard/aggregate/board/proof changes."
+}

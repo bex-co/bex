@@ -1,0 +1,64 @@
+{
+  "schema": "bex.m188.completed-node18-failure-custody/v1",
+  "at": "2026-10-31T01:39:39.043665+00:00",
+  "run_id": 41113367877,
+  "job_id": 124263227234,
+  "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "run_attempt": 1,
+  "intake_sha256": "335053e69a47c337ce20a76b163fe563d1f77a66f9872b18a2815d94be6ec793",
+  "scope": "All completed failure facts/raw log/current recipe limit frozen; no artifact approval or policy/queue mutation",
+  "files": [
+    {
+      "path": "completed-job.log",
+      "sha256": "5a094ef15d7eba652f195742b97e48e2fa657479de5c4795d27fb81c598911d4",
+      "bytes": 885732
+    },
+    {
+      "path": "completed-job.log.gz",
+      "sha256": "4e75e07819b6e9a4d54f910bcd89a451dd3aeff34950fd7c87efd0789d609eb5",
+      "bytes": 111618
+    },
+    {
+      "path": "current-install-diff.patch",
+      "sha256": "c138bc2ae2b6ff3c592d7fd1ca0482b713304ce2698939571ed4c4c5e88046db",
+      "bytes": 692
+    },
+    {
+      "path": "download-receipt.json",
+      "sha256": "6bf3e8f6efcb7073cbbdd84a0cbc49ff0aee11a98d20b725f8266b38f05e1421",
+      "bytes": 974
+    },
+    {
+      "path": "download.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "failure-intake.json",
+      "sha256": "335053e69a47c337ce20a76b163fe563d1f77a66f9872b18a2815d94be6ec793",
+      "bytes": 15546
+    },
+    {
+      "path": "job-metadata.json",
+      "sha256": "3367dd051cd1d274f7c2c8ed4677d73c8eb1f1f8b5f225170fb406e9f3950fb7",
+      "bytes": 6502
+    },
+    {
+      "path": "recovery-at-verifier.json",
+      "sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+      "bytes": 3280
+    },
+    {
+      "path": "step-observation.json",
+      "sha256": "9bf3aaa55805cccf77bb33cd0995f94a314740a3ddc7f8358da9d6c178cf8d1d",
+      "bytes": 1427
+    },
+    {
+      "path": "workflow-at-verifier.yml",
+      "sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+      "bytes": 12496
+    }
+  ],
+  "file_count": 10,
+  "total_bytes": 1038267
+}

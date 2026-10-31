@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-10-31T01:26:49.107810+00:00",
+  "metadata_observed_at": "2026-10-31T01:26:13.068840+00:00",
+  "run_id": 41113367877,
+  "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "run_attempt": 1,
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "native_job": {
+    "id": 124263227234,
+    "run_attempt": 1,
+    "tag": "node-18-bookworm",
+    "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-10-30T23:08:38Z",
+    "completed_at": "2026-10-31T01:26:03Z",
+    "active_steps": [],
+    "failed_steps": [
+      "sign and attest the immutable candidate"
+    ],
+    "source_build_completed": false,
+    "dual_arch_runtime_gate_passed": true,
+    "immutable_job_snapshot": {
+      "file": "/tmp/bex-m188-publisher-job-snapshots/124263227234-3367dd051cd1d274f7c2c8ed4677d73c8eb1f1f8b5f225170fb406e9f3950fb7.json",
+      "sha256": "3367dd051cd1d274f7c2c8ed4677d73c8eb1f1f8b5f225170fb406e9f3950fb7",
+      "retrieved_at": "2026-10-31T01:26:13.068840+00:00",
+      "job_id": 124263227234,
+      "run_id": 41113367877,
+      "head_sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "run_attempt": 1
+    }
+  },
+  "metadata_only": true,
+  "exact_failing_command_or_cause_not_yet_claimed": true,
+  "candidate_not_accepted": true,
+  "no_remote_mutation": true
+}

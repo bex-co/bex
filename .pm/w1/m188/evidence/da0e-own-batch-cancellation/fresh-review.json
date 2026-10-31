@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-31T02:13:33.332565+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_id": 41158989325,
+  "run_attempt": 1,
+  "run_status": "in_progress",
+  "native_jobs": [],
+  "safe_zero_started_native_work": true,
+  "raw_run": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-run.stdout",
+    "sha256": "cf091c4db2d3b32b1d5f2b25e3d319323a816ec713aa5263a83e4ccf2e3f2a9f",
+    "bytes": 11840
+  },
+  "raw_jobs": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.stdout",
+    "sha256": "49d0ab66c46b41ca5a0c8a1d53fe77b10fc6be298e613f5137199f3c6742a67c",
+    "bytes": 874
+  }
+}

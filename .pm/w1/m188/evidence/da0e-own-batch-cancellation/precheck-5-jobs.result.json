@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-10-31T02:13:32.835750+00:00",
+  "argv": [
+    "gh",
+    "api",
+    "--method",
+    "GET",
+    "repos/bex-co/bex/actions/runs/41158989325/attempts/1/jobs?per_page=100"
+  ],
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "finished_at": "2026-10-31T02:13:33.332114+00:00",
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.stdout",
+    "sha256": "49d0ab66c46b41ca5a0c8a1d53fe77b10fc6be298e613f5137199f3c6742a67c",
+    "bytes": 874
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  }
+}

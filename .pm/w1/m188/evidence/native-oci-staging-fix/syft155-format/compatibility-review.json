@@ -1,0 +1,136 @@
+{
+  "schema": "bex.m188.SYNTHETIC-syft155-OCI-fixed-arch-behavior/v1",
+  "at": "2026-10-31T01:49:31.735141+00:00",
+  "synthetic_tool_behavior_only": true,
+  "no_crypto_or_runtime_artifact_acceptance_claim": true,
+  "tool": {
+    "file": "/tmp/bex-w8-222-acceptance/tools/syft",
+    "sha256": "55a63db797b2a060aa56c7a03991bb11084e01ed4e3863df12370d74e84b4821",
+    "version": {
+      "application": "syft",
+      "buildDate": "2026-10-19T18:54:46Z",
+      "compiler": "gc",
+      "gitCommit": "f15c3343e29dfb20cf6d82c820e7090b49808c96",
+      "gitDescription": "v1.55.0",
+      "goVersion": "go1.26.8",
+      "platform": "darwin/arm64",
+      "schemaVersion": "16.1.11",
+      "version": "1.55.0"
+    },
+    "existing_official_checksum_sigstore_receipt": {
+      "file": "/tmp/bex-w8-222-acceptance/tools/syft-verification-receipt.json",
+      "sha256": "00990308c665e7acfc21cd4fe9810ce6cd7a4b692e89089e44081e111bb38588"
+    },
+    "receipt_verification_not_rerun": true,
+    "new_downloads": false
+  },
+  "original_tiny_fixture": {
+    "file": "/tmp/bex-m188-syft-oci-behavior/tool-behavior.raw.json",
+    "sha256": "beb2e0ac43cc5d7d5a27c34de732306bab7553c6fe680ae7db4c3d8acd92ae96"
+  },
+  "correct_architectures": [
+    {
+      "architecture": "amd64",
+      "passed": true,
+      "selected_child_digest": "sha256:a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "config_digest": "sha256:1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "SPDXroot_name": "ghcr.io/bex-co/bex-cnb-run",
+      "SPDXroot_version": "sha256:10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "SPDXroot_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3Aa3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab?arch=amd64",
+      "source_platform": "linux/amd64",
+      "raw_manifest_and_config_exact": true,
+      "guard_strict_root_name_checksum_purl_arch_conditions_pass": true,
+      "command": {
+        "file": "/tmp/bex-m188-syft-oci-155-behavior/amd64.command.json",
+        "sha256": "5342c1e814b8c7ea03f3c171e2fd43f62285be21754a53583e0fbd1a71928e7b"
+      },
+      "outputs": {
+        "spdx": {
+          "file": "/tmp/bex-m188-syft-oci-155-behavior/amd64.spdx.json",
+          "sha256": "016d74a6387862efc90624c2ea8bd47f40e7205e87255a63f3676f11c9ca2ff4"
+        },
+        "syft_json": {
+          "file": "/tmp/bex-m188-syft-oci-155-behavior/amd64.syft.json",
+          "sha256": "8b9c142a8939f524569e21fb2a5cce22ac2b8aaa079e0703d9b81a3f54776cdb"
+        }
+      }
+    },
+    {
+      "architecture": "arm64",
+      "passed": true,
+      "selected_child_digest": "sha256:373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "config_digest": "sha256:947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "SPDXroot_name": "ghcr.io/bex-co/bex-cnb-run",
+      "SPDXroot_version": "sha256:10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "SPDXroot_purl": "pkg:oci/ghcr.io%2Fbex-co%2Fbex-cnb-run@sha256%3A373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000?arch=arm64",
+      "source_platform": "linux/arm64",
+      "raw_manifest_and_config_exact": true,
+      "guard_strict_root_name_checksum_purl_arch_conditions_pass": true,
+      "command": {
+        "file": "/tmp/bex-m188-syft-oci-155-behavior/arm64.command.json",
+        "sha256": "14b8e279f5cf4a1fa9fe8feb029dcf9d3af4185620b737faa8cf557f9a949e80"
+      },
+      "outputs": {
+        "spdx": {
+          "file": "/tmp/bex-m188-syft-oci-155-behavior/arm64.spdx.json",
+          "sha256": "3e077b253971ac09f203a99a04b921ea249b40a7c9362ef8f82aae9f049b7b94"
+        },
+        "syft_json": {
+          "file": "/tmp/bex-m188-syft-oci-155-behavior/arm64.syft.json",
+          "sha256": "9c0f44fa53b085cb0516cdf44f517fb17440cd564086e937d182651eccebd8f6"
+        }
+      }
+    }
+  ],
+  "wrong_platform": {
+    "argv": [
+      "/tmp/bex-w8-222-acceptance/tools/syft",
+      "scan",
+      "oci-dir:/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64",
+      "--source-name",
+      "ghcr.io/bex-co/bex-cnb-run",
+      "--source-version",
+      "sha256:10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "--platform",
+      "linux/arm64",
+      "--config",
+      "/tmp/bex-m188-syft-oci-behavior/empty-config.yaml",
+      "-o",
+      "spdx-json"
+    ],
+    "exit_code": 1,
+    "intended_platform_mismatch_rejection": true,
+    "stderr": {
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stderr.log",
+      "sha256": "a76945445ef590f1b08eca2da649cdbae6bdb3218207231aeb9f17e37498c4a6"
+    },
+    "stdout": {
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "primary_sources": [
+    {
+      "url": "https://raw.githubusercontent.com/anchore/syft/v1.55.0/go.mod",
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/syft-go.mod",
+      "sha256": "a9e851acedee1cdcba947101a44d6fd4182dbd947fc26d9565216eb397966419"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/stereoscope/v0.3.4/pkg/image/oci/directory_provider.go",
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/stereoscope-oci-directory.go",
+      "sha256": "1029f2625413ee85efa29b06a4ad4e942ff7ef3cb869d8d42a0af06bb3a01bbf"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/anchore/stereoscope/v0.3.4/pkg/image/image_metadata.go",
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/stereoscope-image-metadata.go",
+      "sha256": "74f56293f3d298b9c4778485926e7a5663f4c16679161608771ed107d52825da"
+    }
+  ],
+  "preferred_solution": "Pin officialSyft v1.55.0 for new OCI-dir publisher profile: actualsamefixture preserves original selectedchildchecksum/config and populates exact arch/OS; wrongplatform rejected. Existing strict3fe semanticrequirements can remainunchanged; no emptyarch exception, alias or signedoutputrewrite needed.",
+  "proposed_invocation": "syft scan \"oci-dir:$LAYOUT\" --source-name ghcr.io/bex-co/bex-cnb-run --source-version \"$ROOT_INDEX_DIGEST\" --platform \"linux/$ARCH\" -o spdx-json",
+  "profile_admission_still_required": "Actual shipped workflow/helperclosure/version must be explicitly reviewed/admitted before newsource/candidates. Runtime Node18 normalrebuild on currentfe880 install; no recovery ofoldchangedrecipe. Preserve oldsource toolprofiles and all9 acceptedproofs.",
+  "guard_unchanged_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "aggregate9_unchanged_sha256": "64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78",
+  "inactive_emptyarch_semantic_proposal_not_needed_or_created": true,
+  "scope": "Read-only primarysource+existingofficialbinary small localOCI fixture behavior only. NoDocker/pulls/fullimage layers/repository/guard/context/sourcealias/proof/CI/production changes."
+}

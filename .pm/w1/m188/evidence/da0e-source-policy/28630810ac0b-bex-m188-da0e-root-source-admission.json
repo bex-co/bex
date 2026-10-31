@@ -1,0 +1,37 @@
+{
+  "schema": "bex.m188.explicit-root-source-role-admission/v1",
+  "at": "2026-10-31T02:16:07.488656+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "baseline": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "admitted": true,
+  "roles": [
+    "producer:all11",
+    "verification:all11"
+  ],
+  "workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+  "publisher_profile": {
+    ".github/workflows/native-base-image.yml": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+    ".github/scripts/native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    ".github/scripts/test_native_oci_stage.py": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+    ".github/scripts/test_native_oci_workflow.py": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad"
+  },
+  "root_review": {
+    "file": "/tmp/bex-m188-da0e-root-source-closure-audit.json",
+    "sha256": "670bddf6e542de12e29a65d81d49827e5098b6582d0e0eca94a0839ff2161a65"
+  },
+  "independent_closure_review": {
+    "file": "/tmp/bex-m188-da0e-source-closure-review.json",
+    "sha256": "fe76d390a601b5ea164165671bb4bc91029629bba6ab7e628685933cf9a4c1ee",
+    "historical_admitted_false_preserved": true
+  },
+  "root_decision": "Admit this exact shipped source and reviewed full publisher closure including OCI staging helper/tests. Preserve every historical source/certificate/recipe profile and accepted9 proof. Strict validation logic, issuer/TUF/tlog/TSA/direct child/config bindings and all gates remain unchanged; no empty architecture exception or predicate rewrite.",
+  "install_policy": "Currentfe880 exactunzip is approved; historicald362 current-tree compatibility stays limited to existing historical set. Strict producer-versus-verifier recipe equality is unchanged; newNode18 must normalbuild.",
+  "operational_limits": [
+    "Actual public-image network/resource and runtime/crypto acceptance remain to be proved; controlled32 tests and tinyofficialSyft tool-format tests do not constitute native acceptance.",
+    "28GiB capacity check is not a reservation; outertimeout/SIGKILL cleanup limits retained."
+  ],
+  "activation_authorized_by_this_record": false,
+  "candidate_promotion_performed": false,
+  "source_adoption_performed": false,
+  "existing_Node20_request_preserved": 41113373387
+}

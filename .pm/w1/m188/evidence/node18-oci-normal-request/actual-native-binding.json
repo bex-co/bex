@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-31T02:25:07.081113+00:00",
+  "run_id": 41159591513,
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_attempt": 1,
+  "event": "workflow_dispatch",
+  "runtime": "node-18-bookworm",
+  "native_job_id": 124414471403,
+  "native_job_name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+  "native_status": "queued",
+  "runner_id": 0,
+  "started_steps": [],
+  "matrix_job_id": 124413952693,
+  "matrix_completed_at": "2026-10-31T02:23:04Z",
+  "raw_run": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-run.raw.json",
+    "sha256": "9b1ae0ab5977c513f0357ef9c1b4fb22e1f98b7079e0f2a44ebcf49e1c25cf2b",
+    "bytes": 11825
+  },
+  "raw_jobs": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-jobs.raw.json",
+    "sha256": "94816e06cb754ed63090cbb6267b433b091d3aa0cb32d7f70c1f455e31233f4f",
+    "bytes": 3065
+  },
+  "normal_build_required": true,
+  "not_artifact_acceptance": true
+}

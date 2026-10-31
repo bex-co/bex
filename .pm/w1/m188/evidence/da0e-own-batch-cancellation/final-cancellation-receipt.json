@@ -1,0 +1,56 @@
+{
+  "schema": "bex.own-native-push-zero-work-cancellation/v1",
+  "created_at": "2026-10-31T02:15:11.689468+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_id": 41158989325,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "main",
+  "workflow": ".github/workflows/native-base-image.yml",
+  "root_authorization": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/authorization.json",
+    "sha256": "aba2c7d77fae219ec95bbcebaacc7ad0d11f8d553a83509a9f7188bb4c0ee422",
+    "bytes": 526
+  },
+  "executed_helper": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/executed-helper.py",
+    "sha256": "11d88352e32c807cebc2711963f63fa280a47eebdb0c16f236fc07b6f7137c84",
+    "bytes": 9174
+  },
+  "fresh_zero_work_review": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/fresh-review.json",
+    "sha256": "8b8845df942ed20a19eada130e381e3597c2cb4124c9bc940bb4e6273557d471",
+    "bytes": 635
+  },
+  "cancel_intent": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel-intent.json",
+    "sha256": "f35fc6ed92ade277efd7322d9c3643c8c28305a90faea68c6fc56dc01f756ea3",
+    "bytes": 394
+  },
+  "cancel_result": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel.result.json",
+    "sha256": "3f525bbbaef2687dc0c67e28b178d571e77cecc7b0fac9c8602a02b47be13e34",
+    "bytes": 691
+  },
+  "cancel_posts": 1,
+  "http202_accepted": true,
+  "terminal": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-confirmation.json",
+    "sha256": "23554f5ac49e254648a7f6b324e1d8cbcf6ebaa403e52d5d7c66a404d9d5cffd",
+    "bytes": 774
+  },
+  "terminal_conclusion": "cancelled",
+  "terminal_native_jobs": [
+    {
+      "id": 124412411997,
+      "name": "build",
+      "status": "completed",
+      "runner_id": null,
+      "runner_name": null,
+      "started_steps": []
+    }
+  ],
+  "no_force_or_cancel_retry": true,
+  "other_remote_mutations": 0,
+  "node18_dispatch_performed": false
+}

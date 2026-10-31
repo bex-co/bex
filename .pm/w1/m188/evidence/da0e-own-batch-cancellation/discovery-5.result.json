@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-10-31T02:13:31.498323+00:00",
+  "argv": [
+    "gh",
+    "api",
+    "--method",
+    "GET",
+    "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?event=push&branch=main&head_sha=da0e56e80a1e4eb08cacabd67efde3c768a6ae81&per_page=100"
+  ],
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "finished_at": "2026-10-31T02:13:32.218443+00:00",
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.stdout",
+    "sha256": "2129b897b06a50ad01775231fa0f98d458d01ea2327254378454dfeb0c66c62f",
+    "bytes": 11876
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  }
+}

@@ -1,0 +1,473 @@
+{
+  "schema": "bex.immutable-file-manifest/v1",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "files": [
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/actual-native-binding.json",
+      "sha256": "d6c153f8fcafdb7ddd8b20c6dee1170662343eb5b3e746eacf51410d2ab2f7a5",
+      "bytes": 992
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/all-source-dedupe.json",
+      "sha256": "33eb971d831a061a84296f636cac95d30f22c5c78ee37316976c1e3577310d97",
+      "bytes": 6793
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/all-source-runs-1.raw.json",
+      "sha256": "1e64b23cec3f97aa04d4efa524a28bf368308e828ad3753169d91631c5b53319",
+      "bytes": 946460
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/all-source-runs-1.request.json",
+      "sha256": "3dc7ec7122b52f2bc169ca7a3ca3449e70f8c1a9131491d05402d93eafd744b9",
+      "bytes": 337
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/authorization.json",
+      "sha256": "50fb7d9cc95c50c5841431989d529db17a244648c0d4825215460a82d7e5f9cc",
+      "bytes": 1478
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-1-jobs.raw.json",
+      "sha256": "387edfc085f5966494dcc347b0b0fd6f3807d7ba0d3edd7330923dd62aadfef4",
+      "bytes": 1817
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-1-jobs.request.json",
+      "sha256": "6289b89164fa5295eaf327cd8654141da2faf331806420155d41184fe992392a",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-1-run.raw.json",
+      "sha256": "04f18e941fa72b347668eec6380e575954939f36e5ff40240f0a4ca76e3b3057",
+      "bytes": 11830
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-1-run.request.json",
+      "sha256": "24246b45a3b5f282b7d00ba5be4767bc17bb5a0f48017574c15a15353a433808",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-jobs.raw.json",
+      "sha256": "94816e06cb754ed63090cbb6267b433b091d3aa0cb32d7f70c1f455e31233f4f",
+      "bytes": 3065
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-jobs.request.json",
+      "sha256": "f050b706f80064073597f9359444830d2626f644a61b704692a22963260012e6",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-run.raw.json",
+      "sha256": "9b1ae0ab5977c513f0357ef9c1b4fb22e1f98b7079e0f2a44ebcf49e1c25cf2b",
+      "bytes": 11825
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/binding-2-run.request.json",
+      "sha256": "ef7a16777db9dd2297d5bea8cb4a3df2259cd2728ed49cb291bd915fae3709a7",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41113373387-jobs.raw.json",
+      "sha256": "918b55a8e0541becba7b3392acff83f220b14c31e668fb7eb4ef534f83666237",
+      "bytes": 6309
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41113373387-jobs.request.json",
+      "sha256": "bb5d84f0988faa25bc518a58d6ebc227723b134003fff578f8e6f897c1ea62b9",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41113373387-run.raw.json",
+      "sha256": "e3db7fdc7113ca4c5bf1827f1217d51d3182809970de0221638258f1228a4f1b",
+      "bytes": 11495
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41113373387-run.request.json",
+      "sha256": "ea4497369dd7dc5009c3a70a40e2fd927f533987b79c5faa0d5a4761b59ccfc2",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121900239-jobs.raw.json",
+      "sha256": "1705bef80454a0d3b20fef6f01c3471f42612ad4189586f860d9884c41529904",
+      "bytes": 6099
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121900239-jobs.request.json",
+      "sha256": "f54140c9639f08a1a172970b1a2042792dd5b63c9bdf901bafb18975b023bbb6",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121900239-run.raw.json",
+      "sha256": "31e29ce66116fef417530a9fe1b7f538a1a68fb23f7f729eb4c0463b8b49f2d5",
+      "bytes": 11653
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121900239-run.request.json",
+      "sha256": "3f9862e69566e1a5b4a6b3f35c1e7a02851aa30da9090098fc9775172f0f64a3",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121921308-jobs.raw.json",
+      "sha256": "12bbae9bd9d3d3bbc974ec1623773de0c73cfc348fa64b900f51d4e483600067",
+      "bytes": 6309
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121921308-jobs.request.json",
+      "sha256": "d3622fd6766057feba9e67561407cb72acdcf23f63133e1fcf5d9479bd293388",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121921308-run.raw.json",
+      "sha256": "0fbb1ed2090283387ea76229716a5bf5d7efd64b8366e130da916ecede4a7d2f",
+      "bytes": 11653
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41121921308-run.request.json",
+      "sha256": "c9f3d92a5a702f5fdcf862fad0d68c14e98f6435232649581467ccf80b442dbb",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41127588682-jobs.raw.json",
+      "sha256": "be2271befa0debb6669463841472e4e4e1f2f813a26dc5bb5e7c0516b0d2dc03",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41127588682-jobs.request.json",
+      "sha256": "735386635ee1400062d27c844595de9b31a1f57800bc6c3175568ce2fc5549c1",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41127588682-run.raw.json",
+      "sha256": "bd2fc58ca070be0ea1c1ef8d72ba31606358d9908c51fb7fd2782bf15340e38c",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41127588682-run.request.json",
+      "sha256": "ebcc046868d1da36926e433a0e184f6e3849aeb927c532c96f14375f08579385",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41128855169-jobs.raw.json",
+      "sha256": "bc3b40e6c5a6d5e3d64e482643d773c87549841e3ca4ba25e1b858e28fbf4365",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41128855169-jobs.request.json",
+      "sha256": "268678f47389c69b6cfffab60e508b54b67b9fa3f5249e5b5c197ea25f735171",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41128855169-run.raw.json",
+      "sha256": "3029882fabce96502016362dda005e13f6480a12dec2802ac9526c9d5852380c",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41128855169-run.request.json",
+      "sha256": "d0bee883d617ac0de2b17f34b787e8406067d12a3ecf26e23129f8daed0316cf",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129008590-jobs.raw.json",
+      "sha256": "162c5cd2400e6e395d4b4e35d80b8bcaecb8310d08dc6c926f7939818c5be80e",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129008590-jobs.request.json",
+      "sha256": "409bcf10841ae954a8f94eed643c52d17ca09438fd47c8c8ea1197ffaeef5a07",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129008590-run.raw.json",
+      "sha256": "d5a083920081d46fbb7912249624587108ff4d4b905916332ed65b0318c84799",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129008590-run.request.json",
+      "sha256": "9495ac8412359b12e8b2453075f04f20de9c0668dfcb83f4be4affd1cee76ce5",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129044087-jobs.raw.json",
+      "sha256": "697595255b1b63f35769da720e9b90bff779e3a19d0bb5666a0fd7e70ba1821c",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129044087-jobs.request.json",
+      "sha256": "5baab2fa066ba598ffd7562c6b5f341aafae802ac0cf4d60c03840ee7cf2a890",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129044087-run.raw.json",
+      "sha256": "a2288f47969400fa0c8be5e98597c350853494315ef3ad1946abd884d4dd6f07",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129044087-run.request.json",
+      "sha256": "553937e77f10df8d25c3d2ce952fe507b485900e2841b712b5d0ccb068c344c2",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129082245-jobs.raw.json",
+      "sha256": "f40554d76bea82dc9cb05e2c8b15cf8a2b3a1309355c8cc445c0c1d6f4a366eb",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129082245-jobs.request.json",
+      "sha256": "f0a05ddcba8628ef9bda0f80c1e97de22c110e661c9e33dfd6b600e8ff3cb97f",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129082245-run.raw.json",
+      "sha256": "022170206b1d0bd2d7ac27a62726b07a2802a9c347d80f59a7266e9364d45c8c",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129082245-run.request.json",
+      "sha256": "28fb969bea3ac313e3c4b0694f39bfe45df907b81eb105254725df1396db5bf8",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129116273-jobs.raw.json",
+      "sha256": "c527e6ed77f836302c9af6f60f51fe9241715c16f586e7ec5465ce2566ae938b",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129116273-jobs.request.json",
+      "sha256": "b2e16562f41afb779b5a21cc21f356967186d093425c23032c137ad87c2bffe5",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129116273-run.raw.json",
+      "sha256": "cf923b8a22c42d7d0b4c66ef912032b428a1d88f726c7621ae1ca80501cd7b69",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129116273-run.request.json",
+      "sha256": "18dfbce493a8fda9031b6ce6a0c1998e1a458a6c150061d2592e01f15f29e742",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129176570-jobs.raw.json",
+      "sha256": "4a2249d6a93740adae284068b7ca1d63af1525b6baff3dc417ffeaabc62f55d3",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129176570-jobs.request.json",
+      "sha256": "f992acd82d6e4c7693ede4d2fe1c77a9c418cf2056113c9bcd6dc29d50d412e7",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129176570-run.raw.json",
+      "sha256": "0b15142d73f19b42b792123bbaad77c3849ffa9c54db058dfb1bf2847df7c54d",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129176570-run.request.json",
+      "sha256": "ff6f634ea25dacfe607117da1b831f4d15c3209733c87ca9b7b0fb7d292f49fb",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129224760-jobs.raw.json",
+      "sha256": "5c893078cdc591c36685229d01d5b5b2f625c17bbc599d9360c421f03d262bec",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129224760-jobs.request.json",
+      "sha256": "295484100576d9f20ca7c60cf7d1e79ab4c3d7c75542ef122389392a1a6cfd5c",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129224760-run.raw.json",
+      "sha256": "550f26536acfe9462d881d7b4b506e8ca4d8a9fd9b03585cbb05757f39220c55",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129224760-run.request.json",
+      "sha256": "659e61b3c1ed9fd4fe1f1faa9b16dad6c066926d7d1e3f34895e5601754f24fc",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129277963-jobs.raw.json",
+      "sha256": "55c0bb16fc1f31c2415873ac180ee7e519926b1da16f8c77f2ba59b1fb8ebf11",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129277963-jobs.request.json",
+      "sha256": "4095035a6f59801feda883733a4f4aaca297ccfe6e4f8e057fb8ecb452c71494",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129277963-run.raw.json",
+      "sha256": "a0f30cafb6a3f176100df6fa7753cea41ac33d7a2d8c3ad8c3bd8536fcc5c526",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129277963-run.request.json",
+      "sha256": "d88793b604675d262792ffcd2fffd11374e2548592b0a811f37b86798f57cdc3",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129321189-jobs.raw.json",
+      "sha256": "e4b41eda9d31a2a9c4a7251c6eb2d7fff503d3b00468343326db008a5925e74c",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129321189-jobs.request.json",
+      "sha256": "394588b730e7386750abd33191c18b00838876af4ed6eb58d864600c04d7d196",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129321189-run.raw.json",
+      "sha256": "58d559c4a829dcce2810cf850d844c0c016b5c11a5703cbd6ac1422a610bdc12",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129321189-run.request.json",
+      "sha256": "8cbd6046bbe267d35cd0a451c889cc064001ca95b1daed60df9e0de77fbff76f",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129372376-jobs.raw.json",
+      "sha256": "d24dd4869fe555709ca3c103475ef87cb580b2f2c80039d4620720ff6d62dd43",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129372376-jobs.request.json",
+      "sha256": "bc5c0a55c042265c6807a759d8040adb3f82425145ce0627dc21ac61fa93f2d1",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129372376-run.raw.json",
+      "sha256": "a70205fc167a6053a1758ba80979584b2a354214bfeb934aa6537d146981b836",
+      "bytes": 11603
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41129372376-run.request.json",
+      "sha256": "b3fde10c903e5ed5f22b75d6dc0159c360bbcd72113fd5d2c0de5a9c76a9bb35",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41142870861-jobs.raw.json",
+      "sha256": "28c0a3aa6d50de4128719ee261e552d19e08cce433a0d335c5f05490686622bb",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41142870861-jobs.request.json",
+      "sha256": "3eb4c0beea6bc0fcd07862ce3075be14521cb0662db2558bf01c6527048e4140",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41142870861-run.raw.json",
+      "sha256": "f00ba7db5aeab857bffe702f445edc42663560054637c8144119d80de450c28a",
+      "bytes": 11682
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41142870861-run.request.json",
+      "sha256": "e525583d3e5697660c4ddf3df44b36d0de3c64ede7b1b298680821b6fbdf7067",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41144656779-jobs.raw.json",
+      "sha256": "13863c403343b0401332422b8d66e499012e9b580be1f11221912054f953ff66",
+      "bytes": 2875
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41144656779-jobs.request.json",
+      "sha256": "d73e1848046531248769a30c8da3f054e2cbcb6701997ed4c17a379abe6fcd99",
+      "bytes": 314
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41144656779-run.raw.json",
+      "sha256": "10bc3df1aa54b7ba7d4a706f33a72fd41c96a6cfa55b6a61e8495b8998150b2a",
+      "bytes": 11470
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dedupe-41144656779-run.request.json",
+      "sha256": "9aa1464faa7f080ca03ed75a4558152038335990bb953f87921509f5516c1e8d",
+      "bytes": 285
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-input.json",
+      "sha256": "dba1667c2298e19ee2317784a69be1ee8315e42385a338f3077c26ea466eccea",
+      "bytes": 73
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-intent.json",
+      "sha256": "6e4ecced84b3738e7566d458753a5fc3631475830f003cdf7bf40e9dd89b7d88",
+      "bytes": 226
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-result.json",
+      "sha256": "bb8c4a9f7d92201130f6945c2ee0170703a10251d28af2d0e17e19ed52529537",
+      "bytes": 1826
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/executed-helper.py",
+      "sha256": "f3b2ee88d7d94caca480b4f03ca4e4222dfc64714c288561f7464b098ce1aa2b",
+      "bytes": 11714
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/immediate-prepost-main.raw.json",
+      "sha256": "774eb62b063ce24f0349fc28c8215dff6c729d4d4cd48eda51e00ac635dc60da",
+      "bytes": 318
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/immediate-prepost-main.request.json",
+      "sha256": "0779b0dd3c26b655f30aa9b21f55c96247f312fa1c5dd7a6e203c7679d1dd6e5",
+      "bytes": 279
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/initial-main.raw.json",
+      "sha256": "774eb62b063ce24f0349fc28c8215dff6c729d4d4cd48eda51e00ac635dc60da",
+      "bytes": 318
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/initial-main.request.json",
+      "sha256": "7594b61677a745c4d549e7b2648ab50a0c7a4fc91cb578bc3adcf6b99f30ac00",
+      "bytes": 279
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/native-binding-receipt.json",
+      "sha256": "27afe0a8ef51568ed14610996915c59255d260149a58ce34308f5f5458d27f68",
+      "bytes": 2901
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/observer-source-registration.json",
+      "sha256": "e3eb9fa8bee0ed8314c28d6b4bc61400fea9f0bf3d4d742344311ca8f6b5cf24",
+      "bytes": 950
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/post-discovery-1-summary.json",
+      "sha256": "3669594e62a876582806634093f7815209d109de342e057c6382a3d6af58afec",
+      "bytes": 430
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/post-discovery-1.raw.json",
+      "sha256": "1693048b421102e0508c8916326475b35d5a0381922ee20e0cee92dcd0104130",
+      "bytes": 11866
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/post-discovery-1.request.json",
+      "sha256": "33d4882471e0ec6c4d1132dd576cdb5d3d2d8d3a3b81d1dd1e367d95c53bdc6c",
+      "bytes": 404
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/source-and-normal-selector-proof.json",
+      "sha256": "6c164cd786f62d2a699918da45975d17c07f65ba6ecf7b85d1a2aedbcd9c2c86",
+      "bytes": 2818
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/source-store-after.json",
+      "sha256": "e2ec7b2ca9836a9220c1a719b85afcf4a5febfee6d3db6647d1a73d2a735b472",
+      "bytes": 22812
+    },
+    {
+      "file": "/tmp/bex-m188-node18-oci-normal-dispatch/source-store-before.json",
+      "sha256": "9ed4fa42335b34a46a279b62ce40b732094c1884dc9529706196fbf552bfd1bb",
+      "bytes": 21690
+    }
+  ],
+  "file_count": 93,
+  "total_bytes": 1315961
+}

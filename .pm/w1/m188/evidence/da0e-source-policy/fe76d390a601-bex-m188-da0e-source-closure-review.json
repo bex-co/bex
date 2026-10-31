@@ -1,0 +1,128 @@
+{
+  "schema": "bex.m188.exact-shipped-publisher-source-closure-review/v1",
+  "at": "2026-10-31T02:15:36.977340+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "parent": "da443ed1168126fecd69be60e2fa3efa84b3feee",
+  "admitted": false,
+  "review_result": "PASS; ready for root exact source-role decision, not artifact acceptance",
+  "pushed_to_main": {
+    "root_success_confirmation_received": true,
+    "confirmation_basis": "Root explicitly reported successful authenticatedSSHpush of literalda0e source toorigin/main before this record; independent checks here inspect local exactcommit object andpublisherbytes, not a separate remote ref request."
+  },
+  "commit_exact_four_paths": [
+    "A\t.github/scripts/native-oci-stage.py",
+    "A\t.github/scripts/test_native_oci_stage.py",
+    "A\t.github/scripts/test_native_oci_workflow.py",
+    "M\t.github/workflows/native-base-image.yml"
+  ],
+  "workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+  "publisher_profile": {
+    ".github/workflows/native-base-image.yml": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+    ".github/scripts/native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    ".github/scripts/test_native_oci_stage.py": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+    ".github/scripts/test_native_oci_workflow.py": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad"
+  },
+  "all_four_current_worktree_bytes_match_commit": true,
+  "reviewed_baseline": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+  "all_non_pm_delta_since_baseline": [
+    "M\t.claude/skills/loopx/SKILL.md",
+    "M\t.claude/skills/pm-brainstorm/SKILL.md",
+    "M\t.claude/skills/pm/SKILL.md",
+    "M\t.claude/skills/unblock/SKILL.md",
+    "M\t.github/native-base-recovery.json",
+    "A\t.github/scripts/native-oci-stage.py",
+    "A\t.github/scripts/test_native_oci_stage.py",
+    "A\t.github/scripts/test_native_oci_workflow.py",
+    "M\t.github/workflows/native-base-image.yml",
+    "M\tdeploy/native-base/install.sh",
+    "M\tdeploy/opensandbox/sandbox-cluster.toml"
+  ],
+  "outside_publisher_inputs": {
+    "files": {
+      ".claude/skills/loopx/SKILL.md": "22c0c63157c6ffc196d9f37549f40893685e98166dcff54ebf8db8768dd19a36",
+      ".claude/skills/pm-brainstorm/SKILL.md": "ff51910afc6c04cdba686a6ab006f5d26285181b07ea3dc592dfe468a10380bf",
+      ".claude/skills/pm/SKILL.md": "bbffb84e78b0157a075998c20d9d91b98f0f8266857c3caf255b877d954193ae",
+      ".claude/skills/unblock/SKILL.md": "0f8c929bd997c87073639c4200cc3a8a9af692f56434bef2324a149c5a15f16b",
+      "deploy/opensandbox/sandbox-cluster.toml": "d39cfe88485dc183672a632da82a0bc67f373e9cc4576b44f9e513712cbba789"
+    },
+    "classification": "Four agent skillMarkdowns are outside runtimepublisher trigger/read/build inputs and were not edited/reviewed as skillbehavior here; sandboxTOML exactinformertrue\u2192false setting/comments are unrelated to nativepublisher. Neither is automatically an allowedfuture code wildcard."
+  },
+  "factory_recipe": {
+    "only_nonmd_change_since846": "deploy/native-base/install.sh",
+    "old_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "new_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+    "exact_one_unzip_token": true,
+    "all_other_nonmd_native_factory_files_and_shared_actions_unchanged": true,
+    "BF_to_new_nonmd_changes": [
+      "deploy/native-base/install.sh"
+    ],
+    "existing_localgreen_Dockerfile_checkDockerfile_nodepatch_inputs_unchanged": true
+  },
+  "runtime_input_closure": {
+    "source_hashes": {
+      "lego/operator/internal/build/native.go": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "lego/operator/internal/build/nativeresolve.go": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "lego/operator/internal/build/nativeversion.go": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "lego/operator/internal/build/nativebases.go": "ca9734e27a040c75d2488acf3c079c6ebc5ff472e8146159f8cf69b7f2649fd5",
+      "lego/operator/internal/build/toolchain-freshness.json": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95"
+    },
+    "official_matrix_count": 27,
+    "official_matrix_exact846_andBF": true,
+    "global_nativeSuppliedBases_empty": true,
+    "inventory_images": 44,
+    "no_native_adoption_or_version_selection_change": true
+  },
+  "catalog": {
+    "sha256": "4fa8a9dbb23fdce6585415298e42b9f268cfb132dca39f501f76c1c15639671c",
+    "added": [
+      "elixir-1.17"
+    ],
+    "removed": [
+      "ruby-3.2-bookworm"
+    ],
+    "retained_values_unchanged": true,
+    "removed_Ruby32_exactref_matches_root_accepted9": true,
+    "foreign_Elixir_recovery_stays_outside_w1_retirement_scope": true,
+    "strict_same_recipe_recovery_selector_unchanged": true,
+    "old_Node18_or_Node20_or_Elixir_index_will_not_be_recovered_under_changed_install": "Selector diffs producerHEAD deploy/native-base; installunzip difference forcesnormalbuild. Do not use guardhistoricalcurrent-tree exception to bridgeproducer/verifier recipes."
+  },
+  "new_workflow_profile": {
+    "Syft_pinned": "v1.55.0",
+    "complete_original_selected_child_config_layers_staged_and_hash_size_verified": true,
+    "no_Docker_save_conversion_or_signed_SPDX_rewriting": true,
+    "actual_Syft_root_child_config_arch_name_version_behavior": {
+      "file": "/tmp/bex-m188-syft-oci-155-behavior/compatibility-review.json",
+      "sha256": "4c1f3a2295279b1b8260b4e10e2f2d7b5583376c180eaa1fef8af7e76ee43bd6"
+    },
+    "stager_helper_is_publisherclosure_input": true,
+    "helper_push_path_and_publish_matrix_trigger_added": true,
+    "owned_SYFTcache_cleared_perattempt_verified_layout_preserved": true,
+    "all_original_offline_runtime_Bullseye_two_complete_scans_five_signedproofs_issuer_TUF_RekorV2_TSA_and_postgate_discovery_preserved": true,
+    "no_ignoreflags_or_predicate_filter_added": true
+  },
+  "local_controls": {
+    "file": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/receipt.json",
+    "sha256": "a4dbb125cd876276f2f3d6da3d55f08d6aac2d7690cd9fc0cabf4917f70773da",
+    "test_methods": 32,
+    "actualfinal_four_hashes_bound": true,
+    "limits": "Controlledtransport/shell/stubs/isolatedGit, not cryptographicpublishedruntime or productioncapacityacceptance. ExistingTinyofficialtool test separate."
+  },
+  "future_source_policy_proposal_requirements": {
+    "exact_source_roles_proposed": [
+      "producer:all11",
+      "verification:all11"
+    ],
+    "canonical_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "canonical_workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+    "must_retain_explicit_old846_and_every_historical_role": true,
+    "49ee_producer_only_Node18_unchanged": true,
+    "all3fe_validation_functions_writerlocals_exactinstallcompat_unchanged": true,
+    "newsource_not_in_historical_install_exception": true,
+    "all9_preexisting_candidate_source_certificate_receipt_proof_bytes_preserved": true,
+    "full9_regression_and_incomplete11_copyrefusal_only_after_root_approved_activation": true
+  },
+  "guard_unchanged_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "aggregate9_unchanged_sha256": "64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78",
+  "source_activation_or_alias_append_performed": false,
+  "scope": "Independent read-only literal sourcecommit closure review. No repository/guard/sourcepolicy/context/proof/board/remote mutation or artifact promotion."
+}

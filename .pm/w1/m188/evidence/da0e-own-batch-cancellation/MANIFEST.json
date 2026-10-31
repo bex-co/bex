@@ -1,0 +1,338 @@
+{
+  "schema": "bex.immutable-file-manifest/v1",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "files": [
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/authorization.json",
+      "sha256": "aba2c7d77fae219ec95bbcebaacc7ad0d11f8d553a83509a9f7188bb4c0ee422",
+      "bytes": 526
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel-intent.json",
+      "sha256": "f35fc6ed92ade277efd7322d9c3643c8c28305a90faea68c6fc56dc01f756ea3",
+      "bytes": 394
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel.request.json",
+      "sha256": "4340add3c687d4a4b63c05af3738e011df5357bee6e934f6a0f9c70da728ba39",
+      "bytes": 249
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel.result.json",
+      "sha256": "3f525bbbaef2687dc0c67e28b178d571e77cecc7b0fac9c8602a02b47be13e34",
+      "bytes": 691
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/cancel.stdout",
+      "sha256": "2c00510cac2cde3ae7a4fcdf44c5dc3509f182e70530fd2fe19651e3a573b812",
+      "bytes": 1262
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-1.request.json",
+      "sha256": "8fa3cd15478a518a562e8daa2d94f9d2f29eeef36fa4caf7c49a2277da0beff6",
+      "bytes": 330
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-1.result.json",
+      "sha256": "aa14cf602188b496748baef2f9dab5a94241127364f4f6884cbc5d8ee379b62b",
+      "bytes": 780
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-1.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-1.stdout",
+      "sha256": "a2790a384d7d281e7395679000c35d27768d89dbd7052f725b8f4688beb59915",
+      "bytes": 36
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-2.request.json",
+      "sha256": "c960dd778ee5caf09797083dc9802b38aca51beeeefa72cc512a2f738a1efbda",
+      "bytes": 330
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-2.result.json",
+      "sha256": "b07b0856dc93d9b1e18c935809dfe5d27df3558fc2e5781f15e47e42ae06148d",
+      "bytes": 780
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-2.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-2.stdout",
+      "sha256": "a2790a384d7d281e7395679000c35d27768d89dbd7052f725b8f4688beb59915",
+      "bytes": 36
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-3.request.json",
+      "sha256": "f4f708e7171c25c0a5e3488549451f329fdaf5eb74c48810bceba1a2a01b15a5",
+      "bytes": 330
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-3.result.json",
+      "sha256": "e01fa9dec5c4059daf84242863c786457b442cb16494bb1c454d840716e7a497",
+      "bytes": 780
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-3.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-3.stdout",
+      "sha256": "a2790a384d7d281e7395679000c35d27768d89dbd7052f725b8f4688beb59915",
+      "bytes": 36
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-4.request.json",
+      "sha256": "bf1311fafe2757f5bdb68bb9a9f0232efa9ce2f1d30f53ebed4dec374380287f",
+      "bytes": 330
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-4.result.json",
+      "sha256": "186362eb20e7da7e337eafe8e4fef3e8d66fb3d19426f214023a9cc9763e4265",
+      "bytes": 780
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-4.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-4.stdout",
+      "sha256": "a2790a384d7d281e7395679000c35d27768d89dbd7052f725b8f4688beb59915",
+      "bytes": 36
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.request.json",
+      "sha256": "8ba3d5a1bb45c9335eeefef41757589a1f1901bb1abe98aa2c84c7d5c880351c",
+      "bytes": 330
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.result.json",
+      "sha256": "e201345a058cc9adbbdcea83244a44478025e237a28c509387b77325bc115062",
+      "bytes": 783
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/discovery-5.stdout",
+      "sha256": "2129b897b06a50ad01775231fa0f98d458d01ea2327254378454dfeb0c66c62f",
+      "bytes": 11876
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/executed-helper.py",
+      "sha256": "11d88352e32c807cebc2711963f63fa280a47eebdb0c16f236fc07b6f7137c84",
+      "bytes": 9174
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/final-cancellation-receipt.json",
+      "sha256": "b525cd990a4d1f1fb7251cbf341dfd7cca27f0754193fe45692832dea06a9b94",
+      "bytes": 1913
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/fresh-review.json",
+      "sha256": "8b8845df942ed20a19eada130e381e3597c2cb4124c9bc940bb4e6273557d471",
+      "bytes": 635
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.request.json",
+      "sha256": "19131c6e2d97346b4cd1187cefb5f9575f8538d74a2ba69f69057bade1564fa1",
+      "bytes": 253
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.result.json",
+      "sha256": "a34a9d72cc0bed2c2272f9893652e7eeaf69e64aef89e99cd65b2c98009d3cd7",
+      "bytes": 712
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-jobs.stdout",
+      "sha256": "49d0ab66c46b41ca5a0c8a1d53fe77b10fc6be298e613f5137199f3c6742a67c",
+      "bytes": 874
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-run.request.json",
+      "sha256": "60ca19fc74c084f82c6244c4992719a149439ed40baeac31d6b57f6aaf443907",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-run.result.json",
+      "sha256": "6d6ac2b7af8befa7ecf88bb782d6bc4e066c2ab594377b65575a6e8c071674a4",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/precheck-5-run.stdout",
+      "sha256": "cf091c4db2d3b32b1d5f2b25e3d319323a816ec713aa5263a83e4ccf2e3f2a9f",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-1-run.request.json",
+      "sha256": "7454b66ab30a5c04456e8f123fc3114512e26ec1984e18c29e9ca7b37c4bbc46",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-1-run.result.json",
+      "sha256": "967986c125589b004a8ba3e10cdc47225178b60cc6348e067991b699d0cee8b9",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-1-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-1-run.stdout",
+      "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.request.json",
+      "sha256": "eb320b7a8d5b3eda65eaafe0f479af94622044687437650100a0fa60c62c2bcc",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.result.json",
+      "sha256": "8e2d55394e53e9dee08747c432a55d1028a4de9976442eecc475868d3c3f5f31",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.stdout",
+      "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-3-run.request.json",
+      "sha256": "36153a7c428fce2e7987e75143e43212eaf4a4b5e2801e3bbe9ea7a730adb7b1",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-3-run.result.json",
+      "sha256": "bbc55f87c16f857b485b61ad116cd76875ac6f2da92d60f1009a36f3baf94b88",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-3-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-3-run.stdout",
+      "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-4-run.request.json",
+      "sha256": "18c0a7c9539db848d33f41e91dcf879b9f8a2f8dd299b70ae3db5f2970d7f0b2",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-4-run.result.json",
+      "sha256": "f1a7bd14345d04cf5686780727a80837c62d6fb21c154ecff8206a98a35d89e1",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-4-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-4-run.stdout",
+      "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-5-run.request.json",
+      "sha256": "dd02c504803d98c6a2cb58fb44539ad76e0c663ae22ef577918a87fee1f2b47b",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-5-run.result.json",
+      "sha256": "1694eac36513b71e570ad5e18fd536bf31d6eeb090577694202323bd5eada99d",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-5-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-5-run.stdout",
+      "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+      "bytes": 11840
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-jobs.request.json",
+      "sha256": "1d3381a92af9601fd882c233796581fc094c941839aa4052f171566d5ce0e21e",
+      "bytes": 253
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-jobs.result.json",
+      "sha256": "9399c9bf7076d3fea0bde29a69b93837070c60631f3eb3146b2e040fc17e94c8",
+      "bytes": 713
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-jobs.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-jobs.stdout",
+      "sha256": "8948133849b54a65af29ac83498c8f265ea28b5fb7ec910fe99190256c8fd462",
+      "bytes": 3012
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-run.request.json",
+      "sha256": "51140af060c0fc730b01a161413071e7847dda8307f5678c14cfeaca713c6ce0",
+      "bytes": 224
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-run.result.json",
+      "sha256": "e94f283435d1d77fe24a4b875b44ad50d7451006998dcc5ba1f9b07da0e9a0d4",
+      "bytes": 683
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-6-run.stdout",
+      "sha256": "c6de66ce17ae4265645fbaa8cb2f37c1e9957a2f0a46bad82e864cf03441cd69",
+      "bytes": 11845
+    },
+    {
+      "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-confirmation.json",
+      "sha256": "23554f5ac49e254648a7f6b324e1d8cbcf6ebaa403e52d5d7c66a404d9d5cffd",
+      "bytes": 774
+    }
+  ],
+  "file_count": 66,
+  "total_bytes": 128242
+}

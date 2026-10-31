@@ -1,0 +1,23 @@
+{
+  "schema": "bex.m188.root-one-Node18-normal-dispatch-authorization/v1",
+  "at": "2026-10-31T02:20:33.113552+00:00",
+  "authorized": true,
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "runtime": "node-18-bookworm",
+  "max_dispatch_posts": 1,
+  "frozen_inputs": {
+    "/tmp/bex-m188-dispatch-node18-oci.py": "f3b2ee88d7d94caca480b4f03ca4e4222dfc64714c288561f7464b098ce1aa2b",
+    "/tmp/bex-m188-prepare-adoption.py": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+    "/tmp/bex-m188-published-acceptance.json": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+    "/tmp/bex-m188-da0e-nine-candidate-regressions.json": "fe3d793cb32cf91f749963fff9870f51f063226797257da54517581bc718a7e1"
+  },
+  "root_review": "Read whole exact helper and proposal, actual selector no-output proof, full nine regression and incomplete11 refusal. Source admission/profile active; allow one normal Node18 build under exact literal source after all-source dedupe and fresh main checks.",
+  "if_main_changed": "No POST; return actual source for root exact review.",
+  "limits": [
+    "No rerun/cancel/force or uncertain POST retry",
+    "Preserve Node20 and all foreign/started requests",
+    "Bind actual run/job/attempt/head source before any candidate processing",
+    "Historical7dd catalog entry stays until a verified replacement supersedes it; no wrong-recipe recovery exception"
+  ],
+  "artifact_acceptance_or_adoption_authorized": false
+}

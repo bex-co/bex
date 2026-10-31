@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T02:20:56.203553+00:00",
+  "finished_at": "2026-10-31T02:20:56.707614+00:00",
+  "endpoint": "repos/bex-co/bex/actions/runs/41121900239",
+  "exit_code": 0,
+  "stderr": "",
+  "raw_sha256": "31e29ce66116fef417530a9fe1b7f538a1a68fb23f7f729eb4c0463b8b49f2d5"
+}
