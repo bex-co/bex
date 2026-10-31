@@ -1,6 +1,6 @@
 # w4 · m179 — Revoke deleted Postgres logins even when objects reference the role
 
-**Worker:** worker4 **Goal:** deleting an additional Postgres credential prevents new authentication while preserving tenant objects, even when a grant or ownership dependency would block DROP ROLE. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** deleting an additional Postgres credential prevents new authentication while preserving tenant objects, even when a grant or ownership dependency would block DROP ROLE. **Status:** done (2026-10-31: dashboard delete refuses the saved password in 21 s; NOLOGIN/NULL retained role; reissue/old-password controls pass)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE** | 20m | w4/m179/t001, w4/m179/t002 |
 | t004 | Simplify — **DONE** | 10m | w4/m179/t003 |
 | t005 | Test coverage for granted logins and real SQL retirement — **DONE** | 45m | w4/m179/t003, w4/m179/t004 |
-| t006 | Closeout | 15m | w4/m179/t005 |
+| t006 — **DONE** | Closeout | 15m | w4/m179/t005 |
 
 ## Definition of done
 
