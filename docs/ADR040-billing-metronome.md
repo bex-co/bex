@@ -33,6 +33,8 @@ Free and unknown tiers produce no paid meter event. The setup script validates e
 
 Stripe owns authoritative rating. `pricing.yaml` remains visible because it also powers the low-latency estimate; an invoice may legitimately differ because of billing periods, discounts, taxes, credits, or provider rounding.
 
+**Agent model SKU (2026-10-30, [ADR091](ADR091-agent-model-pricing.md)).** Platform-route agent model usage is one model-agnostic metered Price on the `agent_model_cost_microusd` meter at $0.000001 per unit (customer price = provider cost × 1.30), created by `scripts/stripe-billing-setup.py`. ADR091 D10 adds threshold billing for it ($10 Hobby / $50 Pro and Scale unbilled → immediate charge) and settle-before-delete.
+
 ### 2. Workspace identity and Subscriptions
 
 Each billable workspace maps to one Stripe Customer carrying metadata `bex_workspace=tea-…`. The client searches that metadata after a restart, caches the result, and creates with a deterministic idempotency key only when absent. Multiple matching Customers are an error rather than an arbitrary choice.

@@ -35,6 +35,8 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 | Service disk | $0.25/GB-month | $0.175/GB-month | 30% off |
 | Bandwidth | $0.15/GB | $0.015/GiB | 90% off |
 
+**Agent model tokens (2026-10-30, [ADR091](ADR091-agent-model-pricing.md)).** Render has no model-token SKU, so the "Render × 0.70" rule cannot apply. Platform-route agent model usage is cost-plus instead: the provider's actual per-request cost × 1.30, metered as `agent_model_cost_microusd` and billed through one model-agnostic Stripe meter.
+
 Workspace plan fees are **licensed monthly SKUs**, not usage meters. They appear on the dashboard plan picker and in `pricing.yaml`; they are **not** in `BillableMeterNames` and the Stripe setup script does not provision them as metered Prices. Enterprise remains custom (no catalog rate). Resource-tier usage is billed on top of the workspace fee.
 
 Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13; bandwidth re-verified 2026-07-15 after Render's new workspace-plan rollout).
