@@ -66,6 +66,33 @@ beforeEach(() => {
 });
 
 describe("WorkspaceSwitcher", () => {
+  // w4/440: the pending placeholder must occupy the loaded trigger's box, or
+  // the sidebar header grows from 48 to 60px and every nav link jumps 12px.
+  it("renders its pending placeholder in the loaded trigger's box", () => {
+    workspaceState.workspaces = [];
+    workspaceState.currentWorkspace = null;
+    workspaceState.loading = true;
+    const { container, rerender } = renderSwitcher();
+    const pending = container.querySelector(
+      '[data-slot="workspace-switcher-pending"]',
+    );
+    expect(pending).toHaveClass("h-8", "p-2", "gap-2");
+    expect(pending?.className).not.toMatch(/\bp[xy]-/);
+    expect(pending?.parentElement).toHaveAttribute("data-sidebar", "menu-item");
+
+    workspaceState.workspaces = WORKSPACES;
+    workspaceState.currentWorkspace = WORKSPACES[0];
+    workspaceState.loading = false;
+    rerender(
+      <SidebarProvider>
+        <WorkspaceSwitcher />
+      </SidebarProvider>,
+    );
+    const trigger = screen.getByRole("button", { name: /acme-hq/ });
+    expect(trigger).toHaveClass("h-8", "p-2", "gap-2");
+    expect(trigger.parentElement).toHaveAttribute("data-sidebar", "menu-item");
+  });
+
   it("shows the current workspace's name as the trigger", () => {
     renderSwitcher();
     expect(screen.getByRole("button", { name: /acme-hq/ })).toBeInTheDocument();
