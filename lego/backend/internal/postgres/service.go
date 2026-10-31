@@ -1579,6 +1579,10 @@ var operatorManagedParameters = map[string]bool{
 	// convergence), and the merge above lets a tenant value overwrite it —
 	// which would blank the top-queries panel with no other sign.
 	"pg_stat_statements.track": true,
+	// The managed extension allowlist (ADR092 D3): pgextwlist loads per
+	// session, and a tenant library list would replace it or load another.
+	"local_preload_libraries":   true,
+	"session_preload_libraries": true,
 }
 
 // operatorManagedParameterPrefixes match whole families, so a knob the exact
@@ -1591,6 +1595,12 @@ var operatorManagedParameterPrefixes = []string{
 	"recovery_target", // recovery_target_timeline/_time/_lsn/_name/_xid/_action
 	"unix_socket_",
 	"syslog_",
+	// ADR092 D3: the allowlist's own list, owner rule and custom scripts, and
+	// the extension settings Render fixes (TimescaleDB's Apache license and
+	// telemetry; pg_duckdb's access and memory, w8/m109).
+	"extwlist.",
+	"timescaledb.",
+	"duckdb.",
 }
 
 // operatorManagedParameterNames returns the sorted operator-owned names present

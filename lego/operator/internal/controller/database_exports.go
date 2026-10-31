@@ -61,11 +61,14 @@ var cnpgExportImages = map[string]string{
 // cnpgExportImage resolves the digest-pinned CNPG client image for a major.
 // Empty/unknown falls back to the pinned logicalExportClientVersion image —
 // never a mutable tag composed from the version string.
+//
+// A major served by a bex operand (bexOperandImages) exports from that same
+// image, so pg_dump of a database using one of its extensions keeps working.
 func cnpgExportImage(version string) string {
-	if image, ok := cnpgExportImages[version]; ok {
-		return image
+	if _, ok := cnpgExportImages[version]; !ok {
+		version = logicalExportClientVersion
 	}
-	if image, ok := cnpgExportImages[logicalExportClientVersion]; ok {
+	if image, _ := cnpgOperandImage(version); image != "" {
 		return image
 	}
 	// Unreachable while logicalExportClientVersion stays in the map; kept so a
