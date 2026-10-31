@@ -1,6 +1,6 @@
 # w4 · m237 — Live request logs arrive in seconds, not on the range-poll clock
 
-**Worker:** worker4 **Goal:** with Live tail on, a request line reaches the Log Explorer within ~5 s of hitting the service in All and HTTP Requests views — the log store becomes a producer of the subscribe stream alongside pod stdout. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** with Live tail on, a request line reaches the Log Explorer within ~5 s of hitting the service in All and HTTP Requests views — the log store becomes a producer of the subscribe stream alongside pod stdout. **Status:** done (2026-10-31: live request lines visible in 0.9–3.4 s in All and Request views; exactly-once confirmed)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE**                                                         | 15m | w4/m237/t002               |
 | [t004](done/t004.md) | Simplify — **DONE**                                                              | 15m | w4/m237/t003               |
 | [t005](done/t005.md) | Test coverage — **DONE**                                                         | 30m | w4/m237/t003               |
-| [t006](t006.md) | Closeout                                                              | 20m | w4/m237/t004, w4/m237/t005 |
+| [t006](done/t006.md) | Closeout — **DONE**                                                   | 20m | w4/m237/t004, w4/m237/t005 |
 
 Six tasks, 170m (2h50m).
 
