@@ -1,0 +1,9 @@
+# PostgreSQL fixture timestamps
+
+The full real-dependency backend gate reported three failing store tests: webhook display names, a concurrent workspace-deletion audit and account-cleanup eligibility. Their fixtures compared or ordered timestamps from the host clock against PostgreSQL-created timestamps. The first two legacy-name paths deliberately reject events preceding the current app's creation; a test intending to exercise the current app must establish that condition explicitly. The account cleanup worker likewise uses the database clock for expiry and retry leases.
+
+These three test-only corrections use database-returned app/tenant creation timestamps or precise PostgreSQL clock snapshots. They preserve exact display-name expectations, observed blocking-PID synchronization, retained audit/projection counts, immediate cleanup eligibility, retry leases, provider correlations and actual claim/retry operations. Production code, migration bodies and stale-event guards are unchanged. The existing migration round trip already rolls back its transaction; it was not rewritten. No persistent clock offset or schema contamination is claimed.
+
+All seven focused real-DB tests and eight subtests passed with zero skips. These include the three affected tests, migration round trip, stale reused-name generations, deleted-ID-as-name exclusion and migration ownership boundary controls. Scoped store lint and formatting pass. The complete backend gate remains required before pushing; its actual final outcome will be appended after execution.
+
+Original failing-suite, source, clock-read and focused-validation records are preserved losslessly as gzip, with exact byte identities in `CUSTODY.json`. Resource precheck/amendment records distinguish incomplete attempts from actual test results.

@@ -1,0 +1,464 @@
+{
+  "account/CLOCK-READS.json.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/CLOCK-READS.json",
+    "source_bytes": 1937,
+    "source_sha256": "46926657f45fc51b91bc8af41cc46c820abba86c1a9b6712845821073234d76e",
+    "encoding": "gzip"
+  },
+  "account/SOURCE-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/SOURCE-REVIEW.json",
+    "source_bytes": 2139,
+    "source_sha256": "791e9aa5e338dea0c548b01b6f805b768dd5763cbd3c34cb5db9f600ffa408ae",
+    "encoding": "gzip"
+  },
+  "account/clock-0.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-0.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "account/clock-0.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-0.stdout.log",
+    "source_bytes": 107,
+    "source_sha256": "11b56bb268eaf99b733a9d4eaae7ae385c21da6a918eae5ff0bc7e60556e8857",
+    "encoding": "gzip"
+  },
+  "account/clock-1.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-1.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "account/clock-1.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-1.stdout.log",
+    "source_bytes": 107,
+    "source_sha256": "d10183c37315800f44a2a0091c9e95c3492cd07049ed89613869741408a88192",
+    "encoding": "gzip"
+  },
+  "account/clock-2.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-2.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "account/clock-2.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/clock-2.stdout.log",
+    "source_bytes": 107,
+    "source_sha256": "52f84fc6cf46f5667ba9045147fc8074f357f02ba0efaff452522390b5a4f48e",
+    "encoding": "gzip"
+  },
+  "account/db-container-identity-corrected.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/db-container-identity-corrected.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "account/db-container-identity-corrected.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/db-container-identity-corrected.stdout.log",
+    "source_bytes": 220,
+    "source_sha256": "c9370b6c1e95786fe908a9195b8315c3c73a6aaa922462e82b62f1d8f71248c6",
+    "encoding": "gzip"
+  },
+  "account/db-container-identity.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/db-container-identity.stderr.log",
+    "source_bytes": 68,
+    "source_sha256": "3a54cfd825bfd2771639b30e9313a24d709be3d10041d4ace0664f6267bc6118",
+    "encoding": "gzip"
+  },
+  "account/db-container-identity.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/db-container-identity.stdout.log",
+    "source_bytes": 1,
+    "source_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "encoding": "gzip"
+  },
+  "account/historical-full-gate-failure.excerpt.log.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/historical-full-gate-failure.excerpt.log",
+    "source_bytes": 2329,
+    "source_sha256": "c2126347100bcdf618d7c501aacc4ff849242c35516015beb2b43b5c48e85f64",
+    "encoding": "gzip"
+  },
+  "account/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/source.diff",
+    "source_bytes": 2303,
+    "source_sha256": "eb8aaa574b68b705b595320e5703047d4a5adde1889467cf1f098ada1a15c152",
+    "encoding": "gzip"
+  },
+  "account/workspace_creation_account_pg_test.go.after.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/workspace_creation_account_pg_test.go.after",
+    "source_bytes": 12581,
+    "source_sha256": "f781a8ae4aeaeebeacd72605a71a47c41e0fd553af1983d1e42cfe1fa157702d",
+    "encoding": "gzip"
+  },
+  "account/workspace_creation_account_pg_test.go.before.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/workspace_creation_account_pg_test.go.before",
+    "source_bytes": 12361,
+    "source_sha256": "0aa6c4ca6787f5dfab95cb99d03cea2d442e6ea7f192de81f88ae20f915fb796",
+    "encoding": "gzip"
+  },
+  "account/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-workspace-cleanup-clock-20261031-c9_toy6v/MANIFEST.json",
+    "source_bytes": 2405,
+    "source_sha256": "bf43d545fc17800c777e9258df94b5e85f552e6ab0cc8e7f3c45a3c25a997cb5",
+    "encoding": "gzip"
+  },
+  "audit/BEFORE.json.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/BEFORE.json",
+    "source_bytes": 433,
+    "source_sha256": "8a27d39b21975e90981a1dd0346ef93264bab77b21457b8103f796aa4326fc7f",
+    "encoding": "gzip"
+  },
+  "audit/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/SOURCE.json",
+    "source_bytes": 352,
+    "source_sha256": "04a5f067a5014c9633655658256fa1d981aebfce633c48ba728144cf4d4a47d2",
+    "encoding": "gzip"
+  },
+  "audit/diff-check.log.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/diff-check.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "audit/SOURCE-CHECKS.json.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/SOURCE-CHECKS.json",
+    "source_bytes": 2024,
+    "source_sha256": "32cb954cf92c646f191f1e4ce362b388bbe5c2c0fda2b53cc1c28918f8278570",
+    "encoding": "gzip"
+  },
+  "audit/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/source.diff",
+    "source_bytes": 3739,
+    "source_sha256": "a082ff5c13d0f72cb74857e16dae7ccb2f4d125bc7314b81d1c413c92c1dd5e1",
+    "encoding": "gzip"
+  },
+  "audit/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/REVIEW.json",
+    "source_bytes": 5172,
+    "source_sha256": "9c23f5763d2a77c80b6a8b7dfb8f03034cb4f97418aff329c303887b31309786",
+    "encoding": "gzip"
+  },
+  "audit/before/lego/backend/internal/store/workspace_state_cascades_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/before/lego/backend/internal/store/workspace_state_cascades_pg_test.go",
+    "source_bytes": 8020,
+    "source_sha256": "3034d34cfd5e0d7a3d00a4b5e015574c47d7ce9269cc59041c7f064dc3b2bea6",
+    "encoding": "gzip"
+  },
+  "audit/before/lego/backend/internal/store/webhooks_display_name_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/before/lego/backend/internal/store/webhooks_display_name_pg_test.go",
+    "source_bytes": 6622,
+    "source_sha256": "b90771bd136600409e47c330200590b00b515344ec923905f98e2ee5266f2a50",
+    "encoding": "gzip"
+  },
+  "audit/source/lego/backend/internal/store/workspace_state_cascades_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/source/lego/backend/internal/store/workspace_state_cascades_pg_test.go",
+    "source_bytes": 8271,
+    "source_sha256": "df50b8709b12f8e911e1a32771cffab72edf1ecc63084f6ba708cbec4b654c8a",
+    "encoding": "gzip"
+  },
+  "audit/source/lego/backend/internal/store/webhooks_display_name_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/source/lego/backend/internal/store/webhooks_display_name_pg_test.go",
+    "source_bytes": 6788,
+    "source_sha256": "0a50fa34749d7f9937e8f021520160d9167fcd638fe11c1d92ab06702ba7adf9",
+    "encoding": "gzip"
+  },
+  "audit/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-store-audit-clock-fixture-source-20261031-0udjqdp4/MANIFEST.json",
+    "source_bytes": 1478,
+    "source_sha256": "9235de009ae0d21288d13de7253109fb4ca9330ef8d287bac70639a566c2ccc9",
+    "encoding": "gzip"
+  },
+  "focused-realdb/DEPENDENCY-HANDOFF.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/DEPENDENCY-HANDOFF.json",
+    "source_bytes": 3666,
+    "source_sha256": "a50ddfb44727184457cc107a99354c7ad8a5c7c4f87a00f6ae4d2892974d3da2",
+    "encoding": "gzip"
+  },
+  "focused-realdb/PHASES.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/PHASES.json",
+    "source_bytes": 4364,
+    "source_sha256": "1e1b90247ceabfc464d15ed553a7b98010514e9618401d3113bab3317188f37f",
+    "encoding": "gzip"
+  },
+  "focused-realdb/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/RESULT.json",
+    "source_bytes": 2864,
+    "source_sha256": "93c622ad82386ea2095e51321922d36269b6ac2b211c05e11fac4c124f122f2c",
+    "encoding": "gzip"
+  },
+  "focused-realdb/RUN-START.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/RUN-START.json",
+    "source_bytes": 4648,
+    "source_sha256": "80993e5e9224af8211ef9cf45cb003173be6dddee872face5a108bbdec071cd2",
+    "encoding": "gzip"
+  },
+  "focused-realdb/SCOPE-AMENDMENT.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/SCOPE-AMENDMENT.json",
+    "source_bytes": 4539,
+    "source_sha256": "b52af17e5522305e17b5beb58d96ce892e04058d859e0147b2d44146c88153f9",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-loki.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-loki.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-loki.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-loki.stdout.log",
+    "source_bytes": 356,
+    "source_sha256": "d40da8cd646f95ae31772b909908c81f0b7464b04ec7736cd353ccab3e97bb8c",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-openbao.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-openbao.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-openbao.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-openbao.stdout.log",
+    "source_bytes": 370,
+    "source_sha256": "fd5c45450a563db1054761695314c6e47cf1527063d91cde60a3001106718c35",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-openfga.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-openfga.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-openfga.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-openfga.stdout.log",
+    "source_bytes": 363,
+    "source_sha256": "51d586789315376ebbbe574e8ab8d8064890eefd0df57da84483710dc6c2c0d5",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-postgres.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-postgres.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/after-postgres.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/after-postgres.stdout.log",
+    "source_bytes": 353,
+    "source_sha256": "6810c88e2564b20e346b602cf8a2306bc0580d6977ae2c24b52be6a869bd82f7",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-loki.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-loki.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-loki.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-loki.stdout.log",
+    "source_bytes": 356,
+    "source_sha256": "2cf543d770fb6cba970a9241fcb81e296d122ad5528ced064f0ea158a9d931cc",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-openbao.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-openbao.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-openbao.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-openbao.stdout.log",
+    "source_bytes": 370,
+    "source_sha256": "07d372fb4e3ec111c1cabae3ce7edf3745d82fd866127a286812ef7bd3b22c8f",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-openfga.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-openfga.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-openfga.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-openfga.stdout.log",
+    "source_bytes": 363,
+    "source_sha256": "bb6f7fc5992911f10f7144f34a934cb2ec19d169eecc115e3f1c4aeef473ed57",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-postgres.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-postgres.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/before-postgres.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/before-postgres.stdout.log",
+    "source_bytes": 353,
+    "source_sha256": "afb8eb2df4c1a6bf9bed8841686431cf5ebe0adcda9df9591653297387e0af52",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-loki.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-loki.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-loki.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-loki.stdout.log",
+    "source_bytes": 4778,
+    "source_sha256": "f4f492b6a324fe67f2d2f62f3e0f639e160c4db0d84ef6fa717798ffa461d552",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-openbao.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-openbao.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-openbao.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-openbao.stdout.log",
+    "source_bytes": 4723,
+    "source_sha256": "75738baf051e2a551920ad7ea5b3a6ee9c6bfcaf46236b2f7488421e1eced25f",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-openfga.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-openfga.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-openfga.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-openfga.stdout.log",
+    "source_bytes": 2885,
+    "source_sha256": "ca19a7b40b8d4af50610546d79194ba35ae72a91e160eba6f0a5a0cb4ea085e2",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-postgres.stderr.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-postgres.stderr.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "focused-realdb/cached-postgres.stdout.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/cached-postgres.stdout.log",
+    "source_bytes": 4522,
+    "source_sha256": "195a3d3567858509f6abb4ae160e06e537507d143f9a8c1e9fed1abf6fea9ba6",
+    "encoding": "gzip"
+  },
+  "focused-realdb/focused-case-count.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/focused-case-count.json",
+    "source_bytes": 1417,
+    "source_sha256": "bce35b51b0b3f322cf1314402865606e6844636d81418d4ce096bb8c9da22950",
+    "encoding": "gzip"
+  },
+  "focused-realdb/focused.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/focused.log",
+    "source_bytes": 2497,
+    "source_sha256": "6fad54e03328001f80ac00d70d3f26468852fb7a4cefed364903e4ee489e933d",
+    "encoding": "gzip"
+  },
+  "focused-realdb/focused.receipt.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/focused.receipt.json",
+    "source_bytes": 2194,
+    "source_sha256": "85d977a311399a26285672deb430cadb0fd835dc19febf491b983bed735ad1b7",
+    "encoding": "gzip"
+  },
+  "focused-realdb/focused.samples.jsonl.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/focused.samples.jsonl",
+    "source_bytes": 6715,
+    "source_sha256": "27e77e1e6b10fac49f8d9b5826c19b1e14fa4bf5d3dd3bc6dbe3ae92fe1b0dd4",
+    "encoding": "gzip"
+  },
+  "focused-realdb/lint.log.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/lint.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "focused-realdb/lint.receipt.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/lint.receipt.json",
+    "source_bytes": 1698,
+    "source_sha256": "870110f3c5c95b011585429af1b79370b5d0a70bd453c071d49daae3933215d9",
+    "encoding": "gzip"
+  },
+  "focused-realdb/lint.samples.jsonl.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/lint.samples.jsonl",
+    "source_bytes": 616,
+    "source_sha256": "1cd34788b130eaffdd0a82fdf6c3f3472685281c488487afd478f42f5a9d70d7",
+    "encoding": "gzip"
+  },
+  "focused-realdb/run.py.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/run.py",
+    "source_bytes": 6855,
+    "source_sha256": "86d9b87b76a081b196047a43845fecc7c88a1089b61de9223e13a234587b1098",
+    "encoding": "gzip"
+  },
+  "focused-realdb/source/lego/backend/internal/store/webhooks_display_name_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/source/lego/backend/internal/store/webhooks_display_name_pg_test.go",
+    "source_bytes": 6788,
+    "source_sha256": "0a50fa34749d7f9937e8f021520160d9167fcd638fe11c1d92ab06702ba7adf9",
+    "encoding": "gzip"
+  },
+  "focused-realdb/source/lego/backend/internal/store/workspace_creation_account_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/source/lego/backend/internal/store/workspace_creation_account_pg_test.go",
+    "source_bytes": 12581,
+    "source_sha256": "f781a8ae4aeaeebeacd72605a71a47c41e0fd553af1983d1e42cfe1fa157702d",
+    "encoding": "gzip"
+  },
+  "focused-realdb/source/lego/backend/internal/store/workspace_state_cascades_pg_test.go.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/source/lego/backend/internal/store/workspace_state_cascades_pg_test.go",
+    "source_bytes": 8271,
+    "source_sha256": "df50b8709b12f8e911e1a32771cffab72edf1ecc63084f6ba708cbec4b654c8a",
+    "encoding": "gzip"
+  },
+  "focused-realdb/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/source.diff",
+    "source_bytes": 6042,
+    "source_sha256": "bdc7d0841fce6a350f666e28f88c070662de0648b91b18f4b2efcbb9243518b4",
+    "encoding": "gzip"
+  },
+  "focused-realdb/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-store-focused-amended-20261031-d050yrks/MANIFEST.json",
+    "source_bytes": 5978,
+    "source_sha256": "389954b54c12e503fde347355b9be09567de38aafa4d5c1be6dbf192bed8917f",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/full-gate.log.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/full-gate.log",
+    "source_bytes": 11429,
+    "source_sha256": "9c01c3155e626bcf7bf4cb1d1c5123f50e8479d5f2512d1e8971310d4bcaa9bb",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/RESULT.json",
+    "source_bytes": 564,
+    "source_sha256": "28de065da5fe8f836f2433529dd50ad9f9f073738ea736a8dd00a1b526468f25",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/BUDGET.json.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/BUDGET.json",
+    "source_bytes": 803,
+    "source_sha256": "5c69d805f0d5e43b6e315e2f1ec04f516358379419292c46ba8c392c0ab95d8e",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/PROCESS.json",
+    "source_bytes": 70,
+    "source_sha256": "a849d6f1ac63227fa176401c7499c37b22b3197840388854660031147b8b49dd",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/AMENDMENT.json.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/AMENDMENT.json",
+    "source_bytes": 978,
+    "source_sha256": "3d7f31d295071432300a0eab519fd16b96fd5a39e274f9108ed242b84d44db61",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/run.py.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/run.py",
+    "source_bytes": 5139,
+    "source_sha256": "af3116b9d4ca7b4b6e1652020548a926c0686cd24878fb9c5ed787ddfeb948db",
+    "encoding": "gzip"
+  },
+  "actual-before-fix/samples.json.gz": {
+    "source": "/private/tmp/bex-w8-225-realdb-final-20261031-ykntb26v/samples.json",
+    "source_bytes": 15592,
+    "source_sha256": "a94de0836534aaae81769b18254c814b6f360684ce6c2dd8faa9f69db6d03cba",
+    "encoding": "gzip"
+  }
+}
