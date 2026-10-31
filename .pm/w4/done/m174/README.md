@@ -1,19 +1,19 @@
 # w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs
 
-**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** done (2026-10-31: 30/30 fast-exit lines with CRI stamps, delayed prefixes intact, no duplicates across an Alloy restart, four-surface parity)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit — **DONE** | 30m | — |
-| t002 | Ship tenant App container logs from the node's CRI files | 1h | w4/m174/t001 |
+| t002 | Ship tenant App container logs from the node's CRI files — **DONE** | 1h | w4/m174/t001 |
 | t007 — **DONE** | Find the residual one-line loss after the CRI-file switch | 45m | w4/m174/t002 |
-| t008 | Verify delayed stdout prefixes at startup and history intake | 35m | w4/m174/t007 |
-| t003 | Render parity | 20m | w4/m174/t002, w4/m174/t008 |
+| t008 | Verify delayed stdout prefixes at startup and history intake — **DONE** | 35m | w4/m174/t007 |
+| t003 | Render parity — **DONE** | 20m | w4/m174/t002, w4/m174/t008 |
 | t004 | Simplify — **DONE** | 15m | w4/m174/t003 |
 | t005 | Test coverage — **DONE** | 45m | w4/m174/t003 |
-| t006 | Closeout | 10m | w4/m174/t005, w4/m174/t007, w4/m174/t008 |
+| t006 | Closeout — **DONE** | 10m | w4/m174/t005, w4/m174/t007, w4/m174/t008 |
 
 ## Definition of done
 
