@@ -60,6 +60,7 @@ Rules for triage:
   - If a pending user decision is not required to reach Render's behavior in every workspace, it is not a gate. Ship the parity-sufficient option, and file the open variant as its own item.
   - Example: m149's seccomp choice did not block `render-v1` under RuntimeDefault.
   - An older ADR that conflicts with parity is likewise not a gate. Amend it as part of the work.
+- **Cloud coding-agent work matches Devin the same way** (user preference 2026-10-30; [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)). For agent sessions, `/agents`, sandboxes and PR delivery, Devin's observable behavior is the reference, and the same rules apply: ship the Devin-consistent option instead of waiting on an optional decision, and file variants separately. Whenever an item leaves a design choice open, pick the option that matches the reference product (render.com for hosting, Devin for coding agents). Verify how that product actually behaves before picking, and cite it in the item.
 - **When torn between blocked and invalid, choose blocked.** Deleting is the only outcome that destroys information.
 - **Size check on inbox notes.** If a note turns out to be > ~1h across more than one task, run `/pm promote <wN/NNN>` to materialize it as a milestone, then work that milestone in this same iteration.
 - **Non-implementation notes have preset verdicts — apply them without asking.** Many inbox notes are not "build this"; they are records, withdrawals, or debris. Route them by shape, in this order (first match wins):
