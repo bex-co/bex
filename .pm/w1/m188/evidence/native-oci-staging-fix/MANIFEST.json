@@ -1,0 +1,474 @@
+{
+  "schema": "bex.m188.native-oci-staging-controls-archive/v1",
+  "at": "2026-10-31T02:15:11.274512+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "files": [
+    {
+      "source": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/actual-matrix.sh",
+      "archive": "controls/actual-matrix.sh.raw.gz",
+      "bytes": 611,
+      "sha256": "4b5c08621ad3de177974f029b3e10884d1b412f76c672cbbd41e2d7c92d430f3",
+      "encoding": "gzip",
+      "original_bytes": 1086,
+      "original_sha256": "761164dc4f341ea3535f3f3f224071e3a8be0785fb4910a6973756747e5f5f70"
+    },
+    {
+      "source": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/actual-signing.raw.sh",
+      "archive": "controls/actual-signing.raw.sh",
+      "bytes": 3357,
+      "sha256": "9742b58e9278b25c919de0c6db05f23568bf97a006329ffd07da59cfa3af8e73"
+    },
+    {
+      "source": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/actual-signing.rendered.sh",
+      "archive": "controls/actual-signing.rendered.sh",
+      "bytes": 3429,
+      "sha256": "a2381c19d6478af45fa3deab1b1f1f00b62c24ff006d8dbc88d06aa7b2064b14"
+    },
+    {
+      "source": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/receipt.json",
+      "archive": "controls/receipt.json",
+      "bytes": 2250,
+      "sha256": "a4dbb125cd876276f2f3d6da3d55f08d6aac2d7690cd9fc0cabf4917f70773da"
+    },
+    {
+      "source": "/tmp/bex-m188-native-oci-cache-controls-md4d33gq/tests.raw.log",
+      "archive": "controls/tests.raw.log",
+      "bytes": 5344,
+      "sha256": "715650fb557673a9e9384fea7229602eedb8fec2c060e14e591f8a1a3f232246"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "bytes": 704,
+      "sha256": "10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "bytes": 525,
+      "sha256": "1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "bytes": 502,
+      "sha256": "373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "bytes": 525,
+      "sha256": "947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "bytes": 502,
+      "sha256": "a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/blobs/sha256/d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/blobs/sha256/d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e",
+      "bytes": 415,
+      "sha256": "d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/index.json",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/index.json",
+      "bytes": 406,
+      "sha256": "aba581d051007ae991d55fdb88b7614bbec485b2688b7962ed86e5d5196f89a3"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64/oci-layout",
+      "archive": "syft151-format/SYNTHETIC-layout-amd64/oci-layout",
+      "bytes": 31,
+      "sha256": "561356159fc692da9a55978e206a495b7835abcc4778fa9d13138a0530304878"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+      "bytes": 704,
+      "sha256": "10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356",
+      "bytes": 525,
+      "sha256": "1f7c2f3e9ff21069ae88651e7ef228a1cf4174f3843d3208609d665effb6a356"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000",
+      "bytes": 502,
+      "sha256": "373066d621f7fc944833d693b260f83dfc1543cd43dc1cb4e36d8f624af59000"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121",
+      "bytes": 525,
+      "sha256": "947e1eceacca4ea658bceb0b4658219e02dc6456ad57551bd1d0b61ee3c97121"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab",
+      "bytes": 502,
+      "sha256": "a3ea1ade36336bf49f4c8e117c2bbc728960ff5380bd96623c9b53fa7eaeceab"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/blobs/sha256/d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/blobs/sha256/d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e",
+      "bytes": 415,
+      "sha256": "d453cbb45cdc29dd3d33f29e01a47a64ed5179bdb4c9fb397da1b05963e5b62e"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/index.json",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/index.json",
+      "bytes": 406,
+      "sha256": "a2be94e7d4d1a92c186bacbe3eb2f943ef3472f23a2f4a3736fabae8e1e7f3db"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-arm64/oci-layout",
+      "archive": "syft151-format/SYNTHETIC-layout-arm64/oci-layout",
+      "bytes": 31,
+      "sha256": "561356159fc692da9a55978e206a495b7835abcc4778fa9d13138a0530304878"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-original-root-index.raw.json",
+      "archive": "syft151-format/SYNTHETIC-original-root-index.raw.json",
+      "bytes": 704,
+      "sha256": "10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/amd64-correct.command.json",
+      "archive": "syft151-format/amd64-correct.command.json",
+      "bytes": 1110,
+      "sha256": "6da8365207e795dad98ad94bd1049236cca765f75502e283904d484a283a2849"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/amd64-correct.spdx.json",
+      "archive": "syft151-format/amd64-correct.spdx.json",
+      "bytes": 4430,
+      "sha256": "aa3aad584042353df3205e9d726f6af8849374d9f5636254fddc6334c6582d7e"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/amd64-correct.stderr.log",
+      "archive": "syft151-format/amd64-correct.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/amd64-correct.stdout.log",
+      "archive": "syft151-format/amd64-correct.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/amd64-correct.syft.json",
+      "archive": "syft151-format/amd64-correct.syft.json",
+      "bytes": 9211,
+      "sha256": "af6c6dd4e6ae35315c331073559b104953e28b75d42442f9d5499c8083785018"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/arm64-correct.command.json",
+      "archive": "syft151-format/arm64-correct.command.json",
+      "bytes": 1110,
+      "sha256": "e9cbe5359609443599de9345d33e5dd6ccf17ec9a89befe6e25771d61791132c"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/arm64-correct.spdx.json",
+      "archive": "syft151-format/arm64-correct.spdx.json",
+      "bytes": 4430,
+      "sha256": "710fc891491d1b1b99d0d1a2ec3d31c7b67a36b287cf18b6fa80247c4bedf0ac"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/arm64-correct.stderr.log",
+      "archive": "syft151-format/arm64-correct.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/arm64-correct.stdout.log",
+      "archive": "syft151-format/arm64-correct.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/arm64-correct.syft.json",
+      "archive": "syft151-format/arm64-correct.syft.json",
+      "bytes": 9211,
+      "sha256": "7458c1e5ce9846b03b58d34cb59cef060b153057cbcec2c51f1dfdfc7af9058d"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/compatibility-review.json",
+      "archive": "syft151-format/compatibility-review.json",
+      "bytes": 9194,
+      "sha256": "669002c65d9c65225b3fe2f58c7dd34d5e570547138c4cc4ce38a57e18e837cf"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/empty-config.yaml",
+      "archive": "syft151-format/empty-config.yaml",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/finalize-behavior-review.py",
+      "archive": "syft151-format/finalize-behavior-review.py",
+      "bytes": 7597,
+      "sha256": "7eebc36fdc0fcaabe83bb02372e93caa89f627aa5d5f41c631a88e1830f194a8"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/full-ref-name-trait.command.json",
+      "archive": "syft151-format/full-ref-name-trait.command.json",
+      "bytes": 1206,
+      "sha256": "ddadaed6b67bd16b561c6c3c924637d6d6ce7ef5eb6b6a310601ea6fcdaa076f"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/full-ref-name-trait.spdx.json",
+      "archive": "syft151-format/full-ref-name-trait.spdx.json",
+      "bytes": 4938,
+      "sha256": "283a81c97ee8fc24b9d2011b6fd751d3beb10990b32fdcd97f728c6609e8fdd4"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/full-ref-name-trait.stderr.log",
+      "archive": "syft151-format/full-ref-name-trait.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/full-ref-name-trait.stdout.log",
+      "archive": "syft151-format/full-ref-name-trait.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/full-ref-name-trait.syft.json",
+      "archive": "syft151-format/full-ref-name-trait.syft.json",
+      "bytes": 9283,
+      "sha256": "0e5b265ae5bae29139ef143b4b85f895f7890948269b970f4a97fdc98eb07ff3"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-SyftGithubAction.ts",
+      "archive": "syft151-format/primary-sources/action-SyftGithubAction.ts",
+      "bytes": 20028,
+      "sha256": "79655e72aedf52de532b1ebc2f7acf74fe6e4480f1452ee0b9e440c8e5ef80a7"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-SyftVersion.ts",
+      "archive": "syft151-format/primary-sources/action-SyftVersion.ts",
+      "bytes": 34,
+      "sha256": "dd52f4ae128588b94b53940f3f48b629ed7eaeb75aadba56f91ebef72016e8ec"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/action-download-syft.yml",
+      "archive": "syft151-format/primary-sources/action-download-syft.yml",
+      "bytes": 502,
+      "sha256": "7713f2a7187fcda00f449002e54cbe4d20fb3282d8d12339f21f4106ce019faf"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/stereoscope-image-metadata.go",
+      "archive": "syft151-format/primary-sources/stereoscope-image-metadata.go",
+      "bytes": 1353,
+      "sha256": "f4a2bff20862e9b22eee60d7b684f9db958e621b96746501481a645a283a41c9"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/stereoscope-oci-directory.go",
+      "archive": "syft151-format/primary-sources/stereoscope-oci-directory.go",
+      "bytes": 6104,
+      "sha256": "df807545edef8c8a13c73fa957fff10ceeb9bb12b10830c407ec41ccd45462a9"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/syft-image-source.go",
+      "archive": "syft151-format/primary-sources/syft-image-source.go",
+      "bytes": 4543,
+      "sha256": "6cc1b59c3af80ae598d45964633f474f75603a043220ef510feedb2779e13779"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/primary-sources/syft-scan.go",
+      "archive": "syft151-format/primary-sources/syft-scan.go",
+      "bytes": 14860,
+      "sha256": "94cf004d26ddec55c9ab282b29e4066ac232bcd229c8eeff1f1f1c32555f5652"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/single-child-wrong-platform-trait.command.json",
+      "archive": "syft151-format/single-child-wrong-platform-trait.command.json",
+      "bytes": 1190,
+      "sha256": "ba6d9947fd8b9ed86e31a3602fb7c6e9fae0d5be7a2f2178acef54ec5ff48b3d"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/single-child-wrong-platform-trait.spdx.json",
+      "archive": "syft151-format/single-child-wrong-platform-trait.spdx.json",
+      "bytes": 4430,
+      "sha256": "f7adfc203355575bcfcaf52a701e4b0d5e216b88fa1366a0888fed412ec38300"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/single-child-wrong-platform-trait.stderr.log",
+      "archive": "syft151-format/single-child-wrong-platform-trait.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/single-child-wrong-platform-trait.stdout.log",
+      "archive": "syft151-format/single-child-wrong-platform-trait.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/single-child-wrong-platform-trait.syft.json",
+      "archive": "syft151-format/single-child-wrong-platform-trait.syft.json",
+      "bytes": 9211,
+      "sha256": "af6c6dd4e6ae35315c331073559b104953e28b75d42442f9d5499c8083785018"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/syft-version.json",
+      "archive": "syft151-format/syft-version.json",
+      "bytes": 278,
+      "sha256": "5c98d55cac2116c87c098288faa89c3fc5b38af71811e68d593411b649112751"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/syft_1.51.1_checksums.txt",
+      "archive": "syft151-format/syft_1.51.1_checksums.txt",
+      "bytes": 2690,
+      "sha256": "105346699e7cb694afa37a21e2386432df6278c99f71331c24b1e0bb0f38cc75"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/test-syft155-existing-layout.py",
+      "archive": "syft151-format/test-syft155-existing-layout.py",
+      "bytes": 7664,
+      "sha256": "c79d7a2501d9bd7c9c978bc75f18442c3485fecab7d1d65a2f6fc039f859891c"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/test-tiny-layout.py",
+      "archive": "syft151-format/test-tiny-layout.py",
+      "bytes": 6168,
+      "sha256": "8614dfc0030478c07843d3cbc618369bfc6f9cccfbe6d3f097f69c3745ed3c56"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/tool-behavior.raw.json",
+      "archive": "syft151-format/tool-behavior.raw.json",
+      "bytes": 20843,
+      "sha256": "beb2e0ac43cc5d7d5a27c34de732306bab7553c6fe680ae7db4c3d8acd92ae96"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/amd64.command.json",
+      "archive": "syft155-format/amd64.command.json",
+      "bytes": 830,
+      "sha256": "5342c1e814b8c7ea03f3c171e2fd43f62285be21754a53583e0fbd1a71928e7b"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/amd64.spdx.json",
+      "archive": "syft155-format/amd64.spdx.json",
+      "bytes": 4435,
+      "sha256": "016d74a6387862efc90624c2ea8bd47f40e7205e87255a63f3676f11c9ca2ff4"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/amd64.stderr.log",
+      "archive": "syft155-format/amd64.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/amd64.stdout.log",
+      "archive": "syft155-format/amd64.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/amd64.syft.json",
+      "archive": "syft155-format/amd64.syft.json",
+      "bytes": 9253,
+      "sha256": "8b9c142a8939f524569e21fb2a5cce22ac2b8aaa079e0703d9b81a3f54776cdb"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/arm64.command.json",
+      "archive": "syft155-format/arm64.command.json",
+      "bytes": 830,
+      "sha256": "14b8e279f5cf4a1fa9fe8feb029dcf9d3af4185620b737faa8cf557f9a949e80"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/arm64.spdx.json",
+      "archive": "syft155-format/arm64.spdx.json",
+      "bytes": 4435,
+      "sha256": "3e077b253971ac09f203a99a04b921ea249b40a7c9362ef8f82aae9f049b7b94"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/arm64.stderr.log",
+      "archive": "syft155-format/arm64.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/arm64.stdout.log",
+      "archive": "syft155-format/arm64.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/arm64.syft.json",
+      "archive": "syft155-format/arm64.syft.json",
+      "bytes": 9253,
+      "sha256": "9c0f44fa53b085cb0516cdf44f517fb17440cd564086e937d182651eccebd8f6"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/compatibility-review.json",
+      "archive": "syft155-format/compatibility-review.json",
+      "bytes": 6920,
+      "sha256": "4c1f3a2295279b1b8260b4e10e2f2d7b5583376c180eaa1fef8af7e76ee43bd6"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/stereoscope-image-metadata.go",
+      "archive": "syft155-format/stereoscope-image-metadata.go",
+      "bytes": 1636,
+      "sha256": "74f56293f3d298b9c4778485926e7a5663f4c16679161608771ed107d52825da"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/stereoscope-oci-directory.go",
+      "archive": "syft155-format/stereoscope-oci-directory.go",
+      "bytes": 8046,
+      "sha256": "1029f2625413ee85efa29b06a4ad4e942ff7ef3cb869d8d42a0af06bb3a01bbf"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/syft-go.mod",
+      "archive": "syft155-format/syft-go.mod",
+      "bytes": 17796,
+      "sha256": "a9e851acedee1cdcba947101a44d6fd4182dbd947fc26d9565216eb397966419"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/syft-version.json",
+      "archive": "syft155-format/syft-version.json",
+      "bytes": 278,
+      "sha256": "209ce1f4f03597478a9cac99a5066805336aa4d4f87ef9c584d02c9904eed94a"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.command.json",
+      "archive": "syft155-format/wrong-platform.command.json",
+      "bytes": 861,
+      "sha256": "44a5dd3d1a092b605275d3e621756bd3de2b030b33c5d01ee0c7d278eda06318"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stderr.log",
+      "archive": "syft155-format/wrong-platform.stderr.log",
+      "bytes": 274,
+      "sha256": "a76945445ef590f1b08eca2da649cdbae6bdb3218207231aeb9f17e37498c4a6"
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stdout.log",
+      "archive": "syft155-format/wrong-platform.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "excluded_downloads": [
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/syft",
+      "bytes": 84518582,
+      "reason": "Public tool binary/download; original version/checksum provenance is retained in small compatibility records."
+    },
+    {
+      "source": "/tmp/bex-m188-syft-oci-behavior/syft_1.51.1_darwin_arm64.tar.gz",
+      "bytes": 27907057,
+      "reason": "Public tool binary/download; original version/checksum provenance is retained in small compatibility records."
+    }
+  ],
+  "limits": "32 controlled component/shell/Git regression methods and real official Syft tiny local OCI tool-format behavior only; no actual published-image scan/runtime/crypto/capacity/time acceptance. Prior9 candidate acceptance immutable.",
+  "raw_text_storage": "Raw whitespace-bearing transcript/shell snapshot compressed losslessly; stored sha256/bytes and original_sha256/original_bytes are both recorded. Original source inputs unchanged."
+}

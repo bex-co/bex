@@ -1,0 +1,11 @@
+{
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "authorized": true,
+  "max_cancel_posts": 1,
+  "workflow": ".github/workflows/native-base-image.yml",
+  "event": "push",
+  "branch": "main",
+  "at": "2026-10-31T02:12:12.762509+00:00",
+  "root_scope": "Cancel only this own new-source automatic full native batch after fresh zero-started-native proof; preserve Node20 and all foreign/started jobs. No force or uncertain retry.",
+  "helper_sha256": "11d88352e32c807cebc2711963f63fa280a47eebdb0c16f236fc07b6f7137c84"
+}

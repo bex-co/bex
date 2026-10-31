@@ -305,3 +305,15 @@ Ruby3.2已于23:30Z完成双架构运行验证并进入AMD全扫描；Node18继�
 根复核实际候选原文、FINAL与控制后，明确批准精确6872fd51验证哈希；966执行器再次读取新鲜匿名discovery并重放冻结3fe守卫后才计数。实际7340字节原文、root批准、元数据转换及第九项aggregate快照均保留，原八项proof/candidate的16个哈希不变。[74项归档核查](evidence/ruby32-acceptance-archive-audit.json)确认原始字节、大小、路径唯一性及全部批准/转换锚点。
 
 已删除仅此Ruby3.2的临时恢复授权；Node18/20与其他工作流的三项Elixir授权保持原样。[退休记录](evidence/ruby32-recovery-retirement.json)与[20项实际隔离Git选择检查](evidence/recovery-selection-ruby32-retired.json)已保存。剩余Node18继续签名、Node20已经进入双架构运行验证；当前只读采用计划为9项、仍不完整且官方matrix不变。source pin接入、六项真实应用测试与生产rollout尚未执行，t002–t008继续开放。
+
+### Node18 重复 EOF 的完整 OCI 暂存修复 — 2026-10-31（UTC 02:13Z）
+
+Node18 的6fd4恢复任务 `41113367877` / `124263227234` 已失败：运行门槛及两份完整扫描通过，ARM64 Syft三次读取中两次记录不同层的unexpected EOF，中间一次约30分钟后失败。中间一次只能按耗时推断deadline，日志没有exit124。镜像签名及AMD两份证明仅有命令完成证据，不能算五份严格验收；见[原始日志与终态](evidence/node18-syft-eof-failure/ARCHIVE-MANIFEST.json)。
+
+修复提交 `da0e56e80` 先按选定平台逐个下载完整OCI元数据、配置与压缩层，核验大小和SHA256，失败时最多三次有界续传；只有校验完成的布局才交给固定Syft1.55.0本地读取。旧固定action默认Syft1.51.1的OCI目录路径缺少架构信息，未增加空架构例外；[1.55.0的小型真实工具格式对照](evidence/native-oci-staging-fix/syft155-format/compatibility-review.json)保留原始child/config并拒绝错误平台。该对照不算真实运行时镜像验收。原全部扫描、现代签名和标签发布门槛保留。[32项组件/实际shell隔离控制](evidence/native-oci-staging-fix/controls/receipt.json)及Actions、actionlint、image-pin和ship门槛通过；三路simplify另修正了完整EOF边界和每次Syft重试的私有缓存清理，已验证的布局保留。
+
+当前安装配方已增加unzip，与49ee原产物不同，因此Node18下一次须正常新建，不把旧7dd索引伪装为当前配方。Node20原6fd4请求继续；已有九项验收、官方版本matrix与未采用的source pin保持原样。定向构建和最终接入验收继续，t002–t008仍开放。
+
+根与独立复核完成实际da0e的完整发布输入闭包，含新增helper及测试、未变27项官方matrix和44项inventory；只将其加入精确producer/verifier来源。守卫只改三个常量行，全部函数字节不变，显式保留旧846和全部历史来源、49ee仅Node18与既有安装配方兼容边界。九项真实完整守卫重放通过，未齐11项仍实际拒绝生成接入副本，85项原证据哈希未变；见[来源、批准、切换及重放原文](evidence/da0e-source-policy/MANIFEST.json)。本次自动全量请求 `41158989325` 只在新鲜确认原生任务尚未分配runner或开始步骤后取消一次，最终cancelled；[全部请求及终态](evidence/da0e-own-batch-cancellation/ARCHIVE-MANIFEST.json)保留，Node20与其他工作流不受影响。
+
+全来源排重与两次精确main检查后，只提交一次Node18正常新建请求；实际[run41159591513](https://github.com/bex-co/bex/actions/runs/41159591513)与原生job `124414471403` 已确认使用da0e/main/attempt1、只选择Node18。截至02:24Z，matrix成功，原生job排队且尚无已开始步骤；见[请求、实际选择器、排重与绑定原文](evidence/node18-oci-normal-request/ARCHIVE-MANIFEST.json)。旧7dd授权保留但实际选择器输出为零，不复用已变配方。请求和排队均不增加验收计数；正式进度仍为9/11，后续继续核对完整产物。

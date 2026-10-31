@@ -1,0 +1,1 @@
+[0000] ERROR could not determine source: an error occurred attempting to resolve '/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64': oci-dir: mismatched platform (expected linux/arm64): image platform="linux/amd64" does not match user specified platform="linux/arm64"

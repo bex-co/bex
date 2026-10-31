@@ -1,0 +1,24 @@
+{
+  "schema": "bex.m188.exact-root-source-profile-activation-approval/v1",
+  "at": "2026-10-31T02:16:47.443266+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "approved": true,
+  "old_guard_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+  "exact_new_guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "root_admission": {
+    "file": "/tmp/bex-m188-da0e-root-source-admission.json",
+    "sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce"
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-da0e-source-proposal/proposal.json",
+    "sha256": "05995f5933498ad5c81ae1ac615abb85683eb56e2cf9ea6cd966d37e3ee9d79f"
+  },
+  "root_review": "Read exact3line diff; independently confirmed all function source bytes unchanged. New canonical source+workflow hash and exact old846 literal retention only.",
+  "authorized_actions": [
+    "Freeze old/new guards; activate only exact2a8363 guard",
+    "Snapshot aggregate9 then add only literalda0e to accepted_sources; preserve all other semantic fields and9 accepted rows",
+    "Freeze resulting source context; verify every protected9 proof/candidate/receipt hash",
+    "Run full9 actual guard validations and real incomplete11 adoption-copy refusal; no candidate or source adoption"
+  ],
+  "artifact_promotion_or_adoption_authorized": false
+}

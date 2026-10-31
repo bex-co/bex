@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-31T02:13:33.332736+00:00",
+  "run_id": 41158989325,
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "max_posts": 1,
+  "review": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/fresh-review.json",
+    "sha256": "8b8845df942ed20a19eada130e381e3597c2cb4124c9bc940bb4e6273557d471",
+    "bytes": 635
+  },
+  "no_force": true,
+  "no_retry_even_if_uncertain": true
+}

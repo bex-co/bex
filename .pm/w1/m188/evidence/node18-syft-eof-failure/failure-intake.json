@@ -1,0 +1,228 @@
+{
+  "schema": "bex.m188.completed-publisher-failure-intake/v1",
+  "at": "2026-10-31T01:32:07.481921+00:00",
+  "scope": "Read-only completed-log facts; no partial crypto approval, source-policy relaxation, rerun, dispatch or cancellation",
+  "run_id": 41113367877,
+  "job_id": 124263227234,
+  "verification_source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "run_attempt": 1,
+  "terminal": "completed/failure",
+  "completed_at": "2026-10-31T01:26:03Z",
+  "known_immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+  "official_base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+  "compiled_producer_source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+  "compiled_producer_run_id": 41026904247,
+  "compiled_producer_job_id": 123967210277,
+  "source_pinned_recovery_entry": {
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+    "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "run_id": 41026904247,
+    "job_id": 123967210277,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  },
+  "producer_to_verifier_non_markdown_recipe_diff": [],
+  "verification_steps": [
+    {
+      "number": 9,
+      "name": "verify real native tool transformations without network on both architectures",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T23:13:18Z",
+      "completed_at": "2026-10-30T23:36:01Z"
+    },
+    {
+      "number": 11,
+      "name": "scan amd64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T23:36:01Z",
+      "completed_at": "2026-10-30T23:57:02Z"
+    },
+    {
+      "number": 12,
+      "name": "scan arm64 candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-30T23:57:02Z",
+      "completed_at": "2026-10-31T00:04:37Z"
+    },
+    {
+      "number": 15,
+      "name": "sign and attest the immutable candidate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-31T00:12:18Z",
+      "completed_at": "2026-10-31T01:25:17Z"
+    }
+  ],
+  "failure": {
+    "actual_failing_function": "generate_sbom arm64",
+    "actual_command": "GODEBUG=http2client=0 timeout --kill-after=10s 30m syft \"registry:$REF\" --platform \"linux/arm64\" -o spdx-json > native-arm64.spdx.json",
+    "configured_http2_disabled": true,
+    "negotiated_wire_protocol_not_logged": true,
+    "classification": "Registry source/layer-cache reads truncated with unexpected EOF; not a Cosign or Rekor rejection. No HTTP status or hash-mismatch/parser defect is reported.",
+    "attempts": [
+      {
+        "attempt": 1,
+        "failed_at": "2026-10-31T00:48:35.1908200Z",
+        "specific_error": "unexpected EOF",
+        "layer_digest": "sha256:6cc65bdde70ed232fb701da1f9f8a65130a31ee049a8a11d09b1810a6dbffc40",
+        "syft_elapsed_seconds_reported": 965,
+        "evidence_lines": [
+          5220,
+          5221,
+          5222,
+          5223
+        ]
+      },
+      {
+        "attempt": 2,
+        "failed_at": "2026-10-31T01:18:40.2231099Z",
+        "specific_error_text": null,
+        "configured_attempt_deadline": "30m",
+        "observed_interval_from_prior_failure_seconds": 1805.0322899,
+        "configured_prior_backoff_seconds": 5,
+        "deadline_exhaustion_is_inference": true,
+        "inference_basis": "Failure is ~30m after the configured5s backoff from attempt1; no Syft error or explicit exit124 was logged.",
+        "explicit_exit124_observed": false,
+        "evidence_lines": [
+          5224
+        ]
+      },
+      {
+        "attempt": 3,
+        "failed_at": "2026-10-31T01:25:17.3209249Z",
+        "specific_error": "unexpected EOF",
+        "layer_digest": "sha256:75ba6634710fa96ec11c5b9e846d8a37d853be37c7b85833f03c7804a9b8d2dc",
+        "syft_elapsed_seconds_reported": 387,
+        "evidence_lines": [
+          5225,
+          5226,
+          5227,
+          5228
+        ]
+      }
+    ],
+    "final_shell_exit": 1,
+    "final_exit_at": "2026-10-31T01:25:17.3243382Z",
+    "partial_outputs_removed_by_each_failed_attempt": true,
+    "oci_model_fallback_error_is_secondary": true
+  },
+  "proof_commands": {
+    "completed_from_sequential_bash_e_order": 3,
+    "required": 5,
+    "independent_cryptographic_verification_performed": false,
+    "image_signature": {
+      "completed_command_evidence": "Pushing signature00:12:25; later AMD64 Syft/attest reached",
+      "evidence_lines": [
+        5197,
+        5198,
+        5199,
+        5200
+      ]
+    },
+    "amd64_spdx": {
+      "completed_command_evidence": "Payload00:29:53 followed by later native-amd64.trivy payload",
+      "evidence_lines": [
+        5200,
+        5208,
+        5209,
+        5210
+      ]
+    },
+    "amd64_trivy": {
+      "completed_command_evidence": "Payload00:30:43 and subsequent ARM64 Syft failure prove prior retry_signing returned under sequential bash-e loop",
+      "evidence_lines": [
+        5210,
+        5218,
+        5219,
+        5220
+      ]
+    },
+    "arm64_spdx": {
+      "completed": false,
+      "reason": "ARM64 Syft exhausted three attempts before corresponding cosign attest"
+    },
+    "arm64_trivy": {
+      "completed": false,
+      "reason": "Unreached after ARM64 Syft failure"
+    },
+    "discovery_tag_copy_reached": false,
+    "limit": "Command-completion evidence only; no partial artifact acceptance or zero-vulnerability claim"
+  },
+  "current_recipe_limit": {
+    "current_head_observed": "da443ed1168126fecd69be60e2fa3efa84b3feee",
+    "old_install_sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8",
+    "current_install_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+    "actual_delta": "Explicit unzip apt token added",
+    "old_index_current_recipe_same": false,
+    "strict_source_rule_preserved": "Any new-source reuse must satisfy reviewed strict policy; no recovery eligibility claimed after recipe delta. No policy changes by this intake."
+  },
+  "artifacts": {
+    "raw_log": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/completed-job.log",
+      "sha256": "5a094ef15d7eba652f195742b97e48e2fa657479de5c4795d27fb81c598911d4",
+      "bytes": 885732
+    },
+    "gzip_log": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/completed-job.log.gz",
+      "sha256": "4e75e07819b6e9a4d54f910bcd89a451dd3aeff34950fd7c87efd0789d609eb5",
+      "bytes": 111618
+    },
+    "download_receipt": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/download-receipt.json",
+      "sha256": "6bf3e8f6efcb7073cbbdd84a0cbc49ff0aee11a98d20b725f8266b38f05e1421",
+      "bytes": 974
+    },
+    "job_metadata": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/job-metadata.json",
+      "sha256": "3367dd051cd1d274f7c2c8ed4677d73c8eb1f1f8b5f225170fb406e9f3950fb7",
+      "bytes": 6502
+    },
+    "verification_workflow": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/workflow-at-verifier.yml",
+      "sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+      "bytes": 12496
+    },
+    "verification_recovery_catalog": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/recovery-at-verifier.json",
+      "sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+      "bytes": 3280
+    },
+    "current_install_diff": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/current-install-diff.patch",
+      "sha256": "c138bc2ae2b6ff3c592d7fd1ca0482b713304ce2698939571ed4c4c5e88046db",
+      "bytes": 692
+    },
+    "initial_step_observation": {
+      "file": "/tmp/bex-m188-node18-current-failure-124263227234/step-observation.json",
+      "sha256": "9bf3aaa55805cccf77bb33cd0995f94a314740a3ddc7f8358da9d6c178cf8d1d",
+      "bytes": 1427
+    }
+  },
+  "evidence": [
+    {
+      "first_line": 5158,
+      "last_line": 5178,
+      "text": "2026-10-31T00:12:18.4095107Z \u001b[36;1mgenerate_sbom() {\u001b[0m\n2026-10-31T00:12:18.4095247Z \u001b[36;1m  local arch=\"$1\"\u001b[0m\n2026-10-31T00:12:18.4095455Z \u001b[36;1m  local output=\"native-$arch.spdx.json\"\u001b[0m\n2026-10-31T00:12:18.4095643Z \u001b[36;1m  for attempt in 1 2 3; do\u001b[0m\n2026-10-31T00:12:18.4095804Z \u001b[36;1m    rm -f -- \"$output\"\u001b[0m\n2026-10-31T00:12:18.4096205Z \u001b[36;1m    if GODEBUG=http2client=0 timeout --kill-after=10s 30m syft \"registry:$REF\" --platform \"linux/$arch\" -o spdx-json > \"$output\"; then\u001b[0m\n2026-10-31T00:12:18.4096602Z \u001b[36;1m      return 0\u001b[0m\n2026-10-31T00:12:18.4096731Z \u001b[36;1m    fi\u001b[0m\n2026-10-31T00:12:18.4096919Z \u001b[36;1m    echo \"Syft $arch attempt $attempt failed\" >&2\u001b[0m\n2026-10-31T00:12:18.4097125Z \u001b[36;1m    rm -f -- \"$output\"\u001b[0m\n2026-10-31T00:12:18.4097301Z \u001b[36;1m    [ \"$attempt\" -lt 3 ] || return 1\u001b[0m\n2026-10-31T00:12:18.4097480Z \u001b[36;1m    sleep \"$((attempt * 5))\"\u001b[0m\n2026-10-31T00:12:18.4097654Z \u001b[36;1m  done\u001b[0m\n2026-10-31T00:12:18.4097763Z \u001b[36;1m}\u001b[0m\n2026-10-31T00:12:18.4098106Z \u001b[36;1mretry_signing cosign signing-config create --with-default-rekor-v2 --out \"$RUNNER_TEMP/native-signing-config.json\"\u001b[0m\n2026-10-31T00:12:18.4098705Z \u001b[36;1mretry_signing cosign sign --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" \"$REF\"\u001b[0m\n2026-10-31T00:12:18.4099273Z \u001b[36;1mfor arch in amd64 arm64; do\u001b[0m\n2026-10-31T00:12:18.4099435Z \u001b[36;1m  generate_sbom \"$arch\"\u001b[0m\n2026-10-31T00:12:18.4099977Z \u001b[36;1m  retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" --type spdxjson --predicate \"native-$arch.spdx.json\" \"$REF\"\u001b[0m\n2026-10-31T00:12:18.4101284Z \u001b[36;1m  retry_signing cosign attest --yes --oidc-provider=github-actions --signing-config \"$RUNNER_TEMP/native-signing-config.json\" --type https://aquasecurity.github.io/trivy/attestation/vuln/v1 --predicate \"native-$arch.trivy.json\" \"$REF\"\u001b[0m\n2026-10-31T00:12:18.4101924Z \u001b[36;1mdone\u001b[0m"
+    },
+    {
+      "first_line": 5184,
+      "last_line": 5184,
+      "text": "2026-10-31T00:12:18.4113687Z shell: /usr/bin/bash -e {0}"
+    },
+    {
+      "first_line": 5197,
+      "last_line": 5219,
+      "text": "2026-10-31T00:12:20.6936173Z Generating ephemeral keys...\n2026-10-31T00:12:21.1795844Z Signing artifact...\n2026-10-31T00:12:25.6247288Z Pushing signature to: ghcr.io/bex-co/bex-cnb-run\n2026-10-31T00:29:53.8657050Z Using payload from: native-amd64.spdx.json\n2026-10-31T00:29:54.4339634Z \n2026-10-31T00:29:54.4341163Z \tThe sigstore service, hosted by sigstore a Series of LF Projects, LLC, is provided pursuant to the Hosted Project Tools Terms of Use, available at https://lfprojects.org/policies/hosted-project-tools-terms-of-use/.\n2026-10-31T00:29:54.4342678Z \tNote that if your submission includes personal data associated with this signed artifact, it will be part of an immutable record.\n2026-10-31T00:29:54.4343829Z \tThis may include the email address associated with the account with which you authenticate your contractual Agreement.\n2026-10-31T00:29:54.4350246Z \tThis information will be used for signing this artifact and will be stored in public transparency logs and cannot be removed later, and is subject to the Immutable Record notice at https://lfprojects.org/policies/hosted-project-tools-immutable-records/.\n2026-10-31T00:29:54.4351312Z \n2026-10-31T00:29:54.4352184Z By typing 'y', you attest that (1) you are not submitting the personal data of any other person; and (2) you understand and agree to the statement and the Agreement terms at the URLs listed above.\n2026-10-31T00:29:54.4354276Z Generating ephemeral keys...\n2026-10-31T00:29:54.9515748Z Signing artifact...\n2026-10-31T00:30:43.1038430Z Using payload from: native-amd64.trivy.json\n2026-10-31T00:30:43.9333620Z \n2026-10-31T00:30:43.9336093Z \tThe sigstore service, hosted by sigstore a Series of LF Projects, LLC, is provided pursuant to the Hosted Project Tools Terms of Use, available at https://lfprojects.org/policies/hosted-project-tools-terms-of-use/.\n2026-10-31T00:30:43.9338696Z \tNote that if your submission includes personal data associated with this signed artifact, it will be part of an immutable record.\n2026-10-31T00:30:43.9339429Z \tThis may include the email address associated with the account with which you authenticate your contractual Agreement.\n2026-10-31T00:30:43.9340507Z \tThis information will be used for signing this artifact and will be stored in public transparency logs and cannot be removed later, and is subject to the Immutable Record notice at https://lfprojects.org/policies/hosted-project-tools-immutable-records/.\n2026-10-31T00:30:43.9341227Z \n2026-10-31T00:30:43.9341627Z By typing 'y', you attest that (1) you are not submitting the personal data of any other person; and (2) you understand and agree to the statement and the Agreement terms at the URLs listed above.\n2026-10-31T00:30:43.9342270Z Generating ephemeral keys...\n2026-10-31T00:30:44.6211914Z Signing artifact..."
+    },
+    {
+      "first_line": 5220,
+      "last_line": 5229,
+      "text": "2026-10-31T00:48:35.1890114Z [0965] ERROR could not determine source: errors occurred attempting to resolve 'ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb':\n2026-10-31T00:48:35.1891926Z   - oci-registry: unable to populate layer cache dir=\"/tmp/stereoscope-504771199/oci-registry-image-2047252779/sha256:6cc65bdde70ed232fb701da1f9f8a65130a31ee049a8a11d09b1810a6dbffc40\" : unexpected EOF\n2026-10-31T00:48:35.1892560Z   - oci-model: not an OCI model artifact (config media type: )\n2026-10-31T00:48:35.1908200Z Syft arm64 attempt 1 failed\n2026-10-31T01:18:40.2231099Z Syft arm64 attempt 2 failed\n2026-10-31T01:25:17.3176184Z [0387] ERROR could not determine source: errors occurred attempting to resolve 'ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb':\n2026-10-31T01:25:17.3177434Z   - oci-registry: unable to populate layer cache dir=\"/tmp/stereoscope-2429301779/oci-registry-image-3801658558/sha256:75ba6634710fa96ec11c5b9e846d8a37d853be37c7b85833f03c7804a9b8d2dc\" : unexpected EOF\n2026-10-31T01:25:17.3178161Z   - oci-model: not an OCI model artifact (config media type: )\n2026-10-31T01:25:17.3209249Z Syft arm64 attempt 3 failed\n2026-10-31T01:25:17.3243382Z ##[error]Process completed with exit code 1."
+    }
+  ]
+}

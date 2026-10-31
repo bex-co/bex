@@ -1,0 +1,24 @@
+{
+  "started_at": "2026-10-31T01:28:52.670469+00:00",
+  "finished_at": "2026-10-31T01:28:59.915307+00:00",
+  "run_id": 41113367877,
+  "job_id": 124263227234,
+  "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "run_attempt": 1,
+  "command": [
+    "gh",
+    "api",
+    "repos/bex-co/bex/actions/jobs/124263227234/logs"
+  ],
+  "exit_code": 0,
+  "stderr_file": "/tmp/bex-m188-node18-current-failure-124263227234/download.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "remote_mutation": false,
+  "single_download_attempt": true,
+  "raw_file": "/tmp/bex-m188-node18-current-failure-124263227234/completed-job.log",
+  "raw_bytes": 885732,
+  "raw_sha256": "5a094ef15d7eba652f195742b97e48e2fa657479de5c4795d27fb81c598911d4",
+  "gzip_file": "/tmp/bex-m188-node18-current-failure-124263227234/completed-job.log.gz",
+  "gzip_bytes": 111618,
+  "gzip_sha256": "4e75e07819b6e9a4d54f910bcd89a451dd3aeff34950fd7c87efd0789d609eb5"
+}

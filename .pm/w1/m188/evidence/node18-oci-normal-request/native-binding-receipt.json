@@ -1,0 +1,74 @@
+{
+  "schema": "bex.m188.one-Node18-normal-request-binding/v1",
+  "at": "2026-10-31T02:25:07.081552+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "runtime": "node-18-bookworm",
+  "run_id": 41159591513,
+  "native_job_id": 124414471403,
+  "run_attempt": 1,
+  "dispatch_posts": 1,
+  "dispatch_http204_accepted": true,
+  "actual_native_binding": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/actual-native-binding.json",
+    "sha256": "d6c153f8fcafdb7ddd8b20c6dee1170662343eb5b3e746eacf51410d2ab2f7a5",
+    "bytes": 992
+  },
+  "root_authorization": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/authorization.json",
+    "sha256": "50fb7d9cc95c50c5841431989d529db17a244648c0d4825215460a82d7e5f9cc",
+    "bytes": 1478
+  },
+  "executed_helper": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/executed-helper.py",
+    "sha256": "f3b2ee88d7d94caca480b4f03ca4e4222dfc64714c288561f7464b098ce1aa2b",
+    "bytes": 11714
+  },
+  "source_admission": {
+    "file": "/tmp/bex-m188-da0e-root-source-admission.json",
+    "sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce",
+    "bytes": 2386
+  },
+  "normal_selector_proof": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "6c164cd786f62d2a699918da45975d17c07f65ba6ecf7b85d1a2aedbcd9c2c86",
+    "bytes": 2818
+  },
+  "all_source_dedupe": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/all-source-dedupe.json",
+    "sha256": "33eb971d831a061a84296f636cac95d30f22c5c78ee37316976c1e3577310d97",
+    "bytes": 6793
+  },
+  "fresh_immediate_prepost_main": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/immediate-prepost-main.raw.json",
+    "sha256": "774eb62b063ce24f0349fc28c8215dff6c729d4d4cd48eda51e00ac635dc60da",
+    "bytes": 318
+  },
+  "request_payload": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-input.json",
+    "sha256": "dba1667c2298e19ee2317784a69be1ee8315e42385a338f3077c26ea466eccea",
+    "bytes": 73
+  },
+  "request_intent": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-intent.json",
+    "sha256": "6e4ecced84b3738e7566d458753a5fc3631475830f003cdf7bf40e9dd89b7d88",
+    "bytes": 226
+  },
+  "request_result": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/dispatch-result.json",
+    "sha256": "bb8c4a9f7d92201130f6945c2ee0170703a10251d28af2d0e17e19ed52529537",
+    "bytes": 1826
+  },
+  "observer_registration": {
+    "file": "/tmp/bex-m188-node18-oci-normal-dispatch/observer-source-registration.json",
+    "sha256": "e3eb9fa8bee0ed8314c28d6b4bc61400fea9f0bf3d4d742344311ca8f6b5cf24",
+    "bytes": 950
+  },
+  "no_retry_rerun_cancel_or_alias": true,
+  "no_catalog_or_aggregate_write": true,
+  "no_artifact_acceptance_or_source_adoption": true,
+  "Node20_preserved": 41113373387,
+  "existing_modern_Go_and_E20_preserved": [
+    41142870861,
+    41144656779
+  ]
+}

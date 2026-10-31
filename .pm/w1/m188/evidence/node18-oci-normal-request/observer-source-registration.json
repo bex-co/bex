@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-31T02:22:19.927479+00:00",
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_id": 41159591513,
+  "root_admission_sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce",
+  "source_store_before_sha256": "9ed4fa42335b34a46a279b62ce40b732094c1884dc9529706196fbf552bfd1bb",
+  "source_store_after_sha256": "e2ec7b2ca9836a9220c1a719b85afcf4a5febfee6d3db6647d1a73d2a735b472",
+  "only_changes": [
+    "approved_sources appended literalda0e",
+    "approved_producers literalda0e exact11",
+    "approval_history appended root-binding metadata"
+  ],
+  "aggregate_sha256": "06b40d0d96231beaa29570510a198f0f296a590ba5f5b5ae2ae888a2d711f367",
+  "aggregate_written": false,
+  "new_delta_reader": {
+    "file": "/tmp/bex-m188-read-core-deltas-v2.py",
+    "sha256": "9b81a8de0eb433c3c714648fc2705b3277c3e29fbd91eeebe77aed5cac06c6d7"
+  },
+  "old_delta_reader_unchanged": true,
+  "native_job_binding_pending": true
+}

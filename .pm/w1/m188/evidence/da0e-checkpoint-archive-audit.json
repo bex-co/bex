@@ -1,0 +1,49 @@
+{
+  "schema": "bex.m188.checkpoint-archive-audit/v2",
+  "at": "2026-10-31T02:26:18.685127+00:00",
+  "archives": [
+    {
+      "directory": ".pm/w1/m188/evidence/native-oci-staging-fix",
+      "manifest_sha256": "93bfc3898dea05d23fc512d90e73adc7309a14c97bfe3c6700aac0f7056a880a",
+      "payload_files": 75,
+      "stored_payload_bytes": 249383,
+      "original_payload_bytes": 249858,
+      "all_stored_and_decompressed_original_hashes_sizes_paths_and_inventory_match": true
+    },
+    {
+      "directory": ".pm/w1/m188/evidence/node18-syft-eof-failure",
+      "manifest_sha256": "7e8cbc10ad9c44e70d68c501a25e57aae0f13f8a89afe23f1cfddd9b3f941c94",
+      "payload_files": 11,
+      "stored_payload_bytes": 266231,
+      "original_payload_bytes": 1040345,
+      "all_stored_and_decompressed_original_hashes_sizes_paths_and_inventory_match": true
+    },
+    {
+      "directory": ".pm/w1/m188/evidence/da0e-source-policy",
+      "manifest_sha256": "ae7386e5c50e4ba3331879015cce6d637f0844e22b12760f08310a7368022b49",
+      "payload_files": 21,
+      "stored_payload_bytes": 657239,
+      "original_payload_bytes": 657239,
+      "all_stored_and_decompressed_original_hashes_sizes_paths_and_inventory_match": true
+    },
+    {
+      "directory": ".pm/w1/m188/evidence/da0e-own-batch-cancellation",
+      "manifest_sha256": "c7253963e88b98176966a272b1ba050e877a3bb4d0bf73d3e7918c2e89cc90e6",
+      "payload_files": 67,
+      "stored_payload_bytes": 140711,
+      "original_payload_bytes": 141282,
+      "all_stored_and_decompressed_original_hashes_sizes_paths_and_inventory_match": true
+    },
+    {
+      "directory": ".pm/w1/m188/evidence/node18-oci-normal-request",
+      "manifest_sha256": "c669f80bb0d7de53005cfbb912aa9351c5e92445fcd2b61aac8848386ca1491f",
+      "payload_files": 94,
+      "stored_payload_bytes": 1335351,
+      "original_payload_bytes": 1335351,
+      "all_stored_and_decompressed_original_hashes_sizes_paths_and_inventory_match": true
+    }
+  ],
+  "accepted_count": 9,
+  "source_adoption_performed": false,
+  "original_source_or_accepted_proof_bytes_changed": false
+}

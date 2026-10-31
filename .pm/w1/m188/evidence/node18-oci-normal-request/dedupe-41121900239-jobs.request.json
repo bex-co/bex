@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T02:20:56.707941+00:00",
+  "finished_at": "2026-10-31T02:20:57.254409+00:00",
+  "endpoint": "repos/bex-co/bex/actions/runs/41121900239/attempts/1/jobs?per_page=100",
+  "exit_code": 0,
+  "stderr": "",
+  "raw_sha256": "1705bef80454a0d3b20fef6f01c3471f42612ad4189586f860d9884c41529904"
+}

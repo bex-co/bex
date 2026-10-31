@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-31T02:20:49.814712+00:00",
+  "literal_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "runtime": "node-18-bookworm",
+  "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+  "root_source_admission_sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce",
+  "publisher_profile": {
+    ".github/workflows/native-base-image.yml": {
+      "sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+      "bytes": 16216
+    },
+    ".github/scripts/native-oci-stage.py": {
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "bytes": 18041
+    },
+    ".github/scripts/test_native_oci_stage.py": {
+      "sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "bytes": 18679
+    },
+    ".github/scripts/test_native_oci_workflow.py": {
+      "sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "bytes": 17915
+    }
+  },
+  "install_sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462",
+  "catalog_sha256": "4fa8a9dbb23fdce6585415298e42b9f268cfb132dca39f501f76c1c15639671c",
+  "historical_recovery_entry": {
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+    "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "run_id": 41026904247,
+    "job_id": 123967210277,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  },
+  "producer_to_dispatch_recipe_changes": [
+    "deploy/native-base/README.md",
+    "deploy/native-base/install.sh"
+  ],
+  "selector_result": {
+    "exit_code": 0,
+    "recovery_output_bytes": 0,
+    "stdout": "Recovery recipe changed; building from source\n",
+    "stderr": "",
+    "actual_immutable_selector_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+    "isolated_git_objects_from_shared_repository_read_only": true
+  },
+  "normal_build_required": true,
+  "recovery_catalog_edit": false
+}

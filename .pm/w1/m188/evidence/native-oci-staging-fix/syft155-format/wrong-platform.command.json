@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "/tmp/bex-w8-222-acceptance/tools/syft",
+    "scan",
+    "oci-dir:/tmp/bex-m188-syft-oci-behavior/SYNTHETIC-layout-amd64",
+    "--source-name",
+    "ghcr.io/bex-co/bex-cnb-run",
+    "--source-version",
+    "sha256:10b19b53a44a12c8c89ccbe205fff8c216adc80f75deadee4f08f129bbb65f09",
+    "--platform",
+    "linux/arm64",
+    "--config",
+    "/tmp/bex-m188-syft-oci-behavior/empty-config.yaml",
+    "-o",
+    "spdx-json"
+  ],
+  "exit_code": 1,
+  "intended_platform_mismatch_rejection": true,
+  "stderr": {
+    "file": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stderr.log",
+    "sha256": "a76945445ef590f1b08eca2da649cdbae6bdb3218207231aeb9f17e37498c4a6"
+  },
+  "stdout": {
+    "file": "/tmp/bex-m188-syft-oci-155-behavior/wrong-platform.stdout.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

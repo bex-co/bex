@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-10-31T02:13:50.292357+00:00",
+  "argv": [
+    "gh",
+    "api",
+    "--method",
+    "GET",
+    "repos/bex-co/bex/actions/runs/41158989325"
+  ],
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "finished_at": "2026-10-31T02:13:51.111045+00:00",
+  "exit_code": 0,
+  "stdout": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.stdout",
+    "sha256": "29684cf29e99a11e9bbbc0f839b7c327629ccfa391076b9c6ebb867a7425c379",
+    "bytes": 11840
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-oci-fix-own-batch-cancel/terminal-2-run.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  }
+}
