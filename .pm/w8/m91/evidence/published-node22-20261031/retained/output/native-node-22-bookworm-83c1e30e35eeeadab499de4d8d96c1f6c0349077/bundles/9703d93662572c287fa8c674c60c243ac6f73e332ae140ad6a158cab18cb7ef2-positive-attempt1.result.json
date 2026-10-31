@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2.bundle.json",
+    "--type",
+    "https://sigstore.dev/cosign/sign/v1",
+    "--digest",
+    "f06981c360e9ed227fbb6c9c50006a8da176638567e4bc16f2fccd7ab5d8db0e",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2-positive-attempt1-rkimzp4q"
+}

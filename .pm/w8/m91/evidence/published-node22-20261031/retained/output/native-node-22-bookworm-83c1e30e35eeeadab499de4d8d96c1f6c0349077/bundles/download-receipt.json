@@ -1,0 +1,51 @@
+{
+  "discovery": {
+    "method": "sha-verified-OCI-fallback-index",
+    "index_sha256": "sha256:1dc56be21ca6e0c7a3b0090aa78986e81301eb32d900b1382c752d607a45e07d",
+    "native_API_404": true,
+    "unselected_descriptor_count": 0
+  },
+  "candidate_approved": false,
+  "bundles": [
+    {
+      "manifest_digest": "sha256:0e6aac2064334d42d7664ef1334ec34517ad7baaca70c02ef6bfffc0e00ed690",
+      "bundle_digest": "sha256:42da8089b9d162c3c65dfd9ef18fd9a7dd133c886a97c23fd81186bb6ffc2bff",
+      "bundle_bytes": 30268655,
+      "path": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/42da8089b9d162c3c65dfd9ef18fd9a7dd133c886a97c23fd81186bb6ffc2bff.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "51fa54908ab59a64b1c1947f138cbd70d2445b2f27d045ce814be03116028ea2"
+    },
+    {
+      "manifest_digest": "sha256:3a06886de50f48fe1e49748337fde7bcc649d58ac7c1770c0d2f9e51976ea4ff",
+      "bundle_digest": "sha256:9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2",
+      "bundle_bytes": 9455,
+      "path": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/9703d93662572c287fa8c674c60c243ac6f73e332ae140ad6a158cab18cb7ef2.bundle.json",
+      "predicate_type": "https://sigstore.dev/cosign/sign/v1",
+      "signed_statement_sha256": "11da0bf656a0a0884761a41b5c0e865ba8748515b3ef6b8d7621a852011201ba"
+    },
+    {
+      "manifest_digest": "sha256:787cb93c4c30791e2e58186cfabebf4ba02155df0c8ad484dd67481d71879bb3",
+      "bundle_digest": "sha256:ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75",
+      "bundle_bytes": 24101919,
+      "path": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "2fc4a8f514ad53492555aa52af0029433f9ef52545ebd62ea823ed330175b158"
+    },
+    {
+      "manifest_digest": "sha256:b9cd5dc6c8ff29c2c6166b5c88b3fbdcd0e21a3d6fb27ebc599396a57bdfdd31",
+      "bundle_digest": "sha256:b9564de5fe0d89fc7848523019d25314b1170f7c85cca04a16847e6451ceca8b",
+      "bundle_bytes": 30256215,
+      "path": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b9564de5fe0d89fc7848523019d25314b1170f7c85cca04a16847e6451ceca8b.bundle.json",
+      "predicate_type": "https://spdx.dev/Document",
+      "signed_statement_sha256": "d87960c4e6e569470c4ff49f6143a2af879e5a0dcf5b54ae059f6bd8343fd322"
+    },
+    {
+      "manifest_digest": "sha256:f3608b63238737d1bef96612e47dd8b330ceeae2c3911627507d09f76f28bd07",
+      "bundle_digest": "sha256:b812bd20f897b72fd2a8fa71247cee735da37a09bf8c2c846448f5bea353c0cc",
+      "bundle_bytes": 24099479,
+      "path": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/b812bd20f897b72fd2a8fa71247cee735da37a09bf8c2c846448f5bea353c0cc.bundle.json",
+      "predicate_type": "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "signed_statement_sha256": "8b9b80f6ee101012f4275659d4123598a438960cb70fd814ac63c8c99dd63a52"
+    }
+  ]
+}

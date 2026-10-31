@@ -224,3 +224,8 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Eleventh published supplier — 2026-10-31
 
 [Root-approved Python3.12](evidence/published-python312-20261031/README.md) binds source83c run41129082245/job124318545123. Five strict signed proofs, two actual negative controls, both full report pairs and all35 descriptors/1,188,703,761B are covered. Root independently checked194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. Of the blob bytes,500,339,368B were26 new complete reads;688,364,393B were nine genuine prior Python3.14 reads, each matched against its approved receipt/journal and an actual fresh anonymous HEAD. No unselected cached entry counts. Published approvals are11/27; generated/default, hosted, common-base design and catalog adoption remain open.
+
+
+## Twelfth published supplier — 2026-10-31
+
+[Root-approved Node22](evidence/published-node22-20261031/README.md) binds source83c run41128855169/job124317237455. Five strict signed proofs, two actual negative controls, seven fresh TUF roots and both complete report pairs pass. Root checked all194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. All35 descriptors/1,228,736,252B are covered:26 new complete reads/540,371,859B and nine genuine prior Python3.14 reads/688,364,393B, each matched to the approved receipt/journal and an actual fresh anonymous HEAD. Both images contain Node22.23.4. Published approvals are12/27; original generated/default and hosted acceptance, common-base implementation and catalog adoption remain open. All findings remain retained.

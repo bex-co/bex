@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-31T09:23:31.042418+00:00",
+  "selected_unique_blobs": 35,
+  "selected_unique_bytes": 1228736252,
+  "genuine_prior_receipt_matches": 9,
+  "prior_bytes_eligible_after_fresh_HEAD": 688364393,
+  "new_full_blob_count_required": 26,
+  "new_full_bytes_required": 540371859,
+  "scope": "Actualdescriptorintersection plan, eligibleprioronlycountsaftercanonicalcurrentanonymousHEAD. FinalV11receipt authoritative."
+}

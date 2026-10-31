@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-31T09:27:32.085885+00:00",
+  "actual_terminal_owned_logical_bytes": 139873177,
+  "actual_terminal_free_bytes": 8933986304,
+  "own_limit_bytes": 2147483648,
+  "global_free_floor_bytes": 2147483648,
+  "pass": true,
+  "scope": "Terminal sample after full verification/losslesscustody. Process receipt retains original sampled minimum/peak; no exact unsampled peak claim.",
+  "no_raw_or_shared_cleanup": true
+}
