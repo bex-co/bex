@@ -1,6 +1,6 @@
 # w4 · m219 — Gate forms and searches until handlers are ready
 
-**Worker:** worker4 **Goal:** twelve observed SSR roots accept edits only when handlers can retain them. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** twelve observed SSR roots accept edits only when handlers can retain them. **Status:** done (2026-10-31: Pro-gated webhook search/create replayed live; full matrix observed)
 
 **Estimate:** 6h30 (18 tasks). Filing only; no product fix shipped by the hunt.
 
@@ -25,7 +25,7 @@
 | t005 | Render parity across forms and searches — **DONE** | 20m | t004, t010, t011, t012, t013, t014, t015, t016, t017, t018 |
 | t006 | Simplify the changed code — **DONE** | 10m | t005 |
 | t007 | Test SSR edit readiness and retained drafts — **DONE** | 45m | t005 |
-| t008 | Replay live evidence and close out | 20m | t006, t007 |
+| t008 — **DONE** | Replay live evidence and close out | 20m | t006, t007 |
 
 ## Definition of done
 
