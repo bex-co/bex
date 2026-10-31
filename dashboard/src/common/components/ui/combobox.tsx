@@ -241,7 +241,7 @@ export function Combobox({
         </PopoverAnchor>
 
         <PopoverContent
-          className="p-0"
+          className="overflow-hidden p-0"
           style={{ width: popoverWidth ? `${popoverWidth}px` : undefined }}
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -253,7 +253,9 @@ export function Combobox({
           }}
         >
           <Command shouldFilter={false}>
-            <CommandList>
+            {/* The list stays the only scroller: it caps at the space Radix
+                reports (less the 2px border) when that is under 300px. */}
+            <CommandList className="max-h-[min(300px,calc(var(--radix-popover-content-available-height)-2px))]">
               <CommandEmpty>
                 {defaultEmptyText}
                 {allowCustom && inputValue && (
