@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 194, in <module>
+    elif cmd=='observe':out=observe()
+                            ~~~~~~~^^
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 115, in observe
+    initial=next(d for d in deploys if d['id']==json.loads(L['create_proof']['response'])['deployId']);assert initial['status']=='live','first fixture deployment not Live';L['deploy_ids']=[d['id'] for d in deploys];L['source_verified_at']=now();save();return {'first_deploy':initial['id'],'source_commit':S['expected_source_commit'],'deploys':len(deploys)}
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 115, in <genexpr>
+    initial=next(d for d in deploys if d['id']==json.loads(L['create_proof']['response'])['deployId']);assert initial['status']=='live','first fixture deployment not Live';L['deploy_ids']=[d['id'] for d in deploys];L['source_verified_at']=now();save();return {'first_deploy':initial['id'],'source_commit':S['expected_source_commit'],'deploys':len(deploys)}
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+KeyError: 'deployId'

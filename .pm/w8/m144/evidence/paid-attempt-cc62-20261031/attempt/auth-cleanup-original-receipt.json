@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-31T12:39:17.213799+00:00",
+  "native_logout_exit": 0,
+  "Kratos_logout_exit": 0,
+  "resources_created_by_run": 1,
+  "scope": "only this own native OAuth credential and own QA session",
+  "own_credential_files_removed": true
+}

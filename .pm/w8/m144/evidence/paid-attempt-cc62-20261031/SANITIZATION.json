@@ -1,0 +1,23 @@
+{
+  "scope": "Offline export only; no credential files, raw ledger, .env, kubeconfig, HTTP or auth action used",
+  "authorization_metadata": "Omitted recursively from JSON exports; raw response strings and their hashes retained",
+  "excluded": [
+    "full baseline-service list responses",
+    "raw ledger",
+    "credential/config/session files",
+    "raw SSH host identifiers and key fingerprints",
+    "images/binaries/filesystem data"
+  ],
+  "SSH_failure_preserved": "Fixed error classes/counts and original stderr SHA/size; complete raw stderr stays private",
+  "source_and_test_code": "Actual frozen source/test bytes retained; credential path and variable names are code, not values",
+  "synthetic_checks": "V3 seven pure cases are local tests; not live acceptance",
+  "unknowns": [
+    "Kubernetes App/PVC/PV/Secret/Jobs absence",
+    "provider volume absence",
+    "S3 purge",
+    "1-to-5 requested-size billing",
+    "financial sealing/invoice",
+    "hosted full/grow/remount/restore/dashboard"
+  ],
+  "latest_inventory_metadata": "Selected facts transcribed from actual existing tool result; no redirected raw stdout claimed"
+}

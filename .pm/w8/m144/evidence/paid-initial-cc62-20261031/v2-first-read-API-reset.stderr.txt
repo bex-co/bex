@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 212, in <module>
+    elif cmd in ['status','hashes']:out=probe('/'+cmd)
+                                        ~~~~~^^^^^^^^^
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 146, in probe
+    rec=request(method,path,{} if method=='POST' else None,fixture=True,timeout=155);v=value(rec);assert v.get('run',v.get('after',{}).get('run'))==S['run'];L.setdefault('probe_history',[]).append({'path':path,'method':method,'response':v,'at':now()});save();return v
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 42, in request
+    current=own();origin=created['serviceDetails']['url']
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 109, in own
+    current=value(request('GET','/v1/services/'+x['id']));assert current['id']==x['id'] and current['ownerId']==WS and current['name']==S['name'] and current['serviceDetails']['plan']=='starter'
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 70, in value
+    assert rec['HTTP']==status,rec
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError: {'at': '2026-10-31T11:54:57.698469+00:00', 'request': {'method': 'GET', 'path': '/v1/services/srv-dbit2iat5fis7381jscg', 'body': None, 'body_sha256': None, 'authorization': '[REDACTED]'}, 'target': 'control-plane', 'request_started_at': '2026-10-31T11:54:57.699051+00:00', 'HTTP': None, 'error': 'URLError: <urlopen error [Errno 54] Connection reset by peer>', 'ambiguous_mutation': False}

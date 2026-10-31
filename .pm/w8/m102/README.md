@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed build-time pigz and required libraries](t001.md) | 50m | — |
+| t001 | [Supply reviewed build-time pigz and required libraries](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit build-time compression across native bases and phases](t002.md) | 35m | t001 |
 | t003 | [Verify build-only pigz parity across authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify compression-tool supplier changes](t004.md) | 15m | t003 |

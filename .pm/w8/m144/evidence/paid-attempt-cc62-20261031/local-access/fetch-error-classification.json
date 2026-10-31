@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-31T12:28:57.317727+00:00",
+  "source": "fetch.stderr.txt",
+  "only_fixed_error_classification": true,
+  "matched_error_classes": {
+    "Host key verification failed": 3,
+    "REMOTE HOST IDENTIFICATION HAS CHANGED": 2
+  },
+  "total_lines": 36,
+  "strict_pin_required": true,
+  "no_authentication_or_host_policy_relaxation": true,
+  "no_raw_values_emitted": true
+}

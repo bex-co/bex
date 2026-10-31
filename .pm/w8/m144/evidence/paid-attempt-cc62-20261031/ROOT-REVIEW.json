@@ -1,0 +1,14 @@
+{
+  "reviewed_at": "2026-10-31T13:13:56.196320+00:00",
+  "root_verified_original_export_files": 85,
+  "root_reproduced_frozen_mapped_files": 79,
+  "actual_HTTP_response_strings_unchanged": 28,
+  "private_v3_only_changed_function": "surfaces",
+  "other_functions_byte_identical": 29,
+  "api_cleanup_and_quota_and_own_auth_complete": true,
+  "Kubernetes_provider_S3_cleanup_proven": false,
+  "whole_surface_acceptance": false,
+  "hosted_lifecycle_acceptance": false,
+  "billing_or_invoice_acceptance": false,
+  "no_original_DoD_or_budget_change": true
+}

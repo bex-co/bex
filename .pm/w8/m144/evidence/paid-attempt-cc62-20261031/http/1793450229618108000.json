@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:37:09.618074+00:00",
+  "request": {
+    "method": "DELETE",
+    "path": "/v1/services/srv-dbit2iat5fis7381jscg",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:37:09.618215+00:00",
+  "response_received_at": "2026-10-31T12:37:11.326800+00:00",
+  "HTTP": 204,
+  "response": "",
+  "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "request_id": null
+}

@@ -1,0 +1,82 @@
+{
+  "recordedAtUTC": "2026-10-31T12:09:31.299482+00:00",
+  "state": "ACTUAL_PAID_INITIAL_CHECKPOINT_NOT_M144_DONE",
+  "run": "cc62f8e3a1ee8b8c",
+  "serviceId": "srv-dbit2iat5fis7381jscg",
+  "diskId": "dsk-dbit2iat5fis7381jsdg",
+  "name": "qa-20261031-w8-m144-cc62f8e3a1ee8b8c",
+  "workspace": "tea-da2isimlm39c739m4ofg",
+  "actualCreateHTTP": 201,
+  "actualCreateIntentUTC": "2026-10-31T11:30:14.914922+00:00",
+  "actualCreateWireStartedUTC": "2026-10-31T11:30:14.916044+00:00",
+  "actual201ReceivedUTC": "2026-10-31T11:30:17.702737+00:00",
+  "actualCreateResponseSha256": "cc3fb5835d2ad802a5f65f93b85c610c112f915fbc4bc9dea66817675344aefe",
+  "actualCreateRequestBodySha256": "587afa6c42209afe6af522b5a8f067f10a137d1f94efe910880f75c0843a7e4e",
+  "actualOwnedPublicOrigin": "https://qa-20261031-w8-m144-cc6-fd2d4d.onbex.co",
+  "firstDeploy": {
+    "id": "dep-dbit2iat5fis7381jsd0",
+    "serviceId": "srv-dbit2iat5fis7381jscg",
+    "sourceCommit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "status": "live",
+    "createdAt": "2026-10-31T11:30:17.35417Z",
+    "updatedLiveAt": "2026-10-31T11:36:43.061531Z",
+    "independentObservedAt": "2026-10-31T11:46:40.076248+00:00",
+    "historyCardinality": 1,
+    "historyResponseSha256": "e2ca07f98083dbec5953d6a8222780543fafbcc0566acc1df355341290eb0ab2",
+    "directResponseSha256": "12ac3828e7efb29f93f9447538ef8964ea09120afd285d44ddcd6435eb7bd7b8"
+  },
+  "readonlyInitialCapacity": {
+    "HTTP": 200,
+    "observedAt": "2026-10-31T11:57:55.749172+00:00",
+    "responseSha256": "59a1dcd0b74187a59927fb8a8746d187477d0fd0bd26ceeb66e9aa572d7e9f70",
+    "capacityBytes": 1020702720,
+    "blockBytes": 4096,
+    "device": 64514,
+    "inode": 13,
+    "boot": "34381d5d4e8a400f95c5689a3f8de31a",
+    "pid": 1,
+    "scope": "Authenticated exact201-origin status from unchanged HTTP workload; ~0.951Gi statvfs. Raw superblock/LUKS/claim UID geometry still unproved until fixed binding/observer."
+  },
+  "immutableOriginals": {
+    "hosted-disk.py": "1ee808d858ce704907d9000c4f9de6830d63cb43bebc4b9eccb7b8fb60ab7953",
+    "q": "20686321a8e898781ce7f58f293a29cc0b72b7f6c8794fa4d6534dfe1ef0a6d4",
+    "cleanup-watchdog.py": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+    "disk-fixture.py": "4e095eee80b05badb7daf44d3443f5fc94a1785c64e77300aff8f95ce8d833f4",
+    "start-command.txt": "c8f42e6905b57bc3a68b0656393c6bbfeba9a57eaa4c9d3fdd6c63cdcee66c74"
+  },
+  "retainedOriginalFailures": [
+    "q observe FAIL because optional201deployId omitted; actual initial identity separately proven with solehistory+exactdirectLive GET",
+    "q status FAIL before fixtureHTTP because display-name hostname assumption differs from authoritative hashed201URL"
+  ],
+  "v2ObservationTransportCorrection": {
+    "sourceSHA256": "6790b48a7a2b7867a659f81354c87d3428d3d94abca99a7bf25c6c14fe7addf3",
+    "onlyChangedFunctions": [
+      "request",
+      "observe"
+    ],
+    "other28FunctionsByteIdentical": true,
+    "pureTests": 6,
+    "actualReadonlyStatusSecondAttempt": "PASS after prior read-only APIreset retained",
+    "rootFunctionalApproval": "Approved in session before any fixturePOST; workload/data/budget unchanged."
+  },
+  "inventoryRun": 41197243038,
+  "inventorySource": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "inventoryLastObserved": "cluster queued; no guessed K8s UID/binding created",
+  "watchdog": {
+    "pid": 96621,
+    "scriptSHA256": "a22b9c1d775252fc36a91511527f6cb59f249e3cd017507786703b6367b8d090",
+    "functionalDecision": "wait owned from actual201 ledger",
+    "cleanupAtUTC": "2026-10-31T13:15:00Z",
+    "hardExpiryUTC": "2026-10-31T13:30:00+00:00",
+    "stateDisplayCaveat": "Action-only cachedstate can show pre201 wait ownership; currentoriginaldecision against actual201 proves owned target. Program not changed/restarted."
+  },
+  "targetDeleteUTC": "2026-10-31T13:05:00Z",
+  "noFillGrowRestartBackupRestoreFixturePOSTYet": true,
+  "noM144DoDClosed": true,
+  "scopeLimits": [
+    "No immutable App/PVC/PV UID binding or observerReady yet",
+    "No physical geometry/encryption/grow/full/remount/snapshot/restore/metrics/UI/billing/cleanup acceptance inferred",
+    "No local production capability established; no new grants/secretwrites/foreignstack query",
+    "No additional fixture or POST replay;7200s/.03 caps unchanged"
+  ]
+}

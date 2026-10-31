@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed GNU gettext tools in native images](t001.md) | 70m | — |
+| t001 | [Supply reviewed GNU gettext tools in native images](t001.md) | 70m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit shared native bases, locale behavior and exclusions](t002.md) | 30m | t001 |
 | t003 | [Verify GNU gettext Render parity across authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the GNU gettext supplier](t004.md) | 15m | t003 |

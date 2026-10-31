@@ -1,0 +1,15 @@
+{
+  "started_at": "2026-10-31T12:37:39.562628+00:00",
+  "command": "original q cleanup-check",
+  "exact_serviceId": "srv-dbit2iat5fis7381jscg",
+  "exact_diskId": "dsk-dbit2iat5fis7381jsdg",
+  "exit": 0,
+  "completed_at": "2026-10-31T12:37:43.177056+00:00",
+  "api_verified": {
+    "at": "2026-10-31T12:37:43.166526+00:00",
+    "service_404": true,
+    "disk_404": true,
+    "baseline_preserved": true,
+    "remaining": "root must verify owned App/PVC/PV/LUKSSecret/Jobs and provider-volume deletion; no borrowed secret reads"
+  }
+}

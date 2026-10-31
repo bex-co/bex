@@ -1,0 +1,42 @@
+{
+  "recorded_at": "2026-10-31T13:04:45.321146+00:00",
+  "query_started_utc": "2026-10-31T12:59:25Z",
+  "record_kind": "selected metadata transcribed from actual gh run view tool result; stdout was not redirected",
+  "tool_session_id": 88530,
+  "argv": [
+    "gh",
+    "run",
+    "view",
+    "41197243038",
+    "--repo",
+    "bex-co/bex",
+    "--json",
+    "databaseId,headSha,status,conclusion,createdAt,updatedAt,jobs"
+  ],
+  "run": 41197243038,
+  "source": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "status": "queued",
+  "conclusion": "",
+  "jobs": [
+    {
+      "id": 124525787783,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 124526099401,
+      "name": "cluster",
+      "status": "queued",
+      "steps": 0
+    },
+    {
+      "id": 124526100685,
+      "name": "observer-channel-smoke",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "completed_log_available": false,
+  "dispatch_cancel_or_mutation": false
+}

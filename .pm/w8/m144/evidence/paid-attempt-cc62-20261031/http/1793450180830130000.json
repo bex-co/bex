@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-31T12:36:20.830088+00:00",
+  "request": {
+    "method": "POST",
+    "path": "/graphql",
+    "body": {
+      "query": "query DiskAcceptance($d:String!,$s:String!){disk(id:$d){id name mountPath sizeGB serviceId} service(id:$s){id name plan disk{name mountPath sizeGB}}}",
+      "variables": {
+        "d": "dsk-dbit2iat5fis7381jsdg",
+        "s": "srv-dbit2iat5fis7381jscg"
+      }
+    },
+    "body_sha256": "bd210ed90260200efefb36592bb95539e7035a67326b8ad0372a3385d6eadf62"
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:20.830575+00:00",
+  "response_received_at": "2026-10-31T12:36:21.568554+00:00",
+  "HTTP": 200,
+  "response": "{\"data\":{\"disk\":{\"id\":\"dsk-dbit2iat5fis7381jsdg\",\"mountPath\":\"/var/data\",\"name\":\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk\",\"serviceId\":\"srv-dbit2iat5fis7381jscg\",\"sizeGB\":1},\"service\":{\"disk\":{\"mountPath\":\"/var/data\",\"name\":\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk\",\"sizeGB\":1},\"id\":\"srv-dbit2iat5fis7381jscg\",\"name\":\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c\",\"plan\":\"starter\"}}}\n",
+  "response_sha256": "88746a3e307cbd8a15aca3c0f0ffa7449ce219ef8012134b1ab871f2cc8258ac",
+  "request_id": null
+}

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:38:48.344450+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/owners/tea-da2isimlm39c739m4ofg/limits",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:38:48.345103+00:00",
+  "response_received_at": "2026-10-31T12:38:49.529030+00:00",
+  "HTTP": 200,
+  "response": "{\"services\":{\"used\":2,\"terminating\":0,\"limit\":25,\"freeUsed\":0,\"freeLimit\":0},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":25,\"freeUsed\":0,\"freeLimit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":25,\"freeUsed\":0,\"freeLimit\":1}}\n",
+  "response_sha256": "7a21a5e2754c5749265bcef283afae03ff9a9b48a5429a88491963d030855841",
+  "request_id": null
+}

@@ -1,0 +1,21 @@
+{
+  "started_at": "2026-10-31T12:47:01.558725+00:00",
+  "completed_at": "2026-10-31T12:47:01.709220+00:00",
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "-W",
+    "error::ResourceWarning",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/v3-surface-preparation",
+    "-p",
+    "test_surface_v3.py",
+    "-v"
+  ],
+  "exit": 0,
+  "source_sha256": "f750980ca3af1fe0a54c63e846264dfe2847abb5c0256e56789c077c6e6f591b",
+  "test_source_sha256": "4ca7b12d69063ce33d18fbc9bab33c845cab49b4871fcb21095c5366ca2e5363",
+  "no_actual_HTTP_or_auth": true
+}

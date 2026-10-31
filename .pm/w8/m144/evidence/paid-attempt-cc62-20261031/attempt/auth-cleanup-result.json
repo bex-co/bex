@@ -1,0 +1,15 @@
+{
+  "started_at": "2026-10-31T12:39:11.950441+00:00",
+  "scope": "ONLY this original fixture own OAuth/session",
+  "cleanup_service_and_disk_404_already_proven": true,
+  "exit": 0,
+  "completed_at": "2026-10-31T12:39:17.255103+00:00",
+  "original_receipt": {
+    "at": "2026-10-31T12:39:17.213799+00:00",
+    "native_logout_exit": 0,
+    "Kratos_logout_exit": 0,
+    "resources_created_by_run": 1,
+    "scope": "only this own native OAuth credential and own QA session",
+    "own_credential_files_removed": true
+  }
+}

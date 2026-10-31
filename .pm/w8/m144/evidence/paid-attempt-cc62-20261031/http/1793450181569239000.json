@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-31T12:36:21.569201+00:00",
+  "request": {
+    "method": "POST",
+    "path": "/mcp",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/call",
+      "params": {
+        "name": "get_disk",
+        "arguments": {
+          "diskId": "dsk-dbit2iat5fis7381jsdg"
+        }
+      }
+    },
+    "body_sha256": "60490465cacca7567114542eab1062b77fc2279515732415c63de08d096d337a"
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:21.569381+00:00",
+  "response_received_at": "2026-10-31T12:36:22.009764+00:00",
+  "HTTP": 200,
+  "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"createdAt\\\":\\\"2026-10-31T11:30:17.35417Z\\\",\\\"id\\\":\\\"dsk-dbit2iat5fis7381jsdg\\\",\\\"mountPath\\\":\\\"/var/data\\\",\\\"name\\\":\\\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk\\\",\\\"serviceId\\\":\\\"srv-dbit2iat5fis7381jscg\\\",\\\"sizeGB\\\":1,\\\"updatedAt\\\":\\\"2026-10-31T11:30:17.35417Z\\\"}\"}],\"structuredContent\":{\"createdAt\":\"2026-10-31T11:30:17.35417Z\",\"id\":\"dsk-dbit2iat5fis7381jsdg\",\"mountPath\":\"/var/data\",\"name\":\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk\",\"serviceId\":\"srv-dbit2iat5fis7381jscg\",\"sizeGB\":1,\"updatedAt\":\"2026-10-31T11:30:17.35417Z\"}}}\n\n",
+  "response_sha256": "6ae0367dd4ebfa7c097bb684b3e4cac2d383b3b0c525e9e3fb441496b66cf3c8",
+  "request_id": null
+}

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:37:09.028131+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/disks?serviceId=srv-dbit2iat5fis7381jscg",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:37:09.028320+00:00",
+  "response_received_at": "2026-10-31T12:37:09.617043+00:00",
+  "HTTP": 200,
+  "response": "[{\"cursor\":\"dsk-dbit2iat5fis7381jsdg\",\"disk\":{\"id\":\"dsk-dbit2iat5fis7381jsdg\",\"name\":\"qa-20261031-w8-m144-cc62f8e3a1ee8b8c-disk\",\"mountPath\":\"/var/data\",\"sizeGB\":1,\"serviceId\":\"srv-dbit2iat5fis7381jscg\",\"createdAt\":\"2026-10-31T11:30:17.35417Z\",\"updatedAt\":\"2026-10-31T11:30:17.35417Z\"}}]\n",
+  "response_sha256": "0350d0c2763f7defc4d4b15c22e8244aa1aeaceb5b1ed5df7a43cd6eb0793502",
+  "request_id": null
+}

@@ -1,0 +1,11 @@
+test_exact_origin_keeps_method_path_body_auth_scrub (test_orchestrator_v2.Guards.test_exact_origin_keeps_method_path_body_auth_scrub) ... ok
+test_foreign_current_url_or_sid_refuses_before_fixture_http (test_orchestrator_v2.Guards.test_foreign_current_url_or_sid_refuses_before_fixture_http) ... ok
+test_observe_positive_is_synthetic_only (test_orchestrator_v2.Guards.test_observe_positive_is_synthetic_only) ... ok
+test_observe_rejects_cardinality_source_sid_notlive_and_followup (test_orchestrator_v2.Guards.test_observe_rejects_cardinality_source_sid_notlive_and_followup) ... ok
+test_original_functions_are_byte_identical_except_two (test_orchestrator_v2.Guards.test_original_functions_are_byte_identical_except_two) ... ok
+test_wrong201_host_userinfo_port_query_fragment_refuses_before_http (test_orchestrator_v2.Guards.test_wrong201_host_userinfo_port_query_fragment_refuses_before_http) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.023s
+
+OK

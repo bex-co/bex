@@ -1,0 +1,10 @@
+{
+  "v2_sha256": "6790b48a7a2b7867a659f81354c87d3428d3d94abca99a7bf25c6c14fe7addf3",
+  "v3_sha256": "f750980ca3af1fe0a54c63e846264dfe2847abb5c0256e56789c077c6e6f591b",
+  "changed_functions": [
+    "surfaces"
+  ],
+  "byte_identical_other_functions": 29,
+  "no_original_or_v2_edit": true,
+  "no_execution_or_auth": true
+}

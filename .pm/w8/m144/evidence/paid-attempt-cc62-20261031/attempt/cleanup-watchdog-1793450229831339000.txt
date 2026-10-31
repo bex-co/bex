@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk.py", line 9, in <module>
+    S=json.loads((P/'spec.json').read_text());L=json.loads((P/'ledger.json').read_text());WS=S['workspace'];lock=(P/'writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                                                                                                                                             ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+BlockingIOError: [Errno 35] Resource temporarily unavailable

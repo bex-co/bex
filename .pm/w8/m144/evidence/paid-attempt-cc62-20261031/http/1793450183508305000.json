@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-31T12:36:23.508266+00:00",
+  "request": {
+    "method": "POST",
+    "path": "/graphql",
+    "body": {
+      "query": "query($q:DatastoreMetricsQueryInput!){datastoreMetrics(query:$q){unit labels{field value} values{time value}}}",
+      "variables": {
+        "q": {
+          "kind": "service",
+          "resource": "srv-dbit2iat5fis7381jscg",
+          "name": "DISK_CAPACITY"
+        }
+      }
+    },
+    "body_sha256": "9ea67e1b2087ccbd197b038bbe41e15030cf0df400e658fa707172e1e09bd2d0"
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:36:23.508448+00:00",
+  "response_received_at": "2026-10-31T12:36:23.908478+00:00",
+  "HTTP": 200,
+  "response": "{\"data\":{\"datastoreMetrics\":[{\"labels\":[{\"field\":\"resource\",\"value\":\"tea-da2isimlm39c739m4ofg-qa-20261031-w8-m144-cc6-fd2d4d\"}],\"unit\":\"bytes\",\"values\":[{\"time\":\"2026-10-31T12:36:23Z\",\"value\":1073741824}]}]}}\n",
+  "response_sha256": "6efd6e5f6e6a53f45f55cbd0fb65085d250b8eb7f913661e0251c6e439d00ab8",
+  "request_id": null
+}

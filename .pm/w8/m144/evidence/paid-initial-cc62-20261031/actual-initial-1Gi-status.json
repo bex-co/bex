@@ -1,0 +1,1 @@
+{"available_bytes": 1003433984, "block_bytes": 4096, "boot": "34381d5d4e8a400f95c5689a3f8de31a", "capacity_bytes": 1020702720, "device": 64514, "directory_inode": 13, "files": {"data-a.bin": 65536, "data-b.bin": 65536, "owner.json": 59, "sentinel.bin": 65536}, "free_bytes": 1020211200, "pid": 1, "process_started_unix": 1793446583.0643525, "run": "cc62f8e3a1ee8b8c"}

@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed native Pandoc distribution](t001.md) | 75m | — |
+| t001 | [Supply a reviewed native Pandoc distribution](t001.md) | 75m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit all shared native consumers and cache boundaries](t002.md) | 35m | t001 |
 | t003 | [Verify native document-tool Render parity](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed native document supplier](t004.md) | 15m | t003 |

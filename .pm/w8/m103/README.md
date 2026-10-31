@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | — |
+| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Supply compatible native pip and target wheel installation](t002.md) | 60m | t001 |
 | t003 | [Supply matching Python development headers and compiler inputs](t003.md) | 65m | t002 |
 | t004 | [Audit all three prerequisites across shared native bases and phases](t004.md) | 40m | t001, t002, t003 |

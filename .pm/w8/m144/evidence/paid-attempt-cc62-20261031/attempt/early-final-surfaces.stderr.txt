@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 230, in <module>
+    elif cmd=='surfaces':out=surfaces()
+                             ~~~~~~~~^^
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 183, in surfaces
+    assert value(out['REST_disk'])==d
+           ~~~~~^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex7-m144-disk-acceptance-n6d16nzf/hosted-disk-observed-v2.py", line 70, in value
+    assert rec['HTTP']==status,rec
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError: {'at': '2026-10-31T12:36:22.010330+00:00', 'request': {'method': 'GET', 'path': '/v1/metrics/disk-usage?resource=srv-dbit2iat5fis7381jscg&kind=service', 'body': None, 'body_sha256': None, 'authorization': '[REDACTED]'}, 'target': 'control-plane', 'request_started_at': '2026-10-31T12:36:22.010493+00:00', 'response_received_at': '2026-10-31T12:36:22.269428+00:00', 'HTTP': 400, 'response': '{"error":"unsupported query parameter \\"kind\\" for get-disk-usage","id":"bad_request","message":"unsupported query parameter \\"kind\\" for get-disk-usage"}\n', 'response_sha256': 'c735ec7a6b790eed9efadc786deae5c8a16a1fb377803a13b620c21d4acd4987', 'request_id': None}

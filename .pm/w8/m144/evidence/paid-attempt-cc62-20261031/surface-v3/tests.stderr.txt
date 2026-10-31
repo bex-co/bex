@@ -1,0 +1,12 @@
+test_actual_pinned_public_query_schema_excludes_kind (test_surface_v3.SurfaceTests.test_actual_pinned_public_query_schema_excludes_kind) ... ok
+test_foreign_disk_response_still_refuses_acceptance (test_surface_v3.SurfaceTests.test_foreign_disk_response_still_refuses_acceptance) ... ok
+test_only_surfaces_changed_and_all_other_functions_are_byte_identical (test_surface_v3.SurfaceTests.test_only_surfaces_changed_and_all_other_functions_are_byte_identical) ... ok
+test_original_collision_is_independently_reproduced (test_surface_v3.SurfaceTests.test_original_collision_is_independently_reproduced) ... ok
+test_original_v2_query_is_rejected_by_the_same_public_schema (test_surface_v3.SurfaceTests.test_original_v2_query_is_rejected_by_the_same_public_schema) ... ok
+test_physical_ten_gib_capacity_cannot_pass_requested_one_gib (test_surface_v3.SurfaceTests.test_physical_ten_gib_capacity_cannot_pass_requested_one_gib) ... ok
+test_resource_and_usage_receipts_coexist_at_both_requested_sizes (test_surface_v3.SurfaceTests.test_resource_and_usage_receipts_coexist_at_both_requested_sizes) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.043s
+
+OK

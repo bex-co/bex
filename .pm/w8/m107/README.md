@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed ZIP creation tools and required libraries](t001.md) | 45m | — |
+| t001 | [Supply reviewed ZIP creation tools and required libraries](t001.md) | 45m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Audit ZIP supply across native bases and phases](t002.md) | 40m | t001 |
 | t003 | [Verify ZIP availability parity across hosting surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify ZIP supplier changes](t004.md) | 15m | t003 |

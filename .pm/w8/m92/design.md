@@ -1,4 +1,12 @@
-# Managed Postgres extension supply — decision needed (w8, 2026-10-17)
+# Managed Postgres extension supply — historical options and settled decision
+
+## Current decision and implementation — 2026-10-31
+
+The options below preserve the original2026-10-17 discussion. They are superseded by the explicit2026-10-29 user decision and [ADR092](../../../docs/ADR092-postgres-extension-supply.md): one compatible bex operand per major, all six extensions within Render’s supported major ranges, owner-initiated on-demand activation through the bounded allowlist, and one rolling restart per managed cluster for adoption. CNPG1.30.1 is already installed; m65 is not a pending upgrade or approval gate.
+
+The shared recipe, allowlist/projection and complete-data restore qualification code are shipped through`fa85c44184ffa59879b8c1a77c991e3ce87fa028`. Production image pins remain empty. Current all-major/both-architecture image and SQL qualification, ordinary-owner complete restore with maintained IMMVs, current CNPG/Free resource checks and the reviewed adoption are still required. No repeated user decision is needed, and source checks do not establish those runtime outcomes.
+
+## Historical proposal — superseded
 
 **Gate for:**
 
@@ -39,4 +47,4 @@
 
 **Recommendation:** 1(b), 2(b), and 3 done together with m65 in one maintenance window. If fewer moving parts matter more than Render's on-demand contract, 2(a) for PostGIS alone with 1(a) closes m92 and parks the rest as divergences.
 
-Nothing has been implemented. Every option changes the production database image or its rollout, so no task is started until the user decides.
+Historical2026-10-17 state: nothing had been implemented and the decision was pending. This paragraph is superseded by the current decision and implementation record above.

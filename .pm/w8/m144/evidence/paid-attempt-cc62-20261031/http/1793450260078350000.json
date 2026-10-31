@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-31T12:37:40.078305+00:00",
+  "request": {
+    "method": "GET",
+    "path": "/v1/disks/dsk-dbit2iat5fis7381jsdg",
+    "body": null,
+    "body_sha256": null
+  },
+  "target": "control-plane",
+  "request_started_at": "2026-10-31T12:37:40.078507+00:00",
+  "response_received_at": "2026-10-31T12:37:41.216429+00:00",
+  "HTTP": 404,
+  "response": "{\"code\":\"NOT_FOUND\",\"error\":\"disk not found\",\"id\":\"not_found\",\"message\":\"disk not found\",\"params\":null}\n",
+  "response_sha256": "711b7d7c34e9ff3f51fdf488c191ee846c7e391f488091f21bd7457dac1a79f5",
+  "request_id": null
+}

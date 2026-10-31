@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T12:26:49.069520+00:00",
+  "completed_at": "2026-10-31T12:27:24.363752+00:00",
+  "exit": 0,
+  "operation": "approved v2 observe; own service/deployment GETs only",
+  "stdout_path": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/observe-v2-readonly-001.stdout.json",
+  "stderr_path": "/private/tmp/bex-w8-m144-live-20261031-cc62f8e3a1ee8b8c/observe-v2-readonly-001.stderr.txt"
+}

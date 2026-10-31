@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-31T12:23:55.386156+00:00",
+  "kind": "resource-free-conditional-budget-forecast",
+  "actual_create_intent": "2026-10-31T11:30:14.914922+00:00",
+  "actual_hard_expiry": "2026-10-31T13:30:00+00:00",
+  "target_delete": "2026-10-31T13:05:00+00:00",
+  "latest_inventory_raw": "inventory-snapshot-008.json",
+  "latest_inventory_status": "queued",
+  "observed_first_rollout_total_seconds": 810,
+  "unchanged_original_estimate_basis": "14 minutes per ordered CI operation; not a guaranteed queue upper bound",
+  "remaining_after_inventory_estimated_seconds": {
+    "fixture_bind": 840,
+    "observer_ready": 840,
+    "single_backup": 840,
+    "proof_http_lifecycle_and_usage_allowance": 1740,
+    "cleanup_reserve": 900
+  },
+  "remaining_hard_window_seconds": 3964,
+  "remaining_estimate_seconds": 5160,
+  "conclusion": "Original conservative estimate no longer fits via the remaining serial CI route. Existing legitimate local access, or substantially shorter actual future queue times, would be needed; neither is proven. No expiry/budget increase or readiness bypass authorized. Root decision pending.",
+  "no_new_gate_or_guarantee": true,
+  "no_post_create_mutation_commands_executed": true
+}
