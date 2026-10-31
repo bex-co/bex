@@ -1,0 +1,32 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 1307,
+      "sha256": "604518209f47fa36012199be830a31e2fca8853f7eca87d66e16c3d8ba4079d8"
+    },
+    "ROOT-REVIEW.json": {
+      "bytes": 614,
+      "sha256": "055a9ee3415baef78756e06f480db6f76bb8b76ebc1b8f1a8635c83fee93b521"
+    },
+    "SOURCE-MANIFEST.json": {
+      "bytes": 881,
+      "sha256": "e8596f994433bd838372cc182cbe1dc571dbd2a21c44e88680e9db7473dc5d4d"
+    },
+    "combined-final-scoped-tests.log": {
+      "bytes": 196,
+      "sha256": "c28f37b0c42f00197057a4bdb62485901967155413e2f03d6394414a43d15c3e"
+    },
+    "full-build-package-tests.log": {
+      "bytes": 63,
+      "sha256": "b7f0d3ffb2bc90fbbb21ea9bb630c881a6649da7180bc5b9467f3ebd4b80b2f1"
+    },
+    "targeted-final-tests.log": {
+      "bytes": 1566,
+      "sha256": "4978bb38fab869d8a52b58b1b136cce2b5725665ba7c4e4928f0f85d348fcb18"
+    },
+    "wrapper-tests.log": {
+      "bytes": 1364,
+      "sha256": "0b40cc4749370d1c47a0c59df8e50ad8acbdcda263b666a1bfa90ea3a92dc983"
+    }
+  }
+}

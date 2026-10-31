@@ -85,6 +85,12 @@ class OriginalNodeHTTPControls(unittest.TestCase):
         with self.assertRaises(AssertionError):
             replay.selected_cases('ruby')
 
+    def test_independent_omission_selects_exact_original_case(self):
+        self.assertEqual([x['mid'] for x in replay.selected_cases('node', 98)], [98])
+        self.assertEqual([x['mid'] for x in replay.selected_cases('node', 103)], [103])
+        with self.assertRaises(AssertionError):
+            replay.selected_cases('node', 95)
+
     def test_prepared_marker_is_accepted_and_authored_program_tampering_rejected(self):
         x = next(x for x in replay.selected_cases('node') if x['mid'] == 93)
         command = x['commands']['initial']['build']

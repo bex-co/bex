@@ -1,0 +1,21 @@
+{
+  "baseline_commit": "37ec75d713305fe8471c42ae63b8417653e60b56",
+  "observed_head": "37ec75d713305fe8471c42ae63b8417653e60b56",
+  "frozen_at": "2026-10-31T14:51:35.034765+00:00",
+  "owned_file_count": 4,
+  "owned_bytes": 57882,
+  "owned_manifest_sha256": "1e10b340efac88d1c69407e962f9be0940d4d0d5ebc82e6a3257d61a3234b69d",
+  "prior_audit_unchanged": {
+    "audit-proposal.md": "600c2f3a8daf26d6745161c02442eda4d6554924aa405d8853adb3bad0e4e271",
+    "source-manifest.json": "562949a2d138387b0fdc5e97485c84f39eaed966242ae6fd89f620f13c9604dc"
+  },
+  "actual_images_or_hosted_tests_run": false,
+  "production_pins_empty": true,
+  "foreign_files_not_owned": [
+    "lego/go.work.sum",
+    "lego/operator/internal/build/nativeutility_integration_test.go",
+    "lego/operator/internal/build/testdata/native-utilities/*",
+    ".pm/**",
+    "deploy/native-common/README.md"
+  ]
+}

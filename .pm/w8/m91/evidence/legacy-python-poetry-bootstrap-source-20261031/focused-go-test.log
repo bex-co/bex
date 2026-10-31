@@ -1,0 +1,30 @@
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-default
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-default
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-exact
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-exact
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-empty-default
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-static
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-uv-unchanged
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python37-compatible-explicit
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python38-compatible-explicit
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/explicit-compatibility-contract
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python39-unchanged
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/python313-unchanged
+=== RUN   TestCommonLegacyPythonDefaultPoetryBootstrap/historical-route-unchanged
+--- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap (0.02s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-default (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-default (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-exact (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-exact (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-empty-default (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-static (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-uv-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python37-compatible-explicit (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python38-compatible-explicit (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/explicit-compatibility-contract (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python39-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/python313-unchanged (0.00s)
+    --- PASS: TestCommonLegacyPythonDefaultPoetryBootstrap/historical-route-unchanged (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	3.346s

@@ -1,0 +1,96 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 4365,
+      "sha256": "832f2994d300aebf5d9b3999f5d82452b596b38a57ad0ce32d9bdc1dbed50a94"
+    },
+    "ROOT-REVIEW.json": {
+      "bytes": 687,
+      "sha256": "b988693a977a3e31c77db63497d62a89fbc5a71933f2280c7c33f7931e9ddeb1"
+    },
+    "checks.json": {
+      "bytes": 4457,
+      "sha256": "bf6f0d5cb1f0b7edcc4fc36f88f34d9c718403b22ac1952af25d6c29e8009ece"
+    },
+    "combined-final-scoped-tests.log": {
+      "bytes": 196,
+      "sha256": "c28f37b0c42f00197057a4bdb62485901967155413e2f03d6394414a43d15c3e"
+    },
+    "common-unit.log": {
+      "bytes": 1695,
+      "sha256": "2e49c636b23796ec0c3d7122897a701e6cad021b5710856966641bf44113f5ad"
+    },
+    "diff-check.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "factory-venv-shell-syntax.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "factory-venv-smoke.sh": {
+      "bytes": 224,
+      "sha256": "381e2d117d364c11784d67ab26e2d2b8259a88d5d16dbacf687edb7cca6ea820"
+    },
+    "focused-go-test.log": {
+      "bytes": 2334,
+      "sha256": "8d5f1d6157585ebba3ce2ba1eff65a0e671fa12128aecd5927558a44a0c796fc"
+    },
+    "foreign-nativeutility-at-37ec75d71.go": {
+      "bytes": 13421,
+      "sha256": "44a3eee12d7e1b00cc5dbe81d5690dadfb5f6ac9533b4dc19dd8243b7c019a6f"
+    },
+    "lint-foreign-baseline-overlay.json": {
+      "bytes": 229,
+      "sha256": "2eb5dd024975d3c61842ce0aac7c61a4bc50bdcba1712c60ff192e1cff02e953"
+    },
+    "negative-control.json": {
+      "bytes": 663,
+      "sha256": "87e1dc7b0ceb1926163dc21245b2444fa121aae59290db7881a84f904054f3e0"
+    },
+    "original-private-manifest.json": {
+      "bytes": 4113,
+      "sha256": "c995d96921801ec65dad2851c513c53253729ce67937bc265ec6016bd29ea621"
+    },
+    "owned-paths.json": {
+      "bytes": 1329,
+      "sha256": "1e10b340efac88d1c69407e962f9be0940d4d0d5ebc82e6a3257d61a3234b69d"
+    },
+    "owned.patch": {
+      "bytes": 14650,
+      "sha256": "c6b604361d824baaafae47414d293158f0ee26c75c195e8ea124e0cbaf1134a2"
+    },
+    "pre-fix-nativeresolve.go": {
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+    },
+    "pre-fix-negative-control.log": {
+      "bytes": 4418,
+      "sha256": "037bac68a906469780182a8a1bc9212a39054911c4609d757d9dd2f6cb07da83"
+    },
+    "pre-fix-overlay.json": {
+      "bytes": 199,
+      "sha256": "a001af7a6e33802db9f5201883b7b5877b1285c2ed513fa925795f19897eca63"
+    },
+    "receipt.json": {
+      "bytes": 872,
+      "sha256": "dbe9f284ad2907256b249a42bbdfe510177da9c131daec40b7cd7e10d343b037"
+    },
+    "scoped-go-lint-live-final.log": {
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    "scoped-go-lint-owned-isolated.log": {
+      "bytes": 227,
+      "sha256": "c75c019ea34445629deeb1fe8d9b9550cb1c7e108642c085a586a1f422e6b347"
+    },
+    "scoped-go-lint.log": {
+      "bytes": 227,
+      "sha256": "c75c019ea34445629deeb1fe8d9b9550cb1c7e108642c085a586a1f422e6b347"
+    },
+    "scoped-go-test.log": {
+      "bytes": 196,
+      "sha256": "91e1941d47cbe221220fb295f96356505daf34b32bfdfa71ac8dd346278c12a0"
+    }
+  }
+}

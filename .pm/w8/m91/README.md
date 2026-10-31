@@ -256,3 +256,11 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Common runtime compatibility source — 2026-10-31
 
 [Phase2 source, review findings and controls](evidence/common-bookworm-compat-source-20261031/README.md) preserve all27 reviewed selections above one common Bookworm final base, including exact OTP/Elixir/rebar, legacy distinct-SONAME libraries and exact EOL Node repair. Two source review defects were corrected and focused suites/lint/source controls pass. All19 source files/modes were independently checked. No common/runtime artifact is adopted: actual package/compiler/native-extension/ABI, both-architecture generated-image/SBOM and original28 hosted acceptance remain open. t007 stays in progress.
+
+## Independent supplier omission controls — 2026-10-31
+
+The common generated-image harness now prepares separate jq/rsync and Python metadata/pip/header omission subtests using test-only removal layers and exact original m98/m103 commands. Healthy independent prerequisites, a fresh actual BuildKit stdout probe and the later specific failure are required. Eight offline wrapper tests, five evidence-parser subcases and the full build-package suite pass; the Docker/image omission subtests remain unexecuted. [Source checkpoint](evidence/independent-supplier-controls-source-20261031/README.md) preserves this distinction. No original program/data/command, production pin or task completion changed.
+
+## Legacy Python default Poetry bootstrap source — 2026-10-31
+
+[Four-file source repair and regression evidence](evidence/legacy-python-poetry-bootstrap-source-20261031/README.md) use the common system interpreter only to bootstrap default Poetry2.1.3 beside Python3.7/3.8. App/tool versions, app ENV/PATH, explicit compatibility, uv and companions are preserved. Thirteen source controls pass; the pre-fix resolver fails exactly seven affected cases, and scoped suites/final live lint pass. Actual factory/tool/project/generated-image/architecture/hosted behavior remains unexecuted and the production common pin is empty. ADR060 records this source amendment without closing t007 or changing the original DoDs.

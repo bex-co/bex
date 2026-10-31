@@ -1,0 +1,288 @@
+diff --git a/deploy/native-common/Dockerfile b/deploy/native-common/Dockerfile
+index 110d324f5..8a02fe9f5 100644
+--- a/deploy/native-common/Dockerfile
++++ b/deploy/native-common/Dockerfile
+@@ -25,7 +25,7 @@ COPY native-common/legacy-libs.preferences /etc/apt/preferences.d/bex-native-leg
+ # optional native applications rather than silently dropping them.
+ RUN chmod 755 /usr/bin/tsc /usr/bin/webpack /usr/bin/bex-native-python-tools \
+   && sh /tmp/bex-native-install.sh \
+-    libbluetooth-dev tk-dev uuid-dev libzstd-dev libjemalloc-dev \
++    python3-venv libbluetooth-dev tk-dev uuid-dev libzstd-dev libjemalloc-dev \
+     unixodbc-dev libsctp-dev libwxgtk3.2-dev libwxgtk-webview3.2-dev libssl1.1 libffi7 \
+   && /usr/bin/python3 /opt/bex/python-tools/fetch-python-tools.py \
+   && rm /tmp/bex-native-install.sh /tmp/bex-patch-system-brotli.sh \
+@@ -35,4 +35,9 @@ COPY native-common/check-common.py /usr/share/bex-native-common/check-common.py
+ COPY --chmod=755 native-common/build-otp /usr/libexec/bex-native/build-otp
+ COPY native-common/otp-features.py /usr/libexec/bex-native/otp-features.py
+ COPY --chmod=755 native-base/node-brotli/patch.sh /usr/libexec/bex-native/build-node
+-RUN --network=none /usr/bin/python3 /usr/share/bex-native-common/check-common.py
++# Default Poetry can use this private tool interpreter beside Python 3.7/3.8.
++# Verify Debian's complete venv/ensurepip prerequisite without installing Poetry.
++RUN --network=none /usr/bin/python3 -m venv /tmp/bex-poetry-bootstrap \
++  && /tmp/bex-poetry-bootstrap/bin/python -I -m pip --version \
++  && rm -rf /tmp/bex-poetry-bootstrap \
++  && /usr/bin/python3 /usr/share/bex-native-common/check-common.py
+diff --git a/lego/operator/internal/build/nativeresolve.go b/lego/operator/internal/build/nativeresolve.go
+index 6f2f14247..c16ccbe2f 100644
+--- a/lego/operator/internal/build/nativeresolve.go
++++ b/lego/operator/internal/build/nativeresolve.go
+@@ -120,7 +120,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
+ 				return nil, err
+ 			}
+ 		}
+-		if rewritten, err = addNativePoetry(rewritten, choice.Image, poetry.Line); err != nil {
++		if rewritten, err = addNativePoetry(rewritten, choice, poetry); err != nil {
+ 			return nil, err
+ 		}
+ 		choices = append(choices, poetry)
+@@ -243,10 +243,23 @@ func nativeRubyToolLines(rubyImage string) string {
+ 		" PATH=" + nativeRubyGems + "/bin:$PATH\n"
+ }
+ 
+-// addNativePoetry installs the chosen Poetry (w8/m72); see
+-// nativePythonToolInstall.
+-func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
+-	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("poetry", version, "poetry"))
++// addNativePoetry keeps Poetry's dependencies private. On the common Bookworm
++// base, its modern default needs the system Python to bootstrap beside an old
++// application Python: Poetry 2.1.3 requires >=3.9, so using Python 3.7/3.8 here
++// would fail even a pip-only build before its authored command. Explicit Poetry
++// choices keep their existing compatible-version requirement.
++func addNativePoetry(dockerfile string, primary, poetry NativeChoice) (string, error) {
++	python := "/usr/local/bin/python"
++	if nativeCommonBase != "" && poetry.Source == "" && poetry.Line == "2.1.3" {
++		version, err := commonImageVariable(primary.imageEnv, "PYTHON_VERSION")
++		if err != nil {
++			return "", err
++		}
++		if strings.HasPrefix(version, "3.7.") || strings.HasPrefix(version, "3.8.") {
++			python = "/usr/bin/python3"
++		}
++	}
++	return afterNativeBase(dockerfile, primary.Image, nativePythonToolInstall(python, "poetry", poetry.Line, "poetry"))
+ }
+ 
+ // addNativeUV installs the chosen uv, with uvx (w8/m81); see
+@@ -255,26 +268,26 @@ func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
+ // project pinning another patch (bex builds a line's reviewed patch) gets the
+ // CPython uv downloads for it, as uv does anywhere.
+ func addNativeUV(dockerfile, baseImage, version string) (string, error) {
+-	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("uv", version, "uv", "uvx"))
++	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("/usr/local/bin/python", "uv", version, "uv", "uvx"))
+ }
+ 
+ // nativePythonToolInstall is the step that installs an exact PyPI release of a
+ // Python-packaged tool right after the FROM, before the source and the
+ // authored build, into its own virtualenv /opt/bex/<pkg> on the selected
+-// Python, and links its commands onto the image PATH so the build, the
++// interpreter, and links its commands onto the image PATH so the build, the
+ // pre-deploy step and the started service all find them. The application's
+ // packages, virtualenvs and PATH never share that virtualenv, and the tool's
+ // dependencies never land in the image's site-packages. The step runs under
+ // the image's own environment, not the service's, and sits before COPY so a
+ // source change reuses it; a changed version is a changed instruction.
+-func nativePythonToolInstall(pkg, version string, commands ...string) string {
++func nativePythonToolInstall(python, pkg, version string, commands ...string) string {
+ 	home := "/opt/bex/" + pkg
+ 	var links strings.Builder
+ 	for _, command := range commands {
+ 		fmt.Fprintf(&links, " && ln -s %s/bin/%s /usr/local/bin/%s", home, command, command)
+ 	}
+-	return fmt.Sprintf("RUN /usr/local/bin/python -m venv %[1]s && %[1]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[2]s==%[3]s%[4]s\n",
+-		home, pkg, version, links.String())
++	return fmt.Sprintf("RUN %[1]s -m venv %[2]s && %[2]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[3]s==%[4]s%[5]s\n",
++		python, home, pkg, version, links.String())
+ }
+ 
+ // afterNativeBase inserts lines right after the generated Dockerfile's FROM.
+diff --git a/lego/operator/internal/build/nativeversion.go b/lego/operator/internal/build/nativeversion.go
+index c1b7108e3..10e037db7 100644
+--- a/lego/operator/internal/build/nativeversion.go
++++ b/lego/operator/internal/build/nativeversion.go
+@@ -241,8 +241,9 @@ var poetryRelease = regexp.MustCompile(`^[12]\.\d+\.\d+$`)
+ // POETRY_VERSION when set, else the default. Unlike the primary toolchains it
+ // is an exact release installed from PyPI rather than a pinned image line —
+ // Poetry publishes no reviewed image — so Line is the version itself.
+-// Compatibility with the chosen Python is Poetry's own: an incompatible pair
+-// fails the install step by name in the build log.
++// Explicit versions retain Poetry's compatibility requirement: an incompatible
++// pair fails the install step by name. Common assembly bootstraps the modern
++// default independently when an old application Python cannot install it.
+ func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
+ 	request := strings.TrimSpace(env["POETRY_VERSION"])
+ 	if request == "" {
+diff --git a/lego/operator/internal/build/nativepoetry_test.go b/lego/operator/internal/build/nativepoetry_test.go
+new file mode 100644
+index 000000000..aa6c97928
+--- /dev/null
++++ b/lego/operator/internal/build/nativepoetry_test.go
+@@ -0,0 +1,169 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++	http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package build
++
++import (
++	"context"
++	"encoding/json"
++	"os"
++	"slices"
++	"strings"
++	"testing"
++	"time"
++)
++
++// These controls resolve the complete recipe, not a runnable common image.
++// Actual old-Python/Poetry project and dependency compatibility remains a
++// separate image gate, including the tool venv's system-interpreter supply.
++func TestCommonLegacyPythonDefaultPoetryBootstrap(t *testing.T) {
++	original := nativeCommonBase
++	t.Cleanup(func() { nativeCommonBase = original })
++	for _, tc := range []struct {
++		name, line, exact, poetry, interpreter string
++		historical, static, uv                 bool
++	}{
++		{name: "python37-default", line: "3.7", interpreter: "/usr/bin/python3"},
++		{name: "python38-default", line: "3.8", interpreter: "/usr/bin/python3"},
++		{name: "python37-exact", line: "3.7", exact: "3.7.16", interpreter: "/usr/bin/python3"},
++		{name: "python38-exact", line: "3.8", exact: "3.8.19", interpreter: "/usr/bin/python3"},
++		{name: "python37-empty-default", line: "3.7", poetry: " ", interpreter: "/usr/bin/python3"},
++		{name: "python38-static", line: "3.8", static: true, interpreter: "/usr/bin/python3"},
++		{name: "python38-uv-unchanged", line: "3.8", uv: true, interpreter: "/usr/bin/python3"},
++		{name: "python37-compatible-explicit", line: "3.7", poetry: "1.5.1", interpreter: "/usr/local/bin/python"},
++		{name: "python38-compatible-explicit", line: "3.8", poetry: "1.8.5", interpreter: "/usr/local/bin/python"},
++		{name: "explicit-compatibility-contract", line: "3.7", poetry: "2.1.3", interpreter: "/usr/local/bin/python"},
++		{name: "python39-unchanged", line: "3.9", interpreter: "/usr/local/bin/python"},
++		{name: "python313-unchanged", line: "3.13", interpreter: "/usr/local/bin/python"},
++		{name: "historical-route-unchanged", line: "3.7", historical: true, interpreter: "/usr/local/bin/python"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			nativeCommonBase = commonFixtureImage
++			if tc.historical {
++				nativeCommonBase = ""
++			}
++			line, _ := nativeToolchains[nativePythonRuntime].find(tc.line)
++			primary, version, selected := line.image, line.version, tc.line
++			fake := &fakeExact{digests: map[string]string{}, envByImage: map[string]fakeExactMetadata{}}
++			if tc.exact != "" {
++				suite := "bookworm"
++				if tc.line == "3.7" {
++					suite = "bullseye"
++				}
++				tag := "python:" + tc.exact + "-" + suite
++				fake.digests[tag] = exactDigest
++				primary, version, selected = tag+"@"+exactDigest, tc.exact, tc.exact
++			}
++			fake.envByImage[primary] = fakeExactMetadata{env: []string{
++				"PYTHON_VERSION=" + version, "PATH=/usr/local/bin:/usr/bin", "LANG=C.UTF-8", `LITERAL=$HOME\path"quoted`,
++			}}
++			node, _ := nativeToolchains[nativeNodeRuntime].find("24")
++			fake.envByImage[node.image] = commonReviewedFixtureMetadata(nativeNodeRuntime, node)
++			o := nativeOptions()
++			o.Runtime, o.StaticSite = nativePythonRuntime, tc.static
++			o.BuildCommand = `python -m pip --version && printf '%s' "build $PYTHON_VERSION"` + "\n"
++			o.StartCommand = `python -c 'import sys; print(sys.version)'` + " "
++			if tc.static {
++				o.StartCommand = ""
++			}
++			env := map[string]string{"PYTHON_VERSION": selected, "POETRY_VERSION": tc.poetry, "BUN_VERSION": "1.4"}
++			sourceFiles := map[string]string{}
++			if tc.uv {
++				sourceFiles["uv.lock"] = ""
++			}
++			bundle, path, source := writeResolveFixture(t, o, env, sourceFiles)
++			choices, err := ResolveNativeBuildExact(context.Background(), fake, time.Time{}, o.Runtime, bundle, path, source)
++			must(t, err)
++			raw, err := os.ReadFile(path)
++			must(t, err)
++			recipe := string(raw)
++			if choices[0].Image != primary || choices[0].Line != selected {
++				t.Fatalf("Poetry bootstrap changed the selected application Python: %+v", choices[0])
++			}
++			poetry := defaultPoetryVersion
++			if strings.TrimSpace(tc.poetry) != "" {
++				poetry = tc.poetry
++			}
++			if choices[1].Label != "Poetry" || choices[1].Line != poetry ||
++				(choices[1].Source == "") != (strings.TrimSpace(tc.poetry) == "") {
++				t.Fatalf("Poetry version or default/explicit meaning changed: %+v", choices[1])
++			}
++			layer := resolvedPythonToolLayer(t, recipe, "poetry")
++			if !strings.HasPrefix(layer, "RUN "+tc.interpreter+" -m venv /opt/bex/poetry && ") ||
++				!strings.Contains(layer, "--no-input poetry=="+poetry+" && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry") {
++				t.Fatalf("wrong private tool interpreter or exact Poetry release: %s", layer)
++			}
++			if !tc.historical {
++				assertCommonPrimaryOrder(t, recipe, primary, "PYTHON_VERSION", version, true)
++			}
++			for _, reject := range []string{"ENV VIRTUAL_ENV", "ENV PYTHONHOME", "ENV PYTHONPATH", "POETRY_VIRTUALENVS_USE_POETRY_PYTHON", "ENV PATH=\"/usr/bin"} {
++				if strings.Contains(recipe, reject) {
++					t.Fatalf("tool bootstrap changed application environment with %q", reject)
++				}
++			}
++			for _, retained := range []string{" /usr/local/bin/node /usr/local/bin/node\n", " /usr/local/lib/node_modules /usr/local/lib/node_modules\n", " /usr/local/bin/bun /usr/local/bin/bun\n", "/usr/local/bin/yarn", "/usr/local/bin/pnpm", " /ffmpeg /ffprobe /\n"} {
++				if !strings.Contains(recipe, retained) {
++					t.Fatalf("Poetry bootstrap lost a companion: %q", retained)
++				}
++			}
++			if tc.uv && !strings.HasPrefix(resolvedPythonToolLayer(t, recipe, "uv"), "RUN /usr/local/bin/python -m venv /opt/bex/uv && ") {
++				t.Fatal("Poetry tool interpreter leaked into uv")
++			}
++			assertPoetryRecipeCommands(t, recipe, o)
++		})
++	}
++}
++
++func resolvedPythonToolLayer(t *testing.T, recipe, pkg string) string {
++	t.Helper()
++	var found []string
++	for line := range strings.SplitSeq(recipe, "\n") {
++		if strings.HasPrefix(line, "RUN ") && strings.Contains(line, " -m venv /opt/bex/"+pkg+" && ") {
++			found = append(found, line)
++		}
++	}
++	if len(found) != 1 {
++		t.Fatalf("expected one private %s install, got %v", pkg, found)
++	}
++	return found[0]
++}
++
++func assertPoetryRecipeCommands(t *testing.T, recipe string, o Options) {
++	t.Helper()
++	var build, start []string
++	for line := range strings.SplitSeq(recipe, "\n") {
++		if strings.HasPrefix(line, "RUN --mount=type=secret,id=render-env,") {
++			at := strings.Index(line, " [")
++			if at < 0 {
++				t.Fatal("authored build lost its shell argv")
++			}
++			must(t, json.Unmarshal([]byte(line[at+1:]), &build))
++		}
++		if command, ok := strings.CutPrefix(line, "CMD "); ok {
++			must(t, json.Unmarshal([]byte(command), &start))
++		}
++	}
++	if !slices.Equal(build, []string{"/bin/bash", "-c", ". /opt/bex/load-env\n" + o.BuildCommand}) {
++		t.Fatalf("authored build command bytes changed: %q", build)
++	}
++	if o.StaticSite {
++		if len(start) != 0 {
++			t.Fatalf("static recipe gained a serving command: %q", start)
++		}
++	} else if !slices.Equal(start, []string{"/bin/bash", "-c", o.StartCommand}) {
++		t.Fatalf("authored start command bytes changed: %q", start)
++	}
++}

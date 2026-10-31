@@ -1,0 +1,146 @@
+[
+  {
+    "path": "README.md",
+    "bytes": 4365,
+    "mode": "0o644",
+    "sha256": "832f2994d300aebf5d9b3999f5d82452b596b38a57ad0ce32d9bdc1dbed50a94"
+  },
+  {
+    "path": "checks.json",
+    "bytes": 4457,
+    "mode": "0o644",
+    "sha256": "bf6f0d5cb1f0b7edcc4fc36f88f34d9c718403b22ac1952af25d6c29e8009ece"
+  },
+  {
+    "path": "common-unit.log",
+    "bytes": 1695,
+    "mode": "0o644",
+    "sha256": "2e49c636b23796ec0c3d7122897a701e6cad021b5710856966641bf44113f5ad"
+  },
+  {
+    "path": "diff-check.log",
+    "bytes": 0,
+    "mode": "0o644",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "factory-venv-shell-syntax.log",
+    "bytes": 0,
+    "mode": "0o644",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "factory-venv-smoke.sh",
+    "bytes": 224,
+    "mode": "0o644",
+    "sha256": "381e2d117d364c11784d67ab26e2d2b8259a88d5d16dbacf687edb7cca6ea820"
+  },
+  {
+    "path": "focused-go-test.log",
+    "bytes": 2334,
+    "mode": "0o644",
+    "sha256": "8d5f1d6157585ebba3ce2ba1eff65a0e671fa12128aecd5927558a44a0c796fc"
+  },
+  {
+    "path": "foreign-nativeutility-at-37ec75d71.go",
+    "bytes": 13421,
+    "mode": "0o644",
+    "sha256": "44a3eee12d7e1b00cc5dbe81d5690dadfb5f6ac9533b4dc19dd8243b7c019a6f"
+  },
+  {
+    "path": "lint-foreign-baseline-overlay.json",
+    "bytes": 229,
+    "mode": "0o644",
+    "sha256": "2eb5dd024975d3c61842ce0aac7c61a4bc50bdcba1712c60ff192e1cff02e953"
+  },
+  {
+    "path": "negative-control.json",
+    "bytes": 663,
+    "mode": "0o644",
+    "sha256": "87e1dc7b0ceb1926163dc21245b2444fa121aae59290db7881a84f904054f3e0"
+  },
+  {
+    "path": "owned-paths.json",
+    "bytes": 1329,
+    "mode": "0o644",
+    "sha256": "1e10b340efac88d1c69407e962f9be0940d4d0d5ebc82e6a3257d61a3234b69d"
+  },
+  {
+    "path": "owned.patch",
+    "bytes": 14650,
+    "mode": "0o644",
+    "sha256": "c6b604361d824baaafae47414d293158f0ee26c75c195e8ea124e0cbaf1134a2"
+  },
+  {
+    "path": "pre-fix-nativeresolve.go",
+    "bytes": 18153,
+    "mode": "0o644",
+    "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1"
+  },
+  {
+    "path": "pre-fix-negative-control.log",
+    "bytes": 4418,
+    "mode": "0o644",
+    "sha256": "037bac68a906469780182a8a1bc9212a39054911c4609d757d9dd2f6cb07da83"
+  },
+  {
+    "path": "pre-fix-overlay.json",
+    "bytes": 199,
+    "mode": "0o644",
+    "sha256": "a001af7a6e33802db9f5201883b7b5877b1285c2ed513fa925795f19897eca63"
+  },
+  {
+    "path": "receipt.json",
+    "bytes": 872,
+    "mode": "0o644",
+    "sha256": "dbe9f284ad2907256b249a42bbdfe510177da9c131daec40b7cd7e10d343b037"
+  },
+  {
+    "path": "scoped-go-lint-live-final.log",
+    "bytes": 10,
+    "mode": "0o644",
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  {
+    "path": "scoped-go-lint-owned-isolated.log",
+    "bytes": 227,
+    "mode": "0o644",
+    "sha256": "c75c019ea34445629deeb1fe8d9b9550cb1c7e108642c085a586a1f422e6b347"
+  },
+  {
+    "path": "scoped-go-lint.log",
+    "bytes": 227,
+    "mode": "0o644",
+    "sha256": "c75c019ea34445629deeb1fe8d9b9550cb1c7e108642c085a586a1f422e6b347"
+  },
+  {
+    "path": "scoped-go-test.log",
+    "bytes": 196,
+    "mode": "0o644",
+    "sha256": "91e1941d47cbe221220fb295f96356505daf34b32bfdfa71ac8dd346278c12a0"
+  },
+  {
+    "path": "source/deploy/native-common/Dockerfile",
+    "bytes": 2795,
+    "mode": "0o644",
+    "sha256": "e485a45713039ce913acfc3dc5f5d199908a8732c153ec9d7ab32eb3ea12e9a4"
+  },
+  {
+    "path": "source/lego/operator/internal/build/nativepoetry_test.go",
+    "bytes": 7313,
+    "mode": "0o644",
+    "sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a"
+  },
+  {
+    "path": "source/lego/operator/internal/build/nativeresolve.go",
+    "bytes": 18838,
+    "mode": "0o644",
+    "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+  },
+  {
+    "path": "source/lego/operator/internal/build/nativeversion.go",
+    "bytes": 28936,
+    "mode": "0o644",
+    "sha256": "8466dd2cea67f24df1882c594bf62593ba9a8164f6045c2b50be04734d376873"
+  }
+]

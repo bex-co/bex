@@ -1,0 +1,172 @@
+[
+  {
+    "name": "focused-go-test",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "-run",
+      "^TestCommonLegacyPythonDefaultPoetryBootstrap$",
+      "-count=1",
+      "-v"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "actual_exit": 0,
+    "log": "focused-go-test.log",
+    "integration_opt_in_unset": true,
+    "scope": "13 complete resolver recipe subtests with synthetic registry metadata; no image execution"
+  },
+  {
+    "name": "pre-fix-negative-control",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "-overlay",
+      "/private/tmp/bex-native-poetry-default-bootstrap-20261031-z68yy37h/pre-fix-overlay.json",
+      "./internal/build",
+      "-run",
+      "^TestCommonLegacyPythonDefaultPoetryBootstrap$",
+      "-count=1",
+      "-v"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "expected_exit": 1,
+    "actual_exit": 1,
+    "seconds": 3.11,
+    "at": "2026-10-31T14:45:40.294814+00:00",
+    "log": "pre-fix-negative-control.log",
+    "integration_opt_in_unset": true
+  },
+  {
+    "name": "scoped-go-test",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "./internal/registry",
+      "./cmd/native-resolve",
+      "-count=1"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "seconds": 15.617,
+    "at": "2026-10-31T14:45:55.913454+00:00",
+    "log": "scoped-go-test.log",
+    "integration_opt_in_unset": true
+  },
+  {
+    "name": "scoped-go-lint",
+    "command": [
+      "./bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "./internal/registry/...",
+      "./cmd/native-resolve/..."
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "expected_exit": 0,
+    "actual_exit": 1,
+    "seconds": 4.289,
+    "at": "2026-10-31T14:46:00.202570+00:00",
+    "log": "scoped-go-lint.log",
+    "integration_opt_in_unset": true
+  },
+  {
+    "name": "scoped-go-lint-owned-isolated",
+    "command": [
+      "./bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "./internal/registry/...",
+      "./cmd/native-resolve/..."
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "expected_exit": 0,
+    "actual_exit": 1,
+    "seconds": 2.538,
+    "at": "2026-10-31T14:47:23.240969+00:00",
+    "log": "scoped-go-lint-owned-isolated.log",
+    "integration_opt_in_unset": true,
+    "explicit_environment": {
+      "GOFLAGS": "-overlay=/private/tmp/bex-native-poetry-default-bootstrap-20261031-z68yy37h/lint-foreign-baseline-overlay.json"
+    }
+  },
+  {
+    "name": "common-unit",
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "deploy/native-common",
+      "-p",
+      "*_test.py",
+      "-v"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7",
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "seconds": 0.109,
+    "at": "2026-10-31T14:48:53.206765+00:00",
+    "log": "common-unit.log",
+    "integration_opt_in_unset": true
+  },
+  {
+    "name": "diff-check",
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "--",
+      "deploy/native-common/Dockerfile",
+      "lego/operator/internal/build/nativeresolve.go",
+      "lego/operator/internal/build/nativeversion.go"
+    ],
+    "cwd": "/Users/tianpan/projects/bex7",
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "seconds": 0.035,
+    "at": "2026-10-31T14:48:53.242806+00:00",
+    "log": "diff-check.log",
+    "integration_opt_in_unset": true
+  },
+  {
+    "name": "factory-venv-shell-syntax",
+    "command": [
+      "sh",
+      "-n"
+    ],
+    "input": "factory-venv-smoke.sh",
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "meaning": "syntax only; the factory venv/pip command was not executed"
+  },
+  {
+    "name": "scoped-go-lint-live-final",
+    "command": [
+      "./bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "./internal/registry/...",
+      "./cmd/native-resolve/..."
+    ],
+    "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "seconds": 3.969,
+    "at": "2026-10-31T14:49:35.819578+00:00",
+    "log": "scoped-go-lint-live-final.log",
+    "integration_opt_in_unset": true,
+    "overlay": false,
+    "context": "Root extracted helpers to fix the independently reported foreign gocyclo finding; earlier failed attempts preserved."
+  }
+]
