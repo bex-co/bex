@@ -4,6 +4,7 @@
 !native-base/package-lock.json
 !native-base/node-brotli/
 !native-base/node-brotli/check.js
+!native-base/node-brotli/patch.sh
 !native-base/tsc
 !native-base/webpack
 !native-base/python-tools.json
@@ -15,3 +16,7 @@
 !native-common/
 !native-common/Dockerfile
 !native-common/check-common.py
+!native-common/build-otp
+!native-common/otp-features.py
+!native-common/legacy-libs.sources
+!native-common/legacy-libs.preferences

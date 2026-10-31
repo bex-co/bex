@@ -33,6 +33,10 @@ def check_wheels(store):
 def main():
     check_layout(Path("/"))
     check_wheels(Path("/opt/bex/python-tools"))
+    # Genuine coinstalled packages retain dpkg/SBOM/scan identity. Distinct
+    # SONAMEs supply old runtimes without replacing Bookworm's current ABIs.
+    for library in ("libssl.so.1.1", "libcrypto.so.1.1", "libffi.so.7", "libssl.so.3", "libffi.so.8"):
+        ctypes.CDLL(library)
     # Importing the system interpreter's development modules cannot prove a
     # subsequently selected primary's matching headers; that remains its own gate.
     for library in ("vips", "pq", "ssl", "ffi", "tcl8.6", "tk8.6", "uuid", "zstd", "jemalloc", "odbc", "sctp"):

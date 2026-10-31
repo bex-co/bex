@@ -18,6 +18,7 @@ package build
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -98,7 +99,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		return nil, err
 	}
 	if choice.elixirImage != "" {
-		if rewritten, err = afterNativeBase(rewritten, choice.Image, nativeElixirTreeLines(choice.elixirImage, choice.Line)); err != nil {
+		if rewritten, err = afterNativeBase(rewritten, choice.Image, nativeElixirTreeLines(choice.elixirImage, cmp.Or(choice.elixirVersion, choice.Line))); err != nil {
 			return nil, err
 		}
 	}
@@ -128,11 +129,14 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		}
 	}
 	if nativeJSCompanionRuntimes[runtime] {
-		node, err := ResolveNativeVersion(nativeNodeRuntime, env, readFile)
+		node, lines, err := resolveNativeCompanion(ctx, exact, nativeNodeRuntime, env, readFile)
 		if err != nil {
 			return nil, err
 		}
-		if rewritten, err = addNativeJSTools(rewritten, choice.Image, node.Image); err != nil {
+		if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
+			return nil, err
+		}
+		if rewritten, err = prependNativeRuntimeStage(rewritten, choice.Image, node.primaryStage); err != nil {
 			return nil, err
 		}
 		choices = append(choices, node)
@@ -143,7 +147,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	// Ruby — so a Ruby no line serves is left out with a line saying so, and
 	// the site builds as it did before Ruby was supplied.
 	if strings.Contains(rewritten, nativeStaticInstallCopy) && hasGemfile(sourceDir) {
-		ruby, err := ResolveNativeVersion(nativeRubyRuntime, env, readFile)
+		ruby, lines, err := resolveNativeCompanion(ctx, exact, nativeRubyRuntime, env, readFile)
 		var unsupported *UnsupportedVersionError
 		switch {
 		case errors.As(err, &unsupported):
@@ -151,7 +155,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		case err != nil:
 			return nil, err
 		default:
-			if rewritten, err = afterNativeBase(rewritten, choice.Image, nativeRubyToolLines(ruby.Image)); err != nil {
+			if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
 				return nil, err
 			}
 			choices = append(choices, ruby)
@@ -215,10 +219,6 @@ func nativeYarnInstall() string {
 // and backward compatible, so the copied binary runs on the primary image's own
 // libraries — the real-image gate executes it on every line. --link keeps these
 // layers cached when the primary line changes.
-func addNativeJSTools(dockerfile, baseImage, nodeImage string) (string, error) {
-	return afterNativeBase(dockerfile, baseImage, nativeJSToolLines(nodeImage))
-}
-
 func nativeJSToolLines(nodeImage string) string {
 	return "COPY --link --from=" + nodeImage + " /usr/local/bin/node /usr/local/bin/node\n" +
 		"COPY --link --from=" + nodeImage + " /usr/local/lib/node_modules /usr/local/lib/node_modules\n" +
