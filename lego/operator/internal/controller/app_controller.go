@@ -3180,10 +3180,15 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 }
 
 // reconcileIngressWithMiddlewares assembles the App's Traefik middlewares (IP
-// allow-list + websocket meter) and applies the Ingress fronting svc:port. On
-// error it returns the failure reason for the caller's r.fail.
+// allow-list, edge compression, websocket meter) and applies the Ingress
+// fronting svc:port. On error it returns the failure reason for the caller's
+// r.fail.
 func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (string, error) {
 	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	if err != nil {
+		return "MiddlewareFailed", err
+	}
+	compression, err := r.reconcileEdgeCompressionMiddlewares(ctx, app, len(hosts) > 0)
 	if err != nil {
 		return "MiddlewareFailed", err
 	}
@@ -3191,7 +3196,7 @@ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app
 	if err != nil {
 		return "MiddlewareFailed", err
 	}
-	middlewareNames := mwNames
+	middlewareNames := append(mwNames, compression...)
 	if wsMeter != "" {
 		middlewareNames = append(middlewareNames, wsMeter)
 	}
