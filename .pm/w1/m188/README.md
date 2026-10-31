@@ -1,6 +1,6 @@
 # w1 · m188 — 旧版 native 运行时的安全补丁由平台集中维护
 
-**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1 签名发布独立验收通过（8/11），继续其余候选与接入验收
+**Worker:** worker1 **Goal:** 用经过验证的平台补丁镜像解除旧版官方镜像的上游等待，保持用户选定的运行时版本，优先保护实际在用的受影响服务。 **Status:** in progress — t001 done；Node14、Node16、Python3.7/3.8/3.9/3.10、Ruby3.0/3.1/3.2 签名发布独立验收通过（9/11），继续其余候选与接入验收
 
 ## 用户决定 — D1=A，2026-10-29
 
@@ -297,3 +297,11 @@ Ruby3.2已于23:30Z完成双架构运行验证并进入AMD全扫描；Node18继�
 三项legacy auto的Alpine/Node22实际观察未变，客户Dockerfile来源沿用旧记录中的高置信推断，不能改写为已保留的构建Job证明。market-size为nativeNode失败状态，没有活动发布、镜像或工作负载。cloneix为nativeNode、取消且尚无活动发布，仍有当前App UID归属的零副本Deployment；通过该App现有专属拉取凭据在内存中读取固定gen3 manifest/config，验证digest与大小后，仅保留Node26.10.0/Linuxamd64版本声明。没有读取文件系统层、保存凭据或完整Env/config，也没有执行该镜像或声称安全；专属loopback连接已清理。cloneix未来重建的有效版本仍因源文件不可用及未读取的环境Secret引用而未知，不能假设未来版本或未来安全。
 
 原清单工具只按workload标签关联，漏记该无标签的零副本Deployment；新独立v2优先核对namespace和当前App UID/name/API group，拒绝冲突归属，不增加仅名称匹配的回退，并保留原无owner标签路径。13项隔离控制复现旧漏记、新识别及错误UID等拒绝；无Pod、未知运行时或保留镜像仍保持unresolved。旧helper、原计划与初始5项快照保持原字节。后续t004改用02231095的v2及追加计划，必须在真实operator Ready后用实际部署源码重新采集并结合明确范围证据；本节不是最终rollout、零目标、安全或任务完成证明。正式发布验收仍为8/11，Node18与Ruby3.2继续签名，Node20排队。
+
+### Ruby3.2 正式验收推进至 9/11 — 2026-10-31（UTC 00:57Z）
+
+[Ruby3.2验收收据](evidence/ruby32-published-acceptance/acceptance.json)保留FD producer与4462 verification/证书的区别；原不可变e7e887索引完成五份严格证明、双架构直接registry子镜像/配置绑定、Ruby3.2.11身份、固定系统包、实际运行门槛及完整扫描。目标Brotli发现为零；每架构其他11,472项发现（含88项critical）保留，不作全漏洞清零结论。
+
+根复核实际候选原文、FINAL与控制后，明确批准精确6872fd51验证哈希；966执行器再次读取新鲜匿名discovery并重放冻结3fe守卫后才计数。实际7340字节原文、root批准、元数据转换及第九项aggregate快照均保留，原八项proof/candidate的16个哈希不变。[74项归档核查](evidence/ruby32-acceptance-archive-audit.json)确认原始字节、大小、路径唯一性及全部批准/转换锚点。
+
+已删除仅此Ruby3.2的临时恢复授权；Node18/20与其他工作流的三项Elixir授权保持原样。[退休记录](evidence/ruby32-recovery-retirement.json)与[20项实际隔离Git选择检查](evidence/recovery-selection-ruby32-retired.json)已保存。剩余Node18继续签名、Node20已经进入双架构运行验证；当前只读采用计划为9项、仍不完整且官方matrix不变。source pin接入、六项真实应用测试与生产rollout尚未执行，t002–t008继续开放。

@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-10-31T00:45:58.376005+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm-4462ee030984637bb765ae560b6ffe38c71f3af4",
+  "digest": "sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "header_digest": "sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "anonymous_access": true
+}

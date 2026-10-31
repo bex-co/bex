@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-31T01:00:25.901781+00:00",
+  "removed_tag": "ruby-3.2-bookworm",
+  "removed_entry": {
+    "base": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+    "producer": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "run_id": 41063737101,
+    "job_id": 124091095086,
+    "evidence": "https://github.com/bex-co/bex/actions/runs/41063737101/job/124091095086",
+    "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/primary-Ruby3.2.11 gates and both full Trivy scans. Image signing and amd64 SPDX/Trivy attestations completed; arm64 registry-Syft SBOM generation then failed reading a layer with HTTP2 PROTOCOL_ERROR. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, complete SBOMs, signatures and attestations.",
+    "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+  },
+  "catalog_source": ".github/native-base-recovery.json",
+  "source_head_before": "5b6de43dc5326973dec890f1594fd3bf483a49da",
+  "before_catalog_sha256": "42c86c2b025b2f724b945888730d6cac042322fee62d2008160bac0a801b4d1e",
+  "after_catalog_sha256": "4fa8a9dbb23fdce6585415298e42b9f268cfb132dca39f501f76c1c15639671c",
+  "only_exact_accepted_ruby32_entry_removed": true,
+  "all_other_records_and_root_fields_unchanged": true,
+  "preserved_own_node18_node20": true,
+  "preserved_foreign_elixir117_118_119": true,
+  "accepted_receipt_sha256": "bbd38bfcff390c3e87442d5300e023020882437923beb799c00b7b08bdcb1207",
+  "accepted_count": 9,
+  "source_adoption_performed": false,
+  "scope": "Retire one own temporaryauthorization after actualverifieddiscovery; doesnottriggerfullpublisher"
+}

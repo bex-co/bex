@@ -1,0 +1,41 @@
+{
+  "schema": "bex.m188.root-approved-promotion-custody-link/v1",
+  "at": "2026-10-31T00:57:50.037714+00:00",
+  "tag": "ruby-3.2-bookworm",
+  "root_approval": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/root-promotion-approval.json",
+    "sha256": "7c3ae077aff03e95446d0b21070fc1201b3a2d46a52822d175a1d810606dfa0c"
+  },
+  "immediate_execution_preflight": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/promotion-execution-preflight.json",
+    "sha256": "83950319f72d8828cc65460d3eef16fe42555fa5049f61292fab3dde9acbce85"
+  },
+  "exact_approved_FINAL_validation_sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+  "acceptance_receipt": {
+    "file": "/tmp/bex-m188-ruby-3.2-bookworm-acceptance.json",
+    "sha256": "bbd38bfcff390c3e87442d5300e023020882437923beb799c00b7b08bdcb1207"
+  },
+  "aggregate_at_promotion": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/aggregate-at-promotion-9.json",
+    "sha256": "64249b676294f1f710a63e96d4356608895465524f2c45c53936dfcc04866e78"
+  },
+  "accepted_count": 9,
+  "stable_discovery_checked_at": "2026-10-31T00:56:58.127184+00:00",
+  "stable_discovery_confirmation": {
+    "file": "/tmp/bex-m188-ruby-3.2-bookworm-discovery-confirmation.json",
+    "sha256": "4b9b701626d33be7d8e731f6922dd520534ff0314c4593d6990de7d1eb597f99"
+  },
+  "prebody": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate-validated-body-b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43.json",
+    "sha256": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43"
+  },
+  "metadata_transition": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/acceptance-metadata-transition.json",
+    "sha256": "79af9031f4e8bbe89b5bf8bad1f521a47589a8ba619b459da2fbc6ca232717a2"
+  },
+  "approved_prebody_hash": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43",
+  "accepted_candidate_hash": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf",
+  "all_previous8_proof_candidate_files_rechecked_unchanged": true,
+  "proof_FINAL_controls_prebody_rechecked_unchanged": true,
+  "source_adoption_performed": false
+}

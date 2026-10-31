@@ -1,0 +1,11 @@
+{
+  "schema": "native_stable_discovery_confirmation/v1",
+  "checked_at": "2026-10-31T00:56:58.127184+00:00",
+  "tag": "ghcr.io/bex-co/bex-cnb-run:native-ruby-3.2-bookworm",
+  "digest": "sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "header_digest": "sha256:e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827",
+  "anonymous_registry_access": true,
+  "raw_bytes": 1611,
+  "raw_file": "/tmp/bex-m188-ruby-3.2-bookworm-discovery-confirmation.raw.json",
+  "raw_sha256": "e7e887fb144f617a6b0c23618fde65a4bd3c8a1cf04d7d0190dea620317cd827"
+}
