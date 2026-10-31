@@ -1,0 +1,730 @@
+{
+  "README.md": {
+    "bytes": 1258,
+    "sha256": "735c5b12e7820f8d9c9af5a5e817a2999f18c9a0c6b93ea6f16132382d09fdf0"
+  },
+  "ROOT-GIT-SOURCE.json": {
+    "bytes": 7058,
+    "sha256": "998499d49c65a55b9806efb8e79281eb824941eba6c2341e6d33b879b04c803f"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 1254,
+    "sha256": "911e2de939678028e73be1efe63214ace3002222df7b973b1f6896eeb130290b"
+  },
+  "original-frozen-manifest.json": {
+    "bytes": 50409,
+    "sha256": "f396519c93e534c0d436912b4190f1bec2139d4497d1f8abb4edd9bf2ecf0047"
+  },
+  "original-frozen-review.json": {
+    "bytes": 2281,
+    "sha256": "261bda456816e5c0520a927cecdf381114478940aa1a2062db1bbb53194a4ab0"
+  },
+  "receipt.json": {
+    "bytes": 36648,
+    "sha256": "66277818babf41b78d0a8e663e41b76f8d5046e0e0ac656a9475140729ce57b6"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/058bbbfd24ece1e3d4ddf61ae0c9566f4d41e44e50571dddae5cfcb4f540a450.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/0a5202ec18a89205c594e6b7be7abb767fbd2be4c2f25c432be02b23004b79eb.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/0cb7830669337825cbe4f9a4833d4ed5307a2d2d6be0713060f25657689e0df5.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/196bee11559b33607dfab3918b8a33752854c48ad3643f10627d2fe6f5e9aaff.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/33d7ab0e9552d5a6512ce38603bb2e61551ae67bb6ec89e03e1b078b81bda1d3.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/341eb07c98809e5c4a7985f4188dd4ba4652c6666297621bfca8ee5d9228610e.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/37f65b8255cd77a1fc40b8638470e2dac6a66bd540a68c200d00fb9c43564a0f.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/459fe3fc06382b2adcc51bbb9f7f4d1f934961b992fe7cf3db574ce8db2d3088.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/4748b23f4be5a39fd0e0e4189793e01aa97c8b3a502afd006cdaefb39afd8834.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/4a31eee4469a517b453958f09f55159ed40cf553cb29dc3fac93e9e9e67cda2e.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/6051f1764126931e1e1442d58015cfeb96b57277a65461eaebc902bde313b8d4.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/60c478d40edc6aa38027874cc40d44c15b886440a4ba11566fc8cfae09b7972d.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/6537bfd4d5916f127328860d67dc6c20087437b7a2330a79058a028b8825270b.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/906dca5b9f7bb0e6ce2d3c9742eda03ead53cff12a20c444dbda62801841afe4.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/aa2df0084e474da6db27abbf32e4d36bd307262718e079f692bdd628b8e6aa30.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/ae234b5d413f87614d7cb44bcdcfea8eaa88bb844a393fbc221946e4904260a8.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/aee8c1f8042a7504e54b45175ac3d3822547512c99553de3de27cd84fe008873.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/b1f8b45a0a48c1970e1f45549dbc8f9b76209c539d9b1f01bf0740dd5caaa426.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/b494efeca3d512e2d72618b1e2fed9356e4150f7497a0cc0e8124e9d67c0dc0e.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/c0c94aeab262175702394441d3c57378bfa53d1c0b71e66eaf72cb85fb2201c8.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/cd16327fc415efd96159eff88261fbae0524075ab2c49052366b5c29915affb7.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/db6072b51383317b2fa08ff2d89ffa565099ad9da79d15cddc1d416bb4541d19.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/e1b1c158f1c6653eb865b21837e72bcb8eeb9b92ec3a91a40e6399150d332582.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/ecde1b82249353cda4cc56dcf68d098829d87c9e6d23ce899bb7de5d25f31ed5.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/f11fa944c15f5f9de25d71a498c5b172790ef6fd7d7c69cbd42b52e23fbe21fb.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/f59378a42ced06e25b9089a19a1e76641d2a766b87b54fd9cbf2f7579ae7e808.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/receipts.json": {
+    "bytes": 13610,
+    "sha256": "0af5e8da664c523921e8a5fc75e93e36bb6361ad62f72e3a2cc732561e389dba"
+  },
+  "retained/empty-cache/anonymous-compressed-v2/receipts.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/amd64-config.json": {
+    "bytes": 16540,
+    "sha256": "b494efeca3d512e2d72618b1e2fed9356e4150f7497a0cc0e8124e9d67c0dc0e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/amd64-manifest.json": {
+    "bytes": 3534,
+    "sha256": "a26fa09be3c8b93684e8819438626e78af6e726041614cb6171b87e43f3bbb2e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/amd64-official-config.json": {
+    "bytes": 6384,
+    "sha256": "a09cf88e765a0752a769b1eaf5b3d47034ff846e32da48258646f80c63e120fb"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/amd64-official-manifest.json": {
+    "bytes": 2325,
+    "sha256": "77c90594edb5d6a43ed73de1c73b5f9d795bc94fa76d438fba4cc00036100014"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/arm64-config.json": {
+    "bytes": 16534,
+    "sha256": "e1b1c158f1c6653eb865b21837e72bcb8eeb9b92ec3a91a40e6399150d332582"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/arm64-manifest.json": {
+    "bytes": 3534,
+    "sha256": "c6408a01ab1a9e3f58ca1a8e522dc6a5ed8ee109de4cb318e22a91dbee14d0dd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/arm64-official-config.json": {
+    "bytes": 6397,
+    "sha256": "cafea7d128174f8ad17b7fa6ee7c78078fdd127a244dd646b3d9575f26224998"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/arm64-official-manifest.json": {
+    "bytes": 2327,
+    "sha256": "0754419241686d471238d30c56d4058071c73d788f61351267929397b159b7c9"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1.result.json": {
+    "bytes": 1530,
+    "sha256": "6883351cc06479f303d651f9f94e47ffb7e1810b2365cf1bd395e6de7f524945"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1.stderr.log": {
+    "bytes": 12,
+    "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive.result.json": {
+    "bytes": 3189,
+    "sha256": "551deb402ddfc0533c18724bb35151a6f036e718b0a8f2d2ff87b2cc8e8430bf"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2.bundle.json.gz": {
+    "bytes": 4777569,
+    "sha256": "548dde6ca7233888c4e1d8df8c29d967673b50249415e2ebb60f4a392760ca27"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1.result.json": {
+    "bytes": 1530,
+    "sha256": "f2511b84235ebd44c06197928c6850f802e3401faccdda78dfe2da92153f97d3"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1.stderr.log": {
+    "bytes": 12,
+    "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive.result.json": {
+    "bytes": 3189,
+    "sha256": "d071ad2a9b4414f219762edf02c853a17479d7572ce0e3ec3c18eaa8fe3707c7"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3.bundle.json.gz": {
+    "bytes": 4775281,
+    "sha256": "5ca12d79779adc767bcdde6eae824637fcc6e0be43099dd365b817e779ba7f07"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1.result.json": {
+    "bytes": 1509,
+    "sha256": "fb340a61191c41ee5b1873eaddf3e97e236760f2154855c940d7b3efbd6b28a1"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1.stderr.log": {
+    "bytes": 12,
+    "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive.result.json": {
+    "bytes": 3147,
+    "sha256": "4e4520dd354d9f4cba0c53e1d9239d59ff17e38152e4156194f3b355bbada25c"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1.result.json": {
+    "bytes": 1517,
+    "sha256": "50871998aebc5af668ff105a1da00b24c60c780aedaee73135d2e1910e617f44"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1.stderr.log": {
+    "bytes": 467,
+    "sha256": "7d45553bde3b68521a8563a320658fd7bd85214f12c3221fede03a2567df4d3f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source.result.json": {
+    "bytes": 3163,
+    "sha256": "75b71f098e8f16f2c3a264fb4f105a73bad92afc77aa912edb3d3d2b2e850157"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1.result.json": {
+    "bytes": 1519,
+    "sha256": "15df31d9071ca1c94b7d1fe23e7886b04db60db8fe33eb7c762ef8d169634e6b"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1.stderr.log": {
+    "bytes": 223,
+    "sha256": "5fb22b77366c32a47b83492b651e5ff37419f873e4dec84ca2f9068f20afbd59"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject.result.json": {
+    "bytes": 3167,
+    "sha256": "b55bd5f43bf08586dbccc1a4024fd3ba23a795eb7f2be542a35537b83647e39d"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f.bundle.json.gz": {
+    "bytes": 6163,
+    "sha256": "21d6eefa2e9041b5df289f6cf542c5ba3fe44517c45872637bdfd0655b805887"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/7f1ac99ded1a1753d179e93c3b24107b31aae5809c7d0e5a27d9404b0bdb464d.manifest.json": {
+    "bytes": 1038,
+    "sha256": "7f1ac99ded1a1753d179e93c3b24107b31aae5809c7d0e5a27d9404b0bdb464d"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/85bb0e1a00773d23716ea75d9675cc957fa3aaf3a51ac321586e01ee2d81aee9.manifest.json": {
+    "bytes": 1007,
+    "sha256": "85bb0e1a00773d23716ea75d9675cc957fa3aaf3a51ac321586e01ee2d81aee9"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/90c528a961bfa95f6b9905c2d360536af1bf449aec4571e96487fcd3bd4a10fa.manifest.json": {
+    "bytes": 1013,
+    "sha256": "90c528a961bfa95f6b9905c2d360536af1bf449aec4571e96487fcd3bd4a10fa"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1.result.json": {
+    "bytes": 1499,
+    "sha256": "81ffdb5fd0515731acb0b80cd7845938dd60703d582044dbb9390ff7dcff9d2b"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1.stderr.log": {
+    "bytes": 12,
+    "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive.result.json": {
+    "bytes": 3127,
+    "sha256": "3963497082875f7283f9f052843d731f8afb1227711a08fece2a49298056d031"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f.bundle.json.gz": {
+    "bytes": 4515816,
+    "sha256": "27c0d686ec69f7a134d295b26c2fcb99dc74ed2280c907c83eff3a9e3c5b1f37"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/c19a77012729e572bc1eaa79b1eaed6e4c07db86ef8e282e43da60dab4a47d61.manifest.json": {
+    "bytes": 1007,
+    "sha256": "c19a77012729e572bc1eaa79b1eaed6e4c07db86ef8e282e43da60dab4a47d61"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/56a2c6d62589c3809fddc45e8f8f27098bccf4fdc8e5357af022f83282774ce2-positive-attempt1-dzgyod1t/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "46a3fc0b9704bd8186366316978d5ac0b4c7ecf0e9bea4a1f2a152a33aff9f8f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/677338998b74802b24a6b5a36c94d03855fc8c45f001a9d48df850cc588c70d3-positive-attempt1-ohtvur44/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "25293b630d0aee31131912c8e844a35cb2023382a911403266b8c55c5a43de2c"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-positive-attempt1-l1oydyo7/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "229865befa2fd1610d4c7f025f9b8622a63ee0b339caf0d0bcb84381e5ddf7c6"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-source-attempt1-pqu4pm38/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "2e667d8de35a9285ad19ea822bee89409c12d2c703176fa6dbc0bdeabfb69e94"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/7e46892ed3ae621ac825385a7eabdb60ced6385954160be9354572dd6560541f-wrong-subject-attempt1-ozsiy2iy/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 51,
+    "sha256": "ebd72e22b360e2d31e83e187cf0efa070ddc6b2738af6d791d98d5997ff79eb8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/9f9590a68203f298d3823b5710debd1bf1d237a4b5ae1a2b3c0c3f106d870e7f-positive-attempt1-dwfhhlrj/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "0f77bf5a0d35409c0384b82640240ddbe23239df0a1d697c86c2608e407a044b"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev/root.json": {
+    "bytes": 5630,
+    "sha256": "27aea7e372aa7864065174f0661784fcf8b0e28b1dbfebeada31a0f1fb19167f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev/snapshot.json": {
+    "bytes": 1760,
+    "sha256": "6d61405faa993ba3d07556b79d1e319627cdc06ff879a7b5700967dc25d1d224"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json": {
+    "bytes": 6787,
+    "sha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev/targets.json": {
+    "bytes": 4942,
+    "sha256": "6a697f7f8908c8ab26c11786ecb490b54acec97fa8c802e399f065f8a0cc1acd"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev/timestamp.json": {
+    "bytes": 451,
+    "sha256": "d903ab62066ed241cb448be9a2e7725480a7cbde487be73045fa42a86ac6efec"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/cosign-tuf-cache/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1-qvnw42hc/tuf-repo-cdn.sigstore.dev.json": {
+    "bytes": 52,
+    "sha256": "8b6dae400774685c032c85a4e374ecc7db68697ca2462cffbd4c7b48269d2d4c"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/crypto-results.json": {
+    "bytes": 23969,
+    "sha256": "d9f6ce0b5da6b081bc1634b1b39596c5fa28f350958e5a5dec54cb796eb09c2b"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/da5627f2e71cf02c5cc6dfcb52a08f1199e2c63bdf2fc0c5a78f04162e6568cb.manifest.json": {
+    "bytes": 1038,
+    "sha256": "da5627f2e71cf02c5cc6dfcb52a08f1199e2c63bdf2fc0c5a78f04162e6568cb"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/download-receipt.json": {
+    "bytes": 3497,
+    "sha256": "e8be1d4ad6f9875512b1a420d417cb8fecdfcafd55e7e28db623227e5f7580fb"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1.result.json": {
+    "bytes": 1499,
+    "sha256": "6d3903b711a4ce8e3583a38fa9dc6e4c5569ffb4740bfc14354a8341bdd02cd0"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1.stderr.log": {
+    "bytes": 12,
+    "sha256": "80a53f76c7ed6969dade3b6ee47cdb753162db7c00be625448999d08bae77ed8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive-attempt1.stdout.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879-positive.result.json": {
+    "bytes": 3127,
+    "sha256": "342f02ca74244c9a5ef386b3e897d6bc9a785d432f6dfcc5cfee13dd8f634f21"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/ff614d5b2ff42c488317685bcf4acad2d68d17014168976682736ee988819879.bundle.json.gz": {
+    "bytes": 4516038,
+    "sha256": "2fefe87351fb3c59f95ac8c1e63f729426faf6294410bd983d8688bf825803a8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/bundles/referrer-index.json": {
+    "bytes": 2164,
+    "sha256": "eccbe974bc38dd7f457f049aa69286c4f08c7e7852e09d55f33055997b9ac0d4"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ci-runtime-scan-signing-gates.json": {
+    "bytes": 721,
+    "sha256": "f91c084c25a34833c391ef8699ed7aa7de92d456ad9852f14793b3231d4fc8e0"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/executed-tools/loopx-w8-native-review-v11.py": {
+    "bytes": 43608,
+    "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/executed-tools/loopx-w8-verify-native-artifact-ranged.py": {
+    "bytes": 40720,
+    "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/index.json": {
+    "bytes": 1611,
+    "sha256": "911de2554cbd439271dea5e5ced14993b7da2a757a0e51207c603ae63e59cf77"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/official-index.json": {
+    "bytes": 6511,
+    "sha256": "84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/producer-verification-provenance.json": {
+    "bytes": 156,
+    "sha256": "d18b8373d339f5ec16046980bfef1ad86f7d5c20acd67afe52e5198b21e0ea33"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/progress.json": {
+    "bytes": 211,
+    "sha256": "90c49db97517dd95a21dbcbebb1aadb1de45ffd68e6dfbfa90a5d46e939835d5"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-058bbbfd24ece1e3d4ddf61ae0c9566f4d41e44e50571dddae5cfcb4f540a450.json": {
+    "bytes": 611,
+    "sha256": "162a8ad560aa0e1b681879784674185be553f91ea4dae564e89b4e7842d04336"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-0a5202ec18a89205c594e6b7be7abb767fbd2be4c2f25c432be02b23004b79eb.json": {
+    "bytes": 611,
+    "sha256": "5911931ee937710be043639dae304d86c1baac41bcfe9bd7d06f88436ed4f13c"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-0cb7830669337825cbe4f9a4833d4ed5307a2d2d6be0713060f25657689e0df5.json": {
+    "bytes": 623,
+    "sha256": "6453113f20d8ef551e178678d17c5ca7a3352f68d289fa6cada95bc684f5b7e5"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-196bee11559b33607dfab3918b8a33752854c48ad3643f10627d2fe6f5e9aaff.json": {
+    "bytes": 611,
+    "sha256": "e25d05eba64ceaeb7cd03f75632b6b9f8fc528cfb8b6be9216184bbe2286edda"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-33d7ab0e9552d5a6512ce38603bb2e61551ae67bb6ec89e03e1b078b81bda1d3.json": {
+    "bytes": 623,
+    "sha256": "0172f6811c5bf2824beff4e92809b48ecc0b3c0dfcd560ef54a0d8d37903070d"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-341eb07c98809e5c4a7985f4188dd4ba4652c6666297621bfca8ee5d9228610e.json": {
+    "bytes": 611,
+    "sha256": "d76136703fc2b9d0e3ec790b9a43f6d57a19470a3c68b98eb08b7252b2f971d2"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-37f65b8255cd77a1fc40b8638470e2dac6a66bd540a68c200d00fb9c43564a0f.json": {
+    "bytes": 623,
+    "sha256": "d549abff4341c9264989e9638843f38f9e8f874224acebaab252e91ca154419f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc.json": {
+    "bytes": 631,
+    "sha256": "290c276f095fe533a080ef5eeab7ab6ce221b161f92923ebabe56db6ea48f346"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-459fe3fc06382b2adcc51bbb9f7f4d1f934961b992fe7cf3db574ce8db2d3088.json": {
+    "bytes": 627,
+    "sha256": "e1f649f3fa42af9e3ae44bad1b6978ff066e866dfc0b180efc70efd498977179"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-4748b23f4be5a39fd0e0e4189793e01aa97c8b3a502afd006cdaefb39afd8834.json": {
+    "bytes": 607,
+    "sha256": "00a1a7ba87cc644e9991e5d34b96a093b7758826b7aa026d6c74631b4f403439"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395.json": {
+    "bytes": 627,
+    "sha256": "8ed26557e04ba03cfbc918d924862a550df2ae8476db59d33ff9cef9f143d3b2"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-4a31eee4469a517b453958f09f55159ed40cf553cb29dc3fac93e9e9e67cda2e.json": {
+    "bytes": 611,
+    "sha256": "972fc92ba264c899a11e830edddb3a862d2934d3d12d3fc043481e19342c8b7e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.json": {
+    "bytes": 603,
+    "sha256": "3a7406c67060d13cb88132e003e3a38b4d0115da93249d15d263ba2e7ffb9bc6"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212.json": {
+    "bytes": 627,
+    "sha256": "5f4e7efeb813bd1c8b2a21135a6923047e24f21db99746b7e053bfaa6d6619e9"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-6051f1764126931e1e1442d58015cfeb96b57277a65461eaebc902bde313b8d4.json": {
+    "bytes": 631,
+    "sha256": "eb7252a7b75d95b77e2705dd4c0996c38957aa7c9ad4bf0dd0b16077befe54c7"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-60c478d40edc6aa38027874cc40d44c15b886440a4ba11566fc8cfae09b7972d.json": {
+    "bytes": 607,
+    "sha256": "2459551ed8aa9870490fee053f5670b7f7228560378b44c4655f386de6cfb36c"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-6537bfd4d5916f127328860d67dc6c20087437b7a2330a79058a028b8825270b.json": {
+    "bytes": 607,
+    "sha256": "a300e4a19b9015f1710af8590e0d2c25832dad421ae33b489ab5471f6dbc7fce"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038.json": {
+    "bytes": 627,
+    "sha256": "5554c5ea78fc75a5a86feec5baa0e44e2e4af415d0409292c0b78d433ee584e8"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3.json": {
+    "bytes": 627,
+    "sha256": "25d95ace6e9426fc8413a314f57c0906576cffba681c9522e21e2ad3cee3f824"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-906dca5b9f7bb0e6ce2d3c9742eda03ead53cff12a20c444dbda62801841afe4.json": {
+    "bytes": 627,
+    "sha256": "0b6f51ed9720be73ffb6a95d15adfcf3b3ea0f9d9e89da2adcfde57aa059c190"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62.json": {
+    "bytes": 627,
+    "sha256": "f19b2bd7e21f07bd9d05ca4eb17de74c24c42c51ee6f12a2df90b5ea819b5d56"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506.json": {
+    "bytes": 627,
+    "sha256": "50a888631a0254c300ea83c337a1b2c563ecf66c60bee465b6d03b3543d29943"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-aa2df0084e474da6db27abbf32e4d36bd307262718e079f692bdd628b8e6aa30.json": {
+    "bytes": 631,
+    "sha256": "8f6968fbd2ac13e765f07a2d67a8b96bf607150c06061c796f2767e5c8fa80d9"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-ae234b5d413f87614d7cb44bcdcfea8eaa88bb844a393fbc221946e4904260a8.json": {
+    "bytes": 607,
+    "sha256": "82052654d56d527eece69b2be4726296cb5647bf1ec24a393b26640a64b8d390"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-aee8c1f8042a7504e54b45175ac3d3822547512c99553de3de27cd84fe008873.json": {
+    "bytes": 611,
+    "sha256": "b0fe492a3566d3751232c207bbb207cb30ba9f53d2192fe4f12a0da52c821f03"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-b1f8b45a0a48c1970e1f45549dbc8f9b76209c539d9b1f01bf0740dd5caaa426.json": {
+    "bytes": 611,
+    "sha256": "facfebb303833105ca0f9cb0ba09b7dae6efaa63c6ad490c22c1c357e4fcf3b4"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-b494efeca3d512e2d72618b1e2fed9356e4150f7497a0cc0e8124e9d67c0dc0e.json": {
+    "bytes": 615,
+    "sha256": "90d4e00d788a5ad9165a536a8727f8e22b7fee95e7d8cfa0600767e83c0bea75"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-c0c94aeab262175702394441d3c57378bfa53d1c0b71e66eaf72cb85fb2201c8.json": {
+    "bytes": 607,
+    "sha256": "bc941f58168bbe068c91962bd1fb062998e2181d4c775bad06e66f8834c928d6"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe.json": {
+    "bytes": 631,
+    "sha256": "a59f178824eb712e2315c2d853bb254c6926e8b98bea5800db37051653822a20"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-cd16327fc415efd96159eff88261fbae0524075ab2c49052366b5c29915affb7.json": {
+    "bytes": 623,
+    "sha256": "98889abed9e2167bec630f29a599a4c823ac36d8f9b3295d1f32b57511e20415"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-db6072b51383317b2fa08ff2d89ffa565099ad9da79d15cddc1d416bb4541d19.json": {
+    "bytes": 627,
+    "sha256": "527bdde5e1c99cf187439505b0d32228eba433ef628992b4c326853904e1247f"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-e1b1c158f1c6653eb865b21837e72bcb8eeb9b92ec3a91a40e6399150d332582.json": {
+    "bytes": 615,
+    "sha256": "9b7b6e8140a14d29474ac3519d7a54388bbe8fa1f03c4094f6ddc597bd445059"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-ecde1b82249353cda4cc56dcf68d098829d87c9e6d23ce899bb7de5d25f31ed5.json": {
+    "bytes": 627,
+    "sha256": "5621b5f7133bb8e45ed120981a0e0c06c63324888aec2e736413d19698ec3b3e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-f11fa944c15f5f9de25d71a498c5b172790ef6fd7d7c69cbd42b52e23fbe21fb.json": {
+    "bytes": 607,
+    "sha256": "ecc90e7f2396654c55360dfd61933db7aca634be84c2080d9b667f8bb000cd3e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/ranged-body-f59378a42ced06e25b9089a19a1e76641d2a766b87b54fd9cbf2f7579ae7e808.json": {
+    "bytes": 611,
+    "sha256": "1e1919438cf3e2a52fae6ed2e99f85c0322142b0e2a4cfcbcf8c42a163b0bc42"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/receipt.json": {
+    "bytes": 36648,
+    "sha256": "66277818babf41b78d0a8e663e41b76f8d5046e0e0ac656a9475140729ce57b6"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/source/.github/native-base-recovery.json": {
+    "bytes": 4318,
+    "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/source/.github/workflows/native-base-image.yml": {
+    "bytes": 16530,
+    "sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/source/deploy/native-base/matrix.py": {
+    "bytes": 2099,
+    "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/source/lego/operator/internal/build/native.go": {
+    "bytes": 25979,
+    "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+  },
+  "retained/output/native-python-3.11-bookworm-d95dcd88505c5d6825343dbfbc74244242ccad25/source/source-files.json": {
+    "bytes": 522,
+    "sha256": "262562c1fb08fbd5e42910566e0116e7170916126768eb04381849dd7b108a7d"
+  }
+}
