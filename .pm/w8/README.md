@@ -405,6 +405,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **225** — [Resuming a service suspended by the Free-hours budget names it by its internal App name (`tea-<workspace>-<slug>`), not the service](225.md) (~10m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-30: first live m139 exhaustion (`bex-canary` 750.58/750 h) — the refusal text formats `a.Name`; use `core.AppPublicName` as w8/128 did
+
 - [x] **223** — [A rollout refused by workspace memory quota shows its reason](done/223.md) — **DONE 2026-10-29:** already fixed by `885d61317`; newest-ReplicaSet quota regressions pass. Prior live-check limits retained.
 
 - [ ] **224** — [`bex login` names the wrong dashboard](blocked/224.md) — **BLOCKED (user-authorized CLI release, then published login/logout replay):** launcher fix and full CLI suite complete; original overwritten 223 recovered from `7fd6c9c4f`.
@@ -416,7 +418,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **219** — [A later deploy that fails its health check closes with the "waiting" stall text](done/219.md) — found by the m133 live check 2026-10-29 — **DONE 2026-10-29** (stall fallback restated as the outcome)
 
-- [ ] **218** — [`services create --from` without `--region` is refused with "region must be one of"](blocked/218.md) — **BLOCKED (platform deployment w4/439: adopt a signed Ready API carrier containing9fe393b77 or equivalent descendant; source and real-DB tests shipped, then worker8 runs the original two-client clone/invalid-region/cleanup404 acceptance; no user decision)**
+- [x] **218** — [`services create --from` without `--region` is refused with "region must be one of"](done/218.md) — **DONE 2026-10-31** (readback reports `frankfurt`; no-region clone verified on production pin `d147703d7657`)
 
 - [x] **217** — [A new Python service with no version signal now runs Python 3.14.10; Render's default since 2026-10-12 is exactly 3.14.8 (regressed w8/174)](done/217.md) (~30m + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-29: `63fd10231`'s Brotli base-image refresh moved the 3.14 line pin and the default with it; Node (24.22.1) and Ruby (3.4.4) defaults still match Render — option 1 implemented 2026-10-29 (exact 3.14.8 default; live acceptance pending; the keep-3.14.10 alternative is 222) — **DONE 2026-10-29** (no-signal Python runs 3.14.8, explicit 3.14 runs 3.14.10, on production)
 
