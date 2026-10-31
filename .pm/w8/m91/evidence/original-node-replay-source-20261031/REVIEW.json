@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-31T14:01:20.209568+00:00",
+  "original_cases": 13,
+  "Node24_cases": 7,
+  "primary_Python313_cases": 6,
+  "existing_specs_unchanged": 7,
+  "added_Node_specs_fields_exact_frozen": 6,
+  "copied_helpers_exact_frozen": true,
+  "original28_hosted_spec_unchanged_sha256": "ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb",
+  "offline_tests": 7,
+  "retained_HTTP_frames_exercised": 18,
+  "foreign_HTTP200_identity_controls": 6,
+  "prepared_marker_and_program_tampering_controls": true,
+  "independent_review": "CLEAN after two prepared-marker fixes; both bugs and corrected regression tests retained in session history",
+  "generated_image_execution": "UNEXECUTED; opt-in test skipped without selected immutable image and integration flag",
+  "hosted_acceptance": false,
+  "missing_individual_supplier_controls": "jq/rsync and three Python prerequisites still require independent omission controls",
+  "source_files": 41
+}

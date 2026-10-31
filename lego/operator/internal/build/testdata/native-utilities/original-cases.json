@@ -1,5 +1,185 @@
 [
   {
+    "mid": 91,
+    "sweep": 402,
+    "name": "qa-20261029-6456de-m91b",
+    "nonce": "6456de",
+    "marker": "QA402_6456de_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode -e \"const f=require('fs');f.writeFileSync('qa402.dump',Buffer.from(f.readFileSync('/etc/secrets/qa402.dump.b64','utf8'),'base64'))\"\ncat > qa402-probe.cjs <<'QA402_QA402_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),crypto=require('node:crypto'),http=require('node:http'),ref=require('./qa402-reference.json'),marker=require('./qa402-marker.json'),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');const b=fs.readFileSync('qa402.dump');if(b.length!==ref.backup.bytes||sha(b)!==ref.backup.sha256)throw Error('backup differs');\nconst tools=Object.fromEntries(['psql','pg_dump','pg_restore'].map(p=>{const r=cp.spawnSync(p,['--version'],{encoding:'utf8'});return[p,{status:r.status,error:r.error?.code??null,stdout:r.stdout??'',stderr:r.stderr??''}]}));const before={marker,node:process.version,files,backup:ref.backup,tools};\nif(phase==='before'){fs.writeFileSync('qa402-before.json',JSON.stringify(before));console.log('QA402_BEFORE '+JSON.stringify(before));process.exit(0)}\nfunction restore(){const r=cp.spawnSync('pg_restore',['--data-only','--no-owner','--no-privileges','--file=-','qa402.dump'],{encoding:'utf8'});if(r.error||r.status!==0)throw Error('pg_restore failed: '+(r.error?.code??r.stderr));const rows=r.stdout.split('\\n').filter(s=>s.startsWith('INSERT INTO public.qa402_backup VALUES'));if(JSON.stringify(rows)!==JSON.stringify(ref.rows)||sha(rows.join('\\n')+'\\n')!==ref.rows_sha256)throw Error('restored rows differ');return{marker,node:process.version,files,backup:ref.backup,tools,rows,rows_sha256:ref.rows_sha256,restored_from_archive:true,before:JSON.parse(fs.readFileSync('qa402-before.json'))}}\nif(phase==='build'){const v=restore();fs.writeFileSync('qa402-build.json',JSON.stringify(v));console.log('QA402_AFTER '+JSON.stringify(v))}else{http.createServer((req,res)=>{if(req.url.split('?')[0]!=='/'&&req.url.split('?')[0]!=='/restore'){res.writeHead(404);return res.end()}try{const runtime={...restore(),request_url:req.url};res.setHeader('Content-Type','application/json');res.end(JSON.stringify({build:require('./qa402-build.json'),runtime}));console.log('QA402_RUNTIME '+JSON.stringify(runtime))}catch(e){res.writeHead(500);res.end(String(e))}}).listen(Number(process.env.PORT),'0.0.0.0')}\nQA402_QA402_PROBE_CJS\ncat > qa402-reference.json <<'QA402_QA402_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"rows\":[\"INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');\",\"INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\\u00e9 \\u96ea');\",\"INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');\"],\"rows_sha256\":\"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624\"}\nQA402_QA402_REFERENCE_JSON\ncat > qa402-marker.json <<'QA402_QA402_MARKER_JSON'\n\"QA402_6456de_bex\"\nQA402_QA402_MARKER_JSON\nnode qa402-probe.cjs before\npg_restore --data-only --no-owner --no-privileges --file=qa402.sql qa402.dump\nnode qa402-probe.cjs build",
+        "start": "node qa402-probe.cjs serve"
+      }
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "backup": {
+        "bytes": 1721,
+        "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+      },
+      "rows": [
+        "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+        "INSERT INTO public.qa402_backup VALUES (2, 'QA402 café 雪');",
+        "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+      ],
+      "rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "backup": {
+        "bytes": 1721,
+        "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+      },
+      "rows": [
+        "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+        "INSERT INTO public.qa402_backup VALUES (2, 'QA402 café 雪');",
+        "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+      ],
+      "rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"
+    },
+    "validation_adjustments": [
+      {
+        "check": "PostgreSQL client version",
+        "historical_control": "15.x",
+        "reviewed_supplier": "18.x",
+        "archive": "Original PG15 custom archive and all exact source/three-row proofs unchanged; PG18-archive boundary separately tested by supplier check."
+      }
+    ],
+    "source_file_identities": {
+      "qa402-probe.cjs": {
+        "bytes": 2309,
+        "sha256": "bc158b30e4dfbf41a9d94a5d17e35b9f78e6a6fb3fbf61856fd6f63be8907d77"
+      },
+      "qa402-reference.json": {
+        "bytes": 729,
+        "sha256": "5baa2e8cef680d416743fa5d4c0b4bc969e5b342f5c8c38e7c797e40124c20de"
+      },
+      "qa402-marker.json": {
+        "bytes": 19,
+        "sha256": "5d8b17376264fafe5ddfb6767bef03ccd9757b5069b7eebb884a559b4e3fa8b3"
+      }
+    },
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
+    }
+  },
+  {
+    "mid": 93,
+    "sweep": 407,
+    "name": "qa-20261029-12b88f-m93b",
+    "nonce": "12b88f",
+    "marker": "QA407_12b88f_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa407-probe.cjs <<'QA407_QA407_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),http=require('node:http'),crypto=require('node:crypto'),ref=require('./qa407-reference.json'),marker=require('./qa407-marker.json'),sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');fs.writeFileSync('qa407.md',ref.document.text);const input=fs.readFileSync('qa407.md');if(sha(input)!==ref.document.sha256)throw Error('document differs');\nfunction tools(){const r=cp.spawnSync('pandoc',['--version'],{encoding:'utf8',timeout:4000});return{pandoc:{status:r.status,error:r.error?.code||null,stdout:r.stdout||'',stderr:r.stderr||''}}}\nconst base={marker,files,document:{bytes:input.length,sha256:sha(input)},node:process.version,program_sha256:sha(fs.readFileSync(__filename))};\nif(process.argv[2]==='before'){const v={...base,tools:tools()};fs.writeFileSync('qa407-before.json',JSON.stringify(v));console.log('QA407_BEFORE '+JSON.stringify(v));process.exit(0)}\nfunction output(b){const text=b.toString('utf8');for(const token of ref.document.required_html)if(!text.includes(token))throw Error('HTML differs');return{...base,tools:tools(),html:{bytes:b.length,sha256:sha(b),text}}}\nif(process.argv[2]==='build'){const v={...output(fs.readFileSync('qa407.html')),before:require('./qa407-before.json')};fs.writeFileSync('qa407-build.json',JSON.stringify(v));console.log('QA407_AFTER '+JSON.stringify(v));process.exit(0)}\nconst built=require('./qa407-build.json');http.createServer((req,res)=>{const b=cp.execFileSync('pandoc',['--from=markdown','--to=html5','--wrap=none','qa407.md'],{timeout:4000}),runtime={...output(b),request_url:req.url},v={build:built,runtime};res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',req.url.startsWith('/document')?'text/html; charset=utf-8':'application/json');res.end(req.url.startsWith('/document')?b:JSON.stringify(v));if(req.url.includes('qa407='))console.log('QA407_REQUEST '+JSON.stringify(v))}).listen(Number(process.env.PORT||10000),'0.0.0.0',function(){console.log('QA407_READY '+JSON.stringify({port:this.address().port,...base}))});\nQA407_QA407_PROBE_CJS\ncat > qa407-reference.json <<'QA407_QA407_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"text\":\"# Café 雪\\n\\nThis is **bold** and *emphasis*, with `x < 7`.\\n\\n- alpha\\n- beta\\n\\n[Guide](https://example.invalid/guide?q=qa407)\\n\",\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\",\"required_html\":[\"Café 雪</h1>\",\"<strong>bold</strong>\",\"<em>emphasis</em>\",\"<code>x &lt; 7</code>\",\"<li>alpha</li>\",\"<li>beta</li>\",\"href=\\\"https://example.invalid/guide?q=qa407\\\"\"]}}\nQA407_QA407_REFERENCE_JSON\ncat > qa407-marker.json <<'QA407_QA407_MARKER_JSON'\n\"QA407_12b88f_bex\"\nQA407_QA407_MARKER_JSON\nnode qa407-probe.cjs before\npandoc --from=markdown --to=html5 --wrap=none qa407.md --output=qa407.html\nnode qa407-probe.cjs build",
+        "start": "node qa407-probe.cjs serve",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+      }
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "document": {
+        "text": "# Café 雪\n\nThis is **bold** and *emphasis*, with `x < 7`.\n\n- alpha\n- beta\n\n[Guide](https://example.invalid/guide?q=qa407)\n",
+        "bytes": 124,
+        "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865",
+        "required_html": [
+          "Café 雪</h1>",
+          "<strong>bold</strong>",
+          "<em>emphasis</em>",
+          "<code>x &lt; 7</code>",
+          "<li>alpha</li>",
+          "<li>beta</li>",
+          "href=\"https://example.invalid/guide?q=qa407\""
+        ]
+      }
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "document": {
+        "text": "# Café 雪\n\nThis is **bold** and *emphasis*, with `x < 7`.\n\n- alpha\n- beta\n\n[Guide](https://example.invalid/guide?q=qa407)\n",
+        "bytes": 124,
+        "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865",
+        "required_html": [
+          "Café 雪</h1>",
+          "<strong>bold</strong>",
+          "<em>emphasis</em>",
+          "<code>x &lt; 7</code>",
+          "<li>alpha</li>",
+          "<li>beta</li>",
+          "href=\"https://example.invalid/guide?q=qa407\""
+        ]
+      }
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa407-probe.cjs": {
+        "bytes": 2281,
+        "sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+      },
+      "qa407-reference.json": {
+        "bytes": 759,
+        "sha256": "5979ab330a943477995d1eb7e9648d1f73d8abdbf8c241b6fd7e999bed05655c"
+      },
+      "qa407-marker.json": {
+        "bytes": 19,
+        "sha256": "96f6f175e60087d972566eb209b6811846747e7618659f7ff2540223cbcdaad6"
+      }
+    },
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
+    }
+  },
+  {
     "mid": 94,
     "sweep": 409,
     "name": "qa-20261029-02c143-m94b",
@@ -384,6 +564,248 @@
     }
   },
   {
+    "mid": 98,
+    "sweep": 419,
+    "name": "qa-20261029-5a17ae-m98b",
+    "nonce": "5a17ae",
+    "marker": "QA419_5a17ae_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode - <<'QA_ASSET_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('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','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_ASSET_SOURCES\nnode qa-assets-app.cjs before\njq -e -c '{release:.release,paths:[.assets[]|select(.publish==true)|.path]}' qa-assets-input.json > qa-assets-filtered.json\nnode qa-assets-app.cjs after-jq\nrsync -a --delete --exclude='*.tmp' qa-assets-src/ dist/\nnode qa-assets-app.cjs build",
+        "start": "node qa-assets-app.cjs serve",
+        "program_sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d"
+      }
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "assets": {
+        "index.html": "<!doctype html><title>QA assets</title><p>Zoë & 李</p>\n",
+        "assets/écho.txt": "Crème brûlée — own Unicode asset\n",
+        "assets/a file.txt": "own asset with a space in its name\n",
+        "assets/draft.tmp": "excluded own draft\n"
+      },
+      "manifest": {
+        "release": "qa-1.2.3",
+        "assets": [
+          {
+            "path": "index.html",
+            "publish": true
+          },
+          {
+            "path": "assets/écho.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/a file.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/draft.tmp",
+            "publish": false
+          }
+        ]
+      }
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "assets": {
+        "index.html": "<!doctype html><title>QA assets</title><p>Zoë & 李</p>\n",
+        "assets/écho.txt": "Crème brûlée — own Unicode asset\n",
+        "assets/a file.txt": "own asset with a space in its name\n",
+        "assets/draft.tmp": "excluded own draft\n"
+      },
+      "manifest": {
+        "release": "qa-1.2.3",
+        "assets": [
+          {
+            "path": "index.html",
+            "publish": true
+          },
+          {
+            "path": "assets/écho.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/a file.txt",
+            "publish": true
+          },
+          {
+            "path": "assets/draft.tmp",
+            "publish": false
+          }
+        ]
+      }
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-assets-app.cjs": {
+        "bytes": 4070,
+        "sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d"
+      },
+      "qa-assets-reference.json": {
+        "bytes": 790,
+        "sha256": "6b1717b288125d80f68cad718d15da844dad7021f205c921b8513d421954f3b1"
+      },
+      "qa-assets-marker.json": {
+        "bytes": 18,
+        "sha256": "01c7c88d7f60d277612192cde2a83c0286ec8bdb557e961fe2885af04565a58f"
+      }
+    },
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
+    }
+  },
+  {
+    "mid": 99,
+    "sweep": 420,
+    "name": "qa-20261029-dca30a-m99b",
+    "nonce": "dca30a",
+    "marker": "QA420_dca30a_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode - <<'QA_TS_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('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','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_TS_SOURCES\nnode qa-ts-before.cjs\ntsc --strict --noEmitOnError --module NodeNext --target ES2022 --outDir dist qa-ts-app.cts\nnode dist/qa-ts-app.cjs build",
+        "start": "node dist/qa-ts-app.cjs runtime",
+        "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+      }
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "typescript": "7.0.2",
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "tones": [
+          "warm",
+          "cool",
+          "warm"
+        ]
+      },
+      "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "typescript": "7.0.2",
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "tones": [
+          "warm",
+          "cool",
+          "warm"
+        ]
+      },
+      "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa-ts-app.cts": {
+        "bytes": 2303,
+        "sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+      },
+      "qa-ts-before.cjs": {
+        "bytes": 780,
+        "sha256": "d2ed2b2b0ac0b25988485b04e0137b579261b7a8e5ec08cd0a461e1bc2b90eb1"
+      },
+      "qa-ts-reference.json": {
+        "bytes": 657,
+        "sha256": "8fe3607920171f99336d38ccae682ff6075bb67108ca21c57ef27e5866933b04"
+      },
+      "qa-ts-marker.json": {
+        "bytes": 18,
+        "sha256": "32422efaf5ee09fa932280a0ef2bc537d6fb4fda9f8d936f49cdc7e927066a98"
+      }
+    },
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
+    }
+  },
+  {
     "mid": 100,
     "sweep": 421,
     "name": "qa-20261029-3bec1c-m100b",
@@ -516,6 +938,153 @@
         "start": "python qa-swig-app.py serve",
         "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097"
       }
+    }
+  },
+  {
+    "mid": 101,
+    "sweep": 422,
+    "name": "qa-20261029-45cdd0-m101b",
+    "nonce": "45cdd0",
+    "marker": "QA422_45cdd0_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode - <<'QA_WEBPACK_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('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','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_WEBPACK_SOURCES\nnode qa-webpack-before.cjs\nwebpack ./qa-webpack-entry.mjs --mode production --target node --output-path ./dist --output-filename bundle.cjs --json > qa-webpack-stats.json\nnode dist/bundle.cjs build",
+        "start": "node dist/bundle.cjs serve",
+        "sources": {
+          "qa-webpack-entry.mjs": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+          "qa-webpack-domain.mjs": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+        }
+      }
+    },
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "sorted": [
+          2,
+          3,
+          5
+        ]
+      },
+      "sources": {
+        "qa-webpack-entry.mjs": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+        "qa-webpack-domain.mjs": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+      },
+      "control_compiler": "5.112.0",
+      "control_cli": "7.2.3"
+    },
+    "validation_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "rows": [
+        {
+          "label": "Crème brûlée",
+          "quantity": 2
+        },
+        {
+          "label": "李",
+          "quantity": 3
+        },
+        {
+          "label": "space label",
+          "quantity": 5
+        }
+      ],
+      "expected": {
+        "labels": [
+          "Crème brûlée",
+          "李",
+          "space label"
+        ],
+        "total": 10,
+        "sorted": [
+          2,
+          3,
+          5
+        ]
+      },
+      "sources": {
+        "qa-webpack-entry.mjs": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+        "qa-webpack-domain.mjs": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+      },
+      "control_compiler": "5.112.2",
+      "control_cli": "7.2.3"
+    },
+    "validation_adjustments": [
+      {
+        "check": "compiler version",
+        "historical_install_control": "5.112.0",
+        "reviewed_shared_supplier": "5.112.2",
+        "basis": "deploy/native-base/package.json; authored sources/reference unchanged"
+      }
+    ],
+    "source_file_identities": {
+      "qa-webpack-entry.mjs": {
+        "bytes": 2287,
+        "sha256": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427"
+      },
+      "qa-webpack-domain.mjs": {
+        "bytes": 177,
+        "sha256": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+      },
+      "qa-webpack-before.cjs": {
+        "bytes": 970,
+        "sha256": "de1c52f4fa6a468b9a98c6c9e22ededc8711365837f86d3bbe07f34753f3502b"
+      },
+      "qa-webpack-reference.json": {
+        "bytes": 780,
+        "sha256": "8c88fb15ef701ff29a18280f0f12ad3d2a038560a75fccce0acc84597a928b5a"
+      },
+      "qa-webpack-marker.json": {
+        "bytes": 18,
+        "sha256": "dfa44f30e0b451dec892054eb72f2c994812c853f85ab20da13dc2380c8e69c8"
+      }
+    },
+    "runtime": "node",
+    "env": {
+      "NODE_VERSION": "24"
     }
   },
   {
@@ -756,5 +1325,67 @@
         "within_API_limit": true
       }
     }
+  },
+  {
+    "mid": 107,
+    "sweep": 434,
+    "name": "qa-20261029-9149aa-m107b",
+    "nonce": "9149aa",
+    "marker": "QA434_9149aa_bex",
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'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'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa434-app.cjs build",
+        "start": "node qa434-app.cjs serve"
+      }
+    },
+    "primary_reference": {
+      "at": "2026-10-17T13:12:02.325620+00:00",
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      }
+    },
+    "validation_reference": {
+      "at": "2026-10-17T13:12:02.325620+00:00",
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      }
+    },
+    "validation_adjustments": [],
+    "source_file_identities": {
+      "qa434-app.cjs": {
+        "bytes": 3444,
+        "sha256": "cb0b708278d8f40961df34ae6a8fd35c6d302a245ab27414c2c7adeeec247e6d"
+      },
+      "qa434-reference.json": {
+        "bytes": 388,
+        "sha256": "fd1f283d93efe477e6e95fe00c0e7b41891846945567893d792b56a7768a5ab8"
+      },
+      "qa434-marker.json": {
+        "bytes": 18,
+        "sha256": "931e5176195a44528fd6d4129fef503baf8e70e29f15ef4f59c2a3d824819fa6"
+      }
+    },
+    "runtime": "node",
+    "env": {}
   }
 ]

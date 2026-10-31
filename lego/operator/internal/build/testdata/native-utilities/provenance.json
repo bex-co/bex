@@ -3,6 +3,61 @@
   "provenance": "Utility oracles come from the independently verified current-generator-20261029 extra_cases proof; original authored commands/data/validators/HTTP decoders come from retained functional CLI evidence. Markers are the prepared replay markers, not production resources.",
   "original_cases": [
     {
+      "milestone": 91,
+      "original_evidence": ".pm/w8/m91/evidence/cli-sweep402/complete-native-failures-controls-readbacks-and-cleanup.json",
+      "original_evidence_sha256": "8bfc5ef870a2e5d97f4ff36de35606b7a5e56872108bbf0251da05f93073b6f4",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "qa402-probe.cjs": {
+          "bytes": 2309,
+          "sha256": "bc158b30e4dfbf41a9d94a5d17e35b9f78e6a6fb3fbf61856fd6f63be8907d77"
+        },
+        "qa402-reference.json": {
+          "bytes": 729,
+          "sha256": "5baa2e8cef680d416743fa5d4c0b4bc969e5b342f5c8c38e7c797e40124c20de"
+        },
+        "qa402-marker.json": {
+          "bytes": 19,
+          "sha256": "5d8b17376264fafe5ddfb6767bef03ccd9757b5069b7eebb884a559b4e3fa8b3"
+        }
+      },
+      "validation_adjustments": [
+        {
+          "check": "PostgreSQL client version",
+          "historical_control": "15.x",
+          "reviewed_supplier": "18.x",
+          "archive": "Original PG15 custom archive and all exact source/three-row proofs unchanged; PG18-archive boundary separately tested by supplier check."
+        }
+      ]
+    },
+    {
+      "milestone": 93,
+      "original_evidence": ".pm/w8/m93/evidence/cli-sweep407/complete-native-failures-controls-runtime-and-cleanup.json",
+      "original_evidence_sha256": "8959a3e7b8c4e710f4619ced0a7dda62684e64f80367ab3b3ee9a0c8022522c0",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "qa407-probe.cjs": {
+          "bytes": 2281,
+          "sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+        },
+        "qa407-reference.json": {
+          "bytes": 759,
+          "sha256": "5979ab330a943477995d1eb7e9648d1f73d8abdbf8c241b6fd7e999bed05655c"
+        },
+        "qa407-marker.json": {
+          "bytes": 19,
+          "sha256": "96f6f175e60087d972566eb209b6811846747e7618659f7ff2540223cbcdaad6"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
       "milestone": 94,
       "original_evidence": ".pm/w8/m94/evidence/cli-sweep409/complete-native-failures-controls-runtime-and-cleanup.json",
       "original_evidence_sha256": "0b0362a4a93586a6192a5243f16a8fb97c962c144d7c4ec82e19400668a774e4",
@@ -107,6 +162,58 @@
       "validation_adjustments": []
     },
     {
+      "milestone": 98,
+      "original_evidence": ".pm/w8/m98/evidence/cli-sweep419/complete-three-native-stages-runtime-and-cleanup.json",
+      "original_evidence_sha256": "f9cd15cd2a27724fb37c5e81bc292766cd81069ffd4953fa03854f89058ab03b",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "qa-assets-app.cjs": {
+          "bytes": 4070,
+          "sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d"
+        },
+        "qa-assets-reference.json": {
+          "bytes": 790,
+          "sha256": "6b1717b288125d80f68cad718d15da844dad7021f205c921b8513d421954f3b1"
+        },
+        "qa-assets-marker.json": {
+          "bytes": 18,
+          "sha256": "01c7c88d7f60d277612192cde2a83c0286ec8bdb557e961fe2885af04565a58f"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
+      "milestone": 99,
+      "original_evidence": ".pm/w8/m99/evidence/cli-sweep420/complete-native-compile-runtime-and-cleanup.json",
+      "original_evidence_sha256": "f20eaab6a7b1f4d5a80e0f3e5b3ee39de9cf0424df58ee08420a67a2273ebbc9",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "qa-ts-app.cts": {
+          "bytes": 2303,
+          "sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+        },
+        "qa-ts-before.cjs": {
+          "bytes": 780,
+          "sha256": "d2ed2b2b0ac0b25988485b04e0137b579261b7a8e5ec08cd0a461e1bc2b90eb1"
+        },
+        "qa-ts-reference.json": {
+          "bytes": 657,
+          "sha256": "8fe3607920171f99336d38ccae682ff6075bb67108ca21c57ef27e5866933b04"
+        },
+        "qa-ts-marker.json": {
+          "bytes": 18,
+          "sha256": "32422efaf5ee09fa932280a0ef2bc537d6fb4fda9f8d936f49cdc7e927066a98"
+        }
+      },
+      "validation_adjustments": []
+    },
+    {
       "milestone": 100,
       "original_evidence": ".pm/w8/m100/evidence/cli-sweep421/complete-native-binding-runtime-and-cleanup.json",
       "original_evidence_sha256": "d40079625ff84e70584003149d59719e60ae9bdeab72abcd5bfc61986400f4eb",
@@ -133,6 +240,45 @@
         }
       },
       "validation_adjustments": []
+    },
+    {
+      "milestone": 101,
+      "original_evidence": ".pm/w8/m101/evidence/cli-sweep422/complete-native-bundling-runtime-and-cleanup.json",
+      "original_evidence_sha256": "6413839e4b2741e082de6b89a1551a7af9fce432e33427217c56cb135513be3e",
+      "runtime": "node",
+      "original_env": {
+        "NODE_VERSION": "24"
+      },
+      "source_file_identities": {
+        "qa-webpack-entry.mjs": {
+          "bytes": 2287,
+          "sha256": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427"
+        },
+        "qa-webpack-domain.mjs": {
+          "bytes": 177,
+          "sha256": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e"
+        },
+        "qa-webpack-before.cjs": {
+          "bytes": 970,
+          "sha256": "de1c52f4fa6a468b9a98c6c9e22ededc8711365837f86d3bbe07f34753f3502b"
+        },
+        "qa-webpack-reference.json": {
+          "bytes": 780,
+          "sha256": "8c88fb15ef701ff29a18280f0f12ad3d2a038560a75fccce0acc84597a928b5a"
+        },
+        "qa-webpack-marker.json": {
+          "bytes": 18,
+          "sha256": "dfa44f30e0b451dec892054eb72f2c994812c853f85ab20da13dc2380c8e69c8"
+        }
+      },
+      "validation_adjustments": [
+        {
+          "check": "compiler version",
+          "historical_install_control": "5.112.0",
+          "reviewed_shared_supplier": "5.112.2",
+          "basis": "deploy/native-base/package.json; authored sources/reference unchanged"
+        }
+      ]
     },
     {
       "milestone": 102,
@@ -197,10 +343,32 @@
         }
       },
       "validation_adjustments": []
+    },
+    {
+      "milestone": 107,
+      "original_evidence": ".pm/w8/m107/evidence/cli-sweep434/complete-native-ZIP-failures-controls-and-cleanup.json",
+      "original_evidence_sha256": "608caf4c5c46b40ca392f5db0516492a95d8a6df6d727d071de769cbb73d1f38",
+      "runtime": "node",
+      "original_env": {},
+      "source_file_identities": {
+        "qa434-app.cjs": {
+          "bytes": 3444,
+          "sha256": "cb0b708278d8f40961df34ae6a8fd35c6d302a245ab27414c2c7adeeec247e6d"
+        },
+        "qa434-reference.json": {
+          "bytes": 388,
+          "sha256": "fd1f283d93efe477e6e95fe00c0e7b41891846945567893d792b56a7768a5ab8"
+        },
+        "qa434-marker.json": {
+          "bytes": 18,
+          "sha256": "931e5176195a44528fd6d4129fef503baf8e70e29f15ef4f59c2a3d824819fa6"
+        }
+      },
+      "validation_adjustments": []
     }
   ],
   "hermetic_setup": "Cache pyvips==3.2.0, Django==5.2.18 and the actual resolver Poetry version into a test-only wheel cache before the network-off generated build. Preserve original commands, primary3.13 version checks and all source/data hashes; do not alias systemPython or rewrite validators. Node case103 uses the supplied Debian Python companion.",
-  "scope": "One real supplied Node24 compute/static image and optional real primaryPython3.13 image. Negative control removes supplier and must fail on actual pg_restore. Runtime has networknone; actual Kubernetes pre-deploy, native-init process, publication/staticHTTP, other primary lines/architectures and hosted clients remain separate.",
+  "scope": "All13 one-client original tool programs, split between seven Node24 and six exact primaryPython3.13 cases, plus utility/static/default3.14.8 checks. This maintained local generated-image replay does not replace the preserved28 two-client hosted fixtures or establish hosted acceptance, actual Kubernetes pre-deploy, publication, SBOM or other architectures.",
   "inputs": {
     "cases/m100/http.py": {
       "bytes": 1301,
@@ -209,6 +377,14 @@
     "cases/m100/validators.py": {
       "bytes": 784,
       "sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0"
+    },
+    "cases/m101/http.py": {
+      "bytes": 1224,
+      "sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634"
+    },
+    "cases/m101/validators.py": {
+      "bytes": 794,
+      "sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3"
     },
     "cases/m102/http.py": {
       "bytes": 1782,
@@ -225,6 +401,38 @@
     "cases/m103/validators.py": {
       "bytes": 1007,
       "sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208"
+    },
+    "cases/m107/http.py": {
+      "bytes": 2704,
+      "sha256": "f659f8a44cd73db33da8902ab4e3dbad4f5713ca91677a67a48a5696b34db06d"
+    },
+    "cases/m107/validators.py": {
+      "bytes": 444,
+      "sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634"
+    },
+    "cases/m91/http.py": {
+      "bytes": 760,
+      "sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803"
+    },
+    "cases/m91/qa402.dump.b64": {
+      "bytes": 2297,
+      "sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd"
+    },
+    "cases/m91/validators.py": {
+      "bytes": 868,
+      "sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1"
+    },
+    "cases/m93/http.py": {
+      "bytes": 1490,
+      "sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0"
+    },
+    "cases/m93/sweep407-html.py": {
+      "bytes": 918,
+      "sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597"
+    },
+    "cases/m93/validators.py": {
+      "bytes": 903,
+      "sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7"
     },
     "cases/m94/validators.py": {
       "bytes": 823,
@@ -262,6 +470,22 @@
       "bytes": 537,
       "sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9"
     },
+    "cases/m98/http.py": {
+      "bytes": 1179,
+      "sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438"
+    },
+    "cases/m98/validators.py": {
+      "bytes": 1132,
+      "sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08"
+    },
+    "cases/m99/http.py": {
+      "bytes": 1188,
+      "sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b"
+    },
+    "cases/m99/validators.py": {
+      "bytes": 708,
+      "sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008"
+    },
     "gettext-reference.json": {
       "bytes": 777,
       "sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb"
@@ -271,16 +495,24 @@
       "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
     },
     "original-cases.json": {
-      "bytes": 46779,
-      "sha256": "9094c0ed309615b15e6c62e372304b6e2081f6fd8d2d642849ea97fcc4d2fa85"
+      "bytes": 83949,
+      "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5"
     },
     "original-cases.py": {
-      "bytes": 4607,
-      "sha256": "b3df17d9cd01632ec54992bdb6f46e725fede640db22b08b986c3e4c3580d5bf"
+      "bytes": 6019,
+      "sha256": "717d8ba9d0231b07014f8033f06c82136049e458c372ede016d519f7a723fd18"
+    },
+    "original-cases_test.py": {
+      "bytes": 6275,
+      "sha256": "50b045e21644a45476b0c515bed73b1cc90b582a48ee021f7ccc62207fcd4049"
     },
     "png-decoder.py": {
       "bytes": 1933,
       "sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e"
+    },
+    "recorded-node-http.json.gz": {
+      "bytes": 12008,
+      "sha256": "5510f0dfe1fa2838cdc7213dc94a631c93056bb08c10b48481e6617f62b3564e"
     },
     "source-carrier/CHANGELOG": {
       "bytes": 18,
@@ -294,5 +526,11 @@
       "bytes": 11577,
       "sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb"
     }
+  },
+  "wrapper_setup": {
+    "m91": "Public frozen PG15 archive is verified and placed at its original /etc/secrets/qa402.dump.b64 fixture path inside the owned test image. No live secret is read.",
+    "m93": "The unchanged HTTP helper receives a positive-stage healthy-before callback: exact original source/data identity plus actual successful pandoc probe. Its historical missing-supplier valid_before remains byte-for-byte retained and is not used as the expected state after supply.",
+    "m107": "The unchanged ZIP HTTP oracle reads the exact shared public source-carrier bytes.",
+    "prepared_markers": "The unchanged prepared command supplies the exact replay marker value. Historical marker-file byte hashes remain in source_file_identities; marker JSON must equal that prepared value (named -marker.json files and m103 qm.json only). Every other materialized authored file retains exact original SHA/size."
   }
 }

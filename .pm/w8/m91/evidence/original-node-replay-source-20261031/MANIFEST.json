@@ -1,0 +1,26 @@
+{
+  "README.md": {
+    "bytes": 1898,
+    "sha256": "b0bd661ff49c87041041951dc4f3744b0b709f1f42058bfb08c84c9c4f6e5406"
+  },
+  "REVIEW.json": {
+    "bytes": 952,
+    "sha256": "a6c728c18819e7eb024ddc6ad1244eafda5b8f518e77e838a0f18c496ad8ecc8"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 7705,
+    "sha256": "6b9fb48f1ecceb83c3d35ea8a6fcc9247c975b894ad785394f4cec9a4b99c492"
+  },
+  "full-build-package-tests.log": {
+    "bytes": 63,
+    "sha256": "2ad2b50eb0e101e562a1930e99b9847848b1038c18d82bcf54859df3ac71ff55"
+  },
+  "go-tests.log": {
+    "bytes": 63,
+    "sha256": "d69b4df9aa2712df54649f4f4bf741a7480a611d5679ba0b6be79610a223e962"
+  },
+  "wrapper-tests.log": {
+    "bytes": 1213,
+    "sha256": "38244a9489f3aa523fc7f4e3646f45a0bd14c43737f3bf6068f48b3892cefdc0"
+  }
+}

@@ -39,6 +39,8 @@ import (
 // Common mode requires BEX_NATIVE_TEST_WHEELHOUSE for Python3.13/3.14; its
 // test-only COPY/pip-config overlay is recorded beside the canonical recipe.
 // BEX_NATIVE_TEST_OUTPUT retains recipes, command logs and actual output proofs.
+// The original tool replay covers seven Node24 and six primary Python3.13
+// cases; this local gate does not replace the 28 two-client hosted fixtures.
 func TestNativeUtilityGeneratedImages(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_TEST_NODE_IMAGE to an immutable Node24 supplier")
@@ -161,6 +163,19 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			must(t, os.WriteFile(filepath.Join(evidence, "receipt.json"), receipt, 0o600))
 			t.Logf("%s passed actual generated network-off commands; image %s", tc.name, states[0].Image)
 		})
+	}
+}
+
+func TestNativeOriginalReplayHTTPOracles(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Fatal("python3 is required for the retained original HTTP-oracle controls")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, python, "testdata/native-utilities/original-cases_test.py", "-v")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("offline original HTTP-oracle controls: %v\n%s", err, output)
 	}
 }
 
