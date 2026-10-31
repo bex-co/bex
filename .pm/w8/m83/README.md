@@ -1,16 +1,16 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** todo（2026-10-31 解除阻塞；原记录：2026-10-16 — needs a user decision: the only streaming-safe edge compressor on the deployed Traefik changes no-transform/ETag neighbors this milestone forbids (see [attempt](evidence/edge-compression-attempt/README.md)); no task is done because nothing shipped
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** in progress — t001–t005 done 2026-10-31 (gzip-only Traefik `compress`, ADR018 signed differences); t006 live closeout waits for the operator deploy and a Free web-service window in bex-canary (Free hours reset 2026-11-01 00:00 UTC)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Wire compatible automatic web compression | 50m | — |
-| [t002](t002.md) | Audit shared route callers and HTTP neighbors | 25m | t001 |
-| [t003](t003.md) | Render parity | 20m | t002 |
-| [t004](t004.md) | Simplify | 10m | t003 |
-| [t005](t005.md) | Test coverage | 35m | t003 |
+| [t001](done/t001.md) | Wire compatible automatic web compression — **DONE** | 50m | — |
+| [t002](done/t002.md) | Audit shared route callers and HTTP neighbors — **DONE** | 25m | t001 |
+| [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
+| [t004](done/t004.md) | Simplify — **DONE** | 10m | t003 |
+| [t005](done/t005.md) | Test coverage — **DONE** | 35m | t003 |
 | [t006](t006.md) | Closeout | 20m | t004, t005 |
 
 Six tasks,160m total.
