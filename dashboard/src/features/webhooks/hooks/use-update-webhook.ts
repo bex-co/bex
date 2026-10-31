@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { UpdateWebhookEndpointDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   WebhookMutationError,
   toWebhookMutationError,
@@ -48,7 +47,6 @@ export interface UseUpdateWebhookResult {
  */
 export function useUpdateWebhook(): UseUpdateWebhookResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(UpdateWebhookEndpointDocument);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -59,7 +57,7 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
       setBusy(true);
       try {
         const { data } = await mutate({
-          variables: { id, ownerId: currentWorkspaceId, ...patch },
+          variables: { id, ...patch },
         });
         toast.success(t("webhooks.updateSuccess"));
         const accepted = data?.updateWebhookEndpoint;
@@ -80,7 +78,7 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
         setBusy(false);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, t],
   );
 
   const clearError = useCallback(() => setError(null), []);

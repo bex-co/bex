@@ -164,7 +164,7 @@ describe("useWebhookDeliveries", () => {
     expect(committed).toEqual([0]);
   });
 
-  it("drops retained pages when endpoint, owner, or filters change", async () => {
+  it("drops retained pages when the endpoint or filters change", async () => {
     mockClientQuery.mockResolvedValue({
       data: { webhookDeliveries: page("older", 20, -20) },
     });
@@ -192,28 +192,10 @@ describe("useWebhookDeliveries", () => {
         "new-endpoint",
       ]),
     );
-    expect(mockUseQuery.mock.calls.at(-1)?.[1].variables).toMatchObject({
-      endpointId: "whk-2",
-      ownerId: "tea-1",
-      ...filter,
-    });
-
-    currentWorkspaceId = "tea-2";
-    queryData = {
-      webhookDeliveries: [attempt("new-owner", "2026-08-17T12:03:00Z")],
-    };
-    rerender();
-
-    await waitFor(() =>
-      expect(result.current.deliveries.map((row) => row.id)).toEqual([
-        "new-owner",
-      ]),
-    );
-    expect(mockUseQuery.mock.calls.at(-1)?.[1].variables).toMatchObject({
-      endpointId: "whk-2",
-      ownerId: "tea-2",
-      ...filter,
-    });
+    const variables = mockUseQuery.mock.calls.at(-1)?.[1].variables;
+    expect(variables).toMatchObject({ endpointId: "whk-2", ...filter });
+    // w4/443: the endpoint id resolves its own workspace server-side.
+    expect(variables).not.toHaveProperty("ownerId");
   });
 
   it("keeps status and date bounds on both newest-page and load-more reads", async () => {

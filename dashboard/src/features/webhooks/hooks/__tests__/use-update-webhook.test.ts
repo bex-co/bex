@@ -43,7 +43,7 @@ describe("useUpdateWebhook accepted result (w4/271)", () => {
       url: "https://example.com/hook",
     });
     expect(mutate).toHaveBeenCalledWith({
-      variables: { id: "whk-1", ownerId: "tea-1", name: "  hook  " },
+      variables: { id: "whk-1", name: "  hook  " },
     });
   });
 
