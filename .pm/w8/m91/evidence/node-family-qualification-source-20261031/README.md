@@ -1,0 +1,11 @@
+# Common Node family qualification source
+
+Seven opt-in test/fixture files prepare the remaining six Node table lines14/16/18/20/22/26, exact14.21.2 and a Ruby-primary/Node-companion selection. They retain the canonical missing-artifact source-build route, exact requested platform and normal build-node network allowance while authored/runtime project checks remain offline. Actual npm package metadata determines the expected CLI/version and legacy root-lifecycle handling. Selected app Node, matching headers/native addon ABI, library/core behavior, npm/Yarn/pnpm lifecycle/engine/exec and selected-tree persistence have explicit gates.
+
+Independent review found that an empty npm6 root project does not reliably enforce its own engines, and an arbitrary nonzero install could mask unrelated failures. The correction changes only the negative fixture: a compatible root depends on a deterministic tiny local tarball whose sentinel package requires an incompatible engine. Each manager must report its specific engine diagnostic, exact sentinel/range and refusal status. All nine positive project manifests remain byte-identical; the other five source files are unchanged. Initial findings and final CLEAN review remain retained.
+
+Seven host fixture oracles, full build-package tests (6.533seconds), scoped lint and source/hash controls pass. Root verified all27 corrected frozen payloads and all seven live source bytes/modes; independent review repeated those checks and exercised pure fixture behavior without compiler/package-manager/image execution. The original13/28 authored programs/data/commands and first-cohort selector are unchanged.
+
+This is source preparation. Actual generated images, source-fallback compilation, native addons, manager projects, both architectures and hosted acceptance remain unexecuted. In particular the known pnpm10 startup incompatibility with Node14/16 is still a strict failure; no downgrade, private Node shim, standalone launcher or gate waiver is implemented here. Production pins remain empty and t007 stays in progress.
+
+All original initial/corrected/review payloads are exported losslessly as deterministic gzip with original byte hashes in `CUSTODY.json`. Complete primary upstream installer/engine sources and earlier local failed checks remain included.
