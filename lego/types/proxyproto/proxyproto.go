@@ -90,28 +90,28 @@ func ReadProxySource(reader *bufio.Reader, remote net.Addr, trusted []netip.Pref
 		return netip.Addr{}, fmt.Errorf("read connection prefix: %w", err)
 	}
 
+	var read func(*bufio.Reader, netip.Addr) (netip.Addr, error)
 	switch first[0] {
 	case proxyV1Prefix[0]:
 		prefix, peekErr := reader.Peek(len(proxyV1Prefix))
 		if peekErr != nil || string(prefix) != proxyV1Prefix {
 			return immediate.Unmap(), nil
 		}
-		if !trustedProxyPeer(immediate, trusted) {
-			return netip.Addr{}, fmt.Errorf("PROXY header from untrusted peer")
-		}
-		return readProxyV1(reader, immediate)
+		read = readProxyV1
 	case proxyV2Signature[0]:
 		signature, peekErr := reader.Peek(len(proxyV2Signature))
 		if peekErr != nil || !bytes.Equal(signature, proxyV2Signature) {
 			return immediate.Unmap(), nil
 		}
-		if !trustedProxyPeer(immediate, trusted) {
-			return netip.Addr{}, fmt.Errorf("PROXY header from untrusted peer")
-		}
-		return readProxyV2(reader, immediate)
+		read = readProxyV2
 	default:
 		return immediate.Unmap(), nil
 	}
+	// Only a real PROXY header is trust-gated; headerless protocols pass through.
+	if !trustedProxyPeer(immediate, trusted) {
+		return netip.Addr{}, fmt.Errorf("PROXY header from untrusted peer")
+	}
+	return read(reader, immediate)
 }
 
 func trustedProxyPeer(peer netip.Addr, trusted []netip.Prefix) bool {
@@ -143,7 +143,12 @@ func readProxyV1(reader *bufio.Reader, immediate netip.Addr) (netip.Addr, error)
 	if len(fields) == 2 && fields[1] == "UNKNOWN" {
 		return immediate.Unmap(), nil
 	}
-	if len(fields) != 6 || fields[0] != "PROXY" || (fields[1] != proxyTCP4 && fields[1] != proxyTCP6) {
+	if len(fields) != 6 || fields[0] != "PROXY" {
+		return netip.Addr{}, fmt.Errorf("invalid PROXY v1 header")
+	}
+	family := fields[1]
+	isTCP4 := family == proxyTCP4
+	if family != proxyTCP4 && family != proxyTCP6 {
 		return netip.Addr{}, fmt.Errorf("invalid PROXY v1 header")
 	}
 	source, err := netip.ParseAddr(fields[2])
@@ -154,7 +159,7 @@ func readProxyV1(reader *bufio.Reader, immediate netip.Addr) (netip.Addr, error)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("invalid PROXY v1 destination address: %w", err)
 	}
-	if (fields[1] == proxyTCP4) != source.Is4() || (fields[1] == proxyTCP4) != destination.Is4() {
+	if isTCP4 != source.Is4() || isTCP4 != destination.Is4() {
 		return netip.Addr{}, fmt.Errorf("PROXY v1 address family mismatch")
 	}
 	for _, rawPort := range fields[4:6] {
