@@ -89,7 +89,7 @@ class OutputOracle(unittest.TestCase):
 
     def test_negative_is_local_dependency_and_positive_stays_dependency_free(self):
         with tempfile.TemporaryDirectory() as raw, patch.object(check, "OUT", Path(raw)):
-            for manager in ("npm", "yarn", "pnpm"):
+            for manager in ("npm", "yarn"):
                 positive = check.project(manager, self.expected)
                 manifest = json.loads((positive / "package.json").read_text())
                 self.assertNotIn("dependencies", manifest)
@@ -122,10 +122,7 @@ class OutputOracle(unittest.TestCase):
              "npm error code EBADENGINE\nnpm error engine Not compatible with your version of node/npm: " +
              sentinel + '@1.0.0\nnpm error notsup Required: {"node":">=15"}'),
             ("yarn", "6.14.17", 'The engine "node" is incompatible',
-             "error " + sentinel + '@1.0.0: The engine "node" is incompatible with this module. Expected version ">=15".'),
-            ("pnpm", "6.14.17", "ERR_PNPM_UNSUPPORTED_ENGINE",
-             "ERR_PNPM_UNSUPPORTED_ENGINE Unsupported engine for file:/own/" +
-             sentinel + '.tgz: wanted: {"node":">=15"} (current: {"node":"14.21.2"})')
+             "error " + sentinel + '@1.0.0: The engine "node" is incompatible with this module. Expected version ">=15".')
         ]
         for manager, npm, diagnostic, output in cases:
             with self.subTest(manager=manager, npm=npm):
@@ -140,6 +137,62 @@ class OutputOracle(unittest.TestCase):
                         check.validate_engine_rejection(
                             subprocess.CompletedProcess([manager], status, "", changed),
                             manager, ">=15", npm)
+
+
+    def test_pnpm_negative_uses_project_engines_and_real_cwd(self):
+        with tempfile.TemporaryDirectory() as raw, patch.object(check, "OUT", Path(raw)):
+            positive = check.project("pnpm", self.expected)
+            manifest = json.loads((positive / "package.json").read_text())
+            self.assertNotIn("dependencies", manifest)
+            self.assertEqual(manifest["engines"]["node"], "14.x")
+            negative = check.project("pnpm", self.expected, wrong=True)
+            manifest = json.loads((negative / "package.json").read_text())
+            self.assertNotIn("dependencies", manifest)
+            self.assertEqual(list(negative.glob("*.tgz")), [])
+            self.assertEqual(negative.name, "pnpm-wrong-engine")
+            self.assertEqual(manifest["name"], "bex-profile-pnpm")
+            self.assertEqual(manifest["engines"]["node"], ">=15")
+            self.assertEqual((negative / "pnpm-workspace.yaml").read_text(), 'packages:\n  - "."\n')
+            self.assertNotIn(check.ENGINE_SENTINEL, str(negative))
+            custody = json.loads((Path(raw) / "pnpm-engine-input.json").read_text())
+            self.assertEqual(custody["project_cwd"], str(negative.resolve()))
+            self.assertEqual(custody["selected_node"], "14.21.2")
+            self.assertEqual(custody["range"], ">=15")
+            self.assertEqual(custody["project_manifest_sha256"],
+                hashlib.sha256((negative / "package.json").read_bytes()).hexdigest())
+            self.assertEqual(custody["workspace_sha256"],
+                hashlib.sha256((negative / "pnpm-workspace.yaml").read_bytes()).hexdigest())
+            self.assertIsNone(custody["dependency_tarball"])
+
+    def test_pnpm_reporter_requires_project_current_node_and_wanted_range(self):
+        # Derived from tagged10.34.7 reportEngineError; no actual CLI execution.
+        cwd = Path("/opt/render/project/src/qa-output/pnpm-wrong-engine")
+        for current in ("14.21.2", "v14.21.2"):
+            output = "\n".join([
+                "ERR_PNPM_UNSUPPORTED_ENGINE Unsupported environment (bad pnpm and/or Node.js version)",
+                'Your Node version is incompatible with "' + str(cwd) + '".',
+                "Expected version: >=15", "Got: " + current])
+            actual = subprocess.CompletedProcess(["pnpm"], 1, "", output)
+            result = check.validate_engine_rejection(
+                actual, "pnpm", ">=15", "6.14.17", cwd=cwd, selected_node="14.21.2")
+            self.assertEqual(result["project_cwd"], str(cwd))
+            self.assertEqual(result["selected_node"], "14.21.2")
+            for status, changed in (
+                    (0, output), (-9, output),
+                    (1, output.replace("Got: " + current, "Got: v24.22.1")),
+                    (1, output.replace("Got: " + current, "Got: v14.21.3")),
+                    (1, output.replace(str(cwd), str(cwd) + "-different")),
+                    (1, output.replace(str(cwd), "bex-profile-pnpm")),
+                    (1, output.replace(str(cwd), "file:/own/" + check.ENGINE_SENTINEL + ".tgz")),
+                    (1, output.replace(">=15", ">=99")),
+                    (1, output.replace("ERR_PNPM_UNSUPPORTED_ENGINE", "UNRELATED_ERROR")),
+                    (1, "This version of pnpm requires at least Node.js v18.12")):
+                with self.subTest(current=current, status=status, output=changed), self.assertRaises(AssertionError):
+                    check.validate_engine_rejection(
+                        subprocess.CompletedProcess(["pnpm"], status, "", changed),
+                        "pnpm", ">=15", "6.14.17", cwd=cwd, selected_node="14.21.2")
+            with self.assertRaises(AssertionError):
+                check.validate_engine_rejection(actual, "pnpm", ">=15", "6.14.17")
 
 
 if __name__ == "__main__":

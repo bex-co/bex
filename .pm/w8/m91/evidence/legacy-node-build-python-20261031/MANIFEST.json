@@ -1,0 +1,474 @@
+{
+  "CUSTODY.json": {
+    "bytes": 35541,
+    "sha256": "e41e02ce9994b6dbb1c8f25bf48168bb2bfb2f2efa56ee6c3e0f50b1e165368e"
+  },
+  "controllers/bex-w8-node-compat-final-20261031.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "controllers/bex-w8-node-compat-final-20261031.stdout.gz": {
+    "bytes": 491,
+    "sha256": "1d7f84cf95ac2bdd2deaab7090b7edf4ab20986d19792a881790f6a8f8936e57"
+  },
+  "controllers/bex-w8-node-compat-lintfix-20261031.stderr.gz": {
+    "bytes": 242,
+    "sha256": "ae4dfc1f1e70dc4cd5b0778d27006090fac3337dfc03df68081c64548450c0a2"
+  },
+  "controllers/bex-w8-node-compat-lintfix-final-20261031.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "controllers/bex-w8-node-compat-lintfix-final-20261031.stdout.gz": {
+    "bytes": 380,
+    "sha256": "9b005b16bbd2e6d0aeb21f4662eec8ea46a29c67e57bcda8ba2a908aab31927f"
+  },
+  "execution-full/ENVTEST-AFTER.json.gz": {
+    "bytes": 254,
+    "sha256": "49b36c0f19cc8adcc6dab77f4950baaf0202bcbc7274a71305c5b7037f3854aa"
+  },
+  "execution-full/ENVTEST-OWNERSHIP-SECOND.json.gz": {
+    "bytes": 865,
+    "sha256": "30943e3b1bfab029950360317c7569633043db79e84251487782df3c47c44dc7"
+  },
+  "execution-full/ENVTEST-OWNERSHIP.json.gz": {
+    "bytes": 433,
+    "sha256": "f281c61e3c1d885213e27839f870ef7cc0956bec6cce300ed5f5675355a43674"
+  },
+  "execution-full/PRIOR-FAILURE.txt.gz": {
+    "bytes": 303,
+    "sha256": "e8a9eb95d501cdbc766b7534fbc5b6e4c2553845f2ac799a53a89b77baf9aa5b"
+  },
+  "execution-full/RESULT.json.gz": {
+    "bytes": 1232,
+    "sha256": "652abdd63e6db4910031521322f25a86e517aef22e16b1012ec35dc20bcb8292"
+  },
+  "execution-full/SCOPE-CLARIFICATION.json.gz": {
+    "bytes": 410,
+    "sha256": "e937a35cd9caab2b1b9c1192b0daf7b17572432f5627938d8626e992afb10893"
+  },
+  "execution-full/SCOPE.json.gz": {
+    "bytes": 1016,
+    "sha256": "43836dc742a12262d1db17eedba78e546ee3e9d67cec8d4b920f1d54b0b36e8e"
+  },
+  "execution-full/build-lint-PROCESS.json.gz": {
+    "bytes": 125,
+    "sha256": "8623841a5cdec4d7f91c11bc0dfa2286dc6fd3c3d2c5218c39654c044f24935f"
+  },
+  "execution-full/build-lint-RESULT.json.gz": {
+    "bytes": 198,
+    "sha256": "f565412b301c1ff7e3ebb03f41dd0a2dd23db1306d252b540f1a0449f9521272"
+  },
+  "execution-full/build-lint.log.gz": {
+    "bytes": 240,
+    "sha256": "fd515a3f9b47de8e0927e16fff4a9de07e2683f4a9e6a3442142ba05c0d73ed3"
+  },
+  "execution-full/disk-mode-focused-PROCESS.json.gz": {
+    "bytes": 159,
+    "sha256": "dcf539a2199387071b1be636e42198eefd1425d5d7d08ce481f950d9fe6098ac"
+  },
+  "execution-full/disk-mode-focused-RESULT.json.gz": {
+    "bytes": 235,
+    "sha256": "d207d32b2bf978205893ff1953b950434d544f1e86f0f7682600a4bf7de7d873"
+  },
+  "execution-full/disk-mode-focused.log.gz": {
+    "bytes": 153,
+    "sha256": "b2941988f7875dce4021f2d0781912e14c3f2c3aa528b9916898b3e1a2afd1ea"
+  },
+  "execution-full/operator-full-PROCESS.json.gz": {
+    "bytes": 72,
+    "sha256": "62837e304c0ebee8ade5f27f16e98bbec9328e1df2cbb4d3a1cf36c177e5e861"
+  },
+  "execution-full/operator-full-RESULT.json.gz": {
+    "bytes": 157,
+    "sha256": "d37546ebdf13dee8375991653334e2b8b9aa3ae90fef6dffdeecacc1bbb4c0b2"
+  },
+  "execution-full/operator-full.log.gz": {
+    "bytes": 1086,
+    "sha256": "f4b4bcbb509939b8f5b878e8e843373b99c58f419648e7dd548a69bf453139d8"
+  },
+  "execution-full/run.py.gz": {
+    "bytes": 1928,
+    "sha256": "c704294b481d52b8c6cf12f756b0df044815a8c8ac72d5481894ebac11ba8c9a"
+  },
+  "execution-lintfix/RESOURCE-SCOPE.json.gz": {
+    "bytes": 450,
+    "sha256": "18289377adddb7b060adbe79dc3ec9ddb0c53d59360fcfcd940d01cb504c4b1b"
+  },
+  "execution-lintfix/RESULT.json.gz": {
+    "bytes": 1157,
+    "sha256": "0953cb704999bf2cd9272acfba7af95f3aaaeafb7ec86e91f81cb3f85541d77a"
+  },
+  "execution-lintfix/SCOPE.json.gz": {
+    "bytes": 1025,
+    "sha256": "89a06f9ebf246febc23742be41c9cf793dbeaf75580837f191bb373a6ddc175f"
+  },
+  "execution-lintfix/build-lint-PROCESS.json.gz": {
+    "bytes": 125,
+    "sha256": "e99a795bd943bd9c636d58eb3eede7f434f490148cb03fe571f323fbb027061e"
+  },
+  "execution-lintfix/build-lint-RESULT.json.gz": {
+    "bytes": 197,
+    "sha256": "798a5f297cc4ab3e9c08a8835309f2b4f1785d309b3294d3d501985500227d7c"
+  },
+  "execution-lintfix/build-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "execution-lintfix/build-unit-PROCESS.json.gz": {
+    "bytes": 104,
+    "sha256": "0b1c38d9904a08d93599d0dd2de1e22a3f4c16f680918675407c2e7e7b2daf2b"
+  },
+  "execution-lintfix/build-unit-RESULT.json.gz": {
+    "bytes": 182,
+    "sha256": "4862916d799d6df82f7361e408e335097678e23ba41d3f91e4e21b28b2114173"
+  },
+  "execution-lintfix/build-unit.log.gz": {
+    "bytes": 80,
+    "sha256": "37a8ab5e104728e55fd8896aa6bf0d231a98f6a3bc942c43cdea2b05b9d64621"
+  },
+  "execution-lintfix/run.py.gz": {
+    "bytes": 1886,
+    "sha256": "6a479f57710770ed7ca3f9f12ba5c14f03a3d88e97e0e520405d033703ef2d03"
+  },
+  "execution-preflight/BASELINE.txt.gz": {
+    "bytes": 215,
+    "sha256": "c0150fd4b71eec2b45973e0664e194a104a4746671326c8ff2fe328f65cc8820"
+  },
+  "execution-preflight/run.py.gz": {
+    "bytes": 1861,
+    "sha256": "e6bb4d84fa44ead39c4fc43d0f10e971261ebbf191a12bbc9e626c91732951a8"
+  },
+  "final-delta/SOURCE.json.gz": {
+    "bytes": 509,
+    "sha256": "65b628f60bacb68a28eb542e7b91e85041b1fb2774dda1627f9a2ca01f704dd7"
+  },
+  "final-delta/delta.patch.gz": {
+    "bytes": 961,
+    "sha256": "279568574656884919c373944c9de6822ef8d50be106b4d9f76bb9931890a2c4"
+  },
+  "final-delta/source/lego/operator/internal/build/nativenodepython.go.gz": {
+    "bytes": 1040,
+    "sha256": "ce25c5c658c1a9c86a5005d5c6513b5881bdce8a4d0a7469d1b75c9bc9f85479"
+  },
+  "final-delta/source/lego/operator/internal/build/nativenodepython_test.go.gz": {
+    "bytes": 2710,
+    "sha256": "b4f8b51730d9a373a7242bcee03dbe12fa294b1226a9dd5df0c894369cc1afe9"
+  },
+  "final-delta/source/lego/operator/internal/build/nativeresolve.go.gz": {
+    "bytes": 6994,
+    "sha256": "d85613928d3c9a785bf61ee797eda40e407af7d6a3a292a0b4adaa33e53df5fc"
+  },
+  "final-independent/MANIFEST.json.gz": {
+    "bytes": 259,
+    "sha256": "ee1fb0db1ad36480f196a5842e482ebcf1d3c640fd655909b4cfc1b7b1ff9c41"
+  },
+  "final-independent/REVIEW.json.gz": {
+    "bytes": 1811,
+    "sha256": "1dab0ec362c31d8120fc7de00c794683a43905ca1d1008937c13a3601659536c"
+  },
+  "final-independent/SOURCE.json.gz": {
+    "bytes": 828,
+    "sha256": "94d94e4ab04f95e1fdc006383c6448e461b20ec08eefb4d3dbaf3a5ea26fbdfa"
+  },
+  "final-independent/baseline-to-root-final.diff.gz": {
+    "bytes": 951,
+    "sha256": "e4771c70b7718951f3bd26d5a01c0270666c6f1aa96223e5b3eab661fedaec46"
+  },
+  "postrebase/REBASE-NOTE.txt.gz": {
+    "bytes": 160,
+    "sha256": "c5f864826f59b040a56e96374508c7957057a0f4a1dd6b1d93dabace965381af"
+  },
+  "postrebase/RESULT.json.gz": {
+    "bytes": 1254,
+    "sha256": "e7c2029143174b9c25ce4aad010eb2eac8d686f7f7c8bb2e771e161659cd8ca0"
+  },
+  "postrebase/SCOPE.json.gz": {
+    "bytes": 1122,
+    "sha256": "7304dbc4368d61c265b1159c081d4345427e2adfdeba4c161fd604bcce01afb3"
+  },
+  "postrebase/build-lint-PROCESS.json.gz": {
+    "bytes": 125,
+    "sha256": "9eac0b6e86ba8e8b70371d8dc9040af21516f7bb1e11b62d4d9436125b666274"
+  },
+  "postrebase/build-lint-RESULT.json.gz": {
+    "bytes": 199,
+    "sha256": "741da8fdc264e5134ce3df8e0c11a5c0eec28b4404362f0157c4c5c347425695"
+  },
+  "postrebase/build-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "postrebase/build-unit-PROCESS.json.gz": {
+    "bytes": 104,
+    "sha256": "59da48a549f30b067d437a68220a1373ee2f6d0ff1b543be0be83eae7c7aa992"
+  },
+  "postrebase/build-unit-RESULT.json.gz": {
+    "bytes": 184,
+    "sha256": "1104cf9a4f6e9765a27333ada804f57bee0d7bdabc08e4c7adfeb7f8f2e12eb4"
+  },
+  "postrebase/build-unit.log.gz": {
+    "bytes": 80,
+    "sha256": "238cc63f70c4025d8c29c212683d86e67794115a25f649af82d831ac04b2113e"
+  },
+  "postrebase/run.py.gz": {
+    "bytes": 1900,
+    "sha256": "adcb93487fefe151a291fc4e1bd7e0feb9fd1155ea88eee4ecfbfdab9eb9fdd3"
+  },
+  "source/INDEPENDENT-REVIEW.json.gz": {
+    "bytes": 1167,
+    "sha256": "04a3bcb14143a10f65b92d6430d35079afc163f5707a99d87ee87775758a0492"
+  },
+  "source/MANIFEST.json.gz": {
+    "bytes": 3499,
+    "sha256": "c90450d47d3ed923099e9a822b08f0a5598826953816fb5ce9bc499881bd6147"
+  },
+  "source/REVIEW.json.gz": {
+    "bytes": 3633,
+    "sha256": "e0b030f3881bb9543454e502eafa0287744b266576816834695adf06591a815d"
+  },
+  "source/SOURCE.json.gz": {
+    "bytes": 639,
+    "sha256": "38dd1bdd49845dab3f26da2f976f4dfc677ad15a8c6672b0dfcc08228f4034f6"
+  },
+  "source/before/deploy/native-common/node14_tools_test.py.gz": {
+    "bytes": 1830,
+    "sha256": "3631029d841baf95c9884bcdecf48fe5e42cfe54af957d1eb438b33cd993bb8c"
+  },
+  "source/before/deploy/native-common/prepare-node14-tools.py.gz": {
+    "bytes": 1190,
+    "sha256": "c9f24e5c4e5897697409f8238d04cb3d3a3dec6b35113caaf301f09d56a7350e"
+  },
+  "source/before/lego/.dockerignore.gz": {
+    "bytes": 914,
+    "sha256": "71aa074119b73c704ca609cfc0a0b15a97549302a0753b4d05077f50200ea38c"
+  },
+  "source/before/lego/operator/internal/build/nativecommon.go.gz": {
+    "bytes": 2714,
+    "sha256": "65717162e901a894f396ca5a31272bbeb51ceff4431bca67bd7258bc7bdd4a1e"
+  },
+  "source/before/lego/operator/internal/build/nativecommon_node14_test.go.gz": {
+    "bytes": 2771,
+    "sha256": "8df9577b973cf7b14e5a35d8ddb4ebd3a6b0c5b54650784092e5d3ee0c8ea675"
+  },
+  "source/before/lego/operator/internal/build/nativeresolve.go.gz": {
+    "bytes": 6921,
+    "sha256": "f74e105430f780805e2456cfc6a2004245e985413ca3e284b60deeec4efa30ed"
+  },
+  "source/evidence/APPLY-HISTORY.json.gz": {
+    "bytes": 262,
+    "sha256": "26fe980c5a78393cf963fe96d7a69b0aaa3bd6c36183b677764bc0e2368f32d9"
+  },
+  "source/evidence/BEFORE-DOCKER-CONTEXT.json.gz": {
+    "bytes": 227,
+    "sha256": "d477ccd4233d51d6176c7be1c72c24a350a819906272320adcd73991ebec8caa"
+  },
+  "source/evidence/BEFORE.json.gz": {
+    "bytes": 525,
+    "sha256": "efc4ded5cd606829a80adbc877f35104c77bca41358eba717662265a434890bc"
+  },
+  "source/evidence/CONTEXT-SOURCE-CONTROLS.json.gz": {
+    "bytes": 497,
+    "sha256": "01271efa1e6c635c8157e946f6fe4cb44e9c62f6d8f8f384383f80bb5113e849"
+  },
+  "source/evidence/FORMAT-TRANSITION.json.gz": {
+    "bytes": 597,
+    "sha256": "41bb42fa36904c5558f444dbeefa9456677d15826888bb67a00fa921d180e733"
+  },
+  "source/evidence/LIVE-HELPER-CONTROLS.json.gz": {
+    "bytes": 383,
+    "sha256": "317ca7d71ea99142e6333c93be66ccb3598e2af1cd4e63455c6344a72dee26ee"
+  },
+  "source/evidence/PRIVATE-DRAFT-CONTROLS.json.gz": {
+    "bytes": 385,
+    "sha256": "3aaf74e9ba393dd467d3fc92c7e56bb8b373f9774e38f483144165069aaad84d"
+  },
+  "source/evidence/PROTECTED-BEFORE.json.gz": {
+    "bytes": 485,
+    "sha256": "142d5b3a911ca8689ad8183ee7cd449c9e3248d8241ca0869ccf9a448c4bd49b"
+  },
+  "source/evidence/ROOT-SCOPE.json.gz": {
+    "bytes": 1017,
+    "sha256": "4a82bd004303b64e9506713538e02e554d22f406a553a3ca354d3847837dd0c9"
+  },
+  "source/evidence/SOURCE-CHECKS.json.gz": {
+    "bytes": 883,
+    "sha256": "5e9fd428ebda4f8a78f3ccc8673f58e7f2acdd12dbcf219af1022c2364f30fb7"
+  },
+  "source/evidence/SOURCE-READY.json.gz": {
+    "bytes": 781,
+    "sha256": "77f5d824db16dd7c77ed6f714e15b40e41e9c8f71617b60d0faeaf3e5aac1661"
+  },
+  "source/evidence/UPSTREAM-FIRST-NODE16.json.gz": {
+    "bytes": 306,
+    "sha256": "b3dd8be1dee151f64344321c55e654326ee31983c0bc68f43bf2f522958cbcfa"
+  },
+  "source/evidence/UPSTREAM-NODE14-CAUSE.json.gz": {
+    "bytes": 691,
+    "sha256": "0d5f188d0ecd10fb18df916635186688233075cc1b248b234c24018b34a79657"
+  },
+  "source/evidence/UPSTREAM.json.gz": {
+    "bytes": 530,
+    "sha256": "8e93ec3a397f90a483d609ca076611a449771c0f3285a67a10137e8451f8ac3d"
+  },
+  "source/evidence/diff-check-final.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "source/evidence/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "source/evidence/live-helper-controls.log.gz": {
+    "bytes": 289,
+    "sha256": "24a747e133bf758e49ef640bd7c8e432dc25036eef64900e9979ae4bdc6955c1"
+  },
+  "source/evidence/private-draft-helper-controls.log.gz": {
+    "bytes": 289,
+    "sha256": "1ffae2dd125502f1106db71f9499f0bccea933a0b3840c61cec3d55f301b59e5"
+  },
+  "source/evidence/source.diff.gz": {
+    "bytes": 7655,
+    "sha256": "f822766a385e12641f36a3edcd5ab5c9945a0b1cbebdf4e996a1f12f97194624"
+  },
+  "source/history/GENERATION1-MANIFEST.json.gz": {
+    "bytes": 2774,
+    "sha256": "58d242dfc36958acb32cede2267711850a72779e2c6ac11a8eff1f4aa94d0fd0"
+  },
+  "source/history/GENERATION1-REVIEW.json.gz": {
+    "bytes": 2777,
+    "sha256": "26ff7b6970beac6575de5643f0d1eb6638ae8c83cffff4482bbf9285ab521595"
+  },
+  "source/history/GENERATION1-SOURCE.json.gz": {
+    "bytes": 638,
+    "sha256": "861c5c257ef99905afcdd00cc16af6078c8cf6ad43c50b3ae433965aa59638b9"
+  },
+  "source/history/followon/PENDING.json.gz": {
+    "bytes": 563,
+    "sha256": "c37c4056fe9adc563db4095ff053d5d133a67cb395732fc1240aa9a750aadb35"
+  },
+  "source/history/followon/after.go.txt.gz": {
+    "bytes": 2645,
+    "sha256": "f632ee1a39179cd1c3ab76f3e586f9b55ffce69ac4da96c93a5044a207216e97"
+  },
+  "source/history/followon/before.go.txt.gz": {
+    "bytes": 2575,
+    "sha256": "a47469005a4ee9262b88ea4176ebe142f8a367b7e8eb5e3416143d55e0419d64"
+  },
+  "source/history/followon/pending.patch.gz": {
+    "bytes": 730,
+    "sha256": "c55d98c6f8aa0ebbeaff736cc4ede46553dfc75b1ce1cd97816f263130bbf811"
+  },
+  "source/root-verification/current/ENVTEST-OWNERSHIP.json.gz": {
+    "bytes": 433,
+    "sha256": "f281c61e3c1d885213e27839f870ef7cc0956bec6cce300ed5f5675355a43674"
+  },
+  "source/root-verification/current/PRIOR-FAILURE.txt.gz": {
+    "bytes": 303,
+    "sha256": "e8a9eb95d501cdbc766b7534fbc5b6e4c2553845f2ac799a53a89b77baf9aa5b"
+  },
+  "source/root-verification/current/SCOPE-CLARIFICATION.json.gz": {
+    "bytes": 410,
+    "sha256": "e937a35cd9caab2b1b9c1192b0daf7b17572432f5627938d8626e992afb10893"
+  },
+  "source/root-verification/current/SCOPE.json.gz": {
+    "bytes": 1016,
+    "sha256": "43836dc742a12262d1db17eedba78e546ee3e9d67cec8d4b920f1d54b0b36e8e"
+  },
+  "source/root-verification/current/disk-mode-focused-RESULT.json.gz": {
+    "bytes": 235,
+    "sha256": "d207d32b2bf978205893ff1953b950434d544f1e86f0f7682600a4bf7de7d873"
+  },
+  "source/root-verification/current/disk-mode-focused.log.gz": {
+    "bytes": 153,
+    "sha256": "b2941988f7875dce4021f2d0781912e14c3f2c3aa528b9916898b3e1a2afd1ea"
+  },
+  "source/root-verification/first/DARWIN-MODE-PROBE.json.gz": {
+    "bytes": 350,
+    "sha256": "d8660da3af74a1f1e12c96c70dbbc933dd7f7504261155b385e42494a291c0ec"
+  },
+  "source/root-verification/first/ENVTEST-AFTER.json.gz": {
+    "bytes": 160,
+    "sha256": "2b8c3a321bec7572521b689c47fee5d4c87d5a83c57d3a1a889b918121ce1f48"
+  },
+  "source/root-verification/first/RESULT.json.gz": {
+    "bytes": 999,
+    "sha256": "0abaa75e76e45732b780f42a9c60ec80fe283a275eb1bc7585dd72fab22c121d"
+  },
+  "source/root-verification/first/SCOPE.json.gz": {
+    "bytes": 1017,
+    "sha256": "4a82bd004303b64e9506713538e02e554d22f406a553a3ca354d3847837dd0c9"
+  },
+  "source/root-verification/first/operator-full.log.gz": {
+    "bytes": 1230,
+    "sha256": "87063102244b53ca3c490ce58f4bc0cbff3ce2004f42ea10b468fd9a2e4eca0a"
+  },
+  "source/source/deploy/native-common/node14_tools_test.py.gz": {
+    "bytes": 2130,
+    "sha256": "9be941d3b16db13fc8749f9c3ad451d8fcf084f23a59595b2514c7ba873d9541"
+  },
+  "source/source/deploy/native-common/prepare-node14-tools.py.gz": {
+    "bytes": 1319,
+    "sha256": "d954be2f7c7d7c1a08093397c33f59faad2591d1ffdfecd464c3cf0bdddd0373"
+  },
+  "source/source/deploy/native-common/testdata/node16-find-python.js.gz": {
+    "bytes": 1003,
+    "sha256": "f9f60beaa6e89c78f03ef7b7db8c38ee57c6019cbd4fcedf23ac0b0c76aa4aa6"
+  },
+  "source/source/lego/.dockerignore.gz": {
+    "bytes": 930,
+    "sha256": "b4cc8101d966cc45b4f91e31d633a1a3f6a39e5d5612e3bf14dc9aa6709ed561"
+  },
+  "source/source/lego/operator/internal/build/nativecommon.go.gz": {
+    "bytes": 2677,
+    "sha256": "02378716cfba0bb9ff682fc0fc4a6687717536c2c91757e4f5843668149a1ab5"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_node14_test.go.gz": {
+    "bytes": 2849,
+    "sha256": "3a5946c29fc5361e2bf57fc333027263e0a245e8bfe5827c599896565d2b45d8"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython.go.gz": {
+    "bytes": 1027,
+    "sha256": "b50ac70523f9f71dcea0449bfd00eda1fe6ae96c6be66cb2da4af8b969751b87"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython.py.gz": {
+    "bytes": 1319,
+    "sha256": "d954be2f7c7d7c1a08093397c33f59faad2591d1ffdfecd464c3cf0bdddd0373"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython_test.go.gz": {
+    "bytes": 2645,
+    "sha256": "f632ee1a39179cd1c3ab76f3e586f9b55ffce69ac4da96c93a5044a207216e97"
+  },
+  "source/source/lego/operator/internal/build/nativeresolve.go.gz": {
+    "bytes": 7007,
+    "sha256": "6b1be56a44dfa4bcd493be13b48c0d79b9c1c5bf8f01a6415bb1f2aedeb854b0"
+  },
+  "source/source.diff.gz": {
+    "bytes": 7722,
+    "sha256": "cd46829648aae17b5fb2d506f7730a33c04a0c1d64388ae1f6113db869b804a8"
+  },
+  "source/upstream/node14-gyp-input.py.gz": {
+    "bytes": 31423,
+    "sha256": "66aaeb56408c292624067eed40d9409ee4dc1fef5f5c188209fb6bd3ea1a47df"
+  },
+  "source/upstream/node16-find-python.js.gz": {
+    "bytes": 3521,
+    "sha256": "090e77fbe7f9206337257c57bb6006df70b5bc890e7991b9017f9d1e8a7e9c00"
+  },
+  "source/upstream/node16-first-find-python.js.gz": {
+    "bytes": 3117,
+    "sha256": "dec6fdf74a42121ab996ca198ef624fd2b193600f29a0b4aa3b0d23cd87599e7"
+  },
+  "source/upstream/node16-gyp-input.py.gz": {
+    "bytes": 31889,
+    "sha256": "7e3ec630cca83622847a3fe6dff02f255110569489ff69e045b62d4c0ef0f675"
+  },
+  "source/upstream/node16-node-gyp-README.md.gz": {
+    "bytes": 4165,
+    "sha256": "78c0f6e8ff1baca8d658e8efeec1f26adba56bd68b8789452af2617f41610807"
+  },
+  "source/upstream/node16-node-gyp-package.json.gz": {
+    "bytes": 565,
+    "sha256": "5b8d9bef8a32ea7084151f4b6bc71cd9d61d07851ecaf4753ea34d247f9ffe48"
+  }
+}
