@@ -18,7 +18,7 @@
 
 ## Facts
 
-- **Changing the image restarts every database.** The serving operand image is chosen on every reconcile from `cnpgExportImages` (`lego/operator/internal/controller/database_exports.go`, used at `database_controller.go:486`). Changing a digest rolls every managed Postgres cluster of that major: pods restart, and the PostgreSQL patch may move. This is the same kind of rollout that [m65](../m65/README.md) waits on for its CNPG 1.30.1 upgrade. The map also feeds the logical-export `pg_dump` Jobs.
+- **Changing the image restarts every database.** The serving operand image is chosen on every reconcile from `cnpgExportImages` (`lego/operator/internal/controller/database_exports.go`, used at `database_controller.go:486`). Changing a digest rolls every managed Postgres cluster of that major: pods restart, and the PostgreSQL patch may move. This is the same kind of rollout that [m65](../blocked/m65/README.md) waits on for its CNPG 1.30.1 upgrade. The map also feeds the logical-export `pg_dump` Jobs.
 - **No upstream CNPG image carries all six.**
   - The current `ghcr.io/cloudnative-pg/postgresql:<major>` pins carry none of them.
   - CNPG publishes PostGIS-only operand images, for example `ghcr.io/cloudnative-pg/postgis:18.6-3.6.4-…-system-bookworm`, for 13–18 on bookworm and trixie ([catalog](evidence/cli-sweep403/official-CNPG-PostGIS-supplier-catalogs.json)).
@@ -31,7 +31,7 @@
 
 1. **Image.**
    - **(a)** Adopt CNPG's PostGIS images. This closes m92 only; m104 and m109–m112 become documented divergences.
-   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../../m91/design.md), option C.
+   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../m91/design.md), option C.
 2. **Activation.**
    - **(a)** Pre-install in every application database, like `vector`.
    - **(b)** On-demand `CREATE EXTENSION` by the owner through an allowlist extension (Render's contract).
