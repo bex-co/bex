@@ -1,0 +1,20 @@
+{
+  "workflow": "hcloud-csi-rollout.yml",
+  "run": "https://github.com/bex-co/bex/actions/runs/41192091394",
+  "job": 124511436355,
+  "source_commit": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "step": "upgrade only CSI and verify every controller/node driver pod",
+  "conclusion": "success",
+  "exit_code": 0,
+  "allOldPodsTerminated": true,
+  "readinessValidatorSha256": "022b5fb586fcf65b8582a75c52457956333d8bd49462788faefc0d1a7e631af0",
+  "driver_readiness": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+    "readyControllerPods": 1,
+    "readyNodePods": 12
+  },
+  "derivedFacts": "Successful exact reviewed validator checks controller/node templates, observed generations, full replica counts and all selected Pods Running/Ready/nonterminating/exact image; allOldPodsTerminated is derived from that success, not an invented Pod UID inventory.",
+  "rawOutputObservedAtUTC": "2026-10-31T10:30:09.0329200Z",
+  "rawClusterLogSHA256": "c9a940ed2aaf974db46acd0ffeae38782ceb9b8c5507119ec971c84758b7bd31",
+  "productionReadyScope": "Exact CSI driver roles only; no API/platform image, hosted fixture, billing or paid authorization claim."
+}

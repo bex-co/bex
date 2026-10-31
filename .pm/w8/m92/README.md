@@ -1,6 +1,6 @@
 # w8 · m92 — Make PostGIS usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** in progress — t008 implemented and verified locally on 13–18 (2026-10-31); publication via `pg-operand-image.yml`, then t001 pins and rolls out (ADR092 D4)
+**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** in progress — t008 implementation shipped; complete restore, actual Free resources, pinned CNPG1.30.1 and both-architecture qualification remain open. Publication precedes t001 reviewed pins and rollout (ADR092 D4).
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t006 | [Test actual PostGIS supply activation and existing data](t006.md) | 45m | t004 |
 | t007 | [Accept fresh native migrations and close the milestone](t007.md) | 20m | t005, t006 |
 
-**Total:**7 tasks/250m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep403/README.md).
+**Total:**8 tasks/490m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep403/README.md).
 
 ## Definition of done
 
@@ -45,3 +45,8 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 - **结论：** 采用 [ADR092](../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
 - **剩余门槛：** 无用户门槛。worker 从 [t008](t008.md) 开始：先在隔离环境按 ADR092 D3 验证各大版本，再按 D4 低峰滚动并逐项验收。
+
+
+## Qualification scope correction — 2026-10-31
+
+The historical3f38 ARM64/local-CNPG1.27 results remain useful partial evidence, but do not satisfy the complete ADR092 D3 matrix: the old restore check removed the Timescale fixture and accepted the restored IMMV as an ordinary table; the CNPG fixture did not retain actual Free resources or bind the current1.30.1 manager. The stronger checks preserve the whole dataset, require incremental maintenance after restore, retain ordinary-owner failures, and distinguish platform recovery. No production image is adopted and no complete matrix success is claimed. The initial bounded canonical PG13 build stopped at its disk-allocation guard before SQL; the revised6GiB plan has not run because its required host reserve does not fit. Source refinements and full operator validation are in progress; live/native acceptance remains open.

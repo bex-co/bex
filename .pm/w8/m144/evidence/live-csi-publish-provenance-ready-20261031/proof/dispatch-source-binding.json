@@ -1,0 +1,28 @@
+{
+  "atUTC": "2026-10-31T10:21:30.994036+00:00",
+  "state": "EXACT_DISPATCH_SOURCE_PIN_VERIFIED_NOT_READY_YET",
+  "run": 41192091394,
+  "source": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "operation": "rollout",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "rootAuthorizedDispatchCount": 1,
+  "rootIntent": {
+    "path": "/private/tmp/bex-w8-m144-csi-rollout-dd64-20261031/POST-INTENT.json",
+    "sha256": "7ab0f4f747bf0ca46a7c1e3cbce56b04a3c5bdda4275f1de3cc0bd6dc0bcd7d2"
+  },
+  "rootResponse": {
+    "path": "/private/tmp/bex-w8-m144-csi-rollout-dd64-20261031/dispatch-response.json",
+    "sha256": "9b19dfb481a70dd56664736e7d66b00f3ee0c23375011bea8133ec4f906b7271"
+  },
+  "sourceBlobSHA256": {
+    ".github/workflows/hcloud-csi-rollout.yml": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa",
+    "deploy/hcloud-csi/reviewed.values.json": "141f83c709775de479af9f2f6fa6058a452740f5e976f7e1a45107035f894e36",
+    "scripts/install-hcloud-csi.sh": "5d4c03def0bf6ebbf33d19aaceb9ba5945092c0a3491d10c9d80123a235459d9",
+    "scripts/hcloud_csi.py": "022b5fb586fcf65b8582a75c52457956333d8bd49462788faefc0d1a7e631af0",
+    "scripts/service-disk-inventory.sh": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e"
+  },
+  "bothRolesPinSameExactApprovedDigestEmptyTags": true,
+  "legacyInventoryBaseline": ".pm/w8/m144/evidence/live-release-ready-20261030/source-inventory-before-upgrade.json",
+  "legacyComparisonScope": "Compare selected metadata inventory before this Helm rollout with retained legacy inventory, same scope as prior selected-inventory-review. Workflow does not perform a post-Helm tenant inventory reread; do not claim that observation.",
+  "noNewDispatchAuthPaidFixtureOrProductionMutationByWatcher": true
+}

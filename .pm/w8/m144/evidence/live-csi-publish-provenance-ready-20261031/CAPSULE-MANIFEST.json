@@ -1,0 +1,80 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 744,
+      "sha256": "176ee787228f43f9ecde25bcb7b0a498f8dcf9b095ba4f897de7c8e1ae150bd6"
+    },
+    "ROOT-REVIEW.json": {
+      "bytes": 593,
+      "sha256": "32a1be32e22a065a69a5ae4a1452a93758a3fce46aad645ffcfd5789b2efbe13"
+    },
+    "proof/MANIFEST.json": {
+      "bytes": 4403,
+      "sha256": "7df6f1322d6d316572dce3e5a52e2cab9a80fae4521667c29055d58a1ca75e01"
+    },
+    "proof/actual-timing.json": {
+      "bytes": 399,
+      "sha256": "e4702db87607f86b08282c2397c1ca2fd176909c95136baf4d8f7183b296166b"
+    },
+    "proof/completed-cluster-fetch.json": {
+      "bytes": 452,
+      "sha256": "d279783ed12bd4360b6cc9ed9932ead08764691cfc837c6137bdec0c7b856025"
+    },
+    "proof/completed-cluster-fetch.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "proof/completed-cluster-job.log.gz": {
+      "bytes": 8210,
+      "sha256": "7c734d29a35451a06a50a236741e9c93bafaffdc4a35b87a596e48eb56d48804"
+    },
+    "proof/csi-ready.json": {
+      "bytes": 1214,
+      "sha256": "736f88956478e859c374e77b64589ddbd5760fdae4a546cddb1ee1deb03dbbde"
+    },
+    "proof/dispatch-source-binding.json": {
+      "bytes": 1829,
+      "sha256": "2a678578e9e5d771bc3a3adc89d7c2057f498c8043591e2cdc3ad308699ce638"
+    },
+    "proof/selected-inventory-review.json": {
+      "bytes": 1919,
+      "sha256": "a3dfe30096915ec85f178c1d9af3880f61355301ff03adc66f8265549832f433"
+    },
+    "proof/snapshot-013.json": {
+      "bytes": 5428,
+      "sha256": "a126b24c54c379eb64998346951bdaad4ef4619f2b4081762717462c19963589"
+    },
+    "proof/source/.github/workflows/hcloud-csi-rollout.yml": {
+      "bytes": 8454,
+      "sha256": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa"
+    },
+    "proof/source/deploy/hcloud-csi/reviewed.values.json": {
+      "bytes": 429,
+      "sha256": "141f83c709775de479af9f2f6fa6058a452740f5e976f7e1a45107035f894e36"
+    },
+    "proof/source/scripts/hcloud_csi.py": {
+      "bytes": 6198,
+      "sha256": "022b5fb586fcf65b8582a75c52457956333d8bd49462788faefc0d1a7e631af0"
+    },
+    "proof/source/scripts/install-hcloud-csi.sh": {
+      "bytes": 3385,
+      "sha256": "5d4c03def0bf6ebbf33d19aaceb9ba5945092c0a3491d10c9d80123a235459d9"
+    },
+    "proof/source/scripts/service-disk-inventory.sh": {
+      "bytes": 2210,
+      "sha256": "349da440648d358ca505147d014e79f60bf9450c3c33c4ec3a27fc11e1b6509e"
+    },
+    "proof/source-inventory-before-upgrade.json": {
+      "bytes": 7330,
+      "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+    },
+    "proof/watch.py": {
+      "bytes": 2222,
+      "sha256": "c28d560421f5b0cbaa3d1f0342e6b9ef07f4a27cb4041412d46a3021cce1e4a5"
+    },
+    "rollout-receipt.json": {
+      "bytes": 1057,
+      "sha256": "0b6c993cf07338f9c95ed2415679a3d98ebda6d6dbdf9aeee4f014b81a5a14ec"
+    }
+  }
+}

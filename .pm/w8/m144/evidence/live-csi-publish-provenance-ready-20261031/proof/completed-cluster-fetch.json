@@ -1,0 +1,17 @@
+{
+  "atUTC": "2026-10-31T10:32:28.781312+00:00",
+  "command": [
+    "gh",
+    "api",
+    "repos/bex-co/bex/actions/jobs/124511436355/logs"
+  ],
+  "exit": 0,
+  "rawBytes": 38399,
+  "sha256": "c9a940ed2aaf974db46acd0ffeae38782ceb9b8c5507119ec971c84758b7bd31",
+  "downloadCount": 1,
+  "privateRawMode": "0o600",
+  "run": 41192091394,
+  "job": 124511436355,
+  "source": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "actualTerminalConclusion": "success"
+}

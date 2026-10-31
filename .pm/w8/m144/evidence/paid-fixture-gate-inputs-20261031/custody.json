@@ -1,0 +1,43 @@
+{
+  "atUTC": "2026-10-31T10:54:48.998809+00:00",
+  "scope": "Actual sanitized gate receipt inputs only. No credential/ledger contents, fixture IDs, synthetic readiness or authority fabricated. Budget is root-accepted planning data, not a bill/invoice.",
+  "sources": {
+    "platformSignature": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/platform-candidate-25b-20261030/signature.json",
+      "sha256": "372b3e0198172deef526b4d874dc0504aae95d28d10b1266a75b471e0e66bd63"
+    },
+    "platformSourceQualification": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/platform-candidate-25b-20261030/source-review.json",
+      "sha256": "9d710a929504c29be68320a104e86de76b92b9580c24ef8cd472c2641ae4a186"
+    },
+    "platformCurrentInventory": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-csi-publish-provenance-ready-20261031/proof/source-inventory-before-upgrade.json",
+      "sha256": "eb87b3e695fc61a527304cdfe1435222c1a39b1ec53fa258d4436827b44d79a1"
+    },
+    "platformClassContractBaseline": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-release-ready-20261030/platform-ready-pre-csi.json",
+      "sha256": "35ecd4d9dfa8166b19ec730f9c288053339adb757ce3c2effde5939b09bc986e"
+    },
+    "csiActualSignatureOutput": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/published-csi-publish-provenance-20261031/proof/qualification/signature.stdout.jsonl",
+      "sha256": "5546afa9f9ac004495b144fc10d4df6f8fd28c44b1bfd003a716457fbee1cfd9"
+    },
+    "csiActualSignatureResult": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/published-csi-publish-provenance-20261031/proof/qualification/signature.verification-result.json",
+      "sha256": "ddfb69f7b430af363b05957986266d283d760a6e44844456c4bd01ba7696b79c"
+    },
+    "csiActualReady": {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m144/evidence/live-csi-publish-provenance-ready-20261031/proof/csi-ready.json",
+      "sha256": "736f88956478e859c374e77b64589ddbd5760fdae4a546cddb1ee1deb03dbbde"
+    },
+    "rootAcceptedBudgetEstimate": {
+      "path": "/private/tmp/bex-w8-m144-paid-budget-20261031/budget.json",
+      "sha256": "c5391257e9cf1881c9eb078c3b43f0481af30901ae1bf1c11b098332dbe7a05d"
+    }
+  },
+  "transforms": {
+    "platform-ready.json": "Compute readiness/convergence/exact runtime-image facts from actual current fixed inventory; storage-class equality reuses actual reviewed class baseline.",
+    "csi-signature.json": "Parse full actual Cosign JSON output to a JSON list without modifying any claim value.",
+    "otherReceipts": "Exact byte copies."
+  }
+}

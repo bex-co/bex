@@ -1,0 +1,11 @@
+{
+  "runCreatedAt": "2026-10-31T10:16:44Z",
+  "validationStartedAt": "2026-10-31T10:17:09Z",
+  "validationCompletedAt": "2026-10-31T10:20:06Z",
+  "clusterStartedAt": "2026-10-31T10:24:34Z",
+  "clusterCompletedAt": "2026-10-31T10:30:14Z",
+  "validationSeconds": 177.0,
+  "postValidationToClusterStartSeconds": 268.0,
+  "clusterExecutionSeconds": 340.0,
+  "runCreateToClusterCompleteSeconds": 810.0
+}

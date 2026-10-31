@@ -1,19 +1,20 @@
 # w8 · m91 — Supply PostgreSQL clients in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** todo — 2026-10-29 按 parity 规则恢复；m91 建立共享原生基础镜像供应链，各项保留原功能与线上验收
+**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** in progress — t007 implements the user-selected common Bookworm foundation; original functional and hosted acceptance remains open
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed PostgreSQL client programs and libraries](t001.md) | 75m | — |
+| t007 | [Implement the user-selected common Bookworm foundation](t007.md) | 240m | — |
+| t001 | [Supply reviewed PostgreSQL client programs and libraries](t001.md) | 75m | t007 |
 | t002 | [Audit shared native consumers and preserve image boundaries](t002.md) | 40m | t001 |
 | t003 | [Verify Render parity across native authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed client supplier](t004.md) | 15m | t003 |
 | t005 | [Test real archive processing and shared toolchain neighbors](t005.md) | 40m | t003 |
 | t006 | [Accept fresh native defaults and close the milestone](t006.md) | 15m | t004, t005 |
 
-**Total:**6 tasks/205m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep402/README.md).
+**Total:**7 tasks/445m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep402/README.md).
 
 ## Definition of done
 
@@ -196,12 +197,12 @@ Preserved old99f Elixir1.20 passed its build, both runtime gates and full scans,
 Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
 
 
-## 用户决定（2026-10-29，`/unblock w8` 主题 1）——与正在实施的方案不一致，待用户裁定
+## 用户决定（2026-10-29，`/unblock w8` 主题 1）——单一 Bookworm 公共底优先
 
 - **涉及 ID：** w8/m91、m93、m94、m95、m96、m97、m98、m99、m100、m101、m102、m103、m107（另见 w8/222）
 - **结论来源：** 用户明确决定。用户先问「Render 是怎么做的」，得到解释（Render 只有一个 Debian 12 公共环境，工具预装，语言版本按环境变量装在上面）后，选择**单一 bex native 公共底**：一个 bookworm 底预装 Render 工具表，语言版本装在上面；没有选 design.md 的选项 C（按语言线构建镜像）。
-- **冲突：** 这个决定做出时，另一个会话已经按「现有 parity 规则」恢复了本项并实施选项 C（见上方 2026-10-29 记录和后续 CI 发布记录：按语言线的 bex 原生基础镜像已在发布、校验）。两条路径不同，worker 不应自行在二者之间取舍。
-- **剩余门槛：** 需要用户裁定：(a) 继续已大量完成的选项 C；或 (b) 按本决定改为单一公共底（另立设计任务，C 的成果尽量复用）。裁定前，已在进行的 C 工作可继续收尾已开始的发布，但不要再扩大范围。
+- **冲突处理：** 明确用户决定覆盖较早 worker 按 parity 推断的选项 C。已开始的按语言线发布可收尾并保留真实证据，最终采用单一 Bookworm 公共底；无需把同一决定再交回用户。
+- **剩余工作：** [t007](t007.md) 实现并验证共同底与精确运行时安装，复用已有包、工具、修补和发布证明。停止自动扩大 C 发布，不取消已开始的工作；共同底采用和原28个程序/数据/命令的真实验收仍由 worker 完成。
 
 
 ## Bounded dependency-transfer repair — 2026-10-31
@@ -218,7 +219,7 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 
 ## Tenth published supplier — 2026-10-31
 
-[Root-approved Ruby3.4](evidence/published-ruby34-20261031/README.md) binds source83c run41129277963/job124323020658, five strict signed proofs, two actual negative controls, both full report pairs and33 fresh complete anonymous blobs/1,192,208,302B. Root independently checked196 frozen payloads,22 Git recipe files/modes, all five signed-subject/canonical-predicate roundtrips and seven TUF roots. Both images report Ruby3.4.12; original generated/default and hosted cases remain separate. Published approvals are10/27, with catalog adoption and the common-base decision still open. All findings remain retained.
+[Root-approved Ruby3.4](evidence/published-ruby34-20261031/README.md) binds source83c run41129277963/job124323020658, five strict signed proofs, two actual negative controls, both full report pairs and33 fresh complete anonymous blobs/1,192,208,302B. Root independently checked196 frozen payloads,22 Git recipe files/modes, all five signed-subject/canonical-predicate roundtrips and seven TUF roots. Both images report Ruby3.4.12; original generated/default and hosted cases remain separate. Published approvals are10/27, with catalog adoption and the common-base implementation still open. All findings remain retained.
 
 
 ## Eleventh published supplier — 2026-10-31

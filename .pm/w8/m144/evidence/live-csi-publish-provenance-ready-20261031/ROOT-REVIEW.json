@@ -1,0 +1,15 @@
+{
+  "atUTC": "2026-10-31T10:45:55.458086+00:00",
+  "actualCsiReadyApproved": true,
+  "source": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "image": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "readyControllerPods": 1,
+  "readyNodePods": 12,
+  "rootVerifiedFrozenFiles": 15,
+  "exactReadinessValidatorVerified": true,
+  "actualRun": 41192091394,
+  "actualJob": 124511436355,
+  "legacyScope": "pre-Helmmetadata only; no post-Helm tenant reread",
+  "legacyBindingsPreservedInSelectedInventory": true,
+  "paidFixtureCreated": false
+}

@@ -1,0 +1,21 @@
+{
+  "atUTC": "2026-10-31T10:36:19.614179+00:00",
+  "state": "ACTUAL_SCOPED_ROLLOUT_SUCCESS_CSI_READY_FOR_ROOT_REVIEW",
+  "run": 41192091394,
+  "job": 124511436355,
+  "source": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "readyControllerPods": 1,
+  "readyNodePods": 12,
+  "capsule": "/private/tmp/bex-w8-m144-csi-rollout-watch-20261031/proof-bundle",
+  "manifestSha256": "7df6f1322d6d316572dce3e5a52e2cab9a80fae4521667c29055d58a1ca75e01",
+  "files": 15,
+  "storedBytes": 49679,
+  "readyReceiptSha256": "736f88956478e859c374e77b64589ddbd5760fdae4a546cddb1ee1deb03dbbde",
+  "inventoryReviewSha256": "a3dfe30096915ec85f178c1d9af3880f61355301ff03adc66f8265549832f433",
+  "legacyComparisonAllBaselineBindingsAndClassesEqual": true,
+  "legacyScope": "pre-Helmmetadata only; no post-Helm tenant reread",
+  "rawLogDownloadedExactlyOnce": true,
+  "watcherProductionOrAuthOrPaidActions": false,
+  "rootIndependentReadyBindingStillRequired": true
+}
