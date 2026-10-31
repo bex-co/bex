@@ -41,7 +41,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 
 - [ ] **008** — Sandbox pod-ready timeout misreported as capacity; informer-staleness root cause (incident 2026-10-29/30) → [`008.md`](008.md)
 
-- [ ] **010** — **BLOCKED (user: renew the `*.onbex.co` wildcard cert and update `production-deploy` secrets)** fallback TLS cert inside the 30-day window turns every deploy red → [`010.md`](010.md)
+- [ ] **010** — **BLOCKED (user: renew the `*.onbex.co` wildcard cert and update `production-deploy` secrets)** fallback TLS cert inside the 30-day window turns every deploy red → [`blocked/010.md`](blocked/010.md)
 - [x] **009** — Customers have no way to set a BYO model key → [`done/009.md`](done/009.md) — absorbed into m14 t012 2026-10-30
 - [x] **007** — Mobile agent composer sends the repo default branch, rejected by the backend → [`done/007.md`](done/007.md) — done 2026-10-28
 
