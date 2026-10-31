@@ -191,3 +191,57 @@ func TestKeyValueInternalProxyIsolationToggleNeverRollsIt(t *testing.T) {
 		t.Fatalf("a rolling template did not adopt the isolation label: %q", got)
 	}
 }
+
+// The proxy Deployment follows the same rule as the Valkey StatefulSet
+// (w2/m247): a proxy created before the datastore PriorityClass existed is not
+// rolled just to gain it, and adopts it on the next change that rolls it anyway.
+func TestKeyValueInternalProxyAdoptsThePriorityClassOnlyWhenItRolls(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-test", Namespace: "tea-test", UID: "test"}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: "off"}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appsv1.Deployment{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+	intent := keyValueIntent{authSecretName: "auth", credentialRevision: "rev-1", labels: map[string]string{labelKeyValue: kv.Name}}
+	depKey := client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}
+	class := func() string {
+		t.Helper()
+		dep := &appsv1.Deployment{}
+		if err := cl.Get(ctx, depKey, dep); err != nil {
+			t.Fatal(err)
+		}
+		return dep.Spec.Template.Spec.PriorityClassName
+	}
+
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if got := class(); got != appv1alpha1.DatastorePriorityClassName {
+		t.Fatalf("a new proxy carries class %q, want %q", got, appv1alpha1.DatastorePriorityClassName)
+	}
+
+	// A proxy that predates the class.
+	dep := &appsv1.Deployment{}
+	if err := cl.Get(ctx, depKey, dep); err != nil {
+		t.Fatal(err)
+	}
+	dep.CreationTimestamp = metav1.Now()
+	dep.Spec.Template.Spec.PriorityClassName = ""
+	if err := cl.Update(ctx, dep); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if got := class(); got != "" {
+		t.Fatalf("an unchanged proxy was rolled to adopt the class: %q", got)
+	}
+
+	// A credential rotation rolls the proxy anyway: the class rides along.
+	intent.credentialRevision = "rev-2"
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if got := class(); got != appv1alpha1.DatastorePriorityClassName {
+		t.Fatalf("a rolling proxy did not adopt the class: %q", got)
+	}
+}

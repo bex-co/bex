@@ -17,13 +17,19 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -195,5 +201,71 @@ func TestDatastoreMaintenanceJobsCarryTheDatastorePriorityClass(t *testing.T) {
 		if pod.PriorityClassName != appv1alpha1.DatastorePriorityClassName {
 			t.Errorf("%s Pod priorityClassName = %q, want %q", name, pod.PriorityClassName, appv1alpha1.DatastorePriorityClassName)
 		}
+	}
+}
+
+// The rule above, at its call site: reconcileCluster must not add the class to
+// a live Cluster that predates it on an unchanged reconcile (that would roll
+// every instance), and must add it when the reconcile adds an instance.
+func TestReconcileClusterHoldsThePriorityClassUntilTheClusterRolls(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-a", Namespace: "tea-a", UID: "db-uid"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "1c-2g"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	plan, _ := resolvePlan(db.Spec)
+	params := clusterParams{plan: plan, storageGB: 10, namespace: db.Namespace}
+	key := client.ObjectKey{Namespace: db.Namespace, Name: db.Name}
+	reconcile := func(p clusterParams) *unstructured.Unstructured {
+		t.Helper()
+		cluster := &unstructured.Unstructured{}
+		cluster.SetGroupVersionKind(cnpgClusterGVK)
+		cluster.SetName(db.Name)
+		cluster.SetNamespace(db.Namespace)
+		if err := cl.Get(ctx, key, cluster); err != nil && !apierrors.IsNotFound(err) {
+			t.Fatal(err)
+		}
+		if err := r.reconcileCluster(ctx, db, cluster, p); err != nil {
+			t.Fatal(err)
+		}
+		live := &unstructured.Unstructured{}
+		live.SetGroupVersionKind(cnpgClusterGVK)
+		if err := cl.Get(ctx, key, live); err != nil {
+			t.Fatal(err)
+		}
+		return live
+	}
+	class := func(u *unstructured.Unstructured) string {
+		got, _, _ := unstructured.NestedString(u.Object, "spec", "priorityClassName")
+		return got
+	}
+
+	if got := class(reconcile(params)); got != appv1alpha1.DatastorePriorityClassName {
+		t.Fatalf("a new Cluster carries class %q", got)
+	}
+
+	// A Cluster created before the class existed.
+	live := reconcile(params)
+	unstructured.RemoveNestedField(live.Object, "spec", "priorityClassName")
+	if err := cl.Update(ctx, live); err != nil {
+		t.Fatal(err)
+	}
+	if got := class(reconcile(params)); got != "" {
+		t.Fatalf("an unchanged Cluster was given the class (rolling every instance): %q", got)
+	}
+
+	// Enabling HA adds the standby, so CNPG rolls the instances anyway.
+	params.highAvailability = true
+	if got := class(reconcile(params)); got != appv1alpha1.DatastorePriorityClassName {
+		t.Fatalf("a Cluster gaining an instance did not adopt the class: %q", got)
 	}
 }

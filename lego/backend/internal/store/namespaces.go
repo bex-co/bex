@@ -415,14 +415,12 @@ func (r *NamespaceReconciler) workspaceNamespaceObject(name string, t Tenant, re
 //   - tenant-compute-quota: requests/limits CPU and memory and the pod count,
 //     scoped to Pods whose PriorityClass is NOT
 //     appv1alpha1.DatastorePriorityClassName. A Pod with no class has
-//     PriorityClassName "", which `NotIn` matches (verified
-//     on a v1.36 API server: a classless Pod is charged, a bex-datastore Pod is
-//     not, and a classless Pod past the cap is refused), so every service, job
-//     and build stays charged while Postgres/Key Value Pods are exempt. The
-//     pod count moved here in w2/056 so datastore Pods stop using up the
-//     services' pod budget; the same proof holds for `pods` on a v1.36 API
-//     server (a classless Pod past pods=1 is refused, bex-datastore Pods past
-//     it are admitted).
+//     PriorityClassName "", which `NotIn` matches, so every service, job and
+//     build stays charged while Postgres/Key Value Pods are exempt (verified
+//     on a v1.36 API server for CPU and for `pods`: a classless Pod past the
+//     cap is refused, bex-datastore Pods past it are admitted). The pod count
+//     moved here in w2/056 so datastore Pods stop using up the services' pod
+//     budget.
 //   - tenant-quota: everything else, unscoped — object counts, storage, PVCs,
 //     LoadBalancers and ephemeral storage still cover datastores too, because
 //     the API server refuses a PriorityClass scope on them ("unsupported scope
@@ -492,15 +490,8 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // _KEYVALUES counters this replaced were retired in w3/m34. The free tier
 // mirrors Render's Hobby anchors (25 services, 1 Postgres, 1 Key Value); paid
 // plans get a generous ceiling. All three kinds land in this namespace, so all
-// three caps are enforced by the API server.
-//
-// The datastore caps were dead from w3/m34 until w7/m77: ADR043 was implemented
-// for Apps only, so Database/KeyValue CRs were created in the shared apps
-// namespace and never charged here — while the app-code BEX_MAX_POSTGRES /
-// BEX_MAX_KEYVALUES caps had already been deleted on the premise that this
-// quota replaced them. Postgres and Key Value creation was therefore uncapped in
-// practice (an honest, recorded gap: .pm/w3/010.md). ADR043 D8 moved the CRs
-// here, which is what makes these two dimensions real.
+// three caps are enforced by the API server (ADR043 D8 records how the
+// datastore caps came to bite).
 //
 // requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
 // autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
@@ -531,7 +522,8 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // (maxSurge 25% → +1 pod at replicas:1, maxUnavailable 25% → 0 — the operator
 // never sets Strategy), so every rollout needs one extra full-tier pod with
 // zero giveback, and a quota with no slack rejects the surge ReplicaSet
-// ("exceeded quota: tenant-quota") and hangs the deploy at the health gate.
+// ("exceeded quota: tenant-compute-quota") and hangs the deploy at the health
+// gate.
 // Derivation: +1 of the largest tier the plan can reasonably run (tiers.yaml;
 // Guaranteed QoS, so the surge is charged on requests AND limits). Hobby = 2
 // CPU/4 Gi base + 1 standard surge (1 CPU/2 Gi) = 3/6 Gi; paid = 50 CPU/100 Gi
@@ -562,18 +554,9 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 //     its shape (at most 7 instances + a pooler) times its count cap.
 //   - PVCs, storage, ephemeral storage and count/jobs.batch cannot be scoped
 //     by PriorityClass, so each gets datastoreQuotaRoom on top of the plan
-//     budget: the count caps times the largest shape the operator builds.
-//     Per Postgres: HA primary + standby + 5 read replicas = 7 instances, one
-//     data PVC each (no separate WAL volume) at the 10 GB floor. Containers
-//     charged the LimitRange's 1 Gi / 10 Gi ephemeral defaults: 7 instances ×
-//     2 (postgres, barman-cloud), PgBouncer and its surge Pod, one CNPG
-//     initdb/join Job and 3 concurrent exports, 20 in all. Jobs: 3 exports, 3
-//     expiries, 1 purge and 1 CNPG Job = 8. Per Key Value: 1 PVC at the 5 GB floor; valkey + exporter +
-//     the proxy and its surge Pod = 4 defaulted containers, plus a running
-//     backup's declared 2 × 5 + 1 = 11 Gi; Jobs: 3 + 3 kept by the backup
-//     CronJob + 1 running = 7. At 25 + 25 that is 200 PVCs, 1875 Gi of
-//     storage, 875 Gi / 6275 Gi of ephemeral requests/limits and 375 Jobs, so
-//     Hobby holds 208 PVCs, 1995 Gi, 975 Gi / 6475 Gi and 400 Jobs.
+//     budget: the count caps times the largest shape the operator builds
+//     (datastoreFootprint in datastore_quota.go derives each term; the totals
+//     are pinned by TestDatastoreQuotaRoomCoversLargestShape).
 //
 // Services stay bounded: their Pods by the scoped CPU/memory/pod quota, which
 // is unchanged; their disks by one disk per service under the services cap
