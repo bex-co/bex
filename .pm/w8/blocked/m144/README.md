@@ -1,6 +1,6 @@
 # w8 · m144 — Enforce persistent disk capacity below the provider floor
 
-**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** todo — t001/t002 done; API/operator and key-guarded CSI verified Ready; owned growth/remount, backup/restore, billing and surface acceptance remain
+**Worker:** worker8 **Goal:** a requested 1 GB disk fills at 1 GB while preserving requested-size billing and safe grow-only resize. **Status:** blocked — t001/t002/t005 done; the ended paid attempt cannot supply the remaining owned live lifecycle/billing/surface and exact cleanup evidence
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | [Publish bounded CSI and converge logical intent](done/t002.md) — **DONE** | 80m | t001 |
 | t003 | [Handle existing disks and accept real grow/remount behavior](t003.md) | 60m | t002 |
 | t004 | [Render parity across every disk surface](t004.md) | 20m | t003 |
-| t005 | [Simplify the capacity mechanism](t005.md) | 15m | t004 |
+| t005 | [Simplify the capacity mechanism](done/t005.md) — **DONE** | 15m | t002 |
 | t006 | [Test hard limits, growth and failure isolation](t006.md) | 30m | t004 |
 | t007 | [Accept production capacity enforcement and close](t007.md) | 30m | t005, t006 |
 
@@ -20,7 +20,7 @@ A real 1 GB disk refuses writes at its logical capacity on the existing minimum 
 
 ## Source + Goal linkage
 
-- **Source:** [w8/221](../done/221.md), promoted 2026-10-29 because the original option 4 is multiple tasks and more than one hour; the original evidence and dated parity decision are retained.
+- **Source:** [w8/221](../../done/221.md), promoted 2026-10-29 because the original option 4 is multiple tasks and more than one hour; the original evidence and dated parity decision are retained.
 - **Goal linkage:** ADR008 Render parity first and ADR082 D8: small disks must enforce the capacity the user requests and pays for.
 - **Expected outcome:** applications receive a full-disk error at their purchased capacity; a provider minimum never silently increases their writable capacity.
 - **Why now:** w8/215 accepts and bills 1–9 GB but directly mounts the full 10 GB filesystem, leaving the capacity residual observable.
@@ -41,7 +41,7 @@ The [strengthened activation preview](evidence/class-activation-preview-20261030
 
 ## Read-only fixture baseline refresh — 2026-10-30
 
-The [shared preparation archive](../m91/evidence/acceptance-preparation-refresh-20261030/README.md) records a fresh own QA login and GET-only baseline: the unrelated m162 fixture is confirmed deleted, the existing service stays protected, and no owned fixture/create intent exists. The last complete baseline is 07:58:14 UTC; later TLS failures remain failed reads. Historical IDs stay in the rejection checks, and any missing prepared ID requires a fresh exact 404. No class activation, root create gate or disk lifecycle acceptance is claimed; those gates remain open.
+The [shared preparation archive](../../m91/evidence/acceptance-preparation-refresh-20261030/README.md) records a fresh own QA login and GET-only baseline: the unrelated m162 fixture is confirmed deleted, the existing service stays protected, and no owned fixture/create intent exists. The last complete baseline is 07:58:14 UTC; later TLS failures remain failed reads. Historical IDs stay in the rejection checks, and any missing prepared ID requires a fresh exact 404. No class activation, root create gate or disk lifecycle acceptance is claimed; those gates remain open.
 
 
 ## Bounded-class activation source checkpoint — 2026-10-30
@@ -136,3 +136,17 @@ The attempt ended early with one exact-owned DELETE returning 204 at 12:37:11 UT
 Original client failures are retained: optional create-response `deployId`, display-name-derived host, overwritten disk-resource result and undeclared REST metrics `kind`. Separate reviewed observation copies leave the original files/program/data intact; a private three-line surface correction passes seven pure checks without live execution. Offline pre-delete GraphQL/MCP/Blueprint receipts supply partial requested-1-GiB observations; they do not convert the failed original surface command into a pass.
 
 The existing t003–t007 acceptance and milestone DoD remain open. Worker8/root coordination must obtain actual cleanup evidence where exact ownership can be established, restore an authorized strict access path or obtain the queued inventory result, and establish credible CI timing within the original budget before further hosted acceptance. This record changes no task status or milestone location and introduces no idle-runner requirement or expanded fixture budget.
+
+## Original inventory completed after the ended fixture — 2026-10-31
+
+[The original read-only inventory result](evidence/paid-post-delete-inventory-cc62-20261031/README.md) is now available: run `41197243038`, job `124526099401`, source `fa85c441…`, completed successfully at 13:09:20 UTC. Its JSON was emitted about 32 minutes after the fixture DELETE. It reports no disk-bearing App matching the original service/workspace and no App-controller PVC in that workspace; its only reported disk bindings are two existing 10-GB chains. The earlier 12:59 queued observation remains historically correct.
+
+This adds a post-delete selected inventory, not a recovered pre-delete UID binding or exact infrastructure cleanup proof. The projection filters Apps by `spec.disk`, PVCs by App controller ownership, and PVs by current claim references. Former App/PVC/PV UIDs and the provider handle remain unknown, and Secret/workload/attachment/provider/S3 cleanup, weighted billing and the original hosted lifecycle DoDs remain unproved. The shipped ended-attempt receipts/manifests were not modified. No QA login, fixture mutation, SSH retry, new dispatch, task-status change or milestone move occurred in this follow-up.
+
+## Remaining live acceptance gate — 2026-10-31
+
+The source implementation, published/Ready bounded CSI and independent simplification are complete (t001/t002/t005). The one paid fixture ended early, API/quota/own-session cleanup is established, and later selected cluster/provider metadata is retained without inventing former UIDs or a provider handle. The exact old Kubernetes/provider/S3 lifetimes remain unproved.
+
+The original fixture's absolute13:30 UTC deadline has passed; it is deleted and cannot run more lifecycle steps. A fresh bounded live acceptance window with an actually ready trusted observer and exact App/PVC/provider/snapshot ownership must be established within the accepted lifetime/cost limits before worker8 can execute the remaining original full/grow/remount/redeploy/snapshot/restore, requested-size billing and complete REST/GraphQL/MCP/Blueprint/dashboard checks. The platform/QA execution owner supplies that window/access and ownership evidence; no second CSI/class choice or repeat global-rollout approval is needed. Original DoDs and limits are not shortened or renewed by this parking.
+
+[Source cleanup](evidence/simplify-closeout-source-20261031/README.md) closes t005 only. [Provider metadata](evidence/paid-provider-metadata-cc62-20261031/README.md) corroborates the ended fixture's cleanup but is not an exact former-ID proof. t003/t004/t006/t007 retain their unmet acceptance and are blocked on the live fixture/observer and cleanup evidence; no milestone completion is claimed.

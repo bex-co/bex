@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m144** — [Enforce persistent disk capacity below the provider floor](m144/README.md) (7 tasks) ← 221; requested-size billing, LUKS-compatible hard cap and safe growth.
+- [ ] **m144** — [Enforce persistent disk capacity below the provider floor](blocked/m144/README.md) (7 tasks; t001/t002/t005 done) — **BLOCKED (platform/QA execution owner: fresh bounded live fixture window with ready observer/exact ownership and independent cleanup evidence; original paid case ended, full growth/restore/billing/surface DoDs remain)**
 
 - [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED（2026-10-29 复核）：** t001–t006 / local acceptance done；等用户发起 `$release cli`，再验安装技能引导真实 deploy 并清理。
 
