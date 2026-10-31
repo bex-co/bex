@@ -248,3 +248,7 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Node20 immutable supplier evidence — 2026-10-31
 
 [Root-approved Node20](evidence/published-node20-20261031/README.md) preserves the distinct BF producer and 6fd verifier and successful historical recovery run41113373387/job124263887574. Root checked all264 original payloads, both22-file Git recipe/mode sets, all37 fresh complete anonymous blobs/1,311,620,069B, five strict signed proofs, two actual negative controls, seven fresh TUF roots and all five full signed-bundle/predicate roundtrips. Both architectures report Node20.20.2; complete SPDX and Trivy findings remain retained without waivers. Published supplier approvals are14/27. This completes already-started C evidence only; the user-selected common Bookworm generated image, original functional/hosted acceptance and production adoption remain open.
+
+## Complete original tool replay source — 2026-10-31
+
+[Maintained replay source and controls](evidence/original-node-replay-source-20261031/README.md) now cover all13 original one-client programs (7Node24,6primaryPython3.13), preserving the seven prior specs and every original authored command/data. Seven offline controls and the full build-package suite pass; the original28 two-client hosted specs are unchanged. The generated-image gate remains skipped until a real immutable common candidate is selected. This is source preparation only: per-supplier omission controls, both-architecture compiled execution and original hosted acceptance remain open.
