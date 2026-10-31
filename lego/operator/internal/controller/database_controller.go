@@ -182,8 +182,13 @@ type clusterParams struct {
 	plan      tiers.PostgresTier
 	storageGB int32
 	version   string
-	dbname    string
-	owner     string
+	// runningVersion is the major CNPG reports the cluster runs
+	// (status.currentVersion), and creating says the Cluster does not exist
+	// yet. Both only matter for an unversioned Database.
+	runningVersion string
+	creating       bool
+	dbname         string
+	owner          string
 	// namespace is the Database's own namespace. It scopes the archive identity
 	// a recovery reads from — see databaseArchiveBase.
 	namespace string
@@ -500,7 +505,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// multi-arch digest (an adopted bex operand, else the upstream pin). A
 	// mutable major tag would let a registry retag silently replace the
 	// tenant's database runtime.
-	image, bexOperand := cnpgOperandImage(p.version)
+	image, bexOperand, extensionsMajor := "", false, p.version
+	if p.version == "" {
+		image, extensionsMajor = unversionedOperandImage(p.runningVersion, p.creating)
+		bexOperand = image != ""
+	} else {
+		image, bexOperand = cnpgOperandImage(p.version)
+	}
 	if image != "" {
 		spec["imageName"] = image
 	}
@@ -564,7 +575,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// the image that carries it: on any other image these libraries do not
 	// exist and the server would not start.
 	if bexOperand {
-		maps.Copy(pgParams, pgExtensionParameters(p.version))
+		maps.Copy(pgParams, pgExtensionParameters(extensionsMajor))
 		preload = append(preload, pgExtensionPreloadLibraries...)
 	}
 	spec["postgresql"] = map[string]any{
@@ -867,7 +878,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
 	}
 	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
-		plan: plan, storageGB: storageGB, version: db.Spec.Version,
+		plan: plan, storageGB: storageGB, version: db.Spec.Version, runningVersion: db.Status.CurrentVersion,
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
@@ -993,6 +1004,7 @@ func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1
 func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) error {
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.currentInstances = cnpgInstanceCount(cluster)
+		params.creating = cluster.GetResourceVersion() == ""
 		spec := cnpgClusterSpec(params)
 		if !clusterAdoptsDatastorePriority(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
 			delete(spec, "priorityClassName")

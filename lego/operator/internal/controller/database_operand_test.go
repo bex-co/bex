@@ -271,3 +271,38 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 		})
 	}
 }
+
+// TestUnversionedDatabasesMoveOnlyOntoTheirOwnMajorsOperand: a Database with
+// no spec.version runs CNPG's default image (production's unversioned
+// Databases run 18.x). It joins the bex operand of the major it actually runs
+// once that is adopted, so it is not left without the extensions, but it never
+// moves before that and never onto another major's operand.
+func TestUnversionedDatabasesMoveOnlyOntoTheirOwnMajorsOperand(t *testing.T) {
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
+	project := func(running string) (string, map[string]any) {
+		spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, runningVersion: running, creating: running == "", dbname: "app", owner: "app"})
+		image, _ := spec["imageName"].(string)
+		return image, spec["postgresql"].(map[string]any)["parameters"].(map[string]any)
+	}
+	if image, params := project("18"); image != "" || params["local_preload_libraries"] != nil {
+		t.Errorf("before adoption: imageName %q, local_preload %v, want CNPG's default left alone", image, params["local_preload_libraries"])
+	}
+
+	const bex = "ghcr.io/bex-co/bex-operator:18.6-postgres-abc@sha256:0123"
+	withBexOperands(t, map[string]string{"18": bex})
+	for _, running := range []string{"18", ""} { // "" = the Cluster is being created
+		image, params := project(running)
+		if image != bex || params["extwlist.extensions"] != strings.Join(pgExtensionAllowlist["18"], ",") {
+			t.Errorf("running %q: imageName %q, allowlist %v, want the PG18 operand and its list", running, image, params["extwlist.extensions"])
+		}
+	}
+	// An existing cluster whose major is not observed yet keeps its image: a
+	// PG18 operand on a PG17 cluster would ask CNPG for a major upgrade.
+	existing := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, dbname: "app", owner: "app"})
+	if image, _ := existing["imageName"].(string); image != "" {
+		t.Errorf("existing cluster, unobserved major: imageName %q, want it left alone", image)
+	}
+	if image, params := project("14"); image != "" || params["local_preload_libraries"] != nil {
+		t.Errorf("running 14 with only a PG18 operand: imageName %q, local_preload %v, want unchanged", image, params["local_preload_libraries"])
+	}
+}

@@ -16,7 +16,10 @@ limitations under the License.
 
 package controller
 
-import "strings"
+import (
+	"cmp"
+	"strings"
+)
 
 // bexOperandImages are the published bex managed-Postgres operand images
 // (ADR092 D1: deploy/pg-operand, .github/workflows/pg-operand-image.yml),
@@ -65,6 +68,27 @@ func cnpgOperandImage(version string) (image string, bexOperand bool) {
 		return image, true
 	}
 	return cnpgExportImages[version], false
+}
+
+// cnpgDefaultMajor is the major of the default operand image of the
+// CloudNativePG release bex pins (1.30: 18). An unversioned Database is created
+// on it. Bump it with the CNPG chart when the default major moves.
+const cnpgDefaultMajor = "18"
+
+// unversionedOperandImage resolves the serving image for a Database with no
+// spec.version. Such a cluster runs CNPG's own default image. It moves onto a
+// bex operand only for the major it is known to run: status.currentVersion,
+// or CNPG's default major while the Cluster is first created. Then it gets the
+// same single restart as every other cluster of that major (ADR092 D4). An
+// existing cluster whose major is not yet observed is left alone, because a
+// wrong-major image would ask CNPG for a major upgrade. "" leaves CNPG's
+// default in place.
+func unversionedOperandImage(running string, creating bool) (image, major string) {
+	if running == "" && !creating {
+		return "", ""
+	}
+	major = cmp.Or(running, cnpgDefaultMajor)
+	return bexOperandImages[major], major
 }
 
 // pgExtensionParameters are the postgresql.conf settings that make a bex
