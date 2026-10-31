@@ -28,6 +28,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// currentlyHosting reports whether the App has a current, successful Ready
+// condition; a missing or stale one is not hosting proof.
+func currentlyHosting(app *appv1alpha1.App) bool {
+	ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	return app.Status.Phase == appv1alpha1.PhaseRunning && !app.Spec.Suspended &&
+		ready != nil && ready.Status == metav1.ConditionTrue && ready.ObservedGeneration == app.Generation
+}
+
 // ObserveProductApp is a best-effort sampler, called only for the reconciler's
 // own managed Apps. A missing/old Ready condition is not current hosting proof.
 // TLS uses the same certificate evidence as the product domain view; it does
@@ -36,8 +44,7 @@ func ObserveProductApp(ctx context.Context, st *store.PGStore, cl client.Client,
 	bounded, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	at := time.Now().UTC()
-	ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
-	live := app.Status.Phase == appv1alpha1.PhaseRunning && !app.Spec.Suspended && ready != nil && ready.Status == metav1.ConditionTrue && ready.ObservedGeneration == app.Generation
+	live := currentlyHosting(app)
 	sampled, err := st.RecordProductHosting(bounded, desired.TenantID, desired.ID, effectiveType(app.Spec.Type), live, at)
 	if err != nil {
 		log.Printf("product analytics: hosting sample: %v", err)
