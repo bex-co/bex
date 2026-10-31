@@ -87,3 +87,12 @@ All original DoD bullets are observed. The real dev-8 drill passed in 422.31 sec
 ## Final simplify review — 2026-10-29
 
 Three independent reuse, quality and efficiency reviewers found no further changes needed in the seconds-based threshold fix or its behavioral boundary/deduplication regression.
+
+## Live exhaustion observed (2026-10-30 09:2x–09:3x UTC, pin `dc80c29bf2bc`; `/qa-find-bugs-cli` loop sweep 3093)
+
+`bex-canary` crossed its October budget naturally: `GET /v1/usage` → `freeInstanceHours: {used: 750.58, included: 750}`.
+
+- All 13 of the workspace's Free web services read `suspended` with `suspenders: ["billing"]`. The one static site stays `not_suspended` and served 200.
+- New Free web services created after the crossing (`qa-20261030-3093-py`, `-nd`) build and deploy (`live`, Python 3.14.8 / Node v24.22.1), but are suspended at once and answer `503 retry-after: 3600 x-render-routing: suspend` "This service is suspended."
+- `POST /services/{id}/resume` → `400 FREE_INSTANCE_HOURS_EXHAUSTED`, as specified. Its text names the internal App name instead of the service; filed as [w8/225](../../225.md).
+- Fixtures were deleted by ID with 404 proofs. Free-web-service QA in `bex-canary` is unavailable until the 2026-11-01 reset.
