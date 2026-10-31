@@ -1,6 +1,6 @@
 # w8 · m65 — Retain PostgreSQL process logs during bursts
 
-**Worker:** worker8 **Goal:** successful database statements retain their distinct diagnostic records before hosting history search. **Status:** todo（2026-10-31 解除阻塞；原记录：t001/t002 done；原升级门槛已由 w7/m156 消除；待 D3 的自有 QA Postgres fixture，之后验证 300/1005 条 burst，保留 strict source-access 条件
+**Worker:** worker8 **Goal:** successful database statements retain their distinct diagnostic records before hosting history search. **Status:** done — 2026-10-31 production replay: 300/300 and 1005/1005 burst LOG records retrievable through REST and the bex CLI ([evidence](evidence/burst-replay-20261031/README.md))
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Resolve the CNPG manager identity and compatible patched release — **DONE 2026-10-13** | 25m | — |
 | t002 | Pin the patched manager and define a controlled rollout — **DONE 2026-10-29（由 w7/m156 的生产证据确认）** | 35m | t001 |
-| t003 | Verify the process-log source and affected datastore siblings | 25m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 25m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| [t003](done/t003.md) | Verify the process-log source and affected datastore siblings — **DONE 2026-10-31** | 25m | t002 |
+| [t004](done/t004.md) | Render parity — **DONE 2026-10-31** | 20m | t003 |
+| [t005](done/t005.md) | Simplify — **DONE 2026-10-31** | 10m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE 2026-10-31** | 25m | t004 |
+| [t007](done/t007.md) | Closeout — **DONE 2026-10-31** | 10m | t005, t006 |
 
 ## Definition of done
 
