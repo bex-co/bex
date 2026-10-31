@@ -36,6 +36,11 @@ def sha(path):
 # manual run measures one case on both architectures after the full original
 # cohort. Bounds come from existing command contexts, not measured capacity.
 PROFILES = {
+    # 30m wheel export +45m build +30m runtime contexts, with15m overhead.
+    # This one-route limit is not an actual footprint or duration estimate.
+    "node-addon": ("TestLegacyNodeOfflineAddons", "BEX_NATIVE_TEST_NODE_ADDON_PROFILE",
+                   ("common-node14-primary", "common-node16-primary", "common-python313-node16",
+                    "historical-python313-node16"), 120, 150),
     "node": ("TestCommonNodeGeneratedImages", "BEX_NATIVE_TEST_NODE_PROFILE",
              ("node-14", "node-16", "node-18", "node-20", "node-22", "node-26",
               "node-exact14212", "ruby-node-exact14212"), 90, 120),
