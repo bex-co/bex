@@ -1,6 +1,6 @@
 # w4 · m172 — By-id REST verbs resolve the resource's own workspace, not the caller's default
 
-**Worker:** worker4 **Goal:** every by-id verb on every resource family finds the resource in whichever of the caller's workspaces owns it, as services, env groups and projects already do. A multi-workspace user no longer gets a 404/403 for their own resource unless they guess `?ownerId=`. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** every by-id verb on every resource family finds the resource in whichever of the caller's workspaces owns it, as services, env groups and projects already do. A multi-workspace user no longer gets a 404/403 for their own resource unless they guess `?ownerId=`. **Status:** done (2026-10-31: webhook, registry-credential, project/environment and event by-id verbs replayed live with no ownerId; non-member 403; fixtures deleted)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity across by-id surfaces — **DONE**                             | 30m | w4/m172/t003                             |
 | t005 | Simplify changed code — **DONE**                                           | 20m | w4/m172/t004                             |
 | t006 | Test coverage for shipped behavior — **DONE**                              | 45m | w4/m172/t004                             |
-| t007 | Closeout                                                        | 15m | w4/m172/t006                             |
+| t007 — **DONE** | Closeout                                                        | 15m | w4/m172/t006                             |
 
 ## Definition of done
 
