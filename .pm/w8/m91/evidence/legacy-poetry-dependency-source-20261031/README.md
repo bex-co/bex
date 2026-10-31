@@ -1,0 +1,7 @@
+# Default legacy Poetry dependency compatibility — 2026-10-31
+
+Only the common system-interpreter bootstrap of default Poetry2.1.3 beside app Python3.7/3.8 adds `virtualenv<20.33.0` to the same pip solve. It follows [Poetry2.1.4's tagged dependency workaround](https://github.com/python-poetry/poetry/blob/2.1.4/pyproject.toml) for project-interpreter selection while retaining exact Poetry2.1.3 and the selected application Python. Explicit requests, modern/exact-default/historical routes and uv are unchanged.
+
+[Root review and custody](ROOT-REVIEW.json) bind all24 frozen payloads and exact two-file source. Fourteen complete resolver recipes pass, including seven affected defaults and seven unaffected routes. The old-source overlay fails exactly the seven affected cases. Scoped suites/lint and independent review pass; root separately reran the fourteen-case test. Primary tagged metadata/changelog and all failures remain retained losslessly.
+
+This is an upstream/source-supported dependency repair, not a newly reproduced Bex project failure. Actual legacy project interpreter selection, seed modes, installs/imports, generated images, both architectures and hosted acceptance remain unexecuted. Future legacy offline wheel preparation must use the same system tool interpreter and constraint; the existing Python3.13/3.14.8 first-cohort wheel preparation is unchanged. No production pin or original authored program changed.

@@ -1,0 +1,20 @@
+{
+  "started_at": "2026-10-31T16:54:44.034154+00:00",
+  "completed_at": "2026-10-31T16:55:00.406991+00:00",
+  "command": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "./internal/registry",
+    "./cmd/native-resolve",
+    "-count=1"
+  ],
+  "exit_code": 0,
+  "stop": null,
+  "start_free_bytes": 3641049088,
+  "minimum_observed_free_bytes": 3550539776,
+  "maximum_owned_tmp_bytes": 49950720,
+  "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+}

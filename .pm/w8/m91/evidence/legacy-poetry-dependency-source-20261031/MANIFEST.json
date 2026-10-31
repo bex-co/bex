@@ -1,0 +1,110 @@
+{
+  "README.md": {
+    "bytes": 1438,
+    "sha256": "ff991a12f02f5a1bf9bbf2d38340823724a95f3c8e25244ba2edc4b9afbced88"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 7104,
+    "sha256": "aecc24dade554c5bf073f838c50af5fd1adadff407ee83aa5f3059485531b383"
+  },
+  "retained/SOURCE-MANIFEST.json": {
+    "bytes": 711,
+    "sha256": "fc4625e8fe05cb242f1677837a6ede409438e84a64fca20c17702fb044614453"
+  },
+  "retained/focused-review.json": {
+    "bytes": 698,
+    "sha256": "375ad93be4477c368b002de9884c3058a30eba63ddc7e0ba6949738ed27bf719"
+  },
+  "retained/final-scoped-negative-result.json": {
+    "bytes": 627,
+    "sha256": "b86d74c0c64370582b9264a2de5efb01f50b5c54d133ed41b02b2dea93654f94"
+  },
+  "retained/upstream-poetry-2.1.4-pyproject.toml.gz": {
+    "bytes": 2757,
+    "sha256": "a05c6ed168190c68254bab08c03325c9ded709f07b956ea17f3b9a783d3c9fbd"
+  },
+  "retained/negative-overlay.json": {
+    "bytes": 201,
+    "sha256": "00840bf14332de1105626e5e03df24d2b378d1a579e00c55e280ce6d58d433d0"
+  },
+  "retained/source.patch.gz": {
+    "bytes": 1633,
+    "sha256": "674ba276f162d3b18237097629c67769464c543c496b581ef96a182761b81331"
+  },
+  "retained/upstream-poetry-2.1.3-pyproject.toml.gz": {
+    "bytes": 2718,
+    "sha256": "b3e080374d7295da67410f63f7db4d241f47051c68b2babe6b4bf52d9d7c2186"
+  },
+  "retained/owned-paths.json": {
+    "bytes": 109,
+    "sha256": "e92de6296315643344ba94bdcd9040b7d7ed75fce9f3012f61224ce42524780e"
+  },
+  "retained/upstream-poetry-2.1.4-changelog.md.gz": {
+    "bytes": 37967,
+    "sha256": "7b17f49d1be9306024e9f137e89d1274cf43e3fa6bb4366cec75fdf7ea206b99"
+  },
+  "retained/before-nativeresolve.go": {
+    "bytes": 18838,
+    "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+  },
+  "retained/final-scoped-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "retained/final-scoped-tests-result.json": {
+    "bytes": 501,
+    "sha256": "7cef8de039643bd413ed91116170d477eec144938d036024809373c4ddd0b9aa"
+  },
+  "retained/before-checks.json": {
+    "bytes": 245,
+    "sha256": "3eebb63a5c3d85a6911815c03aaa952e3418091c8740768bcf1dc92543dbe065"
+  },
+  "retained/MANIFEST.json": {
+    "bytes": 3974,
+    "sha256": "2dced53557d505c56b02397165c457746b613252b5d5b51e3eb69648e87e1ce5"
+  },
+  "retained/final-scoped-lint-result.json": {
+    "bytes": 516,
+    "sha256": "f5fa88a79935001106517f554a8bd611d08650ae32bffa1c1cbee4e7bff97d63"
+  },
+  "retained/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "retained/final-scoped-tests.log.gz": {
+    "bytes": 120,
+    "sha256": "b3cebd9ccf13e6c91a866e186947d536fa8ca1f45743d084483d6ecfac5d0c81"
+  },
+  "retained/final-scoped-negative.log.gz": {
+    "bytes": 388,
+    "sha256": "3a2097691e7663ab42bb637b275f00c861e8d579a98f1a5a786812529a0951af"
+  },
+  "retained/run-source-checks.py.gz": {
+    "bytes": 1159,
+    "sha256": "9a239ed9fd27f05767dc47fa62739e0f668370bb51834a0215bbd2567eb36cd5"
+  },
+  "retained/upstream-compatibility-evidence.json": {
+    "bytes": 1086,
+    "sha256": "dcc8258b12141d24200797aaefaad64f18459780a4dae4acd5278b192e6e60eb"
+  },
+  "retained/receipt.json": {
+    "bytes": 2201,
+    "sha256": "ec969acfde13c414da207b912005a31cc777b2b55cc7225d51bb89b0a4a632a7"
+  },
+  "retained/head-source/lego/operator/internal/build/nativepoetry_test.go": {
+    "bytes": 7313,
+    "sha256": "9abf77f6f6848acfc219a75ff076e6a0e080c9535e1ca8ef06d70466992f9d9a"
+  },
+  "retained/head-source/lego/operator/internal/build/nativeresolve.go": {
+    "bytes": 18838,
+    "sha256": "b161b7d78eb98eb20a6ea89eb8ba6122254199e6567ffdaa0731bbb3db01aaac"
+  },
+  "retained/source/lego/operator/internal/build/nativepoetry_test.go": {
+    "bytes": 7970,
+    "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9"
+  },
+  "retained/source/lego/operator/internal/build/nativeresolve.go": {
+    "bytes": 19222,
+    "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af"
+  }
+}

@@ -284,3 +284,7 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 ## Python3.13 immutable supplier evidence — 2026-10-31
 
 [Root-approved Python3.13](evidence/published-python313-20261031/README.md) binds the same `d95dcd88` producer/verifier source and successful run41190693730/job124506987325. Root checked all186 frozen payloads, four mirrored files plus28 immutable Git source files/modes, all35 fresh complete anonymous blobs/1,193,025,253B, five strict signed proofs, two actual rejected source/subject controls, seven fresh TUF roots and all five full signed-subject/canonical-predicate roundtrips. Both architectures report Python3.13.18; full findings remain retained without waiver. Published supplier approvals are17/27. Common Bookworm qualification, exact Python3.14.8/default, original hosted and production adoption acceptance remain open.
+
+## Legacy default Poetry dependency compatibility — 2026-10-31
+
+[The narrow two-file source repair](evidence/legacy-poetry-dependency-source-20261031/README.md) caps the private virtualenv dependency only for common system-interpreter/default Poetry2.1.3 beside Python3.7/3.8, following the tagged upstream workaround without changing app/Poetry versions or explicit/modern/historical/uv routes. Fourteen recipe controls, seven expected old-source failures, scoped tests/lint and independent review pass; all24 frozen payloads and two live sources were checked. Actual old-project, seed, image/architecture and hosted compatibility remain unexecuted, and no adoption is implied.

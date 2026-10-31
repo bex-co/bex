@@ -1,0 +1,23 @@
+{
+  "primary_tagged_metadata": {
+    "2.1.3": {
+      "version": "2.1.3",
+      "requires_python": ">=3.9,<4.0",
+      "virtualenv_requirement": "virtualenv (>=20.26.6,<21.0.0)",
+      "raw_sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1"
+    },
+    "2.1.4": {
+      "version": "2.1.4",
+      "requires_python": ">=3.9,<4.0",
+      "virtualenv_requirement": "virtualenv (>=20.26.6,<20.33.0)",
+      "raw_sha256": "cf6ccc4d72e76a360cde6a8b730a105e52a68580c4e38c74b615b21ed2e0480a"
+    }
+  },
+  "upstream_changed_reason": "- Require `virtualenv<20.33` to work around an issue where Poetry uses the wrong Python version ([#10491](https://github.com/python-poetry/poetry/pull/10491)).",
+  "primary_links": [
+    "https://raw.githubusercontent.com/python-poetry/poetry/2.1.3/pyproject.toml",
+    "https://raw.githubusercontent.com/python-poetry/poetry/2.1.4/pyproject.toml",
+    "https://raw.githubusercontent.com/python-poetry/poetry/2.1.4/CHANGELOG.md"
+  ],
+  "scope": "tagged upstream compatibility evidence, not a dynamically reproduced Bex project failure"
+}

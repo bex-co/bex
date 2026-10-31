@@ -1,0 +1,22 @@
+{
+  "started_at": "2026-10-31T16:53:52.032041+00:00",
+  "completed_at": "2026-10-31T16:53:57.129098+00:00",
+  "command": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "-overlay",
+    "/private/tmp/bex-w8-legacy-poetry-dependency-source-20261031-x660awy9/negative-overlay.json",
+    "./internal/build",
+    "-run",
+    "^TestCommonLegacyPythonDefaultPoetryBootstrap$",
+    "-count=1"
+  ],
+  "exit_code": 1,
+  "stop": null,
+  "start_free_bytes": 3707494400,
+  "minimum_observed_free_bytes": 3646025728,
+  "maximum_owned_tmp_bytes": 40718336,
+  "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+}
