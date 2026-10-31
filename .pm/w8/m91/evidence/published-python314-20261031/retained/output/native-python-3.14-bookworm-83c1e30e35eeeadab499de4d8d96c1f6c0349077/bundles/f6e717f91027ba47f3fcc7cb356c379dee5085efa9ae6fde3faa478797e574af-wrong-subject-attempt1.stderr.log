@@ -1,0 +1,2 @@
+Error: failed to verify signature: provided artifact digest does not match any digest in statement
+error during command execution: failed to verify signature: provided artifact digest does not match any digest in statement
