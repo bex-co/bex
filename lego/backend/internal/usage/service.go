@@ -38,6 +38,8 @@ import (
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -1094,7 +1096,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// stayed silent for the life of this meter. Keep the row so the cursor
 		// still advances (a genuinely-down App must not stall the meter forever),
 		// but stop the health record from asserting the zero is sound.
-		if ok && quantity == 0 && resolved && expectsRunningPods(cr) {
+		if ok && quantity == 0 && resolved && expectsRunningPods(cr, window) {
 			health = degradeSourceHealth(health)
 		}
 	case store.UsageKindEgressBytes:
@@ -1345,12 +1347,23 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 }
 
 // expectsRunningPods reports whether an App should have at least one pod alive
-// for a whole window, so a zero pod-count is evidence of a broken read rather
-// than of the App's own state. Cron Apps have pods only while a run is in
-// flight and suspended/zero-replica Apps have none by construction; both are
-// honest zeros.
-func expectsRunningPods(cr *appv1alpha1.App) bool {
+// for the window starting at windowStart, so a zero pod-count is evidence of a
+// broken read rather than of the App's own state. Cron Apps have pods only
+// while a run is in flight and suspended/zero-replica Apps have none by
+// construction; both are honest zeros. So is a Free service the operator
+// auto-hibernated (or suspended) before the window began: its spec still asks
+// for replicas, but it ran no pod. Production degraded every hour of every
+// hibernated Free service this way, pinning usage coverage to the month start
+// (w4/m139 t002). A park that began inside the window is not exempt: the App
+// ran before it, so a zero still means the read found nothing.
+func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
 	if cr == nil || cr.Spec.Suspended || cr.Spec.Type == appv1alpha1.TypeCronJob {
+		return false
+	}
+	if ready := meta.FindStatusCondition(cr.Status.Conditions, appv1alpha1.ConditionReady); ready != nil &&
+		ready.Status == metav1.ConditionFalse &&
+		(ready.Reason == appv1alpha1.ReasonAutoHibernated || ready.Reason == appv1alpha1.ReasonSuspended) &&
+		!ready.LastTransitionTime.Time.After(windowStart) {
 		return false
 	}
 	return cr.Spec.Replicas > 0
