@@ -153,10 +153,10 @@ jobs:
             class="${{ steps.tls_probe.outputs.class }}"
             . scripts/edge-probe.sh
             {
-              printf 'The public fallback TLS synthetic failed for `%s` on every attempt: %s. It checks browser trust, the exact `*.onbex.co` SAN, at least 30 days of validity, and the intentional HTTP 404.\n\n' "$ONBEX_PROBE_HOST" "$class"
+              printf 'The public fallback TLS synthetic failed for `%s` on every attempt: %s. It checks browser trust, the exact `*.onbex.co` SAN, at least 14 days of validity, and the intentional HTTP 404.\n\n' "$ONBEX_PROBE_HOST" "$class"
               printf 'Probe output (last attempt):\n\n```\n%s\n```\n\n' "$(cat tls-probe.txt)"
               if certificate_failure "$class"; then
-                printf 'Rotate the externally issued certificate through `BEX_ONBEX_TLS_CERT_FILE` / `BEX_ONBEX_TLS_KEY_FILE`, run `scripts/gh-secrets.sh`, and dispatch `deploy.yml`. bex does not call a DNS provider.\n'
+                printf 'cert-manager renews this certificate over DNS-01 (docs/ADR093). Check `kubectl -n traefik describe certificate onbex-wildcard` and its latest Order/Challenge; a revoked or missing Cloudflare token (`BEX_CLOUDFLARE_DNS_TOKEN`, installed as `traefik/cloudflare-dns-token`) is the usual cause.\n'
               else
                 printf 'The certificate is not what failed, so rotating it would not help. Check the load balancer targets and the Traefik default route, and whether the runner host itself lost network (the self-hosted pool shares one host).\n'
               fi

@@ -44,7 +44,7 @@ onbex_tls_has_wildcard_san "$certificate_details" || {
   exit 1
 }
 onbex_tls_valid_for_minimum_window "$leaf_certificate" || {
-  echo "error: the fallback certificate expires inside 30 days" >&2
+  echo "error: the fallback certificate expires inside $ONBEX_TLS_MIN_VALIDITY_DAYS days" >&2
   exit 1
 }
 

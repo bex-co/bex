@@ -1,0 +1,17 @@
+# ADR093 D1: cert-manager owns the Secret the default TLSStore serves. Renewal
+# starts at cert-manager's default of one third of the lifetime, so it follows
+# Let's Encrypt's 90 → 64 → 45 day schedule with no edit here. Expiry and stuck
+# renewals surface through CertificateNotReady / CertificateExpiringSoon
+# (ADR093 D5); the apex onbex.co keeps its separate Cloudflare-served cert.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: onbex-wildcard
+spec:
+  secretName: onbex-default-wildcard-tls
+  dnsNames: ["*.onbex.co"]
+  issuerRef:
+    kind: Issuer
+    name: onbex-dns01
+  privateKey:
+    rotationPolicy: Always

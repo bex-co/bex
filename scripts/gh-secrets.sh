@@ -48,7 +48,7 @@ set_file() {
 # multi-line material). REQUIRED names abort when unset; every other name is
 # optional and skipped when empty (its consuming step then soft-skips or fails
 # loudly by its own design).
-REQUIRED=" BEX_ONBEX_TLS_CERT BEX_ONBEX_TLS_KEY BEX_SSH_PUBLIC_KEY BEX_SSH_PRIVATE_KEY "
+REQUIRED=" BEX_CLOUDFLARE_DNS_TOKEN BEX_SSH_PUBLIC_KEY BEX_SSH_PRIVATE_KEY "
 push_production_secret() {
   local name="$1" envs="$2" file_var="${1}_FILE" env value_file
   value_file="${!file_var:-}"

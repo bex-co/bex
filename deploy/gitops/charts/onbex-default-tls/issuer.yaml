@@ -1,0 +1,26 @@
+# ADR093 D1: the namespaced DNS-01 Issuer for the *.onbex.co fallback wildcard.
+# Wildcards require DNS-01, so cert-manager writes the challenge TXT through the
+# Cloudflare API with a token scoped to the onbex.co zone alone (ADR093 D2). The
+# token Secret is installed out of band by deploy.yml
+# (scripts/onbex-dns01-token-secret.sh). A namespaced Issuer, not a
+# ClusterIssuer: only Certificates in traefik can spend this credential. The
+# HTTP-01 ClusterIssuers for App and custom-domain hosts are separate and
+# unchanged (charts/cert-manager-issuers).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: onbex-dns01
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: dorathynoda@gmail.com
+    privateKeySecretRef:
+      name: onbex-dns01-account-key
+    solvers:
+      - selector:
+          dnsZones: ["onbex.co"]
+        dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-dns-token
+              key: api-token

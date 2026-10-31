@@ -29,15 +29,15 @@ expect_class ssh "live SSH edge ssh.bex.co:22 did not reach KEXINIT: EOF" "banne
 expect_class ssh "dial tcp 49.12.20.236:22: connect: connection refused" "connection refused"
 expect_class ssh "dial tcp 49.12.20.236:22: i/o timeout" "connect timed out"
 expect_class tls "error: notfound.onbex.co did not complete a publicly trusted TLS handshake" "TLS handshake failed"
-expect_class tls "error: the fallback certificate expires inside 30 days" "certificate expires"
+expect_class tls "error: the fallback certificate expires inside 14 days" "certificate expires"
 expect_class tls "error: notfound.onbex.co is trusted but the fallback leaf lacks the exact *.onbex.co SAN" "certificate lacks"
 expect_class tls "error: https://notfound.onbex.co/ returned HTTP 200, expected the intentional 404" "unexpected HTTP status"
 
-for class in "certificate expires within 30 days" "TLS handshake failed or the certificate is not publicly trusted"; do
-  certificate_failure "$class" || { echo "FAIL: $class should call for a certificate rotation" >&2; fails=$((fails + 1)); }
+for class in "certificate expires inside the minimum validity window" "TLS handshake failed or the certificate is not publicly trusted"; do
+  certificate_failure "$class" || { echo "FAIL: $class should point at the certificate renewal" >&2; fails=$((fails + 1)); }
 done
 if certificate_failure "HTTP request timed out after the TLS checks passed"; then
-  echo "FAIL: an HTTP timeout must not prescribe a certificate rotation" >&2; fails=$((fails + 1))
+  echo "FAIL: an HTTP timeout must not point at the certificate renewal" >&2; fails=$((fails + 1))
 fi
 
 # A probe that fails once then passes: no outage. One that never passes: down.

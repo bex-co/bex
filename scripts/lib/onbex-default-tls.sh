@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 
-# Shared certificate policy for the externally issued onbex.co fallback leaf.
-# Acquisition and rotation stay outside bex; this library only validates the
-# certificate that bex installs or observes at the public edge.
-readonly ONBEX_TLS_MIN_VALIDITY_SECONDS=2592000
+# Shared certificate policy for the onbex.co fallback leaf that the public edge
+# serves. cert-manager issues and renews it (docs/ADR093); this library only
+# checks what is observed at the edge.
+#
+# 14 days matches CertificateExpiringSoon. cert-manager starts renewing at one
+# third of the lifetime (about 30 days on a 90-day certificate, 15 on a 45-day
+# one), so a healthy edge never drops below this; a 30-day floor would fire
+# during every normal renewal.
+readonly ONBEX_TLS_MIN_VALIDITY_DAYS=14
+readonly ONBEX_TLS_MIN_VALIDITY_SECONDS=$((ONBEX_TLS_MIN_VALIDITY_DAYS * 86400))
 
 onbex_tls_certificate_details() {
   printf '%s' "$1" | openssl x509 \
@@ -17,29 +23,4 @@ onbex_tls_has_wildcard_san() {
 onbex_tls_valid_for_minimum_window() {
   printf '%s' "$1" | openssl x509 \
     -checkend "$ONBEX_TLS_MIN_VALIDITY_SECONDS" -noout >/dev/null 2>&1
-}
-
-onbex_tls_chain_is_trusted() {
-  local certificate="$1" tmp leaf chain status=0
-  tmp="$(mktemp -d)" || return 1
-  leaf="$tmp/leaf.pem"
-  chain="$tmp/chain.pem"
-
-  awk '
-    /-----BEGIN CERTIFICATE-----/ { count++ }
-    count == 1 { print }
-    /-----END CERTIFICATE-----/ && count == 1 { exit }
-  ' <<<"$certificate" >"$leaf"
-  awk '
-    /-----BEGIN CERTIFICATE-----/ { count++ }
-    count >= 2 { print }
-  ' <<<"$certificate" >"$chain"
-
-  if [ -s "$chain" ]; then
-    openssl verify -purpose sslserver -untrusted "$chain" "$leaf" >/dev/null 2>&1 || status=$?
-  else
-    openssl verify -purpose sslserver "$leaf" >/dev/null 2>&1 || status=$?
-  fi
-  rm -rf -- "$tmp"
-  return "$status"
 }

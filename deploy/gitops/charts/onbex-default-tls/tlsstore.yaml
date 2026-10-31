@@ -1,5 +1,5 @@
-# Traefik serves the externally installed certificate only when SNI does not
-# match a routed host's certificate. It also serves the
+# Traefik serves the cert-manager-issued wildcard (certificate.yaml) only when
+# SNI does not match a routed host's certificate. It also serves the
 # lowest-priority platform-host fallback Ingress (bex-platform-host-fallback,
 # w4/m235 t008), which sends a host no App route claims yet to the activator:
 # a just-created service answers its first-deploy response, and an unknown
