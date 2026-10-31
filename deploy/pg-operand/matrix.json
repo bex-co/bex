@@ -52,6 +52,7 @@
       "postgis_tiger_geocoder",
       "pg_partman",
       "pg_ivm",
+      "pg_duckdb",
       "timescaledb"
     ]
   },
@@ -66,6 +67,7 @@
       "postgis_tiger_geocoder",
       "pg_partman",
       "pg_ivm",
+      "pg_duckdb",
       "timescaledb"
     ]
   },
@@ -80,6 +82,7 @@
       "postgis_tiger_geocoder",
       "pg_partman",
       "pg_ivm",
+      "pg_duckdb",
       "timescaledb"
     ]
   }

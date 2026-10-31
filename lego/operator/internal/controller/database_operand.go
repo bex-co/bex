@@ -18,7 +18,12 @@ package controller
 
 import (
 	"cmp"
+	"strconv"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // bexOperandImages are the published bex managed-Postgres operand images
@@ -30,11 +35,12 @@ import (
 // runs off-peak with health checks and a recorded rollback (ADR092 D4).
 var bexOperandImages = map[string]string{}
 
+const postgresDisabled = "false"
+
 // pgExtensionAllowlist is ADR092 D1's table: the non-trusted extensions a
 // database owner may CREATE EXTENSION on each major, as Render documents them
-// (render.com/docs/postgresql-extensions). pg_duckdb ships in the 16+ images
-// but stays off the list until w8/m109 settles its file/network access and
-// memory guardrails.
+// (render.com/docs/postgresql-extensions). DuckDB access and per-connection
+// resources are projected with the owner and plan below.
 // deploy/pg-operand/matrix.json carries the same lists for the image gate;
 // TestPGExtensionAllowlistMatchesTheImageGate keeps them equal.
 var pgExtensionAllowlist = map[string][]string{
@@ -51,6 +57,8 @@ func renderExtensions(major int) []string {
 	list = append(list, "pg_ivm")
 	if major < 16 {
 		list = append(list, "pg_similarity")
+	} else {
+		list = append(list, "pg_duckdb")
 	}
 	return append(list, "timescaledb")
 }
@@ -58,7 +66,21 @@ func renderExtensions(major int) []string {
 // pgExtensionPreloadLibraries join pg_stat_statements in
 // shared_preload_libraries on a bex operand. pg_partman_bgw is deliberately
 // absent: Render runs pg_partman without its background worker.
-var pgExtensionPreloadLibraries = []any{"timescaledb"}
+func pgExtensionPreloadLibraries(version string) []any {
+	// pg_ivm's preload is required for maintenance even in sessions that did
+	// not themselves CREATE EXTENSION. pgextwlist remains a local preload.
+	libraries := []any{"timescaledb", "pg_ivm"}
+	if version == "16" || version == "17" || version == "18" {
+		libraries = append(libraries, "pg_duckdb")
+	}
+	return libraries
+}
+
+func managedExtensionParameter(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	return name == "local_preload_libraries" || name == "session_preload_libraries" ||
+		strings.HasPrefix(name, "extwlist.") || strings.HasPrefix(name, "timescaledb.") || strings.HasPrefix(name, "duckdb.")
+}
 
 // cnpgOperandImage resolves the serving image for a major and whether it is a
 // bex operand carrying the extensions. Unknown and empty majors resolve to ""
@@ -75,6 +97,23 @@ func cnpgOperandImage(version string) (image string, bexOperand bool) {
 // on it. Bump it with the CNPG chart when the default major moves.
 const cnpgDefaultMajor = "18"
 
+func effectivePostgresVersion(spec, observed string, creating bool) string {
+	version := cmp.Or(spec, observed)
+	if version == "" && creating {
+		version = cnpgDefaultMajor
+	}
+	return version
+}
+
+func adoptedOperandMajor(image string) string {
+	for major, adopted := range bexOperandImages {
+		if adopted != "" && adopted == image {
+			return major
+		}
+	}
+	return ""
+}
+
 // unversionedOperandImage resolves the serving image for a Database with no
 // spec.version. Such a cluster runs CNPG's own default image. It moves onto a
 // bex operand only for the major it is known to run: status.currentVersion,
@@ -84,10 +123,10 @@ const cnpgDefaultMajor = "18"
 // wrong-major image would ask CNPG for a major upgrade. "" leaves CNPG's
 // default in place.
 func unversionedOperandImage(running string, creating bool) (image, major string) {
-	if running == "" && !creating {
+	major = effectivePostgresVersion("", running, creating)
+	if major == "" {
 		return "", ""
 	}
-	major = cmp.Or(running, cnpgDefaultMajor)
 	return bexOperandImages[major], major
 }
 
@@ -95,12 +134,12 @@ func unversionedOperandImage(running string, creating bool) (image, major string
 // operand's allowlist work (ADR092 D3). They are the platform's, applied after
 // the tenant's parameters so none can be overridden: pgextwlist's GUCs are
 // superuser-only inside the server, and here they are never tenant-supplied.
-func pgExtensionParameters(version string) map[string]any {
-	return map[string]any{
+func pgExtensionParameters(p clusterParams) map[string]any {
+	parameters := map[string]any{
 		// local_preload_libraries loads pgextwlist into every session from
 		// $libdir/plugins.
 		"local_preload_libraries":             "pgextwlist",
-		"extwlist.extensions":                 strings.Join(pgExtensionAllowlist[version], ","),
+		"extwlist.extensions":                 strings.Join(pgExtensionAllowlist[p.version], ","),
 		"extwlist.restrict_to_database_owner": "on",
 		// The image's after-create grants that let the owner use what an
 		// extension created as the bootstrap superuser.
@@ -110,4 +149,28 @@ func pgExtensionParameters(version string) map[string]any {
 		"timescaledb.license":         "apache",
 		"timescaledb.telemetry_level": "off",
 	}
+	memory := resource.MustParse(p.plan.Memory)
+	memoryMB := memory.Value() / (1024 * 1024)
+	// Leave headroom for the mandatory preloads in the 256Mi Free instance.
+	// Preserve explicit user buffer tuning, including canonicalized names.
+	buffers := false
+	for name := range p.parameters {
+		buffers = buffers || strings.EqualFold(strings.TrimSpace(name), "shared_buffers")
+	}
+	if !buffers {
+		parameters["shared_buffers"] = strconv.FormatInt(max(16, memoryMB/4), 10) + "MB"
+	}
+	if p.version == "16" || p.version == "17" || p.version == "18" {
+		// Execution uses the existing owner directly; no privilege-proxy role
+		// or extra memberships. Other roles need normal owner authorization.
+		if !appv1alpha1.ReservedPostgresRole(p.owner) {
+			parameters["duckdb.postgres_role"] = p.owner
+		}
+		parameters["duckdb.max_memory"] = strconv.FormatInt(max(1, memoryMB/8), 10)
+		parameters["duckdb.threads"] = "1"
+		parameters["duckdb.enable_external_access"] = postgresDisabled
+		parameters["duckdb.autoinstall_known_extensions"] = postgresDisabled
+		parameters["duckdb.autoload_known_extensions"] = postgresDisabled
+	}
+	return parameters
 }

@@ -76,6 +76,20 @@ func cnpgExportImage(version string) string {
 	return cnpgExportImages["18"]
 }
 
+// Operand exports keep pg_ivm's metadata coherent with the directory dump.
+// The upstream image lacks this helper and retains its existing command.
+func postgresExportCommand(version string) string {
+	if _, ok := cnpgExportImages[version]; !ok {
+		version = logicalExportClientVersion
+	}
+	if _, operand := cnpgOperandImage(version); operand {
+		return "exec /usr/local/bin/bex-postgres-export"
+	}
+	return `mkdir -p "/work/${EXPORT_DIRECTORY}/${PGDATABASE}"
+pg_dump --format=directory --jobs=2 --no-owner --no-privileges --file="/work/${EXPORT_DIRECTORY}/${PGDATABASE}"
+tar -C /work -czf "/work/${EXPORT_FILENAME}" "${EXPORT_DIRECTORY}"`
+}
+
 // reconcileExports projects append-only Database.spec.exports requests into
 // Jobs and reports an honest lifecycle in Database.status.exports. It returns
 // the next required poll: short while Jobs run, or the exact next retention
@@ -155,6 +169,12 @@ func (r *DatabaseReconciler) reconcileExportJob(
 	if err := r.Get(ctx, key, job); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
+		}
+		// An unversioned existing database must report its running major
+		// before a new export chooses a runtime/helper. Keep observing any
+		// existing Job above; an unknown major only defers new work.
+		if effectivePostgresVersion(db.Spec.Version, db.Status.CurrentVersion, false) == "" {
+			return nil
 		}
 		// Bound concurrent pg_dump Jobs per Database so a tenant can't fan out
 		// unbounded long-running exports (codex-security #13). Defer this one
@@ -294,10 +314,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 	filename := exportFilename(created)
 	directory := created.UTC().Format("2006-01-02T15:04Z")
 	objectKey := logicalExportObjectKey(store.DestinationPath, db.Name, request.ID, filename)
-	version := db.Spec.Version
-	if version == "" {
-		version = logicalExportClientVersion
-	}
+	version := effectivePostgresVersion(db.Spec.Version, db.Status.CurrentVersion, false)
 	labels := exportLabels(db, request.ID)
 	backoff := int32(0)
 	deadline := int64((2 * time.Hour).Seconds())
@@ -325,9 +342,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 						Image:           cnpgExportImage(version),
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Command:         []string{shellBinary, "-ec"},
-						Args: []string{`mkdir -p "/work/${EXPORT_DIRECTORY}/${PGDATABASE}"
-pg_dump --format=directory --jobs=2 --no-owner --no-privileges --file="/work/${EXPORT_DIRECTORY}/${PGDATABASE}"
-tar -C /work -czf "/work/${EXPORT_FILENAME}" "${EXPORT_DIRECTORY}"`},
+						Args:            []string{postgresExportCommand(version)},
 						Env: append(databaseSecretEnv(db.Status.SecretName),
 							corev1.EnvVar{Name: "EXPORT_DIRECTORY", Value: directory},
 							corev1.EnvVar{Name: "EXPORT_FILENAME", Value: filename},

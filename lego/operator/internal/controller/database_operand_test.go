@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"maps"
 	"os"
+	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -55,6 +57,7 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 		t.Errorf("pgExtensionAllowlist majors = %v, want the CRD's %v", got, versions)
 	}
 	for _, v := range versions {
+		t.Logf("PG%s exact operand server_version_num=%s", v, operandServerVersionNumber(t, v))
 		if !slices.Equal(matrix[v].Extensions, pgExtensionAllowlist[v]) {
 			t.Errorf("PG%s: matrix.json extensions %v != pgExtensionAllowlist %v", v, matrix[v].Extensions, pgExtensionAllowlist[v])
 		}
@@ -68,30 +71,32 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 // configured exactly as the operator projects a bex operand cluster, or the
 // gate proves a different allowlist than production runs.
 func TestCheckShConfiguresTheProjectedSettings(t *testing.T) {
-	raw, err := os.ReadFile("../../../../deploy/pg-operand/check.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	conf := string(raw)
-	conf = conf[strings.Index(conf, ">>\"$data/postgresql.conf\" <<EOF\n"):]
-	conf = conf[strings.Index(conf, "\n")+1 : strings.Index(conf, "\nEOF\n")]
-	got := map[string]string{}
-	for line := range strings.SplitSeq(conf, "\n") {
-		k, v, _ := strings.Cut(line, " = ")
-		got[k] = strings.Trim(v, "'")
-	}
-	want := map[string]string{"listen_addresses": "", "unix_socket_directories": "/tmp"}
-	preload := "pg_stat_statements"
-	for _, lib := range pgExtensionPreloadLibraries {
-		preload += "," + lib.(string)
-	}
-	want["shared_preload_libraries"] = preload
-	for k, v := range pgExtensionParameters("18") {
-		want[k] = v.(string)
-	}
-	want["extwlist.extensions"] = "${allowlist}"
-	if !maps.Equal(got, want) {
-		t.Errorf("check.sh postgresql.conf = %v\nwant the operator's projection %v", got, want)
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
+	for _, version := range permittedPostgresVersions(t) {
+		t.Run(version, func(t *testing.T) {
+			list := strings.Join(pgExtensionAllowlist[version], ",")
+			raw, err := exec.Command("sh", "../../../../deploy/pg-operand/config.sh", version, list, "app", "256").CombinedOutput()
+			if err != nil {
+				t.Fatalf("actual gate config: %v %s", err, raw)
+			}
+			got := map[string]any{}
+			for line := range strings.SplitSeq(strings.TrimSpace(string(raw)), "\n") {
+				k, v, ok := strings.Cut(line, " = ")
+				if !ok {
+					t.Fatalf("unexpected gate config: %s", line)
+				}
+				got[k] = strings.Trim(v, "'")
+			}
+			want := pgExtensionParameters(clusterParams{version: version, plan: plan, owner: "app"})
+			preloads := []string{"pg_stat_statements"}
+			for _, lib := range pgExtensionPreloadLibraries(version) {
+				preloads = append(preloads, lib.(string))
+			}
+			want["shared_preload_libraries"] = strings.Join(preloads, ",")
+			if !maps.Equal(got, want) {
+				t.Errorf("gate settings = %v; want actual Free projection %v", got, want)
+			}
+		})
 	}
 }
 
@@ -150,12 +155,12 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 	if image != bex {
 		t.Errorf("imageName = %q, want the bex operand %q", image, bex)
 	}
-	if !slices.Equal(preload, []any{"pg_stat_statements", "timescaledb"}) {
+	if !slices.Equal(preload, []any{"pg_stat_statements", "timescaledb", "pg_ivm", "pg_duckdb"}) {
 		t.Errorf("shared_preload_libraries = %v, want pg_stat_statements + timescaledb (no pg_partman_bgw)", preload)
 	}
 	want := map[string]any{
 		"local_preload_libraries":             "pgextwlist",
-		"extwlist.extensions":                 "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,timescaledb",
+		"extwlist.extensions":                 "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,timescaledb",
 		"extwlist.restrict_to_database_owner": "on",
 		"extwlist.custom_path":                "/usr/share/bex/extwlist",
 		"timescaledb.license":                 "apache",
@@ -183,9 +188,42 @@ func TestExportJobsUseTheServingOperand(t *testing.T) {
 		if got := cnpgExportImage(v); got != bex {
 			t.Errorf("cnpgExportImage(%q) = %q, want the PG18 bex operand", v, got)
 		}
+		if command := postgresExportCommand(v); command != "exec /usr/local/bin/bex-postgres-export" {
+			t.Errorf("operand export must retain coherent IVM metadata on version %q: %s", v, command)
+		}
 	}
 	if got := cnpgExportImage("17"); got != cnpgExportImages["17"] {
 		t.Errorf("cnpgExportImage(17) = %q, want the upstream pin", got)
+	}
+	if command := postgresExportCommand("17"); strings.Contains(command, "bex-postgres-export") || !strings.Contains(command, "pg_dump --format=directory") {
+		t.Fatalf("upstream export lost its supported command: %s", command)
+	}
+}
+
+func TestOperandGuardsDirectParametersAndBoundsDuckDB(t *testing.T) {
+	withBexOperands(t, map[string]string{"18": "ghcr.io/bex-co/bex-operator:18.6-postgres-candidate@sha256:0123"})
+	for _, adopted := range []bool{false, true} {
+		t.Run(strconv.FormatBool(adopted), func(t *testing.T) {
+			version := "17"
+			if adopted {
+				version = "18"
+			}
+			_, _, params := clusterPostgresql(t, version, map[string]string{
+				" ExTwLiSt.extensions ": "file_fdw", "DuckDB.memory_limit": "9999",
+				"session_preload_libraries": "unsafe", "work_mem": "8MB",
+			})
+			for _, key := range []string{" ExTwLiSt.extensions ", "DuckDB.memory_limit", "session_preload_libraries"} {
+				if _, ok := params[key]; ok {
+					t.Errorf("direct CR bypassed platform configuration: %s", key)
+				}
+			}
+			if params["work_mem"] != "8MB" {
+				t.Fatal("ordinary parameter was lost")
+			}
+			if adopted && (params["duckdb.max_memory"] != "32" || params["duckdb.threads"] != "1" || params["duckdb.postgres_role"] != "app" || params["shared_buffers"] != "64MB") {
+				t.Fatalf("Free operand resource/owner projection: %v", params)
+			}
+		})
 	}
 }
 
@@ -210,22 +248,22 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	operands := map[string]string{}
-	for pair := range strings.SplitSeq(images, ",") {
-		major, image, ok := strings.Cut(pair, "=")
-		if !ok {
-			t.Fatalf("BEX_PG_OPERAND_IMAGES entry %q is not <major>=<image>", pair)
-		}
-		operands[major] = image
+	operands, err := qualificationOperands(images, os.Getenv("BEX_CNPG_MAJORS"))
+	if err != nil {
+		t.Fatal(err)
 	}
+	verifyCNPGOperandController(t, cl, cfg.Host)
 	withBexOperands(t, operands)
 
 	for _, major := range slices.Sorted(maps.Keys(operands)) {
 		t.Run("PG"+major, func(t *testing.T) {
 			// A tenant's own parameter override rides along, as it would in
 			// production, and cannot widen the list.
-			_, asOwner := startCNPGDatabase(t, cl, kubeconfig, "bex-operand-it", major, "geo_prod", "geo_app",
+			namespace, asOwner := startCNPGDatabase(t, cl, kubeconfig, "bex-operand-it", major, "geo_prod", "geo_app",
 				map[string]string{"extwlist.extensions": "file_fdw", "work_mem": "8MB"})
+			if out, err := asOwner("SELECT current_setting('server_version_num')"); err != nil || out != operandServerVersionNumber(t, major) {
+				t.Fatalf("actual PG%s server patch differs from reviewed base: %v %s", major, err, out)
+			}
 
 			// m92's original migration, unchanged, from the owner's connection.
 			migration, err := os.ReadFile("testdata/postgis-migration.sql")
@@ -263,6 +301,16 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 					t.Fatalf("%s = %v %q, want suffix %q", step.sql, err, out, step.want)
 				}
 			}
+			if major == "16" || major == "17" || major == "18" {
+				if out, err := asOwner("CREATE EXTENSION pg_duckdb; CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v; SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values"); err != nil || !strings.HasSuffix(out, "5000050000") {
+					t.Fatalf("actual Free DuckDB execution: %v %s", err, out)
+				}
+			}
+			if out, err := asOwner("CREATE EXTENSION pg_ivm; CREATE TABLE ivm_base (id int PRIMARY KEY,v int); INSERT INTO ivm_base VALUES (1,10),(2,20); SELECT pgivm.create_immv('ivm_sum','SELECT sum(v) AS s FROM ivm_base'); INSERT INTO ivm_base VALUES (3,30); SELECT s FROM ivm_sum"); err != nil || !strings.HasSuffix(out, "60") {
+				t.Fatalf("actual IMMV maintenance: %v %s", err, out)
+			}
+			verifyCNPGOwnerExportRestore(t, cl, kubeconfig, namespace)
+
 			for _, refused := range []string{"CREATE EXTENSION file_fdw", "CREATE EXTENSION dblink", "SET extwlist.extensions = 'file_fdw'"} {
 				if out, err := asOwner(refused); err == nil || !strings.Contains(out, "permission denied") {
 					t.Errorf("%s = %v %q, want permission denied", refused, err, out)
