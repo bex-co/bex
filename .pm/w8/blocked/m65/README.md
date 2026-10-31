@@ -49,3 +49,8 @@ Fresh owned Free PostgreSQL statements through published/current Bex and the unm
 - **事实：** 新 workspace 的生产 creation policy 为 `all` / `paymentRequired=true`，绑定付款方式是其正常产品门槛。本轮未创建 SetupIntent、workspace 或数据库，未修改任何 payment marker / exemption / 支付方式。
 - **可行更小路径：** `tian-personal`（`tea-da2isimlm39c739m4ofg`）已有付款资格，Postgres used/freeUsed/terminating=0、freeLimit=1，调用者 admin；现有 2 个服务保持原状。已向用户询问是否允许将测试落点改到这里，仅创建和删除本轮 DB fixture；或者坚持新 QA workspace 并由用户在 dashboard 完成付款设置。
 - **状态：** 本项继续 blocked 等这一次范围/实际环境条件确认。原 DoD 和 D3 清理要求全部保留；不是因缺少重复的付费许可而阻塞。
+
+
+## 补充（2026-10-29，`/unblock w8` 主题 2）
+
+- 用户批准的「一次滚动重启」只用于 ADR092 的新 operand 镜像。本项的 CNPG 升级已由 w7/m156 原地完成，不需要与之合并；本项剩余的 QA 落点问题仍按上一条记录等待用户确认。
