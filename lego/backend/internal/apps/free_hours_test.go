@@ -65,3 +65,15 @@ func TestFreeHoursSuspensionRules(t *testing.T) {
 		t.Fatalf("a previous month's marker must not block resume: %v", err)
 	}
 }
+
+// w8/225: the refusal names the service the caller knows, never the internal
+// App object name ("tea-<workspace>-<slug>") no API surface issues.
+func TestFreeHoursRefusalNamesThePublicService(t *testing.T) {
+	a := freeHoursSuspendedApp("tea-ws1-web", FreeHoursMonth(time.Now()))
+	a.Labels = map[string]string{core.LabelServiceName: "web"}
+	svc, _ := newService(nil, a)
+	err := svc.requireFreeHoursAvailable(a)
+	if err == nil || !strings.Contains(err.Error(), `upgrade "web" to a paid plan`) || strings.Contains(err.Error(), "tea-") {
+		t.Fatalf("refusal = %v, want it to name the public service \"web\"", err)
+	}
+}
