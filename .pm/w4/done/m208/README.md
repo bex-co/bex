@@ -1,6 +1,6 @@
 # w4 · m208 — Datastore plan previews match their ready cards
 
-**Worker:** worker4 **Goal:** Postgres and Key Value plan cards preserve their ready title/description, responsive tier grid and footer geometry through resource, catalog and lazy loading. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** Postgres and Key Value plan cards preserve their ready title/description, responsive tier grid and footer geometry through resource, catalog and lazy loading. **Status:** done (2026-10-31: plan previews equal ready cards live for both datastores at 1440 and 390)
 
 ## Tasks (in order)
 
@@ -11,8 +11,8 @@
 | t003 | Align the complete Postgres plan loading chain — **DONE 2026-10-14** | 35m | t001 |
 | t004 | Render parity — **DONE 2026-10-14** | 15m | t002, t003 |
 | t005 | Simplify — **DONE 2026-10-14** | 10m | t004 |
-| t006 | Test coverage — local done; live geometry replay pending (Postgres checks under D1, 2026-10-31) | 40m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t006 | Test coverage — **DONE 2026-10-31** | 40m | t004 |
+| t007 | Closeout — **DONE 2026-10-31** | 10m | t005, t006 |
 
 ## Definition of done
 
