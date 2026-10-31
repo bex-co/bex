@@ -188,13 +188,34 @@ func (d *DockerHubResolver) ResolveTag(ctx context.Context, repo, tag string) (s
 
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+// imageMetadataAttempts bounds ImageMetadata's reads of one image;
+// imageMetadataRetryPause is the pause before the second, doubled before the
+// third. A var so tests need not wait.
+const imageMetadataAttempts = 3
+
+var imageMetadataRetryPause = 2 * time.Second
+
 func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (env, history []string, err error) {
 	ref, digest, pinned := strings.Cut(image, "@")
 	repo, _, tagged := strings.Cut(ref, ":")
 	if !pinned || !tagged || !exactRepos[repo] || !digestPattern.MatchString(digest) {
 		return nil, nil, fmt.Errorf("%s is not a pinned reviewed runtime image", image)
 	}
-	env, history, err = registry.ReadImageRuntimeMetadata(ctx, d.Client, d.RegistryURL, repoPath(repo), digest, "")
+	// A failed request, rate limit or 5xx from Docker Hub is retried twice
+	// with a short pause: one slow read must not fail the build that needs
+	// it. A registry refusal (404, 401) fails at once.
+	for attempt := 1; ; attempt++ {
+		env, history, err = registry.ReadImageRuntimeMetadata(ctx, d.Client, d.RegistryURL, repoPath(repo), digest, "")
+		var transient *registry.TransientError
+		if err == nil || attempt == imageMetadataAttempts || !errors.As(err, &transient) || ctx.Err() != nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case <-time.After(time.Duration(attempt) * imageMetadataRetryPause):
+		}
+	}
 	if err == nil && len(env) == 0 {
 		return nil, nil, fmt.Errorf("pinned runtime image %s has no environment", image)
 	}
