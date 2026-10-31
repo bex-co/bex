@@ -13,6 +13,8 @@ on:
       - ".github/scripts/native-oci-stage.py"
       - ".github/scripts/test_native_oci_*.py"
       - ".github/scripts/native-common-qualify.py"
+      - "lego/operator/internal/build/native*.go"
+      - "lego/operator/internal/build/testdata/native-utilities/**"
   workflow_dispatch: {}
 
 permissions:
