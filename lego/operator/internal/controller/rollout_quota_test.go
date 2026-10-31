@@ -241,3 +241,45 @@ func TestReportRolloutProgressStampsQuotaBlock(t *testing.T) {
 		t.Errorf("message does not carry the quota numbers: %q", ready.Message)
 	}
 }
+
+// An image web service still discovering its HTTP port reports through
+// reportWebHTTPSelection, not reportRolloutProgress. When the quota refuses
+// its only pod, there is nothing to discover, so the condition must name the
+// quota rather than "Waiting for the container to start" (w2/060).
+func TestReportWebHTTPSelectionStampsQuotaBlock(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Generation: 2},
+	}
+	refused := quotaTestReplicaSet("rev-2", 1, 0, quotaFailedCondition(memoryQuotaVerdict))
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, refused).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme}
+
+	if _, err := r.reportWebHTTPSelection(context.Background(), app, quotaTestDeployment(), "img", "Waiting for the container to start", 0); err != nil {
+		t.Fatalf("reportWebHTTPSelection: %v", err)
+	}
+	ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	if ready == nil || ready.Reason != reasonRolloutBlockedByQuota {
+		t.Fatalf("Ready condition = %+v, want RolloutBlockedByQuota", ready)
+	}
+	if !strings.Contains(ready.Message, "memory: 5888Mi of 6Gi in use") {
+		t.Errorf("message does not carry the quota numbers: %q", ready.Message)
+	}
+
+	// Without a refusal the discovery hint stands.
+	app.Status.Conditions = nil
+	cl = fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, quotaTestReplicaSet("rev-2", 1, 0)).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r = &AppReconciler{Client: cl, Scheme: scheme}
+	if _, err := r.reportWebHTTPSelection(context.Background(), app, quotaTestDeployment(), "img", "Waiting for the container to start", 0); err != nil {
+		t.Fatalf("reportWebHTTPSelection: %v", err)
+	}
+	ready = meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	if ready == nil || ready.Reason != appv1alpha1.ReasonHTTPPortDiscovery || ready.Message != "Waiting for the container to start" {
+		t.Fatalf("Ready condition = %+v, want the discovery hint", ready)
+	}
+}
