@@ -1,0 +1,184 @@
+{
+  "reviewed_at": "2026-10-31T08:03:10.774045+00:00",
+  "scope": "Independently verified all33 retained payload sizes/SHA256 plus frozen receipt; actual simulated-probe criterion failure and clean owned resources, not real corruption or formatter execution.",
+  "frozen_receipt_sha256": "ecd9b4d75b95ac86e1e09bd326af4072b39b8ebc76b6eb4f4d71349e672f904b",
+  "archive_sha256": "7a76d8d4433a79428ea63489c5c446e428a6fa4fbdd31ec8a132b9c6b9884739",
+  "archive_bytes": 25646,
+  "payloads": [
+    {
+      "path": "bounded_publish_sim_test.go",
+      "sha256": "26a75361132bb68ebd62389136a2af12d6800de82d4384e4c7d059fa27c13e9a",
+      "bytes": 13222
+    },
+    {
+      "path": "call-path-source-map.json",
+      "sha256": "c0c0541efc4b782b9d1677e3c3997940ffef27ad0d0d29f50183928838f05b34",
+      "bytes": 816
+    },
+    {
+      "path": "compile-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "compile-result-20261031.json",
+      "sha256": "f1c5258f0c958000a3abc37161773be4ff1ebadd5e85d24ce4ecced1d9195705",
+      "bytes": 3533
+    },
+    {
+      "path": "compiled-binary-binding-20261031.json",
+      "sha256": "e1df25b7fd0e7c5a7bd44e0f407fedacb165e05248988348ffe4c58910f1c053",
+      "bytes": 378
+    },
+    {
+      "path": "execution-plan.json",
+      "sha256": "13d48ae424fe8c9bab1baebca7903e51b683d10f8891b03e6a1d0e26c9c0884e",
+      "bytes": 10142
+    },
+    {
+      "path": "fresh-preflight-20261031.json",
+      "sha256": "750f74a9e06182887ab4cce2bd0ee163e4ef42d2a23992a5f9b0e815613b9651",
+      "bytes": 1959
+    },
+    {
+      "path": "image-binding-plan.json",
+      "sha256": "0a7c980ee7af855eeca76430383a723e960d3854682bee6aa27c68d1e9aec30a",
+      "bytes": 1581
+    },
+    {
+      "path": "instrumentation-revision.diff",
+      "sha256": "2f24ac8f422a217244825415b55f8ff082bb578f2c6286d5ea2100dc297b9d37",
+      "bytes": 20068
+    },
+    {
+      "path": "locked-source-map.json",
+      "sha256": "9d03b082b162785de7b3cd012278da743c6a9b66a4e999a46c6ed11e934127bf",
+      "bytes": 2132
+    },
+    {
+      "path": "overlay.json",
+      "sha256": "966bcf24e41bc39ddf31637c2b9618622988fd374f2b020027a8bbeae84ba19b",
+      "bytes": 212
+    },
+    {
+      "path": "receipt.json",
+      "sha256": "c2891aa5fee1308402e41b35f6b079b747ef8089f6271f5b0757c99b4dbed0f3",
+      "bytes": 2987
+    },
+    {
+      "path": "run-owned-publish-simulation-rebound-20261031.py",
+      "sha256": "3e44e37e80227711fa75d01d960742f334e5f59f79934ec5d0e40134836b5e1c",
+      "bytes": 9363
+    },
+    {
+      "path": "run-owned-publish-simulation.py",
+      "sha256": "300548dc4e3d1b606ef5c8c2496530a911a514043c3d6947387e36ccc452a25c",
+      "bytes": 9363
+    },
+    {
+      "path": "run-ca8fc506541d4003/actual-cryptsetup-status.txt",
+      "sha256": "3dd8d15030f1d30163d0ad69387cb885b970c6a23ae93f6372079dd32617bf85",
+      "bytes": 380
+    },
+    {
+      "path": "run-ca8fc506541d4003/check",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run-ca8fc506541d4003/checked.json",
+      "sha256": "449fb1877cf8d35e24d0c8e7c992674c919d4216b04bc2fce41418572b5b6136",
+      "bytes": 80
+    },
+    {
+      "path": "run-ca8fc506541d4003/cleanup.json",
+      "sha256": "738447d898c8ece38d4d35e916609a154b8dc8ae136b1cb800fc3652e40d9285",
+      "bytes": 35
+    },
+    {
+      "path": "run-ca8fc506541d4003/execution-receipt.json",
+      "sha256": "1794ff5d4f284a444d58aedcde501ed56bec7a713c946f9da251a005d7063f50",
+      "bytes": 19700
+    },
+    {
+      "path": "run-ca8fc506541d4003/geometry-a-after.json",
+      "sha256": "32fd939f1fa4ff262c22ff18a54c4de72eeed5e27080c6bec9be46330fea12af",
+      "bytes": 80
+    },
+    {
+      "path": "run-ca8fc506541d4003/geometry-a-before.json",
+      "sha256": "32fd939f1fa4ff262c22ff18a54c4de72eeed5e27080c6bec9be46330fea12af",
+      "bytes": 80
+    },
+    {
+      "path": "run-ca8fc506541d4003/geometry-b-after.json",
+      "sha256": "f370b4c657585139e6eeee4c182414ef7717a136172ba1048d8e77cdebd0844a",
+      "bytes": 80
+    },
+    {
+      "path": "run-ca8fc506541d4003/geometry-b-before.json",
+      "sha256": "f370b4c657585139e6eeee4c182414ef7717a136172ba1048d8e77cdebd0844a",
+      "bytes": 80
+    },
+    {
+      "path": "run-ca8fc506541d4003/guard-mountinfo.txt",
+      "sha256": "2d0e0c36d2c5ec8ad6078b4553633205bed67c188da82d50d8e816481184f34f",
+      "bytes": 83
+    },
+    {
+      "path": "run-ca8fc506541d4003/guard-status-preflight.txt",
+      "sha256": "3dd8d15030f1d30163d0ad69387cb885b970c6a23ae93f6372079dd32617bf85",
+      "bytes": 380
+    },
+    {
+      "path": "run-ca8fc506541d4003/intended-owner.json",
+      "sha256": "a7ffd061b538c8be783821b88985f88d4d32d6d56991ffae505295d132eb901f",
+      "bytes": 293
+    },
+    {
+      "path": "run-ca8fc506541d4003/owner.log",
+      "sha256": "c05916e4156bd361ffeb60456152bfd90d5a635b152ea67468049e501ee2e8e6",
+      "bytes": 1512
+    },
+    {
+      "path": "run-ca8fc506541d4003/publish-cryptsetup-requests.log",
+      "sha256": "f1b4ed1b0f64d5ef2e5c166c5da0bb6ae16bf6b138b39c4ab99065c1db421306",
+      "bytes": 70
+    },
+    {
+      "path": "run-ca8fc506541d4003/publish-simulation-result.json",
+      "sha256": "ff826225cd8c9b2e2f775760e345a462ad85f21ebe1a2c1628c2d9b0cc201961",
+      "bytes": 3908
+    },
+    {
+      "path": "run-ca8fc506541d4003/publish-simulation.log",
+      "sha256": "bf8f5402cef14ccdf389709b7e053b8f5a0c3899066aad7c152ded250d170fcf",
+      "bytes": 1108
+    },
+    {
+      "path": "run-ca8fc506541d4003/ready.json",
+      "sha256": "cc0ef72b3b7a94537370414d8b1ba62a7962da8a5f41eb3c2c778ae43127ca1b",
+      "bytes": 209
+    },
+    {
+      "path": "run-ca8fc506541d4003/sentinels.sha256",
+      "sha256": "27567269580f83b68435ed67c7a5ca15f76f161cf289cfc010fb04e0842f8e7c",
+      "bytes": 184
+    },
+    {
+      "path": "run-ca8fc506541d4003/stop",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "actual-run-receipt-20261031.json",
+      "sha256": "ecd9b4d75b95ac86e1e09bd326af4072b39b8ebc76b6eb4f4d71349e672f904b",
+      "bytes": 9296
+    }
+  ],
+  "actual_regression_test_exit": 1,
+  "requested_mkfs_was_refused": true,
+  "healthy_A_B_preserved": true,
+  "owner_cleanup_exit": 0,
+  "original_hosted_DoD_complete": false
+}
