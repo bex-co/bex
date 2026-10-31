@@ -137,7 +137,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m84** — [Make packaged pgvector usable in managed Postgres](done/m84/README.md) (6 tasks)（原记录：） t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently [sweep378](evidence/postgres-native-cursors-sweep378/README.md). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified. — **DONE 2026-10-29** (pre-fix parents backfilled, read-only verified on production)
 
-- [ ] **m83** — [Supply automatic compression for web responses](m83/README.md) (6 tasks) — **READY（2026-10-31 用户决定；下一步：上线 Traefik compress 并在 ADR018 记录签字差异）**
+- [ ] **m83** — [Supply automatic compression for web responses](m83/README.md) (6 tasks) — **IN PROGRESS（2026-10-31：t001–t005 done — gzip-only Traefik `compress` on every exposed web route, ADR018 signed differences; next: t006 live closeout after deploy, Free web-service window after 2026-11-01 00:00 UTC）**
 
 - [x] **m82** — [Supply FFmpeg in native Python builds and runtime](done/m82/README.md) (6 tasks) — **DONE 2026-10-16:** sweep382 accepts both first original MP3 builds and real runtime/probe/exact decode, live x86_64 plus local pinned aarch64, six shared reads and exact two-parent/child cleanup.
 
@@ -404,6 +404,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](227.md) (tracking, minor) ← w8/m83 2026-10-31: Brotli off (206 mis-encode on v3.7.5), no-transform compressed, strong ETag kept
 
 - [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
 
