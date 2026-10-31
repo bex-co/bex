@@ -1234,8 +1234,7 @@ agent_import_image_to_node() {
   fi
   # crictl can briefly miss an image ctr has just imported; retry before
   # calling the import failed (seen on dev-3, 2026-10-30).
-  local try
-  for try in 1 2 3 4 5; do
+  for _ in 1 2 3 4 5; do
     observed=$(agent_node_image_identity "$node" "$img" 2>/dev/null) && break
     observed=""
     sleep 1
