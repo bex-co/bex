@@ -1,0 +1,329 @@
+{
+  "schema": "bex.m188-closeout-dryrun/v2",
+  "at": "2026-10-31T04:04:32.447957+00:00",
+  "source_head": "310d5325afb4f22481a8a43f8baaa98ee7598b8e",
+  "helper_sha256": "4fa9567be74b46a430e37755d797760a734e58337748dd347829c0d0493051a9",
+  "dry_run_only": true,
+  "DoD_not_asserted_complete": true,
+  "root_move_only_after_actual_DoD": {
+    "from": ".pm/w1/m188",
+    "to": ".pm/w1/done/m188",
+    "leave_old_stub_or_symlink": false
+  },
+  "task_plan": [
+    {
+      "logical_id": "w1/m188/t002",
+      "current_files": [
+        ".pm/w1/m188/t002.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t002.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t003",
+      "current_files": [
+        ".pm/w1/m188/t003.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t003.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t004",
+      "current_files": [
+        ".pm/w1/m188/t004.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t004.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t005",
+      "current_files": [
+        ".pm/w1/m188/t005.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t005.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t006",
+      "current_files": [
+        ".pm/w1/m188/t006.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t006.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t007",
+      "current_files": [
+        ".pm/w1/m188/t007.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t007.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    },
+    {
+      "logical_id": "w1/m188/t008",
+      "current_files": [
+        ".pm/w1/m188/t008.md"
+      ],
+      "current_status": "todo",
+      "future_file": ".pm/w1/done/m188/done/t008.md",
+      "move_into_task_done_needed": true,
+      "duplicate_or_missing_requires_resolution": false
+    }
+  ],
+  "human_markdown_link_changes": [
+    {
+      "source": ".pm/w1/README.md",
+      "line": 23,
+      "destination": "m188/README.md",
+      "future_source": ".pm/w1/README.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "done/m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/README.md",
+      "line": 24,
+      "destination": "m188/README.md",
+      "future_source": ".pm/w1/README.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "done/m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/done/136.md",
+      "line": 43,
+      "destination": "../m188/README.md",
+      "future_source": ".pm/w1/done/136.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/done/136.md",
+      "line": 60,
+      "destination": "../m188/README.md",
+      "future_source": ".pm/w1/done/136.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/done/143.md",
+      "line": 6,
+      "destination": "../m188/README.md",
+      "future_source": ".pm/w1/done/143.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/done/143.md",
+      "line": 30,
+      "destination": "../m188/README.md",
+      "future_source": ".pm/w1/done/143.md",
+      "current_target": ".pm/w1/m188/README.md",
+      "future_target": ".pm/w1/done/m188/README.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "m188/README.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/README.md",
+      "line": 37,
+      "destination": "../done/143.md",
+      "future_source": ".pm/w1/done/m188/README.md",
+      "current_target": ".pm/w1/done/143.md",
+      "future_target": ".pm/w1/done/143.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../143.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/README.md",
+      "line": 37,
+      "destination": "../evidence/136-brotli-upstream-20261028.json",
+      "future_source": ".pm/w1/done/m188/README.md",
+      "current_target": ".pm/w1/evidence/136-brotli-upstream-20261028.json",
+      "future_target": ".pm/w1/evidence/136-brotli-upstream-20261028.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../../evidence/136-brotli-upstream-20261028.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/README.md",
+      "line": 43,
+      "destination": "../done/136.md",
+      "future_source": ".pm/w1/done/m188/README.md",
+      "current_target": ".pm/w1/done/136.md",
+      "future_target": ".pm/w1/done/136.md",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../136.md",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/assessment.md",
+      "line": 21,
+      "destination": "../evidence/136-brotli-upstream-20261028.json",
+      "future_source": ".pm/w1/done/m188/assessment.md",
+      "current_target": ".pm/w1/evidence/136-brotli-upstream-20261028.json",
+      "future_target": ".pm/w1/evidence/136-brotli-upstream-20261028.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../../evidence/136-brotli-upstream-20261028.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t004.md",
+      "line": 50,
+      "destination": "evidence/priority-census-owner-uid-refresh/MANIFEST.json",
+      "future_source": ".pm/w1/done/m188/done/t004.md",
+      "current_target": ".pm/w1/m188/evidence/priority-census-owner-uid-refresh/MANIFEST.json",
+      "future_target": ".pm/w1/done/m188/evidence/priority-census-owner-uid-refresh/MANIFEST.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/priority-census-owner-uid-refresh/MANIFEST.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t004.md",
+      "line": 54,
+      "destination": "evidence/final-five-row-closure-preparation.json",
+      "future_source": ".pm/w1/done/m188/done/t004.md",
+      "current_target": ".pm/w1/m188/evidence/final-five-row-closure-preparation.json",
+      "future_target": ".pm/w1/done/m188/evidence/final-five-row-closure-preparation.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/final-five-row-closure-preparation.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t007.md",
+      "line": 49,
+      "destination": "evidence/local-python-ruby-native-start.json",
+      "future_source": ".pm/w1/done/m188/done/t007.md",
+      "current_target": ".pm/w1/m188/evidence/local-python-ruby-native-start.json",
+      "future_target": ".pm/w1/done/m188/evidence/local-python-ruby-native-start.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/local-python-ruby-native-start.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t007.md",
+      "line": 53,
+      "destination": "evidence/companion-native-red.json",
+      "future_source": ".pm/w1/done/m188/done/t007.md",
+      "current_target": ".pm/w1/m188/evidence/companion-native-red.json",
+      "future_target": ".pm/w1/done/m188/evidence/companion-native-red.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/companion-native-red.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t007.md",
+      "line": 55,
+      "destination": "evidence/companion-native-green.json",
+      "future_source": ".pm/w1/done/m188/done/t007.md",
+      "current_target": ".pm/w1/m188/evidence/companion-native-green.json",
+      "future_target": ".pm/w1/done/m188/evidence/companion-native-green.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/companion-native-green.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t007.md",
+      "line": 55,
+      "destination": "evidence/portable-node20-final-native.json",
+      "future_source": ".pm/w1/done/m188/done/t007.md",
+      "current_target": ".pm/w1/m188/evidence/portable-node20-final-native.json",
+      "future_target": ".pm/w1/done/m188/evidence/portable-node20-final-native.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/portable-node20-final-native.json",
+      "preexisting_broken": false
+    },
+    {
+      "source": ".pm/w1/m188/t007.md",
+      "line": 57,
+      "destination": "evidence/native-backport-acceptance-workflow-validation.json",
+      "future_source": ".pm/w1/done/m188/done/t007.md",
+      "current_target": ".pm/w1/m188/evidence/native-backport-acceptance-workflow-validation.json",
+      "future_target": ".pm/w1/done/m188/evidence/native-backport-acceptance-workflow-validation.json",
+      "current_target_exists": true,
+      "virtual_target_exists": true,
+      "replace_destination_with": "../evidence/native-backport-acceptance-workflow-validation.json",
+      "preexisting_broken": false
+    }
+  ],
+  "unchanged_human_links": 128,
+  "preexisting_broken_links_separate": [],
+  "virtual_human_targets_missing": [],
+  "immutable_markdown_locator_advisories": [],
+  "source_markdown_input_hashes": {
+    ".pm/w1/README.md": "6f84f4c392a3a58ddc9c252d61895e214dfaaa4e6259a0d06d990d68ec22dac8",
+    ".pm/w1/done/136.md": "23dde24a77f2f959ff09eb0ac94f0a9c4498ff8e3863a221b2a9f055f791e50c",
+    ".pm/w1/done/143.md": "140d16e61aa0f5e07eddb4146130dc7bc5d1719736de15b96c2c114e14c3b3d1",
+    ".pm/w1/m188/README.md": "86c59b00d6cd43f223c20869895bb06030025c741b454b09b58a9e7539a9488c",
+    ".pm/w1/m188/assessment.md": "f07b98518e596fa021c8d526b9225fc3a6f47cb2bc6cc1e8362f5ae3eaf41989",
+    ".pm/w1/m188/done/t001.md": "0452d8f3cdaf627cb6d193b061653ff2eb82773114338adc3ec3d1c16cd9188d",
+    ".pm/w1/m188/evidence/node16-source-archive/README.md": "5e167dbc67471da09490e1129763907f5aed2e15cee57270bbc3c99c427c751a",
+    ".pm/w1/m188/evidence/python37-source-archive/README.md": "9317b9901a3c9d662cfeeba18e047ecea5fe0ef6a7e132af48ee5a916da3dd58",
+    ".pm/w1/m188/t004.md": "31088ab39e6d00c66abf220c31122fd410e53d43fd56c3975f2c1ae2166dc580",
+    ".pm/w1/m188/t007.md": "5a4d10d3c6e37f65c439323c855a699ba99807323398816b00d752d8e29062c4"
+  },
+  "immutable_evidence": {
+    "all_existing_files_preserve_bytes": true,
+    "count": 2450,
+    "manifest": "/private/tmp/bex-m188-closeout-links-29q2tffr/current-plan.protected.json",
+    "manifest_sha256": "9ee7a0c3e5a3fbec463975741f885b2080e966cbac95b943a141cb72bbf1702d",
+    "policy": "Do not rewrite JSON, proof, copied scripts/primary source, raw argv/absolute paths, SHA/custody/MANIFEST or Markdown beneath evidence. Only human Markdown pointing to evidence may change."
+  },
+  "manual_closure_actions": [
+    "First finish and record actual publication/adoption, six real fixtures, deployed-source/Ready rollout+census and all remaining task DoD; this plan grants no done state.",
+    "Immediately before closing t008 rerun this helper against current tree so new live-acceptance.md and individually completed done/tasks are included.",
+    "Through pm update remaining task frontmatter status and move only still-open task files; retain stable logical IDs/dependencies. Synchronize milestone Status/task DONE rows and workstream checked box.",
+    "Apply reviewed human Markdown destination changes; preserve existing dated historical claims. Add concise dated actual closure pointers in done143/136 if needed.",
+    "Move whole milestone to done/m188 without old stub/symlink. Verify protected manifest byte hashes after relocation, and human virtual targets after approved replacements.",
+    "Append dated reader-only locator note mapping old .pm/w1/m188 prefix to .pm/w1/done/m188; use retained MANIFEST/custody source-to-archive mappings for original /tmp paths, never rewrite raw evidence.",
+    "Run repository Markdown formatting with existing evidence exclusions; do not format immutable archived Markdown."
+  ],
+  "limitations": [
+    "Focused standard inline/reference Markdown destinations only; fenced command history and inline code/argv intentionally ignored. Plain IDs, raw paths, HTML hrefs, absolute filesystem links and anchors are not rewritten/anchor-validated.",
+    "Existing broken links are reported separately; no current error is silently counted as move-caused or automatically fixed.",
+    "Protected Markdown can retain historical relative links that no longer resolve literally after move; locator advisories preserve bytes and identify intended mapped target.",
+    "This snapshot is stale as soon as human docs/evidence/tasks change; rerun at real closeout. No repository/board/Git/CI mutation or actual move was performed."
+  ]
+}

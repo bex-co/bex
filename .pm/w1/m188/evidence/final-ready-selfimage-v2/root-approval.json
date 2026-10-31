@@ -1,0 +1,18 @@
+{
+  "schema": "bex.m188.exact-root-future-readiness-helper-approval/v1",
+  "at": "2026-10-31T04:10:16.671773+00:00",
+  "approved_future_helper_sha256": "7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc",
+  "root_review": "Read whole exactdiff46ad/proposal4151 and all30controls including16 actualoldfalsepositives. IndependentlyreadmanagerbackupHelperImage/selfimage.Resolve source and canonicaldownwardenv. Added-onlychecks bindtemplate+actualnondeletingmanagerPod anddenyoverride/envFrom withoutvalues; oldimage/Ready/GitOps/PodReadySINCEgatespreserved.",
+  "controls_sha256": "cea1aad604f50edb96e0147d07214c547d53c2027c3fdd03935efdfbc4d086b1",
+  "approval_scope": "Prefer this exact helper for FUTURE finalrollout read-only evidence; no productioncheck or actualrollout acceptance now.",
+  "requirements": [
+    "Actual deployedsource must still prove the same BackupHelperImage\u2192selfimage\u2192NativeResolverImage route",
+    "Completed signed actualoperator/adopted11 source chain and six realfixtures remain external prerequisites",
+    "Run exacthelper only against expectedauthenticatedimmutableoperatorroot+AMDchild afteractualrollout",
+    "Anyfailure yields noacceptedSINCE; preserve raw snapshots and qualifyunknowns"
+  ],
+  "old_helper_and_plan_preserved": true,
+  "candidate_source_guard_context_unchanged": true,
+  "production_calls": 0,
+  "source_adoption_performed": false
+}

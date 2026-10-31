@@ -1,0 +1,106 @@
+{
+  "schema": "bex.final-operator-ready-snapshot/v1",
+  "checked_at": "2026-10-31T04:07:09.824233+00:00",
+  "expected_image": "ghcr.io/bex-co/bex-operator@sha256:c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf",
+  "authenticated_manifest_metadata": {
+    "root": {
+      "sha256": "c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf",
+      "bytes": 290
+    },
+    "amd64_child": {
+      "sha256": "8542a34c7aeb0bf2c7f5fa0fd7782ba09b3fcc384e9d7e33302dd5c88a5789e5",
+      "bytes": 247
+    }
+  },
+  "allowed_imageID_digests": [
+    "sha256:8542a34c7aeb0bf2c7f5fa0fd7782ba09b3fcc384e9d7e33302dd5c88a5789e5",
+    "sha256:c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf"
+  ],
+  "deployment": {
+    "name": "bex-controller-manager",
+    "uid": "deployment-uid",
+    "generation": 2,
+    "observedGeneration": 2,
+    "desiredReplicas": 1,
+    "updatedReplicas": 1,
+    "readyReplicas": 1,
+    "manager_image": "ghcr.io/bex-co/bex-operator@sha256:c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf",
+    "BEX_BACKUP_HELPER_IMAGE_entry_count": 0,
+    "envFrom_source_count": 0,
+    "selfimage_env_binding": {
+      "valid": true,
+      "BEX_BACKUP_HELPER_IMAGE_entry_count": 0,
+      "envFrom_source_count": 0,
+      "identity_sources": {
+        "POD_NAME": {
+          "entry_count": 1,
+          "source_kind": "fieldRef",
+          "fieldPath": "metadata.name",
+          "matches_expected_downward_reference": true
+        },
+        "POD_NAMESPACE": {
+          "entry_count": 1,
+          "source_kind": "fieldRef",
+          "fieldPath": "metadata.namespace",
+          "matches_expected_downward_reference": true
+        }
+      }
+    }
+  },
+  "gitops": {
+    "Application": "argocd/bex-operator",
+    "operator_image_entries": [
+      "controller=ghcr.io/bex-co/bex-operator@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    ],
+    "sync": {
+      "status": "Synced"
+    },
+    "health": {
+      "status": "Healthy"
+    }
+  },
+  "owned_manager_pods": [
+    {
+      "pod": "manager-current",
+      "uid": "pod-current",
+      "deleted_at": null,
+      "phase": "Running",
+      "manager_spec_image": "ghcr.io/bex-co/bex-operator@sha256:c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf",
+      "manager_status_image": "ghcr.io/bex-co/bex-operator@sha256:c28ea55bc64e02896f3d3a8d587a7959bdf3693d40370701cff2f4a5a57f14bf",
+      "manager_imageID": "docker-pullable://ghcr.io/bex-co/bex-operator@sha256:8542a34c7aeb0bf2c7f5fa0fd7782ba09b3fcc384e9d7e33302dd5c88a5789e5",
+      "manager_ready": true,
+      "Ready": {
+        "type": "Ready",
+        "status": "True",
+        "lastTransitionTime": "2026-10-31T03:00:00Z"
+      },
+      "imageID_matches_authenticated_root_or_amd64_child": true,
+      "selfimage_env_binding": {
+        "valid": true,
+        "BEX_BACKUP_HELPER_IMAGE_entry_count": 0,
+        "envFrom_source_count": 0,
+        "identity_sources": {
+          "POD_NAME": {
+            "entry_count": 1,
+            "source_kind": "fieldRef",
+            "fieldPath": "metadata.name",
+            "matches_expected_downward_reference": true
+          },
+          "POD_NAMESPACE": {
+            "entry_count": 1,
+            "source_kind": "fieldRef",
+            "fieldPath": "metadata.namespace",
+            "matches_expected_downward_reference": true
+          }
+        }
+      }
+    }
+  ],
+  "rollout_ready": false,
+  "rollout_since_latest_expected_image_Pod_Ready": null,
+  "Available_transition_not_used": true,
+  "unresolved": [
+    "Live GitOps Application does not select expected operator image"
+  ],
+  "scope": "Whitelisted read-only rollout identity/Ready evidence only. Does not verify source/adoption ancestry or signatures. No envvalues,secrets,kubeconfigbytes copied. No restart,apply,rebuild or fleet action."
+}

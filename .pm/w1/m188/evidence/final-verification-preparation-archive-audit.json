@@ -1,0 +1,20 @@
+{
+  "schema": "bex.m188.future-verification-preparation-archive-audit/v2",
+  "at": "2026-10-31T04:15:45.334699+00:00",
+  "archives": [
+    {
+      "directory": ".pm/w1/m188/evidence/final-ready-selfimage-v2",
+      "manifest_sha256": "cd0c0910e681e163df6598f8189f186f6ce6db1ed7d88fc7d11f3da8133a64ba",
+      "payload_files": 184,
+      "stored_and_decompressed_original_hashes_sizes_unique_paths_inventory_match": true
+    },
+    {
+      "directory": ".pm/w1/m188/evidence/closeout-dryrun-preparation",
+      "manifest_sha256": "a760d4aeb8cbe5a5dbe385e99443528407ea98a08746a1e917777946d5aeb9c2",
+      "payload_files": 6,
+      "stored_and_decompressed_original_hashes_sizes_unique_paths_inventory_match": true
+    }
+  ],
+  "accepted_count": 10,
+  "source_adoption_or_production_acceptance": false
+}

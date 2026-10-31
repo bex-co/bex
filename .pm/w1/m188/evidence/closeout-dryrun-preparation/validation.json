@@ -1,0 +1,14 @@
+{
+  "scope": "Pure mapper/parser and virtual-current-plan checks only; temporary fixtures, no repo moves/status/byte edits",
+  "helper_sha256": "4fa9567be74b46a430e37755d797760a734e58337748dd347829c0d0493051a9",
+  "plan_sha256": "ea43d1382d99ac140375f083464b16713daa53c83c94212e6deb3f5809e5d143",
+  "checks": [
+    "existing done/t002 is not moved into another done directory",
+    "open t003 maps to done/t003 after wholeRootmove",
+    "virtualtargetsexist for both alreadydone andopen tasks",
+    "oldroot absent virtually",
+    "fencedhistorical commands andinlineargv skipped; live/referenceMarkdowndestinations recognized",
+    "all17currentproposedlinktargetsexist before andafter virtualmapping"
+  ],
+  "result": "PASS"
+}

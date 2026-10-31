@@ -325,3 +325,15 @@ Node18 的6fd4恢复任务 `41113367877` / `124263227234` 已失败：运行门�
 独立完整2a守卫与四项结构拒绝通过后，根复核精确FINAL `2169a6fe…`，连同独立追加的 `50e2e266…` 说明更正一并批准。更正只说明冻结文件中沿用旧模板的一句来源文字；结构化BF/6fd/da0e、原始证明和实际检查均正确，冻结原文未重写。执行器随后重新匿名核对stable标签并重放冻结守卫，才原子计入第十项。实际8537字节原候选、root批准、说明更正、转换和第十项快照均保存；原九项proof/candidate的18个哈希未变。[92项归档核查](evidence/node20-acceptance-archive-audit.json)确认全部字节、路径及批准锚点。
 
 只删除已验收Node20的临时恢复授权；Node18旧7dd条目及其他工作流的三项Elixir条目保留，见[退休记录](evidence/node20-recovery-retirement.json)及[20项实际选择器隔离Git检查](evidence/recovery-selection-node20-retired.json)。[当前只读接入计划](evidence/adoption-plan-count10.json)仍不完整、27项官方matrix不变，尚未生成接入副本。Node18的da0e正常新建请求继续排队；source pin、六项真实应用测试与生产rollout尚未完成，t002–t008继续开放。
+
+### 补齐最终线上身份与收尾检查 — 2026-10-31（UTC 04:12Z）
+
+源码核对确认native resolver从manager的BackupHelperImage取得镜像，后者可由环境覆盖或按POD_NAME/POD_NAMESPACE读取指定Pod；旧Ready工具只看新manager镜像与Ready，未核对这条路由。新增[明确批准的v2检查及30项隔离控制](evidence/final-ready-selfimage-v2/MANIFEST.json)同时检查模板和实际当前Pod的唯一Downward API身份及无override/envFrom，拒绝16种旧误通过；原镜像、GitOps、owner/imageID、新Pod Ready since及外部签名/源码条件全部保留。没有生产调用，未将合成控制算作实际rollout，最终仍需实际部署源码与真实Ready后的报告。
+
+另准备[只读迁移检查器及04:04Z快照](evidence/closeout-dryrun-preparation/MANIFEST.json)：当时17处人工Markdown链接的虚拟移动目标均存在，2450项原证据建立字节哈希清单。历史静态工具和计划保留原文；证据内的Markdown、JSON、原命令和SHA均不可改写。实际t008前须对最新任务位置及新增live-acceptance重新运行，核对原证据后才移动整个目录，不留旧stub。此准备未改变任何任务完成状态，正式发布验收仍为10/11，Node18继续排队。
+
+### 主线新增外部证书续期门槛 — 2026-10-31
+
+同步主线后核实deploy `41124028938` 的失败来自fallback证书不足30天；集群当前证书的公开元数据显示2026-11-30到期。只读取证书元数据，未读取私钥；现有本机配置、标准续期目录和连接工具未提供可用续期入口，见[核对记录](evidence/main-ci-cert-renewal-intake.json)。上游已记录在[w10/010](../../w10/blocked/010.md)；已异步向用户索取现有续期入口/安全凭据位置或新证书与私钥文件路径，不要求在聊天中粘贴凭据。原30天/SAN/信任/keypair门槛保持不变。
+
+按主线红CI规则继续推送已完成工作；Node18、11项接入和独立应用验收仍继续，实际生产rollout须待证书门槛清除。不因该新增门槛提前结束仍可实施的工作，也不将当前状态计入完成。

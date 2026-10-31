@@ -1,0 +1,948 @@
+{
+  "schema": "bex.m188.INACTIVE-ready-selfimage-v2-controls/v1",
+  "at": "2026-10-31T04:07:09.830546+00:00",
+  "synthetic_kubectl_fixtures_only": true,
+  "actual_production_calls": 0,
+  "actual_old_and_new_main_executed": true,
+  "signature_or_deployed_source_acceptance_not_tested": true,
+  "old_helper": {
+    "file": "/tmp/bex-m188-final-operator-ready.py",
+    "sha256": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a"
+  },
+  "inactive_proposal": {
+    "file": "/tmp/bex-m188-ready-v2-proposal/7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc.py",
+    "sha256": "7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc"
+  },
+  "harness": {
+    "file": "/tmp/bex-m188-ready-v2-proposal/test-isolated-ready.py",
+    "sha256": "5af7439084239b3af786e74f386426dc7ae3f31f468556b4fe49e3e02cb6bd98"
+  },
+  "all_controls_passed": true,
+  "controls_count": 30,
+  "old_false_positive_new_rejections": 16,
+  "results": [
+    {
+      "case": "valid_both_template_and_current_Pod",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": true,
+      "new_since": "2026-10-31T03:00:00Z",
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/valid_both_template_and_current_Pod-old/ready.json",
+        "sha256": "4ff0364f9490caa79a0aafed6c7391c50f10f2d1e79cab8211004953eecda9c5",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/valid_both_template_and_current_Pod-v2/ready.json",
+        "sha256": "57c216289a08509496cc4288c3f0187180e3eb92be685ac81776f97cbd0dac9a",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_name_literal_points_to_other_Pod",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_name_literal_points_to_other_Pod-old/ready.json",
+        "sha256": "c8dd0b9dca63c362d3000a0139b8c573654ee789051fd04088adf62f490c00d4",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_name_literal_points_to_other_Pod-v2/ready.json",
+        "sha256": "703991b5573073b4778010045617e3fba065c41e94bed1c1e2d46c9184826be9",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_namespace_literal",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_namespace_literal-old/ready.json",
+        "sha256": "11c5e59987adb1e05ee8564ba9e65d655337b34692db28df2856ce903b9d0a8e",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_namespace_literal-v2/ready.json",
+        "sha256": "1fa9493cae9074fc277bf7b3076ef38069c7e99f659f11222bada7310f65ade9",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "template_name_literal",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_name_literal-old/ready.json",
+        "sha256": "bf03a5c7947a1e587448d0b103124719884a6b4a85f7ec6f215d263bc2bcab70",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_name_literal-v2/ready.json",
+        "sha256": "89d21752ba7dba5b8e86526328bd49893060b965868bd078a6adf950f346e019",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_namespace_secret",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_namespace_secret-old/ready.json",
+        "sha256": "8cdf3658e7c684243e71d002afb5bb31ceb8668d6ef742cb4d5bbcb0b988680a",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_namespace_secret-v2/ready.json",
+        "sha256": "6693ae05fb3b3e416dc7a6f21a3cc84d9d620b4c49bc177bb9f51cec2a4e9fe8",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "template_name_ConfigMap",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_name_ConfigMap-old/ready.json",
+        "sha256": "cc44efef1cf77750598c7a08a21636c31da6f06639918f67d6d2289fdd57e6fd",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_name_ConfigMap-v2/ready.json",
+        "sha256": "70a8dc307aed9d7b6e78119da61077a58ba66efe5e975c96211be458a7390ed9",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_resource_source",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_resource_source-old/ready.json",
+        "sha256": "ab44ca81c49600aa991dbe619bd9b541a1021b910b244454a1d3390cc69e7475",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_resource_source-v2/ready.json",
+        "sha256": "4feae569aa3638594eccfc2f317970e7fcafd7d4c312324717ffe64c06e25088",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_unknown_source",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_unknown_source-old/ready.json",
+        "sha256": "aea172559dc49c46dff26f8b1638d690036d8363b2a07d398604d0458e60e9c6",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_unknown_source-v2/ready.json",
+        "sha256": "712c935926f6ec2db092fdc6d32c4ead3acc66e45456bcfc7a1278b9cb723311",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_wrong_fieldPath",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_wrong_fieldPath-old/ready.json",
+        "sha256": "e504dfe60fdf2a5ea39b105359cd38b000de0959be517d35223b8fe4a8f4ff35",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_wrong_fieldPath-v2/ready.json",
+        "sha256": "13988db41aace58833356fd34e95f0af497e6de9b0ba533965156fb7ff045810",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_wrong_fieldRef_apiVersion",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_wrong_fieldRef_apiVersion-old/ready.json",
+        "sha256": "3d0f2a02f3b27440ae251efad4dd39e0e4631686eded45983d01748b091c680a",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_wrong_fieldRef_apiVersion-v2/ready.json",
+        "sha256": "82bf1b5248e6fc62ab118e39109c1e70d4fdee3d721553eec5eb5636fa00a579",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_mixed_literal_and_fieldRef",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_mixed_literal_and_fieldRef-old/ready.json",
+        "sha256": "c90e2837048a91505be786a454d950ee9f713b0d837611f37ee795d58f6bc0d4",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_mixed_literal_and_fieldRef-v2/ready.json",
+        "sha256": "33fe4d787914a75678eec39922414d0309e2b09607b81fb6c6c5019985ce834c",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_mixed_unknown_source",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_mixed_unknown_source-old/ready.json",
+        "sha256": "7d8c7350d9043bec17d0ddd95be08c2c88f44519c85045c0acaef4f9cef2461b",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_mixed_unknown_source-v2/ready.json",
+        "sha256": "540d51663a72fbde8f4ea0fac0d6d7f0bc6a47f769efaf0b3813c6f5f3e96f8a",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_duplicate_name_sources",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_duplicate_name_sources-old/ready.json",
+        "sha256": "0d7282038b08adfa7a23f7acf7c4595e54409509f105985df0b052829b84ed1d",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_duplicate_name_sources-v2/ready.json",
+        "sha256": "964c745c745bbdbf14df8a92589abb350386c8f642f3f884f29400fc53dadd62",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "template_duplicate_namespace_sources",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_duplicate_namespace_sources-old/ready.json",
+        "sha256": "a964ac6ea4942b71f8a8fe482cab42aae7ec74a7adc8e75381fdf6e74b9fac49",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_duplicate_namespace_sources-v2/ready.json",
+        "sha256": "e7bb97de8022425fa2ebb8db7f5f2af9e576e4daf84c5d46933fdaefc57f9ba7",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_missing_name_source",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_missing_name_source-old/ready.json",
+        "sha256": "8e0036284e41e315540dd6649f537d0000032b91503fd4f3f83ab0c92325de40",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_missing_name_source-v2/ready.json",
+        "sha256": "64bf1056111e40843550cf2372288276e38668ed0f5b5167b46fdf977f752811",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_injected_BackupHelper_override",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_injected_BackupHelper_override-old/ready.json",
+        "sha256": "09bd4ad4f1bd3640864f1a37631f3b7689e0ec152f333ddea04e395a72f04133",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_injected_BackupHelper_override-v2/ready.json",
+        "sha256": "c31d476acbfb5c968bff15021ce30268371c1f1c893b22ac72fb744587c261fc",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_injected_envFrom_Secret",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_injected_envFrom_Secret-old/ready.json",
+        "sha256": "7a0cc72359644de706f4f882a02cfe21748f3f8b242a2e083b22efa072e4c5af",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_injected_envFrom_Secret-v2/ready.json",
+        "sha256": "f0ea2ad5df823ea91b42718b108cae4128c9b8ef8748b18fad3f85f1809b9ca9",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "template_BackupHelper_override_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_BackupHelper_override_still_refused-old/ready.json",
+        "sha256": "f8fc8dc955b7ad20cf10ae326b805b56326569eeba7828e798bffb6e842655a5",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_BackupHelper_override_still_refused-v2/ready.json",
+        "sha256": "6870de2089a8b1b4cdcaaa7ac081638d8a045b26fa83aedea1d3b35f5c5ad83c",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "template_envFrom_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_envFrom_still_refused-old/ready.json",
+        "sha256": "700bfbf9b5445188cd6a1f2b653cabab4c282220f961797518e754f5e4587871",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/template_envFrom_still_refused-v2/ready.json",
+        "sha256": "9f55e47e681d6dacdeb090aeb18ebca5f6f297d93a1353bf0f8af14cf8e09d54",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "Pod_not_Ready_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_not_Ready_still_refused-old/ready.json",
+        "sha256": "74f7c843bc40b54413f3995a6340407b39491f22d697266c6ec82a9b09e631db",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/Pod_not_Ready_still_refused-v2/ready.json",
+        "sha256": "11effd664c633052c295f651c8e30d2b86eda256bb4e3977bf5f9672ae70be60",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "wrong_runtime_imageID_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/wrong_runtime_imageID_still_refused-old/ready.json",
+        "sha256": "4d60c4e4f903e5cfa559555ca20e4eab3d7046eedba92065a547a69b5b8d8487",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/wrong_runtime_imageID_still_refused-v2/ready.json",
+        "sha256": "08fc22f6d4634434b74ec65f7f788f8edf9bda4050ec023498912c34ff236b65",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "stale_Deployment_generation_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/stale_Deployment_generation_still_refused-old/ready.json",
+        "sha256": "a47bc87a72aceb4e0e58762f4a6e2e9b946ae0d48786b6e41335c346942db07c",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/stale_Deployment_generation_still_refused-v2/ready.json",
+        "sha256": "914d020b0202fa987683b89bf815f146a15915bd85feff2368da8798e2988e6c",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "wrong_Deployment_image_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/wrong_Deployment_image_still_refused-old/ready.json",
+        "sha256": "adf559cb670b119d64c3a0e5665b53afb4280b2db68b533f74b04551639d13bb",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/wrong_Deployment_image_still_refused-v2/ready.json",
+        "sha256": "87ea2cabba973641553575ecd5b751499d4fa577e370154edeee62e6a5e30f2e",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "GitOps_not_synced_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/GitOps_not_synced_still_refused-old/ready.json",
+        "sha256": "3733ca0668e48c5930d7e197ab6a1229ecf4bc197db226cd897022a9f730f889",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/GitOps_not_synced_still_refused-v2/ready.json",
+        "sha256": "ec6426dafcd709cb339dd285aa4ec9a21c3644d3db2d652b947c5b5412791da3",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "GitOps_wrong_image_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/GitOps_wrong_image_still_refused-old/ready.json",
+        "sha256": "3baddedbb0a3fb9bcda1797f482336fb67f3015bb7387537c83034fa131a14b8",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/GitOps_wrong_image_still_refused-v2/ready.json",
+        "sha256": "67048eda30c22e1b1b5f8257bf7159205ac02329e7ec47efa73e482d96e7f338",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "zero_replicas_still_refused",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/zero_replicas_still_refused-old/ready.json",
+        "sha256": "fd6cf724a329b8abdf07966fd69ac8e36c9821d669b1fa500cf7e10c68cc2e0c",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/zero_replicas_still_refused-v2/ready.json",
+        "sha256": "6081ac63adcf172355a5ddcad9e76aaefd150f20161fe686ee3102f8f60e61de",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "SINCE_latest_actual_current_Pod_Ready_not_Available",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": true,
+      "new_since": "2026-10-31T03:05:00Z",
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/SINCE_latest_actual_current_Pod_Ready_not_Available-old/ready.json",
+        "sha256": "4e25510d9927ec5ded5d21b6ad701aa6b37f28116547a4484dcf715df83c7301",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/SINCE_latest_actual_current_Pod_Ready_not_Available-v2/ready.json",
+        "sha256": "52e8c717452383eb47dc528a3eac4d9cecf3743f8e03354bd9eebaf55faccd5e",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "deleting_old_Pod_not_current_binding_gate",
+      "passed": true,
+      "old_ready": true,
+      "new_ready": true,
+      "new_since": "2026-10-31T03:00:00Z",
+      "old": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/deleting_old_Pod_not_current_binding_gate-old/ready.json",
+        "sha256": "d49e0ba02617130ae70072e0766d87ae40504de098315199db9416d2cf716166",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": "/tmp/bex-m188-ready-v2-proposal/SYNTHETIC-control-results/deleting_old_Pod_not_current_binding_gate-v2/ready.json",
+        "sha256": "3d639e366e5592e1faa1794463605e87ae53ad34d04c15523df652ad1c7411fc",
+        "exception": null,
+        "mocked_calls": [
+          "FIXTURE-get:deployment",
+          "FIXTURE-get:replicasets",
+          "FIXTURE-get:pods",
+          "FIXTURE-get:applications.argoproj.io"
+        ],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "authenticated_root_hash_mismatch_rejected",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": null,
+        "sha256": null,
+        "exception": "AssertionError",
+        "mocked_calls": [],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": null,
+        "sha256": null,
+        "exception": "AssertionError",
+        "mocked_calls": [],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    },
+    {
+      "case": "authenticated_child_hash_size_mismatch_rejected",
+      "passed": true,
+      "old_ready": false,
+      "new_ready": false,
+      "new_since": null,
+      "old": {
+        "file": null,
+        "sha256": null,
+        "exception": "AssertionError",
+        "mocked_calls": [],
+        "no_env_or_Secret_value_disclosure": true
+      },
+      "new": {
+        "file": null,
+        "sha256": null,
+        "exception": "AssertionError",
+        "mocked_calls": [],
+        "no_env_or_Secret_value_disclosure": true
+      }
+    }
+  ],
+  "all_failures_have_no_accepted_since": true,
+  "source_kind_count_allowlisted_fieldPath_only_no_values_or_secret_names": true,
+  "all_old_manifest_owner_image_ready_gitops_since_gates_preserved": true,
+  "deleting_old_Pods_remain_excluded_from_currentReady_gates": true,
+  "preserved_hashes": {
+    "/tmp/bex-m188-final-operator-ready.py": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a",
+    "/tmp/bex-m188-final-t004-plan.json": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086",
+    "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e",
+    "/tmp/bex-m188-prepare-adoption.py": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+    "/tmp/bex-m188-published-acceptance.json": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4"
+  },
+  "not_activated": true,
+  "limits": "Tiny unsignedsyntheticrawmanifest chain exercises hash/size/Readytool behavior only. Fulloperator signature/source/adoption closure remains separate mandatoryplanprerequisite and actualdeployedsource contract must beconfirmed. No realkubeconfig/Secret/Appenv reads or production calls."
+}
