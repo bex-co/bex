@@ -2,7 +2,7 @@
 
 ## Current decision and implementation — 2026-10-31
 
-The options below preserve the original2026-10-17 discussion. They are superseded by the explicit2026-10-29 user decision and [ADR092](../../../docs/ADR092-postgres-extension-supply.md): one compatible bex operand per major, all six extensions within Render’s supported major ranges, owner-initiated on-demand activation through the bounded allowlist, and one rolling restart per managed cluster for adoption. CNPG1.30.1 is already installed; m65 is not a pending upgrade or approval gate.
+The options below preserve the original2026-10-17 discussion. They are superseded by the explicit2026-10-29 user decision and [ADR092](../../../../docs/ADR092-postgres-extension-supply.md): one compatible bex operand per major, all six extensions within Render’s supported major ranges, owner-initiated on-demand activation through the bounded allowlist, and one rolling restart per managed cluster for adoption. CNPG1.30.1 is already installed; m65 is not a pending upgrade or approval gate.
 
 The shared recipe, allowlist/projection and complete-data restore qualification code are shipped through`fa85c44184ffa59879b8c1a77c991e3ce87fa028`. Production image pins remain empty. Current all-major/both-architecture image and SQL qualification, ordinary-owner complete restore with maintained IMMVs, current CNPG/Free resource checks and the reviewed adoption are still required. No repeated user decision is needed, and source checks do not establish those runtime outcomes.
 
@@ -26,7 +26,7 @@ The shared recipe, allowlist/projection and complete-data restore qualification 
 
 ## Facts
 
-- **Changing the image restarts every database.** The serving operand image is chosen on every reconcile from `cnpgExportImages` (`lego/operator/internal/controller/database_exports.go`, used at `database_controller.go:486`). Changing a digest rolls every managed Postgres cluster of that major: pods restart, and the PostgreSQL patch may move. This is the same kind of rollout that [m65](../blocked/m65/README.md) waits on for its CNPG 1.30.1 upgrade. The map also feeds the logical-export `pg_dump` Jobs.
+- **Changing the image restarts every database.** The serving operand image is chosen on every reconcile from `cnpgExportImages` (`lego/operator/internal/controller/database_exports.go`, used at `database_controller.go:486`). Changing a digest rolls every managed Postgres cluster of that major: pods restart, and the PostgreSQL patch may move. This is the same kind of rollout that [m65](../m65/README.md) waits on for its CNPG 1.30.1 upgrade. The map also feeds the logical-export `pg_dump` Jobs.
 - **No upstream CNPG image carries all six.**
   - The current `ghcr.io/cloudnative-pg/postgresql:<major>` pins carry none of them.
   - CNPG publishes PostGIS-only operand images, for example `ghcr.io/cloudnative-pg/postgis:18.6-3.6.4-…-system-bookworm`, for 13–18 on bookworm and trixie ([catalog](evidence/cli-sweep403/official-CNPG-PostGIS-supplier-catalogs.json)).
@@ -39,7 +39,7 @@ The shared recipe, allowlist/projection and complete-data restore qualification 
 
 1. **Image.**
    - **(a)** Adopt CNPG's PostGIS images. This closes m92 only; m104 and m109–m112 become documented divergences.
-   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../m91/design.md), option C.
+   - **(b)** A bex-built operand image per major with all six where Render has them. It would be published by a workflow shaped like `cnb-run-image.yml` (publish, never pin) and pinned by a reviewed commit. This is the same pipeline shape as the [native-tools decision](../../m91/design.md), option C.
 2. **Activation.**
    - **(a)** Pre-install in every application database, like `vector`.
    - **(b)** On-demand `CREATE EXTENSION` by the owner through an allowlist extension (Render's contract).

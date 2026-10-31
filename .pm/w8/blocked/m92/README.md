@@ -1,6 +1,6 @@
 # w8 · m92 — Make PostGIS usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** in progress — t008 implementation shipped; complete restore, actual Free resources, pinned CNPG1.30.1 and both-architecture qualification remain open. Publication precedes t001 reviewed pins and rollout (ADR092 D4).
+**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** blocked — ADR092 D3 complete ordinary-owner Timescale restore fails in the actual PG14 gate; qualified upstream restore capability is required. Source and bounded consumer are implemented; no adoption or hosted acceptance.
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep403,2026-10-17: both unchanged native psql clients fail the original PostGIS migration on one fresh Bex-created Free PostgreSQL18.6 database; independent SQL/hstore/point controls pass and four catalogs remain identical.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [managed data ADR009](../../../docs/ADR009-postgresql-management.md) and [ADR018](../../../docs/ADR018-render-parity.md): supported geospatial migrations should work through ordinary managed database connections.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [managed data ADR009](../../../../docs/ADR009-postgresql-management.md) and [ADR018](../../../../docs/ADR018-render-parity.md): supported geospatial migrations should work through ordinary managed database connections.
 - **Expected outcome:** Applications can store/query geospatial data without installing server libraries themselves or changing authority/CLI requests.
 - **Why now:** Actual catalog absence and two matching native errors establish this separate gap while vector and ordinary extension/SQL behavior already work. No PostGIS repair is scheduled in the searched board/history.
 - **Render parity:** Included because the shared managed database image/extension change reaches REST/GraphQL/MCP/Blueprint/dashboard/native consumers. Core PostGIS activation only; no general extension catalog/API product.
@@ -42,7 +42,7 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 
 - **涉及 ID：** w8/m92、m104、m109、m110、m111、m112
 - **结论来源：** 用户明确决定，补充上一条「当前没有新 rollout 授权」的复核记录。用户先问「Render 是怎么做的」，然后选择方案；之后指出「Render 公开的只是按库 CREATE EXTENSION 这一层契约，背后靠白名单机制放行非 trusted 扩展，需要写 ADR」。
-- **结论：** 采用 [ADR092](../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
+- **结论：** 采用 [ADR092](../../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
 - **剩余门槛：** 无用户门槛。worker 从 [t008](t008.md) 开始：先在隔离环境按 ADR092 D3 验证各大版本，再按 D4 低峰滚动并逐项验收。
 
@@ -54,3 +54,9 @@ The historical3f38 ARM64/local-CNPG1.27 results remain useful partial evidence, 
 ## Shipped source checkpoint — 2026-10-31
 
 The complete restore/resource gate repair shipped in`fa85c44184ffa59879b8c1a77c991e3ce87fa028`; full operator tests (244envtests) and all-module lint/reachability passed for that slice. [Source evidence](evidence/complete-operand-gate-repair-20261031/README.md) preserves the earlier failures and exact changes. This supersedes the preceding “source refinements … in progress” wording only: whole-data ordinary-owner restore, maintained IMMVs, current CNPG/Free limits, every supported major/both architectures, immutable artifact review and production/hosted adoption remain open. The restore gate deliberately retains any ordinary-owner failure rather than counting the separate platform recovery as success.
+
+## Actual owner-restore gate and bounded consumer — 2026-10-31
+
+[Reviewed restore consumer and complete evidence](evidence/owner-restore-consumer-20261031/README.md) close the missing maintained IMMV-sidecar consumer gap for its explicitly bounded archive scope. Eleven protocol tests, four mutation controls and root's real PostgreSQL15.13 transaction/data/non-superuser/large-object-refusal checks pass; exact local cleanup is recorded. This is partial implementation, not t008 completion.
+
+The actual PG14 arm64 job124586881316 in run41196538568 fails at ordinary-owner timescaledb_pre_restore (`permission denied to set parameter "timescaledb.restoring"`). Matching upstream invoker functions, PGC_SUSET and catalog COPY requirements explain the gap; pgextwlist only elevates extension utility operations. Per ADR092 D3 and t008 step1, stop adoption and park this milestone until a supported upstream raw owner-restore capability satisfies the complete criterion without broad catalog rights or actor substitution. The proposed owner-portable export experiment is unimplemented and does not satisfy that criterion. Current CNPG1.30.1/Free, all-major/both-architecture artifact qualification and original hosted DoD remain open. The single rolling restart is already approved; no repeated user-decision gate is introduced.

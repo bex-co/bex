@@ -119,7 +119,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
 
-- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (8 tasks;490m) — **IN PROGRESS:** core image/allowlist shipped; complete restore, actual Free resources, CNPG1.30.1 and both-architecture qualification remain open before adoption.
+- [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (8 tasks) — **BLOCKED:** actual PG14 complete ordinary-owner Timescale restore fails; needs qualified upstream raw restore capability preserving ADR092 D3. Source and bounded IMMV-sidecar consumer are implemented; no artifact adoption or hosted completion. The single rolling restart is already approved.
 
 - [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (7 tasks;445m) — **IN PROGRESS:** one common Bookworm base is the explicit user choice; t007 implements it, preserving exact versions and original acceptance. Already-started C publications may finish; no repeated architecture decision.
 
