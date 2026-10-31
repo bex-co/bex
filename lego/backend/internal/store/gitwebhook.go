@@ -114,8 +114,10 @@ func validGitWebhookReplayClaim(claim GitWebhookReplayClaim) bool {
 // signing-key epoch. A per-scope advisory transaction lock makes the
 // count-before-insert cap exact even when distinct deliveries arrive on several
 // replicas concurrently. The digest remains globally unique for rolling-upgrade
-// compatibility with pre-0104 replicas and because the signed body itself
-// embeds the installation/repository identity.
+// compatibility with pre-0104 replicas, so a caller that claims the same bytes
+// in several scopes (one installation fanned out to several workspaces, ADR078
+// §4a) must already make the digest scope-unique: two claims with one digest
+// collide whatever their scopes.
 func (s *PGStore) ClaimGitWebhookDelivery(ctx context.Context, claim GitWebhookReplayClaim) (bool, error) {
 	return s.claimGitWebhookDelivery(ctx, claim, MaxGitWebhookReplayClaimsPerScope)
 }

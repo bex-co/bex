@@ -213,3 +213,60 @@ func TestServeHTTPConfinesGitHubAppPush(t *testing.T) {
 		t.Error("tea-b App must NOT redeploy from another workspace's installation push (codex #7)")
 	}
 }
+
+// TestServeHTTPFansOneAppPushOutToEveryBoundWorkspace pins ADR078 §4a end to
+// end WITH the replay ledger wired: one push from an installation bound by two
+// workspaces redeploys an App in each, and a redelivery redeploys neither. The
+// fake ledger is unique on the digest alone, as the real table is; before the
+// scope was folded into the digest, the first workspace's claim swallowed the
+// second's and production got one deploy per push.
+func TestServeHTTPFansOneAppPushOutToEveryBoundWorkspace(t *testing.T) {
+	const repo = "https://github.com/octo/app"
+	const secret = "app-secret"
+	appA := &appv1alpha1.App{}
+	appA.Name, appA.Namespace = "web", "default"
+	appA.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	appA.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+	appB := &appv1alpha1.App{}
+	appB.Name, appB.Namespace = "api", "default"
+	appB.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	appB.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+
+	svc, cl := newService(nil, appA, appB)
+	replays := &fakeReplayGuard{}
+	h := &GitWebhook{Svc: svc, GitHubSecret: secret, Replays: replays,
+		Installations: fakeInstallations{7: {"tea-a", "tea-b"}}}
+
+	ev := newPush(repo, []string{"main.go"})
+	ev.After = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	ev.Installation.ID = 7
+	body, err := json.Marshal(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deliver := func() {
+		t.Helper()
+		req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+		req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+		req.Header.Set("X-GitHub-Event", "push")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("=> 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+	}
+
+	deliver()
+	restartedA, restartedB := getApp(t, cl, "web").Spec.RestartedAt, getApp(t, cl, "api").Spec.RestartedAt
+	if restartedA == "" || restartedB == "" {
+		t.Fatalf("one push => tea-a restarted %q, tea-b restarted %q; want both", restartedA, restartedB)
+	}
+	if n := replays.claimed(); n != 2 {
+		t.Fatalf("claims = %d, want one per workspace", n)
+	}
+
+	deliver()
+	if getApp(t, cl, "web").Spec.RestartedAt != restartedA || getApp(t, cl, "api").Spec.RestartedAt != restartedB {
+		t.Fatal("a redelivery of the same bytes must redeploy neither workspace")
+	}
+}

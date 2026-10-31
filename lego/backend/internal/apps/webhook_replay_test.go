@@ -34,10 +34,11 @@ import (
 // body — however it is resent — mutates exactly once.
 
 // fakeReplayGuard is the in-memory WebhookReplayGuard: claims are a set keyed
-// like the real row — SCOPE plus digest — so a second claim of the same bytes in
-// the same scope reports !fresh exactly like the ON CONFLICT DO NOTHING insert,
-// while the same bytes in ANOTHER workspace's scope remain fresh work (ADR078
-// §4a fan-out).
+// exactly like the real table — the DIGEST alone (git_webhook_replays_pkey,
+// ON CONFLICT (digest)) — so a second claim of the same digest reports !fresh
+// whatever its scope. Keying the fake on scope+digest once hid a production
+// fan-out bug: the same bytes in another workspace stay fresh
+// work only because the webhook folds the scope into the digest.
 type fakeReplayGuard struct {
 	mu       sync.Mutex
 	claims   map[string]bool
@@ -57,7 +58,7 @@ func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, claim store
 	if f.claims == nil {
 		f.claims = map[string]bool{}
 	}
-	key := claim.Scope + "|" + claim.Digest
+	key := claim.Digest // unique on the digest alone, like git_webhook_replays_pkey
 	if f.claims[key] {
 		return false, nil
 	}
@@ -68,7 +69,7 @@ func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, claim store
 func (f *fakeReplayGuard) ReleaseGitWebhookDelivery(_ context.Context, claim store.GitWebhookReplayClaim) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	key := claim.Scope + "|" + claim.Digest
+	key := claim.Digest // unique on the digest alone, like git_webhook_replays_pkey
 	delete(f.claims, key)
 	return nil
 }
