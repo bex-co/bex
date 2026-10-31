@@ -1,0 +1,8 @@
+# w4/m169 live replay fixture (loopx w4, 2026-10-31): an owned Blueprint that
+# creates one env group and no compute, so by-id PATCH/sync/DELETE can be
+# exercised without ownerId. Safe to delete once m169 is closed.
+envVarGroups:
+  - name: qa-20261031-9d3b80-bp-env
+    envVars:
+      - key: QA_M169
+        value: "on"
