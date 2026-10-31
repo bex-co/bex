@@ -118,10 +118,16 @@ jobs:
           MAJOR: ${{ matrix.major }}
           EXTENSIONS: ${{ steps.recipe.outputs.extensions }}
           VERSION: ${{ steps.recipe.outputs.version }}
+        # Each platform runs from its own manifest digest. Pulling the index
+        # digest twice with different --platform values fails on the runner's
+        # image store ("cannot overwrite digest"), as run 41188121287 did.
         run: |
-          for platform in linux/arm64 linux/amd64; do
-            docker run --rm --pull missing --platform "$platform" --network none --memory 256m --memory-swap 256m \
-              -v "$PWD/deploy/pg-operand:/check:ro" "$REF" bash /check/check.sh "$MAJOR" "$EXTENSIONS" "$VERSION"
+          index=$(docker buildx imagetools inspect --raw "$REF")
+          for arch in arm64 amd64; do
+            digest=$(jq -er --arg a "$arch" \
+              '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == $a) | .digest] | if length == 1 then .[0] else error("want one \($a) manifest") end' <<<"$index")
+            docker run --rm --pull missing --platform "linux/$arch" --network none --memory 256m --memory-swap 256m \
+              -v "$PWD/deploy/pg-operand:/check:ro" "${REF%@*}@$digest" bash /check/check.sh "$MAJOR" "$EXTENSIONS" "$VERSION"
           done
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
