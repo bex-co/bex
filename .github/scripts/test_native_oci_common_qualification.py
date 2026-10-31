@@ -4,6 +4,7 @@ import gzip
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -409,6 +410,237 @@ print('controlled login succeeded')
             with self.assertRaises(ValueError):
                 qualification.capacity(root, "after-tests")
             self.assertFalse((root / "capacity-after-tests.json").exists())
+
+
+class ProfileRoutingControls(unittest.TestCase):
+    @staticmethod
+    def jobs():
+        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+        names = list(re.finditer(r"(?m)^  ([a-z][a-z-]*):\n", workflow.split("jobs:\n", 1)[1]))
+        body = workflow.split("jobs:\n", 1)[1]
+        return {match[1]: body[match.end():names[index + 1].start() if index + 1 < len(names) else len(body)]
+                for index, match in enumerate(names)}
+
+    @staticmethod
+    def run_block(job, name):
+        tail = job.split("      - name: " + name + "\n", 1)[1].split("        run: |\n", 1)[1]
+        lines = []
+        for line in tail.splitlines():
+            if line and not line.startswith("          "):
+                break
+            lines.append(line[10:])
+        return "\n".join(lines) + "\n"
+
+    def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
+        expected = {"node": (8, 90, 120), "modern-python": (5, 110, 140),
+                    "legacy-python": (2, 110, 140), "ruby": (8, 75, 105),
+                    "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
+        self.assertEqual(set(qualification.PROFILES), set(expected))
+        for profile, (test, flag, cases, minutes, job_minutes) in qualification.PROFILES.items():
+            self.assertEqual((len(cases), minutes, job_minutes), expected[profile])
+            self.assertEqual(qualification.profile_selection(profile, "pilot"), qualification.profile_selection(profile, cases[0]))
+            for case in cases:
+                selected = qualification.profile_selection(profile, case)
+                self.assertEqual(selected["case"], case)
+                self.assertEqual(selected["flag"], flag)
+                self.assertEqual(selected["go_timeout"], str(minutes) + "m")
+                self.assertEqual(selected["job_minutes"], str(job_minutes))
+                self.assertIn("not full-family acceptance", selected["scope"])
+                self.assertEqual(selected["selector"].split("/", 1)[0], "^" + test + "$")
+                if profile != "native-init":
+                    pattern = selected["selector"].split("/", 1)[1]
+                    self.assertIsNotNone(re.fullmatch(pattern, case))
+                    self.assertIsNone(re.fullmatch(pattern, case + "-neighbor"))
+                    if "." in case:
+                        self.assertIsNone(re.fullmatch(pattern, case.replace(".", "x")))
+
+    def test_every_route_tracks_an_existing_go_test_and_actual_subtest_contract(self):
+        build = publisher.ROOT / "lego/operator/internal/build"
+        table = (build / "native.go").read_text()
+        def table_lines(runtime):
+            block = table.split(runtime + ": {", 1)[1].split("\n\t}},", 1)[0]
+            return re.findall(r'\{line: "([^"]+)"', block)
+        paths = {"node": "nativecommon_node_qualification_test.go", "modern-python": "nativemodern_python_test.go",
+                 "legacy-python": "nativelegacy_python_test.go", "ruby": "nativecommon_ruby_test.go",
+                 "go-rust": "nativecommon_gorust_test.go", "elixir": "nativecommon_elixir_qualification_test.go",
+                 "native-init": "nativequalification_init_test.go"}
+        for profile, name in paths.items():
+            raw = (build / name).read_text()
+            test, flag, cases, _, _ = qualification.PROFILES[profile]
+            self.assertIn("func " + test + "(t *testing.T)", raw)
+            self.assertIn('"' + flag + '"', raw)
+            if profile == "node":
+                lines = re.search(r'for _, line := range \[\]string\{([^}]+)\}', raw)[1]
+                actual = ["node-" + line for line in re.findall(r'"([^"]+)"', lines)]
+                actual += re.findall(r'commonNodeCase\{"([^"]+)",', raw)
+            elif profile == "modern-python":
+                actual = re.findall(r'"([^"]+)"', re.search(r'var nativeModernPythonLines = \[\]string\{([^}]+)\}', raw)[1])
+                self.assertIn('t.Run(name,', raw)
+            elif profile in ("legacy-python", "go-rust"):
+                variable = "line" if profile == "legacy-python" else "runtime"
+                loop = re.search(r'for _, ' + variable + r' := range \[\]string\{([^}]+)\}', raw)[1]
+                actual = re.findall(r'"([^"]+)"', loop)
+                self.assertIn("t.Run(" + variable + ",", raw)
+            elif profile == "ruby":
+                actual = ["ruby" + line.replace(".", "") for line in table_lines("nativeRubyRuntime")]
+                actual += re.findall(r'nativeRubyQualificationCase\{name: "([^"]+)",', raw)
+                self.assertIn('name: "ruby" + strings.ReplaceAll(line.line, ".", "")', raw)
+            elif profile == "elixir":
+                actual = ["elixir-" + line for line in table_lines("nativeElixirRuntime")]
+                actual += re.findall(r'commonElixirCase\{name: "([^"]+)",', raw)
+                self.assertIn('name: "elixir-" + line.line', raw)
+            else:
+                actual = ["all-launches"]
+                self.assertIn('[]string{"npm", "yarn", "pnpm", "direct"}', raw)
+            self.assertEqual(set(cases), set(actual), profile)
+            self.assertEqual(len(cases), len(actual), profile)
+
+    def test_invalid_selections_fail_before_any_output_or_resource_operation(self):
+        for profile, case in (("all", "pilot"), ("node", "all"), ("ruby", "node-14"),
+                              ("node", "node-14/.*"), ("modern-python", "3x9"),
+                              ("utilities", "node-14"), ("native-init", "npm"),
+                              ("node\nother=1", "pilot"), ("ruby", "$(echo bad)"),
+                              ("node", "ghcr.io/other@sha256:" + "a" * 64)):
+            with self.subTest(profile=profile, case=case), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "output"
+                env = dict(GITHUB_EVENT_NAME="workflow_dispatch", REQUESTED_PROFILE=profile,
+                           REQUESTED_CASE=case, GITHUB_OUTPUT=str(output))
+                with patch.dict(os.environ, env), patch.object(qualification.tempfile, "mkdtemp", side_effect=AssertionError("no resources")), patch.object(qualification.subprocess, "run", side_effect=AssertionError("no commands")):
+                    with self.assertRaises(ValueError):
+                        qualification.plan()
+                self.assertFalse(output.exists())
+        with patch.dict(os.environ, GITHUB_EVENT_NAME="push", REQUESTED_PROFILE="node", REQUESTED_CASE="pilot"):
+            with self.assertRaises(ValueError):
+                qualification.plan()
+
+    def test_plan_cli_outputs_only_validated_values_and_push_keeps_full_utilities(self):
+        for event, profile, case in (("push", "utilities", "pilot"), ("workflow_dispatch", "utilities", "all"),
+                                     ("workflow_dispatch", "modern-python", "3.14")):
+            with self.subTest(event=event, profile=profile), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "outputs"
+                env = dict(os.environ, GITHUB_EVENT_NAME=event, REQUESTED_PROFILE=profile, REQUESTED_CASE=case,
+                           GITHUB_OUTPUT=str(output), PYTHONDONTWRITEBYTECODE="1")
+                process = subprocess.run([sys.executable, "-B", str(HERE / "native-common-qualify.py"), "plan"],
+                                         env=env, text=True, capture_output=True, timeout=10)
+                self.assertEqual(process.returncode, 0, process.stderr)
+                actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
+                expected = qualification.profile_selection(profile, case)
+                self.assertEqual(actual, {key: expected[key] for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes")})
+                if profile == "utilities":
+                    self.assertEqual(actual["case"], "all")
+                    self.assertEqual(actual["selector"], "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$")
+
+    def test_profile_environment_clears_all_other_opt_ins_and_rejects_original_gate(self):
+        flags = {value[1] for value in qualification.PROFILES.values()}
+        for profile in qualification.PROFILES:
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "environment"
+                with patch.dict(os.environ, QUALIFICATION_PROFILE=profile, QUALIFICATION_CASE="pilot", GITHUB_ENV=str(output)):
+                    qualification.profile_environment()
+                actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
+                selected = qualification.profile_selection(profile, "pilot")
+                self.assertEqual({name for name in flags if actual[name] == "1"}, {selected["flag"]})
+                self.assertTrue(all(actual[name] == "0" for name in flags - {selected["flag"]}))
+                self.assertEqual(actual["QUALIFICATION_SELECTOR"], selected["selector"])
+                self.assertEqual(actual["QUALIFICATION_CASE"], selected["case"])
+                self.assertEqual(actual["BEX_BUILDKIT_INTEGRATION"], "1")
+        with patch.dict(os.environ, QUALIFICATION_PROFILE="utilities", QUALIFICATION_CASE="all"):
+            with self.assertRaises(ValueError):
+                qualification.profile_environment()
+
+    def test_init_records_selected_measurement_bounds_and_generator_before_auth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = qualification.profile_selection("modern-python", "3.9")
+            with patch.dict(os.environ, QUALIFICATION_PROFILE="modern-python", QUALIFICATION_CASE="3.9"):
+                root, inputs, config = QualificationControls().initialize_owned(Path(directory).resolve())
+            self.assertEqual(inputs["selection"], selected)
+            self.assertEqual(inputs["generator_source"], "a" * 40)
+            self.assertEqual(inputs["producer"], inputs["verification"])
+            self.assertNotEqual(config, root)
+        with patch.dict(os.environ, QUALIFICATION_PROFILE="node", QUALIFICATION_CASE="all"), patch.object(qualification.tempfile, "mkdtemp", side_effect=AssertionError("no resource creation")):
+            with self.assertRaises(ValueError):
+                qualification.initialize()
+
+    def test_workflow_preserves_original_job_and_requires_both_architectures_before_pilot(self):
+        jobs = self.jobs()
+        self.assertEqual(set(jobs), {"plan", "publish", "qualify", "qualify-profile"})
+        self.assertIn("needs: plan\n", jobs["publish"])
+        self.assertIn("runtime: common-bookworm\n", jobs["publish"])
+        self.assertEqual(sum("uses: ./.github/workflows/native-base-image.yml" in body for body in jobs.values()), 1)
+        plan = jobs["plan"]
+        self.assertNotIn("packages:", plan)
+        self.assertNotIn("docker", plan)
+        self.assertIn("REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}", plan)
+        self.assertIn("REQUESTED_CASE: ${{ inputs.case || 'pilot' }}", plan)
+        self.assertIn("native-common-qualify.py plan", plan)
+        original = jobs["qualify"]
+        self.assertIn("needs: publish\n", original)
+        self.assertIn("timeout-minutes: 180", original)
+        self.assertIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", original)
+        self.assertIn("BEX_NATIVE_TEST_SYFT:", original)
+        self.assertIn("syft-version: v1.55.0", original)
+        command = self.run_block(original, "actual generated offline builds, original replays and exact-default SPDX")
+        self.assertIn("-timeout 150m", command)
+        self.assertIn("-run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$'", command)
+        self.assertNotIn("QUALIFICATION_SELECTOR", command)
+        pilot = jobs["qualify-profile"]
+        self.assertIn("needs: [plan, publish, qualify]", pilot)
+        self.assertIn("github.event_name == 'workflow_dispatch'", pilot)
+        self.assertIn("needs.plan.outputs.profile != 'utilities'", pilot)
+        self.assertIn("needs.qualify.result == 'success'", pilot)
+        self.assertIn("needs.publish.outputs.ref != ''", pilot)
+        self.assertIn("timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}", pilot)
+        for job in (original, pilot):
+            for unchanged in ("max-parallel: 1", "arch: [amd64, arm64]", "use: false", "cleanup: false",
+                              "COMMON_IMAGE: ${{ needs.publish.outputs.ref }}", "PRODUCER_SHA: ${{ needs.publish.outputs.producer }}",
+                              "VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}", "packages: read"):
+                self.assertIn(unchanged, job)
+            for retained in ("capacity", "cleanup", "manifest"):
+                self.assertIn("native-common-qualify.py " + retained, job)
+            self.assertIn("if: always() && steps.owned.outputs.root != ''", job)
+            self.assertIn("include-hidden-files: true", job)
+        # Credential handling stays the same in both resource-bearing jobs.
+        marker = "      - name: log in to GHCR using this qualification's isolated credentials\n"
+        login = lambda job: job.split(marker, 1)[1].split("      - uses:", 1)[0]
+        self.assertEqual(login(original), login(pilot))
+        self.assertIn("common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-", pilot)
+        self.assertNotIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", pilot)
+        self.assertNotIn("BEX_NATIVE_TEST_SYFT:", pilot)
+
+    def test_actual_pilot_shell_uses_validated_env_and_retains_failed_log(self):
+        shell = self.run_block(self.jobs()["qualify-profile"], "measure the selected family case without claiming full-family acceptance")
+        self.assertNotIn("${{", shell)
+        for profile in qualification.PROFILES:
+            for exit_code in (0, 17):
+                with self.subTest(profile=profile, exit=exit_code), tempfile.TemporaryDirectory() as directory:
+                    temporary = Path(directory)
+                    exported = temporary / "environment"
+                    with patch.dict(os.environ, QUALIFICATION_PROFILE=profile, QUALIFICATION_CASE="pilot", GITHUB_ENV=str(exported)):
+                        qualification.profile_environment()
+                    environment = dict(line.split("=", 1) for line in exported.read_text().splitlines())
+                    binary = temporary / "bin"
+                    binary.mkdir()
+                    stub = binary / "go"
+                    stub.write_text("#!" + sys.executable + "\n" + r"""import json,os,pathlib,sys
+pathlib.Path(os.environ['ARGUMENTS']).write_text(json.dumps({'argv':sys.argv[1:],'flags':{k:v for k,v in os.environ.items() if k.startswith('BEX_NATIVE_')},'integration':os.environ['BEX_BUILDKIT_INTEGRATION']}))
+print('controlled case stdout',flush=True)
+print('controlled case stderr',file=sys.stderr,flush=True)
+sys.exit(int(os.environ['CONTROL_EXIT']))
+""")
+                    stub.chmod(0o755)
+                    env = dict(os.environ, **environment)
+                    env.update(PATH=str(binary) + os.pathsep + os.environ["PATH"], QUALIFICATION_ROOT=str(temporary),
+                               ARGUMENTS=str(temporary / "arguments.json"), CONTROL_EXIT=str(exit_code))
+                    process = subprocess.run(["bash", "-euo", "pipefail", "-c", shell], env=env,
+                                             capture_output=True, text=True, timeout=10)
+                    self.assertEqual(process.returncode, exit_code, process.stderr)
+                    actual = json.loads((temporary / "arguments.json").read_text())
+                    selected = qualification.profile_selection(profile, "pilot")
+                    self.assertEqual(actual["argv"], ["test", "-p", "1", "-count=1", "-timeout", selected["go_timeout"],
+                                                       "./internal/build", "-run", selected["selector"], "-v"])
+                    self.assertEqual({key for key, value in actual["flags"].items() if key in {entry[1] for entry in qualification.PROFILES.values()} and value == "1"}, {selected["flag"]})
+                    self.assertEqual(actual["integration"], "1")
+                    self.assertEqual((temporary / "qualification.log").read_text(), "controlled case stdout\ncontrolled case stderr\n")
 
 
 if __name__ == "__main__":

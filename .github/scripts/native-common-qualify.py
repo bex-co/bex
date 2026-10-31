@@ -31,7 +31,84 @@ def sha(path):
     return digest.hexdigest()
 
 
+
+# These are existing Go subtests, not an arbitrary regex/timeout surface. Each
+# manual run measures one case on both architectures after the full original
+# cohort. Bounds come from existing command contexts, not measured capacity.
+PROFILES = {
+    "node": ("TestCommonNodeGeneratedImages", "BEX_NATIVE_TEST_NODE_PROFILE",
+             ("node-14", "node-16", "node-18", "node-20", "node-22", "node-26",
+              "node-exact14212", "ruby-node-exact14212"), 90, 120),
+    "modern-python": ("TestNativeModernPythonGeneratedImages", "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+                      ("3.9", "3.10", "3.11", "3.12", "3.14"), 110, 140),
+    "legacy-python": ("TestNativeLegacyPythonGeneratedImages", "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
+                      ("3.7", "3.8"), 110, 140),
+    "ruby": ("TestCommonRubyGeneratedImages", "BEX_NATIVE_TEST_RUBY_PROFILE",
+             ("ruby30", "ruby31", "ruby32", "ruby33", "ruby34", "ruby40",
+              "ruby344-creation-default", "node-static-ruby34"), 75, 105),
+    "go-rust": ("TestNativeGoRustGeneratedImages", "BEX_NATIVE_TEST_GORUST_PROFILE",
+                ("go", "rust"), 75, 105),
+    "elixir": ("TestCommonElixirOfflineQualification", "BEX_NATIVE_ELIXIR_INTEGRATION",
+               ("elixir-1.18", "elixir-1.17", "elixir-1.19", "elixir-1.20",
+                "elixir-exact-otp280"), 90, 120),
+    "native-init": ("TestCommonNativeInitQualification", "BEX_NATIVE_TEST_INIT_PROFILE",
+                    ("all-launches",), 60, 90),
+}
+
+
+def profile_selection(profile, case):
+    """Resolve one fixed case, with the original full utility gate unchanged."""
+    if profile == "utilities":
+        if case not in ("pilot", "all"):
+            raise ValueError("utilities always requires its complete original cohort")
+        return {"profile": profile, "case": "all", "flag": "",
+                "selector": "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$",
+                "go_timeout": "150m", "job_minutes": "180",
+                "scope": "complete original utility cohort; no hosted or adoption claim"}
+    if profile not in PROFILES:
+        raise ValueError("unknown common qualification profile")
+    test, flag, cases, minutes, job_minutes = PROFILES[profile]
+    selected = cases[0] if case == "pilot" else case
+    if selected not in cases:
+        raise ValueError("unknown case for the selected common qualification profile")
+    selector = "^" + test + "$"
+    if profile != "native-init":
+        selector += "/^" + re.escape(selected) + "$"
+    return {"profile": profile, "case": selected, "flag": flag, "selector": selector,
+            "go_timeout": str(minutes) + "m", "job_minutes": str(job_minutes),
+            "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"}
+
+
+def plan():
+    event = os.environ["GITHUB_EVENT_NAME"]
+    profile = os.environ.get("REQUESTED_PROFILE", "utilities")
+    case = os.environ.get("REQUESTED_CASE", "pilot")
+    if event not in ("push", "workflow_dispatch") or (event == "push" and profile != "utilities"):
+        raise ValueError("extra profiles require an explicit manual dispatch")
+    selection = profile_selection(profile, case)
+    # Validate everything before opening any output or creating any resources.
+    with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes"):
+            output.write(key + "=" + selection[key] + "\n")
+
+
+def profile_environment():
+    selection = profile_selection(os.environ["QUALIFICATION_PROFILE"], os.environ["QUALIFICATION_CASE"])
+    if selection["profile"] == "utilities":
+        raise ValueError("manual profile environment cannot replace the original utility step")
+    environment = {entry[1]: "0" for entry in PROFILES.values()}
+    environment[selection["flag"]] = "1"
+    environment.update(BEX_BUILDKIT_INTEGRATION="1", QUALIFICATION_PROFILE=selection["profile"],
+                       QUALIFICATION_CASE=selection["case"], QUALIFICATION_SELECTOR=selection["selector"],
+                       QUALIFICATION_GO_TIMEOUT=selection["go_timeout"])
+    with Path(os.environ["GITHUB_ENV"]).open("a") as output:
+        for key, value in environment.items():
+            output.write(key + "=" + value + "\n")
+
+
 def initialize():
+    selection = profile_selection(os.environ.get("QUALIFICATION_PROFILE", "utilities"),
+                                  os.environ.get("QUALIFICATION_CASE", "all"))
     ref = os.environ["COMMON_IMAGE"]
     producer, verification = os.environ["PRODUCER_SHA"], os.environ["VERIFICATION_SHA"]
     platform = os.environ["TARGET_PLATFORM"]
@@ -47,6 +124,7 @@ def initialize():
     docker_config = root.parent / (owner + "-docker-config")
     dump(root / "inputs.json", {"owner": owner, "common_image": ref, "producer": producer,
                                "verification": verification, "platform": platform,
+                               "generator_source": os.environ["GITHUB_SHA"], "selection": selection,
                                "docker_config": str(docker_config),
                                "run_id": os.environ["GITHUB_RUN_ID"],
                                "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
@@ -290,6 +368,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init")
+    commands.add_parser("plan")
+    commands.add_parser("profile-env")
     for name in ("cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
     observation = commands.add_parser("capacity")
@@ -299,7 +379,11 @@ def main():
     for name in ("syft", "image", "platform", "evidence"):
         scan.add_argument("--" + name, required=True)
     args = parser.parse_args()
-    if args.command == "init":
+    if args.command == "plan":
+        plan()
+    elif args.command == "profile-env":
+        profile_environment()
+    elif args.command == "init":
         initialize()
     elif args.command == "cleanup":
         cleanup(args.root)
