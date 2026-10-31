@@ -1,0 +1,9 @@
+{
+  "reused_at": "2026-10-31T00:52:07.089663+00:00",
+  "source_snapshot_file": "/tmp/bex-m188-publisher-job-snapshots/124091095086-1b11ac5b4e00cb765679bda6e6c450b83da619ef4f096405f82a881276cd6c8d.json",
+  "source_snapshot_sha256": "1b11ac5b4e00cb765679bda6e6c450b83da619ef4f096405f82a881276cd6c8d",
+  "source_snapshot_file_mtime_utc": "2026-10-30T17:22:31.802237+00:00",
+  "job_id": 124091095086,
+  "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/producer-job.json",
+  "sha256": "1b11ac5b4e00cb765679bda6e6c450b83da619ef4f096405f82a881276cd6c8d"
+}

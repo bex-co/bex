@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-31T01:02:18.112408+00:00",
+  "candidate": "ruby-3.2-bookworm",
+  "accepted_count": 9,
+  "manifest_sha256": "43e2ab618a87240227d31013462c5795ddd5297475a76dada9ef2734d0ab7c11",
+  "archived_files": 74,
+  "all_sizes_hashes_and_unique_paths_verified": true,
+  "exact_FINAL_controls_actual_prebody_proof_root_approval_and_promotion_link_present": true,
+  "root_read_candidate_fullFINAL_andcontrols": true,
+  "previous16_proof_candidate_hashes_recomputed_unchanged": true,
+  "one_exact_ruby32_auth_removed_after_fresh_discovery": true,
+  "remaining_Node18_Node20_and_foreignElixir_records_unchanged": true,
+  "actual_repository_selector_cases": 20,
+  "selector_cases_expected_observed_equal": true,
+  "source_adoption_performed": false,
+  "scope": "Actual signed Ruby3.2 acceptance and bounded auth retirement only, not application/rollout acceptance"
+}

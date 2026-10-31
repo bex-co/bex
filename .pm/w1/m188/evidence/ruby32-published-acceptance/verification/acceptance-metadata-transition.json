@@ -1,0 +1,76 @@
+{
+  "schema": "native_acceptance_metadata_transition/v1",
+  "recorded_at": "2026-10-31T00:57:00.239975+00:00",
+  "record_kind": "original_pre_promotion_snapshot_and_recorded_acceptance_transition",
+  "before": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate-validated-body-b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43.json",
+    "sha256": "b2331e86ea77bc1241b7644628eccad21294030013ce76de8c3b27974418fb43"
+  },
+  "after": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/candidate.json",
+    "sha256": "a27600c2d00d5e21990f08e987c897117ec0e688ffb9c0788d136c1e579d6acf"
+  },
+  "changed_fields": [
+    {
+      "field": "candidate_state",
+      "before_present": true,
+      "after_present": true,
+      "before": "verified_pending_guard_alignment",
+      "after": "verified"
+    },
+    {
+      "field": "guard_alignment_required",
+      "before_present": true,
+      "after_present": true,
+      "before": true,
+      "after": false
+    },
+    {
+      "field": "guard_validation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+        "sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524",
+        "original_validation_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation.json",
+        "guard_file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/accepting-guard-3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58.py",
+        "guard_sha256": "3fe1b2bd1a5a44ba7711f33546c1cf1db5539bdb36f08b2e4c8e40ff56e42c58",
+        "actual_proof_sha256": "bdcddaface863ce3103759f77f8da7e25fa5a7377c391766ba78fe3683dfe428",
+        "controls": {
+          "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/generic-controls-ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0.json",
+          "sha256": "ac8f00c5ee273d1a29b151d21b9ce63b830fc4699d0f92de0f70e2c0f72bcea0"
+        },
+        "full_candidate_guard_passed": true,
+        "root_promotion_approved": true,
+        "rechecked_at": "2026-10-31T00:57:00.239392+00:00"
+      }
+    },
+    {
+      "field": "accepted_at",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": "2026-10-31T00:57:00.239975+00:00"
+    },
+    {
+      "field": "stable_discovery_confirmation",
+      "before_present": false,
+      "after_present": true,
+      "before": null,
+      "after": {
+        "file": "/tmp/bex-m188-ruby-3.2-bookworm-discovery-confirmation.json",
+        "sha256": "4b9b701626d33be7d8e731f6922dd520534ff0314c4593d6990de7d1eb597f99"
+      }
+    }
+  ],
+  "runtime_source_security_fields_changed": false,
+  "full_validation": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/guard-validation-6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524.json",
+    "sha256": "6872fd518e5e329d83961da139988dbc66c975697980e939988a5b1988814524"
+  },
+  "promotion_helper": {
+    "file": "/tmp/bex-m188-native-proof-targeted/ruby-3.2-bookworm/4462ee030984637bb765ae560b6ffe38c71f3af4/promotion-helper-9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084.py",
+    "sha256": "9667976e86bca9a1c1cbe4b4c6441688bbd2dfb1128e26a77a7fc2e00b46c084"
+  }
+}
