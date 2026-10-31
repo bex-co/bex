@@ -1,0 +1,88 @@
+{
+  "reviewed_on": "2026-10-29",
+  "purpose": "Offline setuptools/pkg_resources/distutils and wheel for native primary CPython; Debian system Python keeps its packaged tools.",
+  "freshness_sources": [
+    "https://pypi.org/pypi/setuptools/json",
+    "https://setuptools.pypa.io/en/stable/history.html",
+    "https://pypi.org/pypi/wheel/json",
+    "https://wheel.readthedocs.io/en/stable/news.html",
+    "https://pypi.org/pypi/packaging/json"
+  ],
+  "selections": {
+    "3.7": ["setuptools-68.0.0", "wheel-0.42.0"],
+    "3.8": ["setuptools-75.3.4", "wheel-0.45.1"],
+    "3.9-3.14": ["setuptools-80.9.0", "wheel-0.48.0", "packaging-25.0"]
+  },
+  "artifacts": [
+    {
+      "id": "setuptools-68.0.0",
+      "name": "setuptools",
+      "version": "68.0.0",
+      "filename": "setuptools-68.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c7/42/be1c7bbdd83e1bfb160c94b9cafd8e25efc7400346cf7ccdbdb452c467fa/setuptools-68.0.0-py3-none-any.whl",
+      "sha256": "11e52c67415a381d10d6b462ced9cfb97066179f0e871399e006c4ab101fc85f",
+      "requires_python": ">=3.7",
+      "metadata_source": "https://pypi.org/pypi/setuptools/68.0.0/json"
+    },
+    {
+      "id": "setuptools-75.3.4",
+      "name": "setuptools",
+      "version": "75.3.4",
+      "filename": "setuptools-75.3.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/cd/b1/961ba076c7d3732e3a97e6681c55ef647afb795fe8bfcd27becec8a762ce/setuptools-75.3.4-py3-none-any.whl",
+      "sha256": "2dd50a7f42dddfa1d02a36f275dbe716f38ed250224f609d35fb60a09593d93e",
+      "requires_python": ">=3.8",
+      "metadata_source": "https://pypi.org/pypi/setuptools/75.3.4/json"
+    },
+    {
+      "id": "setuptools-80.9.0",
+      "name": "setuptools",
+      "version": "80.9.0",
+      "filename": "setuptools-80.9.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl",
+      "sha256": "062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922",
+      "requires_python": ">=3.9",
+      "metadata_source": "https://pypi.org/pypi/setuptools/80.9.0/json"
+    },
+    {
+      "id": "wheel-0.42.0",
+      "name": "wheel",
+      "version": "0.42.0",
+      "filename": "wheel-0.42.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c7/c3/55076fc728723ef927521abaa1955213d094933dc36d4a2008d5101e1af5/wheel-0.42.0-py3-none-any.whl",
+      "sha256": "177f9c9b0d45c47873b619f5b650346d632cdc35fb5e4d25058e09c9e581433d",
+      "requires_python": ">=3.7",
+      "metadata_source": "https://pypi.org/pypi/wheel/0.42.0/json"
+    },
+    {
+      "id": "wheel-0.45.1",
+      "name": "wheel",
+      "version": "0.45.1",
+      "filename": "wheel-0.45.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl",
+      "sha256": "708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248",
+      "requires_python": ">=3.8",
+      "metadata_source": "https://pypi.org/pypi/wheel/0.45.1/json"
+    },
+    {
+      "id": "wheel-0.48.0",
+      "name": "wheel",
+      "version": "0.48.0",
+      "filename": "wheel-0.48.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl",
+      "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+      "requires_python": ">=3.9",
+      "metadata_source": "https://pypi.org/pypi/wheel/0.48.0/json"
+    },
+    {
+      "id": "packaging-25.0",
+      "name": "packaging",
+      "version": "25.0",
+      "filename": "packaging-25.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl",
+      "sha256": "29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484",
+      "requires_python": ">=3.8",
+      "metadata_source": "https://pypi.org/pypi/packaging/25.0/json"
+    }
+  ]
+}

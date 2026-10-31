@@ -1,0 +1,29 @@
+{
+  "started_at": "2026-10-31T11:39:07.511403+00:00",
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v11.py",
+    "--name",
+    "node-20-bookworm",
+    "--sha",
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "--run",
+    "41113373387",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+    "--output-root",
+    "/private/tmp/bex-w8-node20-v11-case-20261031-24wk0hj0/output",
+    "--cache-root",
+    "/private/tmp/bex-w8-node20-v11-case-20261031-24wk0hj0/empty-cache",
+    "--layer-workers",
+    "2"
+  ],
+  "fresh_empty_cache": true,
+  "physical_free_at_start": 4084363264,
+  "minimum_free_floor": 2147483648,
+  "freshness_sha256": "02fadcf55da0c580a5e679b2157a83be0e44edd7380f379b9ce333bf2979371c",
+  "repo_mutations": false,
+  "intake": "/private/tmp/bex-w8-node20-v11-intake-20261031-yvnldz5w/intake.json"
+}

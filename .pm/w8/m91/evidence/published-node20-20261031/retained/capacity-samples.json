@@ -1,0 +1,132 @@
+[
+  {
+    "at": "2026-10-31T11:39:52.713901+00:00",
+    "free_bytes": 4580290560,
+    "own_logical_bytes": 116393645,
+    "own_allocated_bytes": 116469760,
+    "progress": {
+      "at": "2026-10-31T11:39:50.893294+00:00",
+      "stage": "immutable-bundle-byte-progress",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:2382294e91ad58e9802b3adfd92825cfd081d60b051335f926095a6cf8f78ab7",
+      "downloaded_bytes": 32505856,
+      "expected_bytes": 49926907,
+      "attempt": 1
+    }
+  },
+  {
+    "at": "2026-10-31T11:40:23.993947+00:00",
+    "free_bytes": 4511895552,
+    "own_logical_bytes": 179952696,
+    "own_allocated_bytes": 180375552,
+    "progress": {
+      "at": "2026-10-31T11:40:16.490096+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e",
+      "expected_bytes": 24042234
+    }
+  },
+  {
+    "at": "2026-10-31T11:41:56.505178+00:00",
+    "free_bytes": 4479537152,
+    "own_logical_bytes": 179959309,
+    "own_allocated_bytes": 180391936,
+    "progress": {
+      "at": "2026-10-31T11:41:55.383763+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0",
+      "bytes_hashed": 36700160,
+      "expected_bytes": 48622900
+    }
+  },
+  {
+    "at": "2026-10-31T11:43:20.948959+00:00",
+    "free_bytes": 4476108800,
+    "own_logical_bytes": 179977992,
+    "own_allocated_bytes": 180457472,
+    "progress": {
+      "at": "2026-10-31T11:43:18.448975+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:30de66f8fdafab67e88d876087f571a693a1a6c4cf0abc29efbf88ea878e0d29",
+      "expected_bytes": 48373071
+    }
+  },
+  {
+    "at": "2026-10-31T11:44:15.492505+00:00",
+    "free_bytes": 4395323392,
+    "own_logical_bytes": 179988904,
+    "own_allocated_bytes": 180486144,
+    "progress": {
+      "at": "2026-10-31T11:43:58.266238+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:5f77b2a79d553481e7f962631ac14425d8c654928f18cdc3d1f265ceb460486e",
+      "expected_bytes": 203064331
+    }
+  },
+  {
+    "at": "2026-10-31T11:45:09.665837+00:00",
+    "free_bytes": 4073873408,
+    "own_logical_bytes": 179992984,
+    "own_allocated_bytes": 180494336,
+    "progress": {
+      "at": "2026-10-31T11:45:06.397659+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:8f963a2bbd539fdc5a73d8814f1591499cc227b0e3820139902d0765de08b8f0",
+      "bytes_hashed": 2097152,
+      "expected_bytes": 48586991
+    }
+  },
+  {
+    "at": "2026-10-31T11:46:35.194038+00:00",
+    "free_bytes": 4049522688,
+    "own_logical_bytes": 180003651,
+    "own_allocated_bytes": 180531200,
+    "progress": {
+      "at": "2026-10-31T11:46:30.638139+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:96d51bedd5de718fd2944b4f7a09b81fa821888b076a1e59a29a274c0fce43ce",
+      "bytes_hashed": 29360128,
+      "expected_bytes": 61853109
+    }
+  },
+  {
+    "at": "2026-10-31T11:47:26.715821+00:00",
+    "free_bytes": 4006277120,
+    "own_logical_bytes": 180009147,
+    "own_allocated_bytes": 180547584,
+    "progress": {
+      "at": "2026-10-31T11:47:15.026705+00:00",
+      "stage": "anonymous_blob_pull",
+      "candidate_approved": false,
+      "name": "node-20-bookworm",
+      "digest": "sha256:d0d75dec04f7e46d556c31d174350085fd7748b105b7fe529d1f2c48cc7b65bf",
+      "bytes_hashed": 42991616,
+      "expected_bytes": 166393614
+    }
+  },
+  {
+    "at": "2026-10-31T11:48:20.387618+00:00",
+    "free_bytes": 4291166208,
+    "own_logical_bytes": 209484172,
+    "own_allocated_bytes": 210034688,
+    "progress": {
+      "at": "2026-10-31T11:47:45.033946+00:00",
+      "stage": "complete",
+      "candidate_approved": true,
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+    }
+  }
+]

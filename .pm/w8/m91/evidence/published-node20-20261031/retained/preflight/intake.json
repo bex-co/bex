@@ -1,0 +1,57 @@
+{
+  "at": "2026-10-31T11:38:49.728422+00:00",
+  "candidate": "node-20-bookworm",
+  "producer": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "verifier": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+  "index": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+  "base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+  "recipe_files": 22,
+  "recipe_exact_modes_and_blobs_equal": true,
+  "ci": {
+    "run_id": "41113373387",
+    "url": "https://github.com/bex-co/bex/actions/runs/41113373387",
+    "run_status": "completed",
+    "run_conclusion": "success",
+    "job_id": 124263887574,
+    "job_url": "https://github.com/bex-co/bex/actions/runs/41113373387/job/124263887574",
+    "job_name": "build (node-20-bookworm, node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde...",
+    "job_conclusion": "success",
+    "verified_steps": [
+      "scan amd64 candidate",
+      "scan arm64 candidate",
+      "sign and attest the immutable candidate",
+      "verify real native tool transformations without network on both architectures"
+    ],
+    "primary_build_conclusion": "skipped",
+    "recovery_selection_conclusion": "success"
+  },
+  "provenance": {
+    "mode": "reviewed-immutable-recovery",
+    "producer_sha": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "verification_sha": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "authorized_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+    "official_base": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "producer_run_id": 41000570846,
+    "producer_job_id": 123932798235,
+    "producer_job_conclusion": "failure",
+    "producer_evidence_url": "https://github.com/bex-co/bex/actions/runs/41000570846/job/123932798235",
+    "producer_successful_steps": [
+      "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+      "verify real native tool transformations without network on both architectures"
+    ],
+    "recovery_authorization_sha256": "79c7e93b021dc64912d26437ce27075539e575e57b273e086de9fe79a87ceb39",
+    "identical_non_documentation_recipe_file_count": 22,
+    "recipe_git_blob_mode_manifest_sha256": "edace24925e09ea935a3835fc8cc5a59b1a518787a16ac90f58ee04a87cd30d9",
+    "producer_verifier_matrix_base_equal": true,
+    "approval_rule": "Old producer overall failure does not approve this artifact. Current verification job, both-arch probes/scans/SBOM, strict current-source keyless signatures and anonymous blob hashes are still independently required."
+  },
+  "freshness_sha256": "02fadcf55da0c580a5e679b2157a83be0e44edd7380f379b9ce333bf2979371c",
+  "tools": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+    "/tmp/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+  },
+  "resources_or_ci_mutations": 0,
+  "strict_body_execution_started": false
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-31T11:48:49.576151+00:00",
+  "new_complete_blob_count": 37,
+  "full_bytes_hashed_fresh": 1311620069,
+  "cache_seed_or_prior_receipt_reuse": false,
+  "body_GET_count": 37,
+  "ranged_blob_cases": [],
+  "scope": "Unchanged canonical whole-SHA and size gates; all raw ranged-read metadata retained."
+}
