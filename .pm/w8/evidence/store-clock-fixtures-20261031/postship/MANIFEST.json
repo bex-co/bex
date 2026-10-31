@@ -1,0 +1,58 @@
+{
+  "CUSTODY.json": {
+    "bytes": 3454,
+    "sha256": "785c36918e554078e65ad8b3dba3fcaa877dbf3d699af0ed9489a4798b6cab73"
+  },
+  "final/BUDGET.json.gz": {
+    "bytes": 791,
+    "sha256": "b11b2741b86c1af417f45b3dbdc19a390875b6f3410f86cf895afa3f4a4f5dbb"
+  },
+  "final/OWNED-RESET-HANDOFF.json.gz": {
+    "bytes": 171,
+    "sha256": "da709a7542b540793a18bc85c1156b6a8ac0ee1c36b5278deb7b97607559c35a"
+  },
+  "final/PROCESS.json.gz": {
+    "bytes": 79,
+    "sha256": "4423aa914c2c4099cdd99884151ffdd1b67800b329509a382579d945b47f774b"
+  },
+  "final/PUSH-SUCCESS.json.gz": {
+    "bytes": 392,
+    "sha256": "3b89e2d408977bdba2681dc194387ff62c11af6a45f6a023b2c7e4cc0328ae97"
+  },
+  "final/PUSH.json.gz": {
+    "bytes": 377,
+    "sha256": "0237ea913b15811993d81488fb06c3f0221d243915c191559b4a4d3ff371832a"
+  },
+  "final/REBASE-EQUIVALENCE.json.gz": {
+    "bytes": 479,
+    "sha256": "ae8e54c866269f23fa6d257e6553f1a2a34f198f48a5cd0f710e3f15ff9588da"
+  },
+  "final/RESULT.json.gz": {
+    "bytes": 398,
+    "sha256": "0266dfc0f33d45b1e1bb07e9ea260020f62273a90f1a10f79227beeb1d071d4e"
+  },
+  "final/SCOPE.json.gz": {
+    "bytes": 837,
+    "sha256": "64620790f140d049e334fb0047c63dd36f893244bf629e5e7afd31318adec23c"
+  },
+  "final/full-gate.log.gz": {
+    "bytes": 1484,
+    "sha256": "cfc6853cfb76dad3f8428c8fad9ad4ddb2713252bcaac4fe70159c5ad8227796"
+  },
+  "final/incremental-gate.log.gz": {
+    "bytes": 35,
+    "sha256": "bbd8b7ffe192f1c54fcb7a45bab88c152ee60705fd8f645e056811aa46b63835"
+  },
+  "final/run.py.gz": {
+    "bytes": 2968,
+    "sha256": "10fb0a621962a926c16e7c87d1b900745fc6292220f460800478f86fa8498bae"
+  },
+  "previous-full-pass/RESULT.json.gz": {
+    "bytes": 402,
+    "sha256": "874b10a734d1ab5e13de90a237b6cf03b05eaace2d13781339fd6adf3a06253e"
+  },
+  "previous-full-pass/full-gate.log.gz": {
+    "bytes": 863,
+    "sha256": "2dc98cc8aa9d3a9632200afbe839b2289722dfe8b897e431a2ae78c1c5fa6527"
+  }
+}

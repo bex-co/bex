@@ -7,3 +7,8 @@ The final merged focused tests and scoped lint pass. An actual original-producti
 The complete backend suite against CI-pinned real Postgres/OpenFGA/OpenBao/Loki is required by the pre-push ship gate. Its outcome will be recorded after actual execution. No production fixture or authentication was used for this regression.
 
 Original bytes are retained losslessly as gzip, with source identities in `CUSTODY.json`. This evidence distinguishes the initial conservative resource gate, the explicitly amended local storage budget and the actual merged verification.
+
+
+## Full backend verification — 2026-10-31
+
+The full real-dependency suite passed with exit0/no resource stop, including the strengthened public-ID regression. It shipped as`d58e9663e`, alongside the three independent store-fixture clock corrections at`c680cd195`. [Full-suite and shipment records](../store-clock-fixtures-20261031/README.md#full-backend-gate-and-shipment--2026-10-31) preserve the final result and PM-only rebase equivalence.

@@ -7,3 +7,10 @@ These three test-only corrections use database-returned app/tenant creation time
 All seven focused real-DB tests and eight subtests passed with zero skips. These include the three affected tests, migration round trip, stale reused-name generations, deleted-ID-as-name exclusion and migration ownership boundary controls. Scoped store lint and formatting pass. The complete backend gate remains required before pushing; its actual final outcome will be appended after execution.
 
 Original failing-suite, source, clock-read and focused-validation records are preserved losslessly as gzip, with exact byte identities in `CUSTODY.json`. Resource precheck/amendment records distinguish incomplete attempts from actual test results.
+
+
+## Full backend gate and shipment — 2026-10-31
+
+The complete CI-pinned real Postgres/OpenFGA/OpenBao/Loki backend suite passed in190.984s with exit0 and no resource stop on tested commit3c1e2ad7763aa355cd161467cbade7ee97a7d185. All checked source hashes remained unchanged; peak owned temporary storage was231,477,248bytes and minimum physical free space1,672,310,784bytes. The harness completed its dependency cleanup.
+
+A concurrent PM-only remote advance rejected the initial push. The rebased executable tree and gate inputs are byte-identical to that passing revision; the incremental gate passed. Both commits shipped to origin/main at`c680cd1957db6cc908ad844ccb6f1cb9614f209b` (public-ID regression`d58e9663e`). [Post-ship custody](postship/CUSTODY.json) preserves both full-pass runs, the actual rejected push, rebase path/equivalence proof, final gate and successful-push receipt. Earlier failures and incomplete attempts remain unchanged.
