@@ -1,0 +1,51 @@
+{
+  "frozen_at": "2026-10-31T15:29:14.681147+00:00",
+  "head": "d147703d7657f8795593deb2e74c9e7eac426cd2",
+  "owned_files": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 17337,
+      "mode": "0o644",
+      "sha256": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a",
+      "head_sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2"
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 4510,
+      "mode": "0o644",
+      "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66",
+      "head_sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5"
+    },
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 9562,
+      "mode": "0o644",
+      "sha256": "bf74c5142668dc79bd7834dd7cea6288badb141ec4d07c54f57fca5b2e310caa",
+      "head_sha256": null
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "bytes": 9621,
+      "mode": "0o644",
+      "sha256": "f892ec397a9f54094a6511b2685224ddd01980b2dc66e04488040ccf05c04638",
+      "head_sha256": null
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 16556,
+      "mode": "0o644",
+      "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+      "head_sha256": "998bdbcb846be57248b8547660a1aa12faf736fb87cf4a075d48e443ed71bc11"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 12652,
+      "mode": "0o644",
+      "sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab",
+      "head_sha256": null
+    }
+  ],
+  "file_count": 6,
+  "bytes": 70238,
+  "source_unchanged_through_final_checks": true
+}

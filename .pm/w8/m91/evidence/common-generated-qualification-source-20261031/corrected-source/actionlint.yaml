@@ -1,0 +1,2 @@
+self-hosted-runner:
+  labels: [bex-ci, bex-production]

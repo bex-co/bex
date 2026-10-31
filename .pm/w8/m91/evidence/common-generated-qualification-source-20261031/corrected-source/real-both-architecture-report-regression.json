@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-31T16:27:56.483420+00:00",
+  "scope": "source-only replay of both retained real report pairs, not a new scan/runtime or approval; dpkg comparison subprocess only stubbed for macOS",
+  "reports": [
+    {
+      "architecture": "arm64",
+      "syft_source_file": "/private/tmp/bex-w8-222-acceptance/generated-image.syft.json.gz",
+      "syft_raw_bytes": 31709370,
+      "syft_raw_sha256": "b28131e964bdc208df13bd911340796fbdef189f2bb8a4528be95a220cd2cdf3",
+      "spdx_source_file": ".pm/w8/m91/evidence/exact-python-default-20261029/generated-image.spdx.json.gz",
+      "spdx_raw_bytes": 31740588,
+      "spdx_raw_sha256": "49c84f7f330170fb898bdd1a284fbbef98debdf30e28a4dcb69be200ae4c6be2",
+      "metadata": {
+        "imageID": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+        "manifestDigest": "sha256:645172b6476137c42feb86af17c35515aaf9af122dd7b7bab57ae42f2306e287",
+        "os": "linux",
+        "architecture": "arm64"
+      },
+      "embedded_manifest_config_sha_and_link_verified": true,
+      "original_failure": "SPDX root differs from actual generated image config",
+      "corrected_binding": {
+        "image_config_id": "sha256:6902ef50f66ace40e04e14dbfac2b58f5cc79f675612b7b4f154d4048e00383d",
+        "syft_manifest_digest": "sha256:645172b6476137c42feb86af17c35515aaf9af122dd7b7bab57ae42f2306e287",
+        "platform": "linux/arm64",
+        "python": "3.14.8",
+        "libbrotli1_versions": [
+          "1.0.9-2+deb12u1"
+        ],
+        "packages": 1186
+      },
+      "only_stubbed_commands": [
+        [
+          "dpkg",
+          "--compare-versions",
+          "1.0.9-2+deb12u1",
+          "ge",
+          "1.0.9-2+deb12u1"
+        ]
+      ]
+    },
+    {
+      "architecture": "amd64",
+      "syft_source_file": ".pm/w8/m91/evidence/exact-python-default-amd64-20261030/generated-image.syft.json.gz",
+      "syft_raw_bytes": 23509734,
+      "syft_raw_sha256": "196c9277e07108dceeaa681f9548c93cb82b7666893ccb4a5333b63c3be5a764",
+      "spdx_source_file": ".pm/w8/m91/evidence/exact-python-default-amd64-20261030/generated-image.spdx.json.gz",
+      "spdx_raw_bytes": 23418941,
+      "spdx_raw_sha256": "72733154d0c6c12238e112d43bcd7b4013408fcff75ec8334bbadfb461785c62",
+      "metadata": {
+        "imageID": "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da",
+        "manifestDigest": "sha256:fe8d82966807e6792ad9c030fb3ec9e049c6b02c0dc165f2e31e9772b2f17036",
+        "os": "linux",
+        "architecture": "amd64"
+      },
+      "embedded_manifest_config_sha_and_link_verified": true,
+      "original_failure": "SPDX root differs from actual generated image config",
+      "corrected_binding": {
+        "image_config_id": "sha256:c4dff3abe72184275f5655712acac8f560fd0683d258a577ec0d7d4c63f4c9da",
+        "syft_manifest_digest": "sha256:fe8d82966807e6792ad9c030fb3ec9e049c6b02c0dc165f2e31e9772b2f17036",
+        "platform": "linux/amd64",
+        "python": "3.14.8",
+        "libbrotli1_versions": [
+          "1.0.9-2+deb12u1"
+        ],
+        "packages": 1031
+      },
+      "only_stubbed_commands": [
+        [
+          "dpkg",
+          "--compare-versions",
+          "1.0.9-2+deb12u1",
+          "ge",
+          "1.0.9-2+deb12u1"
+        ]
+      ]
+    }
+  ]
+}

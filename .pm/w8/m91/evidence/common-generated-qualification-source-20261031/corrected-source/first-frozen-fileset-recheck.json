@@ -1,0 +1,13 @@
+{
+  "all_original_files_bytes_and_hashes_unchanged": true,
+  "exact_original_file_set_restored": true,
+  "original_file_count": 43,
+  "removed_only_own_new_bytecode_sidefiles": [
+    {
+      "path": "source/.github/scripts/__pycache__/native-common-qualify.cpython-314.pyc",
+      "bytes": 17739,
+      "sha256": "3ebe9d7645188525775321627035c68ef0fde1f457a921b2bfa217243c445296",
+      "reason": "only own incidental bytecode from source-only old-module regression import, absent from original frozen manifest"
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "files": [
+    {
+      "path": "SOURCE-MANIFEST.json",
+      "bytes": 2072,
+      "sha256": "0bbb74acfb8f9ff5a1cca851c9453d8d4bf82cbc06b7165664bc91e22edd3b64"
+    },
+    {
+      "path": "actionlint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "actionlint.yaml",
+      "bytes": 55,
+      "sha256": "9384a7d7a4873a18120453ee117cc1530f51ffa8219199ef1db8bf34da98f1a0"
+    },
+    {
+      "path": "actions-guard.log",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "path": "correction-only.patch",
+      "bytes": 15379,
+      "sha256": "5f7becb45ae28312aed58586d7a0c5670505aa53ec7df8df14d25f2e87d8b47a"
+    },
+    {
+      "path": "diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-scoped-lint-result.json",
+      "bytes": 461,
+      "sha256": "8b78dc82e1207d23dddfeb9fbb04206c1360ebab47aa4fef143da7320de48c15"
+    },
+    {
+      "path": "final-scoped-lint.log",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    {
+      "path": "final-scoped-tests-result.json",
+      "bytes": 446,
+      "sha256": "4c4a476e40efdfac94dacb1741947df511d647c7a50feda9b11b05b1b807f52e"
+    },
+    {
+      "path": "final-scoped-tests.log",
+      "bytes": 63,
+      "sha256": "579f8c01a69f773d93c932235eeb763623ebe3fab44653bc110a2ce4f36ed8f0"
+    },
+    {
+      "path": "first-frozen-fileset-recheck.json",
+      "bytes": 524,
+      "sha256": "d1cd053f49a1ce3bd74d3fe2a3a54996cee12d13cc89cee77e99c3bfbc4380d5"
+    },
+    {
+      "path": "first-frozen-provenance.json",
+      "bytes": 411,
+      "sha256": "deb3de53d47ec65231996f5c2e9192e09c24465ef5c454a1655439ac8f4dc425"
+    },
+    {
+      "path": "focused-independent-review.json",
+      "bytes": 502,
+      "sha256": "c5d8c0f0abdfe0d01b552c30afefc332ff847b90b3c4fda38ac69672286168a6"
+    },
+    {
+      "path": "head-source/.github/workflows/native-base-image.yml",
+      "bytes": 16117,
+      "sha256": "8818d2772520078c5b920716fd98318d973086e73c03fd35faf8345c60b99fb2"
+    },
+    {
+      "path": "head-source/.github/workflows/native-common-image.yml",
+      "bytes": 803,
+      "sha256": "64e94c6cad042819afe69df80d84f6f8740031a19dcaf37d9b4c78a668e807b5"
+    },
+    {
+      "path": "head-source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18785,
+      "sha256": "998bdbcb846be57248b8547660a1aa12faf736fb87cf4a075d48e443ed71bc11"
+    },
+    {
+      "path": "owned-paths.json",
+      "bytes": 340,
+      "sha256": "d279854414d5c380e59e0f8f0b9cdc5348e6f48bbbfac2eddd575d0c8963f4c3"
+    },
+    {
+      "path": "python-controls.log",
+      "bytes": 141,
+      "sha256": "3eafe259582004641af556c41dcca099285aee4435c453c24bc25261da815456"
+    },
+    {
+      "path": "real-both-architecture-report-regression.json",
+      "bytes": 3274,
+      "sha256": "6a5b8c2cfdcc3032de16ac92116ee119a1a797b329a12ee017ffee0856d77abe"
+    },
+    {
+      "path": "real-retained-report-regression.json",
+      "bytes": 2129,
+      "sha256": "dc0d26c6487b5b7a9c4e0b660552231204b1d891462da1fb95fd13bf360eab49"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 2317,
+      "sha256": "2e42694ff0234eac83d8d0aed7b325b2e6e3987eedac526bb96fd640b0318699"
+    },
+    {
+      "path": "run-final-scoped.py",
+      "bytes": 1983,
+      "sha256": "5b3a345b9d71ebf4bafc9a02fdae2edd8c37a2d77a34c39fe9d9d55b59132c6c"
+    },
+    {
+      "path": "source/.github/scripts/native-common-qualify.py",
+      "bytes": 10568,
+      "sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728"
+    },
+    {
+      "path": "source/.github/scripts/test_native_oci_common_qualification.py",
+      "bytes": 11732,
+      "sha256": "a9e240b0b9f0574c04e73adfbfea78710a7c2fa36afb2926164259fdf5a0bd35"
+    },
+    {
+      "path": "source/.github/workflows/native-base-image.yml",
+      "bytes": 17337,
+      "sha256": "c2aaa88ccb553b51a54d91b9883364ece122c8785447d841d1c58421f1063b5a"
+    },
+    {
+      "path": "source/.github/workflows/native-common-image.yml",
+      "bytes": 4510,
+      "sha256": "0ce213d1634c977245d33c80d7e8197e811bb45d4807a19c5ed38f0c23310e66"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 16556,
+      "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 12652,
+      "sha256": "1e8d4556dc1954faf7e11cbf8d1dc38e51877db41d5f4a574ccba03363df03ab"
+    },
+    {
+      "path": "source-before-checks.json",
+      "bytes": 748,
+      "sha256": "c83756e30db7771e1e545f1738e3f5442f188e8a35c5a99e7f156ee54430896a"
+    },
+    {
+      "path": "source.patch",
+      "bytes": 48674,
+      "sha256": "dc659c12a61b1287c54675f0a05be1455c74477b95592d8b91cca4fd8cd728a0"
+    }
+  ],
+  "file_count": 30,
+  "bytes": 188879
+}

@@ -1,0 +1,36 @@
+{
+  "frozen_at": "2026-10-31T16:29:36.241098+00:00",
+  "result": "CORRECTED_SOURCE_CHECKS_PASS_AND_FOCUSED_BINDING_REVIEW_CLEAN_REAL_EXECUTION_UNEXECUTED",
+  "previous_handoff": "/private/tmp/bex-w8-common-qualification-source-20261031-k3xlarw2",
+  "previous_handoff_disposition": "NOT_APPROVED; original config-vs-manifest binding defect retained with exact original manifest/fileset",
+  "source_manifest_sha256": "0bbb74acfb8f9ff5a1cca851c9453d8d4bf82cbc06b7165664bc91e22edd3b64",
+  "source_patch_sha256": "dc659c12a61b1287c54675f0a05be1455c74477b95592d8b91cca4fd8cd728a0",
+  "correction_only_patch_sha256": "5f7becb45ae28312aed58586d7a0c5670505aa53ec7df8df14d25f2e87d8b47a",
+  "checks": {
+    "whole_internal_build_go_test": "PASS5.364s; opt-in Docker integration disabled",
+    "scoped_internal_build_golangci_lint": "PASS0issues",
+    "python_publisher_qualification_controls": "PASS41tests13.849s",
+    "actionlint": "PASS with private approved-label config",
+    "actions_guard": "PASS",
+    "git_diff_check": "PASS",
+    "independent_focused_review": "CLEAN binding correction"
+  },
+  "correction": [
+    "single actual Syft scan emits full SyftJSON and SPDX",
+    "Syft source.metadata.imageID/os/architecture bind to actual inspected Docker config/platform",
+    "SPDX root binds to same-scan Syft manifestDigest, not Docker configID",
+    "both complete original reports and gzip SHA/size/roundtrip custody retained including binding failures",
+    "distinct real6902config/645172manifest-shaped positive plus separate wrongconfig/platform/root/package/runtime negatives",
+    "source-only actual full retained arm64+amd64 report regression; embedded manifests/config SHA/link verified; only Debian version-comparison subprocess stubbed for macOS and explicitly recorded"
+  ],
+  "owned_file_count": 6,
+  "changed_from_previous_frozen_files": [
+    ".github/scripts/native-common-qualify.py",
+    ".github/scripts/test_native_oci_common_qualification.py"
+  ],
+  "resources_or_Docker_or_CI_actions": false,
+  "repo_commit_push_index_or_production_pin_mutation": false,
+  "foreign_go_work_sum": "not owned or edited",
+  "actual_new_common_generated_image_or_SBOM_execution": "UNEXECUTED; no new artifact approval/adoption/full27matrix/28hosted/exact222closure claim",
+  "root_review_and_ship_pending": true
+}

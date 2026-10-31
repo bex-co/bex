@@ -47,8 +47,10 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_TEST_NODE_IMAGE to an immutable Node24 supplier")
 	}
 	commonImage, nodeImage, pythonImage := nativeUtilityTestImages(t)
+	docker := nativeUtilityDockerConfig(t)
 	wheelhouse := os.Getenv("BEX_NATIVE_TEST_WHEELHOUSE")
-	if commonImage != "" && wheelhouse == "" {
+	prepareWheels := os.Getenv("BEX_NATIVE_TEST_PREPARE_WHEELS") == "1"
+	if commonImage != "" && wheelhouse == "" && !prepareWheels {
 		t.Fatal("common Python replay requires an explicit flat BEX_NATIVE_TEST_WHEELHOUSE for Python 3.13 and 3.14 Poetry/fixture dependencies")
 	}
 	output := t.TempDir()
@@ -99,15 +101,19 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			evidence := filepath.Join(output, tc.name)
 			must(t, os.Mkdir(evidence, 0o700))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
-			recipe, prerequisites, removalProbe := nativeUtilityTestLayers(t, recipe, commonImage, tc, wheelhouse, source, evidence)
+			caseWheels := wheelhouse
+			if prepareWheels && tc.runtime == nativePythonRuntime && commonImage != "" {
+				caseWheels = nativeUtilityPrepareWheels(t, docker, recipe, commonImage, bundle, source, evidence)
+			}
+			recipe, prerequisites, removalProbe := nativeUtilityTestLayers(t, recipe, commonImage, tc, caseWheels, source, evidence)
 			must(t, os.WriteFile(dockerfile, recipe, 0o600))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile"), recipe, 0o600))
 			must(t, os.Rename(dockerfile, filepath.Join(source, "Dockerfile")))
 			tag := fmt.Sprintf("bex-native-utilities-%s:%d-%d", tc.name, os.Getpid(), time.Now().UnixNano())
-			t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
-			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
+			t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 			defer cancel()
-			build := exec.CommandContext(ctx, "docker", "build", "--network", "none", "--progress", "plain", "--secret", "id=render-env,src="+bundle, "-t", tag, source)
+			build := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...)
 			build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 			log, buildErr := build.CombinedOutput()
 			must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
@@ -124,43 +130,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			if buildErr != nil {
 				t.Fatalf("generated offline build failed: %v\n%s", buildErr, log)
 			}
-			create := exec.CommandContext(ctx, "docker", "create", "--network", "none", tag)
-			if tc.static {
-				create = exec.CommandContext(ctx, "docker", "create", "--network", "none", "--entrypoint", "/bin/true", tag)
-			}
-			id, err := create.Output()
-			must(t, err)
-			container := strings.TrimSpace(string(id))
-			t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", container).Run() })
-			if !tc.static {
-				start, runErr := exec.CommandContext(ctx, "docker", "start", "--attach", container).CombinedOutput()
-				must(t, os.WriteFile(filepath.Join(evidence, "runtime.log"), start, 0o600))
-				if runErr != nil || !strings.Contains(string(start), `"pass": true`) {
-					t.Fatalf("generated network-off runtime: %v\n%s", runErr, start)
-				}
-				if copied, err := exec.CommandContext(ctx, "docker", "cp", container+":/opt/render/project/src/qa-output", filepath.Join(evidence, "qa-output")).CombinedOutput(); err != nil {
-					t.Fatalf("export actual original-program proofs: %v %s", err, copied)
-				}
-			} else if copied, err := exec.CommandContext(ctx, "docker", "cp", container+":/opt/render/project/src/public", filepath.Join(evidence, "public")).CombinedOutput(); err != nil {
-				t.Fatalf("export static artifacts: %v %s", err, copied)
-			}
-			inspected, err := exec.CommandContext(ctx, "docker", "inspect", container).Output()
-			must(t, err)
-			var states []struct {
-				Image      string
-				State      struct{ ExitCode int }
-				HostConfig struct{ NetworkMode string }
-			}
-			must(t, json.Unmarshal(inspected, &states))
-			if len(states) != 1 || states[0].HostConfig.NetworkMode != "none" || states[0].State.ExitCode != 0 {
-				t.Fatalf("unexpected owned container state: %s", inspected)
-			}
-			platform, err := exec.CommandContext(ctx, "docker", "image", "inspect", states[0].Image, "--format", "{{.Os}}/{{.Architecture}}").Output()
-			must(t, err)
-			receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "container_id": container, "image_config_id": states[0].Image, "image_platform": strings.TrimSpace(string(platform)), "common_base": nativeCommonBase, "test_prerequisite_overlay": prerequisites, "network": "none", "runtime_command_executed": !tc.static, "static_artifacts_extracted": tc.static, "scope": "local generated image; Python common cases add recorded test-only wheel COPY/pip config; no hosted, Kubernetes pre-deploy, SBOM or publication claim"}, "", "  ")
-			must(t, err)
-			must(t, os.WriteFile(filepath.Join(evidence, "receipt.json"), receipt, 0o600))
-			t.Logf("%s passed actual generated network-off commands; image %s", tc.name, states[0].Image)
+			docker.runImage(t, tc, tag, evidence, prerequisites)
 		})
 	}
 }

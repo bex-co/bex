@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-10-31T15:26:55.643498+00:00",
+  "completed_at": "2026-10-31T15:27:05.927403+00:00",
+  "command": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit_code": 0,
+  "stop": null,
+  "start_free_bytes": 3234131968,
+  "minimum_observed_free_bytes": 3177758720,
+  "maximum_owned_tmp_bytes": 41549824,
+  "scope": "scoped local Go source/unit controls only; opt-in Docker test disabled"
+}

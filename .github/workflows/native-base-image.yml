@@ -15,6 +15,16 @@ on:
       runtime:
         required: true
         type: string
+    outputs:
+      ref:
+        description: Immutable image after every publication gate succeeds
+        value: ${{ jobs.build.outputs.ref }}
+      producer:
+        description: Source which produced the published image
+        value: ${{ jobs.build.outputs.producer }}
+      verification:
+        description: Source which completed runtime, scan and signing gates
+        value: ${{ jobs.build.outputs.verification }}
 
 permissions:
   contents: read
@@ -69,6 +79,12 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    # The input contract selects exactly one row; these are never a matrix
+    # aggregation or the pre-gate candidate digest.
+    outputs:
+      ref: ${{ steps.published.outputs.ref }}
+      producer: ${{ steps.published.outputs.producer }}
+      verification: ${{ steps.published.outputs.verification }}
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -328,6 +344,19 @@ jobs:
           docker buildx imagetools create --tag "${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}-${GITHUB_SHA}" "$REF"
           docker buildx imagetools create --tag "${{ env.NATIVE_IMAGE }}:native-${{ matrix.name }}" "$REF"
           echo "${{ matrix.base }} -> $REF (producer $PRODUCER; verification $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+      - id: published
+        name: expose the fully gated immutable image
+        env:
+          DIGEST: ${{ steps.candidate.outputs.digest }}
+          PRODUCER: ${{ steps.candidate.outputs.producer }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$PRODUCER" =~ ^[a-f0-9]{40}$ ]]
+          {
+            echo "ref=${NATIVE_IMAGE}@${DIGEST}"
+            echo "producer=$PRODUCER"
+            echo "verification=$GITHUB_SHA"
+          } >> "$GITHUB_OUTPUT"
       - name: remove GHCR credentials
         if: always()
         run: docker logout ghcr.io
