@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "manifests",
+    "digest": "sha256:f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7",
+    "offset": 0,
+    "synthetic_in_memory": true
+  },
+  {
+    "kind": "manifests",
+    "digest": "sha256:0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f",
+    "offset": 0,
+    "synthetic_in_memory": true
+  },
+  {
+    "kind": "blobs",
+    "digest": "sha256:e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90",
+    "offset": 0,
+    "synthetic_in_memory": true
+  },
+  {
+    "kind": "blobs",
+    "digest": "sha256:09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d",
+    "offset": 0,
+    "synthetic_in_memory": true
+  }
+]

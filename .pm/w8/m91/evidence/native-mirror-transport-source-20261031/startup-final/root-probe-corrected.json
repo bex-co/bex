@@ -1,0 +1,7 @@
+{
+  "original_probe": "/private/tmp/bex-w8-mirror-thread-start-review-20261031/probe.py",
+  "original_sha256": "8f38f27e3cfdbb51a20b07b0bdaa935df2a466d54d258c95f0b452b4f4494bf8",
+  "exit": 1,
+  "elapsed_seconds": 0.11095054098404944,
+  "result": "Original exact probe returns expected controlled failure promptly; no scanner spawned."
+}

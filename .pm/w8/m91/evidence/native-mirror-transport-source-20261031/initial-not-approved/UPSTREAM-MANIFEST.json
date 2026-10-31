@@ -1,0 +1,64 @@
+{
+  "recorded_at": "2026-10-31T17:32:16.406756+00:00",
+  "files": [
+    {
+      "path": "upstream/trivy-v0.70.0-registry_flags.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/flag/registry_flags.go",
+      "bytes": 2909,
+      "sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-remote.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/remote/remote.go",
+      "bytes": 8666,
+      "sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-remote.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/fanal/image/remote.go",
+      "bytes": 2290,
+      "sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-image.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/fanal/image/image.go",
+      "bytes": 4105,
+      "sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-artifact-image.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/fanal/artifact/image/image.go",
+      "bytes": 19933,
+      "sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-global_flags.go",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/pkg/flag/global_flags.go",
+      "bytes": 5805,
+      "sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-go.mod",
+      "url": "https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/go.mod",
+      "bytes": 26601,
+      "sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca"
+    },
+    {
+      "path": "upstream/go-containerregistry-v0.21.2-registry.go",
+      "url": "https://raw.githubusercontent.com/google/go-containerregistry/v0.21.2/pkg/name/registry.go",
+      "bytes": 4993,
+      "sha256": "8cbe3fe3fb540bd623e6a636fe14ed20c856c3a5691c4ac7a6dcde9e5b3ced67"
+    },
+    {
+      "path": "upstream/go-containerregistry-v0.21.2-descriptor.go",
+      "url": "https://raw.githubusercontent.com/google/go-containerregistry/v0.21.2/pkg/v1/remote/descriptor.go",
+      "bytes": 6887,
+      "sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655"
+    }
+  ],
+  "official_docs_read_via_web_tool": [
+    "https://trivy.dev/docs/v0.70/guide/configuration/others/",
+    "https://trivy.dev/docs/v0.70/guide/references/configuration/config-file/"
+  ],
+  "initial_collection": "Initial9bjw source snapshot preserved separately. Its raw-doc fetch/check aggregation did not produce receipts; this final snapshot uses the9 cached tagged primary sources and independently records final checks."
+}

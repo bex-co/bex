@@ -1,0 +1,6 @@
+{
+  "positive_exit": 0,
+  "negative_exit": 1,
+  "negative_scope": "actual previous workflow YAML rejects exactly the added helper path; no production source changed by overlay",
+  "initial_setup_failure": "First positive command ran from repo root and found no Go module; corrected operator cwd passed. Not counted as product failure."
+}

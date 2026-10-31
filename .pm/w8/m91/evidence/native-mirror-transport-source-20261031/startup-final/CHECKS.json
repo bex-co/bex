@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "label": "full-native-oci-controls",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "exit": 0
+    },
+    {
+      "label": "actionlint",
+      "command": [
+        "actionlint",
+        "-config-file",
+        "/private/tmp/bex-w8-native-oci-mirror-startup-final-20261031-mhp56ef5/actionlint.yaml",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "exit": 0
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".github/workflows/native-base-image.yml",
+        ".github/scripts/native-oci-mirror.py",
+        ".github/scripts/test_native_oci_mirror.py"
+      ],
+      "exit": 0
+    }
+  ],
+  "test_count": 58,
+  "new_mirror_controls": 17,
+  "startup_scenarios": 6,
+  "scope": "Actual owned-loopback HTTP and bounded child controls; scanner doubles only. Original root probe preserved. Old-g6 startup and pre-handler-fix signal-window negative controls preserved."
+}

@@ -1,0 +1,26 @@
+{
+  "started_at": "2026-10-31T17:55:12.976683+00:00",
+  "completed_at": "2026-10-31T17:55:13.720860+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "test_native_oci_mirror.MirrorControls.test_startup_failures_close_listener_restore_signals_and_never_spawn_scan",
+    "-v"
+  ],
+  "exit_code": 0,
+  "payloads_verified": 39,
+  "exact_fileset": true,
+  "live_frozen_source_equal": 3,
+  "source_manifest_sha256": "1e30dbf5371217cec0c5a36902322aab8cbdb68652ec7df9ec7459608b8b8197",
+  "full_manifest_sha256": "4f940d2fc949be5ef0c085938e49d5203e98ae1bdd5e8ca7ff3524480c39c912",
+  "result": "CLEAN: protected startup and prior-handler capture-before-install resolve the reviewed known startup and signal-window findings; prior complete/reap corrections remain",
+  "review_notes": [
+    "server shutdown only when its serving thread is alive; allocated listener always closed on known start-before/after failures",
+    "joins only threads with actual started identity; watcher failures and partial signal registration remain in protected cleanup",
+    "TERM delivered immediately after handler installation restores the original handler because previous state is saved first",
+    "same deferred-cancellation discipline around thread/Popen startup preserves observable resource handles"
+  ],
+  "scope": "one frozen-source startup regression containing six owned-subprocess scenarios; no full58 duplication, actual Trivy/full-image/CI/Docker/resource actions or production scan changes"
+}

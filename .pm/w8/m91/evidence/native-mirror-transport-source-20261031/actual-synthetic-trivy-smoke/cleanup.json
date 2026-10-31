@@ -1,0 +1,12 @@
+{
+  "owned_mirror_reaped": true,
+  "owned_scanner_absent": true,
+  "loopback_port_closed": true,
+  "temporary_config_and_tool_work_empty": true,
+  "private_COW_DB_and_cache_removed": true,
+  "foreign_DB_and_metadata_unchanged": true,
+  "foreign_DB_sha256": "1c66d0d801a194ed5df7a9c334d7991a6529d82952ab07a23cff1047c637c598",
+  "private_clone_unchanged_sha256": "1c66d0d801a194ed5df7a9c334d7991a6529d82952ab07a23cff1047c637c598",
+  "cached_binary_preserved": true,
+  "fresh_free_bytes": 3096100864
+}

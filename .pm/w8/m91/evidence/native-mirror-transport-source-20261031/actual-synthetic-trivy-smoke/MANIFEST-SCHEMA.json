@@ -1,0 +1,13 @@
+{
+  "format": "Direct map from relative file path to {bytes, sha256}, no files/artifacts wrapper",
+  "relative_to": "/private/tmp/bex-w8-trivy070-mirror-cli-smoke-20261031-9d6ac10e",
+  "excluded": [
+    "MANIFEST.json"
+  ],
+  "synthetic_tiny_OCI_payload_and_layout_retained": true,
+  "excluded_foreign_or_large_artifacts": [
+    "Cached Trivy binary and release archive",
+    "Foreign vulnerability DB",
+    "Removed private COW DB clone"
+  ]
+}

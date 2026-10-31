@@ -1,0 +1,36 @@
+{
+  "frozen_at": "2026-10-31T17:37:45.995137+00:00",
+  "state": "SOURCE_AND_REAL_LOOPBACK_CONTROLS_PASS_ACTUAL_TRIVY_UNEXECUTED",
+  "source_manifest_sha256": "b38036641ce3f3cd20135864118343bc00f3479f3fa78c6edfcb0a5fc8ed372a",
+  "owned_paths": [
+    ".github/workflows/native-base-image.yml",
+    ".github/scripts/native-oci-mirror.py",
+    ".github/scripts/test_native_oci_mirror.py"
+  ],
+  "actual_c5_failure": {
+    "log_path": "/private/tmp/bex-w8-common-c5-failure-20261031/job.log",
+    "sha256": "6bee6ba048acf65f9ea5ca16c1ee42c4bff8a75485d628ef8c057b446deeaf8e",
+    "result": "3 actual remote-layer EOF failures; cause unproved; no retry or CI action by this worker"
+  },
+  "checks": "57 full controls PASS;16 new mirror controls. Actionlint anddiffcheck PASS.",
+  "protocol": "Original raw root blob, selected child/config/layers SHA+size rechecked; actual config platform checked; fixed127.0.0.1:ephemeral readonlyGET/HEAD server; one per-command registry.mirrors config; originalREF/scanargs/platform/Trivy profile/rawreport bytes retained; no insecureGHCR or TLS/proxy/credential/cache changes",
+  "lifecycle": "Same21m full-scan+10s termination budget. Own process group, server/config cleaned on errors/timeouts/cancellation/parent death. Raw output removed after failed child stops. Existing28GiB capacity and DB21m/Java30m fetch budgets retained.",
+  "fallback": "Trivy mirrors permit origin fallback. Helper requires original-root GET and no native-mirror request failure before accepting successful scan; stage failures stop before Trivy. No claim origin fallback is disabled.",
+  "unchanged": {
+    "native-oci-stage.py": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+    "frozen-V11-helper": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+  },
+  "unexecuted": [
+    "Actual pinnedTrivy0.70 full raw report through the mirror",
+    "Actual common candidate/image scanning, botharch publication and signed predicate verification",
+    "Any runtime/hosted/adoption inference"
+  ],
+  "root_trigger_handoff": "Add .github/scripts/native-oci-mirror.py to native-common-image.yml path filters after both source freezes; this worker left that foreign-owned workflow untouched.",
+  "initial_snapshot": "9bjw_8a6 source bytes preserved. Raw-doc download aggregation produced no check receipt; final6w6 bundle independently binds9 cached tagged primary sources plus official web-doc URLs and final checks.",
+  "previous_freeze_preserved": "/private/tmp/bex-w8-native-oci-mirror-final-20261031-6w6l5oip",
+  "independent_findings_corrected": [
+    "A temporary-config cleanup OSError after scan success must mark receipt incomplete and remove raw output. New real-loopback regression injects this failure.",
+    "Both group-gone cleanup returns now wait/reap the owned Popen with a bounded timeout. Regression exercises both early-return paths."
+  ],
+  "independent_probe_scope": "Old exact-source probe and result copied unchanged. Corrected independent focused recheck pending."
+}

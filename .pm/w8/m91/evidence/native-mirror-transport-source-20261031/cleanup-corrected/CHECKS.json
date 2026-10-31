@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "label": "full-native-oci-controls",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "exit": 0
+    },
+    {
+      "label": "actionlint",
+      "command": [
+        "actionlint",
+        "-config-file",
+        "/private/tmp/bex-w8-native-oci-mirror-corrected-20261031-g6ktf5eb/actionlint.yaml",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "exit": 0
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".github/workflows/native-base-image.yml",
+        ".github/scripts/native-oci-mirror.py",
+        ".github/scripts/test_native_oci_mirror.py"
+      ],
+      "exit": 0
+    }
+  ],
+  "test_count": 57,
+  "new_mirror_controls": 16,
+  "scope": "Real owned-loopback HTTP and scanner doubles, including full existing publisher/stager controls; no actual Trivy/full-image/runtime/hosted claim.",
+  "initial_lint": "Only pre-existing custom labels; final private config registers labels without disabling rules."
+}

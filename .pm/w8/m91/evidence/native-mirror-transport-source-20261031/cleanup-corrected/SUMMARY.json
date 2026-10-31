@@ -1,0 +1,19 @@
+{
+  "source": "c5ee618ce95681e09f0201dd682b66270e44f357",
+  "run": 41200142788,
+  "job": 124537117450,
+  "raw_bytes": 898911,
+  "raw_sha256": "6bee6ba048acf65f9ea5ca16c1ee42c4bff8a75485d628ef8c057b446deeaf8e",
+  "completed_job_log_fetched_once": true,
+  "result": "three actual Trivy remote-layer unexpected EOF failures; underlying transport cause unproved; runtime gates passed both architectures; no signed common supplier approval",
+  "selected_exact_lines": [
+    "2026-10-31T15:01:43.9482240Z #23 2.269 native tool transformations passed without network",
+    "2026-10-31T15:02:29.0173490Z #34 8.562 native tool transformations passed without network",
+    "2026-10-31T15:20:09.7673502Z 2026-10-31T15:20:09Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: failed to calculate image size: pipeline error: failed to save layer: unexpected EOF",
+    "2026-10-31T15:20:09.7687260Z Trivy scan attempt 1 failed",
+    "2026-10-31T15:35:20.0831601Z 2026-10-31T15:35:20Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: failed to calculate image size: pipeline error: failed to save layer: unexpected EOF",
+    "2026-10-31T15:35:20.0868375Z Trivy scan attempt 2 failed",
+    "2026-10-31T15:50:20.1689519Z 2026-10-31T15:50:20Z\tFATAL\tFatal error\trun error: image scan error: scan error: scan failed: failed analysis: failed to calculate image size: pipeline error: failed to save layer: unexpected EOF",
+    "2026-10-31T15:50:20.1710793Z Trivy scan attempt 3 failed"
+  ]
+}

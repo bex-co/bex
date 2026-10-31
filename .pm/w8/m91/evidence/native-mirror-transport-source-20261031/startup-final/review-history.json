@@ -1,0 +1,15 @@
+{
+  "first_real_loopback_suite": {
+    "tests": 9,
+    "result": "1 failure in parent-death test",
+    "observed": "ProcessLookupError not raised when checking scan child; previous cancel-phase receipt was still present and allowed the test to observe cleanup too early.",
+    "correction": "Delete the previous phase receipt before launching each new lifecycle scenario. Final source has distinct fresh cancellation and parent-death proofs."
+  },
+  "source_inspection_corrections": [
+    "Avoid signal interruption while acquiring the Popen child handle.",
+    "Remove failed reports after stopping the owned process group, preventing delayed reopen from leaving a partial artifact.",
+    "Stop residual members of the owned process group even after its leader exits.",
+    "Origin fallback is supported by Trivy; require an observed original-root GET and no native mirror request failure rather than claiming fallback is disabled."
+  ],
+  "actual_scanner_execution": false
+}

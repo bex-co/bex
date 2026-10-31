@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    ".github/scripts",
+    "-p",
+    "test_native_oci_mirror.py",
+    "-v"
+  ],
+  "started_at": "2026-10-31T17:32:31.811596+00:00",
+  "completed_at": "2026-10-31T17:32:39.374881+00:00",
+  "exit_code": 0,
+  "scope": "actual owned loopback HTTP/lifecycle and controlled scanner wrapper tests only; no real Trivy/image/runtime/CI execution"
+}

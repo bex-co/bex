@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-31T17:35:45.399582+00:00",
+  "reviewed_freeze": "/private/tmp/bex-w8-native-oci-mirror-source-20261031-9bjw_8a6",
+  "source_hashes": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 18178,
+      "mode": "0o644",
+      "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8"
+    },
+    {
+      "path": ".github/scripts/native-oci-mirror.py",
+      "bytes": 15191,
+      "mode": "0o644",
+      "sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_mirror.py",
+      "bytes": 22370,
+      "mode": "0o644",
+      "sha256": "c3534cbbcfc0641987a103cea668ad60bc97f710b465d5d081975a8158dde882"
+    }
+  ],
+  "result": "two narrow cleanup/evidence corrections requested; main image identity and scan/signing data flow clean",
+  "findings": [
+    {
+      "file": ".github/scripts/native-oci-mirror.py",
+      "line": 261,
+      "finding": "An exception after receipt complete=True (e.g. config TemporaryDirectory cleanup) does not mark incomplete. Actual owned-loopback/stub injected cleanup OSError yields helper MirrorError but complete=True and retained raw report. Outer workflow still fails closed.",
+      "proof": "cleanup-failure-probe-result.json"
+    },
+    {
+      "file": ".github/scripts/native-oci-mirror.py",
+      "line": 179,
+      "finding": "Group-gone paths return without bounded process.wait/reap. Independent timeout control emitted an actual Popen ResourceWarning; later own PID absent, so no running-leak claim.",
+      "proof": "controls.log"
+    }
+  ],
+  "independent_controls": {
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      ".github/scripts",
+      "-p",
+      "test_native_oci_mirror.py",
+      "-v"
+    ],
+    "started_at": "2026-10-31T17:32:31.811596+00:00",
+    "completed_at": "2026-10-31T17:32:39.374881+00:00",
+    "exit_code": 0,
+    "scope": "actual owned loopback HTTP/lifecycle and controlled scanner wrapper tests only; no real Trivy/image/runtime/CI execution"
+  },
+  "primary_source_checks": [
+    {
+      "url": "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/fanal/image/remote.go",
+      "finding": "original input name and original ref remain report Name/RepoDigests; descriptor digest remains original root"
+    },
+    {
+      "url": "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/remote/remote.go",
+      "finding": "registry mirrors substitute transport ref only, preserving digest/repository; origin fallback is supported and must not be misclaimed disabled"
+    },
+    {
+      "url": "https://github.com/aquasecurity/trivy/blob/v0.70.0/pkg/flag/registry_flags.go",
+      "finding": "registry.mirrors config map is supported"
+    },
+    {
+      "url": "https://github.com/google/go-containerregistry/blob/v0.21.2/pkg/name/registry.go",
+      "finding": "127.0.0.1 endpoint is HTTP by built-in loopback handling, without an insecure flag for public origin"
+    }
+  ],
+  "limits": [
+    "real pinned Trivy execution unproved",
+    "full-image scan/ref/report binding unproved",
+    "CI runner capacity unproved",
+    "no CI/Docker/source/resource changes by reviewer"
+  ]
+}

@@ -1,0 +1,774 @@
+{
+  "actual-failed-c5-job.log.gz": {
+    "bytes": 140782,
+    "sha256": "e3e5b8e53ba7c4ea14d7f528613f8163c98ce2861485d9be52b22b24a8cbd233"
+  },
+  "ROOT-LIVE-SOURCE.json": {
+    "bytes": 898,
+    "sha256": "e12e014eba4d54fc024a06eb8b4e7c7ccd48ac09ac55ccab11a86765869a607b"
+  },
+  "README.md": {
+    "bytes": 2133,
+    "sha256": "5e361444f0e720aebb7e2a40fb0fb1f2f9d89fd1be44e935bb5ab9752f00624b"
+  },
+  "actual-failed-c5-summary.json": {
+    "bytes": 1558,
+    "sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa"
+  },
+  "ROOT-REVIEW.json": {
+    "bytes": 61556,
+    "sha256": "909f7f3c5ff2095b7f82c6da393c1521d87e1472f3faf8f8dd74539325d255a2"
+  },
+  "independent-review/corrected-focused-review.json": {
+    "bytes": 972,
+    "sha256": "69753cc279603cdb6230c94c8202d1f3577820c4ddf4d0d5b2c79a0f883e2231"
+  },
+  "independent-review/controls.log.gz": {
+    "bytes": 797,
+    "sha256": "24323e87966f96ab7298ba48fc98bb85af6cd5dfae0298744d3a1e19382538f9"
+  },
+  "independent-review/controls-result.json": {
+    "bytes": 434,
+    "sha256": "ddda7f3f3c230819b9ccd5e98812c5a7b218034ef6f840d25eeb459ab292e21a"
+  },
+  "independent-review/cleanup-failure-probe.py.gz": {
+    "bytes": 881,
+    "sha256": "e735ccaf441c3b0bf2c5fe0a3c2ed7011dbb109f7702b1c86c04d41a39608a15"
+  },
+  "independent-review/run-controls.py.gz": {
+    "bytes": 480,
+    "sha256": "524fc5dd3db6bc674e8782f455a383c556241c05d2cb7d2bbffc72593cb8b57e"
+  },
+  "independent-review/cleanup-failure-probe-result.json": {
+    "bytes": 607,
+    "sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055"
+  },
+  "independent-review/inputs.json": {
+    "bytes": 879,
+    "sha256": "395e5649537cb6d6976e6ecdf548bdbd895b40b86f5f067307fb7b0752ffb6b7"
+  },
+  "independent-review/startup-focused.log.gz": {
+    "bytes": 149,
+    "sha256": "fc5bb7982a06a2f96c430af32b80a10b4fbfadc81bf6959f50f7658115aa8df3"
+  },
+  "independent-review/corrected-focused.log.gz": {
+    "bytes": 189,
+    "sha256": "13695e54db3a22e1855dd0cfc014848065b7476399efaad7e03ee86a6ac7ec44"
+  },
+  "independent-review/review-findings.json": {
+    "bytes": 3250,
+    "sha256": "e560afcafff68100629ee066de9986b71e9025f264733c2969d2e4e720b29837"
+  },
+  "independent-review/startup-focused-review.json": {
+    "bytes": 1508,
+    "sha256": "0553dc279797942b7002ebac784f5ed86de380405fbeaf52adc7907ef60d90e0"
+  },
+  "actual-synthetic-trivy-smoke/MANIFEST-SCHEMA.json": {
+    "bytes": 445,
+    "sha256": "53011bba97900b377fe262f5c784f71263394d13ebbeece37e55b6914ee835d0"
+  },
+  "actual-synthetic-trivy-smoke/trivy070-notice.go.gz": {
+    "bytes": 2386,
+    "sha256": "d893ec6740f122d5e0759d5c67d19dc9e10d1d171f96680113bc3472ece03593"
+  },
+  "actual-synthetic-trivy-smoke/checksums-fetch.stdout.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/smoke.py.gz": {
+    "bytes": 3947,
+    "sha256": "ebd35103f05aece496dc561c26bcc01d60579514cc6aada23209e226de3abbe7"
+  },
+  "actual-synthetic-trivy-smoke/post-cleanup.json": {
+    "bytes": 279,
+    "sha256": "1aa95a647320899248fca44c0241831dfb9aae398c14746b52bc2f203f770a64"
+  },
+  "actual-synthetic-trivy-smoke/trivy-version.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/trivy-image-help.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/stderr.log.gz": {
+    "bytes": 510,
+    "sha256": "160c75eb3121b4b371b842a248afa6836577de081ea0fce27d697c15b024c433"
+  },
+  "actual-synthetic-trivy-smoke/options-fetch.stdout.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/expected-synthetic.json": {
+    "bytes": 786,
+    "sha256": "e621af36fb6c9a33dc14525a4c7cbb863d366743c3a2b1afef7ded59858a9cee"
+  },
+  "actual-synthetic-trivy-smoke/source-fetch.stdout.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-stage-input-calls.json": {
+    "bytes": 683,
+    "sha256": "ca8043fc017222ea54bf232728d5eb768445a182b7e59cf25f9a57e5bc7e9025"
+  },
+  "actual-synthetic-trivy-smoke/smoke.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/trivy-version.txt.gz": {
+    "bytes": 148,
+    "sha256": "4635684b96a2a3cd338ffd66cb12acb2f4c6e3618c877b1137f081e35479fbc4"
+  },
+  "actual-synthetic-trivy-smoke/identity-validation.json": {
+    "bytes": 745,
+    "sha256": "3648373f1ab69894a56eddd2492efe5194a7556ce5c87643403292091fd2753e"
+  },
+  "actual-synthetic-trivy-smoke/FROZEN-REVIEW.json": {
+    "bytes": 3341,
+    "sha256": "98d3a91e498ae12d7e8d5d8bfd4d9efafb55b0b9616597520e5aa664ffe90fe6"
+  },
+  "actual-synthetic-trivy-smoke/official-checksums.txt.gz": {
+    "bytes": 1030,
+    "sha256": "d93f93d0182f47e272f8c7f52887dd3d0c8c7be747cfdb153041ac751072a290"
+  },
+  "actual-synthetic-trivy-smoke/trivy-image-help.txt.gz": {
+    "bytes": 4381,
+    "sha256": "d5026f58a5bf466ed26c65ed9ee9051a7ef6259520666b42a8d975e349b65ed6"
+  },
+  "actual-synthetic-trivy-smoke/cleanup.json": {
+    "bytes": 499,
+    "sha256": "366a42ebedfedf8c110d65c9b707e9f6c364f5846a9b1435738f289eb21256f3"
+  },
+  "actual-synthetic-trivy-smoke/stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "actual-synthetic-trivy-smoke/command.json": {
+    "bytes": 1988,
+    "sha256": "7ed61d14cf9045f325032312e76e75c45a2072935cda3d93b72a2c4436d57c08"
+  },
+  "actual-synthetic-trivy-smoke/checksums-fetch.stderr.gz": {
+    "bytes": 159,
+    "sha256": "f82b8267ac688e52f14dfbcd97ed9378d5a5014cbc767b7afce11b3ad74bbff6"
+  },
+  "actual-synthetic-trivy-smoke/MANIFEST.json": {
+    "bytes": 7210,
+    "sha256": "4ca1f872db0b34770bfad928c7d9e848a785ea87ca6bed908c6b8fe9db07d2b1"
+  },
+  "actual-synthetic-trivy-smoke/mirror.json": {
+    "bytes": 1103,
+    "sha256": "eb4db99e5cc78a83654b7bcb450a470ca6c89dd569944010a5ffc3165411827e"
+  },
+  "actual-synthetic-trivy-smoke/process.json": {
+    "bytes": 49,
+    "sha256": "61808c0d6fc04b880e7ead3bdd2275cdbfe81e04d34afb4b7c986d966412649c"
+  },
+  "actual-synthetic-trivy-smoke/trivy070-options.go.gz": {
+    "bytes": 6233,
+    "sha256": "0614e94d83c661b56a252235994dccc7f3d239a977401bc39dccbcc936556964"
+  },
+  "actual-synthetic-trivy-smoke/database-clone.json": {
+    "bytes": 285,
+    "sha256": "9b40fdfd5b5a2599e298dee223bf12e029a49891ae2da715d9fc8cbbcef49692"
+  },
+  "actual-synthetic-trivy-smoke/options-fetch.stderr.gz": {
+    "bytes": 161,
+    "sha256": "899f9fba37af35778457dafe1d03ee623ff13251d0d498af73fd9901e476b74e"
+  },
+  "actual-synthetic-trivy-smoke/stage.json": {
+    "bytes": 1676,
+    "sha256": "f4bd93d6b354541e2224cce543bcad2478545be534c919fed62934448f1a8e6b"
+  },
+  "actual-synthetic-trivy-smoke/database-before.json": {
+    "bytes": 314,
+    "sha256": "ef791a4640ec26f1d415db92366993a2bf8ae39d5809e9e495059d77b7329ae5"
+  },
+  "actual-synthetic-trivy-smoke/execution.json": {
+    "bytes": 125,
+    "sha256": "806754a509fc1c7df36fc05edf95f1ba608ba8fd7b1de27a524fd57429531720"
+  },
+  "actual-synthetic-trivy-smoke/smoke.stdout.gz": {
+    "bytes": 241,
+    "sha256": "7e62def57b3d11f734cf455d8418a0d846059033eca1866de5161f1e18b92226"
+  },
+  "actual-synthetic-trivy-smoke/tool-provenance.json": {
+    "bytes": 910,
+    "sha256": "3fd9307626ccf3926f930bf4c9d472a99dca95f952e87a1a28f4020de583e625"
+  },
+  "actual-synthetic-trivy-smoke/source-fetch.stderr.gz": {
+    "bytes": 160,
+    "sha256": "832250240064f767944911874e04b503c160baf1b499c40e01929ae3e0b7f239"
+  },
+  "actual-synthetic-trivy-smoke/raw-report.json": {
+    "bytes": 1795,
+    "sha256": "a12c0c316bc1368dd958b992fcc681fd8ccca35f46a92739f9ca258b7fde17cb"
+  },
+  "cleanup-corrected/SOURCE-MANIFEST.json": {
+    "bytes": 674,
+    "sha256": "b38036641ce3f3cd20135864118343bc00f3479f3fa78c6edfcb0a5fc8ed372a"
+  },
+  "cleanup-corrected/SUMMARY.json": {
+    "bytes": 1558,
+    "sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa"
+  },
+  "cleanup-corrected/UPSTREAM-MANIFEST.json": {
+    "bytes": 3001,
+    "sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202"
+  },
+  "cleanup-corrected/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "8d41043c6b142ce3b279fbbe08c0577557f3315f2e542af5f6f7f04fbc84405a"
+  },
+  "cleanup-corrected/source.patch.gz": {
+    "bytes": 11053,
+    "sha256": "37f30d87747759a9a5fceb64cf27ebb0c27f88f079d24bbeb68f9628b401ed32"
+  },
+  "cleanup-corrected/full-native-oci-controls.log.gz": {
+    "bytes": 57,
+    "sha256": "4facd0d8a6077ecb4f12a8061824511f99baa238d62b77d4133268efa46754f2"
+  },
+  "cleanup-corrected/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "cleanup-corrected/CHECKS.json": {
+    "bytes": 1244,
+    "sha256": "2f256d23b051fe207959e6bf04f50aed1dcbd4777e7dd206472da7a68d17dda2"
+  },
+  "cleanup-corrected/MANIFEST.json": {
+    "bytes": 4932,
+    "sha256": "e36536be27a58e2a769d4f1264c2cc98a9dd4dcf16f3e46027ba96d3a4c68dd8"
+  },
+  "cleanup-corrected/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "cleanup-corrected/local-oci-alternative-not-adopted.json": {
+    "bytes": 1358,
+    "sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec"
+  },
+  "cleanup-corrected/review-history.json": {
+    "bytes": 977,
+    "sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d"
+  },
+  "cleanup-corrected/actionlint-initial.log.gz": {
+    "bytes": 409,
+    "sha256": "5133049ca11e42f06158fe76e3149eab89e004a11b1c395ffdb473fc0b6c2b1e"
+  },
+  "cleanup-corrected/receipt.json": {
+    "bytes": 3032,
+    "sha256": "8b7de3ea8b443df17f625cdaf109f0d6686ca0071adb1595797af06552ac0f49"
+  },
+  "root-startup-probe/probe.py.gz": {
+    "bytes": 260,
+    "sha256": "7d7590ff928e79c4a08d0621e5d21cb79689de136e4c05ad20e172d77bc06ffa"
+  },
+  "root-startup-probe/RESULT.json": {
+    "bytes": 243,
+    "sha256": "80ee60e7b20c5837680581faf33b4f4106687ea92daed4fc93f2ab929418e781"
+  },
+  "root-helper-trigger/before-test.go.gz": {
+    "bytes": 5068,
+    "sha256": "fe224f9e6925d42924371fa57b247e2ffb4afbdcb6663f2e6c473691c279769f"
+  },
+  "root-helper-trigger/RESULT.json": {
+    "bytes": 338,
+    "sha256": "27a6dc14648128c735e0ad2a5589908ef7b0174c06b3a4b6f488349d78c5c07c"
+  },
+  "root-helper-trigger/SOURCE.json": {
+    "bytes": 519,
+    "sha256": "dd6723c1c9f067df2fc0ef7075c53e50bc65f47eb5295f9ebc10d2245ab28780"
+  },
+  "root-helper-trigger/overlay.json": {
+    "bytes": 206,
+    "sha256": "f3cafb931e73b71af36e6c4a170f92c28c49735e8ce0806c6039cb70e3649443"
+  },
+  "root-helper-trigger/positive.log.gz": {
+    "bytes": 80,
+    "sha256": "0a5bb0f62696a7819039772223c746b8ededfb3d497cbf109f07315d4bf3b27d"
+  },
+  "root-helper-trigger/negative.log.gz": {
+    "bytes": 235,
+    "sha256": "3e524ff15d551d6c0fb99cfd6ef87d9b9faf172c03d7af34c124af7b47ce1b56"
+  },
+  "root-helper-trigger/before-workflow.yml.gz": {
+    "bytes": 1823,
+    "sha256": "b9f3e25c63a5a8abf4adc94c26b382d91733847f42998219fcfa9fcb0e5f9ff4"
+  },
+  "root-helper-trigger/old-workflow-overlay-test.go.gz": {
+    "bytes": 5116,
+    "sha256": "d83b74ad94848b4d9d3b1582a9e65cc1fbc598b55d81853ce152bebd29da1bd7"
+  },
+  "initial-not-approved/SOURCE-MANIFEST.json": {
+    "bytes": 674,
+    "sha256": "216e9e74d0a2ed038712bd2f12c6d5c804ff3927048b38b816624721bf9724ba"
+  },
+  "initial-not-approved/SUMMARY.json": {
+    "bytes": 1558,
+    "sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa"
+  },
+  "initial-not-approved/UPSTREAM-MANIFEST.json": {
+    "bytes": 3001,
+    "sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202"
+  },
+  "initial-not-approved/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "8d41043c6b142ce3b279fbbe08c0577557f3315f2e542af5f6f7f04fbc84405a"
+  },
+  "initial-not-approved/source.patch.gz": {
+    "bytes": 10746,
+    "sha256": "2cf5a3dee8b355e4dd44ab23d0913dc1b8f05a8e945d7d33e3857b9a974ff1f4"
+  },
+  "initial-not-approved/full-native-oci-controls.log.gz": {
+    "bytes": 57,
+    "sha256": "7cb0c52b73cdaf0a81f01a2258f4aa5914b9b7b908dc9277aa9eaf29300591d8"
+  },
+  "initial-not-approved/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "initial-not-approved/CHECKS.json": {
+    "bytes": 1445,
+    "sha256": "b25c4e5843b366c37e9b4cbbd99dc76b26fa47fadeb43ba4e5d075570973a537"
+  },
+  "initial-not-approved/MANIFEST.json": {
+    "bytes": 4568,
+    "sha256": "6a10ad465e0bc6b7cf524b28fecb507f326ebfe3fc39a10a0001df2f0f3299d3"
+  },
+  "initial-not-approved/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "initial-not-approved/local-oci-alternative-not-adopted.json": {
+    "bytes": 1358,
+    "sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec"
+  },
+  "initial-not-approved/review-history.json": {
+    "bytes": 977,
+    "sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d"
+  },
+  "initial-not-approved/actionlint-initial.log.gz": {
+    "bytes": 409,
+    "sha256": "5133049ca11e42f06158fe76e3149eab89e004a11b1c395ffdb473fc0b6c2b1e"
+  },
+  "initial-not-approved/receipt.json": {
+    "bytes": 2536,
+    "sha256": "fbb0d4112f7a8a32e25412fb56dfe11e02d7a0e3ba72acd97163733153f8f379"
+  },
+  "startup-final/SOURCE-MANIFEST.json": {
+    "bytes": 674,
+    "sha256": "1e30dbf5371217cec0c5a36902322aab8cbdb68652ec7df9ec7459608b8b8197"
+  },
+  "startup-final/SUMMARY.json": {
+    "bytes": 1558,
+    "sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa"
+  },
+  "startup-final/UPSTREAM-MANIFEST.json": {
+    "bytes": 3001,
+    "sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202"
+  },
+  "startup-final/actionlint.yaml.gz": {
+    "bytes": 72,
+    "sha256": "8d41043c6b142ce3b279fbbe08c0577557f3315f2e542af5f6f7f04fbc84405a"
+  },
+  "startup-final/startup-negative.log.gz": {
+    "bytes": 1977,
+    "sha256": "ddcf9d48be774c0d0d5ca90987b54b97c3a59c17f8327f79ae890026226784ef"
+  },
+  "startup-final/source.patch.gz": {
+    "bytes": 12048,
+    "sha256": "604b7fe807d965034e1cf41017f63667f602df700ba5732d08042094b025c97c"
+  },
+  "startup-final/full-native-oci-controls.log.gz": {
+    "bytes": 57,
+    "sha256": "def5886f75b74bfcfa3c432b52aba440be3f523f948ac12e230361af5c186b20"
+  },
+  "startup-final/actionlint.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "startup-final/startup-negative.json": {
+    "bytes": 475,
+    "sha256": "84c4f146660d54d58f366b997308034957b5f7e0cd5e00655bbf943df3d02b2c"
+  },
+  "startup-final/CHECKS.json": {
+    "bytes": 1197,
+    "sha256": "484462872dfecced5f68522999c158c31a73a1079104d6f77e3128eb4bb5fd38"
+  },
+  "startup-final/root-probe-corrected.json": {
+    "bytes": 337,
+    "sha256": "6f93d3857e65f16a9b46950308a778ce59139be68165eb4f1f279950fb1560ce"
+  },
+  "startup-final/root-probe-corrected.log.gz": {
+    "bytes": 388,
+    "sha256": "992e4be002d54579ec2b7b6c6b49997908db0ab4a879e43ec7874da9c1042486"
+  },
+  "startup-final/MANIFEST.json": {
+    "bytes": 6583,
+    "sha256": "4f940d2fc949be5ef0c085938e49d5203e98ae1bdd5e8ca7ff3524480c39c912"
+  },
+  "startup-final/diff-check.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "startup-final/local-oci-alternative-not-adopted.json": {
+    "bytes": 1358,
+    "sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec"
+  },
+  "startup-final/review-history.json": {
+    "bytes": 977,
+    "sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d"
+  },
+  "startup-final/actionlint-initial.log.gz": {
+    "bytes": 409,
+    "sha256": "5133049ca11e42f06158fe76e3149eab89e004a11b1c395ffdb473fc0b6c2b1e"
+  },
+  "startup-final/receipt.json": {
+    "bytes": 4762,
+    "sha256": "d29319cd6b59041b372489fd08e8f091d63b456abb852431b13eb58246a7b142"
+  },
+  "startup-final/independent-review/corrected-focused-review.json": {
+    "bytes": 972,
+    "sha256": "69753cc279603cdb6230c94c8202d1f3577820c4ddf4d0d5b2c79a0f883e2231"
+  },
+  "startup-final/independent-review/cleanup-failure-probe.py.gz": {
+    "bytes": 881,
+    "sha256": "e735ccaf441c3b0bf2c5fe0a3c2ed7011dbb109f7702b1c86c04d41a39608a15"
+  },
+  "startup-final/independent-review/cleanup-failure-probe-result.json": {
+    "bytes": 607,
+    "sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055"
+  },
+  "startup-final/independent-review/corrected-focused.log.gz": {
+    "bytes": 189,
+    "sha256": "13695e54db3a22e1855dd0cfc014848065b7476399efaad7e03ee86a6ac7ec44"
+  },
+  "startup-final/signal-window-negative/RESULT.json": {
+    "bytes": 180,
+    "sha256": "73a55eb39c77a4a57e93c2b24e2fb05e420f7b6d6543d264dc9799fe14ac7ae1"
+  },
+  "startup-final/signal-window-negative/negative.log.gz": {
+    "bytes": 418,
+    "sha256": "eac49cb48e5b60e4347a84be58ece9289d68f8b4ced58b674c4957d5788408a3"
+  },
+  "startup-final/root-startup-failure/probe.py.gz": {
+    "bytes": 260,
+    "sha256": "7d7590ff928e79c4a08d0621e5d21cb79689de136e4c05ad20e172d77bc06ffa"
+  },
+  "startup-final/root-startup-failure/RESULT.json": {
+    "bytes": 243,
+    "sha256": "80ee60e7b20c5837680581faf33b4f4106687ea92daed4fc93f2ab929418e781"
+  },
+  "startup-final/upstream/trivy-v0.70.0-fanal-remote.go.gz": {
+    "bytes": 938,
+    "sha256": "fe7619c69f9eefe2646e18d4037d80c40a6edf4608a073a832f01d3091aebbd1"
+  },
+  "startup-final/upstream/trivy-v0.70.0-remote.go.gz": {
+    "bytes": 2456,
+    "sha256": "51d690fb1257dcf3da1994f8fc4c53fe6c519672b846319806efb9cbcc256aa0"
+  },
+  "startup-final/upstream/go-containerregistry-v0.21.2-registry.go.gz": {
+    "bytes": 1894,
+    "sha256": "7e55f889a368b07c363e96eeabcea18ff47a0c00b6463a30b18c2dfe5757c77b"
+  },
+  "startup-final/upstream/trivy-v0.70.0-go.mod.gz": {
+    "bytes": 7370,
+    "sha256": "92fbf358c6469bf7c9207396df2e2cbfa2c31c957772b2dced6ff200e4e9acd9"
+  },
+  "startup-final/upstream/trivy-v0.70.0-global_flags.go.gz": {
+    "bytes": 1761,
+    "sha256": "e82a1751f06ee292585ff5529f382e6052076a304f6492f83557f1e6aebbec66"
+  },
+  "startup-final/upstream/trivy-v0.70.0-fanal-image.go.gz": {
+    "bytes": 1602,
+    "sha256": "bb4201633284ad9ce36c3fba33ba4b40f008f53bc1b10399bd546763739ad3b7"
+  },
+  "startup-final/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz": {
+    "bytes": 5616,
+    "sha256": "aa77bd1cb0ab9897f38f41c4c863fef611b0f310301cd85e6c86415e8abc5aef"
+  },
+  "startup-final/upstream/trivy-v0.70.0-registry_flags.go.gz": {
+    "bytes": 1003,
+    "sha256": "57bc13b4e489835e7c1796acd5b4ce5ddad00a49ba2c1d61229fce70045f0223"
+  },
+  "startup-final/upstream/go-containerregistry-v0.21.2-descriptor.go.gz": {
+    "bytes": 2293,
+    "sha256": "f09487f4e5720ffd5bec51de131c056ee1ca2ce4a47037b42de6793eadcfc13c"
+  },
+  "startup-final/unchanged/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "startup-final/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz": {
+    "bytes": 12266,
+    "sha256": "d24bde1c5e488d8b0c3130f792d1e405ab3036854aceaf22efd18efbba40d923"
+  },
+  "startup-final/source/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "startup-final/source/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 7466,
+    "sha256": "9144789d64b57a59e6e9b84406958dcaabefde34ae9c38bf7852867454dee8d1"
+  },
+  "startup-final/source/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4784,
+    "sha256": "c4bdcae67c3d7049fcf0d73bd608d697062b1875b067cc3ad0cdaab548803d41"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-fanal-remote.go.gz": {
+    "bytes": 938,
+    "sha256": "fe7619c69f9eefe2646e18d4037d80c40a6edf4608a073a832f01d3091aebbd1"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-remote.go.gz": {
+    "bytes": 2456,
+    "sha256": "51d690fb1257dcf3da1994f8fc4c53fe6c519672b846319806efb9cbcc256aa0"
+  },
+  "initial-not-approved/upstream/go-containerregistry-v0.21.2-registry.go.gz": {
+    "bytes": 1894,
+    "sha256": "7e55f889a368b07c363e96eeabcea18ff47a0c00b6463a30b18c2dfe5757c77b"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-go.mod.gz": {
+    "bytes": 7370,
+    "sha256": "92fbf358c6469bf7c9207396df2e2cbfa2c31c957772b2dced6ff200e4e9acd9"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-global_flags.go.gz": {
+    "bytes": 1761,
+    "sha256": "e82a1751f06ee292585ff5529f382e6052076a304f6492f83557f1e6aebbec66"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-fanal-image.go.gz": {
+    "bytes": 1602,
+    "sha256": "bb4201633284ad9ce36c3fba33ba4b40f008f53bc1b10399bd546763739ad3b7"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz": {
+    "bytes": 5616,
+    "sha256": "aa77bd1cb0ab9897f38f41c4c863fef611b0f310301cd85e6c86415e8abc5aef"
+  },
+  "initial-not-approved/upstream/trivy-v0.70.0-registry_flags.go.gz": {
+    "bytes": 1003,
+    "sha256": "57bc13b4e489835e7c1796acd5b4ce5ddad00a49ba2c1d61229fce70045f0223"
+  },
+  "initial-not-approved/upstream/go-containerregistry-v0.21.2-descriptor.go.gz": {
+    "bytes": 2293,
+    "sha256": "f09487f4e5720ffd5bec51de131c056ee1ca2ce4a47037b42de6793eadcfc13c"
+  },
+  "initial-not-approved/unchanged/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "initial-not-approved/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz": {
+    "bytes": 12266,
+    "sha256": "d24bde1c5e488d8b0c3130f792d1e405ab3036854aceaf22efd18efbba40d923"
+  },
+  "initial-not-approved/source/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "initial-not-approved/source/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 6276,
+    "sha256": "8cbdad6146d94cdcd17dd27a143e577091dd87f66cf43989d48d34f859f6e889"
+  },
+  "initial-not-approved/source/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4667,
+    "sha256": "68d7f825afaac0930d1ac1379375bc1c28ad83224d289f7b9d763817bd5ab08d"
+  },
+  "cleanup-corrected/independent-review/cleanup-failure-probe.py.gz": {
+    "bytes": 881,
+    "sha256": "e735ccaf441c3b0bf2c5fe0a3c2ed7011dbb109f7702b1c86c04d41a39608a15"
+  },
+  "cleanup-corrected/independent-review/cleanup-failure-probe-result.json": {
+    "bytes": 607,
+    "sha256": "4dafc8366196a8015e8169633b40db9541f2e9d11e0876bf67a58cc86c096055"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-fanal-remote.go.gz": {
+    "bytes": 938,
+    "sha256": "fe7619c69f9eefe2646e18d4037d80c40a6edf4608a073a832f01d3091aebbd1"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-remote.go.gz": {
+    "bytes": 2456,
+    "sha256": "51d690fb1257dcf3da1994f8fc4c53fe6c519672b846319806efb9cbcc256aa0"
+  },
+  "cleanup-corrected/upstream/go-containerregistry-v0.21.2-registry.go.gz": {
+    "bytes": 1894,
+    "sha256": "7e55f889a368b07c363e96eeabcea18ff47a0c00b6463a30b18c2dfe5757c77b"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-go.mod.gz": {
+    "bytes": 7370,
+    "sha256": "92fbf358c6469bf7c9207396df2e2cbfa2c31c957772b2dced6ff200e4e9acd9"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-global_flags.go.gz": {
+    "bytes": 1761,
+    "sha256": "e82a1751f06ee292585ff5529f382e6052076a304f6492f83557f1e6aebbec66"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-fanal-image.go.gz": {
+    "bytes": 1602,
+    "sha256": "bb4201633284ad9ce36c3fba33ba4b40f008f53bc1b10399bd546763739ad3b7"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-fanal-artifact-image.go.gz": {
+    "bytes": 5616,
+    "sha256": "aa77bd1cb0ab9897f38f41c4c863fef611b0f310301cd85e6c86415e8abc5aef"
+  },
+  "cleanup-corrected/upstream/trivy-v0.70.0-registry_flags.go.gz": {
+    "bytes": 1003,
+    "sha256": "57bc13b4e489835e7c1796acd5b4ce5ddad00a49ba2c1d61229fce70045f0223"
+  },
+  "cleanup-corrected/upstream/go-containerregistry-v0.21.2-descriptor.go.gz": {
+    "bytes": 2293,
+    "sha256": "f09487f4e5720ffd5bec51de131c056ee1ca2ce4a47037b42de6793eadcfc13c"
+  },
+  "cleanup-corrected/unchanged/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "cleanup-corrected/unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py.gz": {
+    "bytes": 12266,
+    "sha256": "d24bde1c5e488d8b0c3130f792d1e405ab3036854aceaf22efd18efbba40d923"
+  },
+  "cleanup-corrected/source/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "cleanup-corrected/source/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 6571,
+    "sha256": "078a00d9d7107062ee4befeb52bec7f3721e468ad35cb4f233680c84beb28a5f"
+  },
+  "cleanup-corrected/source/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4679,
+    "sha256": "a94043864ea5caa1927bc4bc0c145bd38bf706d01fc083d130f1a06b4a986d3a"
+  },
+  "actual-synthetic-trivy-smoke/layout/oci-layout.gz": {
+    "bytes": 51,
+    "sha256": "78f7648e2c5e1b0f34dec69d91f9788ddd1ff165215e93704ec5290f2b018a40"
+  },
+  "actual-synthetic-trivy-smoke/layout/.bex-native-oci-stage.json": {
+    "bytes": 169,
+    "sha256": "8ef4597be6fc001fec07aa7b82da7334e6f9fea2e482c9ced9d19732d5b6e479"
+  },
+  "actual-synthetic-trivy-smoke/layout/index.json": {
+    "bytes": 290,
+    "sha256": "45dc65924f2958a71dc7982cccb22d7897ecf47ceddd5ed159f89f086d6a0d8b"
+  },
+  "actual-synthetic-trivy-smoke/source/native-oci-mirror.py.gz": {
+    "bytes": 4784,
+    "sha256": "c4bdcae67c3d7049fcf0d73bd608d697062b1875b067cc3ad0cdaab548803d41"
+  },
+  "actual-synthetic-trivy-smoke/source/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/layer.tar.gz": {
+    "bytes": 442,
+    "sha256": "09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7.blob.gz": {
+    "bytes": 296,
+    "sha256": "764418568a17db1576e3d4c462584e2edbeb0277145698b3176a142d359e4a32"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/f8dfd2bf7f722a9b5e27f654a070d829149bd44f1d6c2c0742a65c196b335b79.blob.gz": {
+    "bytes": 293,
+    "sha256": "eb7ee8e13e7aa9436fef0c72ea1084dedd05da16d76275b409a6b8c7523b1dfb"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/41caa867ab9a7aec97972ec9d42f74aaec8e20b261268acddf8dcb9edf48640c.blob.gz": {
+    "bytes": 280,
+    "sha256": "4ac3795ab25233e3d0daf9db077186907d2d035838c1215012cb2df9023e6b56"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d.blob.gz": {
+    "bytes": 465,
+    "sha256": "8462978c698a79dfe3ea5971e022d07afc793a8bb1088a20f8d2a15f990fc410"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f.blob.gz": {
+    "bytes": 280,
+    "sha256": "fd5e7a3f48d658c120f3fd407fb252664d4fca82e942f4300564e8f29fa2d66a"
+  },
+  "actual-synthetic-trivy-smoke/synthetic-payloads/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90.blob.gz": {
+    "bytes": 292,
+    "sha256": "4b140d11f03ac13868976ea901c2e3707959bfe82d8cafd97f3ad94f6dc83c80"
+  },
+  "actual-synthetic-trivy-smoke/layout/blobs/sha256/f0a0875c6753f5e9f9968d4a94f6a146aeaf8357b35ea14b6fb1b24b117bb5a7.gz": {
+    "bytes": 296,
+    "sha256": "764418568a17db1576e3d4c462584e2edbeb0277145698b3176a142d359e4a32"
+  },
+  "actual-synthetic-trivy-smoke/layout/blobs/sha256/e7a702e77f3d59231adbee715a61dc133f6cf12fa7bcd7ce002b8e0f494f6e90.gz": {
+    "bytes": 292,
+    "sha256": "4b140d11f03ac13868976ea901c2e3707959bfe82d8cafd97f3ad94f6dc83c80"
+  },
+  "actual-synthetic-trivy-smoke/layout/blobs/sha256/09593273c8682fb8ad5ebfda114b5429b445dc72c26b4b06154911dc4a12096d.gz": {
+    "bytes": 465,
+    "sha256": "8462978c698a79dfe3ea5971e022d07afc793a8bb1088a20f8d2a15f990fc410"
+  },
+  "actual-synthetic-trivy-smoke/layout/blobs/sha256/0a34224249443d71d9cd40b58040d8dd699b84977b9b2a88a8412b9ce432630f.gz": {
+    "bytes": 280,
+    "sha256": "fd5e7a3f48d658c120f3fd407fb252664d4fca82e942f4300564e8f29fa2d66a"
+  },
+  "independent-review/corrected-case/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "independent-review/corrected-case/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 6571,
+    "sha256": "078a00d9d7107062ee4befeb52bec7f3721e468ad35cb4f233680c84beb28a5f"
+  },
+  "independent-review/corrected-case/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4679,
+    "sha256": "a94043864ea5caa1927bc4bc0c145bd38bf706d01fc083d130f1a06b4a986d3a"
+  },
+  "independent-review/corrected-case/.github/scripts/test_native_oci_stage.py.gz": {
+    "bytes": 4270,
+    "sha256": "ba7eb5b5f0746640e7c38910986684fe5a2043bdcf73bf9fb6fca938ac1ab8c1"
+  },
+  "independent-review/corrected-case/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "independent-review/corrected-case/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  },
+  "independent-review/case/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "independent-review/case/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 6276,
+    "sha256": "8cbdad6146d94cdcd17dd27a143e577091dd87f66cf43989d48d34f859f6e889"
+  },
+  "independent-review/case/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4667,
+    "sha256": "68d7f825afaac0930d1ac1379375bc1c28ad83224d289f7b9d763817bd5ab08d"
+  },
+  "independent-review/case/.github/scripts/test_native_oci_stage.py.gz": {
+    "bytes": 4270,
+    "sha256": "ba7eb5b5f0746640e7c38910986684fe5a2043bdcf73bf9fb6fca938ac1ab8c1"
+  },
+  "independent-review/case/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "independent-review/case/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  },
+  "independent-review/startup-case/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "independent-review/startup-case/.github/scripts/test_native_oci_mirror.py.gz": {
+    "bytes": 7466,
+    "sha256": "9144789d64b57a59e6e9b84406958dcaabefde34ae9c38bf7852867454dee8d1"
+  },
+  "independent-review/startup-case/.github/scripts/native-oci-mirror.py.gz": {
+    "bytes": 4784,
+    "sha256": "c4bdcae67c3d7049fcf0d73bd608d697062b1875b067cc3ad0cdaab548803d41"
+  },
+  "independent-review/startup-case/.github/scripts/test_native_oci_stage.py.gz": {
+    "bytes": 4270,
+    "sha256": "ba7eb5b5f0746640e7c38910986684fe5a2043bdcf73bf9fb6fca938ac1ab8c1"
+  },
+  "independent-review/startup-case/.github/scripts/native-oci-stage.py.gz": {
+    "bytes": 5123,
+    "sha256": "ea46dcae43ce3cfe688e94fa9d5472fde4ee940dbb7822b38751fc56fb0a51de"
+  },
+  "independent-review/startup-case/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  }
+}

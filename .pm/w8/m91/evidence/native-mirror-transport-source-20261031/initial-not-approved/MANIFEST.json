@@ -1,0 +1,140 @@
+{
+  "file_count": 27,
+  "files": [
+    {
+      "path": "CHECKS.json",
+      "bytes": 1445,
+      "sha256": "b25c4e5843b366c37e9b4cbbd99dc76b26fa47fadeb43ba4e5d075570973a537"
+    },
+    {
+      "path": "SOURCE-MANIFEST.json",
+      "bytes": 674,
+      "sha256": "216e9e74d0a2ed038712bd2f12c6d5c804ff3927048b38b816624721bf9724ba"
+    },
+    {
+      "path": "SUMMARY.json",
+      "bytes": 1558,
+      "sha256": "abe9b6b9c7e44667e3d2da19595da86e4586fa7d9db504c071efbb5956056bfa"
+    },
+    {
+      "path": "UPSTREAM-MANIFEST.json",
+      "bytes": 3001,
+      "sha256": "0db6286f3ef3227d9107b50748ab24eba9f86fb6c196daca399f3ef87af15202"
+    },
+    {
+      "path": "actionlint-initial.log",
+      "bytes": 1882,
+      "sha256": "a7abd2d6dde66bd68ec75556452967a3197983a6b53d8ca7591677e1a219145c"
+    },
+    {
+      "path": "actionlint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "actionlint.yaml",
+      "bytes": 64,
+      "sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f"
+    },
+    {
+      "path": "diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "full-native-oci-controls.log",
+      "bytes": 155,
+      "sha256": "53aa521fcddf3521852b1356722794ba1efbadc5d47f7eea9dc93bc0422e0baf"
+    },
+    {
+      "path": "local-oci-alternative-not-adopted.json",
+      "bytes": 1358,
+      "sha256": "9acd4bd479ac56895130c55e6391a044446561e0cd60b23b23a3c8b1da4a47ec"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 2536,
+      "sha256": "fbb0d4112f7a8a32e25412fb56dfe11e02d7a0e3ba72acd97163733153f8f379"
+    },
+    {
+      "path": "review-history.json",
+      "bytes": 977,
+      "sha256": "3e8b9094a179b809e127ae263bed61b6b0c82eeed694d81d2aa39760f7cd914d"
+    },
+    {
+      "path": "source/.github/scripts/native-oci-mirror.py",
+      "bytes": 15191,
+      "sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312"
+    },
+    {
+      "path": "source/.github/scripts/test_native_oci_mirror.py",
+      "bytes": 22370,
+      "sha256": "c3534cbbcfc0641987a103cea668ad60bc97f710b465d5d081975a8158dde882"
+    },
+    {
+      "path": "source/.github/workflows/native-base-image.yml",
+      "bytes": 18178,
+      "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8"
+    },
+    {
+      "path": "source.patch",
+      "bytes": 40374,
+      "sha256": "b5be5efd76cdcd7c724006028acbda8690d2937807139055e5b8780bd085df2d"
+    },
+    {
+      "path": "unchanged/.github/scripts/native-oci-stage.py",
+      "bytes": 18041,
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59"
+    },
+    {
+      "path": "unchanged/.pm/w8/m91/evidence/published-node14-20261030/executed-tools/loopx-w8-verify-native-artifact.py",
+      "bytes": 40661,
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2"
+    },
+    {
+      "path": "upstream/go-containerregistry-v0.21.2-descriptor.go",
+      "bytes": 6887,
+      "sha256": "026db62f7d807a7c9711420e11acd0ee5d121553c0e533563643094ba59dc655"
+    },
+    {
+      "path": "upstream/go-containerregistry-v0.21.2-registry.go",
+      "bytes": 4993,
+      "sha256": "8cbe3fe3fb540bd623e6a636fe14ed20c856c3a5691c4ac7a6dcde9e5b3ced67"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-artifact-image.go",
+      "bytes": 19933,
+      "sha256": "f687b4765e952e7ddc836146ca1926f508d20d86e279c0f2b11bb5fa317779f2"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-image.go",
+      "bytes": 4105,
+      "sha256": "0d22871297807e6aab3bc9dd83883e585c32d0f9131d009892a0c0cb1103ddc0"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-fanal-remote.go",
+      "bytes": 2290,
+      "sha256": "74c49e0564aa00d7884eb0d35d16395ab50b17870908bbf6277e744971d49624"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-global_flags.go",
+      "bytes": 5805,
+      "sha256": "99aea8a91ea3866b83ca2272f6b38a6299f34477e435d6221f556fd9feeaf839"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-go.mod",
+      "bytes": 26601,
+      "sha256": "8d9efdd5156989dd8538a3d9e27ad173a99bf6459b76e958051c62a61c8a3bca"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-registry_flags.go",
+      "bytes": 2909,
+      "sha256": "04f50b5ebba36782c3077bdd1e46340a4ede211c6636e49b0f026e5be1dac99e"
+    },
+    {
+      "path": "upstream/trivy-v0.70.0-remote.go",
+      "bytes": 8666,
+      "sha256": "b151821fe9494b92b8ad3b0f4fe51de69f4ae79a99ecc92118d79f45d2289d0b"
+    }
+  ]
+}

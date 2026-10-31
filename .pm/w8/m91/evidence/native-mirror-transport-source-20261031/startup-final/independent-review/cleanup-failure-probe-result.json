@@ -1,0 +1,9 @@
+{
+  "source_helper_sha256": "8022371ddcc51aa7066247949ef7fa4fbf3eaec37d9ed567ff44e3c6b5359312",
+  "helper_raised": "mirror scan failed (OSError)",
+  "receipt_complete": true,
+  "receipt_error": "mirror scan failed (OSError)",
+  "raw_report_remains": true,
+  "local_scope": "real owned loopback HTTP + controlled scanner stub; injected TemporaryDirectory cleanup OSError after actual scan exit0, not a filesystem fault or real Trivy execution",
+  "workflow_limit": "outer wrapper still sees nonzero and removes report; this is a contradictory helper failure receipt, not a demonstrated publication bypass"
+}

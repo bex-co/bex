@@ -1,0 +1,27 @@
+{
+  ".github/workflows/native-base-image.yml": {
+    "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "bytes": 18178,
+    "mode": "0o644"
+  },
+  ".github/scripts/native-oci-mirror.py": {
+    "sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+    "bytes": 15940,
+    "mode": "0o644"
+  },
+  ".github/scripts/test_native_oci_mirror.py": {
+    "sha256": "48b170e4243fe53519581350637cc91f63f7deaccbdfac266a417a1ac3ea9445",
+    "bytes": 26789,
+    "mode": "0o644"
+  },
+  ".github/workflows/native-common-image.yml": {
+    "sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9",
+    "bytes": 4675,
+    "mode": "0o644"
+  },
+  "lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "sha256": "bea919bf4ad408134ae7b79c96f3b4e090082f1b13affb5413b682fd8258e636",
+    "bytes": 14869,
+    "mode": "0o644"
+  }
+}
