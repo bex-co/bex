@@ -35,6 +35,7 @@ func TestCommonNode14AddonPythonIsPrivateForPrimaryAndCompanion(t *testing.T) {
 	for _, tc := range []struct{ runtime, version string }{
 		{nativeNodeRuntime, "14"}, {nativeNodeRuntime, "14.21.2"},
 		{nativePythonRuntime, "14"}, {nativePythonRuntime, "14.21.2"},
+		{nativeNodeRuntime, "16"}, {nativePythonRuntime, "16"},
 		{nativeNodeRuntime, "24"}, {nativePythonRuntime, "24"},
 	} {
 		t.Run(tc.runtime+"/"+tc.version, func(t *testing.T) {
@@ -65,10 +66,16 @@ func TestCommonNode14AddonPythonIsPrivateForPrimaryAndCompanion(t *testing.T) {
 				}
 				return
 			}
-			helper := "RUN --network=none /usr/bin/python3 -I /usr/libexec/bex-native/prepare-node14-tools.py " + python.version + "\n"
+			helper := "RUN --network=none /opt/bex/native-node-python/bin/python3.9 -I /usr/libexec/bex-native/prepare-node14-tools.py " + python.version + "\n"
 			copyAt, helperAt, authoredAt := strings.Index(recipe, private), strings.Index(recipe, helper), strings.Index(recipe, "\nCOPY . .\n")
 			if copyAt < 0 || helperAt < copyAt || authoredAt < helperAt || strings.Count(recipe, private) != 1 {
 				t.Fatalf("private exact tool interpreter/order missing:\n%s", recipe)
+			}
+			if tc.runtime == nativePythonRuntime {
+				npmAt := strings.Index(recipe, " /usr/local/lib/node_modules /usr/local/lib/node_modules\n")
+				if npmAt < 0 || npmAt > copyAt {
+					t.Fatal("private helper preceded the selected companion npm tree")
+				}
 			}
 			final := recipe[strings.Index(recipe, "\nFROM "+commonFixtureImage+"\n"):]
 			for _, forbidden := range []string{"ENV PYTHON=", "ENV npm_config_python=", "ENV LD_LIBRARY_PATH=", "ENV PYTHONHOME=", "ENV PYTHONPATH=", "--from=" + pythonSource + " /usr/local/ /usr/local/"} {

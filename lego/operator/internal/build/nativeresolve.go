@@ -133,6 +133,11 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		if err != nil {
 			return nil, err
 		}
+		pythonLines, err := nativeHistoricalNodePythonLines(choice.Image, node.Line)
+		if err != nil {
+			return nil, err
+		}
+		lines += pythonLines
 		if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
 			return nil, err
 		}
@@ -187,7 +192,15 @@ func rewriteNativePrimaryBase(dockerfile, runtime string, choice NativeChoice) (
 	if strings.Count(rewritten, nativePnpmInstall()) != 1 {
 		return "", fmt.Errorf("generated Node build lacks its unique pnpm layers")
 	}
-	return strings.Replace(rewritten, nativePnpmInstall(), nativeLegacyPnpmInstall(), 1), nil
+	rewritten = strings.Replace(rewritten, nativePnpmInstall(), nativeLegacyPnpmInstall(), 1)
+	lines, err := nativeHistoricalNodePythonLines(choice.Image, choice.Line)
+	if err != nil {
+		return "", err
+	}
+	if lines != "" {
+		return afterNativeBase(rewritten, choice.Image, lines)
+	}
+	return rewritten, nil
 }
 
 // addNativeBun copies the chosen Bun binary into the toolchain image right

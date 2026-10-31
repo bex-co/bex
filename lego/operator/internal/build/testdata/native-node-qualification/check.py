@@ -106,7 +106,23 @@ def project(manager, expected, wrong=False):
                             "probe": "node ../../check.js script " + manager}}
     if manager == "pnpm":
         manifest["packageManager"] = "pnpm@" + expected["pnpm"]
-    if wrong:
+    if wrong and manager == "pnpm":
+        # Cold file-tar resolution can omit manifest engine checking in pnpm10.
+        # Use its actual project engineStrict path; its diagnostic names CWD,
+        # not the manifest name or the dependency sentinel.
+        manifest["engines"]["node"] = ">=" + str(major + 1)
+        # Select the tagged findWorkspacePackages(includeRoot=true) route
+        # explicitly, rather than relying on cold dependency resolution.
+        workspace = 'packages:\n  - "."\n'
+        (work / "pnpm-workspace.yaml").write_text(workspace)
+        manifest_bytes = (json.dumps(manifest, indent=2) + "\n").encode()
+        (OUT / "pnpm-engine-input.json").write_text(json.dumps({
+            "negative_kind": "project-engine-strict", "project_cwd": str(work.resolve()),
+            "selected_node": expected["node"], "range": manifest["engines"]["node"],
+            "project_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "workspace_sha256": hashlib.sha256(workspace.encode()).hexdigest(),
+            "dependency_tarball": None}, indent=2) + "\n")
+    if wrong and manager != "pnpm":
         # npm6's no-args install does not reliably reject the root's engines.
         # Reach the actual dependency check with a tiny offline local tarball;
         # the positive project above remains entirely dependency-free.
@@ -130,21 +146,31 @@ def project(manager, expected, wrong=False):
     return work
 
 
-def validate_engine_rejection(result, manager, required, npm_version):
+def validate_engine_rejection(result, manager, required, npm_version, cwd=None, selected_node=None):
     assert result.returncode == 1, manager + " did not report an engine rejection exit"
     output = result.stdout + result.stderr
-    assert ENGINE_SENTINEL in output and required in output, "wrong engine package/range"
-    if manager == "npm":
-        diagnostic = "ENOTSUP" if int(npm_version.split(".")[0]) < 7 else "EBADENGINE"
-        assert diagnostic in output, "npm failed for a different reason"
-    elif manager == "yarn":
-        diagnostic = 'The engine "node" is incompatible'
-        assert diagnostic in output, "Yarn failed for a different reason"
-    else:
-        assert manager == "pnpm"
+    assert required in output, "wrong engine range"
+    if manager == "pnpm":
         diagnostic = "ERR_PNPM_UNSUPPORTED_ENGINE"
         assert diagnostic in output, "pnpm failed for a different reason"
-    return {"manager": manager, "package": ENGINE_SENTINEL, "range": required,
+        assert cwd is not None and selected_node, "missing actual project identity"
+        project_cwd = str(cwd.resolve())
+        lines = {line.strip() for line in output.splitlines()}
+        assert 'Your Node version is incompatible with "' + project_cwd + '".' in lines, "wrong pnpm CWD"
+        assert "Expected version: " + required in lines, "wrong pnpm wanted Node range"
+        assert ("Got: " + selected_node in lines or "Got: v" + selected_node in lines), "wrong pnpm current Node"
+        identity = {"project_cwd": project_cwd, "selected_node": selected_node}
+    else:
+        assert ENGINE_SENTINEL in output, "wrong engine package"
+        if manager == "npm":
+            diagnostic = "ENOTSUP" if int(npm_version.split(".")[0]) < 7 else "EBADENGINE"
+            assert diagnostic in output, "npm failed for a different reason"
+        else:
+            assert manager == "yarn"
+            diagnostic = 'The engine "node" is incompatible'
+            assert diagnostic in output, "Yarn failed for a different reason"
+        identity = {"package": ENGINE_SENTINEL}
+    return {"manager": manager, **identity, "range": required,
             "diagnostic": diagnostic, "returncode": result.returncode}
 
 
@@ -168,7 +194,8 @@ def package_managers(expected, versions, phase, managers):
             wrong = project(manager, expected, wrong=True)
             rejected = command(manager + "-wrong-engine", args, wrong, success=False)
             proof = validate_engine_rejection(rejected, manager,
-                ">=" + str(int(expected["node"].split(".")[0]) + 1), versions["npm"])
+                ">=" + str(int(expected["node"].split(".")[0]) + 1), versions["npm"],
+                cwd=wrong, selected_node=expected["node"])
             (OUT / (manager + "-engine-proof.json")).write_text(json.dumps(proof, indent=2) + "\n")
         result = command(manager + "-run-" + phase, [manager, "run", "probe"], work)
         actual = proofs(result.stdout)

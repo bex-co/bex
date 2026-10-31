@@ -28,6 +28,7 @@
 !backend/internal/apps/schema/*.json
 !backend/internal/agentsession/agent-profiles.json
 !operator/internal/build/toolchain-freshness.json
+!operator/internal/build/nativenodepython.py
 
 # ADR047's separate agent-template Dockerfile shares this root context so it can
 # copy the pinned production driver package;
