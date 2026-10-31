@@ -1,0 +1,32 @@
+[
+  {
+    "path": "lego/operator/internal/build/native.go",
+    "bytes": 25979,
+    "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "scope": "unchanged runtime/canonical/first-cohort context, not proposed edits"
+  },
+  {
+    "path": "lego/operator/internal/build/nativebases.go",
+    "bytes": 10006,
+    "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+    "scope": "unchanged runtime/canonical/first-cohort context, not proposed edits"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeresolve.go",
+    "bytes": 19222,
+    "sha256": "be2e1c1e1f4e6eaa555d6ef47d322738f064a2495ff895dc8423aaf9149482af",
+    "scope": "unchanged runtime/canonical/first-cohort context, not proposed edits"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+    "bytes": 16556,
+    "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+    "scope": "unchanged runtime/canonical/first-cohort context, not proposed edits"
+  },
+  {
+    "path": ".github/workflows/native-common-image.yml",
+    "bytes": 4675,
+    "sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9",
+    "scope": "unchanged runtime/canonical/first-cohort context, not proposed edits"
+  }
+]

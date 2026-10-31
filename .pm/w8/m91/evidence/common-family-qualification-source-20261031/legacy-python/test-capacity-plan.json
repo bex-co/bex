@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-31T18:30:18.416275+00:00",
+  "new_preflight_bytes": 2415919104,
+  "floor_bytes": 2147483648,
+  "proactive_reserve_bytes": 134217728,
+  "own_tmp_limit_bytes": 503316480,
+  "reason": "Fresh cached scoped-build-package plan after initial combined suite exposed only parallel Ruby WIP test fixture mismatch, now author-fixed; initial actual own temp42,553,344B. No resources/prune changed.",
+  "current_free_bytes": 2604879872
+}

@@ -1,0 +1,704 @@
+--- /dev/null
++++ b/lego/operator/internal/build/nativecommon_gorust_test.go
+@@ -0,0 +1,272 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package build
++
++import (
++	"context"
++	"crypto/sha256"
++	"encoding/json"
++	"fmt"
++	"io/fs"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"slices"
++	"strings"
++	"testing"
++	"time"
++)
++
++type nativeGoRustPrimary struct {
++	Runtime string   `json:"runtime"`
++	Line    string   `json:"line"`
++	Image   string   `json:"image"`
++	Version string   `json:"version"`
++	Env     []string `json:"env"`
++}
++
++func nativeGoRustProfileEnabled() bool { return os.Getenv("BEX_NATIVE_TEST_GORUST_PROFILE") == "1" }
++
++func nativeGoRustPrimaryContract(runtime string, choice NativeChoice) (nativeGoRustPrimary, error) {
++	toolchain, found := nativeToolchains[runtime]
++	if !found || (runtime != "go" && runtime != "rust") || len(toolchain.lines) != 1 || choice.Line != toolchain.defaultLine {
++		return nativeGoRustPrimary{}, fmt.Errorf("Go/Rust profile requires its single reviewed line")
++	}
++	if err := validateNativeBase(choice.Image); err != nil {
++		return nativeGoRustPrimary{}, err
++	}
++	key, required, binaryPath := "GOLANG_VERSION", map[string]string{"GOTOOLCHAIN": "local", "GOPATH": "/go"}, "/usr/local/go/bin"
++	if runtime == "rust" {
++		key, required, binaryPath = "RUST_VERSION", map[string]string{"CARGO_HOME": "/usr/local/cargo", "RUSTUP_HOME": "/usr/local/rustup"}, "/usr/local/cargo/bin"
++	}
++	environment := map[string]string{}
++	for _, item := range choice.imageEnv {
++		name, value, ok := strings.Cut(item, "=")
++		if _, duplicate := environment[name]; !ok || !nativeImageEnvName.MatchString(name) || duplicate {
++			return nativeGoRustPrimary{}, fmt.Errorf("invalid selected primary environment")
++		}
++		environment[name] = value
++	}
++	version := environment[key]
++	if !fullVersion.MatchString(version) || !strings.HasPrefix(version, choice.Line+".") || !slices.Contains(strings.Split(environment["PATH"], ":"), binaryPath) {
++		return nativeGoRustPrimary{}, fmt.Errorf("selected primary version/PATH does not match its reviewed line")
++	}
++	for name, value := range required {
++		if environment[name] != value {
++			return nativeGoRustPrimary{}, fmt.Errorf("selected primary %s changed", name)
++		}
++	}
++	return nativeGoRustPrimary{runtime, choice.Line, choice.Image, version, append([]string(nil), choice.imageEnv...)}, nil
++}
++
++func nativeGoRustFiles(t *testing.T) map[string]string {
++	t.Helper()
++	root := filepath.Join("testdata", "native-common-gorust")
++	files := map[string]string{}
++	must(t, filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
++		if err != nil {
++			return err
++		}
++		if entry.IsDir() {
++			if entry.Name() == "__pycache__" {
++				return filepath.SkipDir
++			}
++			return nil
++		}
++		if entry.Type()&os.ModeSymlink != 0 {
++			return fmt.Errorf("qualification fixture must not contain symlinks")
++		}
++		relative, err := filepath.Rel(root, path)
++		if err != nil {
++			return err
++		}
++		data, err := os.ReadFile(path)
++		if err == nil {
++			files[relative] = string(data)
++		}
++		return err
++	}))
++	return files
++}
++
++func nativeGoRustTreeRecipe(canonical, primary, runtime string) (string, error) {
++	if err := validateNativeBase(primary); err != nil {
++		return "", err
++	}
++	const boundary = "\nCOPY . .\n"
++	if (runtime != "go" && runtime != "rust") || strings.Contains(primary, ",") || strings.Count(canonical, boundary) != 1 || !strings.Contains(canonical, "COPY --link --from="+primary+" /usr/local/ /usr/local/\n") {
++		return "", fmt.Errorf("primary tree proof requires one canonical source boundary and selected donor")
++	}
++	probe := "RUN --network=none --mount=type=bind,from=" + primary + ",source=/usr/local,target=/opt/bex-test-primary,readonly /usr/bin/python3 check.py tree " + runtime + " /opt/bex-test-primary\n"
++	return strings.Replace(canonical, boundary, boundary+probe, 1), nil
++}
++
++func TestNativeGoRustGeneratedImages(t *testing.T) {
++	if !nativeGoRustProfileEnabled() {
++		t.Skip("separate Go/Rust profile requires BEX_NATIVE_TEST_GORUST_PROFILE=1")
++	}
++	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "1" {
++		t.Fatal("Go/Rust profile also requires BEX_BUILDKIT_INTEGRATION=1")
++	}
++	common, _, _ := nativeUtilityTestImages(t)
++	docker := nativeUtilityDockerConfig(t)
++	if common == "" || docker.builder == "" {
++		t.Fatal("Go/Rust profile requires an immutable common image and explicitly owned builder/platform")
++	}
++	original := nativeCommonBase
++	t.Cleanup(func() { nativeCommonBase = original })
++	nativeCommonBase = common
++	output := t.TempDir()
++	if requested := os.Getenv("BEX_NATIVE_TEST_OUTPUT"); requested != "" {
++		must(t, os.MkdirAll(requested, 0o700))
++		var err error
++		output, err = os.MkdirTemp(requested, "native-common-gorust-")
++		must(t, err)
++	}
++	t.Logf("retained Go/Rust profile evidence: %s", output)
++	for _, runtime := range []string{"go", "rust"} {
++		if !t.Run(runtime, func(t *testing.T) { nativeGoRustGeneratedCase(t, docker, common, runtime, output) }) {
++			break
++		}
++	}
++}
++
++func nativeGoRustGeneratedCase(t *testing.T, docker nativeUtilityDocker, common, runtime, output string) {
++	t.Helper()
++	evidence := filepath.Join(output, runtime)
++	must(t, os.Mkdir(evidence, 0o700))
++	o := nativeOptions()
++	o.Runtime, o.BuildEnv, o.RuntimeEnvSecret = runtime, nil, ""
++	o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build "+runtime, "/usr/bin/python3 check.py runtime "+runtime
++	files := nativeGoRustFiles(t)
++	bundle, path, source := writeResolveFixture(t, o, nil, files)
++	choices, err := ResolveNativeBuildAt(time.Time{}, runtime, bundle, path, source)
++	must(t, err)
++	primary, err := nativeGoRustPrimaryContract(runtime, choices[0])
++	must(t, err)
++	expected, err := json.MarshalIndent(primary, "", "  ")
++	must(t, err)
++	files["expected-primary.json"] = string(expected) + "\n"
++	must(t, os.WriteFile(filepath.Join(source, "expected-primary.json"), []byte(files["expected-primary.json"]), 0o600))
++	canonical, err := os.ReadFile(path)
++	must(t, err)
++	recipe, err := nativeGoRustTreeRecipe(string(canonical), primary.Image, runtime)
++	must(t, err)
++	must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), canonical, 0o600))
++	must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile"), []byte(recipe), 0o600))
++	must(t, os.WriteFile(filepath.Join(source, "Dockerfile"), []byte(recipe), 0o600))
++	hashes := map[string]string{}
++	for name, content := range files {
++		hashes[name] = fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
++	}
++	receipt, err := json.MarshalIndent(map[string]any{"common": common, "primary": primary, "choices": choices, "platform": docker.platform,
++		"canonical_sha256": fmt.Sprintf("%x", sha256.Sum256(canonical)), "executed_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(recipe))),
++		"test_only_overlay": "readonly pinned-donor tree comparison after COPY; authored build/start unchanged", "fixture_sha256": hashes,
++		"scope": "separate common Go/Rust family gate; original13/28 unchanged; no native-init/Kubernetes/hosted or publication claim"}, "", "  ")
++	must(t, err)
++	must(t, os.WriteFile(filepath.Join(evidence, "source-custody.json"), receipt, 0o600))
++	tag := fmt.Sprintf("bex-native-gorust-%s:%d-%d", runtime, os.Getpid(), time.Now().UnixNano())
++	t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
++	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
++	defer cancel()
++	command := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...)
++	log, buildErr := command.CombinedOutput()
++	must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
++	if buildErr != nil {
++		t.Fatalf("actual offline Go/Rust family build: %v\n%s", buildErr, log)
++	}
++	docker.runImage(t, nativeUtilityCase{name: "common-" + runtime}, tag, evidence, true)
++}
++
++func TestNativeGoRustProfileRequiresSeparateOptIn(t *testing.T) {
++	t.Setenv("BEX_BUILDKIT_INTEGRATION", "1")
++	for _, value := range []string{"", "0", "true", "1 "} {
++		t.Setenv("BEX_NATIVE_TEST_GORUST_PROFILE", value)
++		if nativeGoRustProfileEnabled() {
++			t.Fatalf("generic integration selected extra profile with %q", value)
++		}
++	}
++	t.Setenv("BEX_NATIVE_TEST_GORUST_PROFILE", "1")
++	if !nativeGoRustProfileEnabled() {
++		t.Fatal("explicit profile not selected")
++	}
++}
++
++func TestNativeGoRustCanonicalRecipesAndContracts(t *testing.T) {
++	original := nativeCommonBase
++	t.Cleanup(func() { nativeCommonBase = original })
++	nativeCommonBase = commonFixtureImage
++	for _, runtime := range []string{"go", "rust"} {
++		t.Run(runtime, func(t *testing.T) {
++			fake := &fakeExact{envByImage: map[string]fakeExactMetadata{}}
++			for family, toolchain := range nativeToolchains {
++				for _, line := range toolchain.lines {
++					fake.envByImage[line.image] = commonReviewedFixtureMetadata(family, line)
++				}
++			}
++			line := nativeToolchains[runtime].lines[0]
++			metadata := fake.envByImage[line.image]
++			metadata.env = []string{"PATH=/go/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin", "GOLANG_VERSION=1.27.3", "GOTOOLCHAIN=local", "GOPATH=/go"}
++			if runtime == "rust" {
++				metadata.env = []string{"PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin", "RUST_VERSION=1.96.0", "CARGO_HOME=/usr/local/cargo", "RUSTUP_HOME=/usr/local/rustup"}
++			}
++			fake.envByImage[line.image] = metadata
++			o := nativeOptions()
++			o.Runtime, o.BuildEnv, o.RuntimeEnvSecret = runtime, nil, ""
++			o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build "+runtime, "/usr/bin/python3 check.py runtime "+runtime
++			bundle, path, source := writeResolveFixture(t, o, nil, nativeGoRustFiles(t))
++			choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, runtime, bundle, path, source)
++			must(t, err)
++			primary, err := nativeGoRustPrimaryContract(runtime, choices[0])
++			must(t, err)
++			if primary.Image != line.image || primary.Line != line.line || !slices.Equal(primary.Env, metadata.env) {
++				t.Fatal("profile substituted selected primary or exact metadata")
++			}
++			canonical, err := os.ReadFile(path)
++			must(t, err)
++			recipe, err := nativeGoRustTreeRecipe(string(canonical), primary.Image, runtime)
++			must(t, err)
++			for _, required := range []string{"\nFROM " + commonFixtureImage + "\n", "from=" + primary.Image + ",source=/usr/local,target=/opt/bex-test-primary,readonly", shellJSON(nativeEnvLoaderPrefix + o.BuildCommand), shellJSON(o.StartCommand)} {
++				if !strings.Contains(recipe, required) {
++					t.Fatalf("canonical primary/command boundary lost %q", required)
++				}
++			}
++			for _, bad := range []string{string(canonical) + "\nCOPY . .\n", strings.ReplaceAll(string(canonical), "COPY . .", "COPY other .")} {
++				if _, err := nativeGoRustTreeRecipe(bad, primary.Image, runtime); err == nil {
++					t.Fatal("ambiguous source boundary accepted")
++				}
++			}
++			for _, bad := range [][]string{nil, append(append([]string(nil), metadata.env...), metadata.env[0]), strings.Split(strings.ReplaceAll(strings.Join(metadata.env, "\n"), primary.Version, "2.0.0"), "\n"), strings.Split(strings.ReplaceAll(strings.Join(metadata.env, "\n"), "/usr/local/", "/foreign/"), "\n")} {
++				changed := choices[0]
++				changed.imageEnv = bad
++				if _, err := nativeGoRustPrimaryContract(runtime, changed); err == nil {
++					t.Fatal("missing, duplicate or substituted primary metadata accepted")
++				}
++			}
++		})
++	}
++}
++
++func TestNativeGoRustFixtureNegativeControls(t *testing.T) {
++	command := exec.CommandContext(t.Context(), "python3", "-m", "unittest", "-v", "check_test.py")
++	command.Dir = filepath.Join("testdata", "native-common-gorust")
++	command.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1")
++	output, err := command.CombinedOutput()
++	if err != nil {
++		t.Fatalf("offline primary/tree/output controls: %v\n%s", err, output)
++	}
++}
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/Cargo.lock
+@@ -0,0 +1,9 @@
++version = 3
++
++[[package]]
++name = "bex-qualify-native"
++version = "0.0.0"
++
++[[package]]
++name = "bex-qualify-pure"
++version = "0.0.0"
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/Cargo.toml
+@@ -0,0 +1,3 @@
++[workspace]
++members = ["rust-pure", "rust-native"]
++resolver = "2"
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/check.py
+@@ -0,0 +1,172 @@
++"""Separate offline Go/Rust family qualification; no original utility payloads."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import shutil
++import stat
++import subprocess
++import sys
++import tempfile
++import zlib
++
++TEXT = "Bex 雪 λ🙂"
++TREES = {"go": ("go",), "rust": ("cargo", "rustup")}
++
++
++def require(value, message):
++    if not value:
++        raise RuntimeError(message)
++
++
++def sha(path):
++    value = hashlib.sha256()
++    with path.open("rb") as source:
++        while block := source.read(1024 * 1024):
++            value.update(block)
++    return value.hexdigest()
++
++
++def tree(root):
++    require(root.is_dir(), "primary tree is missing: " + str(root))
++    result = {}
++    for path in [root, *sorted(root.rglob("*"))]:
++        info = path.lstat()
++        item = {"mode": stat.S_IMODE(info.st_mode)}
++        if path.is_symlink():
++            item.update(kind="symlink", target=os.readlink(path))
++        elif path.is_dir():
++            item["kind"] = "directory"
++        elif path.is_file():
++            item.update(kind="file", bytes=info.st_size, sha256=sha(path))
++        else:
++            raise RuntimeError("unexpected primary tree file type")
++        result[str(path.relative_to(root))] = item
++    return result
++
++
++def equal_trees(reference, actual):
++    expected, found = tree(reference), tree(actual)
++    require(expected == found, "installed primary bytes, modes or symlinks differ from pinned donor")
++    return found
++
++
++def env_map(entries):
++    result = {}
++    for entry in entries:
++        key, separator, value = entry.partition("=")
++        require(separator and key and key not in result, "invalid expected primary ENV")
++        result[key] = value
++    return result
++
++
++def validate_primary(expected, actual):
++    runtime, version = expected["runtime"], expected["version"]
++    environment = env_map(expected["env"])
++    require(runtime in TREES, "unknown family")
++    require(all(actual["env"].get(key) == value for key, value in environment.items()), "selected primary ENV changed")
++    if runtime == "go":
++        require(actual["executable"] == "/usr/local/go/bin/go", "Go executable is not the selected primary")
++        require(actual["version"] == "go" + version, "Go patch version changed")
++        require(actual["goroot"] == "/usr/local/go" and actual["gopath"] == "/go", "Go installation roots changed")
++        require(actual["toolchain"] == "local", "Go toolchain could download or substitute another compiler")
++    else:
++        require(actual["executable"] == "/usr/local/cargo/bin/cargo", "Cargo executable is not the selected primary")
++        require(actual["version"].startswith("rustc " + version + " "), "Rust patch version changed")
++        require(actual["sysroot"].startswith("/usr/local/rustup/toolchains/"), "Rust sysroot escaped the primary tree")
++        require(actual["rustc"] == actual["sysroot"] + "/bin/rustc", "rustup selected another compiler")
++        require(actual["target_libdir"].startswith(actual["sysroot"] + "/lib/rustlib/"), "Rust standard library tree changed")
++
++
++def validate_outputs(runtime, outputs):
++    payload = TEXT.encode()
++    if runtime == "go":
++        expected = "go-pure|8|14|33153|" + TEXT
++        native = ["go-cgo", f"{zlib.adler32(payload):08x}", "5346"]
++    else:
++        require(runtime == "rust", "unknown family")
++        expected = "rust-pure|8|14|65536|🙂λ 雪 xeB"
++        native = ["rust-native", f"{zlib.crc32(payload):08x}", "2566"]
++    require(outputs["pure"].strip() == expected, "independent Unicode/arithmetic result differs")
++    fields = outputs["native"].strip().split("|")
++    require(len(fields) == 5 and fields[:3] == native, "native checksum/arithmetic result differs")
++    require(fields[3] and fields[3] == fields[4], "native header and linked library versions differ")
++
++
++def command(arguments, env=None, timeout=300):
++    return subprocess.run(arguments, check=True, capture_output=True, text=True, env=env, timeout=timeout).stdout.strip()
++
++
++def primary_facts(expected):
++    runtime = expected["runtime"]
++    facts = {"env": {key: os.environ.get(key) for key in env_map(expected["env"])}}
++    if runtime == "go":
++        facts.update(executable=shutil.which("go"), **json.loads(command(["go", "env", "-json", "GOVERSION", "GOROOT", "GOPATH", "GOTOOLCHAIN", "GOTOOLDIR"])))
++        facts.update(version=facts.pop("GOVERSION"), goroot=facts.pop("GOROOT"), gopath=facts.pop("GOPATH"), toolchain=facts.pop("GOTOOLCHAIN"))
++        critical = [Path(facts["executable"]), Path(facts["GOTOOLDIR"]) / "compile", Path("/usr/local/go/pkg/include/textflag.h")]
++    else:
++        facts.update(executable=shutil.which("cargo"), version=command(["rustc", "--version"]), cargo=command(["cargo", "--version"]), sysroot=command(["rustc", "--print", "sysroot"]), rustc=command(["rustup", "which", "rustc"]), target_libdir=command(["rustc", "--print", "target-libdir"]))
++        libraries = list(Path(facts["target_libdir"]).glob("libstd-*.rlib"))
++        require(libraries, "selected Rust standard library is missing")
++        critical = [Path(facts["executable"]), Path(facts["rustc"]), *libraries]
++    validate_primary(expected, facts)
++    facts["critical_sha256"] = {str(path): sha(path) for path in critical}
++    return facts
++
++
++def compile_programs(runtime, output):
++    with tempfile.TemporaryDirectory(prefix="bex-native-gorust-") as temporary:
++        work = Path(temporary)
++        environment = dict(os.environ, GOPROXY="off", GOSUMDB="off", GOWORK="off", GOTOOLCHAIN="local", GOMAXPROCS="2", GOCACHE=str(work / "go-cache"), CARGO_NET_OFFLINE="true", CARGO_BUILD_JOBS="1")
++        if runtime == "go":
++            for name, cgo in (("pure", "0"), ("cgo", "1")):
++                command(["go", "build", "-p", "1", "-mod=readonly", "-trimpath", "-o", str(output / ("go-" + name)), "./go-" + name], dict(environment, CGO_ENABLED=cgo))
++        else:
++            target = work / "target"
++            command(["cargo", "build", "--offline", "--frozen", "--release", "--jobs", "1", "--target-dir", str(target)], environment)
++            for name in ("pure", "native"):
++                shutil.copy2(target / "release" / ("bex-qualify-" + name), output / ("rust-" + name))
++            archives = list(target.glob("release/build/bex-qualify-native-*/out/libbex_probe.a"))
++            require(len(archives) == 1, "Rust native static archive is missing or ambiguous")
++            shutil.copy2(archives[0], Path("qa-output") / "rust-static.a")
++            require(command(["ar", "t", str(archives[0])]).splitlines() == ["probe.o"], "Rust build did not use the expected C static object")
++
++
++def main():
++    phase, runtime = sys.argv[1:3]
++    require(runtime in TREES and phase in ("tree", "build", "runtime"), "unknown profile phase")
++    root = Path(__file__).resolve().parent
++    os.chdir(root)
++    expected = json.loads(Path("expected-primary.json").read_text())
++    require(expected["runtime"] == runtime, "expected primary belongs to another family")
++    proofs, binaries = Path("qa-output"), Path("qa-bin")
++    proofs.mkdir(exist_ok=True)
++    binaries.mkdir(exist_ok=True)
++    if phase == "tree":
++        require(len(sys.argv) == 4 and sys.argv[3] == "/opt/bex-test-primary", "expected fixed readonly donor mount")
++        manifests = {name: equal_trees(Path(sys.argv[3]) / name, Path("/usr/local") / name) for name in TREES[runtime]}
++        Path("qa-output/primary-tree.json").write_text(json.dumps({"image": expected["image"], "runtime": runtime, "trees": manifests}, indent=2) + "\n")
++        return
++    require(len(sys.argv) == 3, "unexpected phase arguments")
++    require('VERSION_CODENAME=bookworm' in Path('/etc/os-release').read_text().splitlines(), "common Bookworm foundation changed")
++    baseline = json.loads(Path("qa-output/primary-tree.json").read_text())
++    require(baseline["image"] == expected["image"] and baseline["runtime"] == runtime, "donor tree proof identity changed")
++    facts = primary_facts(expected)
++    if phase == "build":
++        compile_programs(runtime, binaries.resolve())
++    else:
++        built = json.loads(Path("qa-output/build.json").read_text())
++        require(facts == built["primary"], "primary executable, tree or ENV changed after build")
++    pure = binaries / (runtime + "-pure")
++    native = binaries / (runtime + ("-cgo" if runtime == "go" else "-native"))
++    outputs = {"pure": command([str(pure.resolve())]), "native": command([str(native.resolve())])}
++    validate_outputs(runtime, outputs)
++    linked = command(["ldd", str(native.resolve())])
++    require("libz.so" in linked and "not found" not in linked, "native runtime linkage is missing")
++    result = {"phase": phase, "runtime": runtime, "primary": facts, "outputs": outputs, "native_ldd": linked, "compiled_offline_in_this_phase": phase == "build", "pass": True}
++    (proofs / (phase + ".json")).write_text(json.dumps(result, indent=2) + "\n")
++    print(json.dumps(result, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/check_test.py
+@@ -0,0 +1,74 @@
++import copy
++from pathlib import Path
++import tempfile
++import unittest
++import zlib
++
++import check
++
++
++class ProfileControls(unittest.TestCase):
++    def test_unicode_arithmetic_and_native_results(self):
++        for runtime, pure, name, checksum, arithmetic in (
++            ("go", "go-pure|8|14|33153|Bex 雪 λ🙂", "go-cgo", zlib.adler32(check.TEXT.encode()), 5346),
++            ("rust", "rust-pure|8|14|65536|🙂λ 雪 xeB", "rust-native", zlib.crc32(check.TEXT.encode()), 2566),
++        ):
++            outputs = {"pure": pure, "native": f"{name}|{checksum:08x}|{arithmetic}|1.2.13|1.2.13"}
++            check.validate_outputs(runtime, outputs)
++            for bad in (
++                {**outputs, "pure": pure.replace("|8|14|", "|7|14|")},
++                {**outputs, "pure": pure.replace("雪", "?")},
++                {**outputs, "native": outputs["native"].replace(f"{checksum:08x}", "00000000")},
++                {**outputs, "native": outputs["native"].replace(str(arithmetic), "0")},
++                {**outputs, "native": outputs["native"][:-1] + "4"},
++                {**outputs, "native": ""},
++            ):
++                with self.subTest(runtime=runtime, outputs=bad), self.assertRaises(RuntimeError):
++                    check.validate_outputs(runtime, bad)
++
++    def test_primary_identity_and_environment_refusals(self):
++        fixtures = [
++            ({"runtime": "go", "version": "1.27.3", "env": ["GOTOOLCHAIN=local", "GOPATH=/go"]}, {"env": {"GOTOOLCHAIN": "local", "GOPATH": "/go"}, "executable": "/usr/local/go/bin/go", "version": "go1.27.3", "goroot": "/usr/local/go", "gopath": "/go", "toolchain": "local"}, ["executable", "version", "goroot", "gopath", "toolchain"]),
++            ({"runtime": "rust", "version": "1.96.0", "env": ["CARGO_HOME=/usr/local/cargo", "RUSTUP_HOME=/usr/local/rustup"]}, {"env": {"CARGO_HOME": "/usr/local/cargo", "RUSTUP_HOME": "/usr/local/rustup"}, "executable": "/usr/local/cargo/bin/cargo", "version": "rustc 1.96.0 (synthetic)", "sysroot": "/usr/local/rustup/toolchains/test", "rustc": "/usr/local/rustup/toolchains/test/bin/rustc", "target_libdir": "/usr/local/rustup/toolchains/test/lib/rustlib/target/lib"}, ["executable", "version", "sysroot", "rustc", "target_libdir"]),
++        ]
++        for expected, actual, fields in fixtures:
++            check.validate_primary(expected, actual)
++            for field in fields:
++                changed = copy.deepcopy(actual)
++                changed[field] = "/foreign/substitute"
++                with self.subTest(runtime=expected["runtime"], field=field), self.assertRaises(RuntimeError):
++                    check.validate_primary(expected, changed)
++            changed = copy.deepcopy(actual)
++            changed["env"][next(iter(changed["env"]))] = "foreign"
++            with self.assertRaises(RuntimeError):
++                check.validate_primary(expected, changed)
++        with self.assertRaises(RuntimeError):
++            check.env_map(["X=one", "X=two"])
++
++    def test_tree_bytes_modes_links_and_inventory(self):
++        for mutation in ("bytes", "mode", "link", "missing", "extra"):
++            with tempfile.TemporaryDirectory() as directory:
++                reference, target = Path(directory) / "reference", Path(directory) / "target"
++                for tree in (reference, target):
++                    tree.mkdir()
++                    (tree / "compiler").write_bytes(b"exact-donor-compiler")
++                    (tree / "compiler").chmod(0o755)
++                    (tree / "proxy").symlink_to("compiler")
++                check.equal_trees(reference, target)
++                if mutation == "bytes":
++                    (target / "compiler").write_bytes(b"wrong-donor-compiler")
++                elif mutation == "mode":
++                    (target / "compiler").chmod(0o644)
++                elif mutation == "link":
++                    (target / "proxy").unlink()
++                    (target / "proxy").symlink_to("foreign")
++                elif mutation == "missing":
++                    (target / "compiler").unlink()
++                else:
++                    (target / "stale-from-another-version").touch()
++                with self.subTest(mutation=mutation), self.assertRaises(RuntimeError):
++                    check.equal_trees(reference, target)
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/go-cgo/main.go
+@@ -0,0 +1,38 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package main
++
++/*
++#cgo LDFLAGS: -lz
++#include <zlib.h>
++static unsigned long probe_checksum(const unsigned char *data, unsigned int size) {
++    return adler32(adler32(0L, Z_NULL, 0), data, size);
++}
++static long probe_arithmetic(long value) { return value * value + 17; }
++*/
++import "C"
++
++import (
++	"fmt"
++	"unsafe"
++)
++
++func main() {
++	text := []byte("Bex 雪 λ🙂")
++	checksum := C.probe_checksum((*C.uchar)(unsafe.Pointer(&text[0])), C.uint(len(text)))
++	fmt.Printf("go-cgo|%08x|%d|%s|%s\n", uint64(checksum), int64(C.probe_arithmetic(73)), C.ZLIB_VERSION, C.GoString(C.zlibVersion()))
++}
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/go-pure/main.go
+@@ -0,0 +1,31 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package main
++
++import (
++	"fmt"
++	"unicode/utf8"
++)
++
++func main() {
++	text := "Bex 雪 λ🙂"
++	sum := 0
++	for n := 1; n <= 257; n++ {
++		sum += n
++	}
++	fmt.Printf("go-pure|%d|%d|%d|%s\n", utf8.RuneCountInString(text), len(text), sum, text)
++}
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/go.mod
+@@ -0,0 +1,3 @@
++module example.invalid/bex-native-qualification
++
++go 1.20
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-native/Cargo.toml
+@@ -0,0 +1,5 @@
++[package]
++name = "bex-qualify-native"
++version = "0.0.0"
++edition = "2021"
++build = "build.rs"
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-native/build.rs
+@@ -0,0 +1,15 @@
++use std::{env, path::PathBuf, process::Command};
++
++fn main() {
++    let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo OUT_DIR"));
++    let object = output.join("probe.o");
++    let archive = output.join("libbex_probe.a");
++    assert!(Command::new("cc").args(["-std=c11", "-Wall", "-Werror", "-c", "probe.c", "-o"])
++        .arg(&object).status().expect("C compiler").success());
++    assert!(Command::new("ar").arg("rcs").arg(&archive).arg(&object)
++        .status().expect("static archiver").success());
++    println!("cargo:rustc-link-search=native={}", output.display());
++    println!("cargo:rustc-link-lib=static=bex_probe");
++    println!("cargo:rustc-link-lib=z");
++    println!("cargo:rerun-if-changed=probe.c");
++}
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-native/probe.c
+@@ -0,0 +1,11 @@
++#include <stdint.h>
++#include <zlib.h>
++
++uint32_t bex_probe_checksum(const unsigned char *text, unsigned int size) {
++    return (uint32_t)crc32(0, text, size);
++}
++int64_t bex_probe_arithmetic(int64_t left, int64_t right) {
++    return left * right - 17;
++}
++const char *bex_probe_header(void) { return ZLIB_VERSION; }
++const char *bex_probe_library(void) { return zlibVersion(); }
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-native/src/main.rs
+@@ -0,0 +1,19 @@
++use std::ffi::{c_char, CStr};
++
++extern "C" {
++    fn bex_probe_checksum(text: *const u8, size: u32) -> u32;
++    fn bex_probe_arithmetic(left: i64, right: i64) -> i64;
++    fn bex_probe_header() -> *const c_char;
++    fn bex_probe_library() -> *const c_char;
++}
++
++fn main() {
++    let text = "Bex 雪 λ🙂".as_bytes();
++    unsafe {
++        println!("rust-native|{:08x}|{}|{}|{}",
++            bex_probe_checksum(text.as_ptr(), text.len() as u32),
++            bex_probe_arithmetic(63, 41),
++            CStr::from_ptr(bex_probe_header()).to_str().expect("header version"),
++            CStr::from_ptr(bex_probe_library()).to_str().expect("library version"));
++    }
++}
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-pure/Cargo.toml
+@@ -0,0 +1,4 @@
++[package]
++name = "bex-qualify-pure"
++version = "0.0.0"
++edition = "2021"
+--- /dev/null
++++ b/lego/operator/internal/build/testdata/native-common-gorust/rust-pure/src/main.rs
+@@ -0,0 +1,6 @@
++fn main() {
++    let text = "Bex 雪 λ🙂";
++    let square = (257_i64 - 1).pow(2);
++    let reversed: String = text.chars().rev().collect();
++    println!("rust-pure|{}|{}|{}|{}", text.chars().count(), text.len(), square, reversed);
++}

@@ -1,0 +1,62 @@
+{
+  "date_utc": "2026-10-31T18:38:29.995025+00:00",
+  "reviewed_bundle": "/private/tmp/bex-w8-elixir-qualification-source-20261031-8590k6jl",
+  "reviewed_SOURCE_sha256": "f5b495dcbee2a5e472dfeeaaa422fbe1fa39c2139934d137cefbf601a66bc101",
+  "reviewed_MANIFEST_sha256": "0d34ab5f57f6a2bbd726e907424dec4c0ee412c4b3f55985bebeda1851bbc25f",
+  "custody": "all15payloads+exactfileset+all10frozen/livebytes/modes verified before correction",
+  "finding": {
+    "file": "lego/operator/internal/build/testdata/native-elixir-qualification/check.py",
+    "line": 76,
+    "related": [
+      "mix.exs:5",
+      "lib/bex_mix.ex:2"
+    ],
+    "classification": "source-reachable fixture compilation defect, no actual Erlang/Elixir execution claimed",
+    "detail": "Mix default compilation prunes manually added -pa path because local :bex_probe is not a dependency/extra application. BexMix.answer remote call would be undefined and warnings-as-errors prevents semantic qualification.",
+    "supported_fix": "Declare application/0 extra_applications: [:bex_probe] so Mix treats the existing local compiled app as an application requirement, preserves its path and dependency relationship. Retain -pa, default pruning, warnings-as-errors, real Mix compilation.",
+    "status": "root implementing; focused corrected-source recheck pending",
+    "implementation_chain": [
+      "Compile.All.project_apps includes extra_applications",
+      "AppLoader.load_apps traverses app list using startup builtin paths, loads .app and returns retained ebin paths",
+      "State builtin_apps captures code:get_path at startup and derives :bex_probe from its explicit.../bex_probe/ebin path"
+    ]
+  },
+  "remaining_source_review": "No additional concrete blocker found in actual selections/default ENV/exactOTP headers/NIF/ffi/OpenSSL/crypto/Unicode/rebar/Mix/ownedDocker helpers/narrow OTP source prerequisite overlay.",
+  "scope_limits": [
+    "No Docker/image/build/compiler/OTP/NIF/Mix actual execution",
+    "Original13/28, production pins/runtime, CI/resources/PM untouched",
+    "Source tests and output oracle remain bounded source evidence; both architecture/image/native-init/K8s/hosted acceptance open"
+  ],
+  "primary_sources": {
+    "v1.17.3-compile-all.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.17.3/lib/mix/lib/mix/tasks/compile.all.ex",
+      "sha256": "87117d426856f35c251ea47f280528d42d5d66a6d5d9922678c519439a5efe37",
+      "bytes": 4036
+    },
+    "v1.18.4-compile.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/tasks/compile.ex",
+      "sha256": "5f1dc78980477696c317ed6624cafe5b34cd5b05a3187efce224ac6112d76e6a",
+      "bytes": 8031
+    },
+    "v1.18.4-compile-all.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/tasks/compile.all.ex",
+      "sha256": "a61492b3c3c074ed86c59f9d3c666aed1534a8c00412c63666e5acbb4c38b62d",
+      "bytes": 4177
+    },
+    "v1.18.4-app-loader.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/app_loader.ex",
+      "sha256": "7c89ed9229cb6c43768900ad48858b7a7438ff1f0ace2050369bc691b61f2f26",
+      "bytes": 4863
+    },
+    "v1.18.4-state.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.18.4/lib/mix/lib/mix/state.ex",
+      "sha256": "dbf3142f5a5ffa972d36aa0ae9466bd036d1667091d9eaf512faa74936a31f1c",
+      "bytes": 2829
+    },
+    "v1.20.4-compile-all.ex": {
+      "url": "https://raw.githubusercontent.com/elixir-lang/elixir/v1.20.4/lib/mix/lib/mix/tasks/compile.all.ex",
+      "sha256": "b6b3d84ce0d8cbfd49f147505270f7e3b85624f7d6e9c67f95a1076df4b37d48",
+      "bytes": 3886
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "status": "PREPARED_ONLY_NO_DOCKER_OR_IMAGE_EXECUTION",
+  "profile": "BEX_NATIVE_TEST_GORUST_PROFILE=1; generic BuildKit integration alone skips before Docker access",
+  "source_files": 14,
+  "source_bytes": 29604,
+  "measured_at_utc": "2026-10-31T18:41:48.144060+00:00",
+  "measured_host_free_bytes": 3258535936,
+  "programs": {
+    "go": [
+      "dependency-free pure Unicode/rune/byte count and sum",
+      "CGO C header compilation, arithmetic, libz adler32 and dynamic runtime linkage"
+    ],
+    "rust": [
+      "dependency-free offline frozen Cargo workspace pure Unicode/reversal and arithmetic",
+      "std-only build.rs invokes cc/ar, static C object and libz crc32/header/runtime linkage"
+    ]
+  },
+  "identity_contract": {
+    "primary": "only the reviewed single default Go and Rust lines via the unchanged canonical resolver/table",
+    "environment": "exact selected donor metadata with empty authored env bundle; no requested-line variable overwrites image patch versions",
+    "tree": "test-only readonly bind of exact selected immutable donor /usr/local; complete go or cargo+rustup names/modes/file hashes/symlink targets compared before authored compile",
+    "runtime": "same primary path/version/ENV and compiler/header or rustc/libstd hashes as build; original generated authored commands remain unchanged"
+  },
+  "future_cases": [
+    {
+      "platform": "linux/arm64",
+      "runtime": "go",
+      "status": "UNEXECUTED"
+    },
+    {
+      "platform": "linux/arm64",
+      "runtime": "rust",
+      "status": "UNEXECUTED"
+    },
+    {
+      "platform": "linux/amd64",
+      "runtime": "go",
+      "status": "UNEXECUTED"
+    },
+    {
+      "platform": "linux/amd64",
+      "runtime": "rust",
+      "status": "UNEXECUTED"
+    }
+  ],
+  "required_inputs_not_measured_now": [
+    "root-approved immutable common image and its platform child/config bindings",
+    "existing explicitly owned builder with matching BEX_NATIVE_TEST_OWNER and platform",
+    "actual immutable primary/Node companion and checksum-bound pnpm frontend acquisition/cache footprint",
+    "fresh physical free space and measured predicted owned build/cache/image writes"
+  ],
+  "capacity_scope": "Only source files, unit test cache growth and proof bytes were measured in this task. No Docker metadata/size call, image pull, image build, compiler execution inside fixtures or runtime was performed. Actual image execution fit is unproven.",
+  "future_resource_plan": {
+    "concurrency": "one profile process, one platform, one build/runtime at a time; Go then Rust; stop after first case failure",
+    "global_min_free_bytes": 2147483648,
+    "image_cache_build_write_estimate_bytes": null,
+    "source_plus_results_current_bytes": 29604,
+    "start_condition": "root assigns actual execution only after input identities and physical capacity for projected writes are measured above the 2GiB floor; no prune/new builder or speculative fit claim",
+    "timeouts_seconds": {
+      "per_family_build": 1800,
+      "per_family_run_and_export": 1800,
+      "individual_fixture_command": 300,
+      "each_cleanup": 20,
+      "go_test_per_platform": 7800
+    },
+    "compiler_parallelism": {
+      "go_p": 1,
+      "go_GOMAXPROCS": 2,
+      "cargo_jobs": 1
+    },
+    "compiler_cache": "owned TemporaryDirectory removed before build layer commit; Go cache and Cargo target are not copied to the final image",
+    "offline": "all authored build RUN and runtime network=none; Go GOPROXY/GOSUMDB/GOWORK=off, GOTOOLCHAIN=local, mod=readonly; Cargo --offline --frozen; immutable Docker/ADD prerequisite acquisition may still require transport",
+    "cleanup": "reuse exact generated image tag and returned container ID through existing nativeUtilityCleanup; no builder removal or shared-cache prune"
+  },
+  "future_command_template": {
+    "cwd": "lego/operator",
+    "environment": {
+      "GOWORK": "off",
+      "GOTOOLCHAIN": "local",
+      "BEX_BUILDKIT_INTEGRATION": "1",
+      "BEX_NATIVE_TEST_GORUST_PROFILE": "1",
+      "BEX_NATIVE_TEST_COMMON_IMAGE": "REQUIRES_ROOT_APPROVED_IMMUTABLE_REF",
+      "BEX_NATIVE_TEST_BUILDER": "EXISTING_OWN_BUILDER",
+      "BEX_NATIVE_TEST_OWNER": "SAME_EXISTING_OWN_BUILDER",
+      "BEX_NATIVE_TEST_PLATFORM": "ONE_OF_linux/arm64_linux/amd64",
+      "BEX_NATIVE_TEST_OUTPUT": "OWN_PRIVATE_OUTPUT"
+    },
+    "argv": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "-run",
+      "^TestNativeGoRustGeneratedImages$",
+      "-count=1",
+      "-v",
+      "-timeout=130m"
+    ]
+  },
+  "claims_excluded": [
+    "original13/28 hosted acceptance",
+    "publication/qualification of common or supplier images",
+    "native-init or Kubernetes/pre-deploy behavior",
+    "actual cross-architecture compiler/runtime success",
+    "production pin or map adoption"
+  ]
+}

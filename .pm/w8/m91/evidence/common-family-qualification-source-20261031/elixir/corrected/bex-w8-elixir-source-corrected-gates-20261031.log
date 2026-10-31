@@ -1,0 +1,19 @@
+=== RUN   TestCommonElixirOfflineQualification
+    nativecommon_elixir_qualification_test.go:129: set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_ELIXIR_INTEGRATION=1 for actual common Elixir/OTP qualification
+--- SKIP: TestCommonElixirOfflineQualification (0.00s)
+=== RUN   TestCommonElixirQualificationCanonicalRecipes
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.17
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.18
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.19
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.20
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-exact-otp280
+--- PASS: TestCommonElixirQualificationCanonicalRecipes (0.01s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.17 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.18 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.19 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.20 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-exact-otp280 (0.00s)
+=== RUN   TestCommonElixirOutputOracle
+--- PASS: TestCommonElixirOutputOracle (0.05s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.567s

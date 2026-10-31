@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-run",
+    "^TestNativeGoRust",
+    "-count=1",
+    "-v"
+  ],
+  "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+  "exit": 0,
+  "duration_seconds": 3.589228458,
+  "initial_free_bytes": 2416041984,
+  "final_free_bytes": 2405326848,
+  "floor_tripped": false,
+  "scope": "source/unit only; integration profile unset, no Docker"
+}

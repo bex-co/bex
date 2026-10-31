@@ -1,0 +1,8 @@
+--- FAIL: TestNativeGoRustCanonicalRecipesAndContracts (0.01s)
+    --- FAIL: TestNativeGoRustCanonicalRecipesAndContracts/go (0.00s)
+        nativecommon_gorust_test.go:239: canonical primary/command boundary lost "[\"/bin/bash\",\"-c\",\"/usr/bin/python3 check.py build go\"]"
+    --- FAIL: TestNativeGoRustCanonicalRecipesAndContracts/rust (0.00s)
+        nativecommon_gorust_test.go:239: canonical primary/command boundary lost "[\"/bin/bash\",\"-c\",\"/usr/bin/python3 check.py build rust\"]"
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	5.500s
+FAIL

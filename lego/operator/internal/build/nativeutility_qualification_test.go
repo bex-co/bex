@@ -214,11 +214,16 @@ func nativeUtilityWheelRecipe(recipe, common string) (string, error) {
 
 func nativeUtilityPrepareWheels(t *testing.T, d nativeUtilityDocker, recipe []byte, common, bundle, source, evidence string) string {
 	t.Helper()
+	prepared, err := nativeUtilityWheelRecipe(string(recipe), common)
+	must(t, err)
+	return nativeUtilityExportWheels(t, d, prepared, bundle, source, evidence)
+}
+
+func nativeUtilityExportWheels(t *testing.T, d nativeUtilityDocker, prepared, bundle, source, evidence string) string {
+	t.Helper()
 	if d.builder == "" {
 		t.Fatal("wheel preparation requires an explicitly owned Buildx builder and platform")
 	}
-	prepared, err := nativeUtilityWheelRecipe(string(recipe), common)
-	must(t, err)
 	recipePath := filepath.Join(evidence, "Dockerfile.prerequisites")
 	must(t, os.WriteFile(recipePath, []byte(prepared), 0o600))
 	wheels := filepath.Join(evidence, "prepared-wheels")

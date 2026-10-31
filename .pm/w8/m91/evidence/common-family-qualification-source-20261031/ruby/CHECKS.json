@@ -1,0 +1,66 @@
+{
+  "date_utc": "2026-10-31T18:34:22.603389+00:00",
+  "scope": "opt-in common Ruby source/unit preparation only",
+  "head": "3e0f14299b723312d4a708923a45f965cb004519",
+  "source_manifest_sha256": "72640aa6c5edfaf255e231948e39cb40b4130356698ac20bb7c0d059c6099ed0",
+  "owned_paths": 8,
+  "source_bytes": 23677,
+  "tests": {
+    "source_controls": {
+      "status": "PASS",
+      "elapsed_seconds": 0.498,
+      "canonical_recipe_cases": 8,
+      "proof_case_subtests": 19,
+      "additional_static_proof_checks": 2,
+      "subprocess_profile_guard_cases": 2,
+      "generated_image_profile": "SKIPPED (explicit profile unset)",
+      "log": "source-controls-final.log"
+    },
+    "full_build_package": {
+      "status": "PASS",
+      "elapsed_seconds": 4.964,
+      "log": "build-package-final.log"
+    },
+    "pinned_scoped_lint": {
+      "status": "PASS;0issues",
+      "log": "lint-final.log"
+    },
+    "syntax": {
+      "status": "PASS;3Ruby+1Node",
+      "receipt": "syntax-controls.json"
+    },
+    "host_empty_lock_bundler": {
+      "status": "PASS;host-only Ruby4.0.5/Bundler4.0.11",
+      "receipt": "host-bundler-unit.json",
+      "not_target_qualification": true
+    },
+    "protected_original_sources": {
+      "status": "47trackedpaths equalHEAD",
+      "receipt": "protected-source-receipt.json"
+    }
+  },
+  "history": [
+    {
+      "status": "SOURCE TEST FAILED, then corrected",
+      "log": "initial-source-controls.log",
+      "detail": "existing assertCommonPrimaryOrder also required unrelated LITERAL/LANG synthetic ENV; replaced use with Ruby-specific primary/loader/ENV/source order checks; product source unchanged"
+    },
+    {
+      "status": "LINT FAILED, then corrected",
+      "log": "lint-initial.log",
+      "detail": "one ineffectual primary initializer removed"
+    },
+    {
+      "status": "HOST UNIT revealed fixture output format mismatch",
+      "detail": "Bundler4 --version prints bare4.0.11; fixture normalizes both prefixed2/3 and bare4 forms; exact4.0.11 positive added to proof validation"
+    }
+  ],
+  "unexecuted": [
+    "No Docker/image/build/start/native ABI/target Bundler/static artifact run",
+    "No native-init/K8s/pre-deploy/hosted/allarchitecture/publication/adoption proof"
+  ],
+  "future_plan": "FUTURE-EXECUTION.json",
+  "live_source_equality": true,
+  "production_runtime_changes": false,
+  "original_replays_modified": false
+}

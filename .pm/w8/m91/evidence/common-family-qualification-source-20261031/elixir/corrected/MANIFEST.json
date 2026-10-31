@@ -1,0 +1,58 @@
+{
+  "REVIEW.json": {
+    "bytes": 2921,
+    "sha256": "941edfa380cb387c5f5f9f08c8e62f626df5e04cf441882a8c858ed1da6d8912"
+  },
+  "SOURCE.json": {
+    "bytes": 3509,
+    "sha256": "62a3dee328c023195342da6a1e3c5cd4cfa5d37aaacdaec5d9371cce8c1ea92a"
+  },
+  "bex-w8-elixir-source-corrected-gates-20261031.log": {
+    "bytes": 1293,
+    "sha256": "dff2ebcaf8bebb7fb5efad3041f30e4e9b677fea13246a6368645b05b2752caf"
+  },
+  "bex-w8-elixir-source-lint-20261031.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+    "bytes": 10725,
+    "sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/bex_nif.c": {
+    "bytes": 1419,
+    "sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/check.py": {
+    "bytes": 4364,
+    "sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/check_test.py": {
+    "bytes": 811,
+    "sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/lib/bex_mix.ex": {
+    "bytes": 61,
+    "sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs": {
+    "bytes": 208,
+    "sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/rebar.config": {
+    "bytes": 58,
+    "sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_nif.erl": {
+    "bytes": 215,
+    "sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.app.src": {
+    "bytes": 220,
+    "sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1"
+  },
+  "source/lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.erl": {
+    "bytes": 377,
+    "sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff"
+  }
+}

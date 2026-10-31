@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+  "exit": 0,
+  "duration_seconds": 8.678434416,
+  "initial_free_bytes": 2500001792,
+  "final_free_bytes": 2485571584,
+  "floor_tripped": false,
+  "scope": "source/unit only; all image profile opt-ins unset"
+}

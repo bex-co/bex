@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "bin/golangci-lint",
+    "run",
+    "./internal/build",
+    "--timeout=3m"
+  ],
+  "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+  "exit": 0,
+  "duration_seconds": 2.5424869169999997,
+  "initial_free_bytes": 2470383616,
+  "final_free_bytes": 2482962432,
+  "floor_tripped": false,
+  "scope": "source lint only; no Docker"
+}

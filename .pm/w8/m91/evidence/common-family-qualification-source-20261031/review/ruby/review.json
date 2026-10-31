@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-31T18:38:49.642927+00:00",
+  "result": "CLEAN",
+  "reviewed_source_sha256": "72640aa6c5edfaf255e231948e39cb40b4130356698ac20bb7c0d059c6099ed0",
+  "reviewed_manifest_sha256": "d77523ce6e49d4b86d33d279e0e284c50d065df3d2cb563ba2007e4ed42587f7",
+  "payloads_verified": 27,
+  "exact_fileset": true,
+  "live_source_equal": 8,
+  "review_notes": [
+    "six reviewed Ruby lines plus distinct creation-default3.4.4 and Node24 static/Ruby3.4 companion use actual canonical resolver",
+    "version files avoid authored line-signal env overriding exact image metadata; no authored program overlay",
+    "dependency-free Gemfile/lock have no source or locked Bundler release; real local install/check/exec required",
+    "Ruby C API extension compiles with selected RbConfig/mkmf and loads at build/runtime, with actual linked runtime version and UTF8 roundtrip",
+    "Ruby stdlibs/OpenSSL digest/Fiddle libc call/Node version/locale/Bundler ENV checked; static proof extracted from Node-generated public artifact",
+    "same immutable common base and inherited owned builder/platform/image/container cleanup/receipts; original13/28 and first-cohort selector untouched",
+    "separate profile flag skips generic integration; no factory/CI/pin actions"
+  ],
+  "limits": [
+    "review only; no repeated Go suite or actual Docker/image/CI/resource action",
+    "author syntax/host-empty-Bundler and synthetic proof controls are source/unit scope, not common image acceptance",
+    "actual both-architecture generated images/native-init/Kubernetes/predeploy/hosted remain unexecuted",
+    "no full27/28 or publication/adoption closure"
+  ],
+  "bookkeeping": "Initial local checker assumed a files-list manifest; corrected to the supplied path-keyed map schema before hash checks. No artifact corruption or test failure inferred."
+}

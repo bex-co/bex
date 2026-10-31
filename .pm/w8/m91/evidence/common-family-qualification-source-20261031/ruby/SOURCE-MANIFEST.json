@@ -1,0 +1,42 @@
+{
+  "lego/operator/internal/build/nativecommon_ruby_test.go": {
+    "bytes": 16847,
+    "mode": "0o644",
+    "sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile": {
+    "bytes": 71,
+    "mode": "0o644",
+    "sha256": "64e0245498491c9ca88b40d21fc207f04d5ecf34dacc056805ef87a20acde743"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile.lock": {
+    "bytes": 45,
+    "mode": "0o644",
+    "sha256": "47721c7d0cc398e770ae3dd99ff29afdc642046da031e4068ebeb6fb875fa93b"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/build.rb": {
+    "bytes": 884,
+    "mode": "0o644",
+    "sha256": "0fd903e4b57077a71abd42f8773dafdbc21c9211fb34a69317bea38fde6b653c"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+    "bytes": 3871,
+    "mode": "0o644",
+    "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/ext/bex_ruby_probe.c": {
+    "bytes": 727,
+    "mode": "0o644",
+    "sha256": "de7fd17cc64fbf66a14865e8a8d4065e2a9f08a8bd4e0d3d8941932318816b2a"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/ext/extconf.rb": {
+    "bytes": 150,
+    "mode": "0o644",
+    "sha256": "7e5dcc2662c3491eaa9077fbb9a97729f76420baa462896860d4b7169ebdcfc6"
+  },
+  "lego/operator/internal/build/testdata/native-ruby-qualification/static.js": {
+    "bytes": 1082,
+    "mode": "0o644",
+    "sha256": "a92f110bde5a96bbe1acc29fc6bd40fdc6fe2c881b54abc292ce314362ada241"
+  }
+}
