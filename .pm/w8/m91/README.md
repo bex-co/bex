@@ -219,3 +219,8 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Tenth published supplier — 2026-10-31
 
 [Root-approved Ruby3.4](evidence/published-ruby34-20261031/README.md) binds source83c run41129277963/job124323020658, five strict signed proofs, two actual negative controls, both full report pairs and33 fresh complete anonymous blobs/1,192,208,302B. Root independently checked196 frozen payloads,22 Git recipe files/modes, all five signed-subject/canonical-predicate roundtrips and seven TUF roots. Both images report Ruby3.4.12; original generated/default and hosted cases remain separate. Published approvals are10/27, with catalog adoption and the common-base decision still open. All findings remain retained.
+
+
+## Eleventh published supplier — 2026-10-31
+
+[Root-approved Python3.12](evidence/published-python312-20261031/README.md) binds source83c run41129082245/job124318545123. Five strict signed proofs, two actual negative controls, both full report pairs and all35 descriptors/1,188,703,761B are covered. Root independently checked194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. Of the blob bytes,500,339,368B were26 new complete reads;688,364,393B were nine genuine prior Python3.14 reads, each matched against its approved receipt/journal and an actual fresh anonymous HEAD. No unselected cached entry counts. Published approvals are11/27; generated/default, hosted, common-base design and catalog adoption remain open.
