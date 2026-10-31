@@ -38,7 +38,9 @@ jobs:
           persist-credentials: false
           fetch-depth: 2
       - name: test verified OCI staging and publication gates
-        run: python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
+        run: |
+          python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
+          python3 -B -m unittest discover -s deploy/native-base -p '*_test.py'
       - id: matrix
         env:
           BEFORE: ${{ github.event.before }}

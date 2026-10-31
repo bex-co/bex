@@ -20,8 +20,26 @@ esac
 
 # Authenticate the PGDG repository with its independently pinned signing key.
 mkdir -p /usr/share/keyrings
-curl --fail --location --retry 3 https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-  -o /usr/share/keyrings/bex-pgdg.asc
+fetch_pgdg_key() {
+  attempt=1
+  while :; do
+    if curl --fail --location --connect-timeout 30 --max-time 180 "$1" -o "$2"; then
+      return 0
+    else
+      result=$?
+    fi
+    # Retry transport interruptions, never HTTP or certificate refusals.
+    case "$result" in
+      5|6|7|18|28|35|52|55|56|92) ;;
+      *) return "$result" ;;
+    esac
+    [ "$attempt" -lt 4 ] || return "$result"
+    sleep "$attempt"
+    attempt=$((attempt + 1))
+  done
+}
+fetch_pgdg_key https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+  /usr/share/keyrings/bex-pgdg.asc
 echo '0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76  /usr/share/keyrings/bex-pgdg.asc' | sha256sum -c -
 printf 'deb [signed-by=/usr/share/keyrings/bex-pgdg.asc] %s %s-pgdg main\n' \
   "$pg_repo" "$VERSION_CODENAME" > /etc/apt/sources.list.d/bex-pgdg.list

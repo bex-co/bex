@@ -1,0 +1,55 @@
+{
+  "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+  "scope": "Actual terminal failures; original raw logs retained privately, each fetched once. No supplier approval or rebuild success claimed.",
+  "jobs": [
+    {
+      "name": "python311",
+      "run": 41129044087,
+      "job": 124319471502,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41129044087/job/124319471502",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
+      ],
+      "private_log_bytes": 528732,
+      "private_log_sha256": "40bfa8bfad2a1e2371d964be644c08cf521c80e9d2fac0cf251379a50bdfbc81",
+      "selected_failure_lines": [
+        "2026-10-31T05:10:24.0337623Z #51 279.2 TimeoutError: _ssl.c:975: The handshake operation timed out",
+        "2026-10-31T05:10:24.0348480Z #51 279.2 urllib.error.URLError: <urlopen error _ssl.c:975: The handshake operation timed out>",
+        "2026-10-31T05:10:24.9135595Z 279.2 urllib.error.URLError: <urlopen error _ssl.c:975: The handshake operation timed out>"
+      ]
+    },
+    {
+      "name": "python313",
+      "run": 41129116273,
+      "job": 124319435370,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41129116273/job/124319435370",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
+      ],
+      "private_log_bytes": 419851,
+      "private_log_sha256": "0b23de3ee7b5f34541edfb8457a5ecd5db6d296271a836a59d4b9b1f99d6738f",
+      "selected_failure_lines": [
+        "2026-10-31T05:35:12.9347658Z #35 150.4 curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.postgresql.org:443 ",
+        "2026-10-31T05:35:13.0190223Z 150.4 curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.postgresql.org:443 "
+      ]
+    },
+    {
+      "name": "rust1",
+      "run": 41129372376,
+      "job": 124322583428,
+      "job_url": "https://github.com/bex-co/bex/actions/runs/41129372376/job/124322583428",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26"
+      ],
+      "private_log_bytes": 1052391,
+      "private_log_sha256": "fe5e3a3aedccb74a29107234f8da457746ff2f5d1a4153a50c623e37ef8d8093",
+      "selected_failure_lines": [
+        "2026-10-31T07:44:19.9057616Z [error] received HTTP status=000 for url='https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_checksums.txt' ",
+        "2026-10-31T07:44:20.0378274Z ##[error]The Syft installer failed to install v1.51.1; see the log above for details"
+      ]
+    }
+  ]
+}

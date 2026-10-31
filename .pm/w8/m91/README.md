@@ -202,3 +202,8 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 - **结论来源：** 用户明确决定。用户先问「Render 是怎么做的」，得到解释（Render 只有一个 Debian 12 公共环境，工具预装，语言版本按环境变量装在上面）后，选择**单一 bex native 公共底**：一个 bookworm 底预装 Render 工具表，语言版本装在上面；没有选 design.md 的选项 C（按语言线构建镜像）。
 - **冲突：** 这个决定做出时，另一个会话已经按「现有 parity 规则」恢复了本项并实施选项 C（见上方 2026-10-29 记录和后续 CI 发布记录：按语言线的 bex 原生基础镜像已在发布、校验）。两条路径不同，worker 不应自行在二者之间取舍。
 - **剩余门槛：** 需要用户裁定：(a) 继续已大量完成的选项 C；或 (b) 按本决定改为单一公共底（另立设计任务，C 的成果尽量复用）。裁定前，已在进行的 C 工作可继续收尾已开始的发布，但不要再扩大范围。
+
+
+## Bounded dependency-transfer repair — 2026-10-31
+
+[Actual Python3.11/Python3.13 download failures and repair](evidence/native-fetch-transport-20261031/README.md) retain the terminal job identities and private raw-log hashes. Wheel transfer retries are bounded to three fresh attempts and keep checksum/metadata checks final; PGDG's pinned key fetch now retries TLS transport failures within explicit time limits. Native matrix/transfer and OCI staging regressions pass. The old Rust installer failure remains recorded separately. This is recovery of already-started publication work; no new supplier approval, common-base design choice, adoption or hosted/task closure is claimed.
