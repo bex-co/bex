@@ -39,6 +39,10 @@ func (stubExact) ResolveTag(context.Context, string, string) (string, bool, erro
 
 func (stubExact) ListTags(context.Context, string, string) ([]string, error) { return nil, nil }
 
+func (stubExact) NodeSourceDigest(context.Context, string) (string, error) {
+	return "", fmt.Errorf("no Node source metadata fixture")
+}
+
 func (stubExact) ImageMetadata(_ context.Context, image string) (env, history []string, err error) {
 	if strings.HasPrefix(image, "python:3.11.9-bookworm@sha256:") {
 		return []string{"PYTHON_VERSION=3.11.9", "PATH=/usr/local/bin:/usr/bin"},

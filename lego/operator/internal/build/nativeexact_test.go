@@ -29,16 +29,27 @@ import (
 )
 
 type fakeExact struct {
-	digests map[string]string
-	err     error
-	asked   []string
-	env     []string
-	envErr  error
-	history []string
+	digests    map[string]string
+	err        error
+	asked      []string
+	env        []string
+	envErr     error
+	history    []string
+	envByImage map[string]fakeExactMetadata
+}
+
+type fakeExactMetadata struct{ env, history []string }
+
+func (f *fakeExact) NodeSourceDigest(_ context.Context, version string) (string, error) {
+	f.asked = append(f.asked, "node source "+version)
+	return strings.Repeat("b", 64), f.err
 }
 
 func (f *fakeExact) ImageMetadata(_ context.Context, image string) (env, history []string, err error) {
 	f.asked = append(f.asked, "env "+image)
+	if metadata, ok := f.envByImage[image]; ok {
+		return metadata.env, metadata.history, f.envErr
+	}
 	return f.env, f.history, f.envErr
 }
 

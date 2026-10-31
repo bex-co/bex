@@ -57,6 +57,8 @@ type ExactImageResolver interface {
 	ListTags(ctx context.Context, repo, prefix string) ([]string, error)
 	// ImageMetadata returns the pinned image's verified Linux/amd64 environment and build history.
 	ImageMetadata(ctx context.Context, image string) (env, history []string, err error)
+	// NodeSourceDigest binds an exact EOL Node rebuild to its official source archive.
+	NodeSourceDigest(ctx context.Context, version string) (string, error)
 }
 
 const (
@@ -64,12 +66,14 @@ const (
 	erlangRepo = "erlang"
 	// hexpmElixirRepo publishes Elixir built on each Erlang/OTP release.
 	hexpmElixirRepo = "hexpm/elixir"
+	// hexpmErlangRepo supplies exact OTP builds for the common Bookworm base.
+	hexpmErlangRepo = "hexpm/erlang"
 )
 
 // exactRepos are the repositories an exact version may name: the official
 // toolchain repositories, the official erlang images and hexpm's Elixir.
 var exactRepos = map[string]bool{nativePythonRuntime: true, nativeNodeRuntime: true, nativeRubyRuntime: true, nativeElixirRuntime: true,
-	erlangRepo: true, hexpmElixirRepo: true}
+	erlangRepo: true, hexpmElixirRepo: true, hexpmErlangRepo: true}
 
 // repoPath is a repo's Docker Hub path: official images live under library/.
 func repoPath(repo string) string {
@@ -88,6 +92,51 @@ type DockerHubResolver struct {
 	AuthURL     string // token endpoint; defaults to Docker Hub's
 	RegistryURL string // registry base; defaults to Docker Hub's
 	HubURL      string // Hub API base, for tag listings; defaults to Docker Hub's
+	NodeDistURL string // official Node source metadata; tests may use a local server
+}
+
+func (d *DockerHubResolver) NodeSourceDigest(ctx context.Context, version string) (string, error) {
+	if !fullVersion.MatchString(version) {
+		return "", fmt.Errorf("invalid exact Node source version")
+	}
+	base := d.NodeDistURL
+	if base == "" {
+		base = "https://nodejs.org/dist"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v"+version+"/SHASUMS256.txt", nil)
+	if err != nil {
+		return "", err
+	}
+	response, err := d.Client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("node source metadata answered %d", response.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(response.Body, maxTokenBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > maxTokenBytes {
+		return "", fmt.Errorf("node source metadata exceeds its limit")
+	}
+	checksum := ""
+	for line := range strings.SplitSeq(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 || fields[1] != "node-v"+version+".tar.xz" {
+			continue
+		}
+		if checksum != "" || !digestPattern.MatchString("sha256:"+fields[0]) {
+			return "", fmt.Errorf("ambiguous or invalid Node source checksum")
+		}
+		checksum = fields[0]
+	}
+	if checksum == "" {
+		return "", fmt.Errorf("official metadata has no exact Node source archive")
+	}
+	return checksum, nil
 }
 
 // NewDockerHubResolver is the production resolver.

@@ -1,0 +1,16 @@
+{
+  "reviewed_at": "2026-10-31T14:14:59.258673+00:00",
+  "scope": "source-only common Bookworm compatibility; no runtime/image/hosted approval",
+  "root_verified_frozen_payloads": 85,
+  "root_verified_owned_source_files": 19,
+  "root_verified_owned_source_bytes": 146525,
+  "owned_manifest_sha256": "c969ab565e6575e14cc596974dd5a3944ab0fce68ab60480abf5a304184b0bdf",
+  "source_bytes_and_modes_match": true,
+  "independent_review": "CLEAN after OTP installed-payload inventory and compatible Node build-Python corrections",
+  "root_core_source_review": "exact runtime/default and companion/header identity, OTP donor/source/checksum and feature preservation, bounded signed legacy coinstallation, scratch export isolation reviewed",
+  "retained_private_payloads": 50,
+  "production_common_pin": "EMPTY",
+  "runtime_artifact_map": "EMPTY",
+  "historical_C_catalog": "EMPTY",
+  "actual_runtime_package_coinstall_Node_OTP_compile_ABI_two_arch_generated_image_SBOM_hosted": "UNEXECUTED"
+}

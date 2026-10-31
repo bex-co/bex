@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-31T14:05:31.112105+00:00",
+  "exactly_changed_paths": [
+    "deploy/native-base/node-brotli/patch.sh",
+    "deploy/native-common/common_test.py",
+    "deploy/native-common/otp-features.py",
+    "lego/operator/internal/build/nativecommon.go",
+    "lego/operator/internal/build/nativecommon_test.go"
+  ],
+  "findings": [
+    "complete installed OTP payload inventory",
+    "compatible build-only Node configure interpreter with isolated runtime export"
+  ],
+  "source_count": 19,
+  "source_bytes": 146525,
+  "all_other14files_unchanged": true
+}

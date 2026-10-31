@@ -252,3 +252,7 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Complete original tool replay source — 2026-10-31
 
 [Maintained replay source and controls](evidence/original-node-replay-source-20261031/README.md) now cover all13 original one-client programs (7Node24,6primaryPython3.13), preserving the seven prior specs and every original authored command/data. Seven offline controls and the full build-package suite pass; the original28 two-client hosted specs are unchanged. The generated-image gate remains skipped until a real immutable common candidate is selected. This is source preparation only: per-supplier omission controls, both-architecture compiled execution and original hosted acceptance remain open.
+
+## Common runtime compatibility source — 2026-10-31
+
+[Phase2 source, review findings and controls](evidence/common-bookworm-compat-source-20261031/README.md) preserve all27 reviewed selections above one common Bookworm final base, including exact OTP/Elixir/rebar, legacy distinct-SONAME libraries and exact EOL Node repair. Two source review defects were corrected and focused suites/lint/source controls pass. All19 source files/modes were independently checked. No common/runtime artifact is adopted: actual package/compiler/native-extension/ABI, both-architecture generated-image/SBOM and original28 hosted acceptance remain open. t007 stays in progress.

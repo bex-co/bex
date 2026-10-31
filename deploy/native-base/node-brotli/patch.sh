@@ -3,8 +3,20 @@
 # security release. npm and the selected Node/ABI versions stay unchanged.
 set -eu
 
+common_mode=0
+expected_version=
+source_checksum=
+if [ "$#" -ne 0 ]; then
+  [ "$#" -eq 3 ] && [ "$1" = --common-bookworm ]
+  printf '%s\n' "$2" | grep -Eq '^[0-9]+(\.[0-9]+){2}$'
+  printf '%s\n' "$3" | grep -Eq '^[a-f0-9]{64}$'
+  common_mode=1
+  expected_version=$2
+  source_checksum=$3
+fi
 [ -x /usr/local/bin/node ] || exit 0
 node_version=$(/usr/local/bin/node -p 'process.versions.node')
+[ "$common_mode" -eq 0 ] || [ "$node_version" = "$expected_version" ]
 case "$node_version" in
   14.21.3)
     node_sha=458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e
@@ -27,12 +39,28 @@ case "$node_version" in
     brotli_sha=1a84dfaa740994d19254bf78aa7d74a4a8040d1638f3d5f2cdecb188fd520da8
     ;;
   14.*|16.*|18.*|20.*)
-    echo "Unreviewed EOL Node source: $node_version" >&2; exit 1 ;;
+    [ "$common_mode" -eq 1 ] || { echo "Unreviewed EOL Node source: $node_version" >&2; exit 1; }
+    node_sha=$source_checksum
+    # Early Node18/20 also bundled Brotli1.0. Keep the selected binary's
+    # actual dependency family so its GYP source list remains compatible.
+    case "$(/usr/local/bin/node -p 'process.versions.brotli')" in
+      1.0.*)
+        brotli_version=1.0.10
+        brotli_sha=b517ebdb5266b963d28d6e639b973479874ec72086deb6ee4a2d639e1b13606b ;;
+      1.1.*)
+        brotli_version=1.1.1
+        brotli_sha=1a84dfaa740994d19254bf78aa7d74a4a8040d1638f3d5f2cdecb188fd520da8 ;;
+      *) echo 'unexpected EOL Node Brotli dependency family' >&2; exit 1 ;;
+    esac
+    ;;
   *) exit 0 ;;
 esac
+[ "$common_mode" -eq 0 ] || [ "$node_sha" = "$source_checksum" ]
 
 . /etc/os-release
-if [ "$VERSION_CODENAME" != bullseye ]; then
+expected_suite=bullseye
+[ "$common_mode" -eq 0 ] || expected_suite=bookworm
+if [ "$VERSION_CODENAME" != "$expected_suite" ]; then
   echo "Node backports must compile on the Bullseye companion baseline" >&2
   exit 1
 fi
@@ -67,7 +95,14 @@ if s.count(anchor) != 1:
     raise SystemExit('Node Brotli error constant anchor changed')
 p.write_text(s.replace(anchor, anchor + '\n  NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH);'))
 PY
-./configure
+if [ "$common_mode" -eq 1 ]; then
+  # Node14 and early Node16 reject Bookworm's system Python3.11. The
+  # compatible interpreter exists only in the isolated build stage.
+  /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)'
+  /usr/local/bin/python3.9 ./configure
+else
+  ./configure
+fi
 # Node/V8 compilation is memory hungry. Bound parallelism independently of
 # the host's (potentially large) CPU count; tenant builds never run this.
 if ! make -s -j2 node > "$work_dir/build.log" 2>&1; then

@@ -1,0 +1,30 @@
+ok: canonical inventory validates (exit 0)
+ok: canonical supplied-base digest needs inventory coverage (exit 1)
+ok: inventoried canonical supplied-base digest validates (exit 0)
+ok: canonical common source needs inventory coverage (exit 1)
+ok: inventoried canonical common source validates (exit 0)
+ok: uncovered pin-site digest fails (exit 1)
+ok: committed digest missing from file fails (exit 1)
+ok: malformed schema fails (exit 1)
+ok: short digest fails (exit 1)
+ok: repeated resolve is byte-identical
+ok: unchanged resolve reports changed=false
+ok: drift names committed digest
+ok: drift names observed digest
+ok: drift sets changed=true
+ok: resolve does not edit the worktree
+ok: ghcr.io upstream parses and resolves via ghcr.io token + manifest
+ok: npm-package upstream resolves via npm dist-tag + tarball sha256
+ok: release-asset upstream resolves via the GitHub release download sha256
+ok: issue body carries exact replacements
+ok: issue body is a review request
+ok: issue open/update/close/noop decisions
+ok: freshness workflow is issue-only and secret-free
+ok: freshness workflow permissions are least privilege
+ok: dockerignore admits the embedded freshness inventory
+ok: a Go pin one minor behind is drift
+ok: a Go pin one minor behind sets changed=true
+ok: a current Go line is not drift
+ok: lines compare numerically, not as strings
+ok: a malformed line feed does not fail the resolve
+PASS: build-toolchain-freshness.sh

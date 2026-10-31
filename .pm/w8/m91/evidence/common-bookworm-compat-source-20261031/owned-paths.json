@@ -1,0 +1,138 @@
+{
+  "scope": "CURRENT corrected phase2 compatibility source; pre-review19files preserved separately. Excludes root replay and foreigngo.work.sum.",
+  "files": [
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5358,
+      "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8",
+      "mode": "0o644",
+      "intentional_post_review_fix": true
+    },
+    {
+      "path": "deploy/native-common/Dockerfile",
+      "bytes": 2460,
+      "sha256": "0d60ba986dcb7e5f352f8b8f8a61e3045d8504569e6c65c2812b417f358ddce3",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/Dockerfile.dockerignore",
+      "bytes": 608,
+      "sha256": "5126132bbd9bc9b175e03f1d94f1e23e20146435ed660958e438899e42f9154e",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/build-otp",
+      "bytes": 1983,
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/check-common.py",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/common_test.py",
+      "bytes": 6051,
+      "sha256": "dab13776b01e12f5841b73eb9cc70f7c3a5746bfd61e9dade61ce08987c41427",
+      "mode": "0o644",
+      "intentional_post_review_fix": true
+    },
+    {
+      "path": "deploy/native-common/legacy-libs.preferences",
+      "bytes": 124,
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/legacy-libs.sources",
+      "bytes": 433,
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "deploy/native-common/otp-features.py",
+      "bytes": 1853,
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+      "mode": "0o644",
+      "intentional_post_review_fix": true
+    },
+    {
+      "path": "lego/operator/cmd/native-resolve/main_test.go",
+      "bytes": 4472,
+      "sha256": "e2ac4aa66fb8a5f3ad30724ca3d5f915015c69c39775da6a64c542a147a2354a",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/dockerhub.go",
+      "bytes": 10873,
+      "sha256": "0224abff06cc142ed8d13c0a1ea80d6460f829c0072f4fefb215f779ade9b4b1",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon.go",
+      "bytes": 7218,
+      "sha256": "d6da59bbfd020a3d56703f76ff1aae8eee129fed0af1cb09ecfdf486c97867ce",
+      "mode": "0o644",
+      "intentional_post_review_fix": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_erlang.go",
+      "bytes": 6162,
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_erlang_test.go",
+      "bytes": 7354,
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "bytes": 17816,
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "mode": "0o644",
+      "intentional_post_review_fix": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeexact_test.go",
+      "bytes": 14100,
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18153,
+      "sha256": "38b684de0e9d850d721a16631ad96fa652f189d50e996ad84f6c972a1dae0ac1",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion.go",
+      "bytes": 28833,
+      "sha256": "c3375ca595f90ee8128e962f74a407352a26e28b2dfadde082b140d9ca1d591b",
+      "mode": "0o644",
+      "unchanged_since_restored_snapshot": true
+    }
+  ]
+}

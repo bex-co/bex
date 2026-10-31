@@ -1,0 +1,19 @@
+test_all_wheels_are_required_even_without_a_primary_interpreter (common_test.CommonImageTests.test_all_wheels_are_required_even_without_a_primary_interpreter) ... ok
+test_common_layout_refuses_other_distribution_and_dangling_primary (common_test.CommonImageTests.test_common_layout_refuses_other_distribution_and_dangling_primary) ... ok
+test_missing_ambiguous_or_other_distribution_pin_is_refused (common_test.CommonImageTests.test_missing_ambiguous_or_other_distribution_pin_is_refused) ... ok
+test_otp_donor_retains_complete_installed_payload (common_test.CommonImageTests.test_otp_donor_retains_complete_installed_payload) ... ok
+test_otp_payload_preserves_types_executable_bits_and_link_destinations (common_test.CommonImageTests.test_otp_payload_preserves_types_executable_bits_and_link_destinations) ... ok
+test_real_cli_supplies_one_common_row_and_reviewed_base (common_test.CommonImageTests.test_real_cli_supplies_one_common_row_and_reviewed_base) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.035s
+
+OK
+Exact OTP donor needs same-release source build: lib/odbc-2.16/priv/bin/odbcserver
+Exact OTP donor needs same-release source build: lib/odbc-2.16/ebin/odbc.app
+Exact OTP donor needs same-release source build: lib/wx-2.5/priv/wxe_driver.so
+Exact OTP donor needs same-release source build: lib/wx-2.5/priv/resource.dat
+Exact OTP donor needs same-release source build: lib/jinterface-1.0/priv/OtpErlang.jar
+Exact OTP donor needs same-release source build: helper (executable permissions)
+Exact OTP donor needs same-release source build: helper-link (link destination)
+Exact OTP donor needs same-release source build: helper-link (type)
