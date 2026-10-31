@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { DeleteWebhookEndpointDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 export interface UseDeleteWebhookResult {
@@ -21,7 +20,6 @@ export interface UseDeleteWebhookResult {
  */
 export function useDeleteWebhook(): UseDeleteWebhookResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(DeleteWebhookEndpointDocument);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -29,7 +27,7 @@ export function useDeleteWebhook(): UseDeleteWebhookResult {
     async (id: string, name: string) => {
       setDeleting(id);
       try {
-        await mutate({ variables: { id, ownerId: currentWorkspaceId } });
+        await mutate({ variables: { id } });
         toast.success(t("webhooks.deleteSuccess", { name }));
         return true;
       } catch (error) {
@@ -44,7 +42,7 @@ export function useDeleteWebhook(): UseDeleteWebhookResult {
         setDeleting(null);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, t],
   );
 
   return { remove, deleting };

@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { SetWebhookEndpointEnabledDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 export interface UseSetWebhookEnabledResult {
@@ -21,7 +20,6 @@ export interface UseSetWebhookEnabledResult {
  */
 export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(SetWebhookEndpointEnabledDocument);
   const [toggling, setToggling] = useState<string | null>(null);
 
@@ -30,7 +28,7 @@ export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
       setToggling(id);
       try {
         await mutate({
-          variables: { id, enabled, ownerId: currentWorkspaceId },
+          variables: { id, enabled },
         });
         toast.success(
           t(enabled ? "webhooks.enableSuccess" : "webhooks.disableSuccess", {
@@ -50,7 +48,7 @@ export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
         setToggling(null);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, t],
   );
 
   return { setEnabled, toggling };

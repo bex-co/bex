@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { ResendWebhookDeliveryDocument } from "@/features/webhooks/api/operations";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 function newIdempotencyKey(attemptId: string): string {
@@ -26,7 +25,6 @@ export interface UseResendWebhookDeliveryResult {
  */
 export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(ResendWebhookDeliveryDocument);
   const [resendingAttemptId, setResendingAttemptId] = useState<string | null>(
     null,
@@ -36,7 +34,7 @@ export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
 
   const resend = useCallback(
     async (endpointId: string, attemptId: string) => {
-      if (!currentWorkspaceId || inFlight.current.has(attemptId)) return false;
+      if (inFlight.current.has(attemptId)) return false;
 
       const idempotencyKey =
         idempotencyKeys.current.get(attemptId) ?? newIdempotencyKey(attemptId);
@@ -48,7 +46,6 @@ export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
           variables: {
             endpointId,
             attemptId,
-            ownerId: currentWorkspaceId,
             idempotencyKey,
           },
         });
@@ -71,7 +68,7 @@ export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
         );
       }
     },
-    [currentWorkspaceId, mutate, t],
+    [mutate, t],
   );
 
   return { resend, resendingAttemptId };

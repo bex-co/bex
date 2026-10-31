@@ -47,7 +47,6 @@ describe("useResendWebhookDelivery", () => {
       variables: {
         endpointId: "whk-1",
         attemptId: "whd-failed",
-        ownerId: "tea-1",
         idempotencyKey: expect.stringMatching(/^dashboard-/),
       },
     });
@@ -76,18 +75,22 @@ describe("useResendWebhookDelivery", () => {
     expect(toastSuccess).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call the mutation before workspace selection resolves", async () => {
+  // w4/443: the endpoint id resolves its own workspace server-side, so a
+  // resend neither waits for nor pins the selected workspace.
+  it("resends by endpoint id alone, whatever workspace is selected", async () => {
     currentWorkspaceId = null;
-    const mutate = vi.fn();
+    const mutate = vi.fn().mockResolvedValue({
+      data: { resendWebhookDelivery: { id: "whd-new" } },
+    });
     mockUseMutation.mockReturnValue([mutate]);
     const { result } = renderHook(() => useResendWebhookDelivery());
 
-    let ok = true;
+    let ok = false;
     await act(async () => {
       ok = await result.current.resend("whk-1", "whd-failed");
     });
 
-    expect(ok).toBe(false);
-    expect(mutate).not.toHaveBeenCalled();
+    expect(ok).toBe(true);
+    expect(mutate.mock.calls[0][0].variables).not.toHaveProperty("ownerId");
   });
 });

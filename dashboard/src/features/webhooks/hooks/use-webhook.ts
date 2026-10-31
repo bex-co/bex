@@ -10,7 +10,6 @@ import {
 } from "@/common/lib/polling";
 import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 function toView(
   raw: WebhookEndpointQuery["webhookEndpoint"] | undefined,
@@ -42,16 +41,16 @@ export interface UseWebhookResult {
 
 /**
  * One endpoint by id for the `/webhook/$webhookId` detail page (w1/m49).
- * Workspace-scoped like every webhook read; the signing secret is never
+ * Resolved by id in its own workspace; the signing secret is never
  * requested (mint-once contract, t006). An unknown or foreign id resolves to
  * `notFound`, which the page renders as its 404 state — never a crash.
  */
 export function useWebhook(id: string): UseWebhookResult {
-  const { currentWorkspaceId } = useWorkspace();
-  const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(WebhookEndpointDocument, {
-    variables: { id, ownerId: currentWorkspaceId },
-    skip: !resolved,
+    // No ownerId: a webhook id resolves its own workspace server-side, so a
+    // link to one in another of the caller's workspaces opens (w4/443, as
+    // w4/m169 did for Blueprints).
+    variables: { id },
     // The parent route's network-only loader fills this exact query for the
     // SSR title and shell. Consume that normalized result instead of issuing a
     // second request solely because both the head and page need the endpoint.
@@ -62,7 +61,7 @@ export function useWebhook(id: string): UseWebhookResult {
   });
 
   const endpoint = useMemo(() => toView(data?.webhookEndpoint), [data]);
-  const pending = !resolved || loading;
+  const pending = loading;
 
   return {
     endpoint,

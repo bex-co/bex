@@ -34,10 +34,8 @@ export const Route = createFileRoute("/webhook/$webhookId")({
       () =>
         context.client.query({
           query: WebhookEndpointDocument,
-          variables: {
-            id: params.webhookId,
-            ownerId: context.workspaceId,
-          },
+          // By id alone, as useWebhook reads it (w4/443).
+          variables: { id: params.webhookId },
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
