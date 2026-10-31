@@ -1,0 +1,27 @@
+{
+  "bundle_digest": "sha256:ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75.bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "f06981c360e9ed227fbb6c9c50006a8da176638567e4bc16f2fccd7ab5d8db0e",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/native-node-22-bookworm-83c1e30e35eeeadab499de4d8d96c1f6c0349077/bundles/cosign-tuf-cache/ac4dd10a261a990bf2e3d8edd3e02bae2a095c45de8289612270bf48c5bf4f75-positive-attempt1-gxqfakl4"
+}

@@ -1,0 +1,114 @@
+{
+  "started_at": "2026-10-31T09:22:00.526271+00:00",
+  "completed_at": "2026-10-31T09:24:57.383318+00:00",
+  "actual_returncode": 0,
+  "command": [
+    "python3",
+    "/tmp/loopx-w8-native-review-v11.py",
+    "--policy-module",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--name",
+    "node-22-bookworm",
+    "--sha",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "--run",
+    "41128855169",
+    "--output-root",
+    "/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031",
+    "--cache-root",
+    "/tmp/loopx-w8-native-cache-node22-v11-83c1e30-20261031",
+    "--layer-workers",
+    "2"
+  ],
+  "executed_source_sha256": {
+    "/tmp/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "/tmp/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+  },
+  "log": "/tmp/loopx-w8-native-review-node22-v11-83c1e30-20261031/v11-case-attempt1.log",
+  "resource_policy": {
+    "minimum_free_bytes": 2147483648,
+    "maximum_owned_case_bytes": 2147483648,
+    "proactive_free_stop_bytes": 2281701376,
+    "proactive_owned_stop_bytes": 2080374784,
+    "poll_seconds": 2,
+    "maximum_elapsed_seconds": 7200,
+    "termination_scope": "Only the new local subprocess session/process group created by this supervisor; no CI or other process"
+  },
+  "minimum_observed_free_bytes": 7832006656,
+  "maximum_observed_owned_bytes": 131533311,
+  "stopped_reason": null,
+  "resource_observations": [
+    {
+      "at": "2026-10-31T09:22:00.528769+00:00",
+      "free_bytes": 8112738304,
+      "owned_bytes": 55004,
+      "actual_progress": null
+    },
+    {
+      "at": "2026-10-31T09:22:30.629337+00:00",
+      "free_bytes": 8144625664,
+      "owned_bytes": 104957314,
+      "actual_progress": {
+        "at": "2026-10-31T09:22:08.896168+00:00",
+        "stage": "anonymous-immutable-bundle-download",
+        "candidate_approved": false,
+        "name": "node-22-bookworm"
+      }
+    },
+    {
+      "at": "2026-10-31T09:23:00.763470+00:00",
+      "free_bytes": 8034381824,
+      "owned_bytes": 121202494,
+      "actual_progress": {
+        "at": "2026-10-31T09:22:59.585719+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "node-22-bookworm",
+        "digest": "sha256:7bc3de5da4cbffc12b41ba7e960d229281c1201dc1a6821378b788f3cb749517",
+        "expected_bytes": 361
+      }
+    },
+    {
+      "at": "2026-10-31T09:23:30.896717+00:00",
+      "free_bytes": 7923286016,
+      "owned_bytes": 121211212,
+      "actual_progress": {
+        "at": "2026-10-31T09:23:30.127319+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "node-22-bookworm",
+        "digest": "sha256:09704f0b703d632bc8523ca435559c2a84d9d4c0c64627c55dd93258f20e99cf",
+        "expected_bytes": 1250674
+      }
+    },
+    {
+      "at": "2026-10-31T09:24:01.128400+00:00",
+      "free_bytes": 8182001664,
+      "owned_bytes": 121222834,
+      "actual_progress": {
+        "at": "2026-10-31T09:23:35.541098+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "node-22-bookworm",
+        "digest": "sha256:f8686c5778c63033405eb5a9ebbb92a7657671d2d6d579d9d245c6b4387ff0e8",
+        "expected_bytes": 61851372
+      }
+    },
+    {
+      "at": "2026-10-31T09:24:31.251062+00:00",
+      "free_bytes": 9492881408,
+      "owned_bytes": 121230936,
+      "actual_progress": {
+        "at": "2026-10-31T09:24:06.939956+00:00",
+        "stage": "anonymous_blob_pull",
+        "candidate_approved": false,
+        "name": "node-22-bookworm",
+        "digest": "sha256:3ac33815909a2f44d153e6789afdb9a16b078066c4f8521b474ae028569f5453",
+        "expected_bytes": 152806868
+      }
+    }
+  ],
+  "supervisor_sha256": "5c50909b89bee9fdb1e2a25fe47dec58f2c0ee21e5b4f156292c5efab70000b5"
+}
