@@ -1,0 +1,657 @@
+{
+  "qualification/actual-bundle-format.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/actual-bundle-format.json",
+    "sourceBytes": 2696,
+    "sourceSha256": "03b4da987b0b8ac3f54a3beae590aa9861451445dbd39ddf92955ba2bda87053",
+    "storedBytes": 2696,
+    "storedSha256": "03b4da987b0b8ac3f54a3beae590aa9861451445dbd39ddf92955ba2bda87053",
+    "losslessGzip": false
+  },
+  "qualification/actual-image-amd64.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/actual-image-amd64.json",
+    "sourceBytes": 2180,
+    "sourceSha256": "fe6d39f592942c1778a3b460d7c28464ccb521b44f82c0adb1f2cc79c8de64ff",
+    "storedBytes": 2180,
+    "storedSha256": "fe6d39f592942c1778a3b460d7c28464ccb521b44f82c0adb1f2cc79c8de64ff",
+    "losslessGzip": false
+  },
+  "qualification/actual-image-arm64.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/actual-image-arm64.json",
+    "sourceBytes": 2181,
+    "sourceSha256": "d57b68529fdc0fea514f3b4cc8b46a2e38d940fd1b57e4c65680d390f2b323b6",
+    "storedBytes": 2181,
+    "storedSha256": "d57b68529fdc0fea514f3b4cc8b46a2e38d940fd1b57e4c65680d390f2b323b6",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-amd64-blkid-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-amd64-blkid-help.txt",
+    "sourceBytes": 2047,
+    "sourceSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "storedBytes": 2047,
+    "storedSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-amd64-cryptsetup-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-amd64-cryptsetup-version.txt",
+    "sourceBytes": 64,
+    "sourceSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "storedBytes": 64,
+    "storedSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-amd64-driver-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-amd64-driver-help.txt",
+    "sourceBytes": 284,
+    "sourceSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "storedBytes": 284,
+    "storedSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-amd64-dumpe2fs-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-amd64-dumpe2fs-version.txt",
+    "sourceBytes": 66,
+    "sourceSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "storedBytes": 66,
+    "storedSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-arm64-blkid-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-arm64-blkid-help.txt",
+    "sourceBytes": 2047,
+    "sourceSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "storedBytes": 2047,
+    "storedSha256": "03671e44cde2172a3ee28436b548899b9fef154832ab2ea8e89bffc9e38a9bcf",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-arm64-cryptsetup-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-arm64-cryptsetup-version.txt",
+    "sourceBytes": 64,
+    "sourceSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "storedBytes": 64,
+    "storedSha256": "a29e8329d2cdd6daa7064daacb9a98269e117a097d91a6e3aae740a88c75aacf",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-arm64-driver-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-arm64-driver-help.txt",
+    "sourceBytes": 284,
+    "sourceSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "storedBytes": 284,
+    "storedSha256": "be413102508cb03f0bd8480fbb3a413920bf6439df378dc9345fbcc17367f795",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-arm64-dumpe2fs-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-arm64-dumpe2fs-version.txt",
+    "sourceBytes": 66,
+    "sourceSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "storedBytes": 66,
+    "storedSha256": "3db246422aee769d062e15f0d9c6f79d8e1534d5ae97250b2d6d6d7588da0b0c",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-probes.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-probes.json",
+    "sourceBytes": 4101,
+    "sourceSha256": "9e1ff032b4bd95e507d224b32d196517e60d6c43878df77cb6cecaacd6a14aab",
+    "storedBytes": 4101,
+    "storedSha256": "9e1ff032b4bd95e507d224b32d196517e60d6c43878df77cb6cecaacd6a14aab",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-probes.log": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-probes.log",
+    "sourceBytes": 544,
+    "sourceSha256": "56802d5a66f0878a8e5c5f4885591379dcd8e6003fe8dcec1feacf9127bdbef7",
+    "storedBytes": 544,
+    "storedSha256": "56802d5a66f0878a8e5c5f4885591379dcd8e6003fe8dcec1feacf9127bdbef7",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-probes.py": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-probes.py",
+    "sourceBytes": 8811,
+    "sourceSha256": "98d10114d633a113c01d3d2725ae1f41266c608d1ce43fa1075ac891e326cac4",
+    "storedBytes": 8811,
+    "storedSha256": "98d10114d633a113c01d3d2725ae1f41266c608d1ce43fa1075ac891e326cac4",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-pull-amd64.jsonl": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-pull-amd64.jsonl",
+    "sourceBytes": 28992,
+    "sourceSha256": "784fa7974bedbc30e429dd0e6fbaa16d6e0257fe6afe8219209952c4973d6345",
+    "storedBytes": 28992,
+    "storedSha256": "784fa7974bedbc30e429dd0e6fbaa16d6e0257fe6afe8219209952c4973d6345",
+    "losslessGzip": false
+  },
+  "qualification/anonymous-pull-arm64.jsonl": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/anonymous-pull-arm64.jsonl",
+    "sourceBytes": 29727,
+    "sourceSha256": "c9c81d2d32dc1dacc757ea0959041216b926c4576f873cf149f27d96c92beca3",
+    "storedBytes": 29727,
+    "storedSha256": "c9c81d2d32dc1dacc757ea0959041216b926c4576f873cf149f27d96c92beca3",
+    "losslessGzip": false
+  },
+  "qualification/bundle-3c5d1dba78bc766d695a9f91f5b351787224b6d01122da7f73cf5434925eab16.json.gz": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/bundle-3c5d1dba78bc766d695a9f91f5b351787224b6d01122da7f73cf5434925eab16.json",
+    "sourceBytes": 1859771,
+    "sourceSha256": "3c5d1dba78bc766d695a9f91f5b351787224b6d01122da7f73cf5434925eab16",
+    "storedBytes": 287104,
+    "storedSha256": "cb835dcaeb940770f6b713f150954671785c45c334dda512af9a1800d34d6c98",
+    "losslessGzip": true
+  },
+  "qualification/bundle-90f9f21f03572b2665b581e97904690fed92f19dbaee772ed6ee2cd1c905f168.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/bundle-90f9f21f03572b2665b581e97904690fed92f19dbaee772ed6ee2cd1c905f168.json",
+    "sourceBytes": 10471,
+    "sourceSha256": "90f9f21f03572b2665b581e97904690fed92f19dbaee772ed6ee2cd1c905f168",
+    "storedBytes": 10471,
+    "storedSha256": "90f9f21f03572b2665b581e97904690fed92f19dbaee772ed6ee2cd1c905f168",
+    "losslessGzip": false
+  },
+  "qualification/bundle-format.first-native-route404.log": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/bundle-format.first-native-route404.log",
+    "sourceBytes": 2436,
+    "sourceSha256": "d583e5b19844d4de02a5228ed674c9e659d6654851b33b0ba39e6eb6cf5c2438",
+    "storedBytes": 2436,
+    "storedSha256": "d583e5b19844d4de02a5228ed674c9e659d6654851b33b0ba39e6eb6cf5c2438",
+    "losslessGzip": false
+  },
+  "qualification/bundle-format.log": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/bundle-format.log",
+    "sourceBytes": 3360,
+    "sourceSha256": "54ce164fff49d5de760299b709f1a1ab9f95166822599a3254e53069aa27ca80",
+    "storedBytes": 3360,
+    "storedSha256": "54ce164fff49d5de760299b709f1a1ab9f95166822599a3254e53069aa27ca80",
+    "losslessGzip": false
+  },
+  "qualification/candidate-amd64-config.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-amd64-config.json",
+    "sourceBytes": 2555,
+    "sourceSha256": "58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+    "storedBytes": 2555,
+    "storedSha256": "58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+    "losslessGzip": false
+  },
+  "qualification/candidate-amd64-manifest.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-amd64-manifest.json",
+    "sourceBytes": 1247,
+    "sourceSha256": "d96bac2f27b80dbd2df109c3aedb6b9d79d861b37a46c2c9acd56a58c560045d",
+    "storedBytes": 1247,
+    "storedSha256": "d96bac2f27b80dbd2df109c3aedb6b9d79d861b37a46c2c9acd56a58c560045d",
+    "losslessGzip": false
+  },
+  "qualification/candidate-arm64-config.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-arm64-config.json",
+    "sourceBytes": 2558,
+    "sourceSha256": "780bcab1028a7bb0cee5796e862bf4b54922b2f2772507479fd37d5bdfa6780d",
+    "storedBytes": 2558,
+    "storedSha256": "780bcab1028a7bb0cee5796e862bf4b54922b2f2772507479fd37d5bdfa6780d",
+    "losslessGzip": false
+  },
+  "qualification/candidate-arm64-manifest.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-arm64-manifest.json",
+    "sourceBytes": 1247,
+    "sourceSha256": "08a53916d01c3f5929e57269cc124c6b9689e94ca53b4757914feebd30218ec4",
+    "storedBytes": 1247,
+    "storedSha256": "08a53916d01c3f5929e57269cc124c6b9689e94ca53b4757914feebd30218ec4",
+    "losslessGzip": false
+  },
+  "qualification/candidate-index.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-index.json",
+    "sourceBytes": 1609,
+    "sourceSha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+    "storedBytes": 1609,
+    "storedSha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+    "losslessGzip": false
+  },
+  "qualification/candidate-referrer-index.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/candidate-referrer-index.json",
+    "sourceBytes": 495,
+    "sourceSha256": "597bb07515104770c61768ee2b0280e1b096acb526b0cce64f12c2d5326b329d",
+    "storedBytes": 495,
+    "storedSha256": "597bb07515104770c61768ee2b0280e1b096acb526b0cce64f12c2d5326b329d",
+    "losslessGzip": false
+  },
+  "qualification/crypto-review.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/crypto-review.json",
+    "sourceBytes": 4176,
+    "sourceSha256": "3b1ec54bb9a25a0502693571f9d6d92ce4a85ae0a7d2cf951ef55b8bc35f5fde",
+    "storedBytes": 4176,
+    "storedSha256": "3b1ec54bb9a25a0502693571f9d6d92ce4a85ae0a7d2cf951ef55b8bc35f5fde",
+    "losslessGzip": false
+  },
+  "qualification/factory-binding.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/factory-binding.json",
+    "sourceBytes": 1423,
+    "sourceSha256": "b148bb505afffdf4c726bb3b5d5d9eae90a0d7cbe5b74d862cc375983d0fff87",
+    "storedBytes": 1423,
+    "storedSha256": "b148bb505afffdf4c726bb3b5d5d9eae90a0d7cbe5b74d862cc375983d0fff87",
+    "losslessGzip": false
+  },
+  "qualification/official-csi-amd64-config.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/official-csi-amd64-config.json",
+    "sourceBytes": 1861,
+    "sourceSha256": "148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24",
+    "storedBytes": 1861,
+    "storedSha256": "148699695ae76db2f7c94e231300cc4320a650224e9780099168a0321b310c24",
+    "losslessGzip": false
+  },
+  "qualification/official-csi-amd64-manifest.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/official-csi-amd64-manifest.json",
+    "sourceBytes": 1158,
+    "sourceSha256": "e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e",
+    "storedBytes": 1158,
+    "storedSha256": "e21fb52c0303c48e5e0c209f7aed8941f03099bb2251e7dfcb24302cdeaca55e",
+    "losslessGzip": false
+  },
+  "qualification/official-csi-arm64-config.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/official-csi-arm64-config.json",
+    "sourceBytes": 1865,
+    "sourceSha256": "17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa",
+    "storedBytes": 1865,
+    "storedSha256": "17d65a52585c12a7e6ca00fd33ce0660968927b51b4e923e8007aa2114c2cafa",
+    "losslessGzip": false
+  },
+  "qualification/official-csi-arm64-manifest.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/official-csi-arm64-manifest.json",
+    "sourceBytes": 1158,
+    "sourceSha256": "2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5",
+    "storedBytes": 1158,
+    "storedSha256": "2dbfe6c208bacc4647ea490d83db204b23567b472e11fe1557ea234e41594fd5",
+    "losslessGzip": false
+  },
+  "qualification/official-csi-index.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/official-csi-index.json",
+    "sourceBytes": 1079,
+    "sourceSha256": "459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+    "storedBytes": 1079,
+    "storedSha256": "459090f3c173d6708dcb3d85801509b371c9b8fffd76d704f482de3099729664",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-amd64-blkid-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-amd64-blkid-help.json",
+    "sourceBytes": 832,
+    "sourceSha256": "36fa474c324d3021b2aaba56afcb38b51baecd91e92dea9451560d7bb6360f67",
+    "storedBytes": 832,
+    "storedSha256": "36fa474c324d3021b2aaba56afcb38b51baecd91e92dea9451560d7bb6360f67",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-amd64-cryptsetup-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-amd64-cryptsetup-version.json",
+    "sourceBytes": 856,
+    "sourceSha256": "d2a053ef374eceb6fba0e127aa640eba44d7572bd4261c7f55bdf1b3594a5431",
+    "storedBytes": 856,
+    "storedSha256": "d2a053ef374eceb6fba0e127aa640eba44d7572bd4261c7f55bdf1b3594a5431",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-amd64-driver-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-amd64-driver-help.json",
+    "sourceBytes": 851,
+    "sourceSha256": "9a47811c4d8af658167a7bf5910321a5a2dc35aab0bfce96fb90a6aa50c1122d",
+    "storedBytes": 851,
+    "storedSha256": "9a47811c4d8af658167a7bf5910321a5a2dc35aab0bfce96fb90a6aa50c1122d",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-amd64-dumpe2fs-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-amd64-dumpe2fs-version.json",
+    "sourceBytes": 843,
+    "sourceSha256": "0df65c037047775836508ad645b13f16f7d62f44b363fc1571ed5802eace91f0",
+    "storedBytes": 843,
+    "storedSha256": "0df65c037047775836508ad645b13f16f7d62f44b363fc1571ed5802eace91f0",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-arm64-blkid-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-arm64-blkid-help.json",
+    "sourceBytes": 832,
+    "sourceSha256": "abbe961393d61bead401820b4758d6c2232d6ae908896272c467cd151c43369b",
+    "storedBytes": 832,
+    "storedSha256": "abbe961393d61bead401820b4758d6c2232d6ae908896272c467cd151c43369b",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-arm64-cryptsetup-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-arm64-cryptsetup-version.json",
+    "sourceBytes": 856,
+    "sourceSha256": "e93dde0127984d39d0a214520cceda211151e471c02e60ca066b0c6c9f69d041",
+    "storedBytes": 856,
+    "storedSha256": "e93dde0127984d39d0a214520cceda211151e471c02e60ca066b0c6c9f69d041",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-arm64-driver-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-arm64-driver-help.json",
+    "sourceBytes": 851,
+    "sourceSha256": "1b8d4a0ede814ca8a91dcd0b85c766f62802e7a2f1822f26b93696a4c8be8842",
+    "storedBytes": 851,
+    "storedSha256": "1b8d4a0ede814ca8a91dcd0b85c766f62802e7a2f1822f26b93696a4c8be8842",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-arm64-dumpe2fs-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-arm64-dumpe2fs-version.json",
+    "sourceBytes": 843,
+    "sourceSha256": "9618662bb13f6f44be5275eb30f29e790f5cd891838b137253114fe266bf7eb7",
+    "storedBytes": 843,
+    "storedSha256": "9618662bb13f6f44be5275eb30f29e790f5cd891838b137253114fe266bf7eb7",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-amd64-blkid-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-amd64-blkid-help.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "4ccc18910d9a0a22f88a6524616fb7c134c666d35fa4453c9cde0325cc183942",
+    "storedBytes": 65,
+    "storedSha256": "4ccc18910d9a0a22f88a6524616fb7c134c666d35fa4453c9cde0325cc183942",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-amd64-cryptsetup-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-amd64-cryptsetup-version.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "a4457ac2a741be7a861955c53ccbd1f57273a648b38ea1380e76ff3164ff6665",
+    "storedBytes": 65,
+    "storedSha256": "a4457ac2a741be7a861955c53ccbd1f57273a648b38ea1380e76ff3164ff6665",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-amd64-driver-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-amd64-driver-help.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "6572074a48e3e70d3d39c5b5c7a5518341fb764d4d4b1db88aa3e7b629c09748",
+    "storedBytes": 65,
+    "storedSha256": "6572074a48e3e70d3d39c5b5c7a5518341fb764d4d4b1db88aa3e7b629c09748",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-amd64-dumpe2fs-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-amd64-dumpe2fs-version.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "ec12eaae4c4bfed0d1fd8a648a1bdba2693e0b4fce627cb06489869230b143fc",
+    "storedBytes": 65,
+    "storedSha256": "ec12eaae4c4bfed0d1fd8a648a1bdba2693e0b4fce627cb06489869230b143fc",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-arm64-blkid-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-arm64-blkid-help.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "bc74dda64b1d163ac3bc03385096e79b1be538103607f81f6f108ce791e6a49a",
+    "storedBytes": 65,
+    "storedSha256": "bc74dda64b1d163ac3bc03385096e79b1be538103607f81f6f108ce791e6a49a",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-arm64-cryptsetup-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-arm64-cryptsetup-version.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "195be7e1b1a4c8bd130dae90a7ac9b6e30d6f35c901f6f0fe09614c138ab776e",
+    "storedBytes": 65,
+    "storedSha256": "195be7e1b1a4c8bd130dae90a7ac9b6e30d6f35c901f6f0fe09614c138ab776e",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-arm64-driver-help.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-arm64-driver-help.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "65e0d4f998d0213db4f2847f1c8bd9208e366c946959fa7c4abcfbd9f809460a",
+    "storedBytes": 65,
+    "storedSha256": "65e0d4f998d0213db4f2847f1c8bd9208e366c946959fa7c4abcfbd9f809460a",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-cleanup-arm64-dumpe2fs-version.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-cleanup-arm64-dumpe2fs-version.txt",
+    "sourceBytes": 65,
+    "sourceSha256": "fcbac0316e2ec3c921ccbe053216090ca3ed9d7b94adc01209a1a27901dee54c",
+    "storedBytes": 65,
+    "storedSha256": "fcbac0316e2ec3c921ccbe053216090ca3ed9d7b94adc01209a1a27901dee54c",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-amd64-blkid-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-amd64-blkid-help.json",
+    "sourceBytes": 780,
+    "sourceSha256": "16bb45a094996a8bfabc5b2c3d0e381a7e83de51639473fff84842465cbf4645",
+    "storedBytes": 780,
+    "storedSha256": "16bb45a094996a8bfabc5b2c3d0e381a7e83de51639473fff84842465cbf4645",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-amd64-cryptsetup-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-amd64-cryptsetup-version.json",
+    "sourceBytes": 804,
+    "sourceSha256": "6b14a8725ce34c914c9d4b3c44c66b97974b4461b8c6dc71910c7b9e66426d09",
+    "storedBytes": 804,
+    "storedSha256": "6b14a8725ce34c914c9d4b3c44c66b97974b4461b8c6dc71910c7b9e66426d09",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-amd64-driver-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-amd64-driver-help.json",
+    "sourceBytes": 799,
+    "sourceSha256": "234594df58cdef2f2eccef8b977cf643096e7400a561e014eb2485c5bad388a0",
+    "storedBytes": 799,
+    "storedSha256": "234594df58cdef2f2eccef8b977cf643096e7400a561e014eb2485c5bad388a0",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-amd64-dumpe2fs-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-amd64-dumpe2fs-version.json",
+    "sourceBytes": 791,
+    "sourceSha256": "5247a8e289b1705fbd3429754b6f13fcbb48a56b5aebf610e5ecb1e3c1143621",
+    "storedBytes": 791,
+    "storedSha256": "5247a8e289b1705fbd3429754b6f13fcbb48a56b5aebf610e5ecb1e3c1143621",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-arm64-blkid-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-arm64-blkid-help.json",
+    "sourceBytes": 780,
+    "sourceSha256": "4eff0832ee5b5e70c8e725072256dec538b56e2341eac523efe093abe0b6f9ca",
+    "storedBytes": 780,
+    "storedSha256": "4eff0832ee5b5e70c8e725072256dec538b56e2341eac523efe093abe0b6f9ca",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-arm64-cryptsetup-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-arm64-cryptsetup-version.json",
+    "sourceBytes": 804,
+    "sourceSha256": "502cfdc660b2ca530d0ef0be5ba7307c475643399ceed08e9f260f1f889190f2",
+    "storedBytes": 804,
+    "storedSha256": "502cfdc660b2ca530d0ef0be5ba7307c475643399ceed08e9f260f1f889190f2",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-arm64-driver-help.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-arm64-driver-help.json",
+    "sourceBytes": 799,
+    "sourceSha256": "5fc0f3c41bf766717e4cd8fe220d504b432db1813bd954737dff745f17632f2c",
+    "storedBytes": 799,
+    "storedSha256": "5fc0f3c41bf766717e4cd8fe220d504b432db1813bd954737dff745f17632f2c",
+    "losslessGzip": false
+  },
+  "qualification/owned-container-intent-arm64-dumpe2fs-version.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-container-intent-arm64-dumpe2fs-version.json",
+    "sourceBytes": 791,
+    "sourceSha256": "3728ea794311eb33a4cd2175cca50aae5dff50d825aeb8b671c4faa35d2934bd",
+    "storedBytes": 791,
+    "storedSha256": "3728ea794311eb33a4cd2175cca50aae5dff50d825aeb8b671c4faa35d2934bd",
+    "losslessGzip": false
+  },
+  "qualification/owned-image-cleanup-amd64.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-image-cleanup-amd64.txt",
+    "sourceBytes": 596,
+    "sourceSha256": "af12b9a881abbdcc7150b443d449b35c21e6c3dc38b66273f12ca729efca6a9f",
+    "storedBytes": 596,
+    "storedSha256": "af12b9a881abbdcc7150b443d449b35c21e6c3dc38b66273f12ca729efca6a9f",
+    "losslessGzip": false
+  },
+  "qualification/owned-image-cleanup-arm64.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/owned-image-cleanup-arm64.txt",
+    "sourceBytes": 515,
+    "sourceSha256": "de9639491069cb11d6144d0c3bb6c89871e297aa7ca9e420a3105a37cff18088",
+    "storedBytes": 515,
+    "storedSha256": "de9639491069cb11d6144d0c3bb6c89871e297aa7ca9e420a3105a37cff18088",
+    "losslessGzip": false
+  },
+  "qualification/qualification.log": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/qualification.log",
+    "sourceBytes": 977,
+    "sourceSha256": "5631ba9db789716045ba1e786fcbe9225315ee8058c23d1a8cc5f2c174ebecdf",
+    "storedBytes": 977,
+    "storedSha256": "5631ba9db789716045ba1e786fcbe9225315ee8058c23d1a8cc5f2c174ebecdf",
+    "losslessGzip": false
+  },
+  "qualification/qualify-crypto-csi.py": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/qualify-crypto-csi.py",
+    "sourceBytes": 5135,
+    "sourceSha256": "90cf5bd8a3c80049b97c0bf6377d621962b74faeb2aa167865777e51ee0771cb",
+    "storedBytes": 5135,
+    "storedSha256": "90cf5bd8a3c80049b97c0bf6377d621962b74faeb2aa167865777e51ee0771cb",
+    "losslessGzip": false
+  },
+  "qualification/raw-metadata-review.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/raw-metadata-review.json",
+    "sourceBytes": 4607,
+    "sourceSha256": "69cd0f745a341e0a6f986fbb98932c5724d79fc37fbede422113fb832b890fde",
+    "storedBytes": 4607,
+    "storedSha256": "69cd0f745a341e0a6f986fbb98932c5724d79fc37fbede422113fb832b890fde",
+    "losslessGzip": false
+  },
+  "qualification/record-bundle-format.initial-native-route.py": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/record-bundle-format.initial-native-route.py",
+    "sourceBytes": 2833,
+    "sourceSha256": "d3c3f775a440e54eab028a11980e9a63a7397300177639862a5d66c38111e40a",
+    "storedBytes": 2833,
+    "storedSha256": "d3c3f775a440e54eab028a11980e9a63a7397300177639862a5d66c38111e40a",
+    "losslessGzip": false
+  },
+  "qualification/record-bundle-format.py": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/record-bundle-format.py",
+    "sourceBytes": 3225,
+    "sourceSha256": "49ba9339b793b6e496b4274fab2707742f3e16c3d4035c76e62b9edab81d6191",
+    "storedBytes": 3225,
+    "storedSha256": "49ba9339b793b6e496b4274fab2707742f3e16c3d4035c76e62b9edab81d6191",
+    "losslessGzip": false
+  },
+  "qualification/referrer-5c1984fa7df02b6986459dbda206ac4d6f18cdb6d533ecca1ec3eb96c7bd38a8.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/referrer-5c1984fa7df02b6986459dbda206ac4d6f18cdb6d533ecca1ec3eb96c7bd38a8.json",
+    "sourceBytes": 877,
+    "sourceSha256": "5c1984fa7df02b6986459dbda206ac4d6f18cdb6d533ecca1ec3eb96c7bd38a8",
+    "storedBytes": 877,
+    "storedSha256": "5c1984fa7df02b6986459dbda206ac4d6f18cdb6d533ecca1ec3eb96c7bd38a8",
+    "losslessGzip": false
+  },
+  "qualification/referrer-c9d9344c3613909e2709d195bf446f2a204d93c035bd5eb1f88d6b8ec93efbf3.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/referrer-c9d9344c3613909e2709d195bf446f2a204d93c035bd5eb1f88d6b8ec93efbf3.json",
+    "sourceBytes": 879,
+    "sourceSha256": "c9d9344c3613909e2709d195bf446f2a204d93c035bd5eb1f88d6b8ec93efbf3",
+    "storedBytes": 879,
+    "storedSha256": "c9d9344c3613909e2709d195bf446f2a204d93c035bd5eb1f88d6b8ec93efbf3",
+    "losslessGzip": false
+  },
+  "qualification/registry-review.py": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/registry-review.py",
+    "sourceBytes": 6937,
+    "sourceSha256": "eba546e5c2b51d8b74c629602cc88a20b6c8ef1e6fc5b83e50eae4bdb94ea65c",
+    "storedBytes": 6937,
+    "storedSha256": "eba546e5c2b51d8b74c629602cc88a20b6c8ef1e6fc5b83e50eae4bdb94ea65c",
+    "losslessGzip": false
+  },
+  "qualification/sbom.stderr.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/sbom.stderr.txt",
+    "sourceBytes": 391,
+    "sourceSha256": "a1d984ab6cf9fe153001430fa362d1ddcb255a75524446a0d84f1d3951bdc0dc",
+    "storedBytes": 391,
+    "storedSha256": "a1d984ab6cf9fe153001430fa362d1ddcb255a75524446a0d84f1d3951bdc0dc",
+    "losslessGzip": false
+  },
+  "qualification/sbom.stdout.jsonl.gz": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/sbom.stdout.jsonl",
+    "sourceBytes": 1849790,
+    "sourceSha256": "214b55ab237eaf9461f49d0fb2a19505b35ac535a24aaef845341eced425976b",
+    "storedBytes": 280533,
+    "storedSha256": "413f778120f0472d3b85b61cfb4245be8d890bb4c6c1131da1ce0633bf7553ab",
+    "losslessGzip": true
+  },
+  "qualification/sbom.verification-result.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/sbom.verification-result.json",
+    "sourceBytes": 990,
+    "sourceSha256": "816a71a86f3a862bde36dcfa18eb5192af34d28c66baef4a432b9fac972333f5",
+    "storedBytes": 990,
+    "storedSha256": "816a71a86f3a862bde36dcfa18eb5192af34d28c66baef4a432b9fac972333f5",
+    "losslessGzip": false
+  },
+  "qualification/signature.stderr.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/signature.stderr.txt",
+    "sourceBytes": 391,
+    "sourceSha256": "a1d984ab6cf9fe153001430fa362d1ddcb255a75524446a0d84f1d3951bdc0dc",
+    "storedBytes": 391,
+    "storedSha256": "a1d984ab6cf9fe153001430fa362d1ddcb255a75524446a0d84f1d3951bdc0dc",
+    "losslessGzip": false
+  },
+  "qualification/signature.stdout.jsonl": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/signature.stdout.jsonl",
+    "sourceBytes": 627,
+    "sourceSha256": "5546afa9f9ac004495b144fc10d4df6f8fd28c44b1bfd003a716457fbee1cfd9",
+    "storedBytes": 627,
+    "storedSha256": "5546afa9f9ac004495b144fc10d4df6f8fd28c44b1bfd003a716457fbee1cfd9",
+    "losslessGzip": false
+  },
+  "qualification/signature.verification-result.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/signature.verification-result.json",
+    "sourceBytes": 963,
+    "sourceSha256": "ddfb69f7b430af363b05957986266d283d760a6e44844456c4bd01ba7696b79c",
+    "storedBytes": 963,
+    "storedSha256": "ddfb69f7b430af363b05957986266d283d760a6e44844456c4bd01ba7696b79c",
+    "losslessGzip": false
+  },
+  "qualification/signed-spdx-9d7f62592a844b238a2dc4a98f032a79770ceb7923604e8ee6e00ae4b5e04848.json.gz": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/signed-spdx-9d7f62592a844b238a2dc4a98f032a79770ceb7923604e8ee6e00ae4b5e04848.json.gz",
+    "sourceBytes": 197345,
+    "sourceSha256": "d5ba2833fdbcb58034a31abeda5805548a3b8fb0cf8b15a7e1f31fd8c5d1cec1",
+    "storedBytes": 197345,
+    "storedSha256": "d5ba2833fdbcb58034a31abeda5805548a3b8fb0cf8b15a7e1f31fd8c5d1cec1",
+    "losslessGzip": false
+  },
+  "completed-job.log.gz": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/completed-job.log",
+    "sourceBytes": 223663,
+    "sourceSha256": "09b0283a379a6fe4caaee2cf12e3c96248812de9d8d2eb870f2377e67e3df444",
+    "storedBytes": 43888,
+    "storedSha256": "75fcc18603b5507cd4f7fa27e2274c2d1a44d62bbe5d915a6ac71e87a6e40adc",
+    "losslessGzip": true
+  },
+  "completed-job-fetch.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/completed-job-fetch.json",
+    "sourceBytes": 393,
+    "sourceSha256": "709271e0faef7d1decb6f004f654dcdb1f33d5ebe0fa580876770d95711c1020",
+    "storedBytes": 393,
+    "storedSha256": "709271e0faef7d1decb6f004f654dcdb1f33d5ebe0fa580876770d95711c1020",
+    "losslessGzip": false
+  },
+  "completed-job-fetch.stderr.txt": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/completed-job-fetch.stderr.txt",
+    "sourceBytes": 0,
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "storedBytes": 0,
+    "storedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "losslessGzip": false
+  },
+  "snapshot-085.json": {
+    "sourcePath": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/snapshot-085.json",
+    "sourceBytes": 3780,
+    "sourceSha256": "8328f6ade7ec79a555f9cb0e5400ebc842d5103bd98eda5d0686c22b935eeb38",
+    "storedBytes": 3780,
+    "storedSha256": "8328f6ade7ec79a555f9cb0e5400ebc842d5103bd98eda5d0686c22b935eeb38",
+    "losslessGzip": false
+  },
+  "source/deploy/hcloud-csi/bounded-ext4.patch": {
+    "sourceGitBlob": "dd64e4ff7888828faa1b547f3a637b76d7e7da91:deploy/hcloud-csi/bounded-ext4.patch",
+    "sourceBytes": 55821,
+    "sourceSha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+    "storedBytes": 55821,
+    "storedSha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+    "losslessGzip": false
+  },
+  "source/deploy/hcloud-csi/Dockerfile": {
+    "sourceGitBlob": "dd64e4ff7888828faa1b547f3a637b76d7e7da91:deploy/hcloud-csi/Dockerfile",
+    "sourceBytes": 1835,
+    "sourceSha256": "a900b77f152e5aa10a9a09594dc08822bddce52836a9bec971cdc008c8fc552e",
+    "storedBytes": 1835,
+    "storedSha256": "a900b77f152e5aa10a9a09594dc08822bddce52836a9bec971cdc008c8fc552e",
+    "losslessGzip": false
+  },
+  "source/.github/workflows/hcloud-csi-image.yml": {
+    "sourceGitBlob": "dd64e4ff7888828faa1b547f3a637b76d7e7da91:.github/workflows/hcloud-csi-image.yml",
+    "sourceBytes": 3566,
+    "sourceSha256": "a0cf8370f45c99b5e536b5c668c9570e5d329e98bf6b4b7f578a52abf2299128",
+    "storedBytes": 3566,
+    "storedSha256": "a0cf8370f45c99b5e536b5c668c9570e5d329e98bf6b4b7f578a52abf2299128",
+    "losslessGzip": false
+  },
+  "review.json": {
+    "sourceBytes": 4346,
+    "sourceSha256": "0c64865cf09d7c192a65a07ceb407b1d44731230d102f799b20f5bea7796d9dc",
+    "storedBytes": 4346,
+    "storedSha256": "0c64865cf09d7c192a65a07ceb407b1d44731230d102f799b20f5bea7796d9dc",
+    "losslessGzip": false
+  }
+}

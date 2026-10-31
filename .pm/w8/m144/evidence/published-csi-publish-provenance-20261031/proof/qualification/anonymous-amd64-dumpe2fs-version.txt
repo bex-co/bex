@@ -1,0 +1,2 @@
+dumpe2fs 1.47.4 (6-Mar-2025)
+	Using EXT2FS Library version 1.47.4

@@ -1,0 +1,123 @@
+{
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "platforms": {
+    "amd64": {
+      "actual_config_id": "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+      "actual_root_diff_ids_match": true,
+      "anonymous_engine_auth_config": {},
+      "reference": "ghcr.io/bex-co/bex-operator@sha256:d96bac2f27b80dbd2df109c3aedb6b9d79d861b37a46c2c9acd56a58c560045d",
+      "preexisting_local_image": false,
+      "pull_elapsed_seconds": 38.868,
+      "execution_results": [
+        {
+          "name": "driver-help",
+          "argv": [
+            "/bin/hcloud-csi-driver",
+            "--help"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 284,
+          "owned_container_id": "71d5dfef5fa53240a24ce5b2e5c01ac12a94693045428429b1adf02c38247b0c"
+        },
+        {
+          "name": "cryptsetup-version",
+          "argv": [
+            "cryptsetup",
+            "--version"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 64,
+          "owned_container_id": "215c0c6278775cba8f08104c4ae09a15935e680b3b18c08b2a14dd6ed0d8a3b1"
+        },
+        {
+          "name": "blkid-help",
+          "argv": [
+            "blkid",
+            "--help"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 2047,
+          "owned_container_id": "5e64eacbf4497e2ef785abeb7ac216d63ddf72a06e711c98fab4f9604ff63885"
+        },
+        {
+          "name": "dumpe2fs-version",
+          "argv": [
+            "dumpe2fs",
+            "-V"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 66,
+          "owned_container_id": "7cde2a14dbb3d049dae5f35b0546339f1ccb7082656971547febf824c0e381eb"
+        }
+      ],
+      "owned_image_cleanup_exit": 0,
+      "free_bytes_after": 7258710016
+    },
+    "arm64": {
+      "actual_config_id": "sha256:780bcab1028a7bb0cee5796e862bf4b54922b2f2772507479fd37d5bdfa6780d",
+      "actual_root_diff_ids_match": true,
+      "anonymous_engine_auth_config": {},
+      "reference": "ghcr.io/bex-co/bex-operator@sha256:08a53916d01c3f5929e57269cc124c6b9689e94ca53b4757914feebd30218ec4",
+      "preexisting_local_image": false,
+      "pull_elapsed_seconds": 40.058,
+      "execution_results": [
+        {
+          "name": "driver-help",
+          "argv": [
+            "/bin/hcloud-csi-driver",
+            "--help"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 284,
+          "owned_container_id": "b6ec56d1dcaaddeea1276d0baae16713b68f37d1a542d8930ab978fe8a1fc7b3"
+        },
+        {
+          "name": "cryptsetup-version",
+          "argv": [
+            "cryptsetup",
+            "--version"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 64,
+          "owned_container_id": "b4c50aa8f766da28301618c3a0580f5664d7481dba91e439dd9a1782c1fc39fe"
+        },
+        {
+          "name": "blkid-help",
+          "argv": [
+            "blkid",
+            "--help"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 2047,
+          "owned_container_id": "8ced4b07a55440ada5f2bc6773e55242fda42ce7b573a129f5acbd473af8e608"
+        },
+        {
+          "name": "dumpe2fs-version",
+          "argv": [
+            "dumpe2fs",
+            "-V"
+          ],
+          "exit_code": 0,
+          "container_exit_code": 0,
+          "output_bytes": 66,
+          "owned_container_id": "fdd018fd0b1945fc18717f3e9806b4c2c4fb98953225f9cbce900a1c300e2998"
+        }
+      ],
+      "owned_image_cleanup_exit": 0,
+      "free_bytes_after": 7374225408
+    }
+  },
+  "compressed_unique_layer_bytes": 82524898,
+  "global_free_reserve_bytes": 2147483648,
+  "minimum_observed_free_bytes": 7151280128,
+  "docker_endpoint_kind": "existing local Unix socket",
+  "no_provider_or_cluster_access": true,
+  "no_host_mounts_or_network_in_probe_containers": true
+}

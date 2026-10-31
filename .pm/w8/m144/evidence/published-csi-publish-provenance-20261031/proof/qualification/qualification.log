@@ -1,0 +1,28 @@
+{
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "candidate_ref": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "anonymous_metadata_only": true,
+  "all_raw_metadata_sha256_verified": true,
+  "checks": {
+    "amd64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    },
+    "arm64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    }
+  }
+}
+{
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "signature_verified": true,
+  "spdx_attestation_verified": true,
+  "originalPolicyPreserved": true,
+  "qualifiedForPinReview": false
+}

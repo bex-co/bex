@@ -1,0 +1,6 @@
+
+Verification for ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates

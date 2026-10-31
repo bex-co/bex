@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify",
+    "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha=dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+    "--insecure-ignore-sct=false",
+    "--insecure-ignore-tlog=false",
+    "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+  ],
+  "exit": 0,
+  "TUF_ROOT": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/cosign-tuf-csi/signature-s3q5gple",
+  "stdout": "signature.stdout.jsonl",
+  "stderr": "signature.stderr.txt",
+  "oneAttemptNoPolicyRetry": true,
+  "timestampPolicy": "OriginalCSI defaults: strict certificate/SCT/transparency and trusted log timestamp validation; no native-only tlogversion/RFC3161 format requirement."
+}

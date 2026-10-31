@@ -1,0 +1,32 @@
+{
+  "id": "215c0c6278775cba8f08104c4ae09a15935e680b3b18c08b2a14dd6ed0d8a3b1",
+  "name": "bex-m144-dd64-4b0c838a5159b614-amd64-cryptsetup-version",
+  "label": "bex-m144-dd64-4b0c838a5159b614",
+  "image": "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+  "command": [
+    "/usr/local/bin/docker",
+    "create",
+    "--name",
+    "bex-m144-dd64-4b0c838a5159b614-amd64-cryptsetup-version",
+    "--label",
+    "bex.qa.owner=bex-m144-dd64-4b0c838a5159b614",
+    "--pull=never",
+    "--network",
+    "none",
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "32",
+    "--memory",
+    "64m",
+    "--platform",
+    "linux/amd64",
+    "--entrypoint",
+    "cryptsetup",
+    "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+    "--version"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "8ced4b07a55440ada5f2bc6773e55242fda42ce7b573a129f5acbd473af8e608",
+  "name": "bex-m144-dd64-4b0c838a5159b614-arm64-blkid-help",
+  "label": "bex-m144-dd64-4b0c838a5159b614",
+  "image": "sha256:780bcab1028a7bb0cee5796e862bf4b54922b2f2772507479fd37d5bdfa6780d",
+  "command": [
+    "/usr/local/bin/docker",
+    "create",
+    "--name",
+    "bex-m144-dd64-4b0c838a5159b614-arm64-blkid-help",
+    "--label",
+    "bex.qa.owner=bex-m144-dd64-4b0c838a5159b614",
+    "--pull=never",
+    "--network",
+    "none",
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "32",
+    "--memory",
+    "64m",
+    "--platform",
+    "linux/arm64",
+    "--entrypoint",
+    "blkid",
+    "sha256:780bcab1028a7bb0cee5796e862bf4b54922b2f2772507479fd37d5bdfa6780d",
+    "--help"
+  ]
+}

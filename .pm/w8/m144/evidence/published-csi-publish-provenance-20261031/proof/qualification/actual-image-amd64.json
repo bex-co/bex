@@ -1,0 +1,48 @@
+{
+  "Id": "sha256:58a46dd2407ddc3c5ad868da0cdf35d1fa4c98e1aef9243a86cc9d3efbfd9572",
+  "RepoTags": [],
+  "RepoDigests": [
+    "ghcr.io/bex-co/bex-operator@sha256:d96bac2f27b80dbd2df109c3aedb6b9d79d861b37a46c2c9acd56a58c560045d"
+  ],
+  "Comment": "buildkit.dockerfile.v0",
+  "Created": "2026-10-31T09:56:41.516148376Z",
+  "Config": {
+    "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ],
+    "Entrypoint": [
+      "/bin/hcloud-csi-driver"
+    ],
+    "WorkingDir": "/",
+    "Labels": {
+      "org.opencontainers.image.revision": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+      "org.opencontainers.image.source": "https://github.com/bex-co/bex",
+      "org.opencontainers.image.version": "2.22.0-bex-bounded-ext4-v1"
+    }
+  },
+  "Architecture": "amd64",
+  "Os": "linux",
+  "Size": 98831307,
+  "GraphDriver": {
+    "Data": {
+      "LowerDir": "/var/lib/docker/overlay2/b4155522118d905824b0a64ded37a915b76b3ac4470db9155092a5bb41c2c1b7/diff:/var/lib/docker/overlay2/caa84272f1b8bad9e562ccb728afb00c5bf27c7b158fdf1c510145c37ed5c034/diff:/var/lib/docker/overlay2/41a3240358e3973fad466856cf7b55ea320ede29c850586d4085cf718556089e/diff:/var/lib/docker/overlay2/097a5086319f36abe76a8e25c1d73beadd4ea23bc78843335d283e69882a1995/diff",
+      "MergedDir": "/var/lib/docker/overlay2/866eb3b2f7c1d48a3240839e1f5bf405b549cc55872244040388cf3e39ebe497/merged",
+      "UpperDir": "/var/lib/docker/overlay2/866eb3b2f7c1d48a3240839e1f5bf405b549cc55872244040388cf3e39ebe497/diff",
+      "WorkDir": "/var/lib/docker/overlay2/866eb3b2f7c1d48a3240839e1f5bf405b549cc55872244040388cf3e39ebe497/work"
+    },
+    "Name": "overlay2"
+  },
+  "RootFS": {
+    "Type": "layers",
+    "Layers": [
+      "sha256:34884abbe92863fce933ed7c39c0e045631af0ed86d5cc0dfbdf9fdca426ce3c",
+      "sha256:f940970fb9448545d41359ce02e3abbbcefa222fb158c561f401be23a8f5f4e7",
+      "sha256:f838fec15ce27df3cb63c73898646fa65f719cae64350bb65787abd56603c521",
+      "sha256:012aa28b1f1db44a79d3435f46c99ea3da522f937fafed3cb325029c4fabde45",
+      "sha256:ea8d10f7a2cc69c226143c855898a613a0e32f4370a962f698ff3571df12bc33"
+    ]
+  },
+  "Metadata": {
+    "LastTagTime": "0001-01-01T00:00:00Z"
+  }
+}

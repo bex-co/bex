@@ -1,0 +1,89 @@
+{
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "candidate_ref": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "anonymous_metadata_only": true,
+  "all_raw_metadata_sha256_verified": true,
+  "checks": {
+    "amd64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    },
+    "arm64": {
+      "revision_matches_source": true,
+      "source_matches_repository": true,
+      "version_matches_derivative": true,
+      "upstream_diff_ids_are_exact_prefix": true
+    }
+  }
+}
+{
+  "atUTC": "2026-10-31T10:03:44.074003+00:00",
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "scope": "Actual immutable public metadata custody after strict original CSI verification; no new required tlog/TSA format or independent trust claim.",
+  "discovery": "OCI-referrer-tag-after-native404",
+  "rawReferrerIndexSHA256": "597bb07515104770c61768ee2b0280e1b096acb526b0cce64f12c2d5326b329d",
+  "bundleRecords": [
+    {
+      "manifestDigest": "sha256:5c1984fa7df02b6986459dbda206ac4d6f18cdb6d533ecca1ec3eb96c7bd38a8",
+      "descriptorArtifactType": "application/vnd.oci.empty.v1+json",
+      "manifestArtifactType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "layerMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "bundleDigest": "sha256:90f9f21f03572b2665b581e97904690fed92f19dbaee772ed6ee2cd1c905f168",
+      "bundleMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "signedPayloadKind": "dsseEnvelope",
+      "predicateType": "https://sigstore.dev/cosign/sign/v1",
+      "subjects": [
+        {
+          "digest": {
+            "sha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+          },
+          "annotations": {}
+        }
+      ],
+      "tlogKindVersions": [
+        {
+          "kind": "dsse",
+          "version": "0.0.1"
+        }
+      ],
+      "tlogIntegratedTimes": [
+        "1793440696"
+      ],
+      "rfc3161TimestampCount": 1
+    },
+    {
+      "manifestDigest": "sha256:c9d9344c3613909e2709d195bf446f2a204d93c035bd5eb1f88d6b8ec93efbf3",
+      "descriptorArtifactType": "application/vnd.oci.empty.v1+json",
+      "manifestArtifactType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "layerMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "bundleDigest": "sha256:3c5d1dba78bc766d695a9f91f5b351787224b6d01122da7f73cf5434925eab16",
+      "bundleMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "signedPayloadKind": "dsseEnvelope",
+      "predicateType": "https://spdx.dev/Document",
+      "subjects": [
+        {
+          "name": "ghcr.io/bex-co/bex-operator",
+          "digest": {
+            "sha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+          }
+        }
+      ],
+      "tlogKindVersions": [
+        {
+          "kind": "dsse",
+          "version": "0.0.1"
+        }
+      ],
+      "tlogIntegratedTimes": [
+        "1793440744"
+      ],
+      "rfc3161TimestampCount": 1
+    }
+  ],
+  "descriptorCount": 2,
+  "allRetrievedRawDigestMetadataVerified": true,
+  "approvalAuthority": false
+}

@@ -1,0 +1,108 @@
+{
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "strictIdentity": "https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+  "strictIssuer": "https://token.actions.githubusercontent.com",
+  "cosignVersion": "v3.1.4",
+  "cosignSha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+  "signature_verified": true,
+  "spdx_attestation_verified": true,
+  "verifiedSignatureCount": 2,
+  "verificationResults": [
+    {
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify",
+        "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha=dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+        "--insecure-ignore-sct=false",
+        "--insecure-ignore-tlog=false",
+        "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+      ],
+      "exit": 0,
+      "TUF_ROOT": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/cosign-tuf-csi/signature-s3q5gple",
+      "stdout": "signature.stdout.jsonl",
+      "stderr": "signature.stderr.txt",
+      "oneAttemptNoPolicyRetry": true,
+      "timestampPolicy": "OriginalCSI defaults: strict certificate/SCT/transparency and trusted log timestamp validation; no native-only tlogversion/RFC3161 format requirement."
+    },
+    {
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-attestation",
+        "--type",
+        "spdxjson",
+        "--certificate-identity=https://github.com/bex-co/bex/.github/workflows/hcloud-csi-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha=dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+        "--insecure-ignore-sct=false",
+        "--insecure-ignore-tlog=false",
+        "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+      ],
+      "exit": 0,
+      "TUF_ROOT": "/private/tmp/bex-w8-m144-publish-fix-factory-20261031/qualification/cosign-tuf-csi/sbom-zo_m3t5i",
+      "stdout": "sbom.stdout.jsonl",
+      "stderr": "sbom.stderr.txt",
+      "oneAttemptNoPolicyRetry": true,
+      "timestampPolicy": "OriginalCSI defaults: strict certificate/SCT/transparency and trusted log timestamp validation; no native-only tlogversion/RFC3161 format requirement."
+    }
+  ],
+  "originalPolicyPreserved": true,
+  "requiredNativeTlogOrTSAFormat": false,
+  "sbomSummaries": [
+    {
+      "spdxVersion": "SPDX-2.3",
+      "subject": [
+        {
+          "name": "ghcr.io/bex-co/bex-operator",
+          "digest": {
+            "sha256": "53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781"
+          }
+        }
+      ],
+      "packageCount": 84,
+      "packageArchitectureQualifiers": [
+        "amd64",
+        "x86_64"
+      ],
+      "filesystemPackages": [
+        {
+          "name": "blkid",
+          "version": "2.42.1-r0"
+        },
+        {
+          "name": "cryptsetup",
+          "version": "2.8.6-r0"
+        },
+        {
+          "name": "cryptsetup-libs",
+          "version": "2.8.6-r0"
+        },
+        {
+          "name": "device-mapper-libs",
+          "version": "2.03.35-r3"
+        },
+        {
+          "name": "e2fsprogs",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "e2fsprogs-extra",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "e2fsprogs-libs",
+          "version": "1.47.4-r0"
+        },
+        {
+          "name": "libblkid",
+          "version": "2.42.1-r0"
+        }
+      ]
+    }
+  ],
+  "sbomScope": "Only actual inventory architecture qualifiers above; no inferred arm64 SBOM. Runtime children separately require original metadata/baseclosure and bounded anonymous probes.",
+  "qualifiedForPinReview": false,
+  "productionOrPinWrites": false
+}

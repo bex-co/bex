@@ -1,0 +1,15 @@
+{
+  "atUTC": "2026-10-31T10:09:23.837909+00:00",
+  "approvedForReviewedCsiPin": true,
+  "reference": "ghcr.io/bex-co/bex-operator@sha256:53744992b5374315dcd482678ba4021964e65207ca493317d364646336c30781",
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "patchSha256": "edc67256ee86d13be339cd269c60138c6a5f7c08f2978af889625194994adb7a",
+  "rootVerifiedAllFrozenFiles": 82,
+  "rootVerifiedAllSourceBytesAndLosslessCompression": true,
+  "actualFactoryFullSuiteAndKernelPass": true,
+  "strictOriginalCsiPkiAndSignedSpdx": true,
+  "actualIndependentArchitectureRuntimeProbes": 8,
+  "productionReady": false,
+  "paidFixtureStarted": false,
+  "scope": "Approves only exact CSI image for reviewed pin and authorized scoped rollout. Actual Ready, preserved legacy inventory and original paid lifecycle acceptance remain separate."
+}

@@ -1,0 +1,15 @@
+{
+  "atUTC": "2026-10-31T10:00:57.895804+00:00",
+  "command": [
+    "gh",
+    "api",
+    "repos/bex-co/bex/actions/jobs/124489445679/logs"
+  ],
+  "exit": 0,
+  "bytes": 223663,
+  "sha256": "09b0283a379a6fe4caaee2cf12e3c96248812de9d8d2eb870f2377e67e3df444",
+  "run": 41184800857,
+  "job": 124489445679,
+  "source": "dd64e4ff7888828faa1b547f3a637b76d7e7da91",
+  "terminalConclusion": "success"
+}
