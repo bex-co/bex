@@ -96,6 +96,8 @@ The opaque deleted marker is `deleted:<own-id>`. It retains event correlation bu
 | Kratos identity | delete last; `204` and `404` converge | final irreversible record |
 | Stripe customer/subscription/invoice/usage history | retain under legal policy; sever active bex access links | financial records are not identity credentials |
 
+_Amended 2026-10-30 by [ADR091](ADR091-agent-model-pricing.md) D10:_ before deletion proceeds, all unbilled usage for the workspace is flushed past the seal horizon, invoiced and charged. A failed charge refuses the deletion with `BILLING_BALANCE_DUE` and a payment link, and the identity is kept until the balance is settled.
+
 The dropped `mcp_workspace_selections` table has no live disposition. Future subject/provenance columns must extend this table and cleanup before shipping.
 
 ### Schema coverage contract
