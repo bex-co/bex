@@ -68,15 +68,14 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 		}
 		choice.runtimeCheck += "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
 	}
-	if runtime == nativeNodeRuntime && strings.HasPrefix(version, "14.") {
-		python, buildPython, err := commonNodeBuildPython()
+	if runtime == nativeNodeRuntime && nativeLegacyPnpmLine(version) {
+		// Legacy npm/node-gyp needs a compatible default Python independently
+		// of the selected app Python. Explicit finder choices retain priority.
+		lines, err := nativeNodeAddonPythonLines(version, true)
 		if err != nil {
 			return NativeChoice{}, err
 		}
-		// npm6's bundled node-gyp needs old Python APIs. Keep its default
-		// interpreter private, after user choices and outside the app prefix.
-		choice.runtimeCheck += "COPY --link --from=" + buildPython + " /usr/local/ /opt/bex/native-node-python/\n" +
-			"RUN --network=none /usr/bin/python3 -I /usr/libexec/bex-native/prepare-node14-tools.py " + python.version + "\n"
+		choice.runtimeCheck += lines
 	}
 	if strings.Contains(choice.Image, "-bullseye@") {
 		choice.legacySource = (runtime == nativeNodeRuntime && strings.HasPrefix(version, "14.")) ||

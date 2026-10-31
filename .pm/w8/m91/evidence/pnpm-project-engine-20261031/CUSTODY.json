@@ -1,0 +1,1088 @@
+{
+  "fixture-source/LATEST-BASELINE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/LATEST-BASELINE.json",
+    "source_bytes": 1964,
+    "source_sha256": "127ee528a44ecbc531d51ad68f6e74ddf6709699f0b704b52ddbbb8f6c29de0f",
+    "encoding": "gzip"
+  },
+  "fixture-source/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/MANIFEST.json",
+    "source_bytes": 5640,
+    "source_sha256": "ff9b00fda3b4c387b107abfbb15d4cd42578c61c104ae7dc9c814ce5c0eb132b",
+    "encoding": "gzip"
+  },
+  "fixture-source/OWNED-PATHS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/OWNED-PATHS.json",
+    "source_bytes": 164,
+    "source_sha256": "9ee431609263de32bef07952d49d1cca5cd3bcc4ee2550d2755ba7f6ef6d72e7",
+    "encoding": "gzip"
+  },
+  "fixture-source/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/SOURCE-MANIFEST.json",
+    "source_bytes": 1454,
+    "source_sha256": "efb0a4ffd536add35100109e19152a45b95d74fa9605f21eeb0115e1f56286b1",
+    "encoding": "gzip"
+  },
+  "fixture-source/UPSTREAM-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/UPSTREAM-MANIFEST.json",
+    "source_bytes": 2214,
+    "source_sha256": "56a4d02da6cc43565c527ac14ed42c156fc14e3a674f534a12cbc4c2e150a718",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7204,
+    "source_sha256": "292bbd5d0102f56eee96a4ce8a52f8801768f003d1ea3a6f07b0bfb31d2f152d",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3401,
+    "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 11416,
+    "source_sha256": "4194aaf194f908bd2367dbe94cb1c619e5c1d33a9a04e1d293d01565bd464d59",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 8678,
+    "source_sha256": "e165c00e7ab63fe16dcad2d430c3820d2e13a217be9c2cb7cca499993aaa120e",
+    "encoding": "gzip"
+  },
+  "fixture-source/baseline/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/baseline/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "fixture-source/checks/diff-check.log.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/checks/diff-check.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "fixture-source/checks/host-oracles-current-head.log.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/checks/host-oracles-current-head.log",
+    "source_bytes": 270,
+    "source_sha256": "e19eb27e5368f04d7b0f29222c68a3b4121be9f8f6abb7362c36c98d13ab4d6c",
+    "encoding": "gzip"
+  },
+  "fixture-source/checks/host-oracles.log.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/checks/host-oracles.log",
+    "source_bytes": 270,
+    "source_sha256": "8df4ef3362c59463d80ea91fe9b4218d12b8afdd3ccb9c440e6715071048bab9",
+    "encoding": "gzip"
+  },
+  "fixture-source/data-byte-preservation.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/data-byte-preservation.json",
+    "source_bytes": 14616,
+    "source_sha256": "408a963129e207ec0447a9af77e1a866a368758415317763def39fb17ce3445c",
+    "encoding": "gzip"
+  },
+  "fixture-source/finding-history.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/finding-history.json",
+    "source_bytes": 838,
+    "source_sha256": "0e2d29d8a1d2b6d152cb587c0ec097dccbf08dba161a82ab92f6a5d87a8a95ca",
+    "encoding": "gzip"
+  },
+  "fixture-source/prior-npm-yarn-negative-custody.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/prior-npm-yarn-negative-custody.json",
+    "source_bytes": 1824,
+    "source_sha256": "c9a7dbee2f63c5283f3ae4cb4a1f6cd64bfd523344155632e01f94ecba80ab3e",
+    "encoding": "gzip"
+  },
+  "fixture-source/prior-positive-project-byte-equality.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/prior-positive-project-byte-equality.json",
+    "source_bytes": 9611,
+    "source_sha256": "78b1680be27994c001c6dc543a42fb77cd34563fc404600f79af97483644c870",
+    "encoding": "gzip"
+  },
+  "fixture-source/receipt.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/receipt.json",
+    "source_bytes": 2389,
+    "source_sha256": "d1a54ab8734160876be1f62be885be24fecb51b2917643fba542be85bd96f8f8",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7204,
+    "source_sha256": "292bbd5d0102f56eee96a4ce8a52f8801768f003d1ea3a6f07b0bfb31d2f152d",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3401,
+    "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 13299,
+    "source_sha256": "25e8aa2a394f51177f9b0e2fc65cae07a8f56799c4246a6b9a373c7e02488024",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 12226,
+    "source_sha256": "c29641b16e918740ec946c71091f28d4a4a47e4ee1191106570d8f97cfd97187",
+    "encoding": "gzip"
+  },
+  "fixture-source/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "fixture-source/source.patch.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/source.patch",
+    "source_bytes": 10998,
+    "source_sha256": "68d8f8f1156bbcb5711bd7be13ae05617e1a9221427aa295cdddc7840b91da92",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/cli/cli-utils/src/packageIsInstallable.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/cli/cli-utils/src/packageIsInstallable.ts",
+    "source_bytes": 1368,
+    "source_sha256": "60a83e81154448b9de79417e07b0a17e8cafab8b8c540a6d060e19ea3cf97ab3",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/cli/default-reporter/src/reportError.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/cli/default-reporter/src/reportError.ts",
+    "source_bytes": 18113,
+    "source_sha256": "c3a74bfcf94079d685f3e968a8beb440351c63328b534afb5508c7a3c68728c2",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/config/package-is-installable/src/checkEngine.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/config/package-is-installable/src/checkEngine.ts",
+    "source_bytes": 1539,
+    "source_sha256": "4f280c1dd26d382094046e26b183eb78d41320b2c82bdbfe4f5dbf2515fe7056",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/pkg-manager/package-requester/src/packageRequester.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/pkg-manager/package-requester/src/packageRequester.ts",
+    "source_bytes": 29501,
+    "source_sha256": "648d86b66866fb4316ec5a86002dc9d178b93ea62a7b080e1f64bbaf82504d47",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/resolving/local-resolver/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/resolving/local-resolver/src/index.ts",
+    "source_bytes": 3043,
+    "source_sha256": "2a1c1efb5bcf8140d80dbe69936355bf4cc9d7e052e1a38c7f8a197047ff114b",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/viability-primary-SOURCE-RECEIPTS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/viability-primary-SOURCE-RECEIPTS.json",
+    "source_bytes": 2625,
+    "source_sha256": "0c1ac5cd3b137f36bdc1e0c351c840baaf0490f1b8fd11ba9cd1bce3958c65c5",
+    "encoding": "gzip"
+  },
+  "fixture-source/upstream/workspace/find-packages/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-source-20261031-1gxt_xed/upstream/workspace/find-packages/src/index.ts",
+    "source_bytes": 3016,
+    "source_sha256": "24676889f571cad6162641746cd66c3d2df03007f0f4c089d19d404936a7a74b",
+    "encoding": "gzip"
+  },
+  "fixture-review/CONTROLS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/CONTROLS.json",
+    "source_bytes": 3302,
+    "source_sha256": "700ea2ab8d26624ae78d27192e7141b1c913ee3dbf32f4f17bdd4899e3bd2e03",
+    "encoding": "gzip"
+  },
+  "fixture-review/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/MANIFEST.json",
+    "source_bytes": 1736,
+    "source_sha256": "4f0a82dfbdb64d774cedf59bd3338b35731bc55063e15e5bcb78fffb4dd1954b",
+    "encoding": "gzip"
+  },
+  "fixture-review/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/REVIEW.json",
+    "source_bytes": 7432,
+    "source_sha256": "65248864378dcc9a46da6bed7d5422dc6b27fb9893aaa6b40bd494b11ab2f735",
+    "encoding": "gzip"
+  },
+  "fixture-review/host-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/host-controls.log",
+    "source_bytes": 1574,
+    "source_sha256": "ccdf2b4f3b2e138286f89106e6bbc1ab79a9700b645c1d25a4c600f6ca65e789",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source_bytes": 7204,
+    "source_sha256": "292bbd5d0102f56eee96a4ce8a52f8801768f003d1ea3a6f07b0bfb31d2f152d",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/testdata/native-node-qualification/addon.c",
+    "source_bytes": 1231,
+    "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/testdata/native-node-qualification/check.js.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/testdata/native-node-qualification/check.js",
+    "source_bytes": 3401,
+    "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/testdata/native-node-qualification/check.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "source_bytes": 13299,
+    "source_sha256": "25e8aa2a394f51177f9b0e2fc65cae07a8f56799c4246a6b9a373c7e02488024",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/testdata/native-node-qualification/check_test.py",
+    "source_bytes": 12226,
+    "source_sha256": "c29641b16e918740ec946c71091f28d4a4a47e4ee1191106570d8f97cfd97187",
+    "encoding": "gzip"
+  },
+  "fixture-review/source/lego/operator/internal/build/testdata/native-node-qualification/package.json.gz": {
+    "source": "/private/tmp/bex-w8-node-pnpm-project-engine-independent-review-20261031-y1ip9cz5/source/lego/operator/internal/build/testdata/native-node-qualification/package.json",
+    "source_bytes": 74,
+    "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+    "encoding": "gzip"
+  },
+  "v4-controller/BEHAVIOR-CONTROL-CORRECTIONS.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/BEHAVIOR-CONTROL-CORRECTIONS.json",
+    "source_bytes": 1222,
+    "source_sha256": "2f7198b33fbe0fcff0780516a06fcc060df24a91f02c48691fb80b1a61b5e5e0",
+    "encoding": "gzip"
+  },
+  "v4-controller/BUDGET-AMENDMENT.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/BUDGET-AMENDMENT.json",
+    "source_bytes": 1723,
+    "source_sha256": "26a62d137c7578ae1d6a44f1eb76ea5c63d7b2bf66279677fd5db3fee3536a8f",
+    "encoding": "gzip"
+  },
+  "v4-controller/FINDINGS.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/FINDINGS.json",
+    "source_bytes": 3097,
+    "source_sha256": "135e24a827a901008069424e9668f95a65cb6565c7989e0c62892447a458828b",
+    "encoding": "gzip"
+  },
+  "v4-controller/FROZEN-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/FROZEN-REVIEW.json",
+    "source_bytes": 1297,
+    "source_sha256": "8652cce8bc5ffe2de85689d1802b7849a7df19dcadf3511787b2f4482b76522a",
+    "encoding": "gzip"
+  },
+  "v4-controller/GUARD-PRESERVATION.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/GUARD-PRESERVATION.json",
+    "source_bytes": 649,
+    "source_sha256": "13b97fe37b25131c5807b3f1c7e2cc746b07ba7f735e44a2570e9c71cc0e7621",
+    "encoding": "gzip"
+  },
+  "v4-controller/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/MANIFEST.json",
+    "source_bytes": 7460,
+    "source_sha256": "1de8179953b85f86ea997b793dcb13f4c0a6db2d6aa8dc0d16fb1163a3d0728d",
+    "encoding": "gzip"
+  },
+  "v4-controller/PARENT-LIVE-CUSTODY.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/PARENT-LIVE-CUSTODY.json",
+    "source_bytes": 19786,
+    "source_sha256": "38ae411b2cd6d1aacffcf751f55d76632daaade88564a2f62a9c40b47c7b6cc9",
+    "encoding": "gzip"
+  },
+  "v4-controller/PRIMARY-SOURCES.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/PRIMARY-SOURCES.json",
+    "source_bytes": 726,
+    "source_sha256": "e51d899fea9d387204ef153cd857b1c8e6267ac40a5c957ab641739d25b945f5",
+    "encoding": "gzip"
+  },
+  "v4-controller/REUSE-PLAN.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/REUSE-PLAN.json",
+    "source_bytes": 2849,
+    "source_sha256": "cc5482df39a1496d1133b06e6a4b66db2c2f342071c39d96d41b020a6ea4358b",
+    "encoding": "gzip"
+  },
+  "v4-controller/SOURCE-AUTHORIZATION.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/SOURCE-AUTHORIZATION.json",
+    "source_bytes": 150,
+    "source_sha256": "05f5a9650ff8e76827ef271011b46b79c6e6fa57c9bf0d6689821bc49e31732e",
+    "encoding": "gzip"
+  },
+  "v4-controller/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/SOURCE-MANIFEST.json",
+    "source_bytes": 899,
+    "source_sha256": "731e086ecb592219eda0aebabc3d3670c34ad03f4618684ab01037a990efc211",
+    "encoding": "gzip"
+  },
+  "v4-controller/V2-to-V3.diff.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/V2-to-V3.diff",
+    "source_bytes": 31185,
+    "source_sha256": "0e09b7864c1d6d569051a43d85b715431755a9c2ea6f3d6e955133b09484ebcb",
+    "encoding": "gzip"
+  },
+  "v4-controller/V3-to-V4.diff.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/V3-to-V4.diff",
+    "source_bytes": 4549,
+    "source_sha256": "6d892ce1714b25abd8c26d305005f4e8e67ea721f0b2f91ad90bebe541ab899d",
+    "encoding": "gzip"
+  },
+  "v4-controller/V4-CHANGES.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/V4-CHANGES.json",
+    "source_bytes": 762,
+    "source_sha256": "a3b302b60592ca7a74ab31fadd68663d05f09acee22dee37e0dd3d8f3ff1c109",
+    "encoding": "gzip"
+  },
+  "v4-controller/bundled-gyp.js.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/bundled-gyp.js",
+    "source_bytes": 847,
+    "source_sha256": "5928260418112d088f44cf27a429567c4aa95df173d10a4d1616d70c58f7c599",
+    "encoding": "gzip"
+  },
+  "v4-controller/controller-hostfile-initial-DRAFT.py.txt.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/controller-hostfile-initial-DRAFT.py.txt",
+    "source_bytes": 25466,
+    "source_sha256": "368965bdaa4a9e20349f920b43a59048f822cb676c1933ff3d7f704bacd230db",
+    "encoding": "gzip"
+  },
+  "v4-controller/controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/controller.py",
+    "source_bytes": 42131,
+    "source_sha256": "e7e48fef0d50160763c58b3d8de33120bb51af5f7bea91919fcbdbcf40489029",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V2-FROZEN-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V2-FROZEN-REVIEW.json",
+    "source_bytes": 1567,
+    "source_sha256": "20ce6e83198f7ea0ecee9932872ace81415d1d2d0ccffcc1dbb2b7734bf6a130",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V2-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V2-MANIFEST.json",
+    "source_bytes": 4447,
+    "source_sha256": "2f382ca4753ede13889c7908c4be4b4b84d5d3017802af83a4d011834e0240ea",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V2-SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V2-SOURCE-MANIFEST.json",
+    "source_bytes": 791,
+    "source_sha256": "5f0099cdd28abd4c51736965aa4b1629306926c8e2c8c45dfb297e1934c907e5",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/FROZEN-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/FROZEN-REVIEW.json",
+    "source_bytes": 2310,
+    "source_sha256": "7617de2fa6ffdfebfb52dd33ba68c3147dd1a0bad78f0705f02053ee02c8ae06",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/MANIFEST.json",
+    "source_bytes": 5463,
+    "source_sha256": "d014001390b37371e9f826c4722ca4b2f444d3ac01c42125894c517f49ade374",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/SOURCE-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/SOURCE-MANIFEST.json",
+    "source_bytes": 899,
+    "source_sha256": "a9a7da72b2e411b735d48638eb8f1b3e85259121a94fb47bed832f5b719f7376",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/controller.py",
+    "source_bytes": 41859,
+    "source_sha256": "f34f9bad36d89b8b611d317bbbf98073b5bb384a13f58a130ec2cc696312dde4",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/engine-timeout-counterexample.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/engine-timeout-counterexample.json",
+    "source_bytes": 5467,
+    "source_sha256": "558ec6b01c40ed7e85664a0aa864f24823f3a696b7ebadef1096e24467cf1dbf",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V3/test_controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V3/test_controller.py",
+    "source_bytes": 28735,
+    "source_sha256": "72352b64da9394a42cb2591eb245b4d4486a4fec02738901ad00ca95a240bd3d",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V4-initial-probe-guard.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V4-initial-probe-guard.json",
+    "source_bytes": 427,
+    "source_sha256": "07896ee2639e531c99b5e78804722bf51e95cd4d4604d22c065f8aecbb989142",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V4-initial-probe-late-monitor.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V4-initial-probe-late-monitor.json",
+    "source_bytes": 432,
+    "source_sha256": "9cd8dd216d48ce135bf049fd745dbfbd1cd6a038c01d03ae83c22ca4c3581bf1",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V4-initial-probe-normal-background.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V4-initial-probe-normal-background.json",
+    "source_bytes": 1259,
+    "source_sha256": "a5011febe5b61f1f235d2f388641dbdfa3096ae1db96501ca3a72ad35f33b3db",
+    "encoding": "gzip"
+  },
+  "v4-controller/history/V4-initial-probe-timeout.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/history/V4-initial-probe-timeout.json",
+    "source_bytes": 1173,
+    "source_sha256": "a76d08e62317eeb0821bc4ab5747dc25f355ed8dd2df68ebcd3a7688c2eb3c6d",
+    "encoding": "gzip"
+  },
+  "v4-controller/host-controls-v3-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/host-controls-v3-initial.log",
+    "source_bytes": 5641,
+    "source_sha256": "0a2532d7db8f5f05ee5f910ca394bdd2306700310d2765fa111d6f3bfc458389",
+    "encoding": "gzip"
+  },
+  "v4-controller/host-controls-v4-final.log.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/host-controls-v4-final.log",
+    "source_bytes": 6304,
+    "source_sha256": "0d4eb6226d33d6303063d68a6fc35457d22b49051af37bbb258674249d4760ec",
+    "encoding": "gzip"
+  },
+  "v4-controller/host-controls-v4.log.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/host-controls-v4.log",
+    "source_bytes": 6304,
+    "source_sha256": "0accb2103627bf0da9c4d7a3469cffdaa40424d2115f434f144b8e98799d623f",
+    "encoding": "gzip"
+  },
+  "v4-controller/observe.js.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/observe.js",
+    "source_bytes": 1840,
+    "source_sha256": "2eb9e454a5166b44d53884aa50dd3524cb86de3878ed52dfd4c8bd727812891a",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/SOURCE-RECEIPTS.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/SOURCE-RECEIPTS.json",
+    "source_bytes": 3681,
+    "source_sha256": "77fbf472bb0b13388487c641c33ab027e6013c890f8fc88d604ba6b17a5cb022",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/builder/policy/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/builder/policy/src/index.ts",
+    "source_bytes": 3268,
+    "source_sha256": "03408dd2908a9c72b00a67bff8899c3624eff19b27b1f7846e25f0853e69f29d",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/builder/policy/test/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/builder/policy/test/index.ts",
+    "source_bytes": 5158,
+    "source_sha256": "083c6bea39593eb23261c7c6aed4330c36add8e43aff3b028632b3a90039cb37",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/cli/cli-utils/src/packageIsInstallable.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/cli/cli-utils/src/packageIsInstallable.ts",
+    "source_bytes": 1368,
+    "source_sha256": "60a83e81154448b9de79417e07b0a17e8cafab8b8c540a6d060e19ea3cf97ab3",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/cli/default-reporter/src/reportError.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/cli/default-reporter/src/reportError.ts",
+    "source_bytes": 18113,
+    "source_sha256": "c3a74bfcf94079d685f3e968a8beb440351c63328b534afb5508c7a3c68728c2",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/config/src/getOptionsFromRootManifest.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/config/src/getOptionsFromRootManifest.ts",
+    "source_bytes": 6050,
+    "source_sha256": "cc1f62ee1ff2c9c3883da62793c121770fba1d29e37ca5b4e72c7f3ded5bb3a2",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/config/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/config/src/index.ts",
+    "source_bytes": 28941,
+    "source_sha256": "8f4936bc966e0e9cf1c09f0734ddc9f513769fde283b2dbf2a360acc4e1ec205",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/package-is-installable/src/checkEngine.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/package-is-installable/src/checkEngine.ts",
+    "source_bytes": 1539,
+    "source_sha256": "4f280c1dd26d382094046e26b183eb78d41320b2c82bdbfe4f5dbf2515fe7056",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/plugin-commands-config/src/config.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/plugin-commands-config/src/config.ts",
+    "source_bytes": 3476,
+    "source_sha256": "e2d2eca5a7e0c10daa5ab6be00d88a6076cf9751d0db2a9560fa37e6ec31572b",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/plugin-commands-config/src/configGet.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/plugin-commands-config/src/configGet.ts",
+    "source_bytes": 2253,
+    "source_sha256": "f80748ec24da099b68c927da62be8176296c0b52f790ca51e7a3100b4d17f52c",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/config/plugin-commands-config/src/configList.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/config/plugin-commands-config/src/configList.ts",
+    "source_bytes": 397,
+    "source_sha256": "11c24bbd0ddf16836fe2d1a3001b66e89511afe218f359594d56ac3428d6aa1e",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/pkg-manager/package-requester/src/packageRequester.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/pkg-manager/package-requester/src/packageRequester.ts",
+    "source_bytes": 29501,
+    "source_sha256": "648d86b66866fb4316ec5a86002dc9d178b93ea62a7b080e1f64bbaf82504d47",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/resolving/local-resolver/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/resolving/local-resolver/src/index.ts",
+    "source_bytes": 3043,
+    "source_sha256": "2a1c1efb5bcf8140d80dbe69936355bf4cc9d7e052e1a38c7f8a197047ff114b",
+    "encoding": "gzip"
+  },
+  "v4-controller/primary/workspace/find-packages/src/index.ts.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/primary/workspace/find-packages/src/index.ts",
+    "source_bytes": 3016,
+    "source_sha256": "24676889f571cad6162641746cd66c3d2df03007f0f4c089d19d404936a7a74b",
+    "encoding": "gzip"
+  },
+  "v4-controller/probe-guard.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/probe-guard.json",
+    "source_bytes": 427,
+    "source_sha256": "40d13df3eb461006658012c26f0bf0029eb3b28211b02c1894d36abb200efad9",
+    "encoding": "gzip"
+  },
+  "v4-controller/probe-late-monitor.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/probe-late-monitor.json",
+    "source_bytes": 432,
+    "source_sha256": "9cd8dd216d48ce135bf049fd745dbfbd1cd6a038c01d03ae83c22ca4c3581bf1",
+    "encoding": "gzip"
+  },
+  "v4-controller/probe-normal-background.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/probe-normal-background.json",
+    "source_bytes": 1259,
+    "source_sha256": "105d341e37fa080eab6ca3cfc90e0d8b47e0767bdbe7b6ca5d0a6239ff26feaf",
+    "encoding": "gzip"
+  },
+  "v4-controller/probe-timeout.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/probe-timeout.json",
+    "source_bytes": 1173,
+    "source_sha256": "3f520f7b2d74a471eb62a8b119b08851974666e879d669467f88b2f2fb396005",
+    "encoding": "gzip"
+  },
+  "v4-controller/test_controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-v4-source-20261031-8pgdilp3/test_controller.py",
+    "source_bytes": 30666,
+    "source_sha256": "e0d905bb1c4cdc78a2683e4332ecfe49d37a3e7e515366ce99f1bbcd4c10900f",
+    "encoding": "gzip"
+  },
+  "v4-review/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/MANIFEST.json",
+    "source_bytes": 1227,
+    "source_sha256": "b245f9e66da9a3276dbbc0264b3b504c64b87b080ecdcae16a75bd0bfcfc409e",
+    "encoding": "gzip"
+  },
+  "v4-review/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/REVIEW.json",
+    "source_bytes": 2962,
+    "source_sha256": "55f8e150797c253b463d033188cf7de5a2777ca762fb4c5c29f6ad2040ff59cb",
+    "encoding": "gzip"
+  },
+  "v4-review/counterexample-replay.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/counterexample-replay.json",
+    "source_bytes": 1807,
+    "source_sha256": "08fc5d286d1bc9aac958048565c45ca908eba9dfb6b268469ad00a0b7e608101",
+    "encoding": "gzip"
+  },
+  "v4-review/delta-check.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/delta-check.json",
+    "source_bytes": 512,
+    "source_sha256": "478c27a12c210be7efc99bf3f89c3fb0a2f84bd28243b4362c9bdc51e24fa15d",
+    "encoding": "gzip"
+  },
+  "v4-review/focused-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/focused-controls.log",
+    "source_bytes": 103,
+    "source_sha256": "6273232de4d3ef7acd4ecafa5c86beeeb974f56586b21089a2990b3f72facbe6",
+    "encoding": "gzip"
+  },
+  "v4-review/source/bundled-gyp.js.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/source/bundled-gyp.js",
+    "source_bytes": 847,
+    "source_sha256": "5928260418112d088f44cf27a429567c4aa95df173d10a4d1616d70c58f7c599",
+    "encoding": "gzip"
+  },
+  "v4-review/source/controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/source/controller.py",
+    "source_bytes": 42131,
+    "source_sha256": "e7e48fef0d50160763c58b3d8de33120bb51af5f7bea91919fcbdbcf40489029",
+    "encoding": "gzip"
+  },
+  "v4-review/source/history/V3/engine-timeout-counterexample.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/source/history/V3/engine-timeout-counterexample.json",
+    "source_bytes": 5467,
+    "source_sha256": "558ec6b01c40ed7e85664a0aa864f24823f3a696b7ebadef1096e24467cf1dbf",
+    "encoding": "gzip"
+  },
+  "v4-review/source/observe.js.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/source/observe.js",
+    "source_bytes": 1840,
+    "source_sha256": "2eb9e454a5166b44d53884aa50dd3524cb86de3878ed52dfd4c8bd727812891a",
+    "encoding": "gzip"
+  },
+  "v4-review/source/test_controller.py.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-independent-review-20261031-f_9wezdk/source/test_controller.py",
+    "source_bytes": 30666,
+    "source_sha256": "e0d905bb1c4cdc78a2683e4332ecfe49d37a3e7e515366ce99f1bbcd4c10900f",
+    "encoding": "gzip"
+  },
+  "actual/meta/ROOT-INTERPRETATION.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/ROOT-INTERPRETATION.json",
+    "source_bytes": 2110,
+    "source_sha256": "a93f85b6fbc983f744d2f6617bf98db090237becd0cd055126d6e50d9e912ad7",
+    "encoding": "gzip"
+  },
+  "actual/meta/cleanup.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/cleanup.json",
+    "source_bytes": 28,
+    "source_sha256": "fed3ffe0330d20839d2fa322efde88032ffedbd0bed0710d8ac4eb73a06e5ebc",
+    "encoding": "gzip"
+  },
+  "actual/meta/container-comparison.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/container-comparison.json",
+    "source_bytes": 15611,
+    "source_sha256": "2f42189da11c9842b2e672c4a1c30fc31dc182b96aa8effb87bdc8de008da57c",
+    "encoding": "gzip"
+  },
+  "actual/meta/containers-after.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/containers-after.json",
+    "source_bytes": 5094,
+    "source_sha256": "62eded686dbf7bc090aaba9203294c9fe3d32508c84a1716bf2919c08f2834d5",
+    "encoding": "gzip"
+  },
+  "actual/meta/containers-before.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/containers-before.json",
+    "source_bytes": 5094,
+    "source_sha256": "62eded686dbf7bc090aaba9203294c9fe3d32508c84a1716bf2919c08f2834d5",
+    "encoding": "gzip"
+  },
+  "actual/meta/image-after.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/image-after.json",
+    "source_bytes": 442,
+    "source_sha256": "039c5190dc8ea810bbfbde580ee539851552b2d956ce1c02cdabe4c482aff6ed",
+    "encoding": "gzip"
+  },
+  "actual/meta/image-before.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/image-before.json",
+    "source_bytes": 442,
+    "source_sha256": "039c5190dc8ea810bbfbde580ee539851552b2d956ce1c02cdabe4c482aff6ed",
+    "encoding": "gzip"
+  },
+  "actual/meta/intents.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/intents.json",
+    "source_bytes": 506,
+    "source_sha256": "ec9037a20477738f9f2495706068f28a9f30d31c48bf61f8066c03c1ab769493",
+    "encoding": "gzip"
+  },
+  "actual/meta/node14-download.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node14-download.json",
+    "source_bytes": 656,
+    "source_sha256": "e6e408d88f59aa9b6bab1c08b96bb96bd8e244a635f6e6ecc608a644860c77d6",
+    "encoding": "gzip"
+  },
+  "actual/meta/node14-extraction.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node14-extraction.json",
+    "source_bytes": 855228,
+    "source_sha256": "b3bc61dff3b31d230b8ad1c508cb73d063c503a4367be36b8815548967f3d91a",
+    "encoding": "gzip"
+  },
+  "actual/meta/node14-fixture.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node14-fixture.json",
+    "source_bytes": 6260,
+    "source_sha256": "2680d603563cf37dada82e5aed7110d19dec07458a636e14c86a462576176157",
+    "encoding": "gzip"
+  },
+  "actual/meta/node14-observations.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node14-observations.json",
+    "source_bytes": 29057,
+    "source_sha256": "cc464a119d83936591318fe1a34fd0a4be7543ef346ea704aa737a32516ab641",
+    "encoding": "gzip"
+  },
+  "actual/meta/node16-download.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node16-download.json",
+    "source_bytes": 656,
+    "source_sha256": "33f49aabc9adade85aa648f2d0178dd291b693e9cf60e3547515443a5babbf54",
+    "encoding": "gzip"
+  },
+  "actual/meta/node16-extraction.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node16-extraction.json",
+    "source_bytes": 396099,
+    "source_sha256": "3f8c556d1c0b8f4344394280f83a8b8dedab336657a268954557280d61a8d652",
+    "encoding": "gzip"
+  },
+  "actual/meta/node16-fixture.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node16-fixture.json",
+    "source_bytes": 6260,
+    "source_sha256": "0ec0ca201ea27dd7e22d1777b2864c0daa49ee62376ee546f37d3cf69fe462c8",
+    "encoding": "gzip"
+  },
+  "actual/meta/node16-observations.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/node16-observations.json",
+    "source_bytes": 29057,
+    "source_sha256": "4e7984de3a1d9db0354d915d3a84ba52d7dfa9a1550d2ec15fd65cd7b2651d58",
+    "encoding": "gzip"
+  },
+  "actual/meta/pnpm-download.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/pnpm-download.json",
+    "source_bytes": 655,
+    "source_sha256": "bd0166a64875595be59d90c22af5eba4c45e26ff740427aa6ab8c464175149b1",
+    "encoding": "gzip"
+  },
+  "actual/meta/pnpm-extraction.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/pnpm-extraction.json",
+    "source_bytes": 1005,
+    "source_sha256": "e4faa5d462017a82f15d01743c401c8caf1102ef928528d742c8df7ae82a547a",
+    "encoding": "gzip"
+  },
+  "actual/meta/result.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/result.json",
+    "source_bytes": 14720,
+    "source_sha256": "8bcd139c65701827f3f1cf93a87a47faf5fefdb68ea95a49054c01e2f6b3872f",
+    "encoding": "gzip"
+  },
+  "actual/meta/source-binding.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/meta/source-binding.json",
+    "source_bytes": 457,
+    "source_sha256": "99eff05584ba1281dfbd392b0a8f2c3729440ec6a62cae737d099e3bbe0b18e2",
+    "encoding": "gzip"
+  },
+  "actual/outputs/capacity.jsonl.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/capacity.jsonl",
+    "source_bytes": 22938,
+    "source_sha256": "e131a8814e3b9326a487673e246aa0409367c08cbb24ba96eaa902de93b9eed1",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0001.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0001.json",
+    "source_bytes": 1715,
+    "source_sha256": "ff54ba2286b2bc05f8e823f17fe5047ac22eb9715deeeba8be4b8d45b5418798",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0002.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0002.json",
+    "source_bytes": 5290,
+    "source_sha256": "8dd449877362eaf415f6309b2ada3232508c62a14c08251cd38771bca42b8744",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0003.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0003.json",
+    "source_bytes": 1365,
+    "source_sha256": "8f1f865df86c3d61628a2fdb66642372c015389afdee7d416f95dddef97f4333",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0004.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0004.json",
+    "source_bytes": 1544,
+    "source_sha256": "c223c8c1fac7875e58f20fad6ca568f9c90ca317ed712e5fe23a013fed1c4b06",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0005.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0005.json",
+    "source_bytes": 368,
+    "source_sha256": "93f1bd26487188484e26b53bfd6ecdd769c1378452b5a8d9663d9625eed306c8",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0006.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0006.json",
+    "source_bytes": 635,
+    "source_sha256": "ee0dc488b155332d3e602c988bceafdd47651bf1c00366d56e3b8a45f0063b82",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0007.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0007.json",
+    "source_bytes": 342,
+    "source_sha256": "53718110e3055cfb0fc59d490efe3e28da0a3c9fc6248bc848558c761c36b4ba",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0008.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0008.json",
+    "source_bytes": 357,
+    "source_sha256": "38396f3ab142c21c0d72918989fa0ebf3380165742857be089042e34164be4a9",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0009.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0009.json",
+    "source_bytes": 330,
+    "source_sha256": "b16f812f82063034ba2b174d30d40e463a3978415422c7211f73f2afac702358",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0010.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0010.json",
+    "source_bytes": 328,
+    "source_sha256": "ec182d917822055d34892b0ef551e0425e7ca99fb498e3c624d856b03ae1f87b",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0011.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0011.json",
+    "source_bytes": 339,
+    "source_sha256": "a1051e32a648e5e65c60570d426318d99932dba044498a2c19e200110a5f4532",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0012.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0012.json",
+    "source_bytes": 965,
+    "source_sha256": "1592d99dc61487ee4928fb6327caad14d11589db67298d2235495be9aaa281b7",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0013.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0013.json",
+    "source_bytes": 1009,
+    "source_sha256": "817399c3adbb0d5e04737f7c5d8c04b79182103be347a6b69237cfc526893802",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0014.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0014.json",
+    "source_bytes": 2403,
+    "source_sha256": "82d15325244d2053a481290df881071be31a37f9f06ea9dd20082624cf64ddaf",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0015.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0015.json",
+    "source_bytes": 1497,
+    "source_sha256": "68aa7fd94a2451b99374617061a3368cb683153eeec7051923389d8970bccbfe",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0016.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0016.json",
+    "source_bytes": 1666,
+    "source_sha256": "38ed554e625e330702a17360ac17a31cfb4e07df83cd385c18ac3ef211f6dd34",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0017.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0017.json",
+    "source_bytes": 673,
+    "source_sha256": "c92c93460f638a6d4eab3dc801b9792a7f11490be364408967ea3d72beb7ff87",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0018.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0018.json",
+    "source_bytes": 854,
+    "source_sha256": "a6ef5be7a7d5220a9699f7308a62e9dce066e41f44bbb927b066ec27f0656040",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0019.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0019.json",
+    "source_bytes": 659,
+    "source_sha256": "e65e7de3e2848489b36d37e755977f33bed163031e2abbccaa91f322c627222a",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0020.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0020.json",
+    "source_bytes": 2388,
+    "source_sha256": "620a54db27032917a44a099a79fe5c51c089f8f30e0e59c7f3553e69da34c93c",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0021.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0021.json",
+    "source_bytes": 2474,
+    "source_sha256": "51e76a5c42b8d4f6d25ce6f37317a60fbc98fad5da39254dc43692dbbe26475e",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0022.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0022.json",
+    "source_bytes": 2436,
+    "source_sha256": "6712a701822a88ee9d451b3fad13985cdb5d9849ed77129d81dd48cbf5bc9f36",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0023.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0023.json",
+    "source_bytes": 1692,
+    "source_sha256": "c03abc963e18708410ea1e32fb12058e239f38866ffd504965029f9705e1a666",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0024.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0024.json",
+    "source_bytes": 402,
+    "source_sha256": "420f1b43c59157891a8dee5b609fafa832328bc1f862abb079480e2b7ef05234",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0025.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0025.json",
+    "source_bytes": 1545,
+    "source_sha256": "d4067f70cc2f8094974dbd9c6ed96807b96acd22800f9f8a7fc54ec0f57a62ab",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0026.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0026.json",
+    "source_bytes": 368,
+    "source_sha256": "0a3a128945731e1a8d86b046a98b516a8dc0ad1d4f1fdc038bb9cb9e6e9ebaf1",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0027.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0027.json",
+    "source_bytes": 635,
+    "source_sha256": "353550133a985a34b83f3f493ccaa6f4e58d881f0272373389af70c72ac1f9ee",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0028.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0028.json",
+    "source_bytes": 342,
+    "source_sha256": "2fb3b1bb6b1bd2c1137e3383772bb34316b6cf40afe6e15500439e465010dcf1",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0029.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0029.json",
+    "source_bytes": 357,
+    "source_sha256": "767d3084270173219c754df1a8970fe88e9d6b3b58659c9adbd530c76782ead5",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0030.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0030.json",
+    "source_bytes": 330,
+    "source_sha256": "a25adec749959411610a51018940cf3d5d3c329375961e53438d693368ac6c66",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0031.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0031.json",
+    "source_bytes": 327,
+    "source_sha256": "c2e159d8a3ad5a10fd0f75667b451c0466c0fe092e7e59682e9e2c16e26871cd",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0032.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0032.json",
+    "source_bytes": 339,
+    "source_sha256": "2795367537e8e37038d429179975848ea48e06d3eabcf767896f0b0c56559095",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0033.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0033.json",
+    "source_bytes": 965,
+    "source_sha256": "f87f7236d83872adb330b83d8fd0e9837a15c87d4dae25354883518db0c02c76",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0034.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0034.json",
+    "source_bytes": 1009,
+    "source_sha256": "b4ed16ce33e40b13db57e28a3a0a4c0f562590e8ea6ed0fe01c607f2343a4e37",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0035.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0035.json",
+    "source_bytes": 2401,
+    "source_sha256": "ea243bd59a12f9813ed49935a2afe1d564ab5ca9e3e0ae628cc7bd2676861785",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0036.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0036.json",
+    "source_bytes": 1497,
+    "source_sha256": "b01a8c4a357611a3d52cb43fbeb4bfe89bd16c5a1d7e593a0706d27f041c7625",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0037.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0037.json",
+    "source_bytes": 1666,
+    "source_sha256": "1af99aef753a285e1a4fcd35d76a81a9faeb8a903c671c5d22df2717b7540315",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0038.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0038.json",
+    "source_bytes": 673,
+    "source_sha256": "5f017f4567a13bb51f831e40047254447a1081ac3992710c8641638a37036653",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0039.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0039.json",
+    "source_bytes": 854,
+    "source_sha256": "f3e470f6d5012f5fd3e1cfcf34bec5b2acdc306e5368ec1ec38e7129fee5b053",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0040.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0040.json",
+    "source_bytes": 659,
+    "source_sha256": "8671e9f76b50e7f592448d1e597b4cb01e3c9d55f4e060635be14c724b699251",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0041.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0041.json",
+    "source_bytes": 2388,
+    "source_sha256": "5d99e7121f7d0c280c18a57d43c4e2fbf1559bd42346f1704ee92a56dc8f202e",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0042.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0042.json",
+    "source_bytes": 2475,
+    "source_sha256": "d466760c08fa1e4568811a0fde2ccc51ea9e0945d7e7f3097f5c4cbfae6fe9ff",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0043.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0043.json",
+    "source_bytes": 2437,
+    "source_sha256": "a95fe2084ab9af94f979a3d8c4827d93268a78d78e746ff12d23c1921027a550",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0044.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0044.json",
+    "source_bytes": 1692,
+    "source_sha256": "4d1412c48f807a57c36455504cfbc2e30259917b48ec0c92a7aedf2d6ef499d5",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0045.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0045.json",
+    "source_bytes": 403,
+    "source_sha256": "24085cb95d126b0a6b38274d3f94171609fde8c5388faff93174228676a97a6d",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0046.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0046.json",
+    "source_bytes": 1714,
+    "source_sha256": "1a51139d811f009dd00c7b618261fea9795d5a510eb5fc01a752497af4b7be80",
+    "encoding": "gzip"
+  },
+  "actual/outputs/command-0047.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/outputs/command-0047.json",
+    "source_bytes": 5290,
+    "source_sha256": "56ae88e75cf0a48a62f54cd325a2749d0ec6d35dd2eb3d6a2fdfa67422dc06b0",
+    "encoding": "gzip"
+  },
+  "actual-controller/bex-w8-pnpm-v4-actual-20261031.stdout.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-actual-20261031.stdout",
+    "source_bytes": 31682,
+    "source_sha256": "fdb97f2112216fc7de9b6232ec5428a44ed6ba938e726c8d4a14326179a35efb",
+    "encoding": "gzip"
+  },
+  "actual-controller/bex-w8-pnpm-v4-actual-20261031.stderr.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-actual-20261031.stderr",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "actual-controller/bex-w8-pnpm-v4-root-authorization-20261031.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-v4-root-authorization-20261031.json",
+    "source_bytes": 783,
+    "source_sha256": "1461ecc2d39569046907a8a5aedd3872640f882ecfbd01ca79ddb59f732bb6a4",
+    "encoding": "gzip"
+  },
+  "actual/POSTCOMPLETION-DEDUP.json.gz": {
+    "source": "/private/tmp/bex-w8-pnpm-small-live-9d6569188a079ca2/POSTCOMPLETION-DEDUP.json",
+    "source_bytes": 2463,
+    "source_sha256": "87bbb10012c0c4675d1e5cc32820fa7e75bf4a871b5650521e44d2b6c5e364d4",
+    "encoding": "gzip"
+  }
+}

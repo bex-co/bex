@@ -1,0 +1,704 @@
+{
+  "source/INDEPENDENT-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/INDEPENDENT-REVIEW.json",
+    "source_bytes": 1947,
+    "source_sha256": "e52b0e51698a73494688c2c758a27dfb2a357cc30a256921e3276efd810bec05",
+    "encoding": "gzip"
+  },
+  "source/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/MANIFEST.json",
+    "source_bytes": 9424,
+    "source_sha256": "eaa8678f66495c982eeeac0261ed91c7372dec6bba3925992ea3a893a4218d7b",
+    "encoding": "gzip"
+  },
+  "source/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/REVIEW.json",
+    "source_bytes": 7633,
+    "source_sha256": "8bc9043e96d5f1609ebbfb96f1a4fe052cf8d962a46223a2505d0230b3eb8511",
+    "encoding": "gzip"
+  },
+  "source/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/SOURCE.json",
+    "source_bytes": 1792,
+    "source_sha256": "971c4372d61f7d1a6bf3509437a3f355b2c8ecd91554f6b7b9b9d3311d2e0584",
+    "encoding": "gzip"
+  },
+  "source/before/deploy/native-common/node14_tools_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/deploy/native-common/node14_tools_test.py",
+    "source_bytes": 5225,
+    "source_sha256": "4957653c1bf2689a3d545bb7a195777c5fdf4b0655ba67ae4d3219ac322a6522",
+    "encoding": "gzip"
+  },
+  "source/before/deploy/native-common/prepare-node14-tools.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/deploy/native-common/prepare-node14-tools.py",
+    "source_bytes": 2465,
+    "source_sha256": "7801f8ab9d676dd72d8b659e2799e07ddb2dcc6026c45fb1ba969f670bcbe320",
+    "encoding": "gzip"
+  },
+  "source/before/lego/.dockerignore.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/lego/.dockerignore",
+    "source_bytes": 1891,
+    "source_sha256": "0d61e66004e4f216a805d834dcf9c00648c84d44588175a182a0857a1c8fbab0",
+    "encoding": "gzip"
+  },
+  "source/before/lego/operator/internal/build/nativecommon.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/lego/operator/internal/build/nativecommon.go",
+    "source_bytes": 8204,
+    "source_sha256": "b5b0d1c6c4f35c5c24c91e69eef9ed9a892a94f0fc84364d013741eb2925148f",
+    "encoding": "gzip"
+  },
+  "source/before/lego/operator/internal/build/nativecommon_node14_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/lego/operator/internal/build/nativecommon_node14_test.go",
+    "source_bytes": 7057,
+    "source_sha256": "8aa9f2699faf2e51687173a0d18710a10a49ad57ddd6df5f9dad4424d47f2489",
+    "encoding": "gzip"
+  },
+  "source/before/lego/operator/internal/build/nativeresolve.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/before/lego/operator/internal/build/nativeresolve.go",
+    "source_bytes": 19951,
+    "source_sha256": "f80c4f8ff7a55708b8349ac69fd52532ab917fcea3037da8c03c7b506295b3e6",
+    "encoding": "gzip"
+  },
+  "source/evidence/APPLY-HISTORY.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/APPLY-HISTORY.json",
+    "source_bytes": 356,
+    "source_sha256": "bc3c28cfc3c86eaae1f23f9ea0e6e59122dea5e1243b851135637efd86c0b9d0",
+    "encoding": "gzip"
+  },
+  "source/evidence/BEFORE-DOCKER-CONTEXT.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/BEFORE-DOCKER-CONTEXT.json",
+    "source_bytes": 280,
+    "source_sha256": "b5406f046e3f8b3151014e64ba09d3eb6ebbdf632b9ccfea93ad1c699c175e95",
+    "encoding": "gzip"
+  },
+  "source/evidence/BEFORE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/BEFORE.json",
+    "source_bytes": 1189,
+    "source_sha256": "6a6257292c0e0be4bd6c4ca09becc5c914acf73863a23a19d27393b6cbca568a",
+    "encoding": "gzip"
+  },
+  "source/evidence/CONTEXT-SOURCE-CONTROLS.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/CONTEXT-SOURCE-CONTROLS.json",
+    "source_bytes": 935,
+    "source_sha256": "90538ffc0bbc66265800f5e179844d5f3fa2087c0589a8b4cdb2fb1b8589f9c2",
+    "encoding": "gzip"
+  },
+  "source/evidence/FORMAT-TRANSITION.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/FORMAT-TRANSITION.json",
+    "source_bytes": 1096,
+    "source_sha256": "d72d1aeeaaed337d63f125239e601f5b3dac1c42103b0a829c4f3b1dc5107a9a",
+    "encoding": "gzip"
+  },
+  "source/evidence/LIVE-HELPER-CONTROLS.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/LIVE-HELPER-CONTROLS.json",
+    "source_bytes": 533,
+    "source_sha256": "585deb2d360689abdd9d5c84478287f712e2f9e9ea5d4fcb822c32f7737ce70b",
+    "encoding": "gzip"
+  },
+  "source/evidence/PRIVATE-DRAFT-CONTROLS.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/PRIVATE-DRAFT-CONTROLS.json",
+    "source_bytes": 547,
+    "source_sha256": "572506a2ca5df2e24cd269742433532f393c7c38d680a42c528ad01a0b2859f4",
+    "encoding": "gzip"
+  },
+  "source/evidence/PROTECTED-BEFORE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/PROTECTED-BEFORE.json",
+    "source_bytes": 1014,
+    "source_sha256": "68fe73bf07170da2da32360ed91d20dd4bf01369baf716943ba7ab2ae9e43eb4",
+    "encoding": "gzip"
+  },
+  "source/evidence/ROOT-SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/ROOT-SCOPE.json",
+    "source_bytes": 2108,
+    "source_sha256": "b077367a1f8eb75b36c6dbfeadbe6b4ee70e329b8aa1ebaa08b29ca9a6ab18d5",
+    "encoding": "gzip"
+  },
+  "source/evidence/SOURCE-CHECKS.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/SOURCE-CHECKS.json",
+    "source_bytes": 1709,
+    "source_sha256": "6513fede04363ffd5b10c7184c1fe7208e976defaeb2180a1f6290798e44d29e",
+    "encoding": "gzip"
+  },
+  "source/evidence/SOURCE-READY.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/SOURCE-READY.json",
+    "source_bytes": 1871,
+    "source_sha256": "608406d51658f2d7e55fb6682837d45a52c52e33f4f1c464eca69cd31b12b2eb",
+    "encoding": "gzip"
+  },
+  "source/evidence/UPSTREAM-FIRST-NODE16.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/UPSTREAM-FIRST-NODE16.json",
+    "source_bytes": 399,
+    "source_sha256": "78158fe50fe7b08c5d7ed3ac3cc316972e76574d9e07afe6a6f198a1d345e0bc",
+    "encoding": "gzip"
+  },
+  "source/evidence/UPSTREAM-NODE14-CAUSE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/UPSTREAM-NODE14-CAUSE.json",
+    "source_bytes": 1094,
+    "source_sha256": "916cdf4891d584b557c2242ff8cc4971d4720bc164d54c1a82b0085f67c70312",
+    "encoding": "gzip"
+  },
+  "source/evidence/UPSTREAM.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/UPSTREAM.json",
+    "source_bytes": 1235,
+    "source_sha256": "f04c9388a7a3f60e99da2bd6f1962fc6925695c6ae382d768a7dda39b19f5a65",
+    "encoding": "gzip"
+  },
+  "source/evidence/diff-check-final.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/diff-check-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "source/evidence/diff-check.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/diff-check.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "source/evidence/live-helper-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/live-helper-controls.log",
+    "source_bytes": 904,
+    "source_sha256": "45bd06dcce2c3dfb6988e034040d39c8101f5ff53a69c83cea818717b29ca758",
+    "encoding": "gzip"
+  },
+  "source/evidence/private-draft-helper-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/private-draft-helper-controls.log",
+    "source_bytes": 904,
+    "source_sha256": "162319fcc8932865fbbb3cc72320f89159c61b7ff55626a7f242a8114ae3ed86",
+    "encoding": "gzip"
+  },
+  "source/evidence/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/evidence/source.diff",
+    "source_bytes": 29997,
+    "source_sha256": "7013db20031b10b5e7161698295a2c7b149d8592bd8328a08ec63df20bc8e417",
+    "encoding": "gzip"
+  },
+  "source/history/GENERATION1-MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/GENERATION1-MANIFEST.json",
+    "source_bytes": 8260,
+    "source_sha256": "ce976e9cc8eb3e4651c265dbe52ad2bb01baa52098fa101ca32ff96e9bf0e1fc",
+    "encoding": "gzip"
+  },
+  "source/history/GENERATION1-REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/GENERATION1-REVIEW.json",
+    "source_bytes": 5435,
+    "source_sha256": "050e5f085383bbbafff1ccad42f2efbe1dc61fa8506ccdcf39c4967de2c48f4d",
+    "encoding": "gzip"
+  },
+  "source/history/GENERATION1-SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/GENERATION1-SOURCE.json",
+    "source_bytes": 1792,
+    "source_sha256": "4c14fc78d3dc57d1dd8d1a9617748e692bb22bd38e6f6eaf9542805d937a6ee7",
+    "encoding": "gzip"
+  },
+  "source/history/followon/PENDING.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/followon/PENDING.json",
+    "source_bytes": 776,
+    "source_sha256": "51a350b922a2b162b86a96b1ed8f33e7668419584259ef9e2d64370957bfa8c3",
+    "encoding": "gzip"
+  },
+  "source/history/followon/after.go.txt.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/followon/after.go.txt",
+    "source_bytes": 7235,
+    "source_sha256": "1980a30b70f8545771f92d37dbafae40f6040cc9f8bfee5944a304d977d5e833",
+    "encoding": "gzip"
+  },
+  "source/history/followon/before.go.txt.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/followon/before.go.txt",
+    "source_bytes": 7050,
+    "source_sha256": "cdb8cb4f98b41ab0f42a9771672835e6cdc8860c5ded091b776340c4b78e2184",
+    "encoding": "gzip"
+  },
+  "source/history/followon/pending.patch.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/history/followon/pending.patch",
+    "source_bytes": 1746,
+    "source_sha256": "af845fe305e20923b16a746d61ed692a0f61a4dab3efe63f80d7d6745ed82c98",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/ENVTEST-OWNERSHIP.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/ENVTEST-OWNERSHIP.json",
+    "source_bytes": 944,
+    "source_sha256": "3222279ecfc62e68ed0914eb51d4c71cb1d8626dbe5d0e72a21342354a2edf39",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/PRIOR-FAILURE.txt.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/PRIOR-FAILURE.txt",
+    "source_bytes": 378,
+    "source_sha256": "8b6d32df98b3300ec587bbe11bd23def801c10265d71d747e8fac4d73384266b",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/SCOPE-CLARIFICATION.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/SCOPE-CLARIFICATION.json",
+    "source_bytes": 718,
+    "source_sha256": "75939fe902f9a6acd7a9d2d99da568dd1507fec3ff96fa26f9c39ec5a64594f1",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/SCOPE.json",
+    "source_bytes": 2108,
+    "source_sha256": "b4fbff83c8ef8ac12b26bb43097ffed5547cf7aadf1e424ece887d52e4c0d408",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/disk-mode-focused-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/disk-mode-focused-RESULT.json",
+    "source_bytes": 315,
+    "source_sha256": "b5e15e68f240443b91c6102acace38b28474d38527045ee57f244e05ea7d7229",
+    "encoding": "gzip"
+  },
+  "source/root-verification/current/disk-mode-focused.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/current/disk-mode-focused.log",
+    "source_bytes": 185,
+    "source_sha256": "ff8eda6850d421e2cc531407d6ded43e4449e2af78b3a010d02f6ce878eaa75b",
+    "encoding": "gzip"
+  },
+  "source/root-verification/first/DARWIN-MODE-PROBE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/first/DARWIN-MODE-PROBE.json",
+    "source_bytes": 748,
+    "source_sha256": "ca65264e7d5e8f03c2a1786fd305e75b92942cf534778360ff97b5fa83dea776",
+    "encoding": "gzip"
+  },
+  "source/root-verification/first/ENVTEST-AFTER.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/first/ENVTEST-AFTER.json",
+    "source_bytes": 178,
+    "source_sha256": "b724731172967dc9e3c179a45c9b7da6234d9f7f7186826fbad329f9c4e35e59",
+    "encoding": "gzip"
+  },
+  "source/root-verification/first/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/first/RESULT.json",
+    "source_bytes": 2091,
+    "source_sha256": "f62b6352e4f2485375ef69cd98798f66c2f97917c16210816b476bc6207f1c00",
+    "encoding": "gzip"
+  },
+  "source/root-verification/first/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/first/SCOPE.json",
+    "source_bytes": 2108,
+    "source_sha256": "b077367a1f8eb75b36c6dbfeadbe6b4ee70e329b8aa1ebaa08b29ca9a6ab18d5",
+    "encoding": "gzip"
+  },
+  "source/root-verification/first/operator-full.log.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/root-verification/first/operator-full.log",
+    "source_bytes": 5448,
+    "source_sha256": "75286b9b596046cd09936bc5ec63b8450ed9c5e22e4dcf3a9ed286257e278101",
+    "encoding": "gzip"
+  },
+  "source/source/deploy/native-common/node14_tools_test.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/deploy/native-common/node14_tools_test.py",
+    "source_bytes": 6321,
+    "source_sha256": "e4a2a68b6d93eafbc68d013c398de50a9ae36bf7d1932a72c2c9a0eb07a91bf1",
+    "encoding": "gzip"
+  },
+  "source/source/deploy/native-common/prepare-node14-tools.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/deploy/native-common/prepare-node14-tools.py",
+    "source_bytes": 2870,
+    "source_sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+    "encoding": "gzip"
+  },
+  "source/source/deploy/native-common/testdata/node16-find-python.js.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/deploy/native-common/testdata/node16-find-python.js",
+    "source_bytes": 3412,
+    "source_sha256": "67873c401381809e0d23e3b141cbc5b9f56d4bad410b3596d59cb31e99a30d73",
+    "encoding": "gzip"
+  },
+  "source/source/lego/.dockerignore.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/.dockerignore",
+    "source_bytes": 1936,
+    "source_sha256": "49b98df0050c8919689300e39d7716b6fc103859c293a667f331168fb4d4794f",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativecommon.go",
+    "source_bytes": 8012,
+    "source_sha256": "1f407d4943586c80e74bfa2014f443190f49b9932a8a838b0a28cabc7237b571",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativecommon_node14_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativecommon_node14_test.go",
+    "source_bytes": 7399,
+    "source_sha256": "a81b5198e8952250dc37379740ba6a82d1d35e6ea2a0383700ed1e9377c931ba",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativenodepython.go",
+    "source_bytes": 1952,
+    "source_sha256": "930fabb69f827c716cad9ee5e908ef6f3b2713376476192d24ea1cc32550acc8",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativenodepython.py",
+    "source_bytes": 2870,
+    "source_sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativenodepython_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativenodepython_test.go",
+    "source_bytes": 7235,
+    "source_sha256": "1980a30b70f8545771f92d37dbafae40f6040cc9f8bfee5944a304d977d5e833",
+    "encoding": "gzip"
+  },
+  "source/source/lego/operator/internal/build/nativeresolve.go.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source/lego/operator/internal/build/nativeresolve.go",
+    "source_bytes": 20384,
+    "source_sha256": "a3781dbd34e429d8b1bf5f0359ce21cb6ccd99f2b639a843480d7d88c0abfacb",
+    "encoding": "gzip"
+  },
+  "source/source.diff.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/source.diff",
+    "source_bytes": 30185,
+    "source_sha256": "c30818b6e1563450a720cf29bddf130262ed48e4803d0e9194e91592dbf726f7",
+    "encoding": "gzip"
+  },
+  "source/upstream/node14-gyp-input.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node14-gyp-input.py",
+    "source_bytes": 116375,
+    "source_sha256": "6da501baff9f94c937b2cb44924db43222af56ee64a7aa0c71e4ecbcb4203ae6",
+    "encoding": "gzip"
+  },
+  "source/upstream/node16-find-python.js.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node16-find-python.js",
+    "source_bytes": 12133,
+    "source_sha256": "5e5cc5d3b63aa919fb24f6a0b16330def3e441364d17ba5e8ef875fa9e55513e",
+    "encoding": "gzip"
+  },
+  "source/upstream/node16-first-find-python.js.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node16-first-find-python.js",
+    "source_bytes": 10766,
+    "source_sha256": "f49aca0a6394e833e6b3d52fcad882f566b35b49809d376044073ba7d2e5c846",
+    "encoding": "gzip"
+  },
+  "source/upstream/node16-gyp-input.py.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node16-gyp-input.py",
+    "source_bytes": 127052,
+    "source_sha256": "50b6f74f703f52f7436d6aa11807c8374e6f4cb0f9851ea21dc2e9c7fb6e17ce",
+    "encoding": "gzip"
+  },
+  "source/upstream/node16-node-gyp-README.md.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node16-node-gyp-README.md",
+    "source_bytes": 10737,
+    "source_sha256": "b72a2295c8aea4ff042a558034f50f5e201972226daa3756118fe5bb426c3b73",
+    "encoding": "gzip"
+  },
+  "source/upstream/node16-node-gyp-package.json.gz": {
+    "source": "/private/tmp/bex-w8-node16-gyp-python-final-source-20261031-qi_slnnw/upstream/node16-node-gyp-package.json",
+    "source_bytes": 1122,
+    "source_sha256": "66b5afd83332bd267ef72d7987ecde2fd6bb5437dbccc54e6af37375e60380a1",
+    "encoding": "gzip"
+  },
+  "execution-full/ENVTEST-AFTER.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/ENVTEST-AFTER.json",
+    "source_bytes": 317,
+    "source_sha256": "d25389120fc5d47f66ad58552ea6148217e9d3728bc7ac5ee9bcabb7f57c1562",
+    "encoding": "gzip"
+  },
+  "execution-full/ENVTEST-OWNERSHIP-SECOND.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/ENVTEST-OWNERSHIP-SECOND.json",
+    "source_bytes": 4128,
+    "source_sha256": "fe2789947bf541b3aa949c8132dd24805f4c2945ae4ff5ec955dfe5fabe192b1",
+    "encoding": "gzip"
+  },
+  "execution-full/ENVTEST-OWNERSHIP.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/ENVTEST-OWNERSHIP.json",
+    "source_bytes": 944,
+    "source_sha256": "3222279ecfc62e68ed0914eb51d4c71cb1d8626dbe5d0e72a21342354a2edf39",
+    "encoding": "gzip"
+  },
+  "execution-full/PRIOR-FAILURE.txt.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/PRIOR-FAILURE.txt",
+    "source_bytes": 378,
+    "source_sha256": "8b6d32df98b3300ec587bbe11bd23def801c10265d71d747e8fac4d73384266b",
+    "encoding": "gzip"
+  },
+  "execution-full/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/RESULT.json",
+    "source_bytes": 2779,
+    "source_sha256": "29ab3631f63673703e8c0c899b701de22b3004264540a6548995a54ae6fde790",
+    "encoding": "gzip"
+  },
+  "execution-full/SCOPE-CLARIFICATION.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/SCOPE-CLARIFICATION.json",
+    "source_bytes": 718,
+    "source_sha256": "75939fe902f9a6acd7a9d2d99da568dd1507fec3ff96fa26f9c39ec5a64594f1",
+    "encoding": "gzip"
+  },
+  "execution-full/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/SCOPE.json",
+    "source_bytes": 2108,
+    "source_sha256": "b4fbff83c8ef8ac12b26bb43097ffed5547cf7aadf1e424ece887d52e4c0d408",
+    "encoding": "gzip"
+  },
+  "execution-full/build-lint-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/build-lint-PROCESS.json",
+    "source_bytes": 151,
+    "source_sha256": "0848d49369a73a45218723c8b22ba5398f0c730b0feb136dd4e7a0d82c386e18",
+    "encoding": "gzip"
+  },
+  "execution-full/build-lint-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/build-lint-RESULT.json",
+    "source_bytes": 251,
+    "source_sha256": "fdf57803f8040455d973b7ec08582ce4c7d316893223761ddb92bf8b307be441",
+    "encoding": "gzip"
+  },
+  "execution-full/build-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/build-lint.log",
+    "source_bytes": 323,
+    "source_sha256": "249800ec95ba8cc7120754de6e75ff2c7defafb234154c6c417180bc72536f0e",
+    "encoding": "gzip"
+  },
+  "execution-full/disk-mode-focused-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/disk-mode-focused-PROCESS.json",
+    "source_bytes": 215,
+    "source_sha256": "b09a826f5f1c2d87a1ef81a268bcdbe546eabdc5a302897302758cb3387fb285",
+    "encoding": "gzip"
+  },
+  "execution-full/disk-mode-focused-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/disk-mode-focused-RESULT.json",
+    "source_bytes": 315,
+    "source_sha256": "b5e15e68f240443b91c6102acace38b28474d38527045ee57f244e05ea7d7229",
+    "encoding": "gzip"
+  },
+  "execution-full/disk-mode-focused.log.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/disk-mode-focused.log",
+    "source_bytes": 185,
+    "source_sha256": "ff8eda6850d421e2cc531407d6ded43e4449e2af78b3a010d02f6ce878eaa75b",
+    "encoding": "gzip"
+  },
+  "execution-full/operator-full-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/operator-full-PROCESS.json",
+    "source_bytes": 79,
+    "source_sha256": "e8b0afd3c24f91a908a6cddc7362209693cb955499c307c05b73243b2fc46206",
+    "encoding": "gzip"
+  },
+  "execution-full/operator-full-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/operator-full-RESULT.json",
+    "source_bytes": 181,
+    "source_sha256": "b595dad52a9f4eb5f1637b7ac1d958549757ea95cd06bf411897e6bb46bd317d",
+    "encoding": "gzip"
+  },
+  "execution-full/operator-full.log.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/operator-full.log",
+    "source_bytes": 5255,
+    "source_sha256": "01c020e90d751b132c874bfe0dcd3952a33911da84d17c854ec079d8c0805a8c",
+    "encoding": "gzip"
+  },
+  "execution-full/run.py.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031-7tfht0er/run.py",
+    "source_bytes": 4127,
+    "source_sha256": "e93315359ed8589ad793e6bf95730ed834122eaed39195403df73ec80a8e6594",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/RESOURCE-SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/RESOURCE-SCOPE.json",
+    "source_bytes": 687,
+    "source_sha256": "ab20b1757155917c5b1b49f5970ab3db3c4cb4fa74cd911e044088ed9824d62b",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/RESULT.json",
+    "source_bytes": 2526,
+    "source_sha256": "75d50a132392d8985009f5c94c0a2ccfc9d7ca978b734fb0bdd4122a97a56228",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/SCOPE.json",
+    "source_bytes": 2173,
+    "source_sha256": "a8aad758924d1d0fa238bd2221260614df56556546d994255a102232afbb9ece",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-lint-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-lint-PROCESS.json",
+    "source_bytes": 151,
+    "source_sha256": "c12ea4dab405fee55da0d9722cd2ab4b25045bff37378ac4aa0043f4a4afe09a",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-lint-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-lint-RESULT.json",
+    "source_bytes": 251,
+    "source_sha256": "371694998d84a9f5d262dba4a629228d5cc12cb0f28351ef9eacff9605ab9df3",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-lint.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-unit-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-unit-PROCESS.json",
+    "source_bytes": 136,
+    "source_sha256": "8ac7d3a7395c0fd48170904d83f6f8b37f184e272de2847cffcd6738128d8928",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-unit-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-unit-RESULT.json",
+    "source_bytes": 237,
+    "source_sha256": "88fe8760b76a5c6aff8e9f4fac618261b5203ae9e1d886dadc439c89eee1c217",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/build-unit.log.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/build-unit.log",
+    "source_bytes": 63,
+    "source_sha256": "e4aa32290419a8c0117a6692275baf4cf504c8800683dda241920780a7b11f2e",
+    "encoding": "gzip"
+  },
+  "execution-lintfix/run.py.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031-owkh_303/run.py",
+    "source_bytes": 4119,
+    "source_sha256": "34e4ba0c04d1d5af5560aabf1b78151ae4e71ad8c05764baf084b30d8b64f41b",
+    "encoding": "gzip"
+  },
+  "execution-preflight/BASELINE.txt.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-20261031-80jgec3e/BASELINE.txt",
+    "source_bytes": 262,
+    "source_sha256": "b2d23e0230db1a41132c76912bdd1fbe9f3bf729d215d43f29530fed2710b2db",
+    "encoding": "gzip"
+  },
+  "execution-preflight/run.py.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-20261031-80jgec3e/run.py",
+    "source_bytes": 4022,
+    "source_sha256": "735280ef0e3efd41460208d9362ceae05b4969804a79c5b92d2636bbef4c577e",
+    "encoding": "gzip"
+  },
+  "final-delta/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-final-delta-20261031-7j1_wbyc/SOURCE.json",
+    "source_bytes": 979,
+    "source_sha256": "9370723d666b2a099d1f3c673007b3a372eb7e85ae790350f3442bb7f6f13a21",
+    "encoding": "gzip"
+  },
+  "final-delta/delta.patch.gz": {
+    "source": "/private/tmp/bex-w8-node-final-delta-20261031-7j1_wbyc/delta.patch",
+    "source_bytes": 2796,
+    "source_sha256": "976ac9658d0d29d384b800a99dcc3baa39af724e9875b26aa063ff1888abeeef",
+    "encoding": "gzip"
+  },
+  "final-delta/source/lego/operator/internal/build/nativenodepython.go.gz": {
+    "source": "/private/tmp/bex-w8-node-final-delta-20261031-7j1_wbyc/source/lego/operator/internal/build/nativenodepython.go",
+    "source_bytes": 1978,
+    "source_sha256": "f829e4de967b4ac47249142553fefd6e402fc64b987d3d0f041c8e63c27dff1c",
+    "encoding": "gzip"
+  },
+  "final-delta/source/lego/operator/internal/build/nativenodepython_test.go.gz": {
+    "source": "/private/tmp/bex-w8-node-final-delta-20261031-7j1_wbyc/source/lego/operator/internal/build/nativenodepython_test.go",
+    "source_bytes": 7571,
+    "source_sha256": "04bdf95385004ff20634440449c7272c5028de98154707bf8217385f4dcb2b3e",
+    "encoding": "gzip"
+  },
+  "final-delta/source/lego/operator/internal/build/nativeresolve.go.gz": {
+    "source": "/private/tmp/bex-w8-node-final-delta-20261031-7j1_wbyc/source/lego/operator/internal/build/nativeresolve.go",
+    "source_bytes": 20306,
+    "source_sha256": "1d8d1a38c24e85e5936fab5a5819a83e114f09ad9f70d717def7488eb9beab54",
+    "encoding": "gzip"
+  },
+  "controllers/bex-w8-node-compat-final-20261031.stdout.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031.stdout",
+    "source_bytes": 803,
+    "source_sha256": "ad0ddd23f360b69a15411832556fdbf0ad2a5498a3f889547e70a985274007fb",
+    "encoding": "gzip"
+  },
+  "controllers/bex-w8-node-compat-final-20261031.stderr.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-final-20261031.stderr",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "controllers/bex-w8-node-compat-lintfix-final-20261031.stdout.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031.stdout",
+    "source_bytes": 586,
+    "source_sha256": "71f84ee894ad08d32dc1cf5b0b362ebf24f048e0d3f16f3bd01a53bb9bc4d1ad",
+    "encoding": "gzip"
+  },
+  "controllers/bex-w8-node-compat-lintfix-final-20261031.stderr.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-final-20261031.stderr",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "controllers/bex-w8-node-compat-lintfix-20261031.stderr.gz": {
+    "source": "/private/tmp/bex-w8-node-compat-lintfix-20261031.stderr",
+    "source_bytes": 338,
+    "source_sha256": "68c4e8111bd2190a35c2b64bd5ae97f5e573f1241d868f96fc1154c64d70671a",
+    "encoding": "gzip"
+  },
+  "final-independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-node-python-modeguard-addendum-20261031-mfja9q9e/MANIFEST.json",
+    "source_bytes": 391,
+    "source_sha256": "99c41f33d9c4f7a52ffa31f2746bf9c43b59c3c9295d22d9718ab0c77d7fcca7",
+    "encoding": "gzip"
+  },
+  "final-independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-node-python-modeguard-addendum-20261031-mfja9q9e/REVIEW.json",
+    "source_bytes": 3992,
+    "source_sha256": "8fc680b9ca311f55356ff47a244ee00ecb68a2e370e78158c2ac983cc712ae24",
+    "encoding": "gzip"
+  },
+  "final-independent/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-python-modeguard-addendum-20261031-mfja9q9e/SOURCE.json",
+    "source_bytes": 3219,
+    "source_sha256": "fa0fef8828119fd853733ad23a8ba6a19e7c4ccb3feaec9898748abcbfcde39f",
+    "encoding": "gzip"
+  },
+  "final-independent/baseline-to-root-final.diff.gz": {
+    "source": "/private/tmp/bex-w8-node-python-modeguard-addendum-20261031-mfja9q9e/baseline-to-root-final.diff",
+    "source_bytes": 2733,
+    "source_sha256": "57bc22db9456fcc75ec94d2194c09bbea783acce04cce61c07092db58a5cab99",
+    "encoding": "gzip"
+  },
+  "postrebase/REBASE-NOTE.txt.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/REBASE-NOTE.txt",
+    "source_bytes": 180,
+    "source_sha256": "cf10565163ebe51dbf95da170b4df76784826c3daf79693f3e9571cb80f56d42",
+    "encoding": "gzip"
+  },
+  "postrebase/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/RESULT.json",
+    "source_bytes": 2765,
+    "source_sha256": "ac961efc12b0ad62107d9af515e818c696b8fdf0ec0591eee4c701f0f2b7ecff",
+    "encoding": "gzip"
+  },
+  "postrebase/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/SCOPE.json",
+    "source_bytes": 2412,
+    "source_sha256": "b1be6841ed8680cdabad614d18355338068ec21ad5718d939f9c911dfbb1620e",
+    "encoding": "gzip"
+  },
+  "postrebase/build-lint-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-lint-PROCESS.json",
+    "source_bytes": 151,
+    "source_sha256": "77941d35b3d83d2719b3e44c6491ccccf267ed7f57a0c290e0734c42ede56102",
+    "encoding": "gzip"
+  },
+  "postrebase/build-lint-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-lint-RESULT.json",
+    "source_bytes": 251,
+    "source_sha256": "144b3426742909c56daed25c7501a07fd7ef984c37686c85002c57130509bb36",
+    "encoding": "gzip"
+  },
+  "postrebase/build-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-lint.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "postrebase/build-unit-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-unit-PROCESS.json",
+    "source_bytes": 136,
+    "source_sha256": "db28c66887603ac5724f33eec03f3b5a1214c922ccd03d94573b88c8e86f1550",
+    "encoding": "gzip"
+  },
+  "postrebase/build-unit-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-unit-RESULT.json",
+    "source_bytes": 237,
+    "source_sha256": "984e95dbba327815723ed6e27678532dc569433cd8553232cd873818ed6dfe84",
+    "encoding": "gzip"
+  },
+  "postrebase/build-unit.log.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/build-unit.log",
+    "source_bytes": 63,
+    "source_sha256": "776f5f2c5f8304f140166a56a8169ecda3b192ad80381a45c5b14db8a3c6798a",
+    "encoding": "gzip"
+  },
+  "postrebase/run.py.gz": {
+    "source": "/private/tmp/bex-w8-node-postrebase-20261031-7dcs96iw/run.py",
+    "source_bytes": 4212,
+    "source_sha256": "df143499bf1db70d0010614d098dd7b9138671b8ace79aed9e094df483f8715e",
+    "encoding": "gzip"
+  }
+}
