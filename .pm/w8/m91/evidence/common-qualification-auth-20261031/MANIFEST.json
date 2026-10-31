@@ -1,0 +1,106 @@
+{
+  "CUSTODY.json": {
+    "bytes": 7605,
+    "sha256": "0cbe92c87025a75a74d1a85cda72ca8c7f84354c99a4ce140ca8f7702f947225"
+  },
+  "independent/EXECUTION.json.gz": {
+    "bytes": 1075,
+    "sha256": "8adf988a340b6ca647591c376c5290e6cf90b6790b9a09529ae3865e32ed217b"
+  },
+  "independent/INPUTS.json.gz": {
+    "bytes": 597,
+    "sha256": "b1d192addbd733e996f4f0ddd3c841a90a0a431b4a41c543b5f9b69225c18b43"
+  },
+  "independent/MANIFEST.json.gz": {
+    "bytes": 837,
+    "sha256": "d5df9d86b9a7de7c05c65fcd566e62faae9e97eddd9c8b6d4e049280cea2d247"
+  },
+  "independent/REVIEW.json.gz": {
+    "bytes": 1479,
+    "sha256": "6ef06c30c92d26f9b3236e36701c9d41313bcec20f84b79c06f70997f4d9f77e"
+  },
+  "independent/actionlint.log.gz": {
+    "bytes": 370,
+    "sha256": "621e0fc46ed048165f2844daef299b1a48091c38ad01609bed624c4a8f30bea5"
+  },
+  "independent/diff-check.json.gz": {
+    "bytes": 173,
+    "sha256": "44ad8a75d8999dbbede4fcadd3fcd705d9b99c2871915b65ca2d3dbfbedd8793"
+  },
+  "independent/partial_init_probe.json.gz": {
+    "bytes": 404,
+    "sha256": "d68f9f063734cd6527267f42fc945526f4b1078a64f2a5fcda15457ca6590ad0"
+  },
+  "independent/partial_init_probe.py.gz": {
+    "bytes": 1612,
+    "sha256": "4a1618ee30a167e2bcd975eb7f849e630fa5363c2b038b9c3b4cb5e3090c4221"
+  },
+  "independent/tests.log.gz": {
+    "bytes": 584,
+    "sha256": "4f5e459d1033c9a668384e45696be479a1107895f457f0dd24d94607bf0cb020"
+  },
+  "independent/work/.github/scripts/native-common-qualify.py.gz": {
+    "bytes": 5605,
+    "sha256": "9d3877a358bf941100132ce01090302d3c44456f61c72027123557c0ae1fdebd"
+  },
+  "independent/work/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "bytes": 6361,
+    "sha256": "f2dd49b799a91e5dad41ef09ec8a25d9d4343c0745d196807eedea7c89bcf893"
+  },
+  "independent/work/.github/scripts/test_native_oci_workflow.py.gz": {
+    "bytes": 5225,
+    "sha256": "120c41e007dfbc23c48b2be100074272ea63c199bcbfed916a3319371011de39"
+  },
+  "independent/work/.github/workflows/native-base-image.yml.gz": {
+    "bytes": 5827,
+    "sha256": "bf8d8dbc7d8cdc600591e72b81af69c3f96c62650b1606fe3b6377a6f839a429"
+  },
+  "independent/work/.github/workflows/native-common-image.yml.gz": {
+    "bytes": 2021,
+    "sha256": "73f5793fe9e9e25cbb8d0dfc76b4aadd099dfed0e3c28d5e6a9309dd9edb36ab"
+  },
+  "source/FINAL-MANIFEST.json.gz": {
+    "bytes": 719,
+    "sha256": "d18b15b5a2b9ecbe5b4045971ca82132869a706cb17984b550b3b26d2fd35cb2"
+  },
+  "source/FINAL-VERIFICATION.json.gz": {
+    "bytes": 330,
+    "sha256": "ee6458b54751136113eaad42e9462b8f99e01f4c35bbaa8b88e2a74d7991f483"
+  },
+  "source/MANIFEST.json.gz": {
+    "bytes": 598,
+    "sha256": "0d36a1aa8bbca6d9c8a1a0bc0ac8bf2c5d6433a01ccbae40a546e70394fcfbcf"
+  },
+  "source/RECEIPT.json.gz": {
+    "bytes": 1724,
+    "sha256": "f8761055f33164cfec8142f3679b4d6635d23423551bd50cdce7aecabc59b028"
+  },
+  "source/SOURCE.patch.gz": {
+    "bytes": 5901,
+    "sha256": "c37c2701b601df43bd70d3eeb2fbbde41888f6dec3c44f891910ca9800c47e72"
+  },
+  "source/original-failures/124656974513.raw.log.gz": {
+    "bytes": 9761,
+    "sha256": "74517462b8d12b4611345760a317dd4bc8e2fb3d49da5ee8b1595ffd48e5645c"
+  },
+  "source/original-failures/124656974570.raw.log.gz": {
+    "bytes": 16341,
+    "sha256": "c743b8b7fe23ab1d3e46f38da05695e8f38b31b3d6b45bb39e325b309bdb426a"
+  },
+  "source/original-failures/RETRIEVAL.json.gz": {
+    "bytes": 557,
+    "sha256": "8f46255d06a8c95a98d5ac288393bbf831d2b88dce9f60949d9494cbf83672ed"
+  },
+  "source/source/.github/scripts/native-common-qualify.py.gz": {
+    "bytes": 5605,
+    "sha256": "9d3877a358bf941100132ce01090302d3c44456f61c72027123557c0ae1fdebd"
+  },
+  "source/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "bytes": 6361,
+    "sha256": "f2dd49b799a91e5dad41ef09ec8a25d9d4343c0745d196807eedea7c89bcf893"
+  },
+  "source/source/.github/workflows/native-common-image.yml.gz": {
+    "bytes": 2021,
+    "sha256": "73f5793fe9e9e25cbb8d0dfc76b4aadd099dfed0e3c28d5e6a9309dd9edb36ab"
+  }
+}

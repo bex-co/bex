@@ -35,6 +35,9 @@ jobs:
   qualify:
     needs: publish
     if: github.ref == 'refs/heads/main' && needs.publish.outputs.ref != ''
+    permissions:
+      contents: read
+      packages: read
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
     timeout-minutes: 180
     strategy:
@@ -62,6 +65,13 @@ jobs:
           VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
+      - name: log in to GHCR using this qualification's isolated credentials
+        timeout-minutes: 2
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | timeout --kill-after=10s 60s \
+            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         with:
           name: ${{ steps.owned.outputs.owner }}
@@ -95,7 +105,7 @@ jobs:
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests
-      - name: remove only this job's labeled resources and exact builder
+      - name: remove only this job's labeled resources, exact builder and credentials
         if: always() && steps.owned.outputs.root != ''
         timeout-minutes: 5
         env:

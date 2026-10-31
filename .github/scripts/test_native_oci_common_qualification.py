@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -48,6 +49,194 @@ def document():
 
 
 class QualificationControls(unittest.TestCase):
+    def initialize_owned(self, directory):
+        env = dict(COMMON_IMAGE="ghcr.io/bex-co/bex-cnb-run@" + IMAGE,
+                   PRODUCER_SHA="a" * 40, VERIFICATION_SHA="a" * 40, GITHUB_SHA="a" * 40,
+                   TARGET_PLATFORM="linux/arm64", RUNNER_TEMP=str(directory),
+                   GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1",
+                   GITHUB_OUTPUT=str(directory / "outputs"), GITHUB_ENV=str(directory / "environment"))
+        with patch.dict(os.environ, env):
+            qualification.initialize()
+        outputs = dict(line.split("=", 1) for line in (directory / "outputs").read_text().splitlines())
+        root = Path(outputs["root"])
+        inputs = json.loads((root / "inputs.json").read_text())
+        return root, inputs, Path(inputs["docker_config"])
+
+    def test_scoped_login_uses_package_read_token_stdin_and_owned_config_outside_evidence(self):
+        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+        qualify = workflow.split("  qualify:\n", 1)[1]
+        self.assertIn("    permissions:\n      contents: read\n      packages: read\n", qualify)
+        marker = "      - name: log in to GHCR using this qualification's isolated credentials\n"
+        self.assertLess(qualify.index("id: owned"), qualify.index(marker))
+        self.assertLess(qualify.index(marker), qualify.index("uses: docker/setup-buildx-action@"))
+        login = qualify.split(marker, 1)[1].split("      - uses:", 1)[0]
+        self.assertIn("GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}", login)
+        self.assertIn("timeout-minutes: 2", login)
+        shell = "\n".join(line[10:] for line in login.split("        run: |\n", 1)[1].splitlines())
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory).resolve()
+            root, inputs, config = self.initialize_owned(temporary)
+            self.assertEqual(config.parent, root.parent)
+            self.assertNotEqual(config, root)
+            self.assertEqual(config.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(json.loads((config / ".qualification-owner.json").read_text()),
+                             {"owner": inputs["owner"], "evidence_root": str(root)})
+            exported = dict(line.split("=", 1) for line in (temporary / "environment").read_text().splitlines())
+            self.assertEqual(exported, {"DOCKER_CONFIG": str(config)})
+            binary = temporary / "bin"
+            binary.mkdir()
+            stub = r'''import json,os,pathlib,sys
+if pathlib.Path(sys.argv[0]).name == 'timeout':
+ assert sys.argv[1:3] == ['--kill-after=10s', '60s']
+ os.execvpe(sys.argv[3], sys.argv[3:], os.environ)
+assert sys.argv[1:] == ['login','ghcr.io','--username','controlled-actor','--password-stdin']
+assert sys.stdin.read() == 'CONTROL-ONLY-FAKE-TOKEN'
+config=pathlib.Path(os.environ['DOCKER_CONFIG'])
+assert config == pathlib.Path(os.environ['EXPECTED_CONFIG'])
+assert (config/'.qualification-owner.json').is_file()
+(config/'config.json').write_text(json.dumps({'auths':{'ghcr.io':{'auth':'CONTROL-ONLY-FAKE-TOKEN'}}}))
+print('controlled login succeeded')
+'''
+            for name in ("docker", "timeout"):
+                executable = binary / name
+                executable.write_text("#!" + sys.executable + "\n" + stub)
+                executable.chmod(0o755)
+            env = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ["PATH"],
+                       GHCR_TOKEN="CONTROL-ONLY-FAKE-TOKEN", GITHUB_ACTOR="controlled-actor",
+                       EXPECTED_CONFIG=str(config), **exported)
+            process = subprocess.run(["bash", "-euo", "pipefail", "-c", shell], env=env,
+                                     capture_output=True, text=True, timeout=10)
+            self.assertEqual(process.returncode, 0, process.stderr)
+            self.assertNotIn(env["GHCR_TOKEN"], process.stdout + process.stderr)
+            self.assertTrue((config / "config.json").is_file())
+            self.assertFalse(any(env["GHCR_TOKEN"] in path.read_text() for path in root.rglob("*") if path.is_file()))
+            qualification.manifest(root)
+            self.assertNotIn("config.json", (root / "MANIFEST.json").read_text())
+
+    def test_initialization_failure_keeps_exact_owner_scope_for_always_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory).resolve()
+            with patch.object(qualification, "capacity", side_effect=OSError("controlled late init failure")):
+                with self.assertRaises(OSError):
+                    self.initialize_owned(temporary)
+            outputs = dict(line.split("=", 1) for line in (temporary / "outputs").read_text().splitlines())
+            root = Path(outputs["root"])
+            inputs = json.loads((root / "inputs.json").read_text())
+            config = qualification.owned_docker_config(root, inputs)
+            self.assertTrue(config.is_dir())
+            with patch.object(qualification.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")):
+                qualification.cleanup(root)
+            self.assertFalse(config.exists())
+
+    def test_partial_initialization_removes_incomplete_scope_and_cleanup_stays_scoped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory).resolve()
+            original_dump = qualification.dump
+
+            def write(path, data):
+                if path.name == ".qualification-owner.json":
+                    raise OSError("controlled initial marker failure")
+                original_dump(path, data)
+
+            with patch.object(qualification, "dump", side_effect=write), self.assertRaises(OSError):
+                self.initialize_owned(temporary)
+            outputs = dict(line.split("=", 1) for line in (temporary / "outputs").read_text().splitlines())
+            root = Path(outputs["root"])
+            inputs = json.loads((root / "inputs.json").read_text())
+            config = Path(inputs["docker_config"])
+            self.assertFalse(config.exists())
+            foreign = temporary / "foreign-config"
+            foreign.mkdir()
+            (foreign / "config.json").write_text("foreign sentinel")
+
+            def execute(command, **kwargs):
+                self.assertEqual(kwargs["env"]["DOCKER_CONFIG"], str(config))
+                self.assertTrue((config / ".qualification-owner.json").is_file())
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            with patch.dict(os.environ, DOCKER_CONFIG=str(foreign)), patch.object(qualification.subprocess, "run", side_effect=execute):
+                qualification.cleanup(root)
+            self.assertFalse(config.exists())
+            self.assertEqual((foreign / "config.json").read_text(), "foreign sentinel")
+
+    def test_auth_cleanup_is_finally_scoped_and_drops_credentials_after_prior_failures(self):
+        for failure in ("builder", "listing", "removal", "identity", "logout-timeout", "evidence-write"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                temporary = Path(directory).resolve()
+                root, inputs, config = self.initialize_owned(temporary)
+                secret = "CONTROL-ONLY-FAKE-TOKEN"
+                (config / "config.json").write_text(secret)
+                foreign = temporary / "foreign-config"
+                foreign.mkdir()
+                (foreign / "config.json").write_text("foreign sentinel")
+                calls = []
+
+                def execute(command, **kwargs):
+                    calls.append(command)
+                    self.assertEqual(kwargs["env"]["DOCKER_CONFIG"], str(config))
+                    if command[1] == "logout":
+                        self.assertEqual(command, ["docker", "logout", "ghcr.io"])
+                        self.assertEqual(kwargs["stdout"], subprocess.DEVNULL)
+                        self.assertEqual(kwargs["stderr"], subprocess.DEVNULL)
+                        if failure == "logout-timeout":
+                            raise subprocess.TimeoutExpired(command, 20)
+                        return subprocess.CompletedProcess(command, 0, secret, secret)
+                    if command[1:3] == ["ps", "-aq"]:
+                        return subprocess.CompletedProcess(command, 17 if failure == "listing" else 0,
+                                                           "invalid-identity" if failure == "identity" else "a" * 64, "")
+                    code = 17 if ((failure == "builder" and command[1] == "buildx")
+                                  or (failure == "removal" and command[1] == "rm")) else 0
+                    return subprocess.CompletedProcess(command, code, "", "")
+
+                original_dump = qualification.dump
+
+                def write(path, data):
+                    if failure == "evidence-write" and path.name == "cleanup.json":
+                        raise OSError("controlled evidence failure")
+                    original_dump(path, data)
+
+                expected = ValueError if failure == "identity" else OSError if failure == "evidence-write" else RuntimeError
+                with patch.dict(os.environ, DOCKER_CONFIG=str(foreign)), patch.object(qualification.subprocess, "run", side_effect=execute), patch.object(qualification, "dump", side_effect=write):
+                    with self.assertRaises(expected):
+                        qualification.cleanup(root)
+                self.assertEqual(calls[-1], ["docker", "logout", "ghcr.io"])
+                self.assertFalse(config.exists())
+                self.assertEqual((foreign / "config.json").read_text(), "foreign sentinel")
+                if failure != "evidence-write":
+                    receipt = (root / "cleanup.json").read_text()
+                    self.assertNotIn(secret, receipt)
+                    auth = json.loads(receipt)["operations"][-1]
+                    self.assertTrue(auth["removed"])
+                    self.assertEqual(auth["logout_exit_code"], 124 if failure == "logout-timeout" else 0)
+
+    def test_cleanup_refuses_foreign_symlinked_or_changed_credential_ownership(self):
+        for invalid in ("path", "directory-symlink", "marker-symlink", "marker-owner", "permissions"):
+            with self.subTest(invalid=invalid), tempfile.TemporaryDirectory() as directory:
+                temporary = Path(directory).resolve()
+                root, inputs, config = self.initialize_owned(temporary)
+                foreign = temporary / "foreign"
+                foreign.mkdir()
+                sentinel = foreign / "sentinel"
+                sentinel.write_text("foreign sentinel")
+                if invalid == "path":
+                    inputs["docker_config"] = str(foreign)
+                    qualification.dump(root / "inputs.json", inputs)
+                elif invalid == "directory-symlink":
+                    (config / ".qualification-owner.json").unlink()
+                    config.rmdir()
+                    config.symlink_to(foreign, target_is_directory=True)
+                elif invalid == "marker-symlink":
+                    (config / ".qualification-owner.json").unlink()
+                    (config / ".qualification-owner.json").symlink_to(sentinel)
+                elif invalid == "marker-owner":
+                    qualification.dump(config / ".qualification-owner.json", {"owner": "foreign", "evidence_root": str(root)})
+                else:
+                    config.chmod(0o755)
+                with patch.object(qualification.subprocess, "run") as command, self.assertRaises(ValueError):
+                    qualification.cleanup(root)
+                command.assert_not_called()
+                self.assertEqual(sentinel.read_text(), "foreign sentinel")
+
     def test_output_is_after_full_signing_and_never_always_on_failure(self):
         workflow = publisher.WORKFLOW_TEXT
         block = workflow.split("      - id: published\n", 1)[1].split("      - name: remove GHCR credentials", 1)[0]
