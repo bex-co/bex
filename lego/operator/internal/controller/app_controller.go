@@ -3547,6 +3547,15 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
 
+// stampNotReadyCondition stamps the shared Ready=False shape for a rollout that
+// is still progressing or has a specific stall diagnosis.
+func stampNotReadyCondition(app *appv1alpha1.App, reason, message string) {
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+		Message: message, ObservedGeneration: app.Generation,
+	})
+}
+
 // reportRolloutProgress records the shared not-ready shape of a Deployment
 // rollout (the web and worker paths): phase Deploying, Ready=False with
 // RolloutProgressing — upgraded to RolloutSettling when a live pod listing
@@ -3583,25 +3592,13 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			app.Status.ActiveRevision = rev
 		}
 	}
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: notReadyReason,
-		Message: notReadyMessage, ObservedGeneration: app.Generation,
-	})
+	stampNotReadyCondition(app, notReadyReason, notReadyMessage)
 	if reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port); msg != "" {
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
-			Message: msg, ObservedGeneration: app.Generation,
-		})
+		stampNotReadyCondition(app, reason, msg)
 	} else if reason, msg := r.rolloutQuotaBlockMessage(ctx, dep); msg != "" {
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
-			Message: msg, ObservedGeneration: app.Generation,
-		})
+		stampNotReadyCondition(app, reason, msg)
 	} else if msg := r.nodeLossMessage(ctx, dep); msg != "" {
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonNodeLost,
-			Message: msg, ObservedGeneration: app.Generation,
-		})
+		stampNotReadyCondition(app, appv1alpha1.ReasonNodeLost, msg)
 	}
 	r.observeServingRevision(ctx, app, dep, replicas)
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
