@@ -277,3 +277,60 @@ func TestWebHTTPWaitsForASlowLowerListenerBeforeCommittingAHigherOne(t *testing.
 		t.Fatalf("after the window a silent lower port blocked the HTTP choice: network=%+v message=%q", app.Status.ImageNetwork, message)
 	}
 }
+
+// A candidate that crash-loops before discovery ever sees it Running is named
+// as the crash, worded as on the configured-port path, not as "waiting for the
+// container" until the deadline (w4/437). A merely starting container keeps
+// the discovery hint.
+func TestWebHTTPSelectionNamesCrashLoopBeforeDiscovery(t *testing.T) {
+	const waiting = "Waiting for the container to start before detecting its HTTP port"
+	pod := func(cs corev1.ContainerStatus) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "candidate", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-1"}},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{cs}},
+		}
+	}
+	for _, tc := range []struct {
+		name         string
+		status       corev1.ContainerStatus
+		reason, text string
+	}{
+		{
+			name: "crash loop",
+			status: corev1.ContainerStatus{
+				Name:                 appContainerName,
+				State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: crashLoopBackOff}},
+				LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1}},
+			},
+			reason: crashLoopBackOff,
+			text:   "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (10000).",
+		},
+		{
+			name:   "creating",
+			status: corev1.ContainerStatus{Name: appContainerName, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: appv1alpha1.ReasonContainerCreating}}},
+			reason: appv1alpha1.ReasonHTTPPortDiscovery,
+			text:   waiting,
+		},
+		{
+			name:   "running within grace",
+			status: corev1.ContainerStatus{Name: appContainerName, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}}},
+			reason: appv1alpha1.ReasonHTTPPortDiscovery,
+			text:   waiting,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 2}}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, pod(tc.status)).WithStatusSubresource(app).Build()
+			r := &AppReconciler{Client: cl}
+			if _, err := r.reportWebHTTPSelection(t.Context(), app, dep, "candidate", waiting, 10000); err != nil {
+				t.Fatal(err)
+			}
+			ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+			if ready == nil || ready.Reason != tc.reason || ready.Message != tc.text || app.Status.Phase != appv1alpha1.PhaseDeploying {
+				t.Fatalf("Ready = %+v, phase %q; want %s %q while deploying", ready, app.Status.Phase, tc.reason, tc.text)
+			}
+		})
+	}
+}
