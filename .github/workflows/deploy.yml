@@ -145,7 +145,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
         run: |
-          # Only 0 (newer MANIFESTS) skips: these images must never meet them.
+          # 0 (never pin) and 4 (newer MANIFESTS) skip: on 4 a deploy-triggering
+          # commit landed after this one, so a newer run is queued and builds
+          # the newer tree; this one would only delay it. A run already past
+          # this check pins on 4 instead (w4/439).
           # 3 (newer image SOURCE only) builds and pins, exactly as the
           # write-back guard allows. Skipping on 3 re-created the w1/116
           # starvation one step earlier: tests take ~30 min on the shared
@@ -157,7 +160,7 @@ jobs:
           bash scripts/deploy-superseded.sh "$GITHUB_SHA"
           rc=$?
           set -e
-          if [ "$rc" -eq 0 ]; then
+          if [ "$rc" -eq 0 ] || [ "$rc" -eq 4 ]; then
             echo "superseded=true" >> "$GITHUB_OUTPUT"
           else
             echo "superseded=false" >> "$GITHUB_OUTPUT"
@@ -520,19 +523,22 @@ jobs:
           # not a supersession: these images onto unchanged manifests are an
           # ordinary deploy of this commit, and the queued run pins newer ones
           # right after. Treating it as one starved production for 14+ hours
-          # under steady pushes (w1/116). When superseded (the pre-check job could
-          # not catch a commit that landed DURING this build), conclude NEUTRAL:
-          # flag the rollout steps below to skip, pin nothing, and exit 0 (green,
-          # not red). w1/m59.
+          # under steady pushes (w1/116). Newer MANIFESTS (rc 4) pin too: Argo
+          # already runs them on the previous pin's even older images, so
+          # refusing never kept old images off new manifests; it starved
+          # production for 11 h under hourly manifest pushes (w4/439). Only rc 0
+          # (a generated field reshaped, or a re-run older than the current pin)
+          # concludes NEUTRAL: flag the rollout steps below to skip, pin
+          # nothing, and exit 0 (green, not red). w1/m59.
           set +e
           bash scripts/deploy-superseded.sh "$GITHUB_SHA"
           superseded_rc=$?
           set -e
           if [ "$superseded_rc" -eq 0 ]; then
             echo "SUPERSEDED=true" >> "$GITHUB_ENV"
-            echo "::notice::superseded by a newer run — images built but intentionally not pinned; skipping the rollout"
+            echo "::notice::not pinned (generated field reshaped, or older than the current pin) — images built but intentionally not pinned; skipping the rollout"
             exit 0
-          elif [ "$superseded_rc" -ne 1 ] && [ "$superseded_rc" -ne 3 ]; then
+          elif [ "$superseded_rc" -ne 1 ] && [ "$superseded_rc" -ne 3 ] && [ "$superseded_rc" -ne 4 ]; then
             echo "supersession check errored (rc=$superseded_rc); refusing stale digest write-back" >&2
             exit 1
           fi

@@ -22,8 +22,21 @@
 # code landing more often than one ~50-minute run, no run could ever pin (no pin
 # from cae30d1e0, 2026-09-28 16:41Z, until this change; w1/116).
 #
+# Newer MANIFESTS are not a reason to skip either (w4/439). Argo CD auto-syncs
+# them from main the moment they land, so they already run on the PREVIOUS
+# pin's images, which are older still. Refusing to pin this run's images never
+# kept older images off newer manifests; it only kept production on the oldest
+# ones. With manifest commits landing every 20-100 minutes against 1.5-2.6 h
+# runs, every finished run was refused and production went 11 h without a pin
+# (2026-10-29/30). Pinning this run's images narrows the gap, and the queued
+# run closes it. Two cases still skip: a generated digest field reshaped
+# beyond its digest (the write-back's field rewrite would target the wrong
+# shape), and a commit that is not newer than the current pin (a re-run of an
+# old run must never roll production back).
+#
 # Usage:   scripts/deploy-superseded.sh <git-sha>
-# Exit:    0 = superseded   (newer manifests on origin/main: never pin these images)
+# Exit:    0 = superseded   (never pin these images: a generated digest field
+#                            was reshaped, or the current pin is newer)
 #          1 = current      (no production-input drift beyond generated digests)
 #          2 = error        (could not determine — callers treat as "not skipped":
 #                            the pre-build check proceeds and the write-back guard,
@@ -32,6 +45,10 @@
 #                            both the pre-build check and the write-back guard
 #                            build and pin this commit — skipping here starved
 #                            production under steady pushes)
+#          4 = newer manifests (already live through Argo on the older pinned
+#                            images: the pre-build check skips, since the
+#                            queued run builds the newer tree, but a run that
+#                            already built pins its images)
 set -uo pipefail
 
 SHA="${1:?usage: deploy-superseded.sh <git-sha>}"
@@ -73,12 +90,12 @@ git diff --quiet "$SHA" origin/main -- \
   ':(exclude)deploy/gitops/base/values/opensandbox-controller.values.yaml' \
   ':(exclude)lego/operator/config/api/deployment.yaml'
 diff_rc=$?
+manifests_moved=false
 case "$diff_rc" in
   0)
     ;;
   1)
-    echo "superseded by newer production manifests on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"
-    exit 0
+    manifests_moved=true
     ;;
   *)
     echo "deploy-superseded: git diff failed" >&2
@@ -142,6 +159,31 @@ case "$generated_rc" in
     exit 2
     ;;
 esac
+
+# Every pin path refuses a commit older than the current pin. Runs are
+# serialized in push order, so only a re-run of an old run trips this. The pin
+# commit names its producer; without one in reach (a fresh repository, history
+# beyond the deepen) there is nothing to roll back over.
+pinned_producer() {
+  # CI checks out one commit: reach back far enough for the last pin and its
+  # producer, as superseders() does.
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+    git fetch --no-tags --deepen=500 origin main >/dev/null 2>&1 || true
+  fi
+  git log origin/main -1 --format=%s -E --grep='^chore\(deploy\): pin platform images to [0-9a-f]{12}' 2>/dev/null |
+    sed -En 's/^chore\(deploy\): pin platform images to ([0-9a-f]{12}).*/\1/p'
+}
+producer="$(pinned_producer)"
+if [ -n "$producer" ] && git rev-parse -q --verify "$producer^{commit}" >/dev/null 2>&1 &&
+  ! git merge-base --is-ancestor "$producer" "$SHA" 2>/dev/null; then
+  echo "the current pin ($producer) is not an ancestor of this commit; pinning it would roll production back"
+  exit 0
+fi
+
+if [ "$manifests_moved" = true ]; then
+  echo "newer production manifests on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")) already run on the older pinned images; these images narrow that gap and are safe to pin"
+  exit 4
+fi
 
 # Manifests are current. Newer image source alone means a newer run is queued.
 git diff --quiet "$SHA" origin/main -- lego dashboard \
