@@ -1,0 +1,50 @@
+=== RUN   TestNativeLegacyPythonProfileRequiresSeparateOptIn
+--- PASS: TestNativeLegacyPythonProfileRequiresSeparateOptIn (0.00s)
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.7
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.8
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.13
+--- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve (0.01s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.7 (0.00s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.8 (0.00s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.13 (0.00s)
+=== RUN   TestNativeLegacyWheelMetadataRejectsModernOrWrongArchitecture
+--- PASS: TestNativeLegacyWheelMetadataRejectsModernOrWrongArchitecture (0.00s)
+=== RUN   TestNativeLegacyPythonFixtureOracleControls
+--- PASS: TestNativeLegacyPythonFixtureOracleControls (0.13s)
+=== RUN   TestNativeLegacyPythonGeneratedImages
+    nativelegacy_python_test.go:99: set BEX_BUILDKIT_INTEGRATION and BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=1 for the separate legacy family profile
+--- SKIP: TestNativeLegacyPythonGeneratedImages (0.00s)
+=== RUN   TestNativeModernPythonMatrixAndUnchangedApplicationFixture
+--- PASS: TestNativeModernPythonMatrixAndUnchangedApplicationFixture (0.00s)
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.9
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.10
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.11
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.12
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.14
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.7
+=== RUN   TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.8
+--- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix (0.01s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.9 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.10 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.11 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.12 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.14 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.7 (0.00s)
+    --- PASS: TestNativeModernPythonWheelRecipesPreserveActualSelectedPrefix/3.8 (0.00s)
+=== RUN   TestNativeModernWheelMetadataRejectsWrongRuntimeOrArchitecture
+--- PASS: TestNativeModernWheelMetadataRejectsWrongRuntimeOrArchitecture (0.00s)
+=== RUN   TestNativeModernPythonFixtureOracleControls
+--- PASS: TestNativeModernPythonFixtureOracleControls (0.07s)
+=== RUN   TestNativeModernPythonProfileSkipsGenericIntegration
+=== RUN   TestNativeModernPythonProfileSkipsGenericIntegration/generic_integration_skips
+=== RUN   TestNativeModernPythonProfileSkipsGenericIntegration/profile_needs_integration_opt-in
+--- PASS: TestNativeModernPythonProfileSkipsGenericIntegration (0.02s)
+    --- PASS: TestNativeModernPythonProfileSkipsGenericIntegration/generic_integration_skips (0.01s)
+    --- PASS: TestNativeModernPythonProfileSkipsGenericIntegration/profile_needs_integration_opt-in (0.01s)
+=== RUN   TestNativeModernPythonGeneratedImages
+    nativemodern_python_test.go:105: set BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE=1 for the separate modern Python profile
+--- SKIP: TestNativeModernPythonGeneratedImages (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.841s

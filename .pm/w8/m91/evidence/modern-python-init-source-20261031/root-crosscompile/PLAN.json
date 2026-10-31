@@ -1,0 +1,7 @@
+{
+  "floor_bytes": 2147483648,
+  "own_cache_and_outputs_cap": 536870912,
+  "initial_free": 2786541568,
+  "source_head": "8d06d9535041e2b731f8c1daa0a9e8a6be88a386",
+  "scope": "local compile/ELF proof only; no Docker, runtime execution, image or publication"
+}

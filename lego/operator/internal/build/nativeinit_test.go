@@ -18,6 +18,7 @@ package build
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -224,9 +225,17 @@ func compileNativeInit(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return compileNativeInitForArch(t, strings.TrimSpace(string(arch)))
+}
+
+// Explicit qualification platforms use the same compiler as daemon-default tests.
+func compileNativeInitForArch(t *testing.T, arch string) string {
+	t.Helper()
 	bin := filepath.Join(t.TempDir(), nativeInitFile)
-	compile := exec.Command("go", "build", "-trimpath", "-ldflags=-s -w", "-o", bin, "../../cmd/native-init")
-	compile.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+strings.TrimSpace(string(arch)))
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	defer cancel()
+	compile := exec.CommandContext(ctx, "go", "build", "-trimpath", "-ldflags=-s -w", "-o", bin, "../../cmd/native-init")
+	compile.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
 	if out, err := compile.CombinedOutput(); err != nil {
 		t.Fatalf("compile native-init: %v\n%s", err, out)
 	}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit": 0,
+  "wall_seconds": 8.954262,
+  "initial_free_bytes": 2794496000,
+  "final_free_bytes": 2783903744,
+  "floor_tripped": false,
+  "scope": "Go source/unit only; generic and own profile opts unset; no crosscompile, Docker or JS fixture execution"
+}

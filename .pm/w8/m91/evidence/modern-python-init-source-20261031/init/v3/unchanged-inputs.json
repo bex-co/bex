@@ -1,0 +1,19 @@
+{
+  "previous_source_manifest": {
+    "sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+    "bytes": 1420
+  },
+  "changed_source_paths": [
+    "lego/operator/internal/build/nativequalification_init_test.go"
+  ],
+  "unchanged_source_paths": [
+    "lego/operator/internal/build/nativeinit_test.go",
+    "lego/operator/internal/build/testdata/native-common-init/.node-version",
+    "lego/operator/internal/build/testdata/native-common-init/build.js",
+    "lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+    "lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "lego/operator/internal/build/testdata/native-common-init/package.json",
+    "lego/operator/internal/build/testdata/native-common-init/server.js"
+  ],
+  "original_fixtures_runtime_and_compiler_unmodified": true
+}

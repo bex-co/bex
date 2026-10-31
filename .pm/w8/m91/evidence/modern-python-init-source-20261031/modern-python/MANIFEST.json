@@ -1,0 +1,166 @@
+{
+  "BASELINE.json": {
+    "bytes": 2092,
+    "sha256": "ffab4fd6f92efb5de13cce736e99dead2e3d19c291a8b397ef46baec4849ab7e"
+  },
+  "CHECKS.json": {
+    "bytes": 3143,
+    "sha256": "2a34ff7a8a8098d4abd3b56c199226d6e165938d9af65ebde4a2ebf8cd187c9d"
+  },
+  "FUTURE-EXECUTION.json": {
+    "bytes": 5300,
+    "sha256": "05f36ca2985dc650211239da0e85ab9620afc6f4c5b84d43506356bcd7e65ba1"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 1190,
+    "sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a"
+  },
+  "UNCHANGED.json": {
+    "bytes": 9874,
+    "sha256": "081382a4468376c93b7cf3ad14eb4d6ba4725e87d3390b6ffb78a810f6645e5e"
+  },
+  "UPSTREAM.json": {
+    "bytes": 354,
+    "sha256": "f06380d10d1c38558ae3f8c9fde690bda006ff03c508f7ff99a5c24fb6c4f30d"
+  },
+  "baseline/.github/scripts/native-common-qualify.py": {
+    "bytes": 10568,
+    "sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728"
+  },
+  "baseline/.github/workflows/native-common-image.yml": {
+    "bytes": 4675,
+    "sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9"
+  },
+  "baseline/lego/operator/internal/build/nativelegacy_python_test.go": {
+    "bytes": 9689,
+    "sha256": "10edf34e3c2dc0db463e0ca96406f49cfa11b084a8f2241e20390d57c817833b"
+  },
+  "baseline/lego/operator/internal/build/nativeutility_integration_test.go": {
+    "bytes": 16556,
+    "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5"
+  },
+  "baseline/lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 15080,
+    "sha256": "0d18824de5fca1b6d23258eb6b4332d9dc55728ee237f57b883bc0bee5a2ef74"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/check-tool.py": {
+    "bytes": 1025,
+    "sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/check.py": {
+    "bytes": 5960,
+    "sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/check_test.py": {
+    "bytes": 4201,
+    "sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c": {
+    "bytes": 548,
+    "sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml": {
+    "bytes": 259,
+    "sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c"
+  },
+  "baseline/lego/operator/internal/build/testdata/native-legacy-python/setup.py": {
+    "bytes": 165,
+    "sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e"
+  },
+  "legacy-extraction-controls.log": {
+    "bytes": 1363,
+    "sha256": "10d336825d9465c8e118ea779796c69dde4fa99bcd9e5cff79ec3c8e0c95b5a6"
+  },
+  "lint-final.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "lint-init-args-failure.log": {
+    "bytes": 400,
+    "sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56"
+  },
+  "lint-initial.log": {
+    "bytes": 168,
+    "sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9"
+  },
+  "negative-controls.json": {
+    "bytes": 2107,
+    "sha256": "2ee50f0ac868089e298d104fedc73b89628e545d4559a330f9f4ac37ba7a66cd"
+  },
+  "negative-overlays/legacy-cap.go": {
+    "bytes": 7527,
+    "sha256": "a409ff931d357d74cd351ea8bb467b5b5982d9fcc878108390777f3cf95cb307"
+  },
+  "negative-overlays/legacy-cap.json": {
+    "bytes": 196,
+    "sha256": "6d697c0e242b6927fc93c4174b320fd6b3ba08b64d6cc4282e3319dfe3f01902"
+  },
+  "negative-overlays/legacy-cap.log": {
+    "bytes": 2022,
+    "sha256": "9611c46804f833ed2a8a55ae5c3f17e6b361031e7492d41fcca0b47089305cb0"
+  },
+  "negative-overlays/system-wheel-interpreter.go": {
+    "bytes": 7501,
+    "sha256": "45012581c8ca923b2e0a1500c82c5b7af7f01f422afc3b18de5336fdfef13e9c"
+  },
+  "negative-overlays/system-wheel-interpreter.json": {
+    "bytes": 210,
+    "sha256": "ee75a282d81787bee05e36e05d8033fe4bf629ad77df451550fd93bb895f405d"
+  },
+  "negative-overlays/system-wheel-interpreter.log": {
+    "bytes": 24153,
+    "sha256": "25975c262f2bdd86433cd4a07fbfd509ff243db372391103e34bb4a016746e58"
+  },
+  "negative-overlays/wrong-metadata-python.go": {
+    "bytes": 7478,
+    "sha256": "7a39dff98bef4a37783644709d920544c2b9a8006d4941a423c7e633585342d7"
+  },
+  "negative-overlays/wrong-metadata-python.json": {
+    "bytes": 207,
+    "sha256": "c7cd5ec1cabe79dc8e10d948ec9897e61b4581a9f4944c7e32fba4b5c44d1ea2"
+  },
+  "negative-overlays/wrong-metadata-python.log": {
+    "bytes": 326,
+    "sha256": "65ac76f8bdff45ede79e315cb30e8c211a7c4722ba28ade0f34f89109fc917a5"
+  },
+  "poetry-2.1.3-pyproject.toml": {
+    "bytes": 6311,
+    "sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1"
+  },
+  "python-oracles-final.log": {
+    "bytes": 958,
+    "sha256": "481e35b6e6b2a98c89e415668cc594efee31bfd31d62d353bed295d0d9f5f95e"
+  },
+  "source-controls-final.log": {
+    "bytes": 3855,
+    "sha256": "d68d63de250ac152ebb6b6efaacbadfea6274231c9054d050e97751ca0094d4e"
+  },
+  "source-controls-initial.log": {
+    "bytes": 3855,
+    "sha256": "c98337c968125469780f1159b7335cd52e34e60f308c8ee15162841b8caa6ed4"
+  },
+  "source/lego/operator/internal/build/nativelegacy_python_test.go": {
+    "bytes": 6537,
+    "sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131"
+  },
+  "source/lego/operator/internal/build/nativemodern_python_controls_test.go": {
+    "bytes": 9519,
+    "sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b"
+  },
+  "source/lego/operator/internal/build/nativemodern_python_test.go": {
+    "bytes": 7506,
+    "sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607"
+  },
+  "source/lego/operator/internal/build/nativepython_qualification_test.go": {
+    "bytes": 4911,
+    "sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d"
+  },
+  "source/lego/operator/internal/build/testdata/native-modern-python/check-tool.py": {
+    "bytes": 1757,
+    "sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac"
+  },
+  "source/lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py": {
+    "bytes": 4655,
+    "sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f"
+  }
+}

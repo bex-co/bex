@@ -1,0 +1,10 @@
+{
+  "url": "https://registry.npmjs.org/@pnpm/linux-arm64/-/linux-arm64-10.34.7.tgz",
+  "method": "HEAD",
+  "headers": {
+    "Content-Type": "application/octet-stream",
+    "ETag": "\"933b2216b4f5f3d1b69b95cd32ec2ddf\"",
+    "Last-Modified": "Sun, 11 Oct 2026 22:14:19 GMT"
+  },
+  "body_bytes_read": 0
+}

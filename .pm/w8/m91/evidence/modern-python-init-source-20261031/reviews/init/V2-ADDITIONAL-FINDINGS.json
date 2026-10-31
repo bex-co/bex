@@ -1,0 +1,22 @@
+{
+  "status": "V2 review superseded by two additional source cleanup findings; await V3",
+  "date_utc": "2026-10-31T19:32:24.482963+00:00",
+  "source_manifest": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469",
+  "source_go_sha256": "c81508266455a7b19aa8f6a385a82d96a488358bbb41145ed268bce1b89363ee",
+  "history": "Prior V2-REVIEW.json retained unchanged; PATH/baseENV/PID1 correction remains valid, but cleanup failure review was incomplete.",
+  "findings": [
+    {
+      "finder": "root",
+      "file": "lego/operator/internal/build/nativequalification_init_test.go",
+      "line": 328,
+      "detail": "Inside t.Cleanup, must(write cleanup-runtime.log) can Goexit before exact-ID rm and absence inspection. Removal/inspection must proceed despite diagnostic write error."
+    },
+    {
+      "finder": "independent reviewer",
+      "file": "lego/operator/internal/build/nativequalification_init_test.go",
+      "line": 318,
+      "detail": "After create.Output returned a valid allocated ID, must(write create.stdout/create.stderr) can Goexit before CID parsing and cleanup registration. Register cleanup immediately after validating returned ID, before fallible evidence writes."
+    }
+  ],
+  "scope": "Static reachable IO-failure paths only. No actual Docker/create/cleanup/JS or image execution by reviewer. Author implementing minimal fix and no-Docker injected-failure controls; exact corrected freeze/review pending."
+}

@@ -1,0 +1,72 @@
+{
+  "date_utc": "2026-10-31T19:06:35.951750+00:00",
+  "head": "8d06d9535041e2b731f8c1daa0a9e8a6be88a386",
+  "scope": "modern Python source-only opt-in profile and direct shared legacy runner extraction",
+  "source_manifest_sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a",
+  "source_files": 6,
+  "source_bytes": 34885,
+  "checks": {
+    "legacy_extraction_controls": {
+      "status": "PASS",
+      "log": "legacy-extraction-controls.log"
+    },
+    "modern_plus_legacy_source_controls": {
+      "status": "PASS",
+      "elapsed_seconds": 0.841,
+      "log": "source-controls-final.log",
+      "modern_canonical_versions": 5,
+      "legacy_recipe_rejections": 2,
+      "canonical_wrong_route_tool_cap_version_source_controls": "30mutatedcanonical rejections plus distinct-default rejection per modern case",
+      "modern_metadata_negative_controls": "wrong runtime/env/prefix/private executable/tool/dependencies/OS/architecture/crossversion",
+      "actual_profile_process_guards": 2,
+      "actual_generated_image_tests": "SKIPPED unless explicit profile flag"
+    },
+    "private_source_mutations": {
+      "status": "3expected source-overlay failures",
+      "receipt": "negative-controls.json",
+      "live_source_modified": false
+    },
+    "python_oracles": {
+      "status": "5PASS;synthetic identity/command controls only",
+      "log": "python-oracles-final.log",
+      "target_execution": false
+    },
+    "pinned_scoped_lint": {
+      "status": "PASS;0issues",
+      "log": "lint-final.log"
+    },
+    "unchanged_sources": {
+      "status": "50protected baseline/original13 paths equal; existing modern helper and all legacy appfixture bytes unchanged",
+      "receipt": "UNCHANGED.json"
+    },
+    "full_build_package": "Parent/root owns final full package run after quiescence; no final full-suite claim by this handoff"
+  },
+  "history": [
+    {
+      "status": "initial source controls PASS",
+      "log": "source-controls-initial.log"
+    },
+    {
+      "status": "source design correction, no actual wheel failure claim",
+      "detail": "Removed initially copied legacy only-binary acquisition restriction from modern helper, preserving canonical pip source-wheel builds. Added exclusion control; original modern helper unchanged."
+    },
+    {
+      "status": "scopedlint FAILED due foreign init WIP",
+      "log": "lint-initial.log",
+      "detail": "nativequalification_init_test.go data prealloc; corrected by owner"
+    },
+    {
+      "status": "second scopedlint FAILED due foreign init WIP",
+      "log": "lint-init-args-failure.log",
+      "detail": "nativequalification_init_test.go args prealloc; corrected by owner"
+    }
+  ],
+  "qualification_limits": [
+    "Actual target wheel solve/source compilation/Poetry project/C header+extension/SSL/FFI/libpython/images unexecuted",
+    "Both actual Linux architectures/common candidate/native-init/Kubernetes/hosted/publication/adoption acceptance open",
+    "No runtime/prod maps/original13/28/first-cohort/workflow/PM edits"
+  ],
+  "plan": "FUTURE-EXECUTION.json",
+  "upstream": "UPSTREAM.json",
+  "live_source_bytes_modes_equal": true
+}

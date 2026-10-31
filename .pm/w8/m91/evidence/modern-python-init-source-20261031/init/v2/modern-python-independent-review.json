@@ -1,0 +1,14 @@
+{
+  "at_utc": "2026-10-31T19:15:32.952733+00:00",
+  "verdict": "CLEAN",
+  "source_root": "/private/tmp/bex-w8-modern-python-source-20261031-9i8euwjh",
+  "source_manifest": {
+    "sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a",
+    "bytes": 1190
+  },
+  "source_paths_verified": 6,
+  "reviewed": "Full6-source slice, legacy baseline extraction diff, selected app-Python modern Poetry-only wheel recipe, metadata platform/runtime gates, shared wheel overlay/build/qa-output runner/custody and negative controls.",
+  "findings": [],
+  "preservation": "Legacy system interpreter/Poetry2.1.3+virtualenvcap solve, two-version shared export, authored commands/tag/output behavior remain intact; shared Docker helper and original13/28 unchanged. Modern closure is perversion/platform under selected /usr/local app Python with actual pip dependency check, no legacy cap or old3.13 Django/pyvips solve.",
+  "limits": "Read-only source review only; no Docker, target compilation, API, project or hosted execution by reviewer. Actual image coverage remains unexecuted."
+}

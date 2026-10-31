@@ -1,0 +1,12 @@
+{
+  "path": "/private/tmp/bex-w8-common-init-source-20261031-bgzx5wnt",
+  "manifest": {
+    "sha256": "b010c71ea3e61eb7a603b025d8221cc5d6497c133a3ac345eb47985315564c7e",
+    "bytes": 3169
+  },
+  "source_manifest": {
+    "sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+    "bytes": 1237
+  },
+  "reason": "retain first reviewed PATH-overassumption preparation unchanged; v2 source correction only"
+}

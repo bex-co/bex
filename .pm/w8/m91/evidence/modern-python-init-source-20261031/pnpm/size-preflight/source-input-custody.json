@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-31T19:19:38.472444+00:00",
+  "input_path": "/private/tmp/bex-w8-pnpm-standalone-smoke-plan-20261031-zha92l7x/input-identity.json",
+  "input_sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213",
+  "driver_sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67",
+  "limits": {
+    "rss_bytes": 134217728,
+    "metadata_bytes": 16777216,
+    "layer_inflated_bytes": 268435456,
+    "image_inflated_bytes": 536870912,
+    "members_per_image": 50000,
+    "member_bytes": 134217728,
+    "extension_bytes": 65536,
+    "path_bytes": 4096,
+    "pax_keys": 256,
+    "gzip_members_per_layer": 8,
+    "layer_seconds": 240,
+    "total_seconds": 1200
+  },
+  "no_persisted_layer_bodies": true,
+  "no_extraction": true,
+  "one_GET_per_descriptor": true
+}

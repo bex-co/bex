@@ -1,0 +1,6 @@
+=== RUN   TestNativeModernWheelMetadataRejectsWrongRuntimeOrArchitecture
+    nativemodern_python_controls_test.go:159: wrong selected modern tool identity accepted: python
+--- FAIL: TestNativeModernWheelMetadataRejectsWrongRuntimeOrArchitecture (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.460s
+FAIL

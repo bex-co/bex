@@ -1,0 +1,19 @@
+=== RUN   TestNativeNodeServiceStartsUnderNativeInit
+--- PASS: TestNativeNodeServiceStartsUnderNativeInit (0.01s)
+=== RUN   TestStageNativeInit
+--- PASS: TestStageNativeInit (0.00s)
+=== RUN   TestCommonNativeInitQualification
+    nativequalification_init_test.go:163: set BEX_NATIVE_TEST_INIT_PROFILE=1 for separate native-init qualification
+--- SKIP: TestCommonNativeInitQualification (0.00s)
+=== RUN   TestNativeInitQualificationELFAndStagingControls
+=== RUN   TestNativeInitQualificationELFAndStagingControls/linux/amd64
+=== RUN   TestNativeInitQualificationELFAndStagingControls/linux/arm64
+--- PASS: TestNativeInitQualificationELFAndStagingControls (0.00s)
+    --- PASS: TestNativeInitQualificationELFAndStagingControls/linux/amd64 (0.00s)
+    --- PASS: TestNativeInitQualificationELFAndStagingControls/linux/arm64 (0.00s)
+=== RUN   TestNativeInitQualificationCanonicalRecipe
+--- PASS: TestNativeInitQualificationCanonicalRecipe (0.00s)
+=== RUN   TestNativeInitQualificationDrainAndTransportControls
+--- PASS: TestNativeInitQualificationDrainAndTransportControls (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.441s

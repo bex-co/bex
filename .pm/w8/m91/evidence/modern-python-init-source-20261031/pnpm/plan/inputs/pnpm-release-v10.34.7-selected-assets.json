@@ -1,0 +1,13 @@
+{
+  "tag": "v10.34.7",
+  "target_commitish": "main",
+  "assets": [
+    {
+      "name": "pnpm-linux-arm64",
+      "size": 63488279,
+      "digest": "sha256:c57bafc919110f5b942b7778bff0f2170a896d6dc0952c2ff042ca1e228655c3",
+      "browser_download_url": "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-linux-arm64",
+      "id": 631946121
+    }
+  ]
+}

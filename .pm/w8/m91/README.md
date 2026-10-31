@@ -309,3 +309,8 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 ## Further family qualification source — 2026-10-31
 
 [Separate opt-in family profiles](evidence/common-family-qualification-source-20261031/README.md) prepare legacy Python3.7/3.8, all six Ruby lines plus exact3.4.4/default and a static companion, all four Elixir lines plus exactOTP28.0, and Go/Rust native/compiler/tree checks. Source/unit/oracle checks, final full build-package suite and scoped lint pass; independent review corrected the local Mix application relationship and retained both freezes. No actual expanded image, wheel/Poetry/NIF/native compiler, both-architecture, native-init/Kubernetes or hosted qualification is inferred. The original13/28 programs and first cohort are unchanged; t007 remains in progress and all production pins remain empty.
+
+
+## Modern Python and native-init qualification source — 2026-10-31
+
+[The 17-file source slice](evidence/modern-python-init-source-20261031/README.md) adds the five remaining modern Python table versions, requested-architecture native-init/drain preparation and read-only capacity observations. Source/unit checks, full build package, scoped lint and independent reviews pass after correcting PATH assumptions and two cleanup-order defects; all histories remain. Two genuine direct Linux cross-compiles verify ELF targets only, with owned cache cleanup. Actual profile/image/wheel/project/daemon/drain/hosted execution remains unrun; Node qualification source and the known pnpm14/16 issue remain separate pending work. No original13/28, first-cohort selector, runtime, production pin or task-completion change is claimed.

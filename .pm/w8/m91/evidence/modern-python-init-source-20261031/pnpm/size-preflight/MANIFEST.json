@@ -1,0 +1,30 @@
+{
+  "execution-receipt.json": {
+    "bytes": 3399,
+    "sha256": "de8d961e4a2448891c0a11e6450c0d2ded5861a52b643ce44dbe5641556e44a2"
+  },
+  "frozen-input-identity.json": {
+    "bytes": 6171,
+    "sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213"
+  },
+  "local-controls.json": {
+    "bytes": 571,
+    "sha256": "1d198d6bb58b374c508df71b6e3eed16f645cb61da07afa4cba7dd4739f96f5e"
+  },
+  "preflight.py": {
+    "bytes": 15103,
+    "sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67"
+  },
+  "progress.jsonl": {
+    "bytes": 5012,
+    "sha256": "9966679bf77351aaafcf7c6cbdd360c5f248302cc7297934c82bb7323e9c7104"
+  },
+  "result.json": {
+    "bytes": 12836,
+    "sha256": "0f4d41c6e368eab8aec842c3324f0152d6e04cfe428ed464b9f5b44c3fc79785"
+  },
+  "source-input-custody.json": {
+    "bytes": 800,
+    "sha256": "f82b9c8747dba40e2ee82f24c94bc494f63884e2c8c59743e5fa474715f12d4f"
+  }
+}

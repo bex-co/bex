@@ -1,0 +1,10 @@
+{
+  "baseline_file_count": 46,
+  "only_authorized_changed_existing_path": [
+    "lego/operator/internal/build/nativeinit_test.go"
+  ],
+  "compiler_extraction_delta": "same daemon default architecture and CGO0/linux/build flags; shared explicit architecture compiler bounded5min",
+  "all_existing_nativeinit_test_bytes_unchanged_except_context_import_and_compiler_function": true,
+  "original13_28_and_first_cohort_inputs_untouched": true,
+  "production_generator_nativeinit_pins_maps_workflows_diff": " .github/workflows/native-common-image.yml | 5 +++++\n 1 file changed, 5 insertions(+)\n"
+}

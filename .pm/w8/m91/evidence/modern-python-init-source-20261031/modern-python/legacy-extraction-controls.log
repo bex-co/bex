@@ -1,0 +1,19 @@
+=== RUN   TestNativeLegacyPythonProfileRequiresSeparateOptIn
+--- PASS: TestNativeLegacyPythonProfileRequiresSeparateOptIn (0.00s)
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.7
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.8
+=== RUN   TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.13
+--- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve (0.01s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.7 (0.00s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.8 (0.00s)
+    --- PASS: TestNativeLegacyWheelRecipesUseActualCanonicalSystemToolSolve/3.13 (0.00s)
+=== RUN   TestNativeLegacyWheelMetadataRejectsModernOrWrongArchitecture
+--- PASS: TestNativeLegacyWheelMetadataRejectsModernOrWrongArchitecture (0.00s)
+=== RUN   TestNativeLegacyPythonFixtureOracleControls
+--- PASS: TestNativeLegacyPythonFixtureOracleControls (0.13s)
+=== RUN   TestNativeLegacyPythonGeneratedImages
+    nativelegacy_python_test.go:99: set BEX_BUILDKIT_INTEGRATION and BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=1 for the separate legacy family profile
+--- SKIP: TestNativeLegacyPythonGeneratedImages (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.728s

@@ -1,0 +1,178 @@
+{
+  "FROZEN-REVIEW.json": {
+    "bytes": 2186,
+    "sha256": "2933c55d7da86f56cd0c1a26d83c2c285c7c4b6a616315953b98f3a7c600fdc8"
+  },
+  "PRE-LINT-SOURCE-MANIFEST.json": {
+    "bytes": 1420,
+    "sha256": "e738a953eb359b7a35c87329e81da0a4918c14bd26619bbccc81f27176e0405f"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 1420,
+    "sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230"
+  },
+  "artifact-failure-controls-receipt.json": {
+    "bytes": 489,
+    "sha256": "3d410f9c095013f585ef775f100abdce1e07142c1b91d09e8eaa5e34dfb0cb9e"
+  },
+  "artifact-failure-controls.log": {
+    "bytes": 2687,
+    "sha256": "64a09b8fbcff5182a285e038a1bb7d944fc09a72423f3201e91ff868011c3e37"
+  },
+  "final-artifact-failure-controls-receipt.json": {
+    "bytes": 457,
+    "sha256": "592248ae8def788050b10caae2c0955252ae37a507da71896e609a0e44f1b99d"
+  },
+  "final-artifact-failure-controls.log": {
+    "bytes": 2689,
+    "sha256": "e06b5be91050350a9d816c35fc43924d55be48b9dfa9bc7ea23aa11c18ce5b8b"
+  },
+  "final-build-package-receipt.json": {
+    "bytes": 366,
+    "sha256": "0b764b987532ba35b47d31cc003cf927a54bbd48a9b21c13e26b59c936763bd8"
+  },
+  "final-build-package.log": {
+    "bytes": 63,
+    "sha256": "170bb9c502a80c50c6b667759c252d7c076cf8f4972ef7b209f4270c01fdcf01"
+  },
+  "final-package-lint-receipt.json": {
+    "bytes": 372,
+    "sha256": "1313b9a38fff9814f3084804bf7c323ff7468935f4b4635b7792583b6d1c034e"
+  },
+  "final-package-lint.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "full-build-package-receipt.json": {
+    "bytes": 384,
+    "sha256": "9975c1077e407d4860e7f4b5e7cf2adaa9734a91caf8557aee7b2eed43850ed4"
+  },
+  "full-build-package.log": {
+    "bytes": 63,
+    "sha256": "3017da1d068e7b0502f5af6ad166351919339873b0aa350fc702c6c91b3655a9"
+  },
+  "future-execution-plan.json": {
+    "bytes": 8929,
+    "sha256": "4207d2b9abc1a36ad8eebc47266330569a78c9c3166f25ed957506f3ef81af39"
+  },
+  "independent-v3-controls.json": {
+    "bytes": 762,
+    "sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2"
+  },
+  "independent-v3-controls.log": {
+    "bytes": 2690,
+    "sha256": "b3387157d0438928cf9b36c1f8ecadbaf65be75705532fef5737103645bf3175"
+  },
+  "independent-v3-review.json": {
+    "bytes": 3442,
+    "sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712"
+  },
+  "javascript-parse.json": {
+    "bytes": 877,
+    "sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52"
+  },
+  "modern-python-independent-review.json": {
+    "bytes": 1088,
+    "sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3"
+  },
+  "package-lint-receipt.json": {
+    "bytes": 388,
+    "sha256": "781ec53ad25f8770c0a95a7252c04c2d98f471d9708f77052376c8d7a78cff84"
+  },
+  "package-lint.log": {
+    "bytes": 785,
+    "sha256": "e03cd470ebd61ec496a6e745a100580050e45486ad1b73fb3217fdf1bced3ea0"
+  },
+  "pre-lint-source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "pre-lint-source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33515,
+    "sha256": "cc434b2fcee83f7219a6e3efd3459474091e7d731db99fdb8335a1856132aeaf"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "pre-lint-source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "pre-lint-v2-to-v3.diff": {
+    "bytes": 7460,
+    "sha256": "677e8ff9ee5f51345703f72aadb567c2dfc9aae744fee26c996ace1c6fdd697b"
+  },
+  "preparation-history.json": {
+    "bytes": 1082,
+    "sha256": "c94130b06dfca195afc9a8d538d225cedf9cafe4c84cb89c46e8e62fa4c6f883"
+  },
+  "preservation.json": {
+    "bytes": 594,
+    "sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34"
+  },
+  "previous-freeze.json": {
+    "bytes": 525,
+    "sha256": "a0d53e59a78834080ed586ddb4d3d727567e9e39d7131827cd1528a76742e61f"
+  },
+  "root-crosscompile-binding.json": {
+    "bytes": 2143,
+    "sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c"
+  },
+  "source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33494,
+    "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "unchanged-inputs.json": {
+    "bytes": 848,
+    "sha256": "bc6e6a55af6da19bacce25fe0098d5be0c8ce8db1ad833781fd5de45dc05417e"
+  },
+  "v2-to-v3.diff": {
+    "bytes": 7436,
+    "sha256": "9ac4760d50740c01cd8c77c0628568fe640059db51de853025fb1e2171476820"
+  }
+}

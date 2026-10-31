@@ -1,0 +1,26 @@
+[
+  {
+    "name": "complete",
+    "outcome": "PASS"
+  },
+  {
+    "name": "wrong-sha",
+    "outcome": "EXPECTED_REFUSAL",
+    "reason": "complete compressed size/SHA mismatch"
+  },
+  {
+    "name": "short-body",
+    "outcome": "EXPECTED_REFUSAL",
+    "reason": "complete compressed size/SHA mismatch"
+  },
+  {
+    "name": "wrong-diffid",
+    "outcome": "EXPECTED_REFUSAL",
+    "reason": "complete decompressed DiffID mismatch"
+  },
+  {
+    "name": "inflate-limit",
+    "outcome": "EXPECTED_REFUSAL",
+    "reason": "decompressed byte limit reached before next output"
+  }
+]

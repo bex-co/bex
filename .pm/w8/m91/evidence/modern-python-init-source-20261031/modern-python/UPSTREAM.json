@@ -1,0 +1,7 @@
+{
+  "url": "https://raw.githubusercontent.com/python-poetry/poetry/2.1.3/pyproject.toml",
+  "path": "poetry-2.1.3-pyproject.toml",
+  "bytes": 6311,
+  "sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1",
+  "supports": "requiresPython>=3.9,<4; virtualenv>=20.26.6,<21.0.0; unchangedPoetry2.1.3 metadata governs actual pip check"
+}

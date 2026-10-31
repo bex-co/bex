@@ -1,0 +1,140 @@
+{
+  "plan": {
+    "floor_bytes": 2147483648,
+    "own_cache_and_outputs_cap": 536870912,
+    "initial_free": 2786541568,
+    "source_head": "8d06d9535041e2b731f8c1daa0a9e8a6be88a386",
+    "scope": "local compile/ELF proof only; no Docker, runtime execution, image or publication"
+  },
+  "records": [
+    {
+      "arch": "amd64",
+      "command": [
+        "go",
+        "build",
+        "-trimpath",
+        "-ldflags=-s -w",
+        "-o",
+        "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-amd64",
+        "./cmd/native-init"
+      ],
+      "exit": 0,
+      "stop": null,
+      "elapsed": 3.589,
+      "elf_machine": 62,
+      "sha256": "01c59e90ed4225d9017940d3345765d36d03f7018800de5f4a980c5abd9dddf4",
+      "bytes": 1753250
+    },
+    {
+      "arch": "arm64",
+      "command": [
+        "go",
+        "build",
+        "-trimpath",
+        "-ldflags=-s -w",
+        "-o",
+        "/private/tmp/bex-w8-init-crosscompile-20261031-v6u5zzl4/native-init-arm64",
+        "./cmd/native-init"
+      ],
+      "exit": 0,
+      "stop": null,
+      "elapsed": 3.63,
+      "elf_machine": 183,
+      "sha256": "3531abf12bfd6f31525653f57d1a3800e608165259b238cfcab4a81a23f50402",
+      "bytes": 1704098
+    }
+  ],
+  "source_sha256": {
+    "lego/operator/cmd/native-init/main.go": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+    "lego/operator/cmd/native-init/subreaper_linux.go": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564",
+    "lego/operator/cmd/native-init/subreaper_other.go": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002"
+  },
+  "min_free": 2656239616,
+  "peak_own": 80503327,
+  "samples": [
+    {
+      "arch": "amd64",
+      "elapsed": 0.002,
+      "free": 2786537472,
+      "own": 260
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 0.51,
+      "free": 2785026048,
+      "own": 555745
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 1.028,
+      "free": 2773565440,
+      "own": 5357480
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 1.538,
+      "free": 2773278720,
+      "own": 5357480
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 2.049,
+      "free": 2761932800,
+      "own": 5357480
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 2.564,
+      "free": 2740424704,
+      "own": 21208514
+    },
+    {
+      "arch": "amd64",
+      "elapsed": 3.082,
+      "free": 2717650944,
+      "own": 32004704
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 0.013,
+      "free": 2738905088,
+      "own": 43210164
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 0.531,
+      "free": 2732498944,
+      "own": 45806786
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 1.049,
+      "free": 2727837696,
+      "own": 47925614
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 1.569,
+      "free": 2726899712,
+      "own": 47925614
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 2.087,
+      "free": 2701545472,
+      "own": 59230749
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 2.607,
+      "free": 2678427648,
+      "own": 71122231
+    },
+    {
+      "arch": "arm64",
+      "elapsed": 3.127,
+      "free": 2656239616,
+      "own": 80503327
+    }
+  ]
+}

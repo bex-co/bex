@@ -1,0 +1,10 @@
+test_actual_entrypoint_checks_installed_metadata_without_running_a_project (check_tool_test.ModernToolOracle.test_actual_entrypoint_checks_installed_metadata_without_running_a_project) ... ok
+test_checker_parses_with_lowest_selected_python_syntax (check_tool_test.ModernToolOracle.test_checker_parses_with_lowest_selected_python_syntax) ... ok
+test_failed_real_dependency_check_cannot_produce_success_metadata (check_tool_test.ModernToolOracle.test_failed_real_dependency_check_cannot_produce_success_metadata) ... ok
+test_selected_modern_tool_identity_and_dependency_check_required (check_tool_test.ModernToolOracle.test_selected_modern_tool_identity_and_dependency_check_required) ... ok
+test_shared_observer_requires_each_exact_modern_app_and_project (check_tool_test.ModernToolOracle.test_shared_observer_requires_each_exact_modern_app_and_project) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK

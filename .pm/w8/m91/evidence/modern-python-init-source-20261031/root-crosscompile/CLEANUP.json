@@ -1,0 +1,7 @@
+{
+  "own_cache_removed": true,
+  "compiled_outputs_retained": true,
+  "foreign_caches_touched": false,
+  "child_processes_reaped": true,
+  "after_free": 2778136576
+}

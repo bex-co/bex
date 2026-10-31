@@ -1,0 +1,82 @@
+{
+  "at": "2026-10-31T19:06:47.267173+00:00",
+  "state": "READ_ONLY_PROPOSAL_NOT_IMPLEMENTED",
+  "problem": {
+    "source": "lego/operator/internal/build/nativepnpm.go:28-30,53-57",
+    "fact": "All primary and companion Node selections receive pnpm10.34.7 JS entrypoints. Its tagged entrypoint rejects Node<18.12, so reviewed14/16 reach an explicit upstream exit1. No Bex image reproduction is claimed."
+  },
+  "render_conclusion": {
+    "documented": [
+      "Native pnpm is available at build and runtime",
+      "Native runtimes are Debian12 Bookworm",
+      "App Node can be selected and historical defaults include14/16"
+    ],
+    "unproved": [
+      "Exact Render pnpm version/distribution used beside Node14/16",
+      "Render lifecycle NODE/npm_node_execpath, engine-strict and native-addon behavior"
+    ],
+    "decision": "Preserve our reviewed default10.34.7 and explicit packageManager behavior; do not infer a silent pnpm7/8 downgrade from missing Render implementation details."
+  },
+  "proposal": [
+    {
+      "step": 1,
+      "change": "For app Node14/16 only, install the genuine official Linux @pnpm/exe10.34.7 artifact under a private /opt prefix; modern18+ keeps current JS package. Both x64/arm64 artifacts exist. Verify each complete artifact using its reviewed actual content hash/SRI, target architecture and version; add source-freshness inventory. No executable artifact bytes were downloaded or qualified in this research."
+    },
+    {
+      "step": 2,
+      "change": "Legacy-only pnpm launcher defaults NODE to PATH node only when NODE is absent, then execs the unmodified standalone. If no PATH node exists, leave NODE absent and retain upstream behavior. Do not prepend private Node to PATH or inject node-version, engine-strict, packageManager or PM-management configuration. pnpx delegates pnpm dlx just as tagged pnpx.cjs does. Keep a directory containing only the pnpm executable, with no private node next to it."
+    },
+    {
+      "step": 3,
+      "change": "Provide the standalone legacy native-addon fallback using the selected app npm bundled node-gyp, not pnpm regular-package node-gyp11.5.0 under Node14. A small legacy-only node-gyp launcher on the existing app bin path should honor an explicit npm_config_node_gyp, otherwise exec selected app Node plus /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js. Preserve the existing Node14 private Python3.9 finder insertion and all explicit Python choices. Never hide or rewrite a missing upstream virtual path: actual default-gyp resolution must be observed by the qualification and fail if incorrect."
+    },
+    {
+      "step": 4,
+      "change": "Use the same helper in primary and JS-companion paths after app Node/npm placement. Keep selected Node/npm versions and runtime ENV/PATH unchanged. Prefer reusing one common factory /opt payload; retain existing non-adopted fallback compatibility. No per-line final C-base adoption or new language selection."
+    }
+  ],
+  "why_not_private_node_js_wrapper": [
+    "Tagged getSystemNodeVersionNonCached returns process.version for ordinary JS; that changes engine evaluation to privateNode24. Only genuine process.pkg executable detection invokes PATH node.",
+    "Tagged npm-lifecycle sets default NODE and npm_node_execpath from process.execPath; it must not point at privateNode24 or the pnpm executable.",
+    "scripts-prepend-node-path can place process.execPath directory ahead of app PATH; keeping standalone in a directory without a node executable prevents a hidden host-node replacement.",
+    "Tagged installPnpmToTools selects @pnpm/exe when actually standalone, and switchCliVersion preserves the requested exact version and child status. Do not disable this route."
+  ],
+  "offline_regression": [
+    "New separate local dependent-project fixture, never edits original13 tool programs or28 hosted specs. Exercise actual canonical Node14/16 primary recipes plus one legacy Node companion, both architectures later.",
+    "Local dependency tarball with explicit narrowly permitted lifecycle build, exact source/wheel/tar custody, offline pnpm install, matching-header C addon compile/import, and script proof captured from dependency and root.",
+    "Record selected app process.version/process.execPath, PATH node, NODE, npm_node_execpath, directly executable npm_execpath, npm/node-gyp versions; pnpm run and pnpm exec node must use selected app Node. Exercise scripts-prepend-node-path=true as well.",
+    "engine-strict matching14/16 succeeds; deliberate >=18 dependency/root rejects under old app Node. This is a negative control for a privateNode24 engine leak.",
+    "Explicit NODE, npm_config_node_gyp/project node-gyp setting, and Python choices retain their own observable selection. Never force app settings to make the fixture pass.",
+    "Explicit packageManager different exact pnpm version is genuinely installed/prepared in a platform prerequisite and selected by upstream self-switch; authored execution is offline, versions/hash/custody recorded. A --version-only default assertion is insufficient.",
+    "Modern Node18/24 regular-JS recipe remains unchanged; primary/companion ordering, pnpx dlx arguments, exit propagation and no PATH/private-host injection have source/launcher controls.",
+    "Keep artifact/source fetch in recorded platform prerequisite steps and leave authored build/runtime offline. Stop on native-gyp resolution failure; do not treat CLI startup as full addon success."
+  ],
+  "verified_source_details": {
+    "regular_pnpm_tgz": {
+      "bytes": 4894868,
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "inspection": "Read to memory only; exact production pin matched; no execution or extraction to app directories",
+      "bundled_node_gyp": "11.5.0, engine ^18.17.0 || >=20.5.0"
+    },
+    "npm_lifecycle": "1001.0.0 tgz SHA512 verified against exact v10.34.7 lock; retained source only",
+    "node14_bundled_gyp": "Node14.21.3 uses node-gyp5.1.1 engine>=6; existing common helper supplies compatible private build Python by default",
+    "node16_bundled_gyp": "Node16.20.2 uses node-gyp9.1.0 engine ^12.22 || ^14.13 || >=16",
+    "standalone_build": "Tagged package-linux-{x64,arm64}.json targets node20; genuine standalone is not a promise that all runtime/library/native-addon behavior works without qualification",
+    "render_public_repo_scope": "Anonymous render-oss first100repo list found no native runtime build source (only docker-pgbouncer matched runtime/build/docker/node names). This is bounded discovery, not proof no source exists."
+  },
+  "limits": [
+    "No repository changes",
+    "No binary artifacts downloaded or executed",
+    "No Docker/images, CI, auth, resources or pins",
+    "No measured Bex or Render lifecycle/native-addon behavior",
+    "No all27/common/hosted completion claim",
+    "Standalone native-gyp default needs actual image proof; upstream old issue reports alone are not a current reproduction"
+  ],
+  "owned_path_recommendation": [
+    "lego/operator/internal/build/nativepnpm.go + focused tests",
+    "deploy/native-common only the small pnpm payload/launcher installation helper if selected",
+    "new separate native-pnpm-legacy testdata/profile",
+    "toolchain freshness entries and meaningful source controls"
+  ],
+  "source_manifest_sha256": "6fdb8582d5d6e8abd51dc14ee718b398c6280b607fcd4c3931c00c680ba72a78"
+}

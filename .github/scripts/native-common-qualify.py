@@ -1,11 +1,13 @@
 """Own only ephemeral common-image qualification resources and evidence."""
 import argparse
+import datetime
 import gzip
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.parse
@@ -47,6 +49,50 @@ def initialize():
                                "scope": "ephemeral generated-image qualification; no catalog adoption or hosted claim"})
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.write("root=" + str(root) + "\nowner=" + owner + "\n")
+    capacity(root, "before-builder")
+
+
+def memory_capacity(meminfo, maximum, current):
+    """Visible kernel/cgroup observations, not an allocator reservation."""
+    match = re.search(r"(?m)^MemAvailable:\s+(\d+)\s+kB\s*$", meminfo)
+    host = int(match[1]) * 1024 if match else None
+    limit = int(maximum) if maximum and maximum != "max" else None
+    used = int(current) if current else None
+    if any(value is not None and value < 0 for value in (host, limit, used)):
+        raise ValueError("negative kernel capacity observation")
+    remaining = max(0, limit - used) if limit is not None and used is not None else None
+    observed = [value for value in (host, remaining) if value is not None]
+    return {"host_mem_available_bytes": host, "visible_cgroup_limit_bytes": limit,
+            "visible_cgroup_current_bytes": used, "visible_cgroup_remaining_bytes": remaining,
+            "observed_headroom_hint_bytes": min(observed) if observed else None,
+            "scope": "observational hint only; reclaimable pagecache, ancestor limits and future allocations are not modeled or reserved"}
+
+
+def capacity(root, stage):
+    owner = json.loads((root / "inputs.json").read_text())["owner"]
+    if not OWNER.fullmatch(owner) or stage not in ("before-builder", "after-tests"):
+        raise ValueError("capacity observation requires an exact qualification owner and phase")
+    paths = {"evidence": root, "workspace": Path.cwd(), "temporary": Path(tempfile.gettempdir())}
+    filesystems = []
+    for name, path in paths.items():
+        path = path.resolve(strict=True)
+        usage = shutil.disk_usage(path)
+        filesystems.append({"name": name, "path": str(path), "device": path.stat().st_dev,
+                            "total_bytes": usage.total, "free_bytes": usage.free})
+
+    def read(path):
+        try:
+            return Path(path).read_text().strip()
+        except FileNotFoundError:
+            return ""
+
+    memory = memory_capacity(read("/proc/meminfo"), read("/sys/fs/cgroup/memory.max"),
+                             read("/sys/fs/cgroup/memory.current"))
+    dump(root / ("capacity-" + stage + ".json"), {
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "owner": owner,
+        "stage": stage, "filesystems": filesystems, "memory": memory,
+        "daemon_filesystem_and_builder_cache": "not observed from the runner filesystem namespace",
+        "scope": "read-only observations; shared device rows are not additive; no threshold, reservation or expanded-family capacity acceptance"})
 
 
 def cleanup(root):
@@ -182,6 +228,9 @@ def main():
     commands.add_parser("init")
     for name in ("cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
+    observation = commands.add_parser("capacity")
+    observation.add_argument("root", type=Path)
+    observation.add_argument("stage", choices=("before-builder", "after-tests"))
     scan = commands.add_parser("sbom")
     for name in ("syft", "image", "platform", "evidence"):
         scan.add_argument("--" + name, required=True)
@@ -192,6 +241,8 @@ def main():
         cleanup(args.root)
     elif args.command == "manifest":
         manifest(args.root)
+    elif args.command == "capacity":
+        capacity(args.root, args.stage)
     else:
         sbom(args)
 

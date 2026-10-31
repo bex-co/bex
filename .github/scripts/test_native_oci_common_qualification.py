@@ -193,6 +193,34 @@ class QualificationControls(unittest.TestCase):
         with patch.dict(os.environ, env), self.assertRaises(ValueError):
             qualification.initialize()
 
+    def test_memory_observation_uses_visible_remaining_limit(self):
+        host = "MemTotal: 16384 kB\nMemAvailable: 8192 kB\n"
+        measured = qualification.memory_capacity(host, "2097152", "1572864")
+        self.assertEqual(measured["host_mem_available_bytes"], 8388608)
+        self.assertEqual(measured["observed_headroom_hint_bytes"], 524288)
+        self.assertEqual(qualification.memory_capacity(host, "max", "100")["observed_headroom_hint_bytes"], 8388608)
+        self.assertEqual(qualification.memory_capacity(host, "100", "101")["observed_headroom_hint_bytes"], 0)
+        self.assertIsNone(qualification.memory_capacity("", "", "")["observed_headroom_hint_bytes"])
+        with self.assertRaises(ValueError):
+            qualification.memory_capacity(host, "-1", "0")
+
+    def test_capacity_snapshot_is_read_only_and_not_a_reservation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "inputs.json").write_text(json.dumps({"owner": OWNER}))
+            with patch.object(subprocess, "run", side_effect=AssertionError("capacity must not create or inspect Docker resources")):
+                qualification.capacity(root, "before-builder")
+            report = json.loads((root / "capacity-before-builder.json").read_text())
+            self.assertEqual(report["owner"], OWNER)
+            self.assertEqual({row["name"] for row in report["filesystems"]}, {"evidence", "workspace", "temporary"})
+            self.assertTrue(all(0 <= row["free_bytes"] <= row["total_bytes"] for row in report["filesystems"]))
+            self.assertIn("not additive", report["scope"])
+            self.assertIn("not observed", report["daemon_filesystem_and_builder_cache"])
+            (root / "inputs.json").write_text(json.dumps({"owner": "foreign"}))
+            with self.assertRaises(ValueError):
+                qualification.capacity(root, "after-tests")
+            self.assertFalse((root / "capacity-after-tests.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

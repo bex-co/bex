@@ -1,0 +1,12 @@
+{
+  "pkg": {
+    "assets": [
+      "dist/worker.js",
+      "dist/pnpmrc",
+      "dist/scripts/*",
+      "dist/templates/*"
+    ],
+    "targets": ["node20-linux-arm64"],
+    "outputPath": "../linux-arm64"
+  }
+}

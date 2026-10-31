@@ -1,0 +1,149 @@
+{
+  "at": "2026-10-31T19:08:35.473035+00:00",
+  "images": [
+    {
+      "requested_tag": "node:14.21.3-bullseye-slim",
+      "index_digest": "sha256:0f5b374fae506741ff14db84daff2937ae788e88fb48a6c66d15de5ee808ccd3",
+      "index_bytes": 1206,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux",
+        "variant": "v8"
+      },
+      "child_digest": "sha256:59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c",
+      "child_bytes": 1367,
+      "config_digest": "sha256:64a1be796b5d471eb8a7ba1662e9e4673faa3df54f51d5d0281a335ece311f11",
+      "config_bytes": 6813,
+      "env": {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "NODE_VERSION": "14.21.3",
+        "YARN_VERSION": "1.22.19"
+      },
+      "layers": [
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 30063826,
+          "digest": "sha256:ebc3dc5a2d72427c585c8cda7574a75d96e04b9a37572bd3af0bff905abefbb9"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 4189,
+          "digest": "sha256:ee23356c3c1898ddc999aba66c5e956afbbae5657ec76a0a63ed20fb590efbe5"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 35839860,
+          "digest": "sha256:fc40e23aa0ef6baaaaac819a94b36619d21b4f261bf29b30f4aa23f2ad095c2b"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 2775846,
+          "digest": "sha256:ac8e59f957c918ccec17cde62e9bcd9b30934447480e3ae8a1b1dea341f8bca1"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 451,
+          "digest": "sha256:9de89316868edfac991deff72be3199f4a4243d5e366fdf79300a341b4460620"
+        }
+      ],
+      "compressed_layer_bytes": 68684172,
+      "rootfs_diff_ids": [
+        "sha256:0b9f60fbcaf14fc8608d681e205e87e93d3390da9369817ec004c35beb76f72e",
+        "sha256:011bf8d29247b7ca41aa19e111fc129bd46a3fbb813eca0e0511bc64fd7cb4bf",
+        "sha256:98a6679ddb423083f5fa1a20de645764c4bc138d7b6e1a7a50b989c0973b18a0",
+        "sha256:bb2b32c6ce97f9c65e3fdca5efd1c4d599c7b832d574fb19e057db01fafde9e2",
+        "sha256:bc682b599569251abab019146f8c9719a2a511808f90128a5de2851ef9e37305"
+      ],
+      "uncompressed_bytes": "UNKNOWN: not recorded by registry descriptors/config; no layer bytes read",
+      "runtime_version": "CONFIG_METADATA_ONLY; actual executable probe pending"
+    },
+    {
+      "requested_tag": "node:16.20.2-bullseye-slim",
+      "index_digest": "sha256:503446c15c6236291222f8192513c2eb56a02a8949cbadf4fe78cce19815c734",
+      "index_bytes": 1206,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux",
+        "variant": "v8"
+      },
+      "child_digest": "sha256:6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971",
+      "child_bytes": 1367,
+      "config_digest": "sha256:e233eabde65b256d5b981e8663f613ea8d7bd9bcc2095ee5391a6cf055236f12",
+      "config_bytes": 7033,
+      "env": {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "NODE_VERSION": "16.20.2",
+        "YARN_VERSION": "1.22.19"
+      },
+      "layers": [
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 30062903,
+          "digest": "sha256:f96ab15157043879c2ff23e0556e798eba6a6ff3d7fd5d1384de223bb9f66f1d"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 4181,
+          "digest": "sha256:3b26948629cabeed9a82ce674ea0f549e16190df51160fd292e8407aaa4f1560"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 35513552,
+          "digest": "sha256:3fdeef4dc787ff9d0dbc6afcd727a78f2da0ad05a5a3358b923c03a6714403e6"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 2758359,
+          "digest": "sha256:537af745ccaad795c008a61667a6d6623d41d697ab52c5dfc378c8820980f913"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 453,
+          "digest": "sha256:a9605f282a9ea8d689ac41b81f7e88359c4a2b3b8a544eb6033139fa764cad40"
+        }
+      ],
+      "compressed_layer_bytes": 68339448,
+      "rootfs_diff_ids": [
+        "sha256:d76dafe59bb3cf017901ee8cfe178860ab692f0b8f2391884a1bb3e67576045f",
+        "sha256:87a678c5ed79f8ba849ad315d4aeb34cfea3e4661b2046b72685021618b6895e",
+        "sha256:f1b91ed6d9659ee96fe4346ef89d1ade54e6b382f176a2e4f5dcf5df9afa303d",
+        "sha256:fe5b915ed73dc6969da68970668d1d67337e8487c87e50946dd0e3fa27c2d8c7",
+        "sha256:4fe8332d248f2231777613fac905488a516e8de68c8ce30d90c24360feda61bc"
+      ],
+      "uncompressed_bytes": "UNKNOWN: not recorded by registry descriptors/config; no layer bytes read",
+      "runtime_version": "CONFIG_METADATA_ONLY; actual executable probe pending"
+    }
+  ],
+  "pnpm": {
+    "name": "@pnpm/linux-arm64",
+    "version": "10.34.7",
+    "license": "MIT",
+    "bin": {
+      "pnpm": "pnpm"
+    },
+    "os": [
+      "linux"
+    ],
+    "cpu": [
+      "arm64"
+    ]
+  },
+  "npm_dist": {
+    "tarball": "https://registry.npmjs.org/@pnpm/linux-arm64/-/linux-arm64-10.34.7.tgz",
+    "integrity": "sha512-LS6s9RkT+WGBITibm3UyjTTkSNQA/XVrLrkqkZbhepBfchpRFJA8M422iv5U9vWj26KC6+OiWAutG6z7DByfEQ==",
+    "shasum": "444203c532d8d4342189419edddf231ab199f293",
+    "fileCount": 7,
+    "unpackedSize": 63490247
+  },
+  "upstream_release_assets": [
+    {
+      "name": "pnpm-linux-arm64",
+      "size": 63488279,
+      "digest": "sha256:c57bafc919110f5b942b7778bff0f2170a896d6dc0952c2ff042ca1e228655c3",
+      "browser_download_url": "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-linux-arm64",
+      "id": 631946121
+    }
+  ],
+  "physical_free_at_metadata_read": 2681352192,
+  "actions": "Anonymous registry manifest/config and npm/release metadata GETs only. No image layer/executable body GETs, Docker calls, source edits or runtime execution."
+}

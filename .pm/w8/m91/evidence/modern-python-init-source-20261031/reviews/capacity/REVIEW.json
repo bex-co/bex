@@ -1,0 +1,46 @@
+{
+  "status": "CLEAN focused source review after metric semantics correction",
+  "date_utc": "2026-10-31T19:23:08.211894+00:00",
+  "head": "8d06d9535041e2b731f8c1daa0a9e8a6be88a386",
+  "source_paths": 3,
+  "source": {
+    ".github/scripts/native-common-qualify.py": {
+      "sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4",
+      "bytes": 13398,
+      "mode": "0644"
+    },
+    ".github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07",
+      "bytes": 13736,
+      "mode": "0644"
+    },
+    ".github/workflows/native-common-image.yml": {
+      "sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912",
+      "bytes": 5001,
+      "mode": "0644"
+    }
+  },
+  "resolved_finding": {
+    "file": ".github/scripts/native-common-qualify.py",
+    "line": 67,
+    "detail": "Combined memory figure renamed from available_upper_bound_bytes to observed_headroom_hint_bytes. Raw readings/formula unchanged; scope includes reclaimable cache and ancestor/future uncertainty. It is not an allocatable-memory upper bound or reservation.",
+    "primary": "https://docs.kernel.org/admin-guide/cgroup-v2.html#memory"
+  },
+  "reviewed_boundaries": [
+    "Only readonly filesystem and visible kernel/cgroup observations; capacity invokes no subprocess/Docker actions",
+    "Strict current-source/published immutable reference/platform initialization guards retained; ownership recorded before builder setup",
+    "Before-builder snapshot via init; after-tests always snapshot before owned cleanup with explicit1minute step bound",
+    "Shared filesystem device rows labeled not additive; daemon filesystem and builder cache explicitly unobserved",
+    "No new thresholds/reservations/expanded-family job/qualification acceptance claim",
+    "Existing cleanup, Syft binding/custody, manifest AST functions unchanged fromHEAD",
+    "All existing qualification unittest methods AST equalHEAD; two added capacity controls retain original negatives",
+    "Workflow changes only add the bounded after-tests observation step; original test selector, both-arch gate, builder settings, cleanup/upload/signing/publisher boundaries intact"
+  ],
+  "checks": "Root reports9Python controls and full OCI controls; reviewer did not duplicate them. Reviewer independently compared original function/test ASTs and workflow delta.",
+  "limits": [
+    "No actual CI runner capacity/peak/image/builder/cache measurements by reviewer",
+    "Observations are point-in-time runner namespace data; cannot alone size expanded profiles or reserve future capacity",
+    "No actual Docker/image/CI/resource action or repo edit by reviewer"
+  ],
+  "initial_history": "Root retained initial misplaced-test NameError raw failure; reviewer reported incorrect upper-bound terminology before correction"
+}

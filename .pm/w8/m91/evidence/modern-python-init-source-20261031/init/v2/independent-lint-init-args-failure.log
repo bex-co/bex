@@ -1,0 +1,5 @@
+internal/build/nativequalification_init_test.go:288:2: Consider preallocating args with capacity 20 + len(command) (prealloc)
+	args := []string{"create", "--name", name, "--network", "bridge", "--platform", docker.platform, "--label", docker.label(), "--publish", "127.0.0.1::10000", "--stop-timeout", "20", "--memory", "512m", "--cpus", "1", "--pids-limit", "128", image}
+	^
+1 issues:
+* prealloc: 1

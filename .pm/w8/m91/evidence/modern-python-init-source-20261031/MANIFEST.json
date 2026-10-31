@@ -1,0 +1,946 @@
+{
+  "EXPORT-CUSTODY.json": {
+    "bytes": 111134,
+    "sha256": "8a97737d6924f22a6451c644116d429009d1e73ebc26dc56b4b1fdce1ba2ebd1"
+  },
+  "README.md": {
+    "bytes": 3882,
+    "sha256": "f3ad505f08cb250419a54672a5a218b9ecc725592746b9a57edd10d07f839131"
+  },
+  "ROOT-BUILDPKG-BEFORE-V3.log": {
+    "bytes": 63,
+    "sha256": "0ef3f964963e822959b5a277454d981e1322ca6ad53dc2e0cff1e5a280b9f1d8"
+  },
+  "ROOT-FINAL-BUILDPKG.log": {
+    "bytes": 63,
+    "sha256": "4556332f03897b7e8184b4386650ed3461832818ae706d05a8e6544c3769fd69"
+  },
+  "ROOT-LIVE-SOURCE.json": {
+    "bytes": 3836,
+    "sha256": "4097ea4a9e90f7cbdb8938f978a54d686e307d8852cc7736f68fd7383204fdd5"
+  },
+  "capacity/CHECKS.json": {
+    "bytes": 671,
+    "sha256": "62be2a49c5d3db306966f3d7b8deee53aa2fd17151cd1ba648c43efc97a93990"
+  },
+  "capacity/MANIFEST.json": {
+    "bytes": 1510,
+    "sha256": "cf95f0e72bdc6ae81523c753a7749bf4adeeee0f807234e502f5ec3953065627"
+  },
+  "capacity/SCOPE.json": {
+    "bytes": 1337,
+    "sha256": "0150e8d977b05202072320cf63cf680b2ce2ea614c666db868f9985d21f14fd0"
+  },
+  "capacity/SOURCE.json": {
+    "bytes": 629,
+    "sha256": "b9e4a298a40c37c98996a7bd47841cfa7d079635fab102f5507c7854e991c675"
+  },
+  "capacity/bex-w8-capacity-final-actionlint-20261031.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "capacity/bex-w8-capacity-final-actions-20261031.log": {
+    "bytes": 290,
+    "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+  },
+  "capacity/bex-w8-capacity-final-all-controls-20261031.log": {
+    "bytes": 10857,
+    "sha256": "068b6fa4aaf08d6792d4100e7e63edea0128fd821733063982880a6c8e21bd79"
+  },
+  "capacity/bex-w8-capacity-observation-initial-controls-20261031.log": {
+    "bytes": 2271,
+    "sha256": "91e5924a0407c9f731509fb0d0b7672843de4b35cffcf6e2f3d2993203737b59"
+  },
+  "capacity/source/.github/scripts/native-common-qualify.py": {
+    "bytes": 13398,
+    "sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4"
+  },
+  "capacity/source/.github/scripts/test_native_oci_common_qualification.py": {
+    "bytes": 13736,
+    "sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07"
+  },
+  "capacity/source/.github/workflows/native-common-image.yml": {
+    "bytes": 5001,
+    "sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912"
+  },
+  "init/initial/MANIFEST.json": {
+    "bytes": 3169,
+    "sha256": "b010c71ea3e61eb7a603b025d8221cc5d6497c133a3ac345eb47985315564c7e"
+  },
+  "init/initial/REVIEW-FINDING.json": {
+    "bytes": 721,
+    "sha256": "8b01cf3c7c5468de7e3957ca22b4461b2935e670124b0d570d918b7d6332fda5"
+  },
+  "init/initial/SOURCE-MANIFEST.json": {
+    "bytes": 1237,
+    "sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c"
+  },
+  "init/initial/final-build-package-receipt.json": {
+    "bytes": 379,
+    "sha256": "3c8deba780bb4a42d9ceb747a5301de5fa86ea9b9e400fd8e9030d5a7e5539fa"
+  },
+  "init/initial/final-build-package.log": {
+    "bytes": 63,
+    "sha256": "44b46ee39e60506fba4bfbcf242909f32eb96c975165448d8cc88bea658aa15e"
+  },
+  "init/initial/full-build-package-receipt.json": {
+    "bytes": 356,
+    "sha256": "1d2a58b01f4eeaa7568056f0c04763bc4dbf7881aa5a0bcd5f819fe6bfd693eb"
+  },
+  "init/initial/full-build-package.log": {
+    "bytes": 63,
+    "sha256": "f223eae4cd1fe413ad4bab407fa28f75957b41b0098ddc052ee1d6271612f3fe"
+  },
+  "init/initial/future-execution-plan.json": {
+    "bytes": 6149,
+    "sha256": "8f5903d19f5a80630d00a905ec0f003633292a8c3956ca48a6f36dc27a2f6b86"
+  },
+  "init/initial/javascript-parse.json": {
+    "bytes": 706,
+    "sha256": "42debaf2fb3aa70702741bd202338c60a15d4e189fdf20cb92417226e7114b85"
+  },
+  "init/initial/nativeinit_test.go.before": {
+    "bytes": 11934,
+    "sha256": "5b221f7b5eb7d715ebe44a613e87b9ed65083c3dd05d330603efad53b7b98b0d"
+  },
+  "init/initial/preservation.json": {
+    "bytes": 1276,
+    "sha256": "a2677f24ba77e2a0ac86ce3d7d93acda67a467771e4d16804bdbdd2cdc024331"
+  },
+  "init/initial/preserved-before.json": {
+    "bytes": 8508,
+    "sha256": "4a74d9f169a3c687600cb249d561adfa971aacecfbe2a00825d8b9ac0725cfdb"
+  },
+  "init/initial/scoped-unit-receipt.json": {
+    "bytes": 550,
+    "sha256": "6a5c416235ce3eec394f3ecb71bc970c975d09d89b4fa580d66ab2215a5d49fe"
+  },
+  "init/initial/scoped-unit.log": {
+    "bytes": 1144,
+    "sha256": "d84c32ed8daffeb4cb9f87d60244893ee2d14b84e1f49ed181249c2ca26d4d98"
+  },
+  "init/initial/source.patch": {
+    "bytes": 33345,
+    "sha256": "e9cd90b612e44031fae5aba8fd6681de4a9741ea3b589c5bea47ea58d0f26603"
+  },
+  "init/initial/source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "init/initial/source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 27200,
+    "sha256": "f271796c3a575e2f51bcdfd592273d17ef679a073bc00951c3feb55ab966febb"
+  },
+  "init/initial/source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "init/initial/source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "init/initial/source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 1468,
+    "sha256": "b5b1e3c8bf75ee3359a1990d43d73b0be3a3d7e0956e2489e1e007d4d83cc5e9"
+  },
+  "init/initial/source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "init/initial/source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "init/v2/FROZEN-REVIEW.json": {
+    "bytes": 1777,
+    "sha256": "8a07bbc5c07dc5eaa3beb2d4b2c2b05a5acce234692f9a4609486045fada42e9"
+  },
+  "init/v2/MANIFEST.json": {
+    "bytes": 3964,
+    "sha256": "7f9fb5c654e2c7a871946168fe04407efd41ef074244889edf776e82680eeabd"
+  },
+  "init/v2/SOURCE-MANIFEST.json": {
+    "bytes": 1420,
+    "sha256": "197bbf46ec15d8bb9872b79fb6c740457ba583f0ce5800d4180facfaa03cf469"
+  },
+  "init/v2/compiler-delta.patch": {
+    "bytes": 1359,
+    "sha256": "64ce8a5c16b56f783ea34ae968c2dd0fe154e19806d6485934a0f5f29d15de98"
+  },
+  "init/v2/exact-v2-package-lint-receipt.json": {
+    "bytes": 312,
+    "sha256": "35e188d0c45ea20680604cfc73c03636961ad4a42dfc21377d0df60fa57f57d9"
+  },
+  "init/v2/exact-v2-package-lint.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "init/v2/full-build-package-receipt.json": {
+    "bytes": 341,
+    "sha256": "55d828f29de1ee1122613dd2e29d869b413bc3b0dc7f9cd59c5983dab99a4c74"
+  },
+  "init/v2/full-build-package.log": {
+    "bytes": 63,
+    "sha256": "850b616b0346767634ba918f8d5cf54a1b8167ae0b3f41ddeeb5da04967953f5"
+  },
+  "init/v2/future-execution-plan.json": {
+    "bytes": 8036,
+    "sha256": "167305e2456251fba7c25523859891777b0d7d3a9fec7e884476a65e1a59f324"
+  },
+  "init/v2/independent-lint-final.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "init/v2/independent-lint-init-args-failure.log": {
+    "bytes": 400,
+    "sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56"
+  },
+  "init/v2/independent-lint-initial.log": {
+    "bytes": 168,
+    "sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9"
+  },
+  "init/v2/independent-v2-review.json": {
+    "bytes": 2117,
+    "sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9"
+  },
+  "init/v2/independent-v2-scoped-lint.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "init/v2/javascript-parse.json": {
+    "bytes": 877,
+    "sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52"
+  },
+  "init/v2/modern-python-independent-review.json": {
+    "bytes": 1088,
+    "sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3"
+  },
+  "init/v2/preservation.json": {
+    "bytes": 594,
+    "sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34"
+  },
+  "init/v2/previous-freeze.json": {
+    "bytes": 428,
+    "sha256": "a4130bd93441b15cff66ed8c852388bca40eed4c5d5b309078a083cf17332854"
+  },
+  "init/v2/root-crosscompile-binding.json": {
+    "bytes": 2143,
+    "sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c"
+  },
+  "init/v2/source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "init/v2/source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 29686,
+    "sha256": "c81508266455a7b19aa8f6a385a82d96a488358bbb41145ed268bce1b89363ee"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "init/v2/source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "init/v3/FROZEN-REVIEW.json": {
+    "bytes": 2186,
+    "sha256": "2933c55d7da86f56cd0c1a26d83c2c285c7c4b6a616315953b98f3a7c600fdc8"
+  },
+  "init/v3/MANIFEST.json": {
+    "bytes": 6894,
+    "sha256": "07eede0fac2a7be1fc4a060554dfdf08a61ccd5ee4ccfb752a9bba5749c1b0f7"
+  },
+  "init/v3/PRE-LINT-SOURCE-MANIFEST.json": {
+    "bytes": 1420,
+    "sha256": "e738a953eb359b7a35c87329e81da0a4918c14bd26619bbccc81f27176e0405f"
+  },
+  "init/v3/SOURCE-MANIFEST.json": {
+    "bytes": 1420,
+    "sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230"
+  },
+  "init/v3/artifact-failure-controls-receipt.json": {
+    "bytes": 489,
+    "sha256": "3d410f9c095013f585ef775f100abdce1e07142c1b91d09e8eaa5e34dfb0cb9e"
+  },
+  "init/v3/artifact-failure-controls.log.gz": {
+    "bytes": 640,
+    "sha256": "bf146e37d33c8436bf3d61be0f11d8daa79e115dc4e6597285919fcd80a78c36"
+  },
+  "init/v3/final-artifact-failure-controls-receipt.json": {
+    "bytes": 457,
+    "sha256": "592248ae8def788050b10caae2c0955252ae37a507da71896e609a0e44f1b99d"
+  },
+  "init/v3/final-artifact-failure-controls.log.gz": {
+    "bytes": 640,
+    "sha256": "36c00d84cd3ced3616c29b4f89fe68e98139f7ba82001264312c900b3f5c3844"
+  },
+  "init/v3/final-build-package-receipt.json": {
+    "bytes": 366,
+    "sha256": "0b764b987532ba35b47d31cc003cf927a54bbd48a9b21c13e26b59c936763bd8"
+  },
+  "init/v3/final-build-package.log": {
+    "bytes": 63,
+    "sha256": "170bb9c502a80c50c6b667759c252d7c076cf8f4972ef7b209f4270c01fdcf01"
+  },
+  "init/v3/final-package-lint-receipt.json": {
+    "bytes": 372,
+    "sha256": "1313b9a38fff9814f3084804bf7c323ff7468935f4b4635b7792583b6d1c034e"
+  },
+  "init/v3/final-package-lint.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "init/v3/full-build-package-receipt.json": {
+    "bytes": 384,
+    "sha256": "9975c1077e407d4860e7f4b5e7cf2adaa9734a91caf8557aee7b2eed43850ed4"
+  },
+  "init/v3/full-build-package.log": {
+    "bytes": 63,
+    "sha256": "3017da1d068e7b0502f5af6ad166351919339873b0aa350fc702c6c91b3655a9"
+  },
+  "init/v3/future-execution-plan.json": {
+    "bytes": 8929,
+    "sha256": "4207d2b9abc1a36ad8eebc47266330569a78c9c3166f25ed957506f3ef81af39"
+  },
+  "init/v3/independent-v3-controls.json": {
+    "bytes": 762,
+    "sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2"
+  },
+  "init/v3/independent-v3-controls.log.gz": {
+    "bytes": 635,
+    "sha256": "a9be2c99786ff1b37923c7fd89cb52fd7eed5531715fe45e68e390f38e1a7e97"
+  },
+  "init/v3/independent-v3-review.json": {
+    "bytes": 3442,
+    "sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712"
+  },
+  "init/v3/javascript-parse.json": {
+    "bytes": 877,
+    "sha256": "e836b0dd4456588b68f4610ca47efd9821842abe6d60dc4104fbb5f3673acf52"
+  },
+  "init/v3/modern-python-independent-review.json": {
+    "bytes": 1088,
+    "sha256": "07eb4efdbce43ac2ba9c4970cd3f0ac39b632760bf876dd5ff41817389b669d3"
+  },
+  "init/v3/package-lint-receipt.json": {
+    "bytes": 388,
+    "sha256": "781ec53ad25f8770c0a95a7252c04c2d98f471d9708f77052376c8d7a78cff84"
+  },
+  "init/v3/package-lint.log": {
+    "bytes": 785,
+    "sha256": "e03cd470ebd61ec496a6e745a100580050e45486ad1b73fb3217fdf1bced3ea0"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33515,
+    "sha256": "cc434b2fcee83f7219a6e3efd3459474091e7d731db99fdb8335a1856132aeaf"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "init/v3/pre-lint-source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "init/v3/pre-lint-v2-to-v3.diff.gz": {
+    "bytes": 2519,
+    "sha256": "1d6737e6ef5cbaeaf881bd6ee64646e33b3a0ea90b2561ef6fa566e924aa85b7"
+  },
+  "init/v3/preparation-history.json": {
+    "bytes": 1082,
+    "sha256": "c94130b06dfca195afc9a8d538d225cedf9cafe4c84cb89c46e8e62fa4c6f883"
+  },
+  "init/v3/preservation.json": {
+    "bytes": 594,
+    "sha256": "db996df1ad6024001c6ebcb6dcb3cd83c3997750129be72d181662d8e53b9a34"
+  },
+  "init/v3/previous-freeze.json": {
+    "bytes": 525,
+    "sha256": "a0d53e59a78834080ed586ddb4d3d727567e9e39d7131827cd1528a76742e61f"
+  },
+  "init/v3/root-crosscompile-binding.json": {
+    "bytes": 2143,
+    "sha256": "975f3388a75568b605e09dd079fa033060ae70b4e55178528aab5910c8a0407c"
+  },
+  "init/v3/source/lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "init/v3/source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33494,
+    "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "init/v3/source/lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  },
+  "init/v3/unchanged-inputs.json": {
+    "bytes": 848,
+    "sha256": "bc6e6a55af6da19bacce25fe0098d5be0c8ce8db1ad833781fd5de45dc05417e"
+  },
+  "init/v3/v2-to-v3.diff.gz": {
+    "bytes": 2510,
+    "sha256": "224b9bfae163499039219ad4f86593dbdc5b9f1309bec22d8399b390c21efbaf"
+  },
+  "modern-python/BASELINE.json": {
+    "bytes": 2092,
+    "sha256": "ffab4fd6f92efb5de13cce736e99dead2e3d19c291a8b397ef46baec4849ab7e"
+  },
+  "modern-python/CHECKS.json": {
+    "bytes": 3143,
+    "sha256": "2a34ff7a8a8098d4abd3b56c199226d6e165938d9af65ebde4a2ebf8cd187c9d"
+  },
+  "modern-python/FUTURE-EXECUTION.json": {
+    "bytes": 5300,
+    "sha256": "05f36ca2985dc650211239da0e85ab9620afc6f4c5b84d43506356bcd7e65ba1"
+  },
+  "modern-python/MANIFEST.json": {
+    "bytes": 6510,
+    "sha256": "9410b0b45231d230c198de9ba0c5c890e850f3589271e97ee9cbeeb3c50e2dc9"
+  },
+  "modern-python/SOURCE-MANIFEST.json": {
+    "bytes": 1190,
+    "sha256": "bdd29a6ef156071ac5737957a5bf103f0056754add34e33c47fe55c71adec73a"
+  },
+  "modern-python/UNCHANGED.json": {
+    "bytes": 9874,
+    "sha256": "081382a4468376c93b7cf3ad14eb4d6ba4725e87d3390b6ffb78a810f6645e5e"
+  },
+  "modern-python/UPSTREAM.json": {
+    "bytes": 354,
+    "sha256": "f06380d10d1c38558ae3f8c9fde690bda006ff03c508f7ff99a5c24fb6c4f30d"
+  },
+  "modern-python/baseline/.github/scripts/native-common-qualify.py": {
+    "bytes": 10568,
+    "sha256": "3cdbf89644353d56596f3ac80fa063e9b165a56f128ac721238fec5c46726728"
+  },
+  "modern-python/baseline/.github/workflows/native-common-image.yml": {
+    "bytes": 4675,
+    "sha256": "2c444107106e61c382be27b6dde7568d1fceac894017932d4ee8c52e6ebde8f9"
+  },
+  "modern-python/baseline/lego/operator/internal/build/nativelegacy_python_test.go": {
+    "bytes": 9689,
+    "sha256": "10edf34e3c2dc0db463e0ca96406f49cfa11b084a8f2241e20390d57c817833b"
+  },
+  "modern-python/baseline/lego/operator/internal/build/nativeutility_integration_test.go": {
+    "bytes": 16556,
+    "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5"
+  },
+  "modern-python/baseline/lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 15080,
+    "sha256": "0d18824de5fca1b6d23258eb6b4332d9dc55728ee237f57b883bc0bee5a2ef74"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check-tool.py": {
+    "bytes": 1025,
+    "sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check.py": {
+    "bytes": 5960,
+    "sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/check_test.py": {
+    "bytes": 4201,
+    "sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c": {
+    "bytes": 548,
+    "sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml": {
+    "bytes": 259,
+    "sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c"
+  },
+  "modern-python/baseline/lego/operator/internal/build/testdata/native-legacy-python/setup.py": {
+    "bytes": 165,
+    "sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e"
+  },
+  "modern-python/legacy-extraction-controls.log": {
+    "bytes": 1363,
+    "sha256": "10d336825d9465c8e118ea779796c69dde4fa99bcd9e5cff79ec3c8e0c95b5a6"
+  },
+  "modern-python/lint-final.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "modern-python/lint-init-args-failure.log": {
+    "bytes": 400,
+    "sha256": "9b60b62f1d98545ab0a4413921bcec567910bc44bf4f99bc7187f427d41ffb56"
+  },
+  "modern-python/lint-initial.log": {
+    "bytes": 168,
+    "sha256": "36cc2f16906b4922f9e6f5af9a65a6907411ee6ab9eaca0a58c1b766fb082be9"
+  },
+  "modern-python/negative-controls.json": {
+    "bytes": 2107,
+    "sha256": "2ee50f0ac868089e298d104fedc73b89628e545d4559a330f9f4ac37ba7a66cd"
+  },
+  "modern-python/negative-overlays/legacy-cap.go": {
+    "bytes": 7527,
+    "sha256": "a409ff931d357d74cd351ea8bb467b5b5982d9fcc878108390777f3cf95cb307"
+  },
+  "modern-python/negative-overlays/legacy-cap.json": {
+    "bytes": 196,
+    "sha256": "6d697c0e242b6927fc93c4174b320fd6b3ba08b64d6cc4282e3319dfe3f01902"
+  },
+  "modern-python/negative-overlays/legacy-cap.log": {
+    "bytes": 2022,
+    "sha256": "9611c46804f833ed2a8a55ae5c3f17e6b361031e7492d41fcca0b47089305cb0"
+  },
+  "modern-python/negative-overlays/system-wheel-interpreter.go": {
+    "bytes": 7501,
+    "sha256": "45012581c8ca923b2e0a1500c82c5b7af7f01f422afc3b18de5336fdfef13e9c"
+  },
+  "modern-python/negative-overlays/system-wheel-interpreter.json": {
+    "bytes": 210,
+    "sha256": "ee75a282d81787bee05e36e05d8033fe4bf629ad77df451550fd93bb895f405d"
+  },
+  "modern-python/negative-overlays/system-wheel-interpreter.log.gz": {
+    "bytes": 2026,
+    "sha256": "9203390d506ad68ec20bd29d59763c8731917fd574391fdeb4c213bbaa63de75"
+  },
+  "modern-python/negative-overlays/wrong-metadata-python.go": {
+    "bytes": 7478,
+    "sha256": "7a39dff98bef4a37783644709d920544c2b9a8006d4941a423c7e633585342d7"
+  },
+  "modern-python/negative-overlays/wrong-metadata-python.json": {
+    "bytes": 207,
+    "sha256": "c7cd5ec1cabe79dc8e10d948ec9897e61b4581a9f4944c7e32fba4b5c44d1ea2"
+  },
+  "modern-python/negative-overlays/wrong-metadata-python.log": {
+    "bytes": 326,
+    "sha256": "65ac76f8bdff45ede79e315cb30e8c211a7c4722ba28ade0f34f89109fc917a5"
+  },
+  "modern-python/poetry-2.1.3-pyproject.toml": {
+    "bytes": 6311,
+    "sha256": "d6429480dd9335f33a5a56f8b71fd6cd27a736f955f6a223b1d3908a47ca8ce1"
+  },
+  "modern-python/python-oracles-final.log": {
+    "bytes": 958,
+    "sha256": "481e35b6e6b2a98c89e415668cc594efee31bfd31d62d353bed295d0d9f5f95e"
+  },
+  "modern-python/source-controls-final.log": {
+    "bytes": 3855,
+    "sha256": "d68d63de250ac152ebb6b6efaacbadfea6274231c9054d050e97751ca0094d4e"
+  },
+  "modern-python/source-controls-initial.log": {
+    "bytes": 3855,
+    "sha256": "c98337c968125469780f1159b7335cd52e34e60f308c8ee15162841b8caa6ed4"
+  },
+  "modern-python/source/lego/operator/internal/build/nativelegacy_python_test.go": {
+    "bytes": 6537,
+    "sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131"
+  },
+  "modern-python/source/lego/operator/internal/build/nativemodern_python_controls_test.go": {
+    "bytes": 9519,
+    "sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b"
+  },
+  "modern-python/source/lego/operator/internal/build/nativemodern_python_test.go": {
+    "bytes": 7506,
+    "sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607"
+  },
+  "modern-python/source/lego/operator/internal/build/nativepython_qualification_test.go": {
+    "bytes": 4911,
+    "sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d"
+  },
+  "modern-python/source/lego/operator/internal/build/testdata/native-modern-python/check-tool.py": {
+    "bytes": 1757,
+    "sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac"
+  },
+  "modern-python/source/lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py": {
+    "bytes": 4655,
+    "sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f"
+  },
+  "pnpm/plan/MANIFEST.json": {
+    "bytes": 1812,
+    "sha256": "b5f8a520382d095382d8e82f1f58e59eb67e34c4258dc153ae724938eebe518c"
+  },
+  "pnpm/plan/execution-plan.json": {
+    "bytes": 9757,
+    "sha256": "f92e23e1f395b1f4ae3f26f0ccf951ba8a9174a3f9c2acbb466f92fc3d996084"
+  },
+  "pnpm/plan/input-identity.json": {
+    "bytes": 6171,
+    "sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213"
+  },
+  "pnpm/plan/inputs/14.21.3-bullseye-slim.arm64.config.json": {
+    "bytes": 6813,
+    "sha256": "64a1be796b5d471eb8a7ba1662e9e4673faa3df54f51d5d0281a335ece311f11"
+  },
+  "pnpm/plan/inputs/14.21.3-bullseye-slim.arm64.manifest.json": {
+    "bytes": 1367,
+    "sha256": "59cf80e6bc1961bcc2c16fbe03474620f5dfb8877665cbd5601e54198dec1a2c"
+  },
+  "pnpm/plan/inputs/14.21.3-bullseye-slim.index.json": {
+    "bytes": 1206,
+    "sha256": "0f5b374fae506741ff14db84daff2937ae788e88fb48a6c66d15de5ee808ccd3"
+  },
+  "pnpm/plan/inputs/16.20.2-bullseye-slim.arm64.config.json": {
+    "bytes": 7033,
+    "sha256": "e233eabde65b256d5b981e8663f613ea8d7bd9bcc2095ee5391a6cf055236f12"
+  },
+  "pnpm/plan/inputs/16.20.2-bullseye-slim.arm64.manifest.json": {
+    "bytes": 1367,
+    "sha256": "6667d537c180a07f5ac85d7418f35a89d80166ba383ff5f93b7d2539172f2971"
+  },
+  "pnpm/plan/inputs/16.20.2-bullseye-slim.index.json": {
+    "bytes": 1206,
+    "sha256": "503446c15c6236291222f8192513c2eb56a02a8949cbadf4fe78cce19815c734"
+  },
+  "pnpm/plan/inputs/pnpm-linux-arm64-10.34.7.registry.json": {
+    "bytes": 1809,
+    "sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302"
+  },
+  "pnpm/plan/inputs/pnpm-release-v10.34.7-selected-assets.json": {
+    "bytes": 362,
+    "sha256": "0c8b7c51aa42a118776eadfda7e78b829a09facfddfe21c61d1e4d807a3e7049"
+  },
+  "pnpm/plan/inputs/pnpm-tarball-head.json": {
+    "bytes": 303,
+    "sha256": "5dd5dcc10bec314b92832bd4e28dc6f2290a1f37b23fe51dac19eb0fbb0f13c3"
+  },
+  "pnpm/plan/inputs/pnpm-v10.34.7-LICENSE": {
+    "bytes": 1170,
+    "sha256": "4b8e2a57502758b2d034ece9cabf19dd098c5609003ed8dbdafd085274f25bd9"
+  },
+  "pnpm/research/MANIFEST.json": {
+    "bytes": 5413,
+    "sha256": "47383b62a27fa23aaf3d296de073d1af62e20d89153f0d320b979f538e7c0902"
+  },
+  "pnpm/research/SOURCE-MANIFEST.json": {
+    "bytes": 8849,
+    "sha256": "6fdb8582d5d6e8abd51dc14ee718b398c6280b607fcd4c3931c00c680ba72a78"
+  },
+  "pnpm/research/proposal.json": {
+    "bytes": 7426,
+    "sha256": "9f7735d5d6a77ca5e161a150e27c9748e967acecfa28839a05e0c9728588fa69"
+  },
+  "pnpm/research/sources/node-14.21.3-node-gyp-package.json": {
+    "bytes": 2125,
+    "sha256": "98a353cc33bf2356fd3b43ad8c86d5fa35a85d98f2dd9090bd1db951fbc22bd3"
+  },
+  "pnpm/research/sources/node-16.20.2-node-gyp-package.json": {
+    "bytes": 1122,
+    "sha256": "66b5afd83332bd267ef72d7987ecde2fd6bb5437dbccc54e6af37375e60380a1"
+  },
+  "pnpm/research/sources/npm-lifecycle-1001.0.0.tgz": {
+    "bytes": 10913,
+    "sha256": "a1c72494c7c947ed39f289d988920b285b2eb2faa3dd3b6132c9690ab2bad524"
+  },
+  "pnpm/research/sources/npm-lifecycle-1001.0.0/package/index.js": {
+    "bytes": 13773,
+    "sha256": "c5f9e6dc736b07015893df6ef599e34f0c5dee326672de83d24ef7473da39a02"
+  },
+  "pnpm/research/sources/npm-lifecycle-1001.0.0/package/lib/extendPath.js": {
+    "bytes": 2343,
+    "sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4"
+  },
+  "pnpm/research/sources/npm-lifecycle-1001.0.0/package/node-gyp-bin/node-gyp": {
+    "bytes": 172,
+    "sha256": "7d8db08dc7f9d6d9f74341cf838a2d3532b4dec44aa0131ab8ec8076843c0c40"
+  },
+  "pnpm/research/sources/npm-lifecycle-1001.0.0/package/package.json": {
+    "bytes": 1756,
+    "sha256": "bfc5372abab20e49dba4fb757f3901302cf476207f798c49398cfaf69d262786"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/cli/cli-meta/src/index.ts": {
+    "bytes": 2115,
+    "sha256": "d37d84f5f7fae8dad899a19f5f535deebd572f80bdb72c8e248fc229686665b6"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/config/config/src/index.ts": {
+    "bytes": 28941,
+    "sha256": "8f4936bc966e0e9cf1c09f0734ddc9f513769fde283b2dbf2a360acc4e1ec205"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/config/package-is-installable/src/index.ts": {
+    "bytes": 2330,
+    "sha256": "7256eac6474ebce362a829d0a37cd016279524cbffb2191d06cf14eb69189091"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/env/system-node-version/src/index.ts": {
+    "bytes": 500,
+    "sha256": "dc6f7ac94d0ca3df9e81fea91027a3a90291f2fe426a3a90e80f5bfc4eae2d31"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/exec/lifecycle/src/runLifecycleHook.ts": {
+    "bytes": 6785,
+    "sha256": "200b2af31f24a94cdf4e132919936a79061192ce2b8a879d9d018b74a2473166"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/exec.ts": {
+    "bytes": 13499,
+    "sha256": "75d4e59116f16c1ad88b273dc5bf27f3b332af3cd4da41ceaf0b1f8826aa57bd"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/exec/plugin-commands-script-runners/src/makeEnv.ts": {
+    "bytes": 956,
+    "sha256": "7c442aab698375e8f211282d1cea05daf1d75dca5002843b215a2530f3d6eec8"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pkg-manager/plugin-commands-installation/src/nodeExecPath.ts": {
+    "bytes": 960,
+    "sha256": "19aeafbedf3e86228ebd27fb91ac4c084e2a238b43b846c9edb24598fd6deb05"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm-lock.yaml": {
+    "bytes": 819702,
+    "sha256": "a2e53df389fcbc48ba088733a5668603c32ae3f2266a35c7fff02b35890a4229"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/artifacts/exe/scripts/build-artifacts.ts.gz": {
+    "bytes": 447,
+    "sha256": "d3c74832d386c60ebabf530f35243dd4b3662513fe4545d7eb0f82c89457f7d5"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/bin/pnpm.cjs": {
+    "bytes": 1102,
+    "sha256": "b276da51dc8ca5b0d3ee3371695b50fc8b3244b281b091c63a3f082a88dadeb9"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/bin/pnpx.cjs": {
+    "bytes": 122,
+    "sha256": "907715e8c1a40838de62c59f87082036937356df91d976777be21cfad62d6029"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/bundle.ts": {
+    "bytes": 1247,
+    "sha256": "b6d574d80f5c94c953cdfe9cbd8ad542e99cb59c263cf7829c0b1035038a0bc3"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/package-linux-arm64.json": {
+    "bytes": 210,
+    "sha256": "b416df1aa84b358a277bdf998791eb0fb83c9d252051c6e29634759f4b8355ed"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/package-linux-x64.json": {
+    "bytes": 206,
+    "sha256": "e4827af0b52b3d5ac921a0c82cb144c0967a014c988b4c0a6c0831fbf01a01b0"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/package.json": {
+    "bytes": 8553,
+    "sha256": "0f1964f308cbb2d055bf413e4351e026da20b28f5fafd24f850890ed0fda6d7b"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/pnpm/src/switchCliVersion.ts": {
+    "bytes": 3300,
+    "sha256": "e8ab38599703066215cde88589ba2c5cbde57268bbaa0cc4086c0a5c8067593d"
+  },
+  "pnpm/research/sources/pnpm-v10.34.7/tools/plugin-commands-self-updater/src/installPnpmToTools.ts": {
+    "bytes": 11892,
+    "sha256": "be8a7106b95d46b3ac1b07216f208e80b6573bef35a2bea5fff41ca17760d0d2"
+  },
+  "pnpm/research/sources/pnpm10-installation.md.gz": {
+    "bytes": 2714,
+    "sha256": "f8d545505bff4d8957aed8f734f660a99cfce7361f7e2abbf413a2fec4b39250"
+  },
+  "pnpm/research/sources/registry-exe.json": {
+    "bytes": 1985,
+    "sha256": "dee8d80c1c6842a73cf218976852e984c74da83d844b8d66f9852943e51474fe"
+  },
+  "pnpm/research/sources/registry-linux-arm64.json": {
+    "bytes": 1809,
+    "sha256": "2deb1150d9309c9809c52e7ec61938e354faac93d8f0b6033d27453c261ae302"
+  },
+  "pnpm/research/sources/registry-linux-x64.json": {
+    "bytes": 1788,
+    "sha256": "78c290230951b529f395dae2c52c8f1b2ea9cb3e0fdfb4ddc7dc344176bd4319"
+  },
+  "pnpm/research/sources/registry-pnpm.json": {
+    "bytes": 6190,
+    "sha256": "25518e74b2d59a7d26b5e4f1f4e176d278153c907a00423838cccc4f143dbefa"
+  },
+  "pnpm/research/sources/render-native-runtimes.html": {
+    "bytes": 342997,
+    "sha256": "9f05c6a444fbb9525e869177007f18b865e4157752f9d71c482a6543ab1d1a46"
+  },
+  "pnpm/research/sources/render-node-version.html": {
+    "bytes": 305908,
+    "sha256": "4101764f6534601fa068bb29d1172818620e75982cd29186315c65426912e1ce"
+  },
+  "pnpm/size-preflight/MANIFEST.json": {
+    "bytes": 923,
+    "sha256": "d4a467230f9f3aec065ca8f52f96b6cd2e31e62dbc8211bad80c1fc9952064d2"
+  },
+  "pnpm/size-preflight/execution-receipt.json": {
+    "bytes": 3399,
+    "sha256": "de8d961e4a2448891c0a11e6450c0d2ded5861a52b643ce44dbe5641556e44a2"
+  },
+  "pnpm/size-preflight/frozen-input-identity.json": {
+    "bytes": 6171,
+    "sha256": "eabe0437697e7ddad7749432ade4ceffc4aeb0e59d57792bf7c78b9173504213"
+  },
+  "pnpm/size-preflight/local-controls.json": {
+    "bytes": 571,
+    "sha256": "1d198d6bb58b374c508df71b6e3eed16f645cb61da07afa4cba7dd4739f96f5e"
+  },
+  "pnpm/size-preflight/preflight.py": {
+    "bytes": 15103,
+    "sha256": "62affb430745912057cdd6913c5184e1b5294832c8a58280df0220d82e9afd67"
+  },
+  "pnpm/size-preflight/progress.jsonl": {
+    "bytes": 5012,
+    "sha256": "9966679bf77351aaafcf7c6cbdd360c5f248302cc7297934c82bb7323e9c7104"
+  },
+  "pnpm/size-preflight/result.json": {
+    "bytes": 12836,
+    "sha256": "0f4d41c6e368eab8aec842c3324f0152d6e04cfe428ed464b9f5b44c3fc79785"
+  },
+  "pnpm/size-preflight/source-input-custody.json": {
+    "bytes": 800,
+    "sha256": "f82b9c8747dba40e2ee82f24c94bc494f63884e2c8c59743e5fa474715f12d4f"
+  },
+  "reviews/capacity/MANIFEST.json": {
+    "bytes": 748,
+    "sha256": "b4feb79f6e2a59b007382e69b8d315d60bc71bca878986f846fc2aaba9b2f806"
+  },
+  "reviews/capacity/REVIEW.json": {
+    "bytes": 2884,
+    "sha256": "efa299bfae3ee614cbe4e5c29719d30e9e25cd13f5c117ff56a3f33667d59a01"
+  },
+  "reviews/capacity/SOURCE.json": {
+    "bytes": 540,
+    "sha256": "d323bc195b50a3ccc5bf7970b291a83d0f81674f2b59e144c159c6834ff3784d"
+  },
+  "reviews/capacity/source/.github/scripts/native-common-qualify.py": {
+    "bytes": 13398,
+    "sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4"
+  },
+  "reviews/capacity/source/.github/scripts/test_native_oci_common_qualification.py": {
+    "bytes": 13736,
+    "sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07"
+  },
+  "reviews/capacity/source/.github/workflows/native-common-image.yml": {
+    "bytes": 5001,
+    "sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912"
+  },
+  "reviews/init/INITIAL-REVIEW.json": {
+    "bytes": 2984,
+    "sha256": "c42d7add4ccda5b67f52dec1f90fb8b3df3e3e24117aa1586d13a7a1e6662687"
+  },
+  "reviews/init/V2-ADDITIONAL-FINDINGS.json": {
+    "bytes": 1446,
+    "sha256": "0371b656f584fa9d6c15de3c9ae5dc03b810794e34bd96b11d67b9c6c00acd3a"
+  },
+  "reviews/init/V2-REVIEW.json": {
+    "bytes": 2117,
+    "sha256": "016195d0cf3707a10373542a15e6094c8eb15986a116e2c3132d4d8161b77ea9"
+  },
+  "reviews/init/V3-CONTROLS.json": {
+    "bytes": 762,
+    "sha256": "8b02a26bf6da8a26bc2673e8e58b3a2a9719647f0a786fff8853a1dfd45042c2"
+  },
+  "reviews/init/V3-REVIEW.json": {
+    "bytes": 3442,
+    "sha256": "3e6934d14bf3543e67a01c58b9abe3790e25b6b5ee6e004364e96fd937fd6712"
+  },
+  "reviews/init/V3-SETUP-HISTORY.json": {
+    "bytes": 359,
+    "sha256": "72d2cfa9afdbb97900efdeaa6ab598453973db37f86371be6e7d211d3f9b91ff"
+  },
+  "reviews/init/upstream/npm-run-script-v10.0.0-set-path.js": {
+    "bytes": 1501,
+    "sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2"
+  },
+  "reviews/init/upstream/npm-run-script-v9.1.0-set-path.js": {
+    "bytes": 1501,
+    "sha256": "bf86a1c1976d631c8012369e66362f12c03f0c0295c3ad572e79f43a1ff9f0f2"
+  },
+  "reviews/init/upstream/pnpm-npm-lifecycle-1001.0.0-extendPath.js": {
+    "bytes": 2343,
+    "sha256": "a45f41cc084979f457eee9fb7b0bc85f1c90f731d188ad43e9df6bcec64ff6b4"
+  },
+  "reviews/init/upstream/yarn-v1.22.22-execute-lifecycle-script.js": {
+    "bytes": 11621,
+    "sha256": "465a0e0b75e66d3192a3417ec4860d2da2ae9e6c361b817232ca989ff2eb88ae"
+  },
+  "reviews/init/v2-scoped-lint.log": {
+    "bytes": 10,
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+  },
+  "reviews/init/v3-focused-controls.log.gz": {
+    "bytes": 635,
+    "sha256": "a9be2c99786ff1b37923c7fd89cb52fd7eed5531715fe45e68e390f38e1a7e97"
+  },
+  "reviews/init/v3-focused-overlay.json": {
+    "bytes": 239,
+    "sha256": "c7e28f14cd936622bbf079e244b45ad9ce9b1ab8f6800b63bd68b15804f2dee9"
+  },
+  "reviews/init/v3-premature-overlay-setup-failure.log": {
+    "bytes": 139,
+    "sha256": "78b57314b055b08dfd7c4c6fbac83638e5375442a8cd1665d060794b96d53f95"
+  },
+  "root-crosscompile/CLEANUP.json": {
+    "bytes": 166,
+    "sha256": "53b2bee3add0c24238f1b67538575e843d5d52a6ad258df7b25fcf74456caeab"
+  },
+  "root-crosscompile/MANIFEST.json": {
+    "bytes": 876,
+    "sha256": "5806fa62b2a590e421deb28fb3db0368a7a44f88e9da8249f060c948c6c47995"
+  },
+  "root-crosscompile/PLAN.json": {
+    "bytes": 260,
+    "sha256": "11099afaf8435a06710217e61cc4cbaac2f8469b879f22e37478fbe274d0c8dc"
+  },
+  "root-crosscompile/RESULT.json": {
+    "bytes": 3185,
+    "sha256": "be8810a62df53875b7fb3fa00148a39d949803551b1194d74a86cb7374fa566b"
+  },
+  "root-crosscompile/amd64.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "root-crosscompile/arm64.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "root-crosscompile/native-init-amd64.gz": {
+    "bytes": 780760,
+    "sha256": "daa937df820d6997a34d15c296f006fe67ab9b2ec96f2de9bae502ad3581fc79"
+  },
+  "root-crosscompile/native-init-arm64.gz": {
+    "bytes": 711754,
+    "sha256": "cd7a0095c950daefd0752f61a453db070d68a7df9e40d9b77dfca76940373937"
+  }
+}

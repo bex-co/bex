@@ -1,0 +1,34 @@
+{
+  "lego/operator/internal/build/nativeinit_test.go": {
+    "bytes": 12243,
+    "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21"
+  },
+  "lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33515,
+    "sha256": "cc434b2fcee83f7219a6e3efd3459474091e7d731db99fdb8335a1856132aeaf"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/.node-version": {
+    "bytes": 3,
+    "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/build.js": {
+    "bytes": 315,
+    "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+    "bytes": 367,
+    "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/package.json": {
+    "bytes": 144,
+    "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+  },
+  "lego/operator/internal/build/testdata/native-common-init/server.js": {
+    "bytes": 1550,
+    "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+  }
+}

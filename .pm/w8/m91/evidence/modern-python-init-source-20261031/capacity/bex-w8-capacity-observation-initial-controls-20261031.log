@@ -1,0 +1,23 @@
+test_binding_rejects_wrong_config_platform_root_runtime_or_missing_component (__main__.QualificationControls.test_binding_rejects_wrong_config_platform_root_runtime_or_missing_component) ... ok
+test_capacity_snapshot_is_read_only_and_not_a_reservation (__main__.QualificationControls.test_capacity_snapshot_is_read_only_and_not_a_reservation) ... ERROR
+test_cleanup_stops_only_owned_builder_then_cleans_labels_despite_failure (__main__.QualificationControls.test_cleanup_stops_only_owned_builder_then_cleans_labels_despite_failure) ... ok
+test_cleanup_timeout_is_recorded_and_does_not_skip_later_owned_cleanup (__main__.QualificationControls.test_cleanup_timeout_is_recorded_and_does_not_skip_later_owned_cleanup) ... ok
+test_full_capture_keeps_failure_report_and_gzip_without_success_binding (__main__.QualificationControls.test_full_capture_keeps_failure_report_and_gzip_without_success_binding) ... ok
+test_init_refuses_mutable_or_foreign_source_before_resource_creation (__main__.QualificationControls.test_init_refuses_mutable_or_foreign_source_before_resource_creation) ... ok
+test_memory_observation_uses_visible_remaining_limit (__main__.QualificationControls.test_memory_observation_uses_visible_remaining_limit) ... ok
+test_output_is_after_full_signing_and_never_always_on_failure (__main__.QualificationControls.test_output_is_after_full_signing_and_never_always_on_failure) ... ok
+test_real_report_shape_binds_distinct_config_and_manifest (__main__.QualificationControls.test_real_report_shape_binds_distinct_config_and_manifest) ... ok
+
+======================================================================
+ERROR: test_capacity_snapshot_is_read_only_and_not_a_reservation (__main__.QualificationControls.test_capacity_snapshot_is_read_only_and_not_a_reservation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/tianpan/projects/bex7/.github/scripts/test_native_oci_common_qualification.py", line 219, in test_capacity_snapshot_is_read_only_and_not_a_reservation
+    env["COMMON_IMAGE"] = "ghcr.io/bex-co/bex-cnb-run@" + IMAGE
+    ^^^
+NameError: name 'env' is not defined
+
+----------------------------------------------------------------------
+Ran 9 tests in 3.671s
+
+FAILED (errors=1)

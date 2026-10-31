@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit": 0,
+  "wall_seconds": 9.717047916,
+  "initial_free_bytes": 2844827648,
+  "final_free_bytes": 2718171136,
+  "floor_tripped": false,
+  "scope": "correctedv2 host source/unit suite; no target compiler, Docker or JS fixture execution"
+}

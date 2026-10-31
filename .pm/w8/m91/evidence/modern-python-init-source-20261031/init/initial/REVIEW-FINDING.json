@@ -1,0 +1,10 @@
+{
+  "status": "SUPERSEDED_BEFORE_IMAGE_EXECUTION",
+  "source_manifest": {
+    "sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+    "bytes": 1237
+  },
+  "finding": "common_review/root independently identified that literal donor PATH equality inside npm/yarn/pnpm child is invalid because package managers legitimately prepend bin paths. Unit controls had not executed the actual lifecycle. No product runtime defect or actual image failure is claimed.",
+  "resolution_planned": "separatev2 captures exact base Node/ENV before exec manager, records child ENV/PATH separately and adds exact PID1 argv proof; first source/logs preserved",
+  "crosscompile_or_Docker_or_fixture_execution": false
+}

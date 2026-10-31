@@ -1,0 +1,42 @@
+{
+  "CHECKS.json": {
+    "bytes": 671,
+    "sha256": "62be2a49c5d3db306966f3d7b8deee53aa2fd17151cd1ba648c43efc97a93990"
+  },
+  "SCOPE.json": {
+    "bytes": 1337,
+    "sha256": "0150e8d977b05202072320cf63cf680b2ce2ea614c666db868f9985d21f14fd0"
+  },
+  "SOURCE.json": {
+    "bytes": 629,
+    "sha256": "b9e4a298a40c37c98996a7bd47841cfa7d079635fab102f5507c7854e991c675"
+  },
+  "bex-w8-capacity-final-actionlint-20261031.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "bex-w8-capacity-final-actions-20261031.log": {
+    "bytes": 290,
+    "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+  },
+  "bex-w8-capacity-final-all-controls-20261031.log": {
+    "bytes": 10857,
+    "sha256": "068b6fa4aaf08d6792d4100e7e63edea0128fd821733063982880a6c8e21bd79"
+  },
+  "bex-w8-capacity-observation-initial-controls-20261031.log": {
+    "bytes": 2271,
+    "sha256": "91e5924a0407c9f731509fb0d0b7672843de4b35cffcf6e2f3d2993203737b59"
+  },
+  "source/.github/scripts/native-common-qualify.py": {
+    "bytes": 13398,
+    "sha256": "053e1768de74c21f81428d256265e34553e04de505f8c45f0ed3687b5db938e4"
+  },
+  "source/.github/scripts/test_native_oci_common_qualification.py": {
+    "bytes": 13736,
+    "sha256": "7462dbcf2aaf715d6e83d10303d97cb5476af6382ece0a481ecff77314a74a07"
+  },
+  "source/.github/workflows/native-common-image.yml": {
+    "bytes": 5001,
+    "sha256": "cef2207bde734b5d4f1d717b509c6c66801c2be72d4366f664028af3bfe58912"
+  }
+}

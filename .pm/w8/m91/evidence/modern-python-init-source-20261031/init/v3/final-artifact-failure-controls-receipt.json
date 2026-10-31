@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-run",
+    "^TestNativeInitQualificationArtifactFailureStillCleans$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "wall_seconds": 5.127552832999999,
+  "initial_free_bytes": 2615025664,
+  "final_free_bytes": 2599616512,
+  "floor_tripped": false,
+  "scope": "source/unit/lint only; fake Docker subprocess controls; no real daemon, target compiler or JS fixture execution"
+}

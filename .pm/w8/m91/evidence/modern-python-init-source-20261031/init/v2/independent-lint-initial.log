@@ -1,0 +1,5 @@
+internal/build/nativequalification_init_test.go:405:4: Consider preallocating data with capacity 65 (prealloc)
+			data := make([]byte, 64)
+			^
+1 issues:
+* prealloc: 1

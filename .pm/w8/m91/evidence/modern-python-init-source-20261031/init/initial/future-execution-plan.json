@@ -1,0 +1,129 @@
+{
+  "state": "SOURCE_AND_UNIT_ONLY_NO_CROSSCOMPILE_OR_DOCKER",
+  "reviewed_source_manifest": {
+    "sha256": "4e58757a3687212421ab4f95ff13532573841db722f775d70ec7bc6da9ec7c7c",
+    "bytes": 1237
+  },
+  "measured_utc": "2026-10-31T19:07:16.705031+00:00",
+  "source_files": 7,
+  "source_bytes": 42923,
+  "host_free_bytes": 2698756096,
+  "entrypoint": {
+    "cwd": "lego/operator",
+    "argv": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./internal/build",
+      "-run",
+      "^TestCommonNativeInitQualification$",
+      "-count=1",
+      "-v",
+      "-timeout=55m"
+    ],
+    "environment": {
+      "GOWORK": "off",
+      "GOTOOLCHAIN": "local",
+      "GOPROXY": "off",
+      "GOSUMDB": "off",
+      "GOMAXPROCS": "2",
+      "GOFLAGS": "-p=1",
+      "GOCACHE": "OWN_PRIVATE_CACHE_AFTER_SEPARATE_BUDGET_APPROVAL",
+      "BEX_BUILDKIT_INTEGRATION": "1",
+      "BEX_NATIVE_TEST_INIT_PROFILE": "1",
+      "BEX_NATIVE_TEST_COMMON_IMAGE": "ROOT_REVIEWED_IMMUTABLE_COMMON",
+      "BEX_NATIVE_TEST_BUILDER": "EXISTING_OWN_BUILDER",
+      "BEX_NATIVE_TEST_OWNER": "SAME_EXISTING_OWN_BUILDER",
+      "BEX_NATIVE_TEST_PLATFORM": "ONE_EXPLICIT_linux/arm64_OR_linux/amd64",
+      "BEX_NATIVE_TEST_OUTPUT": "OWN_PRIVATE_OUTPUT"
+    }
+  },
+  "separate_crosscompile_approval_required": true,
+  "crosscompile_proposal": {
+    "targets": [
+      {
+        "platform": "linux/arm64",
+        "GOARCH": "arm64",
+        "ELF_machine": 183
+      },
+      {
+        "platform": "linux/amd64",
+        "GOARCH": "amd64",
+        "ELF_machine": 62
+      }
+    ],
+    "order": "one requested architecture at a time; no Docker daemon architecture lookup in new profile",
+    "command": [
+      "go",
+      "build",
+      "-trimpath",
+      "-ldflags=-s -w",
+      "-o",
+      "OWN_TEMP/native-init",
+      "../../cmd/native-init"
+    ],
+    "environment_additions": {
+      "CGO_ENABLED": "0",
+      "GOOS": "linux",
+      "GOARCH": "explicit target"
+    },
+    "timeout_seconds": 300,
+    "proposed_max_new_cache_and_compile_bytes": 402653184,
+    "max_compiled_plus_staged_bytes": 33554432,
+    "proposed_host_test_and_proof_headroom_bytes": 33554432,
+    "proposed_total_increment_bytes": 469762048,
+    "global_free_floor_bytes": 2147483648,
+    "start_rule": "Root separately authorizes actual measured budget. Fresh free must exceed floor+remaining planned writes; stop/reap only own compiler if floor or approved owned-growth cap trips. Proposed448MiB is a cap/estimate, not measured actual crosscompile fit. No automatically added attempt/budget.",
+    "source_dependency": "native-init current3 production Go files + pinned golang.org/x/sys from existing module cache; no dependency download/offline fallback",
+    "verification": "Go debug/elf validates ET_EXEC/64bit/littleendian/requested machine + executable regular file<=16MiB; StageNativeInit exact SHA/size/machine equality; in-image JS independently verifies binary SHA/machine/executable and /proc/1/exe=/native-init."
+  },
+  "image_execution": {
+    "status": "UNEXECUTED; image/cache/pull footprint not measured or approved",
+    "named_context": "--build-context bex-init=OWN_RETAINED_INIT_DIRECTORY with exact staged binary",
+    "recipe": "unchanged canonical resolver result; nativeInitOptions resolver-image field is explicitly test-only staging enablement, never image provenance/pull target",
+    "primary": "Node24 from .node-version, exact donor ENV/patch from canonical resolver with empty authored bundle",
+    "build_network": "none; immutable frontend/image/ADD acquisition may need transport before authored dependency-free node build.js",
+    "runtime_network": "explicit bridge, exactly one published127.0.0.1 ephemeral host port for10000/tcp; not a network-off runtime claim",
+    "runtime_cases": [
+      "npm image CMD",
+      "yarn start",
+      "pnpm start",
+      "node server.js"
+    ],
+    "concurrency": "one build and one container at a time, each returned owned ID cleanup before next launch; stop after first failing subtest",
+    "container_limits": {
+      "memory_bytes": 536870912,
+      "cpus": 1,
+      "pids": 128,
+      "per_case_seconds": 120,
+      "shutdown_grace_seconds": 20,
+      "held_response_seconds": 4,
+      "HTTP_regular_timeout_seconds": 2,
+      "held_request_timeout_seconds": 30,
+      "metadata_max_bytes": 65536,
+      "cleanup_log_tail_lines": 100,
+      "each_cleanup_command_timeout_seconds": 20
+    },
+    "build_timeout_seconds": 1800,
+    "global_test_timeout_seconds": 3300,
+    "resource_ownership": "durable fresh unique name/image/owner create intent before one Docker create; exact returned ID only cleanup; ambiguous create is recorded and never retried/name-only killed; image cleanup exact own tag via existing helper; no builder/global config/shared-cache prune",
+    "oracle": "actual held200 exactUnicode body must survive one SIGTERM; app/native-init identity exact; events listening\u2192hold_begin\u2192SIGTERM\u2192hold_end\u2192closed; one completed hold/one signal; direct status0, wrappers0/143 preserve native-init contract; actual stopped status retained and137/error refused",
+    "cleanup": "on success/failure save bounded own logs, remove exact returned container ID, retain exact-ID absence proof; generated own image tag cleanup registered; root future postflight may verify actual owned-tag absence"
+  },
+  "source_checks_actual": {
+    "scoped": "existing entrypoint/staging + synthetic two-machine ELF/mode/copy checks, changed SHA/machine/mode/PID1/ENV/drain order/count refusals and owned localhost-only transport refusals",
+    "full_package": "final-build-package-receipt.json",
+    "javascript": "node --check only, no top-level execution; javascript-parse.json"
+  },
+  "unexecuted": [
+    "actual target crosscompile",
+    "any compiler ELF from this source",
+    "image pull/build or named-context build execution",
+    "actual PID1 signal forwarding/common Node runtime",
+    "all4 HTTP drain runs on either architecture",
+    "any actual resource create/cleanup",
+    "original hosted13/28, Kubernetes/pre-deploy/publication/adoption acceptance"
+  ],
+  "no_production_or_ci_changes": true
+}

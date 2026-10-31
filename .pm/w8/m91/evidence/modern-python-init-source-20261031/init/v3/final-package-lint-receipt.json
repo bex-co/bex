@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "bin/golangci-lint",
+    "run",
+    "./internal/build",
+    "--timeout=3m"
+  ],
+  "exit": 0,
+  "wall_seconds": 2.2854360000000007,
+  "initial_free_bytes": 2591920128,
+  "final_free_bytes": 2590281728,
+  "floor_tripped": false,
+  "scope": "source/unit/lint only; fake Docker subprocess controls; no real daemon, target compiler or JS fixture execution"
+}

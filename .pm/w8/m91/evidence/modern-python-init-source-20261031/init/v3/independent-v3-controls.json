@@ -1,0 +1,23 @@
+{
+  "date_utc": "2026-10-31T19:37:27.721948+00:00",
+  "source_sha256": "f87ea81ef0e2d3a46ca5a9ecddb62371f773b58864789141b0fa54b96a095230",
+  "go_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+  "all8frozen_live_bytes_modes_equal_before": true,
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "-overlay",
+    "/private/tmp/bex-w8-init-independent-review-20261031-70c4kdtn/v3-focused-overlay.json",
+    "./internal/build",
+    "-run",
+    "^TestNativeInitQualificationArtifactFailureStillCleans$",
+    "-count=1",
+    "-v"
+  ],
+  "exit_code": 0,
+  "seconds": 5.901,
+  "log": "v3-focused-controls.log",
+  "scope": "Only2guarded fake-Docker subprocess controls against copied final Go bytes; no daemon/image/JS/crosscompile"
+}
