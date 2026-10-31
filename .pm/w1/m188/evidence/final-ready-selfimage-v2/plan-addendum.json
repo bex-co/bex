@@ -1,0 +1,30 @@
+{
+  "schema": "bex.m188.add-only-final-t004-selfimage-ready-v2-plan/v1",
+  "at": "2026-10-31T04:10:16.672625+00:00",
+  "original_plan": {
+    "file": "/tmp/bex-m188-final-t004-plan.json",
+    "sha256": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086"
+  },
+  "census_v2_addendum": {
+    "file": "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json",
+    "sha256": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e"
+  },
+  "root_approval": {
+    "file": "/tmp/bex-m188-ready-v2-root-approval.json",
+    "sha256": "285d48e41ff53f7075cb0fbc25923b8ea424c3208193fc69ff12d59e79ca3438"
+  },
+  "preferred_future_ready_helper": {
+    "file": "/tmp/bex-m188-final-operator-ready-v2.py",
+    "sha256": "7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc"
+  },
+  "preferred_future_census_helper": {
+    "file": "/tmp/bex-m188-final-live-census-v2.py",
+    "sha256": "02231095776af7c1a38236fe46ab7f37fb82509fd1536d366c82d9e68e484913"
+  },
+  "future_command_NOT_EXECUTED": "python3 /tmp/bex-m188-final-operator-ready-v2.py --kubeconfig \"$M188_PRIVATE_KUBECONFIG\" --expected-image \"$M188_SIGNED_OPERATOR_REF\" --root-manifest \"$M188_FINAL_DIR/operator-root-index.json\" --amd64-manifest \"$M188_FINAL_DIR/operator-amd64-manifest.json\" --output \"$M188_FINAL_DIR/operator-ready.json\"",
+  "added_check": "Canonical unique POD_NAME/POD_NAMESPACE downward sources and no BEX_BACKUP_HELPER_IMAGE/envFrom in deployment AND actual currentmanagerPods, so selfimage-derived native resolver truly uses expectednew operatorimage. No envvalues or Secret refs contents copied.",
+  "not_proven_now": "No actual image/source/signature/deploy/Ready/SINCE/rollout/fleet orzero-target acceptance. All existing prerequisites remain.",
+  "old_helper_snapshot_sha256": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a",
+  "source_adoption_performed": false,
+  "production_calls": 0
+}

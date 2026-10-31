@@ -1,0 +1,40 @@
+{
+  "schema": "bex.m188.main-CI-external-wildcard-renewal-gate/v1",
+  "at": "2026-10-31T04:23:19.317739+00:00",
+  "run": {
+    "conclusion": "failure",
+    "headSha": "e60b99f257666b2c9040f30eef33a4d10d779829",
+    "status": "completed",
+    "updatedAt": "2026-10-31T04:10:37Z",
+    "url": "https://github.com/bex-co/bex/actions/runs/41124028938"
+  },
+  "failed_step": "validate onbex.co fallback TLS certificate",
+  "actual_failure": "BEX_ONBEX_TLS_CERT expires inside the 30-day minimum validity window",
+  "failed_log_sha256": "c487b1b290a635609235d3c2923a2d7d5921fa6cd2ffa1966f32c07de0766f65",
+  "installed_certificate_public_metadata_only": {
+    "namespace": "traefik",
+    "secret_name": "onbex-default-wildcard-tls",
+    "sha256": "ae82e2f9e770f0ca22f9ce742d42f50bc6594649824818223150f5416947fc70",
+    "not_before": "2026-09-01T01:00:07Z",
+    "not_after": "2026-11-30T01:00:06Z",
+    "SAN": [
+      "*.onbex.co"
+    ],
+    "issuer": "Let's Encrypt YE2",
+    "valid_for_next_30_days": false,
+    "no_private_key_read": true,
+    "not_claimed_byte_equal_to_unreadable_GitHub_secret": true
+  },
+  "local_readonly_access_findings": {
+    "no_standard_acme_account_directories_or_installed_clients_found": true,
+    "no_connected_DNS_tools_available": true,
+    "DNS_nameservers": "Cloudflare authoritative NS observed byDNS query; no DNS mutation",
+    "no_TLS_or_DNS_credential_key_names_in_root_env_file_or_process": true
+  },
+  "upstream_gate_item": ".pm/w10/blocked/010.md",
+  "required_owner_action": "Provide existingrenewalentry/securecredentiallocation or new fullchain+matchingprivatekey FILEPATHS; no secrets inchat. Root canvalidateSAN/trust/30day/keypair andupdateONLY production-deploy TLSsecrets.",
+  "user_async_question_sent": true,
+  "continue_while_pending": "Node18/current11candidate/adoption/integration work continues; no earlyblockedmove or falseactualrollout. Mainred doesnot hold this documentation push.",
+  "certificate_or_environment_or_DNS_mutations": 0,
+  "no_certificate_PEM_or_private_key_or_kubeconfig_bytes_stored": true
+}

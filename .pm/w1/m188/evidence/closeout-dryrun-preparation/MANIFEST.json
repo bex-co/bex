@@ -1,0 +1,44 @@
+{
+  "schema": "bex.m188.future-verification-preparation-custody/v1",
+  "at": "2026-10-31T04:13:30.631494+00:00",
+  "scope": "Read-only current17-link virtualcloseout plan and2450-file preexistingprotectedinventory, oldstaticsnapshot preserved. No status ormove permission; rerun currenthelper atactualDoD beforefinalmove usingNEW/tmpoutput.",
+  "source_adoption_or_actual_rollout_acceptance": false,
+  "files": [
+    {
+      "source": "/tmp/bex-m188-closeout-links-29q2tffr/plan.py",
+      "archive": "plan.py",
+      "bytes": 10135,
+      "sha256": "4fa9567be74b46a430e37755d797760a734e58337748dd347829c0d0493051a9"
+    },
+    {
+      "source": "/tmp/bex-m188-closeout-links-29q2tffr/current-plan.json",
+      "archive": "current-plan.json",
+      "bytes": 14662,
+      "sha256": "ea43d1382d99ac140375f083464b16713daa53c83c94212e6deb3f5809e5d143"
+    },
+    {
+      "source": "/tmp/bex-m188-closeout-links-29q2tffr/current-plan.protected.json",
+      "archive": "current-plan.protected.json",
+      "bytes": 844769,
+      "sha256": "9ee7a0c3e5a3fbec463975741f885b2080e966cbac95b943a141cb72bbf1702d"
+    },
+    {
+      "source": "/tmp/bex-m188-closeout-links-29q2tffr/validation.json",
+      "archive": "validation.json",
+      "bytes": 729,
+      "sha256": "f3202082972df852c54af52df6905d7716afa5ba2a8ad64a7e880b6ea4d29ac5"
+    },
+    {
+      "source": "/tmp/bex-m188-closure-link-inventory.py",
+      "archive": "historical-static-helper.py",
+      "bytes": 6696,
+      "sha256": "ca93242d7d4a614bac43bd0db6725f1010952f19dd4ea8643f48de240912de4a"
+    },
+    {
+      "source": "/tmp/bex-m188-closure-link-plan.json",
+      "archive": "historical-static-plan.json",
+      "bytes": 186941,
+      "sha256": "ae664b0b32a9a6cf734431259f54b17c8317981d1b3a1e0a76c7c95d81fe3025"
+    }
+  ]
+}

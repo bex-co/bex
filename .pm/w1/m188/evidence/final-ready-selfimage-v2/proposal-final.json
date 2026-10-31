@@ -1,0 +1,61 @@
+{
+  "schema": "bex.m188.FINAL-INACTIVE-selfimage-ready-v2-proposal/v1",
+  "at": "2026-10-31T04:07:55.352498+00:00",
+  "old_helper": {
+    "file": "/tmp/bex-m188-final-operator-ready.py",
+    "sha256": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a"
+  },
+  "inactive_proposal": {
+    "file": "/tmp/bex-m188-ready-v2-proposal/7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc.py",
+    "sha256": "7919ea686748433f2cf39d219eff7264feefe81e351bb96e1798a2fb6ae30ffc",
+    "diff_file": "/tmp/bex-m188-ready-v2-proposal/ready-final.diff",
+    "diff_sha256": "46ad970bcd1ddf50f6788d264928a7aedf9935b3c83194e0782f1965608e18f2"
+  },
+  "source_contract": {
+    "reviewed_repo_source": "310d5325afb4f22481a8a43f8baaa98ee7598b8e",
+    "is_actual_final_deployed_source_proof": false,
+    "files": {
+      "lego/operator/cmd/manager/main.go": "257d12140b6fc4a5ed17b820629cd7a017e8aab8d65d9c66cb586fcefd99864c",
+      "lego/operator/internal/selfimage/selfimage.go": "a6144559f89e237ddf1a807bdce42dffb43aae69cbf8aa626d230c5ea1d98494",
+      "lego/operator/internal/controller/app_controller.go": "0eb118a30874866e67eca8ee887452b4b8f9c55f8200c4a47e9ff271466df757",
+      "lego/operator/config/manager/manager.yaml": "261e5146c3d554244b0d162ea6e77eb7b5f3fd6f7245bd174b5e3198d2b134fe"
+    },
+    "pointers": [
+      "cmd/manager/main.go372 BackupHelperImage=backupHelperImage(uncachedClient)",
+      "cmd/manager/main.go521-527 override else POD_NAMESPACE/POD_NAME toselfimage.Resolve",
+      "internal/selfimage/selfimage.go52-67 reads namedPod.Spec managerimage",
+      "internal/controller/app_controller.go1149 NativeResolverImage=r.BackupHelperImage",
+      "config/manager/manager.yaml104/113 canonicaldownwardreferences"
+    ]
+  },
+  "gap_confirmed": "Manager BackupHelperImage comes from BEX_BACKUP_HELPER_IMAGE else selfimage.Resolve(POD_NAMESPACE,POD_NAME,manager); Resolve reads namedPod.Spec.ContainerImage without verifying that the namedPod is itself. Existinghelper checks templateoverride/envFrom, expectedmanagerimage/Ready/imageID but not these identities or actualPodenv, so couldpass while resolverusesanotherPod/image.",
+  "additional_Pod_admission_gap": "Correct Deployment template does not prevent actualmanagerPod admission from injecting BEX_BACKUP_HELPER_IMAGE/envFrom orliteral/different POD_NAME/NAMESPACE. ActualPod checks are independentlyrequired.",
+  "binding_requirements": "Both Deploymentmanager andevery nondeleting ownedactualmanagerPod: unique v1DownwardAPI metadata.name/metadata.namespace sources; absent resolveroverride andenvFrom. Duplicates/literals/Secret/configmap/resource/unknown/mixed sources andunexpectedfieldRefAPI reject. DeletingoldPods remain excluded as inoldReady gates.",
+  "sanitized_report": "Only sourcekind/count/whitelisted metadata.name or metadata.namespace fieldPath/passbits; unknownkeys/literalvalues/SecretRefnames/keys/contents never copied.",
+  "old_Ready_manifest_owner_imageID_GitOps_and_latest_PodReady_SINCE_gates_retained": true,
+  "external_signature_source_prerequisites_unchanged_not_verified_by_helper": true,
+  "actual_deployed_source_contract_still_must_be_confirmed": true,
+  "isolated_actual_main_controls": {
+    "file": "/tmp/bex-m188-ready-v2-proposal/isolated-controls.json",
+    "sha256": "cea1aad604f50edb96e0147d07214c547d53c2027c3fdd03935efdfbc4d086b1",
+    "controls_count": 30,
+    "old_false_positive_new_rejections": 16,
+    "harness": {
+      "file": "/tmp/bex-m188-ready-v2-proposal/test-isolated-ready.py",
+      "sha256": "5af7439084239b3af786e74f386426dc7ae3f31f468556b4fe49e3e02cb6bd98"
+    },
+    "all_passed": true,
+    "no_production_kubectl_or_real_kubeconfig_reads": true,
+    "no_successful_since_on_any_negative": true
+  },
+  "preserved_hashes": {
+    "/tmp/bex-m188-final-operator-ready.py": "1207980bfec032628e0f4f941da910cf61bcefea76f974486d70edeb69f19b6a",
+    "/tmp/bex-m188-final-t004-plan.json": "b43c9153b774ff9d9da11c1df8b6373628cb3df294e12076617fe2c43e252086",
+    "/tmp/bex-m188-final-t004-plan-census-v2-addendum.json": "4e43a24707631565f42eac729ab03ec6f05c7a451c40ebf31556c960a619589e",
+    "/tmp/bex-m188-prepare-adoption.py": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+    "/tmp/bex-m188-published-acceptance.json": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4"
+  },
+  "earlier_unreviewed_draft_not_for_activation": "2bce0cb4 draft strengthened allownedincludingdeleting andusedunboundedunknownkind; final7919 explicitlykeepsdeletingPod semantics andonlywhitelistedsourcekind, tested.",
+  "not_activated": true,
+  "scope": "TEMP inactive helper proposal, sourcecontract review and syntheticlocalactualmain controls only. No oldhelper/plan/production/repository/board/guard/sourcepolicy/aggregate/candidateproof mutation."
+}
