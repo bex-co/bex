@@ -1,0 +1,19 @@
+{
+  "schema": "bex.m188.root-durable-current-tree-archive-audit/v1",
+  "at": "2026-10-31T08:43:44.606974+00:00",
+  "archive_path": ".pm/w1/m188/evidence/current-tree-compatibility-2cc",
+  "manifest_sha256": "e7561875ce96738228049a556f5f0c93853527b66672ecd2c81a83e300bd79c8",
+  "source_candidate": "/tmp/bex-m188-current-tree-portable-archive-9z55rc7t",
+  "files_including_manifest": 87,
+  "source_records": 83,
+  "generated_metadata": 3,
+  "lossless_gzip_records": 3,
+  "stored_and_original_bytes_and_hashes_verified": true,
+  "current_source_input_count": 37,
+  "historical_active_guard_refs_resolved_by_content_hash": true,
+  "frozen_source_candidate_manifest_preserved_verbatim": true,
+  "actual_active_guard_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+  "actual_aggregate_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+  "actual_accepted_count": 10,
+  "scope": "Durable evidence copy only. Root approved4cfe and activation is separately recorded inside archive; no new artifact source role, candidate approval, complete receipt, source-pin adoption, live acceptance or task completion."
+}

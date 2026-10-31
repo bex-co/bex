@@ -1,0 +1,39 @@
+{
+  "schema": "bex.m188.actual-INACTIVE-current-tree-profile-execution/v1",
+  "recorded_at": "2026-10-31T08:36:45.624796+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "/tmp/bex-m188-test-current-tree-2cc-proposal-v2.py"
+  ],
+  "harness": {
+    "file": "/tmp/bex-m188-test-current-tree-2cc-proposal-v2.py",
+    "sha256": "9014645562b418de987714362ee476547636e39228705fe5543c0b7bca927833",
+    "bytes": 12096
+  },
+  "proposal": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865.py",
+    "sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+    "bytes": 92369
+  },
+  "actual_process_exit_code": 0,
+  "actual_result": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-and-negative-controls.json",
+    "sha256": "48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f",
+    "bytes": 28687
+  },
+  "stdout": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-controls.stdout.log",
+    "sha256": "92231395f5f0fa52e16322561572f87ef0a31015ca4c784a3f5b568500f46dd8",
+    "bytes": 1327
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-current-tree-2cc-proposal-v2/real10-controls.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "no_CI_production_or_shared_repo_mutations": true,
+  "only_isolated_file_tree_and_actual_local_Git_HEAD_negative": true,
+  "proof_or_crypto_validation_mocked": false,
+  "test_execution_completed_before_this_record_was_written": true
+}

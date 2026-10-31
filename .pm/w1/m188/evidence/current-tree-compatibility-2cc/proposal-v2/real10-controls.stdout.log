@@ -1,0 +1,28 @@
+node-14-bullseye REAL FULL PASS
+python-3.7-bullseye REAL FULL PASS
+node-16-bookworm REAL FULL PASS
+python-3.8-bookworm REAL FULL PASS
+python-3.10-bookworm REAL FULL PASS
+python-3.9-bookworm REAL FULL PASS
+ruby-3.0-bullseye REAL FULL PASS
+ruby-3.1-bookworm REAL FULL PASS
+ruby-3.2-bookworm REAL FULL PASS
+node-20-bookworm REAL FULL PASS
+CONTROL isolated exact profile PASS
+CONTROL copied_exact_current_files_on_actual_older_DA0_HEAD REJECTED
+CONTROL unexpected_signing_gate_change REJECTED
+CONTROL unexpected_full_scan_budget REJECTED
+CONTROL unexpected_JavaDB_budget REJECTED
+CONTROL removed_signed_scan_gate REJECTED
+CONTROL unreviewed_install_change REJECTED
+CONTROL unexpected_PGDG_key_pin REJECTED
+CONTROL unexpected_fetch_integrity_gate REJECTED
+CONTROL unexpected_extra_recipe_path REJECTED
+CONTROL tampered_allowed_test REJECTED
+CONTROL missing_allowed_test REJECTED
+CONTROL unexpected_official_runtime_pin REJECTED
+CONTROL unexpected_reviewed_wheel_pin REJECTED
+CONTROL BF_producer_to_DA0_verifier_recipe_crossing REJECTED
+CONTROL current_anchor_not_artifact_role_9416523 REJECTED
+CONTROL current_anchor_not_artifact_role_2cc8723 REJECTED
+FINAL_REPORT /tmp/bex-m188-current-tree-2cc-proposal-v2/real10-and-negative-controls.json 48832e7a6f2965df4abc7d3139fd2c77781726c600df1c895bf75fb53b64103f CONTROLS 17 PROTECTED 96

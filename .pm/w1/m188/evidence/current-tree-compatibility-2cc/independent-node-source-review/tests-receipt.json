@@ -1,0 +1,31 @@
+{
+  "schema": "bex.m188-941-exact-native-retry-controls/v1",
+  "at": "2026-10-31T08:19:10.302038+00:00",
+  "commit": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "source_hashes": {
+    "fetch-python-tools.py": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+    "install.sh": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    "python-tools.json": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+    "fetch_python_tools_test.py": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+    "fetch_pgdg_key_test.py": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b"
+  },
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "/tmp/bex-m188-941-compatibility-25rhxfrw",
+    "-p",
+    "*_test.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 1.464,
+  "raw_log": {
+    "path": "/tmp/bex-m188-941-compatibility-25rhxfrw/tests.raw.log",
+    "sha256": "5971874899a13e8329250476e7592c62c4e5bb912a12e30a5bc41aacad6a21e9"
+  },
+  "scope": "Both entire new testfiles from941 executed against exact941copies; Python/curl/sleep controlled mocks only. No imagebuild/network/apt/runtime/security acceptance; no repo/guard/CI mutation."
+}

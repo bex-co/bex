@@ -1,0 +1,14 @@
+test_exhaustion_is_bounded_and_keeps_original_failure (fetch_pgdg_key_test.KeyTransferTests.test_exhaustion_is_bounded_and_keeps_original_failure) ... ok
+test_http_and_certificate_failures_stop_without_retry (fetch_pgdg_key_test.KeyTransferTests.test_http_and_certificate_failures_stop_without_retry) ... ok
+test_tls_transport_failure_retries_with_a_fresh_complete_output (fetch_pgdg_key_test.KeyTransferTests.test_tls_transport_failure_retries_with_a_fresh_complete_output) ... ok
+test_checksum_or_oversized_payload_never_retries_or_writes_a_wheel (fetch_python_tools_test.FetchTests.test_checksum_or_oversized_payload_never_retries_or_writes_a_wheel) ... ok
+test_exhausted_transport_attempts_raise_and_stop (fetch_python_tools_test.FetchTests.test_exhausted_transport_attempts_raise_and_stop) ... ok
+test_permanent_http_and_certificate_errors_do_not_retry (fetch_python_tools_test.FetchTests.test_permanent_http_and_certificate_errors_do_not_retry) ... ok
+test_timeout_and_partial_response_are_discarded_before_complete_retry (fetch_python_tools_test.FetchTests.test_timeout_and_partial_response_are_discarded_before_complete_retry) ... ok
+test_transient_http_error_gets_a_complete_retry (fetch_python_tools_test.FetchTests.test_transient_http_error_gets_a_complete_retry) ... ok
+test_verified_wheel_is_written_and_incompatible_metadata_is_refused (fetch_python_tools_test.FetchTests.test_verified_wheel_is_written_and_incompatible_metadata_is_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.531s
+
+OK

@@ -1,0 +1,16 @@
+diff --git a/.github/workflows/native-base-image.yml b/.github/workflows/native-base-image.yml
+index d83bd8790..a19410341 100644
+--- a/.github/workflows/native-base-image.yml
++++ b/.github/workflows/native-base-image.yml
+@@ -209,7 +209,10 @@ jobs:
+           mkdir "$work_dir/db"
+           # Finish both databases before starting any complete 20m image scan.
+           for database in --download-db-only --download-java-db-only; do
+-            TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s 21m trivy image "$database"
++            # JavaDB is almost 1GiB; keep its fetch outside the complete scan budget.
++            database_timeout=21m
++            if [ "$database" = --download-java-db-only ]; then database_timeout=30m; fi
++            TMPDIR="$work_dir/db" env -u TRIVY_OUTPUT timeout --kill-after=10s "$database_timeout" trivy image "$database"
+           done
+           for attempt in 1 2 3; do
+             require_space

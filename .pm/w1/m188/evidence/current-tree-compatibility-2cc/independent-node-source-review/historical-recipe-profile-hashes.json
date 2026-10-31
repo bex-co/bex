@@ -1,0 +1,215 @@
+{
+  "guard": "/tmp/bex-m188-prepare-adoption.py",
+  "guard_sha256": "2a8363b55421914c9a133594870fc859621ec185cc29a7f733629d4ef69e16c2",
+  "rows": [
+    {
+      "ref": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "5e89a6076905a91b4496fe36a476774c3f50585c",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "d94787bb4fb93751e485fe6d47946d82cc6da052",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "d95645e9f054238ec53a4932fac51560ffedd1f8",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "e47a2c6157339a3a786118866f28b4ee8b619774",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "d3622e1745ada843c84cbcb113ba7c5e305ccc2d8e4058f75c38d1f05f4ac0b8"
+      }
+    },
+    {
+      "ref": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+      "deploy/native-base/fetch-python-tools.py": {
+        "exists": true,
+        "sha256": "93a5325abd7b65bb34223b83bcce314869955ee3c9a12fb3e0a172ee43cb1ff6"
+      },
+      "deploy/native-base/install.sh": {
+        "exists": true,
+        "sha256": "fe880434bb8f428500be52cd626534f69c9ae089d162e3549a50a769b09e5462"
+      }
+    }
+  ]
+}

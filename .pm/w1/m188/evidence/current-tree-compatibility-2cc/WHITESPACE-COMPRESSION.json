@@ -1,0 +1,17 @@
+{
+  "schema": "bex.m188.archive-lossless-whitespace-selection/v1",
+  "records": [
+    {
+      "original_source": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff",
+      "raw_git_whitespace_diagnostic": "/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff:22: trailing whitespace.\n+ \n/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff:44: trailing whitespace.\n+ \n/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff:45: trailing whitespace.\n+ \n/tmp/bex-m188-941-compatibility-25rhxfrw/exact-941-vs-da0.diff:281: trailing whitespace.\n+ \n"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff",
+      "raw_git_whitespace_diagnostic": "/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff:22: trailing whitespace.\n+ \n/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff:23: trailing whitespace.\n+ \n/tmp/bex-m188-current-tree-2cc-proposal-v2/guard.diff:24: trailing whitespace.\n+ \n"
+    },
+    {
+      "original_source": "/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff",
+      "raw_git_whitespace_diagnostic": "/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff:22: trailing whitespace.\n+ \n/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff:23: trailing whitespace.\n+ \n/tmp/bex-m188-current-tree-2cc-proposal/guard-final.diff:24: trailing whitespace.\n+ \n"
+    }
+  ]
+}
