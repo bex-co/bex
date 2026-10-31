@@ -1,6 +1,6 @@
 # w4 · m169 — Blueprint by-id verbs resolve the Blueprint's own workspace
 
-**Worker:** worker4 **Goal:** a Blueprint id works like a service or env-group id: every by-id verb finds it in whichever of the caller's workspaces owns it, with no `ownerId` needed **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** a Blueprint id works like a service or env-group id: every by-id verb finds it in whichever of the caller's workspaces owns it, with no `ownerId` needed **Status:** done (2026-10-31: owned fixture Blueprint exercised by id with no ownerId on REST/GraphQL/MCP/dashboard; cleaned up)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 — **DONE** | Render parity across Blueprint by-id surfaces                  | 30m | w4/m169/t001, w4/m169/t002 |
 | t004 — **DONE** | Simplify changed code                                          | 20m | w4/m169/t003               |
 | t005 — **DONE** | Test coverage for shipped behavior                             | 45m | w4/m169/t003               |
-| t006 | Closeout                                                       | 15m | w4/m169/t005               |
+| t006 — **DONE** | Closeout                                                       | 15m | w4/m169/t005               |
 
 ## Definition of done
 
