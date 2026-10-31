@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-31T11:49:45.585108+00:00",
+  "effective_uid": 501,
+  "primary_gid": 20,
+  "groups": [
+    20,
+    12,
+    61,
+    79,
+    80,
+    81,
+    701,
+    33,
+    98,
+    100,
+    204,
+    250,
+    395,
+    398,
+    399,
+    400
+  ],
+  "cases": [
+    {
+      "case": "private-parent",
+      "owned_path": "/private/tmp/bex-w8-native-common-full-gates-20261031/go-tmp/bex-common-mode-probe-mf844tpn/data",
+      "uid": 501,
+      "gid": 0,
+      "device": 16777231,
+      "before_mode": "0o755",
+      "chmod_exit": "success",
+      "after_mode": "0o750"
+    },
+    {
+      "case": "native-user-temp",
+      "owned_path": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-common-mode-probe-r13lg0r9/data",
+      "uid": 501,
+      "gid": 20,
+      "device": 16777231,
+      "before_mode": "0o755",
+      "chmod_exit": "success",
+      "after_mode": "0o2750"
+    }
+  ],
+  "scope": "Only own empty directory chmod/setgid probes; removed exact two own temporary directories. No product/source or foreign metadata changes."
+}

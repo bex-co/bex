@@ -1,0 +1,4 @@
+=== RUN   TestRestoreReappliesArchivedOwnerAndMode
+--- PASS: TestRestoreReappliesArchivedOwnerAndMode (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/disksnapshot	3.512s

@@ -44,10 +44,11 @@ echo '0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76  /usr/sha
 printf 'deb [signed-by=/usr/share/keyrings/bex-pgdg.asc] %s %s-pgdg main\n' \
   "$pg_repo" "$VERSION_CODENAME" > /etc/apt/sources.list.d/bex-pgdg.list
 apt-get update
+# Trusted factory recipes may add distribution-matching runtime dependencies.
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools pandoc \
   pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip unzip \
-  gnupg2 nano vim libbrotli1 libbrotli-dev
+  gnupg2 nano vim libbrotli1 libbrotli-dev "$@"
 
 sh /tmp/bex-patch-system-brotli.sh
 

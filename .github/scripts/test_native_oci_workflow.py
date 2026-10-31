@@ -1,9 +1,7 @@
 """Execute real publisher shell with controlled tools; no network/crypto/Docker proof."""
-import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
@@ -225,53 +223,45 @@ class PublisherShellControls(unittest.TestCase):
 
 
 class PublisherInputControls(unittest.TestCase):
-    def test_actual_matrix_gate_republishes_helper_but_not_adoption_only_image(self):
-        push = WORKFLOW_TEXT.split("  push:\n", 1)[1].split("  workflow_dispatch:", 1)[0]
+    def test_only_common_foundation_is_automatically_published(self):
+        triggers = "\n" + WORKFLOW_TEXT.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+        self.assertNotIn("\n  push:", triggers)
+        self.assertNotIn("\n  schedule:", triggers)
+        self.assertIn("\n  workflow_dispatch:", triggers)
+        self.assertIn("\n  workflow_call:", triggers)
+        common = (ROOT / ".github/workflows/native-common-image.yml").read_text()
+        push = common.split("  push:\n", 1)[1].split("  workflow_dispatch:", 1)[0]
+        self.assertRegex(push, r'(?m)^      - "deploy/native-base/\*\*"$')
+        self.assertRegex(push, r'(?m)^      - "deploy/native-common/\*\*"$')
         self.assertRegex(push, r'(?m)^      - "\.github/scripts/native-oci-stage\.py"$')
+        self.assertNotIn("lego/operator/", push)
+        self.assertRegex(common, r"(?m)^    uses: \./\.github/workflows/native-base-image\.yml$")
+        self.assertRegex(common, r"(?m)^      runtime: common-bookworm$")
         self.assertRegex(WORKFLOW_TEXT, r"(?m)^          syft-version: v1\.55\.0$")
-        with tempfile.TemporaryDirectory(prefix="native-oci-publish-git-") as temporary:
+
+    def select(self, runtime):
+        with tempfile.TemporaryDirectory(prefix="native-oci-publish-input-") as temporary:
             root = Path(temporary)
-            env = {"PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"], "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_AUTHOR_NAME": "isolated-control", "GIT_AUTHOR_EMAIL": "isolated@example.invalid", "GIT_COMMITTER_NAME": "isolated-control", "GIT_COMMITTER_EMAIL": "isolated@example.invalid", "PYTHONDONTWRITEBYTECODE": "1"}
-            def git(*args):
-                return subprocess.check_output(["git", *args], cwd=root, env=env, stderr=subprocess.PIPE, text=True).strip()
-            for source in ("deploy/native-base/matrix.py", "lego/operator/internal/build/native.go", ".github/scripts/native-oci-stage.py", ".github/workflows/native-base-image.yml"):
-                target = root / source
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes((ROOT / source).read_bytes())
-            git("init", "-q")
-            git("add", ".")
-            git("-c", "commit.gpgsign=false", "commit", "-qm", "isolated baseline")
-            baseline = git("rev-parse", "HEAD")
-            helper = root / ".github/scripts/native-oci-stage.py"
-            helper.write_text(helper.read_text() + "\n# Isolated publisher input change.\n")
-            git("add", ".")
-            git("-c", "commit.gpgsign=false", "commit", "-qm", "isolated helper change")
-            helper_head = git("rev-parse", "HEAD")
-            matrix_shell = root / "actual-matrix.sh"
-            matrix_shell.write_text(run_block("id: matrix"))
-            runner = root / "runner"
-            runner.mkdir()
-            def matrix_result(before, head, suffix):
-                output = root / ("github-output-" + suffix)
-                process = subprocess.run(["/bin/bash", "-euo", "pipefail", str(matrix_shell)], cwd=root, env=dict(env, EVENT_NAME="push", TARGET_RUNTIME="", BEFORE=before, GITHUB_SHA=head, GITHUB_OUTPUT=str(output), RUNNER_TEMP=str(runner)), capture_output=True, text=True, timeout=20)
+            output = root / "github-output"
+            env = dict(os.environ, TARGET_RUNTIME=runtime, GITHUB_OUTPUT=str(output), PYTHONDONTWRITEBYTECODE="1")
+            process = subprocess.run(["/bin/bash", "-euo", "pipefail", "-c", run_block("id: matrix")], cwd=ROOT, env=env, capture_output=True, text=True, timeout=20)
+            records = dict(line.split("=", 1) for line in output.read_text().splitlines()) if output.exists() else {}
+            return process, records
+
+    def test_actual_publisher_selects_only_common_or_one_explicit_legacy_runtime(self):
+        for runtime in ("common-bookworm", "node-24-bookworm"):
+            with self.subTest(runtime=runtime):
+                process, records = self.select(runtime)
                 self.assertEqual(process.returncode, 0, process.stderr)
-                return dict(line.split("=", 1) for line in output.read_text().splitlines())
-            changed = matrix_result(baseline, helper_head, "helper")
-            self.assertEqual(changed["publish"], "true")
-            native = root / "lego/operator/internal/build/native.go"
-            source = native.read_text()
-            region = source.split("var nativeToolchains =", 1)[1].split("// nativeBun", 1)[0]
-            row = re.search(r'\{\s*line:\s*"[^"\n]+"[^{}]*\}', region).group(0)
-            image = re.search(r'\bimage:\s*"([^"]+)"', row).group(1)
-            replacement = row.replace('image: "' + image + '"', 'image: "' + REPOSITORY + '@sha256:' + 'f' * 64 + '"')
-            if not re.search(r'\bupstream:', row):
-                replacement = replacement.replace('image: "', 'upstream: "' + image + '", image: "', 1)
-            native.write_text(source.replace(row, replacement, 1))
-            git("add", "lego/operator/internal/build/native.go")
-            git("-c", "commit.gpgsign=false", "commit", "-qm", "isolated adoption preserves upstream")
-            adoption = matrix_result(helper_head, git("rev-parse", "HEAD"), "adoption")
-            self.assertEqual(adoption["publish"], "false")
-            self.assertEqual(json.loads(changed["images"]), json.loads(adoption["images"]))
+                self.assertEqual([row["name"] for row in json.loads(records["images"])["include"]], [runtime])
+                self.assertEqual(records["publish"], "true")
+
+    def test_empty_or_unknown_manual_request_cannot_launch_a_full_c_matrix(self):
+        for runtime in ("", "unknown-line"):
+            with self.subTest(runtime=runtime):
+                process, records = self.select(runtime)
+                self.assertNotEqual(process.returncode, 0)
+                self.assertNotIn("images", records)
 
 
 if __name__ == "__main__":

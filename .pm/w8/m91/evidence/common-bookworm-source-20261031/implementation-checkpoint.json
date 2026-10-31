@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-31T11:26:40.122791+00:00",
+  "git_head": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+  "files": 19,
+  "bytes": 152587,
+  "snapshot": "/private/tmp/bex-w8-native-common-source-20261031/implementation-source",
+  "production_common_pin": "empty",
+  "production_C_catalog": "empty",
+  "checks": [
+    {
+      "command": "GOMAXPROCS=2 ./bin/golangci-lint run ./internal/build/... ./internal/registry/... ./cmd/native-resolve/...",
+      "cwd": "lego/operator",
+      "exit": 0,
+      "result": "0 issues"
+    },
+    {
+      "command": "GOMAXPROCS=2 go test -p 1 ./internal/build ./internal/registry ./cmd/native-resolve -count=1",
+      "cwd": "lego/operator",
+      "exit": 0,
+      "result": "all3 packages PASS; Common6 subcases+metadata failure and existing native tests"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s deploy/native-common -p '*_test.py'",
+      "exit": 0,
+      "tests": 4
+    },
+    {
+      "command": "python3 -B -m unittest discover -s deploy/native-base -p '*_test.py'",
+      "exit": 0,
+      "tests": 14
+    },
+    {
+      "command": "python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'",
+      "exit": 0,
+      "tests": 34
+    },
+    {
+      "command": "bash scripts/build-toolchain-freshness.test.sh",
+      "exit": 0
+    },
+    {
+      "command": "python3 scripts/lib/toolchain-freshness.py validate",
+      "exit": 0
+    },
+    {
+      "command": "bash scripts/github-actions-validate.sh",
+      "exit": 0
+    },
+    {
+      "command": "actionlint -config-file <existing private pool-label config> -oneline .github/workflows/native-base-image.yml .github/workflows/native-common-image.yml",
+      "exit": 0
+    },
+    {
+      "command": "git diff --check -- <owned tracked files>",
+      "exit": 0
+    }
+  ],
+  "limits": [
+    "Source/unit checkpoint only, not a published/common/generated-image approval.",
+    "No Docker build/container/fixture/CI mutation or production/catalog adoption.",
+    "No original frozen fixture program/data/command changes.",
+    "The default .8 real probe, original Python3.13 replay, Node24/static cases and two-architecture proofs remain UNEXECUTED.",
+    "Legacy Python/Ruby compatible closures and exact Bookworm OTP/Elixir/rebar qualification remain required before any production common pin.",
+    "New common reusable-workflow signing identity must bind actual published caller/source; historical C approvals do not approve the common artifact.",
+    "Common Python integration explicitly retains untouched canonical recipe plus executed test-wheel COPY/pip-config overlay and input SHA/size; no production fixture dependencies."
+  ],
+  "free_bytes_at_checkpoint": 4540563456,
+  "metadata_proof": "/private/tmp/bex-w8-native-common-source-20261031/upstream-metadata/receipt.json"
+}

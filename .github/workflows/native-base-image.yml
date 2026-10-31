@@ -1,21 +1,19 @@
 name: native base images (build + verify)
 
-# Publishes immutable candidates. The operator adopts only reviewed digests
-# in a subsequent commit, per ADR060 D7.
+# Shared publication gates. The user selected one common Bookworm foundation.
+# Existing per-line requests may finish through explicit singleton dispatches;
+# changing a runtime or recipe must never launch another automatic C matrix.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "deploy/native-base/**"
-      - ".github/workflows/native-base-image.yml"
-      - ".github/scripts/native-oci-stage.py"
-      - ".github/scripts/test_native_oci_*.py"
-      - "lego/operator/internal/build/native.go"
   workflow_dispatch:
     inputs:
       runtime:
-        description: "Optional reviewed matrix name (for example node-14-bullseye); empty publishes all"
-        required: false
+        description: "One existing reviewed runtime to finish, or common-bookworm; never an empty/full C matrix"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      runtime:
+        required: true
         type: string
 
 permissions:
@@ -41,14 +39,15 @@ jobs:
         run: |
           python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
           python3 -B -m unittest discover -s deploy/native-base -p '*_test.py'
+          python3 -B -m unittest discover -s deploy/native-common -p '*_test.py'
       - id: matrix
         env:
-          BEFORE: ${{ github.event.before }}
-          EVENT_NAME: ${{ github.event_name }}
           TARGET_RUNTIME: ${{ inputs.runtime }}
         run: |
-          images=$(python3 deploy/native-base/matrix.py)
-          if [ -n "$TARGET_RUNTIME" ]; then
+          if [ "$TARGET_RUNTIME" = common-bookworm ]; then
+            images=$(python3 deploy/native-common/matrix.py)
+          else
+            images=$(python3 deploy/native-base/matrix.py)
             images=$(IMAGES="$images" python3 - <<'PY'
           import json, os
           matrix = json.loads(os.environ['IMAGES'])
@@ -60,17 +59,7 @@ jobs:
             )
           fi
           echo "images=$images" >> "$GITHUB_OUTPUT"
-          publish=true
-          if [ "$EVENT_NAME" = push ] && [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then
-            if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-              git fetch --no-tags --depth=1 origin "$BEFORE"
-            fi
-            if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- deploy/native-base .github/workflows/native-base-image.yml .github/scripts/native-oci-stage.py; then
-              git show "$BEFORE:lego/operator/internal/build/native.go" > "$RUNNER_TEMP/previous-native.go"
-              publish=$(python3 deploy/native-base/matrix.py --changed-from "$RUNNER_TEMP/previous-native.go")
-            fi
-          fi
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
   build:
     needs: matrix
@@ -107,6 +96,7 @@ jobs:
           done
       - name: select a reviewed recovery artifact when its recipe is unchanged
         id: recovery
+        if: matrix.name != 'common-bookworm'
         env:
           MATRIX_NAME: ${{ matrix.name }}
           BASE_IMAGE: ${{ matrix.base }}
@@ -141,7 +131,8 @@ jobs:
         if: steps.recovery.outputs.digest == ''
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
-          context: deploy/native-base
+          context: ${{ matrix.name == 'common-bookworm' && 'deploy' || 'deploy/native-base' }}
+          file: ${{ matrix.name == 'common-bookworm' && 'deploy/native-common/Dockerfile' || 'deploy/native-base/Dockerfile' }}
           platforms: linux/amd64,linux/arm64
           push: true
           provenance: mode=max

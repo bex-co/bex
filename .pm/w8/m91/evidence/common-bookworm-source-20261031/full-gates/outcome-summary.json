@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-31T12:06:03.653346+00:00",
+  "source_files": 19,
+  "source_inputs_changed": [],
+  "make_test": {
+    "status": "PASS",
+    "actual_exit": 0,
+    "seconds": 243.8232,
+    "log": "attempt2/make-test.log"
+  },
+  "make_lint": {
+    "status": "CAPACITY_STOP_NOT_COMPLETE",
+    "actual_exit": -15,
+    "log": "attempt2/make-lint.log",
+    "scope": "One0issues line does not prove all4modules or deadcode."
+  },
+  "attempts": [
+    {
+      "receipt": "actual-gates.json",
+      "status": "gate-failed",
+      "reason": "Own private-temp wheel-group filesystem semantics; original unchanged setgid test failed; focused native user-temp test passed."
+    },
+    {
+      "receipt": "attempt2/actual-gates.json",
+      "status": "capacity-stop",
+      "reason": "Proactive physical-space floor stopped only owned lint process group; full tests PASS and all19 before/after hashes identical."
+    }
+  ],
+  "active_resource_after_stop": "Own process group absent, own compiler-temp subtree removed with preserved cleanup receipt; no foreign caches/images/payloads touched.",
+  "current_free_bytes": 3553947648,
+  "common_pin": "empty",
+  "C_catalog": "empty",
+  "actual_common_image_proof": "UNEXECUTED",
+  "latest_capacity_inspection": "attempt1-compiler-temp-inspection.json",
+  "source_shipment": "Ready for root source review/disposition: full tests and scoped lint passed; full lint remains honestly capacity-limited and incomplete. Full CI gates still required before deployment; empty pins prevent adoption."
+}
