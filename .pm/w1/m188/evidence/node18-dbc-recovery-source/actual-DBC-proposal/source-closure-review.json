@@ -1,0 +1,313 @@
+{
+  "schema": "bex.m188.INACTIVE-literalDBC-Node18-only-source-closure/v1",
+  "at": "2026-10-31T09:16:14.008416+00:00",
+  "literal_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "proposed_roles": {
+    "producer": [
+      "node-18-bookworm"
+    ],
+    "verification": [
+      "node-18-bookworm"
+    ]
+  },
+  "canonical_artifact_source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "current_recipe_anchor": "94165237dbe63f997b0119ce70ad243da74468fa",
+  "current_workflow_anchor": "2cc8723df139bc4684d8d2a4d1eebc0c9dca004c",
+  "input_manifest": [
+    {
+      "path": ".github/native-base-recovery.json",
+      "bytes": 4318,
+      "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": ".github/scripts/native-oci-stage.py",
+      "bytes": 18041,
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": ".github/scripts/test_native_oci_stage.py",
+      "bytes": 18679,
+      "sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "bytes": 17915,
+      "sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 16530,
+      "sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/Dockerfile",
+      "bytes": 2688,
+      "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/README.md",
+      "bytes": 10960,
+      "sha256": "cde67144ba93348e9edf9402716e9e29b3fbc335fe34043332911185f3660841",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/bex-native-python-tools",
+      "bytes": 301,
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/check-brotli.py",
+      "bytes": 4029,
+      "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/check-primary-python.py",
+      "bytes": 5485,
+      "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/check-tools.py",
+      "bytes": 5099,
+      "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/check.Dockerfile",
+      "bytes": 2210,
+      "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/fetch-python-tools.py",
+      "bytes": 2686,
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/fetch_pgdg_key_test.py",
+      "bytes": 2421,
+      "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/fetch_python_tools_test.py",
+      "bytes": 5558,
+      "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/install-python-tools.py",
+      "bytes": 2281,
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/install.sh",
+      "bytes": 2433,
+      "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/matrix.py",
+      "bytes": 2099,
+      "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/matrix_test.py",
+      "bytes": 2772,
+      "sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/node-brotli/README.md",
+      "bytes": 3519,
+      "sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/node-brotli/check.js",
+      "bytes": 1705,
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 3923,
+      "sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/package-lock.json",
+      "bytes": 57293,
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/package.json",
+      "bytes": 162,
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/patch-system-brotli.sh",
+      "bytes": 2355,
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/python-tools.json",
+      "bytes": 4110,
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/testdata/archive.dump.b64",
+      "bytes": 2679,
+      "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/testdata/archive.sql",
+      "bytes": 161,
+      "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/testdata/rows.txt",
+      "bytes": 33,
+      "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/tsc",
+      "bytes": 111,
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "deploy/native-base/webpack",
+      "bytes": 115,
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativebases.go",
+      "bytes": 8063,
+      "sha256": "9c7644f0c2f60399dd6eaad93bda2006c6e0f59c6b78dcc17ea1a347da6cf6b3",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "bytes": 18138,
+      "sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion.go",
+      "bytes": 28559,
+      "sha256": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "lego/operator/internal/build/toolchain-freshness.json",
+      "bytes": 25117,
+      "sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+      "equal_current_worktree_2cc_dbc": true
+    },
+    {
+      "path": "scripts/lib/toolchain-freshness.py",
+      "bytes": 19118,
+      "sha256": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+      "equal_current_worktree_2cc_dbc": true
+    }
+  ],
+  "official_matrix_count": 27,
+  "inventory_count": 44,
+  "selected_normal_build": {
+    "name": "node-18-bookworm",
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783"
+  },
+  "selected_build_context": "deploy/native-base",
+  "selected_Dockerfile": "deploy/native-base/Dockerfile",
+  "normal_build_required_not_old_7dd_recovery": true,
+  "catalog_unchanged": "Existing old7dd source-bound authorization cannot pass current recipe diff; normal build must export a new index. All original/fresh runtime, offline tools, Bullseye, full scans,5 signature/predicate checks remain required.",
+  "unrelated_nonPM_paths_between_2cc_and_9fe": [
+    "deploy/hcloud-csi/bounded-ext4.patch",
+    "docs/ADR049-render-yaml-parity.md",
+    "docs/ADR078-github-workspace-connections.md",
+    "lego/backend/AGENTS.md",
+    "lego/backend/internal/api/datastore_region_filters_test.go",
+    "lego/backend/internal/api/region_policy_test.go",
+    "lego/backend/internal/api/resource_metadata_test.go",
+    "lego/backend/internal/apps/blueprint_generate.go",
+    "lego/backend/internal/apps/blueprint_generate_test.go",
+    "lego/backend/internal/apps/blueprint_region_test.go",
+    "lego/backend/internal/apps/mcp.go",
+    "lego/backend/internal/apps/metadata_rest_test.go",
+    "lego/backend/internal/apps/render.go",
+    "lego/backend/internal/apps/service.go",
+    "lego/backend/internal/apps/webhook.go",
+    "lego/backend/internal/apps/webhook_replay_test.go",
+    "lego/backend/internal/apps/webhook_scope_test.go",
+    "lego/backend/internal/keyvalue/mcp.go",
+    "lego/backend/internal/keyvalue/metadata_cross_surface_test.go",
+    "lego/backend/internal/keyvalue/metadata_rest_test.go",
+    "lego/backend/internal/keyvalue/region_test.go",
+    "lego/backend/internal/keyvalue/service.go",
+    "lego/backend/internal/postgres/mcp.go",
+    "lego/backend/internal/postgres/metadata_cross_surface_test.go",
+    "lego/backend/internal/postgres/metadata_rest_test.go",
+    "lego/backend/internal/postgres/region_test.go",
+    "lego/backend/internal/postgres/service.go",
+    "lego/backend/internal/resourcemeta/metadata.go",
+    "lego/backend/internal/resourcemeta/metadata_test.go",
+    "lego/backend/internal/store/gitwebhook.go",
+    "lego/backend/internal/store/gitwebhook_pg_test.go"
+  ],
+  "unrelated_path_scope": "Backend regionalias/webhook/docs/AGENTS and storage CSI patch are outside this publisher input closure. No whole-repository byte/behavior equivalence or unrelated-code correctness review claimed.",
+  "changed_original_functions": [
+    "verify_v2_source_binding",
+    "main"
+  ],
+  "all_other_original_functions_byte_identical": true,
+  "producer_verifier_strict_recipe_check_byte_identical": true,
+  "current_profile_and_writer_bytes_unchanged": true,
+  "historical49ee_producer_only_Node18_and_verifier_semantics_unchanged": true,
+  "new941_2cc_or435_artifact_roles": [],
+  "active_guard_or_live_aggregate_changed": false,
+  "not_activated": true,
+  "all37_current_2cc_dbc_exact_bytes": true,
+  "new_DBC_artifact_proof_claimed": false,
+  "current_worktree_head": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "source_object_is_actual_run_binding_not_worktree_HEAD": true,
+  "actual_run_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+    "sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+    "run_id": 41187749759,
+    "actual_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "event": "workflow_dispatch",
+    "attempt": 1,
+    "scope": "Immutable workflow run/source binding; native job execution/artifact success not yet claimed by this review"
+  },
+  "source_and_normal_selector_prePOST_proof": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61"
+  },
+  "unused_9fe_proposal_never_active": true
+}

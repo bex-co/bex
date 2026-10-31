@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-31T09:14:07.495985+00:00",
+  "finished_at": "2026-10-31T09:14:09.060509+00:00",
+  "endpoint": "repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?event=workflow_dispatch&branch=main&per_page=100",
+  "exit_code": 0,
+  "stderr": "",
+  "raw_sha256": "f77a8646706795643d7ef357e2c54825c62605752a5cb115b2b9376da1d5967e"
+}

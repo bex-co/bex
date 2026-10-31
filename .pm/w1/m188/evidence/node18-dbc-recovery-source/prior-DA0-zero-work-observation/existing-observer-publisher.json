@@ -1,0 +1,59 @@
+{
+  "run_id": 41159591513,
+  "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+  "run_attempt": 1,
+  "status": "completed",
+  "conclusion": "cancelled",
+  "run_metadata_observed_at": "2026-10-31T08:54:50.995035+00:00",
+  "observed_at": "2026-10-31T08:52:27.335581+00:00",
+  "jobs": [
+    {
+      "id": 124413952693,
+      "run_attempt": 1,
+      "tag": null,
+      "name": "matrix",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-31T02:21:03Z",
+      "completed_at": "2026-10-31T02:23:04Z",
+      "active_steps": [],
+      "failed_steps": [],
+      "source_build_completed": false,
+      "dual_arch_runtime_gate_passed": false,
+      "immutable_job_snapshot": {
+        "file": "/tmp/bex-m188-publisher-job-snapshots/124413952693-ec9cac253d799ea3e0aa31d6191dbf5fb379758fa56fed25372800cd7e5d9063.json",
+        "sha256": "ec9cac253d799ea3e0aa31d6191dbf5fb379758fa56fed25372800cd7e5d9063",
+        "retrieved_at": "2026-10-31T08:52:27.335581+00:00",
+        "job_id": 124413952693,
+        "run_id": 41159591513,
+        "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+        "run_attempt": 1
+      }
+    },
+    {
+      "id": 124414471403,
+      "run_attempt": 1,
+      "tag": "node-18-bookworm",
+      "name": "build (node-18-bookworm, node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d9...",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-31T02:23:05Z",
+      "completed_at": "2026-10-31T08:51:55Z",
+      "active_steps": [],
+      "failed_steps": [],
+      "source_build_completed": false,
+      "dual_arch_runtime_gate_passed": false,
+      "immutable_job_snapshot": {
+        "file": "/tmp/bex-m188-publisher-job-snapshots/124414471403-32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7.json",
+        "sha256": "32a058a00adacd7ee2e66b659aeec4a6fae90e7c31db0b3e5d157439528d9cc7",
+        "retrieved_at": "2026-10-31T08:52:27.335581+00:00",
+        "job_id": 124414471403,
+        "run_id": 41159591513,
+        "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+        "run_attempt": 1
+      }
+    }
+  ],
+  "observation_stale": false,
+  "observation_reused_immutable": true
+}

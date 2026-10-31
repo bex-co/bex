@@ -1,0 +1,22 @@
+{
+  "schema": "bex.m188.exact-1690-DBC-role-delta-review/v1",
+  "proposal_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "diff_sha256": "c10847227891760e554ff5fe08b1ad91244e328eb4995f7d1e8774c0ec67bc47",
+  "reviewed_template_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+  "exact_only_three_literal_source_substitutions": true,
+  "old_unused9fe_absent": true,
+  "literal_new_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "ast_parse_passed": true,
+  "producer_and_verifier_restricted_to_node18": true,
+  "artifact_role_profile_source_separation_unchanged": true,
+  "crypto_recipe_pair_currenttree_ancestry_writer_bytes_unchanged_from_reviewed704": true,
+  "proposed_Q": {
+    "path": "/tmp/bex-m188-dbc-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "baseline_live_snapshot_path": "/tmp/bex-m188-published-acceptance.json",
+    "baseline_live_snapshot_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+    "only_accepted_sources_add_DBC": true,
+    "9fe_absent": true,
+    "all_ten_verified_records_and_statuses_unchanged": true
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "helper_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+  "controls": [
+    {
+      "case": "37 immutableDBC/current-worktree hashes and actual normal selector zero-output",
+      "pass": true
+    },
+    {
+      "case": "execution eligibility does not grant artifact source admission",
+      "pass": true
+    },
+    {
+      "case": "active Node18 prevents duplicate",
+      "pass": true
+    },
+    {
+      "case": "terminal Node18 inside active full batch is not active duplicate",
+      "pass": true
+    },
+    {
+      "case": "unexpanded matrix input risk refuses dispatch",
+      "pass": true
+    },
+    {
+      "case": "unexpected remote head aborts with zeroPOST before source work",
+      "pass": true
+    },
+    {
+      "case": "default mode zero remote calls",
+      "pass": true
+    },
+    {
+      "case": "proposed authorizationfalse cannot execute or create action output",
+      "pass": true
+    }
+  ],
+  "remote_calls": 0,
+  "POSTs": 0
+}

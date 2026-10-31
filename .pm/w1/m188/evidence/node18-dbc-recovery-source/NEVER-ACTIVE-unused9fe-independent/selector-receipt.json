@@ -1,0 +1,40 @@
+{
+  "schema": "bex.m188.literal9fe-normal-node18-selector/v1",
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/tmp/bex-m188-9fe-source-closure-7613x0c7/actual-recovery-selector.py"
+  ],
+  "script_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+  "isolated_git_head": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "source_git_read_only_object_alternates": true,
+  "repository_remote_defined": false,
+  "producer_object_prechecked_local": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+  "input_catalog_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+  "literal_old_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+  "exit_code": 0,
+  "elapsed_seconds": 0.078,
+  "stdout": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.stdout",
+    "sha256": "c07d01500a71d80858d49dfa3f58f4e39e80112e5d52ffb779bffcc98baaaff3",
+    "text": "Recovery recipe changed; building from source\n"
+  },
+  "stderr": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "github_output": {
+    "file": "/tmp/bex-m188-9fe-source-closure-7613x0c7/selector.GITHUB_OUTPUT",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "recipe_changed_paths_from49ee": [
+    "deploy/native-base/README.md",
+    "deploy/native-base/fetch-python-tools.py",
+    "deploy/native-base/fetch_pgdg_key_test.py",
+    "deploy/native-base/fetch_python_tools_test.py",
+    "deploy/native-base/install.sh"
+  ],
+  "actual_build_condition": "steps.recovery.outputs.digest == empty, so normal build; build revision=$github.sha literal9fe",
+  "scope": "Actual exact embedded selector only; local isolated Git metadata reads. No network, image, build, scan/signing, workflow dispatch, source mutation or active source admission."
+}

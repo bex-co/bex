@@ -1,0 +1,205 @@
+{
+  "helper": {
+    "file": "/tmp/bex-m188-dispatch-node18-dbc.py",
+    "sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744"
+  },
+  "execution_eligibility": {
+    "file": "/tmp/bex-m188-dbc-root-execution-source-eligibility.json",
+    "sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a"
+  },
+  "expected_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "runtime": "node-18-bookworm",
+  "local_37_inputs_and_current_worktree_checked": 37,
+  "local_HEAD_need_not_equal_expected_source": true,
+  "normal_selector_proof": {
+    "at": "2026-10-31T09:10:35.916233+00:00",
+    "literal_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+    "runtime": "node-18-bookworm",
+    "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+    "root_execution_eligibility_sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+    "artifact_source_admission_granted": false,
+    "publisher_profile": {
+      ".github/native-base-recovery.json": {
+        "sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+        "bytes": 4318
+      },
+      ".github/scripts/native-oci-stage.py": {
+        "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+        "bytes": 18041
+      },
+      ".github/scripts/test_native_oci_stage.py": {
+        "sha256": "d1e7f01511863391f3c8a2bcc8c1f80e42c30fe3f04fd1dc84f598e2acd69803",
+        "bytes": 18679
+      },
+      ".github/scripts/test_native_oci_workflow.py": {
+        "sha256": "6538a7ba0273c65593933f0d9d34acdf0f788380c4f09ed620abf1f1519e37ad",
+        "bytes": 17915
+      },
+      ".github/workflows/native-base-image.yml": {
+        "sha256": "b0e11ada0c7f07ecd8964029f164d1f7c284063255f80413214bc94fde268370",
+        "bytes": 16530
+      },
+      "deploy/native-base/Dockerfile": {
+        "sha256": "edd59a2ddd7f3b7e44d12176482c8d2d5d06205f9932d4399d4bc02178430a11",
+        "bytes": 2688
+      },
+      "deploy/native-base/README.md": {
+        "sha256": "cde67144ba93348e9edf9402716e9e29b3fbc335fe34043332911185f3660841",
+        "bytes": 10960
+      },
+      "deploy/native-base/bex-native-python-tools": {
+        "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+        "bytes": 301
+      },
+      "deploy/native-base/check-brotli.py": {
+        "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+        "bytes": 4029
+      },
+      "deploy/native-base/check-primary-python.py": {
+        "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+        "bytes": 5485
+      },
+      "deploy/native-base/check-tools.py": {
+        "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+        "bytes": 5099
+      },
+      "deploy/native-base/check.Dockerfile": {
+        "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+        "bytes": 2210
+      },
+      "deploy/native-base/fetch-python-tools.py": {
+        "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+        "bytes": 2686
+      },
+      "deploy/native-base/fetch_pgdg_key_test.py": {
+        "sha256": "562af6c74af5e071e47f02e035b8db0ff6f168d2389e69772f47f4c359e8686b",
+        "bytes": 2421
+      },
+      "deploy/native-base/fetch_python_tools_test.py": {
+        "sha256": "f27a4bbd7491a85b54c7eaa61c9594c4ca6de5a5247688af103fff4c9c17e230",
+        "bytes": 5558
+      },
+      "deploy/native-base/install-python-tools.py": {
+        "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+        "bytes": 2281
+      },
+      "deploy/native-base/install.sh": {
+        "sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+        "bytes": 2433
+      },
+      "deploy/native-base/matrix.py": {
+        "sha256": "ad83d94a0a7c565cfd8d0de3870dee4776f4b880ff7bc60c351219872c61ac06",
+        "bytes": 2099
+      },
+      "deploy/native-base/matrix_test.py": {
+        "sha256": "357458c96255de971a4b8136bb6cfd75a8ee2bd3bcf27ff5baf4f55bd810cc18",
+        "bytes": 2772
+      },
+      "deploy/native-base/node-brotli/README.md": {
+        "sha256": "b37da28020daef7a5da10cc0c2a406b5ff2324441f62a8e710c1714700e95cbb",
+        "bytes": 3519
+      },
+      "deploy/native-base/node-brotli/check.js": {
+        "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+        "bytes": 1705
+      },
+      "deploy/native-base/node-brotli/patch.sh": {
+        "sha256": "d614c1ecb0c1c6116f4905e2f2de0dcfcfd666edf5124f01b12cf2aacd21e717",
+        "bytes": 3923
+      },
+      "deploy/native-base/package-lock.json": {
+        "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+        "bytes": 57293
+      },
+      "deploy/native-base/package.json": {
+        "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+        "bytes": 162
+      },
+      "deploy/native-base/patch-system-brotli.sh": {
+        "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+        "bytes": 2355
+      },
+      "deploy/native-base/python-tools.json": {
+        "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+        "bytes": 4110
+      },
+      "deploy/native-base/testdata/archive.dump.b64": {
+        "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+        "bytes": 2679
+      },
+      "deploy/native-base/testdata/archive.sql": {
+        "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+        "bytes": 161
+      },
+      "deploy/native-base/testdata/rows.txt": {
+        "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+        "bytes": 33
+      },
+      "deploy/native-base/tsc": {
+        "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+        "bytes": 111
+      },
+      "deploy/native-base/webpack": {
+        "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+        "bytes": 115
+      },
+      "lego/operator/internal/build/native.go": {
+        "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+        "bytes": 25979
+      },
+      "lego/operator/internal/build/nativebases.go": {
+        "sha256": "9c7644f0c2f60399dd6eaad93bda2006c6e0f59c6b78dcc17ea1a347da6cf6b3",
+        "bytes": 8063
+      },
+      "lego/operator/internal/build/nativeresolve.go": {
+        "sha256": "6ca5d2bf04bd74611b7585bbcca2a2385f828f1e8c3b8f65ad466eee809425d3",
+        "bytes": 18138
+      },
+      "lego/operator/internal/build/nativeversion.go": {
+        "sha256": "70816ec45450abc04fa42b8a58cf1b8f07ae5c31b35c13332bc7fc66b349b825",
+        "bytes": 28559
+      },
+      "lego/operator/internal/build/toolchain-freshness.json": {
+        "sha256": "185c75dcfd3f965af436254989f57212c4bf0ad711f0695536cefbe3fd6ddb95",
+        "bytes": 25117
+      },
+      "scripts/lib/toolchain-freshness.py": {
+        "sha256": "9fea3f1353d2ad3b79d577730e4b09a51dfb7ee3150bec02f8bacc3ff437484b",
+        "bytes": 19118
+      }
+    },
+    "install_sha256": "3a83ad0af37163a78a68f92d0e281796866d475353ab514f928c713cf6951eb3",
+    "catalog_sha256": "67fc5ddb290f0cdf68cc9ebeba366a1d1020bf52ca1604482ba8538d52ba583e",
+    "historical_recovery_entry": {
+      "base": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:7dd35105c8ff5f35a93379144bf824b1e8edcf3a9d5d28eedd3a875cb526e0fb",
+      "producer": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "run_id": 41026904247,
+      "job_id": 123967210277,
+      "evidence": "https://github.com/bex-co/bex/actions/runs/41026904247/job/123967210277",
+      "reason": "Authenticated main producer built this exact index and passed both architecture offline/runtime/Bullseye companion portability gates for Node18.20.8. The obsolete old-protocol batch was intentionally stopped after export and both-arch gates; amd64 scan was cancelled, arm64 scan and signing/attestations were skipped. Reuse only this immutable same-recipe/base artifact and rerun all current probes, both full scans, signatures and attestations.",
+      "remove_after": "Remove this authorization after the verified discovery tag is published; this data-only path intentionally does not trigger another full publication."
+    },
+    "producer_to_dispatch_recipe_changes": [
+      "deploy/native-base/README.md",
+      "deploy/native-base/fetch-python-tools.py",
+      "deploy/native-base/fetch_pgdg_key_test.py",
+      "deploy/native-base/fetch_python_tools_test.py",
+      "deploy/native-base/install.sh"
+    ],
+    "selector_result": {
+      "exit_code": 0,
+      "recovery_output_bytes": 0,
+      "stdout": "Recovery recipe changed; building from source\n",
+      "stderr": "",
+      "actual_immutable_selector_sha256": "84b153e9989f6b7d6273ceb68bc01ce036cda94be8a5b66ae7d1477645160901",
+      "isolated_git_objects_from_shared_repository_read_only": true
+    },
+    "normal_build_required": true,
+    "recovery_catalog_edit": false
+  },
+  "remote_calls_during_preparation": 0,
+  "POSTs": 0,
+  "artifact_source_admitted": false,
+  "binding_plan": "After one authorized POST, discover new workflow_dispatch/main run(s) without filtering expected SHA, identify unique actualNode18 job/attempt1, freeze literalactualhead/source. Preserve raced-source work and hold all proof acceptance for root actualsource review; no aliases/repeatedPOST."
+}

@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-31T09:25:12.443978+00:00",
+  "run_id": 41187749759,
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "run_attempt": 1,
+  "native_job_id": 124498652791,
+  "runtime": "node-18-bookworm",
+  "actual_native_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-native-binding.json",
+    "sha256": "bf749241c08984ee4b3c4f455f1437a92762b165b8497a6a3b3bcb4d8e358df2",
+    "bytes": 2001
+  },
+  "historical_pending_binding_bytes_preserved": true,
+  "source_approval": {
+    "file": "/tmp/bex-m188-dbc-root-source-admission.json",
+    "sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2",
+    "bytes": 2636
+  },
+  "actual_source_activation": {
+    "file": "/tmp/bex-m188-dbc-source-policy-activation.json",
+    "sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7",
+    "bytes": 2082
+  },
+  "producer_scope": [
+    "node-18-bookworm"
+  ],
+  "verification_scope": [
+    "node-18-bookworm"
+  ],
+  "source_store_before_sha256": "e2ec7b2ca9836a9220c1a719b85afcf4a5febfee6d3db6647d1a73d2a735b472",
+  "source_store_after_sha256": "69082a6b977b4b960a5f89c6e3f8969ae0cc8f4878449be6b8c3d770d3efb8c5",
+  "active_guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+  "live_receipt_context_sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+  "combined_context_sha256": "7041b3b963ea2a0743fd84f46b3b7e0c8c4a2b562e5fa687dc6c95dbadd2aa78",
+  "passive_reader": {
+    "file": "/tmp/bex-m188-read-core-deltas-v4.py",
+    "sha256": "8b4c606eb6508d2a99236b32182db73aadec45343d9d598803a4a885f3098cd7",
+    "bytes": 2109
+  },
+  "isolated_metadata_observer": {
+    "file": "/tmp/bex-m188-node18-dbc-metadata-observer/watch-node18-dbc.py",
+    "sha256": "cd5cc59c2908bbf21ed5038a21b8191eac177edf3baf47d2c73a7aba2a687e96",
+    "bytes": 5097
+  },
+  "mutable_observer_status": "/tmp/bex-m188-node18-dbc-metadata-observer/node18-metadata-status.json",
+  "legacy_DA0_cancel_history_preserved": true,
+  "no_source_guard_or_aggregate_write_by_this_agent": true,
+  "artifact_acceptance_performed": false,
+  "CI_mutations_by_this_agent": 0
+}

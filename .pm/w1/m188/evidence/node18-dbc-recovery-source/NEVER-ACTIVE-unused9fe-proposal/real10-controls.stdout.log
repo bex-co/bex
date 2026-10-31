@@ -1,0 +1,18 @@
+node-14-bullseye REAL FULL PASS
+python-3.7-bullseye REAL FULL PASS
+node-16-bookworm REAL FULL PASS
+python-3.8-bookworm REAL FULL PASS
+python-3.10-bookworm REAL FULL PASS
+python-3.9-bookworm REAL FULL PASS
+ruby-3.0-bullseye REAL FULL PASS
+ruby-3.1-bookworm REAL FULL PASS
+ruby-3.2-bookworm REAL FULL PASS
+node-20-bookworm REAL FULL PASS
+CONTROL 9fe_producer_wrong_runtime REJECTED
+CONTROL 9fe_verification_wrong_runtime REJECTED
+CONTROL old49ee_producer_wrong_runtime_still_refused REJECTED
+CONTROL BF_producer_to_9fe_verifier_recipe_crossing REJECTED
+CONTROL 9fe_producer_to_BF_verifier_recipe_crossing REJECTED
+CONTROL current_tree_anchor_not_artifact_role_9416523 REJECTED
+CONTROL current_tree_anchor_not_artifact_role_2cc8723 REJECTED
+FINAL_REPORT /tmp/bex-m188-9fe-node18-source-proposal/real10-and-source-boundary-controls.json e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2 CONTROLS 7 PROTECTED 103

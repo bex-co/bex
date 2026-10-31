@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-31T09:12:38.800419+00:00",
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "runtime": "node-18-bookworm",
+  "max_dispatch_posts": 1,
+  "normal_build_required": true,
+  "no_uncertain_retry": true
+}

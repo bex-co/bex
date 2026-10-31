@@ -1,0 +1,494 @@
+{
+  "at": "2026-10-30T03:52:45.036365+00:00",
+  "run_id": 40989646534,
+  "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+  "action": "cancel and quarantine known defective native recipe per root instruction",
+  "result": "\u2713 Request to cancel workflow 40989646534 submitted.",
+  "invalid_sources": [
+    "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+    "5d2223ec0f7a0f9add3a8d3df78cfdc81b32e58d"
+  ],
+  "reason": "Bookworm-built patched Node20 requires GLIBC2.34/GLIBCXX3.4.30 and fails on supported Bullseye Python3.7; official Node20 runs. Existing recipe cannot be adopted;16/18 carry same portability risk.",
+  "evidence_path": "/tmp/bex-m188-node-abi/comparison.json",
+  "evidence_sha256": "9fbbb330b506435ab4489356dd322c96b968a11f2c4451d79e78163f7a5e21ef",
+  "evidence": {
+    "node20-original": {
+      "GLIBC_max": "2.28",
+      "GLIBCXX_max": "3.4.21",
+      "CXXABI_max": "1.3.9",
+      "python37_bullseye": {
+        "returncode": 0,
+        "stdout": "v20.20.2\n",
+        "stderr": "Unable to find image 'python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a' locally\ndocker.io/library/python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a: Pulling from library/python\n31f5dc1f52c8: Already exists\nbb60045eb75c: Already exists\n292737ab468e: Already exists\n0d93979d6242: Already exists\n5a9f8670f1b8: Already exists\ncd0152b2afe3: Already exists\n5770af76823a: Already exists\n023d3e7bc423: Already exists\nDigest: sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\nStatus: Downloaded newer image for python@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a\n"
+      },
+      "ruby30_bullseye": {
+        "returncode": 0,
+        "stdout": "v20.20.2\n",
+        "stderr": "Unable to find image 'ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72' locally\ndocker.io/library/ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72: Pulling from library/ruby\n078d9526cc72: Already exists\n691cb555e773: Already exists\n9dce35208529: Already exists\ne9dcef9945e6: Already exists\nf29f8a33d223: Already exists\ne3957eeac77d: Already exists\nf255592834a2: Already exists\nDigest: sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\nStatus: Downloaded newer image for ruby@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72\n"
+      }
+    },
+    "node20-patched": {
+      "GLIBC_max": "2.34",
+      "GLIBCXX_max": "3.4.30",
+      "CXXABI_max": "1.3.9",
+      "python37_bullseye": {
+        "returncode": 1,
+        "stdout": "",
+        "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+      },
+      "ruby30_bullseye": {
+        "returncode": 1,
+        "stdout": "",
+        "stderr": "/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /usr/lib/aarch64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /nodes/node20-patched)\n/nodes/node20-patched: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by /nodes/node20-patched)\n"
+      }
+    },
+    "node14-original": {
+      "GLIBC_max": "2.17",
+      "GLIBCXX_max": "3.4.18",
+      "CXXABI_max": "1.3.5",
+      "python37_bullseye": {
+        "returncode": 0,
+        "stdout": "v14.21.3\n",
+        "stderr": ""
+      }
+    },
+    "node14-patched": {
+      "GLIBC_max": "2.29",
+      "GLIBCXX_max": "3.4.26",
+      "CXXABI_max": "1.3.9",
+      "python37_bullseye": {
+        "returncode": 0,
+        "stdout": "v14.21.3\n",
+        "stderr": ""
+      },
+      "ruby30_bullseye": {
+        "returncode": 0,
+        "stdout": "v14.21.3\n",
+        "stderr": ""
+      }
+    },
+    "metadata": {
+      "checked_at": "2026-10-30T03:50:30.296748+00:00",
+      "architecture": "linux/arm64",
+      "python37_base": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "ruby30_base": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+      "node20_original": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "node20_patched_image": "sha256:fdb7cd99076f7eb1f54fa3cf8e0d17de4b7510c0be3ade1b2ba6341b6fd8c3c7",
+      "node14_original": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "node14_patched_image": "sha256:038005cf52053b649ec15eec02d238e4780f6c52041fa1035a7465984dbb76cb",
+      "restoration": "Existing BuildKit cached outputs only; no duplicate compilation",
+      "binary_sha256": {
+        "node20-original": "05a69ccdcb795f2a8b86c145e71a6a37cce84fccef5aaf25a8fe38bc9423e732",
+        "node20-patched": "e49bb92db66c02944f1f8fea24548e47d472cb1184b5ab976876b5a1bd80752e",
+        "node14-original": "50e0d6f7ebd0637769715433d10bde9d02034971bc985ef2cdab889bd9cdc99f",
+        "node14-patched": "7113ae93a25a35afcf7eaffd92187b78ef4fd6a36e97959b28d4fb943858ed4a"
+      }
+    }
+  },
+  "requires_explicit_root_approved_replacement_source": false,
+  "cancelled_job_logs": [
+    {
+      "job_id": 123853109240,
+      "tag": "node-14-bullseye",
+      "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109240",
+      "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109240.log.gz",
+      "compressed_sha256": "ecce65f8855cef3de264790000b727be97c7b84792a62d3b8e52a3c989ad480d",
+      "uncompressed_bytes": 453193,
+      "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109240.timing-tail.txt",
+      "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+    },
+    {
+      "job_id": 123853109541,
+      "tag": "node-16-bookworm",
+      "source": "2de693f18f5dfff4c4ad3253c41d968728813a5c",
+      "job_url": "https://github.com/bex-co/bex/actions/runs/40989646534/job/123853109541",
+      "log_gzip": "/tmp/bex-m188-invalid-publisher-logs/123853109541.log.gz",
+      "compressed_sha256": "5c00658acdaa520c69e136b81e5989559200092a12a81080f2bcbf4758756f1a",
+      "uncompressed_bytes": 379205,
+      "timing_tail": "/tmp/bex-m188-invalid-publisher-logs/123853109541.timing-tail.txt",
+      "source_archive": "/tmp/bex-m188-invalid-publisher-logs/run-40989646534.zip"
+    }
+  ],
+  "run_final_status": "completed",
+  "run_final_conclusion": "cancelled",
+  "log_archive_sha256": "78c26b22cae5318f6b86a780e0ea13b18377f4cacbcd3df12574d9c563370e29",
+  "approved_sources": [
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+    "d95645e9f054238ec53a4932fac51560ffedd1f8",
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+    "4330878c280bc9748444c8e1e50ff7388df1228a",
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+    "5e89a6076905a91b4496fe36a476774c3f50585c",
+    "d94787bb4fb93751e485fe6d47946d82cc6da052",
+    "e47a2c6157339a3a786118866f28b4ee8b619774",
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+    "99f95c17afd5709365869dfff1408265e5d514ec",
+    "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+    "4462ee030984637bb765ae560b6ffe38c71f3af4",
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+    "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+    "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+    "dbc493ba688c19758c9a489635761419fb2c1af6"
+  ],
+  "approved_recipe_source": "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd",
+  "replacement_approved_at": "2026-10-30T04:06:43.441476+00:00",
+  "replacement_approval": "Explicit root approval: Bullseye compiler stage and real per-architecture Bullseye companion gate",
+  "approval_history": [
+    {
+      "source": "d309ffccde9071aa4551ca914543e57e655cdb3b",
+      "approved_at": "2026-10-30T07:30:52.562426+00:00",
+      "basis": "explicit root approval; source-separated exact14/16 recovery, botharch runtime/20m scans/signature rerun; retain valid bfdeb fully successful other candidates"
+    },
+    {
+      "source": "d95645e9f054238ec53a4932fac51560ffedd1f8",
+      "approved_at": "2026-10-30T07:40:10.287817+00:00",
+      "basis": "explicit root approval of deduplicated20m source; both14/16 exact reviewed recovery; all gates rerun; d309/a984 revoked before any execution"
+    },
+    {
+      "source": "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11",
+      "approved_at": "2026-10-30T08:31:43.418969+00:00",
+      "basis": "explicit root approval; empty exact no-renames diff workflow/auth/nonMDrecipe/native.go versus d956; selective14/16 recovery and18 source build",
+      "review_file": "/tmp/bex-m188-49ee-verification-source-review.json",
+      "review_sha256": "172e05c31d70115dab6ada0750c7680da78cc7a539fca9a91f24079efdb37613",
+      "run_ids": [
+        41026764209,
+        41026783847,
+        41026904247
+      ]
+    },
+    {
+      "source": "4330878c280bc9748444c8e1e50ff7388df1228a",
+      "approved_at": "2026-10-30T08:57:27.119433+00:00",
+      "basis": "explicit root producer+verification approval; pinnedcosign3.1.4 TUF ReKorV2+TSA; recipe delta READMEonly; all fresh gates/scans/fullsignedpredicates retained",
+      "workflow_sha256": "211af74254ed41960d2d995ed295b2e7c5d418934266e5302cbc5d93a97bf4fc",
+      "review_file": "/tmp/bex-m188-modern-source-review.json",
+      "review_sha256": "c71d7df7bef26576782727657ac0059a4e2c8398171ae663f0f39bc60c636796",
+      "run_ids": [
+        41029596739,
+        41029599983,
+        41029603442
+      ]
+    },
+    {
+      "source": "c8ca76473129d092a8d74ada5e09c5c4705987cd",
+      "approved_at": "2026-10-30T09:38:47.651795+00:00",
+      "basis": "explicit root producer+verification approval; same executable modernworkflow, nonMDrecipe/nativeinputs; historicalauth at source",
+      "review_file": "/tmp/bex-m188-modern-alias-source-review.json",
+      "review_sha256": "8dbd09ad9a07ee58114bc114561c994a1050a742fa496189741eb19eaff86e94",
+      "run_ids": [
+        41033903530
+      ]
+    },
+    {
+      "source": "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314",
+      "approved_at": "2026-10-30T09:38:47.652188+00:00",
+      "basis": "explicit root producer+verification approval; same executable modernworkflow, nonMDrecipe/nativeinputs; historicalauth at source",
+      "review_file": "/tmp/bex-m188-modern-alias-source-review.json",
+      "review_sha256": "8dbd09ad9a07ee58114bc114561c994a1050a742fa496189741eb19eaff86e94",
+      "run_ids": [
+        41030129157
+      ]
+    },
+    {
+      "source": "c8b90f83c289d5d11502c2f0c26a183630dcdec6",
+      "approved_at": "2026-10-30T10:28:50.013701+00:00",
+      "basis": "explicit root all11 producer+verification approval; emptydiff versus reviewed Node20 authsource; same modernworkflow/nonMDrecipe/officialinputs; five reviewed recoveryentries",
+      "review_file": "/tmp/bex-m188-node20-dispatch-source-review.json",
+      "review_sha256": "0140927aca8019767c4adeda636d20d1b9e2091c271fd7f4f8350e97b3716928",
+      "run_ids": [
+        41038700463
+      ]
+    },
+    {
+      "source": "5e89a6076905a91b4496fe36a476774c3f50585c",
+      "approved_at": "2026-10-30T11:02:13.714860+00:00",
+      "basis": "explicit root all11 producer+verification approval; deterministic syft registry prefix, full gates retained; nonMDrecipe/nativeinputs unchanged; auth5",
+      "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+      "review_file": "/tmp/bex-m188-registry-source-review.json",
+      "review_sha256": "25491afa5f636c086c0d5aa731faf603f62181fbfaafd2d88fa9ae701ee5f23d",
+      "run_ids": [
+        41043547006
+      ]
+    },
+    {
+      "source": "d94787bb4fb93751e485fe6d47946d82cc6da052",
+      "approved_at": "2026-10-30T11:48:41.806965+00:00",
+      "basis": "Root registration instruction and explicit root-authorized Cnb exact-source all11 producer+verification admission; registry-source workflow identical5e89, recipe/input bytes unchanged.",
+      "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+      "review_file": "/tmp/bex-m188-d947-source-review.json",
+      "review_sha256": "1a46bd8b664b3d04694487b7cd8f3693dc0e5376f0abd0301fc9e007bf903e93",
+      "run_ids": [
+        41050319125
+      ]
+    },
+    {
+      "source": "e47a2c6157339a3a786118866f28b4ee8b619774",
+      "approved_at": "2026-10-30T12:03:37.019599+00:00",
+      "basis": "Explicit root all11 producer+verification admission after Cnb exact full-ancestor input-closure review. No transitive aliases.",
+      "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+      "review_file": "/tmp/bex-m188-e47-source-review.json",
+      "review_sha256": "9575b3e1ad72d24096b7699602af953e5641092fca4be2c6702f287678d4f98a",
+      "run_ids": [
+        41051768218,
+        41052230534
+      ]
+    },
+    {
+      "source": "d52ebeac794ad48b38e5a42b3564943aaf50ad41",
+      "approved_at": "2026-10-30T12:16:12.492375+00:00",
+      "basis": "Explicit root all11 producer+verification approval after Cnb exact full-ancestor publisher input-closure review; no aliases inferred.",
+      "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+      "review_file": "/tmp/bex-m188-d52-source-review.json",
+      "review_sha256": "f63ea9a92cb3d2cdb9f191380f69c34f0f05dce59270580ec94571fd17529185",
+      "run_ids": [
+        41053647412
+      ]
+    },
+    {
+      "source": "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e",
+      "approved_at": "2026-10-30T12:46:22.543623+00:00",
+      "basis": "Explicit root all11 producer+verification admission after Cnb exact pushed source/input closure review, reviewed18/Py310 auth additions and16/Py37 retirements. No rejected568/unknown alias admission.",
+      "workflow_sha256": "a9961d094583c999346b883e2223c9a5a826363e4609bc992744bac2621d2903",
+      "review_file": "/tmp/bex-m188-5803-source-review.json",
+      "review_sha256": "893c8f67321a0bb04891a1836841e6886c6614634c13c244374ab1e3d4bfd601",
+      "run_ids": [
+        41057345380,
+        41057349833,
+        41057444551,
+        41057449164,
+        41057454166
+      ]
+    },
+    {
+      "source": "fd358d2010f8b5e2715250d7148a505ba12c1cb6",
+      "approved_at": "2026-10-30T13:35:04.483114+00:00",
+      "basis": "Root conditional exact-source admission fulfilled by Cnb73d430 review and root explicit read/approval of Py38 full current-fd358 context validation; only exactfd358, no b83/568 or unknown alias.",
+      "workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+      "review_file": "/tmp/bex-m188-fd358-source-review.json",
+      "review_sha256": "73d430049f0fc970f10637dd27fdea6b37dac66d9d2a699c1da5fe5766059247",
+      "run_ids": [
+        41062847017,
+        41063711572,
+        41063715618,
+        41063720126,
+        41063724329,
+        41063729208,
+        41063733348,
+        41063737101
+      ]
+    },
+    {
+      "source": "99f95c17afd5709365869dfff1408265e5d514ec",
+      "approved_at": "2026-10-30T14:11:02.688787+00:00",
+      "basis": "Explicit root all11 producer+verification admission after exact Cnb publisher closure review. These16 runs are expected modern catalog metadata only; m188 acceptance remains the legacy11. No aliases inferred.",
+      "workflow_sha256": "9b56bb240a8838947bb71abc046244b6e4e8d4c49c882c632fa425d07111db91",
+      "review_file": "/tmp/bex-m188-99f95-source-review.json",
+      "review_sha256": "17da567ec418f707102964eb4b0b031cf54651830a743022807c827cb8204e53",
+      "run_ids": [
+        41067622215,
+        41067617284,
+        41067612513,
+        41067606635,
+        41067601778,
+        41067596835,
+        41067592658,
+        41067587985,
+        41067583832,
+        41067580157,
+        41067575985,
+        41067572282,
+        41067568389,
+        41067564282,
+        41067560420,
+        41067556052
+      ]
+    },
+    {
+      "source": "3990b9acf35f62ba1d702387bc2061a83342b2b3",
+      "approved_at": "2026-10-30T17:46:58.757840+00:00",
+      "basis": "Explicit root approval of exact3990 source review3489 and futureguard7fb: producer+verification all11, Syft transport/retry only, historicalFD/source roles retained. No aliases inferred and no candidate promotion or dispatch authorized.",
+      "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+      "review_file": "/tmp/bex-m188-3990-source-review.json",
+      "review_sha256": "3489c0942cb613a1b9cdf6242f861826b5522bd7de41cfc919f58fe750bb5430",
+      "run_ids": [
+        41100487883
+      ]
+    },
+    {
+      "source": "4462ee030984637bb765ae560b6ffe38c71f3af4",
+      "approved_at": "2026-10-30T17:58:47.950156+00:00",
+      "basis": "Explicit root exact4462 admission after direct empty nonPMdiff/69PMpaths review versus3990; producer+verification all11, no aliases or dispatch inferred.",
+      "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+      "review_file": "/tmp/bex-m188-4462-source-admission.json",
+      "review_sha256": "0256960b3b40e68ca07da8cca27c781ef265fb79d0eb6d7429a670114544d90b",
+      "run_ids": [
+        41101339222
+      ]
+    },
+    {
+      "source": "6fd4f45536a2574c404b05539dacb6aaafb781f8",
+      "approved_at": "2026-10-30T19:12:11.008782+00:00",
+      "basis": "Explicit root exact6fd4 all11 source admission; only5 approved deployment paths have digest-replacement-only changes, publisher workflow/catalog/nativeinputs byte-identical3990. No other source inferred.",
+      "review_file": "/tmp/bex-m188-6fd4-source-admission.json",
+      "review_sha256": "a61e8e502d812ff75b028ba5ba3cac9b0091e7c45903c8321348ae2bd9575b1c",
+      "workflow_sha256": "a6649564c141d186ba6bacc4ebb440439923c751cd0299a610ec375ff3fb2659",
+      "run_ids": [
+        41113367877,
+        41113373387
+      ]
+    },
+    {
+      "source": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+      "approved_at": "2026-10-30T20:26:21.015640+00:00",
+      "basis": "Explicit root producer+verification all11 admission for exact846a complete-layer Trivy staging profile; historical profiles and m188 three queued requests preserved. Known modern Elixir jobs are metadata only, outside legacy11. No source alias, aggregate write, candidate promotion or adoption.",
+      "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "review_file": "/tmp/bex-m188-846a-root-source-admission.json",
+      "review_sha256": "6e95e8b4d8d0253ac0c87243c600039c0e46205d0b7846fa049b7519a70a9af1",
+      "run_ids": [
+        41121784740,
+        41121900239,
+        41121921308
+      ]
+    },
+    {
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "approved_at": "2026-10-30T21:10:51.982479+00:00",
+      "basis": "Explicit root source-role admission exact83c all11; workflow39b2 canonical846, foreignElixir1.17 catalog addition reviewed. Modern handoff runs are metadata only; no artifact promotion/adoption/aggregate write.",
+      "workflow_sha256": "39b2ebac4a5b4d502db7a8245d90a9031db779ba4cea6da55588cb056abe469f",
+      "review_file": "/tmp/bex-m188-modern-rollforward-plan-20261030T2101/root-source-admission.json",
+      "review_sha256": "9e108c964380c624c442d04596b066b9ed29ff91764d2aae86be1fdb3b34a809",
+      "run_ids": [
+        41127588682,
+        41128855169,
+        41129008590
+      ]
+    },
+    {
+      "at": "2026-10-31T02:22:19.925601+00:00",
+      "source": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+      "roles": [
+        "producer:all11",
+        "verification:all11"
+      ],
+      "run_ids": [
+        41159591513
+      ],
+      "root_source_admission": {
+        "file": "/tmp/bex-m188-da0e-root-source-admission.json",
+        "sha256": "28630810ac0b5ee6eb669660763ff7fae6c28e0c8598b38d66b72e8e9957bcce"
+      },
+      "workflow_sha256": "a85673654cd0b69e35797791fe6e87906e5625637bcf6b43b4937e4730b29547",
+      "profile": "verified complete OCI local staging + Syft1.55.0; no old-index recipe bridge",
+      "metadata_tracking_only": true,
+      "candidate_acceptance_performed": false
+    },
+    {
+      "at": "2026-10-31T09:25:12.441757+00:00",
+      "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+      "roles": {
+        "producer": [
+          "node-18-bookworm"
+        ],
+        "verification": [
+          "node-18-bookworm"
+        ]
+      },
+      "run_ids": [
+        41187749759
+      ],
+      "actual_native_job_id": 124498652791,
+      "root_source_approval": {
+        "file": "/tmp/bex-m188-dbc-root-source-admission.json",
+        "sha256": "f142fed32ff5a8701e8ce0a12424236404ec590d2712723ff9c926688b482aa2"
+      },
+      "actual_root_activation": {
+        "file": "/tmp/bex-m188-dbc-source-policy-activation.json",
+        "sha256": "0cb4f09b89f1ec11d2b0c0f09e231cf072b634eebbc58dccceb4286bfea0daa7"
+      },
+      "guard_sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+      "artifact_acceptance_performed": false
+    }
+  ],
+  "invalid_verification_sources": [
+    "a984ac53ffabfa55c5596e30fecbd8b7500804ed",
+    "d309ffccde9071aa4551ca914543e57e655cdb3b"
+  ],
+  "approved_producers": {
+    "bfdeb62211ae5c4a875f5474a51c63c036e1d4dd": [
+      "*"
+    ],
+    "49ee8d3c4f58bfbf6dce649fd9ab236da14c1d11": [
+      "node-18-bookworm"
+    ],
+    "4330878c280bc9748444c8e1e50ff7388df1228a": [
+      "*"
+    ],
+    "c8ca76473129d092a8d74ada5e09c5c4705987cd": [
+      "*"
+    ],
+    "21ed733d6d47eb48cb6dcf1b7ffa396c3bb46314": [
+      "*"
+    ],
+    "c8b90f83c289d5d11502c2f0c26a183630dcdec6": [
+      "*"
+    ],
+    "5e89a6076905a91b4496fe36a476774c3f50585c": [
+      "*"
+    ],
+    "d94787bb4fb93751e485fe6d47946d82cc6da052": [
+      "*"
+    ],
+    "e47a2c6157339a3a786118866f28b4ee8b619774": [
+      "*"
+    ],
+    "d52ebeac794ad48b38e5a42b3564943aaf50ad41": [
+      "*"
+    ],
+    "5803d2030fadbd6cddb9e04e73acc4d9ddf82a0e": [
+      "*"
+    ],
+    "fd358d2010f8b5e2715250d7148a505ba12c1cb6": [
+      "*"
+    ],
+    "99f95c17afd5709365869dfff1408265e5d514ec": [
+      "*"
+    ],
+    "3990b9acf35f62ba1d702387bc2061a83342b2b3": [
+      "*"
+    ],
+    "4462ee030984637bb765ae560b6ffe38c71f3af4": [
+      "*"
+    ],
+    "6fd4f45536a2574c404b05539dacb6aaafb781f8": [
+      "*"
+    ],
+    "846a56038319f1b5c212d1fcda8291d20e49c2b0": [
+      "*"
+    ],
+    "83c1e30e35eeeadab499de4d8d96c1f6c0349077": [
+      "*"
+    ],
+    "da0e56e80a1e4eb08cacabd67efde3c768a6ae81": [
+      "node-14-bullseye",
+      "node-16-bookworm",
+      "node-18-bookworm",
+      "node-20-bookworm",
+      "python-3.7-bullseye",
+      "python-3.8-bookworm",
+      "python-3.9-bookworm",
+      "python-3.10-bookworm",
+      "ruby-3.0-bullseye",
+      "ruby-3.1-bookworm",
+      "ruby-3.2-bookworm"
+    ],
+    "dbc493ba688c19758c9a489635761419fb2c1af6": [
+      "node-18-bookworm"
+    ]
+  }
+}

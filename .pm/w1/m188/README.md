@@ -351,3 +351,13 @@ Node18 的6fd4恢复任务 `41113367877` / `124263227234` 已失败：运行门�
 根与独立复核后启用精确4cfe9fb8检查：只允许已审阅的941配方与2cc工作流差异，核对精确文件哈希、两个新增测试路径及941→2cc→当前HEAD祖先关系；原DA0产物来源权限、producer/verifier配方严格相等和全部密码学检查保留，941/2cc未获产物来源权限。候选a349因缺少祖先约束被退回，修正后才批准，旧版从未启用。10项真实完整守卫重放通过，17项隔离控制（1正、16负）通过，未齐11项仍实际拒绝生成接入副本；95份其他受保护原文与aggregate保持不变，唯一预期替换是活动检查2a→4cfe。
 
 [全部提案、原始测试、独立复核、根批准与启用记录](evidence/current-tree-compatibility-2cc/MANIFEST.json)已归档，[87文件根核查](evidence/current-tree-compatibility-archive-audit.json)验证存储及原始字节、37项当前源码输入和旧/新活动路径按内容哈希定位。三份原始diff无损gzip，收尾定位器须使用original_sha256/original_bytes还原，不改写历史原文。验收仍为10/11，Node18的DA0正常请求继续排队；未生成接入副本，六项真实应用验收与最终生产验证仍开放。
+
+### Node18 取消后的正常请求恢复与来源授权 — 2026-10-31（UTC 09:35Z）
+
+DA0请求41159591513的原生job124414471403于08:51:55Z被取消；runner为0、步骤为空，没有丢失编译成果。实际check annotation记录取消来自@puncsky账号，不能据此推断具体人工、agent会话或原因。完整85项工作流核对确认没有其他排队/运行Node18或未展开matrix风险；2cc自动批次的27项原生任务也已取消且没有执行原生步骤。原始记录见[完整恢复与来源证据](evidence/node18-dbc-recovery-source/MANIFEST.json)。
+
+根复核精确37项发布输入与正常构建选择器后，只提交一次Node18定向正常请求，09:12:40Z获204。已确认实际[run41187749759](https://github.com/bex-co/bex/actions/runs/41187749759)、源码dbc493ba、main/workflow_dispatch/attempt1，matrix通过且只选择原生job124498652791。旧7dd配方不同，实际选择器输出为空，正常重新构建；不把旧索引算作已验收。主线移动期间产生的9fe草案虽通过审查但从未启用，实际run绑定后才批准真正DBC来源。
+
+活动检查更新为精确1690cdaa，只新增DBC的Node18 producer与verification角色；两者各自受Node18限制，原49ee verifier语义、DA0锚点、941/2cc当前源码兼容性、配方严格配对及全部原密码学/运行门槛保留。10项真实完整重放、8项来源边界反例及未齐11项的真实拒绝通过。aggregate仅添加实际DBC的accepted_sources，10份候选及其余字段不变；108份其他受保护原文保留。
+
+[151文件根归档核对](evidence/node18-dbc-recovery-archive-audit.json)验证原始及存储字节、两份无损压缩diff和113项跨归档内容引用；包含完整47份最终调度阶段文件及其清单、原取消/去重、从未启用的9fe历史、实际DBC批准/启用与观察者交接。活动G/Q路径须按预期SHA定位历史冻结版本，原始pending/false记录保留其时间语义。源授权与排队不增加验收计数；正式仍10/11，Node18待实际构建/全部验收，接入副本、六项应用与生产验证继续开放。

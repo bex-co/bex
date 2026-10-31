@@ -1,0 +1,15 @@
+{
+  "authorized": false,
+  "expected_source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "runtime": "node-18-bookworm",
+  "max_dispatch_posts": 1,
+  "execution_eligibility_sha256": "2f143cd0a12d04e28e801a98beb187cb100ad2818806dfa523b47edf1a39887a",
+  "expected_helper_sha256": "62980e73451d5c6a151010e6e6b6e02a92766d642a3f1cdde5ee2d2193936744",
+  "artifact_admission_deferred_until_actual_binding": true,
+  "frozen_inputs": {
+    "/tmp/bex-m188-prepare-adoption.py": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+    "/tmp/bex-m188-published-acceptance.json": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+    "/tmp/bex-m188-current-tree-profile-context.json": "e0d2f82905f7105ff321d0c05909e63936c7cb5993776100ed362dd6771368d2"
+  },
+  "scope": "PROPOSED ONLY. Root must separately authorize exact onePOST after reviewing code; this record grants no CI action or artifact role. Main must equal expectedDBC twice, complete all-source dedupe must be clear, actualsource/attempt/job binding follows before any artifact acceptance. No cancel/rerun or blind retry."
+}

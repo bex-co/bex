@@ -1,0 +1,54 @@
+{
+  "schema": "bex.m188.FINAL-INACTIVE-literal9fe-Node18-only-source-proposal/v1",
+  "created_at": "2026-10-31T09:04:50.190300+00:00",
+  "literal_source": "9fe393b77814dc5199372419d10dad974e7b27e1",
+  "proposed_roles": [
+    "producer:node-18-bookworm",
+    "verification:node-18-bookworm"
+  ],
+  "admitted": false,
+  "activated": false,
+  "proposal": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8.py",
+    "sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+    "bytes": 92910
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/guard.diff",
+    "sha256": "123017e5b122704b727d7e07b55dec0b7ace5b9c0e2c2ea8cbf0f21429af84f6",
+    "bytes": 10267
+  },
+  "source_closure": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/source-closure-review.json",
+    "sha256": "ddacb1ca8a6f1efbc0036f0e560f46227446c237033eec26dd435cb95791de82",
+    "bytes": 11730
+  },
+  "proposed_only_context": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+    "sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+    "bytes": 167424
+  },
+  "actual_tests": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/real10-and-source-boundary-controls.json",
+    "sha256": "e552dd3eeb0b5a80f695c5064bae49fd26d5bb0a426a01dbe71dea9d7fc88ee2",
+    "bytes": 27913
+  },
+  "actual_execution": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/execution.json",
+    "sha256": "55d74ecee91a8d912d103a9797f6e02fcb6d1f439c55b12209fda37e6fa6b0d5",
+    "bytes": 1420
+  },
+  "builder": {
+    "file": "/tmp/bex-m188-build-9fe-node18-source-proposal.py",
+    "sha256": "c395a847bf8418f82bb39d24c8eae79155da9d29ac90551eebc25bcb6fe8cd38",
+    "bytes": 7580
+  },
+  "ten_real_candidate_guards": "PASS; original10 proofs/rows unchanged",
+  "seven_negative_controls": "PASS;9fe producer/verifier wrong runtime;49ee old producer restriction;BF\u21949fe recipe crossing;941/2cc unadmitted",
+  "actual_incomplete11_copy_refusal": "PASS; no output directory",
+  "protected_originals": 103,
+  "canonical_DA0_and_current941_2cc_compatibility_unchanged": true,
+  "strict_pair_recipe_equality_and_writer_unchanged": true,
+  "new9fe_artifact_proof_claimed": false,
+  "no_live_guard_aggregate_repo_CI_mutation": true
+}

@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-31T09:12:38.366167+00:00",
+  "run_count": 85,
+  "nonterminal_observations": [
+    {
+      "run_id": 41144656779,
+      "source": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "native_jobs": [
+        {
+          "id": 124367871533,
+          "name": "build (elixir-1.20, elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74...",
+          "status": "in_progress"
+        }
+      ],
+      "duplicate": false
+    },
+    {
+      "run_id": 41142870861,
+      "source": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "native_jobs": [
+        {
+          "id": 124361678277,
+          "name": "build (golang-1.27-bookworm, golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd4...",
+          "status": "in_progress"
+        }
+      ],
+      "duplicate": false
+    },
+    {
+      "run_id": 41129321189,
+      "source": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "native_jobs": [
+        {
+          "id": 124322916655,
+          "name": "build (ruby-4.0-bookworm, ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fec...",
+          "status": "in_progress"
+        }
+      ],
+      "duplicate": false
+    }
+  ],
+  "duplicates": []
+}

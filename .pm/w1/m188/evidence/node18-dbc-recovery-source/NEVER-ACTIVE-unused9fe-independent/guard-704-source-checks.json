@@ -1,0 +1,34 @@
+{
+  "schema": "bex.m188.frozen-704-literal9fe-delta-review/v1",
+  "proposal_sha256": "704fbda99f3f0c12b9c4c60bcec34049b73480150c83f89136dfd6a53217abf8",
+  "diff_sha256": "123017e5b122704b727d7e07b55dec0b7ace5b9c0e2c2ea8cbf0f21429af84f6",
+  "base_guard_sha256": "4cfe9fb888c581dade2209f3a7cd12e723c91ed80d563c261f52b546d1438865",
+  "changed_existing_functions": [
+    "main",
+    "verify_v2_source_binding"
+  ],
+  "changed_existing_global_assignments": [
+    "APPROVED_PRODUCER_SOURCES",
+    "PRODUCER_RUNTIME_RESTRICTIONS"
+  ],
+  "new_global_assignments": [
+    "VERIFICATION_RUNTIME_RESTRICTIONS"
+  ],
+  "source_roles_only_new_literal9fe": true,
+  "new_producer_and_verifier_runtime_only": "node-18-bookworm",
+  "49ee_verifier_semantics_unchanged": true,
+  "all_other_source_binding_ast_identical": true,
+  "main_ast_identical_except_verifier_restriction_report": true,
+  "all_other_original_functions_identical": true,
+  "current941_2cc_ancestry_and_bytes_checks_unchanged": true,
+  "writer_unchanged": true,
+  "proposed_Q": {
+    "path": "/tmp/bex-m188-9fe-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+    "sha256": "0e7f37bab33176f3f5a46088a2977093fb8482a94ae4a4bf518e6f8d7d323c4e",
+    "baseline_live_snapshot_path": "/tmp/bex-m188-published-acceptance.json",
+    "baseline_live_snapshot_sha256": "8c9bf1fee66deafdea86a360ead9c7038843d7f9e81dfabc25bd055eb677b3c4",
+    "only_accepted_sources_new_literal9fe": true,
+    "verified_records_unchanged": true,
+    "proof_status_or_acceptance_count_changed": false
+  }
+}

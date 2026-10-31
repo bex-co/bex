@@ -1,0 +1,70 @@
+{
+  "schema": "bex.m188.FINAL-INACTIVE-actualDBC-Node18-only-source-proposal/v1",
+  "created_at": "2026-10-31T09:18:05.284551+00:00",
+  "source": "dbc493ba688c19758c9a489635761419fb2c1af6",
+  "proposed_roles": [
+    "producer:node-18-bookworm",
+    "verification:node-18-bookworm"
+  ],
+  "admitted": false,
+  "activated": false,
+  "proposal": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546.py",
+    "sha256": "1690cdaa16217890f015b2ff67abfb211e2f1afbaae2e64552347c26c0cce546",
+    "bytes": 92910
+  },
+  "diff": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/guard.diff",
+    "sha256": "c10847227891760e554ff5fe08b1ad91244e328eb4995f7d1e8774c0ec67bc47",
+    "bytes": 10267
+  },
+  "source_closure": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/source-closure-review.json",
+    "sha256": "8f958d855f82ad976381ed205ab39c7c1071935f91a5520cec3c311f4108f3b2",
+    "bytes": 12604
+  },
+  "proposed_only_context": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/PROPOSED-only-not-live-receipt-context.json",
+    "sha256": "eda68128b60a5b8b21f49a5ae3aeb7927db2ad590147344c07d506660586c21f",
+    "bytes": 167424
+  },
+  "actual_tests": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/real10-and-source-boundary-controls.json",
+    "sha256": "743ea7fdc9c4060b9262d1ee71ea1d9689d1121740d7acf03e93c61acf94b5aa",
+    "bytes": 29258
+  },
+  "actual_execution": {
+    "file": "/tmp/bex-m188-dbc-node18-source-proposal/execution.json",
+    "sha256": "e5db7708b702e21c08f9614faed3928970bc25aebd9e4718f5687707ad1831f4",
+    "bytes": 1422
+  },
+  "builder": {
+    "file": "/tmp/bex-m188-build-dbc-node18-source-proposal.py",
+    "sha256": "ff2f90fd780ab2d094f0b3e642a0e313e4e7e67df69653f344db320c2d1dca84",
+    "bytes": 7575
+  },
+  "actual_run_binding": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/actual-run-head-binding.json",
+    "sha256": "f3f4c95d94cff14f10272fa7d4c910e073d49100e62cb805de3342123d7d1d4b",
+    "bytes": 870
+  },
+  "prePOST_source_and_normal_selector": {
+    "file": "/tmp/bex-m188-node18-dbc-normal-dispatch/source-and-normal-selector-proof.json",
+    "sha256": "2b5de3bd1eeae1627de9ee0069d43f8cb30d304085a5810d812d0eb157850c61",
+    "bytes": 8233
+  },
+  "template_relation": "Exact704 unused9fe guard template with only literal9fe source SHA replaced by actual immutableDBC source; generated from live4cfe and liveQ8c9.9fe never active or admitted.",
+  "unused9fe_history": {
+    "file": "/tmp/bex-m188-9fe-node18-source-proposal/proposal-final.json",
+    "sha256": "2ceda36d06fe6a6c4f0e0b135512638a7f56e65bcbd236318d4bb4bf90f5cb0e",
+    "bytes": 2367
+  },
+  "ten_real_candidate_guards": "PASS; original10 proofs/rows unchanged",
+  "eight_negative_controls": "PASS;DBC producer/verifier wrong runtime;49ee old producer restriction;BF\u2194DBC recipe crossing;941/2cc/unused9fe unadmitted",
+  "actual_incomplete11_copy_refusal": "PASS; no output directory",
+  "protected_originals": 110,
+  "canonical_DA0_and_current941_2cc_compatibility_unchanged": true,
+  "strict_pair_recipe_equality_and_writer_unchanged": true,
+  "new_DBC_artifact_proof_claimed": false,
+  "no_live_guard_aggregate_repo_CI_mutation": true
+}
