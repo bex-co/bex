@@ -1,0 +1,113 @@
+# w4 · m219 — Gate forms and searches until handlers are ready
+
+**Worker:** worker4 **Goal:** twelve observed SSR roots accept edits only when handlers can retain them. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+
+**Estimate:** 6h30 (18 tasks). Filing only; no product fix shipped by the hunt.
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Gate Key Value creation inputs through hydration — **DONE** | 20m | — |
+| t002 | Gate the shared service creation form through hydration — **DONE** | 25m | — |
+| t003 | Gate Blueprint creation inputs through hydration — **DONE** | 25m | — |
+| t009 | Gate Environment Groups search through startup — **DONE** | 15m | — |
+| t004 | Audit native fields, aliases and existing hydration consumers — **DONE** | 30m | t001, t002, t003, t009 |
+| t010 | Gate populated webhook list search through startup — **DONE** | 20m | — |
+| t011 | Gate service log search through startup — **DONE** | 20m | — |
+| t012 | Gate deploy log search through startup — **DONE** | 20m | — |
+| t013 | Gate deployment-history search through startup — **DONE** | 20m | — |
+| t014 | Gate workspace slug through startup — **DONE** | 20m | — |
+| t015 | Gate datastore log search through startup — **DONE** | 20m | — |
+| t016 | Audit both datastore viewer callers and preserved controls — **DONE** | 15m | t015 |
+| t017 | Gate populated static rule editors through startup — **DONE** | 25m | — |
+| t018 | Audit both static editor callers and preserved draft controls — **DONE** | 20m | t017 |
+| t005 | Render parity across forms and searches — **DONE** | 20m | t004, t010, t011, t012, t013, t014, t015, t016, t017, t018 |
+| t006 | Simplify the changed code — **DONE** | 10m | t005 |
+| t007 | Test SSR edit readiness and retained drafts — **DONE** | 45m | t005 |
+| t008 | Replay live evidence and close out | 20m | t006, t007 |
+
+## Definition of done
+
+- Repeat [a859](finding-a859.md) on an owned populated static site: Header Value and route Source at1440/390 cannot accept pre-handler edits. Release the discovered entry unchanged; exact ready typing survives Add and normal renders. Preserve the saved four routes/two headers, sixteen GET/HEAD controls and one-deploy/no-rebuild behavior, then delete the site and verify exact cleanup/session revocation. Other field/action sites and aliases are t018/t007 audit work, not additional observed failures.
+
+- Preserve [a805's passing webhook control](control-a805.md): on `/webhooks/new` at1440/390px no Name/URL input is exposed before startup, ready native typing persists, and event-catalog Retry retains the draft. This create page stays outside the twelve-root readiness fix.
+
+- Fresh-load `/keyvalue/new` at 1440 and 390px while holding the real fetched startup script response as in [a797 evidence](../evidence/m219-a797-input-startup.json). Name is visibly unavailable for editing until its handlers are ready. Release the response unchanged, type a valid name, and observe the exact text retained through startup queries settling. Current behavior accepts trusted typing before handlers exist, then clears it.
+- Repeat at `/services/new?type=web_service`: Name follows the same readiness rule at both widths. In the desktop Port replay, the pre-ready field cannot accept a change; after readiness, enter valid `8197` and observe it remain `8197` through normal renders, rather than restoring `3000`.
+- Repeat the four additional observed Name cases in [a800](finding-a800.md): private and cron at1440px, worker and static at390px. Pre-ready inputs cannot accept edits that will be discarded; after readiness exact typing persists. Preserve the observed Postgres deep-link control: no Name field exists before startup, and the ready dialog retains native input.
+- Repeat at `/blueprints/new` at both widths for Blueprint Name. In the desktop Blueprint path replay, the pre-ready field cannot accept a change; after readiness, enter `examples/hello-go/render.yaml` and observe it retained, rather than restoring `render.yaml`. No deployment is required for this check.
+- Repeat [a815](finding-a815.md) at `/env-groups` at1440/390px: **Search environment groups by name** stays visible but uneditable before handlers. After release, exact native typing is retained and filters to **No matching environment groups** with the existing Reset search controls. Preserve workspace-reset and ready matching semantics. The qualified desktop Project Unassigned comparison stays outside this local gate; its later ready typing remains retained.
+- Repeat [a837](finding-a837.md) with a populated /webhooks list at1440/390px: Search webhooks remains visible but natively uneditable before handlers. Release the fetched startup response unchanged; exact ready typing remains retained through normal updates, rather than clearing on the same node. Preserve a805’s separate webhook-create control.
+- Repeat [a838](finding-a838.md) at the owned web /services/{id}/logs and /services/{id}/deploys/{deployId} paths at1440/390px. Each respective search input stays visible but natively uneditable before handlers. After unchanged script release, exact native typing remains retained through normal updates. Shared aliases and non-web callers are audit work; only the web paths were live-driven.
+- Repeat [a841](finding-a841.md) at populated /services/{id}/deploys at1440/390px: Search loaded deploys and commits stays visible but uneditable before handlers; after release, exact ready text, q and honest loaded results agree. Preserve284’s Back-state fix; static/other types are source-audit work.
+- Repeat [a846](finding-a846.md) at `/new/workspace` with no attempt and Hobby selected at1440/390px: Workspace slug stays visible but natively uneditable before handlers. After unchanged script release, exact native typing persists, including the intended lowercase conversion. Submit no create, prepare, finalize, plan or payment action. Other plans/resume states remain audit work.
+- Repeat [a850](finding-a850.md) on Key Value and Postgres `?tab=logs` at1440/390px: their respective search fields stay visible but natively uneditable before handlers; after unchanged release, exact ready typing persists and agrees with the text URL filter and honest No matching logs state. Alias and range/instance/error/paging variants remain t016 audit work. These are read-only checks.
+- Ready forms retain their present labels, defaults, geometry, validation, source selection, plan/loading/error states and submission predicates. Entering text after handlers attach keeps that text, as the passing controls already demonstrate. Verify pending and ready geometry side by side at desktop and narrow mobile widths.
+- Startup probes submit no create/deploy action. Populated webhook and log controls may need separately created owned disabled endpoints and Free service fixtures; delete them afterward. Final fixture inventory matches baseline and this run's own session is revoked. Preserve the eight original a797 captures, four a800 sibling cases and three a815 search replays, and record fixed-build replays before moving this milestone to `done/`.
+
+## Source + Goal linkage
+
+- **Follow-up a859:** [populated static editor loss](finding-a859.md), [exact safe scripts/receipts](../evidence/m219-a859-static-editors-startup.json). Two further roots share the mechanism; existing routing behavior passes. Goal linkage also includes ADR029. Research/cleanup/dedupe limitations are in the finding.
+
+- **Source:** ordinary functional `$qa-find-bugs w4`, pass a797, 2026-10-16 UTC; [researched finding](finding.md), [durable replay factories and complete DOM receipts](../evidence/m219-a797-input-startup.json). Source HEAD `00f2afcfb44a3626ef4c2117931d82affaf2f186`.
+- **Goal linkage:** ADR008's usable Render alternative; ADR004 service deployment, ADR021 managed Key Value, ADR049 Blueprint configuration and ADR018 dashboard parity. Customers must be able to enter configuration without silent loss.
+- **Expected outcome:** the four SSR creation forms (including Workspace slug), Environment Groups and populated Webhooks list searches, and service/deploy log searches plus deployment-history and datastore log search, together with populated static Routes/Headers editors, expose editable native fields only after event handlers can retain input, then behave normally during client-side navigation and subsequent updates.
+- **Why now:** twelve independently observed roots reproduce startup draft loss, including a nonempty default being silently restored. A separate fast-entry disappearance led to this probe but had no recorded cause. This filing relies on the controlled startup replays, not that earlier untraced occurrence.
+- **Scope:** a local readiness gate at the twelve observed roots (four creation forms, Environment Groups and populated Webhooks list searches, service log search, deploy log search, deployment-history search, datastore log search and populated static Routes/Headers editors), reusing `useIsHydrated`; preserve the shared hook and global Input behavior. All five service types have observed Name failures at the a797/a800 widths; aliases, other source tabs/widths, additional fields and other dialog-based creates remain the explicit t004 audit. Preserve the passing Postgres dialog control.
+- **Follow-up a800:** [four more service types and the Postgres dialog control](finding-a800.md), with [seven durable receipts](../evidence/m219-a800-siblings.json). All five service types now have observed Name failures at their listed widths. Aliases, other widths/source tabs, additional fields and other dialogs remain the bounded t004 audit. The Postgres dialog was observed to avoid pre-handler editing and should retain that behavior.
+- **Passing control a805:** the [webhook create page](control-a805.md) exposes Name/URL only after startup and preserves drafts through catalog retry at both widths. Preserve that existing behavior; this is not another affected form root. [Durable evidence](../evidence/m219-a805-webhook-controls.json).
+- **Follow-up a815:** [Environment Groups search startup loss](finding-a815.md), with [three failing replays, qualified Project comparison, complete native-field census and cleanup](../evidence/m219-a815-search-startup.json). Add this fourth local root; direct-field census is 103 Input + 8 Textarea + 12 native input + 2 native textarea sites (125 syntactic sites; wrappers need expansion). Nine tasks total3h30. This search loss is minor; the creation-draft loss remains major.
+- **Follow-up a837:** [populated Webhooks search](finding-a837.md), with [three native startup probes and full safe fixture/cleanup receipts](../evidence/m219-a837-webhook-search-startup.json). Add the fifth local root in t010; keep t001–t004/t009 done and reopen standing t005–t007 only for added scope. Ten tasks total3h50.
+- **Follow-up a838:** [two separately traced log searches](finding-a838.md), with [six full startup receipts and cleanup](../evidence/m219-a838-log-search-startup.json). Add t011/t012 before standing closing tasks; twelve tasks total4h30. Preserve m204 URL state, m216 matching and independent datastore viewer behavior.
+- **Follow-up a841:** [deployment-history search](finding-a841.md), with [three failures, ready filter result, qualified project/member controls and cleanup](../evidence/m219-a841-history-search-startup.json). Add t013 as the eighth root. Thirteen tasks total4h50; preserve284 and loaded-only matching.
+- **Follow-up a846:** [Workspace slug startup loss](finding-a846.md), with [three failures, ready lowercase control and exact-session cleanup](../evidence/m219-a846-workspace-startup.json). Add t014 as the ninth root; fourteen tasks total5h10. Preserve the prepared-attempt lock, Billing Email, PlanPicker and all existing creation/payment predicates. No workspace was created.
+- **Follow-up a850:** [DatastoreLogViewer startup loss](finding-a850.md), with [five failures across both callers, ready controls and cleanup](../evidence/m219-a850-datastore-search-startup.json). Add t015 local gate and t016 shared-caller audit as the tenth root. Sixteen tasks total5h45; preserve228/319 and the separate service/deploy viewers.
+- **Render parity:** included because the dashboard creation/search surface changes. Render's public creation documentation describes entering configuration; its authenticated pre-hydration behavior was not tested. Preserve REST/GraphQL/MCP input and validation contracts.
+- **Dedupe:** all 85 actual open/blocked milestone titles, open/done text searches and DO_NOT_DO reviewed; no matching item. m218 covers failed plan queries after startup, while this loss occurs before handlers with unchanged successful responses. Recent 40 product commits and targeted hydration/name history show no ready-to-deploy fix.
+
+## Implementation record (2026-10-16)
+
+- **t001–t003:** `HydrationFieldset` (`dashboard/src/common/components/hydration-fieldset.tsx`) wraps the `CardContent` of `/keyvalue/new`, `/services/new` (every type, so Name and Port among them) and `/blueprints/new` (Name and path). It is `disabled` with `aria-busy` while `useIsHydrated()` is false: a native disabled fieldset, so the server HTML itself rejects typing. It uses `display: contents`, so `space-y` and the card's flex layout are unchanged, and it becomes an ordinary enabled fieldset once hydrated (or on client navigation).
+- **t009:** the `/env-groups` search `Input` is `disabled={!hydrated}`: visible, but not editable before handlers. Matching and reset are unchanged.
+- **t010 (a837, 2026-10-16):** the populated `/webhooks` list search `Input` in `WebhooksPanel` is `disabled={!hydrated}` the same way: same geometry, uneditable before handlers. Filtering, the capability-driven Create action, links/toggles, empty/error/loading branches and CSR navigation (already hydrated: enabled on mount) are unchanged; the one route mount is `/webhooks`. a805's `/webhooks/new` control is untouched. The global `Input` and hook are unchanged.
+- **t011–t013 (a838/a841, 2026-10-16):** the visible search `Input` of `LogFilterBar` (its one chain: `LogViewer` → `/services/$serviceId/logs`), `DeployLogPanel` (the one deploy-detail mount, service and static) and `DeploysListPage` (the service and static deploy-history routes) is `disabled={!hydrated}` the same way: same geometry, uneditable before handlers, enabled on mount after client navigation. The log popover's Path field is not server-rendered and stays as is. URL adoption, debounce, type/instance/status filters, literal matching, partial history, paging and row actions are unchanged; no log API, global `Input` or hook change. A new failure-safe `serverRendered()` test helper (`dashboard/src/test/hydration.ts`, torn down by `onTestFinished`, returning scoped queries) backs a real server render → hydrate test for each (ships disabled, hydration enables, typed text kept; history also filters), and the fieldset and webhook tests moved onto it. Each new test fails with its gate removed; ADR018's m219 note lists all five searches. Dashboard suite (5117 tests) and lint pass.
+- **t014 (a846, 2026-10-16):** the `/new/workspace` slug is `disabled={!hydrated || creation.attempt != null}`, so the prepared-attempt lock is unchanged. Native `autofocus` on the server HTML skips a disabled field (and React leaves hydrated `autoFocus` to the browser), so an effect focuses the slug, with `preventScroll`, once hydration enables it, but only if nothing else holds focus. On client navigation `autoFocus` already focused it, so the effect does nothing. The billing email needs no gate: it is read-only on the default Hobby plan until handlers can switch plans, and a resumed attempt locks it. Lowercasing, validation, PlanPicker and billing/submit contracts are unchanged.
+- **t015/t016 (a850, 2026-10-16):** `DatastoreLogViewer`'s one search `Input` is `disabled={!hydrated}`. Census: one mount each in `/databases/$databaseId` and `/keyvalue/$keyValueId` (labels "Search database logs" / "Search logs…"); the `/d/…` and `/r/…` aliases (`common/lib/render-alias.ts`) redirect to those routes before rendering, so they reach the same gate. The 300ms commit, URL echo/adoption (228), relative-window sampling (319), instance/range/paging and error branches are unchanged; service/deploy log components and earlier gates are untouched.
+- **t017/t018 (a859, 2026-10-17):** `StaticEdgeRulePage` wraps the rendered editor in `HydrationFieldset` once, so both `RoutesEditor` and `HeadersEditor` ship as a disabled `display: contents` fieldset: the Type select trigger, the four RuleInputs, the Header Value input and Add/Remove/Cancel/Save are all natively disabled before hydration, with layout unchanged (the editor is the sole child of a block `CardContent`; the skeleton branch stays outside). Census: two editor definitions, rendered only through that shell; four route entries (`/services/$id/{redirects,headers}` and the `/static/$id/…` aliases, which render the same page components); non-static services redirect to Settings before any editor renders. w4/136 padded-save normalization, w4/268 newer-save adoption/dirty draft/Cancel and the a805 controls pass unchanged; no routing or API change. Page-level `serverRendered()` tests assert Source/Type/Add/Remove and Value/Add disabled before hydration, then Type enabled and typed text kept through Add; both fail without the gate. ADR018 lists the editors. Dashboard suite (5135 tests), lint and typecheck pass.
+- **t005–t007 for t011–t016:** ADR018's m219 note now lists the Workspace slug and all six searches. Real `serverRendered()` → hydrate tests: slug ships disabled, hydration enables and focuses it, typing `Acme-Prod` keeps `acme-prod`; an already-focused field keeps focus; a resumed attempt stays locked; both datastore callers ship disabled and keep typed text. Each fails with its gate, focus effect or guard removed. Three /simplify passes; dashboard suite (5122 tests), lint and typecheck pass.
+- **t005–t007 reopened for t010:** ADR018's m219 note now lists the Webhooks list search. `webhooks-panel.test.tsx` server-renders the real panel inside its router, asserts the search ships disabled, hydrates the same markup, then types `pager` and sees the list filter; it fails with the gate removed. Dashboard suite (5114 tests), lint and typecheck pass.
+- **t004:** only these four roots were gated. The passing controls (webhook create, the Postgres create dialog) and the shared Input, `useIsHydrated` and the other native fields are untouched. Aliases (`/web|pserv|worker|cron|static/new`, `/new/redis`, `/r/new`) redirect into the gated canonical routes.
+- **t005/t006:** ADR018's create-service row records the startup behavior. Reviewed inline: one small component and four call sites.
+- **t007:** `hydration-fieldset.test.tsx` runs a real `renderToString` → `hydrateRoot`. The server HTML has a disabled fieldset with its input `:disabled`, and hydration enables it with `aria-busy` cleared. Route tests check that the Key Value Name, service Name/Port and Blueprint Name/path sit inside the fieldset and that a client render is enabled. Dashboard `yarn test` (5,105) and `yarn lint` pass. **Not run:** the browser startup replays with a held script (t008); the env-groups search is covered by the same hook, not an SSR route test.
+
+## a837 scope extension (2026-10-17 UTC)
+
+The first four-root implementation and its earlier checks remain complete on main. The populated Webhooks list was outside that implementation and loses trusted pre-handler input at desktop/mobile. The milestone returns from blocked/ to active work for this local addition; parity, simplify and test gates are reopened for its scope. Original deployed-build closeout remains required, without watching the release pipeline during the hunt.
+
+## a838 scope extension after af6a6310e
+
+The fifth-root webhook implementation and its reopened checks are complete on main. This preserves their implementation record and done/t010. Only the two independently observed log inputs in t011/t012 require new code; standing t005–t007 are reopened for those additions. The milestone is active again for that work. Original deployed-build acceptance remains open.
+
+## a846 scope extension
+
+The separately reproduced Workspace slug adds one local input gate in t014. Preserve all six completed implementation/audit tasks and their historical checks. Standing t005–t007 cover only the remaining a838/a841/a846 additions; t008 still requires the original deployed-build matrix. This filing changes no product or billing contract.
+
+## a850 scope extension
+
+The separately traced DatastoreLogViewer adds one input gate and a dedicated two-caller/alias audit. Both kinds have desktop/mobile failures. Preserve all six completed tasks and historical checks. Standing t005–t007 cover the remaining additions, and t008 retains the entire deployed-build matrix. The Rust build/public-response control passed and its fixture/session are fully cleaned up.
+
+## a859 scope extension
+
+Ten earlier roots and their implementation/check history stay intact. The two populated static-rule editors accept trusted typing before handlers and restore saved values on the next ordinary Add render; ready typing survives. Add t017 and the dedicated t018 caller/control audit, reopen standing t005–t007 for these additions, and retain t008 for all twelve roots. No product code or API contract is changed by this filing.
+
+## 解除阻塞记录（2026-10-31，`/unblock w4`）
+
+- **涉及：** w4/m219（同组 D2：w4/m237、w4/m220、w4/m212、w4/m172、w4/295）
+- 来源：用户明确决定（2026-10-31，`/unblock w4`）——“i approve you to update bex-canary's subscription to paid and operate anything there but please clean up afterwards”；以及 2026-10-30：“qa-* 的数据库都是暂时的可以清除”。
+- **结论（D2，Pro+ 门槛）：** 允许 worker 用 `ChangeWorkspacePlan` 把 bex-canary 切到 Pro（或该功能所需最低付费档），在一个窗口内集中重放全部 Pro 门槛项（w4/m237、m219、m220、m212、m172、295），删除自建 webhook 等资源后切回 Hobby，并在各项记录升/降级时间。窗口期内 bex-canary 读作 Pro，其他会话的 Hobby 限制类测试读数可能不同，因此窗口尽量短。不使用 `bex`（Scale，真实计费）workspace。 bex-canary（`tea-daif693dqjvc73e7as3g`）计费状态为 `operator_excluded: structural exclusion`，不走 Stripe 收款（2026-10-29 只读核实 `workspaceBillingReadiness`），付费 fixture 与付费套餐不产生真实费用。
+- 生产已部署 `25b99d8a373a`（`deploy/gitops/base/bex.yaml`，2026-10-30 pin），本项实现均早于此版本；部署不等于验收，以下仍是待验证工作。
+- **worker 下一步：** 与同组其他项排在同一个 Pro 窗口内，按本项原 DoD 重放剩余的 Pro 门槛检查。
+- **清理（用户要求，验收的一部分）：** 验收结束删除本次在 bex-canary 创建的全部资源；若为此把 bex-canary 切到付费套餐，所有依赖付费档的项做完后切回 Hobby；在本条记录清理结果（删除后 404 / 列表为空、套餐读回 Hobby）。
+- **剩余阻塞：** 无（门槛已核实解除，交给 `/loopx w4`）。
+- **验收：** 原 DoD / Acceptance 不变，未删减。
