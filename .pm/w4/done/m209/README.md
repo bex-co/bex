@@ -1,6 +1,6 @@
 # w4 · m209 — Keep metrics geometry stable and labels readable
 
-**Worker:** worker4 **Goal:** metrics preserve their populated chart layout through loading and show complete axis labels **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** metrics preserve their populated chart layout through loading and show complete axis labels **Status:** done (2026-10-31: chart census replayed live; service-metrics and disk-snapshot skeleton residuals filed as w4/446, w4/447)
 
 **Estimate:** 4h across eight tasks. [Finding, scope and prior guarantee audit](finding.md) · [Durable live evidence](../evidence/m209-keyvalue-metrics-geometry.json).
 
@@ -11,11 +11,11 @@
 | [t001](done/t001.md) | Share the responsive chart viewport across data and pending states | 45m | — — **DONE 2026-10-14** |
 | [t002](done/t002.md) | Match the Key Value Metrics route preview to its real panel | 35m | t001 — **DONE 2026-10-14** |
 | [t003](done/t003.md) | Reserve enough axis gutter for complete formatted ticks | 45m | — — **DONE 2026-10-14** |
-| [t004](t004.md) | Verify the shared chart consumers and caller extras | 30m | t002, t003 |
+| [t004](t004.md) | Verify the shared chart consumers and caller extras — **DONE** | 30m | t002, t003 |
 | [t005](done/t005.md) | Render parity | 15m | t004 — **DONE 2026-10-14** |
 | [t006](done/t006.md) | Simplify | 10m | t005 — **DONE 2026-10-14** |
-| [t007](t007.md) | Test coverage | 50m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t007](t007.md) | Test coverage — **DONE** | 50m | t005 |
+| [t008](t008.md) | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
