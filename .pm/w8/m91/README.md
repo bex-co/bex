@@ -288,3 +288,7 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 ## Legacy default Poetry dependency compatibility — 2026-10-31
 
 [The narrow two-file source repair](evidence/legacy-poetry-dependency-source-20261031/README.md) caps the private virtualenv dependency only for common system-interpreter/default Poetry2.1.3 beside Python3.7/3.8, following the tagged upstream workaround without changing app/Poetry versions or explicit/modern/historical/uv routes. Fourteen recipe controls, seven expected old-source failures, scoped tests/lint and independent review pass; all24 frozen payloads and two live sources were checked. Actual old-project, seed, image/architecture and hosted compatibility remain unexecuted, and no adoption is implied.
+
+## Node26 immutable supplier evidence — 2026-10-31
+
+[Root-approved Node26](evidence/published-node26-20261031/README.md) binds the same `e48dd4a6` producer/verifier source and successful run41190806242/job124507306637. Root checked all182 frozen payloads, four mirrored files plus28 immutable Git source files/modes, all33 fresh complete anonymous blobs/1,238,687,654B, five strict signed proofs, two actual rejected source/subject controls, seven fresh TUF roots and all five full signed-subject/canonical-predicate roundtrips. Both architectures report Node26.12.1; full findings remain retained without waiver. Published supplier approvals are18/27. Common Bookworm qualification, exact Python3.14.8/default, original hosted and production adoption acceptance remain open.
