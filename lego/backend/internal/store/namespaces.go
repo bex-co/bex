@@ -502,9 +502,10 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // PVC per disk-bearing service, sized by the owner) and datastore growth past
 // the plan floors draw on: paid 5 TiB / 200 PVCs (100 services at the 10 GB
 // default disk is 1 TiB, and the disk's own bill is the real limiter —
-// provisioned capacity is charged whether or not it is used); hobby 120 GiB /
-// 8 PVCs, room for a couple of default-size disks on its paid services. Both
-// stay far below "every datastore at the 16 TiB disk-autoscale ceiling".
+// provisioned capacity is charged whether or not it is used), on every plan:
+// Hobby's former 120 GiB / 8 PVCs was a plan-based cap Render does not have
+// (w2/062). It stays far below "every datastore at the 16 TiB disk-autoscale
+// ceiling".
 // services.loadbalancers/nodeports are zeroed because bex only ever creates
 // ClusterIP Services in a tenant namespace — a defense-in-depth denial of
 // billable cloud LBs against an operator bug or a compromised principal.
@@ -570,12 +571,12 @@ func quotaForPlan(plan string) corev1.ResourceList {
 	ephReq, ephLim := "2Ti", "4Ti"
 	switch plan {
 	case PlanHobby, "", "free":
-		// Compute, pods and ephemeral storage stay at the paid ceiling: Render
-		// sets no instance-type or total-compute cap on Hobby (w2/061), so a
-		// Hobby service may run any paid instance type, bounded by the
-		// services count cap and per-instance billing.
+		// Compute, pods, ephemeral storage and the disk budget stay at the
+		// paid ceiling: Render sets no instance-type, total-compute or
+		// per-workspace disk cap on Hobby (w2/061, w2/062), so a Hobby service
+		// may run any paid instance type with disks, bounded by the services
+		// count cap and per-instance / per-GB billing.
 		jobs = "25"
-		storage, pvcs = "120Gi", "8"
 	}
 	caps := QuotaCapsForPlan(plan)
 	quota := corev1.ResourceList{

@@ -171,8 +171,8 @@ func TestQuotaCarriesRollingUpdateSurgeHeadroom(t *testing.T) {
 	}
 }
 
-// TestHobbyComputeMatchesPaid pins w2/061: as on Render, a Hobby workspace has
-// no plan-based compute cap, so its services quota (CPU, memory, pods) equals
+// TestHobbyComputeMatchesPaid pins w2/061 and w2/062: as on Render, a Hobby
+// workspace has no plan-based compute or disk cap, so its services quota (CPU, memory, pods) equals
 // the paid ceiling, while its services count cap stays Hobby's.
 func TestHobbyComputeMatchesPaid(t *testing.T) {
 	hobby, _ := splitComputeQuota(quotaForPlan(PlanHobby))
@@ -183,6 +183,13 @@ func TestHobbyComputeMatchesPaid(t *testing.T) {
 	for key, want := range paid {
 		if got := hobby[key]; got.Cmp(want) != 0 {
 			t.Errorf("hobby %s = %s, want the paid %s", key, got.String(), want.String())
+		}
+	}
+	// Nor a per-workspace disk cap (w2/062).
+	for _, key := range []corev1.ResourceName{corev1.ResourceRequestsStorage, corev1.ResourcePersistentVolumeClaims} {
+		h, p := quotaForPlan(PlanHobby)[key], quotaForPlan(PlanPro)[key]
+		if h.Cmp(p) != 0 {
+			t.Errorf("hobby %s = %s, want the paid %s", key, h.String(), p.String())
 		}
 	}
 	// The single plan-based bound Render documents for Hobby remains.

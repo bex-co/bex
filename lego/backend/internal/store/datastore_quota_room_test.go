@@ -233,7 +233,7 @@ func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
 		pvcs, jobs                          int64
 		storage, ephemeralReq, ephemeralLim string
 	}{
-		{PlanHobby, 208, 400, "1995Gi", "2923Gi", "10371Gi"},
+		{PlanHobby, 400, 400, "6995Gi", "2923Gi", "10371Gi"},
 		{PlanPro, 400, 625, "6995Gi", "2923Gi", "10371Gi"},
 	} {
 		quota := quotaForPlan(tc.plan)
