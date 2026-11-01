@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -35,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -188,6 +190,9 @@ func (s *Service) requireDomainTraffic(ctx context.Context, app *appv1alpha1.App
 
 // DomainView is the neutral bex projection of a custom domain on an App.
 type DomainView struct {
+	// ID is the claim's minted cdm- id, Render's customDomain.id (w4/389);
+	// a legacy storeless domain's id is its hostname.
+	ID        string
 	CreatedAt string // RFC3339 claim creation time; empty for legacy storeless domains.
 	Name      string
 	// ServiceID/ServiceName identify the owning service, Render's
@@ -579,6 +584,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 	// the App's creation time is the honest bound Render's required
 	// createdAt can carry.
 	view := DomainView{
+		ID:                 host,
 		Name:               host,
 		ServiceID:          publicID(app),
 		ServiceName:        core.AppPublicName(app),
@@ -601,6 +607,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 
 func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, claim store.Domain, platformHost string) DomainView {
 	view := DomainView{
+		ID:                cmp.Or(claim.ID, claim.Host),
 		Name:              claim.Host,
 		ServiceID:         publicID(app),
 		ServiceName:       core.AppPublicName(app),
@@ -770,11 +777,36 @@ func filterDomains(domains []DomainView, verificationStatus, domainType string) 
 	}), nil
 }
 
-// GetDomain returns one custom domain by hostname, or core.NotFound("custom
-// domain") once the service has authorized (w4/154).
+// domainHost resolves a custom-domain reference, Render's
+// {customDomainIdOrName}: a cdm- id names the claim with that id on this
+// service, anything else is a hostname (w4/389). An id with no claim here is
+// the same not-found as an unknown hostname.
+func (s *Service) domainHost(ctx context.Context, app *appv1alpha1.App, ref string) (string, error) {
+	if kind, ok := id.KindOf(ref); !ok || kind != id.Domain {
+		return ref, nil
+	}
+	if claims, appID, ok := s.managedDomainClaims(app); ok {
+		rows, err := claims.ListDomainClaims(ctx, appID)
+		if err != nil {
+			return "", err
+		}
+		for _, row := range rows {
+			if row.ID == ref {
+				return row.Host, nil
+			}
+		}
+	}
+	return "", core.NotFound("custom domain")
+}
+
+// GetDomain returns one custom domain by cdm- id or hostname, or
+// core.NotFound("custom domain") once the service has authorized (w4/154).
 func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
 	if err != nil {
+		return DomainView{}, err
+	}
+	if hostname, err = s.domainHost(ctx, app, hostname); err != nil {
 		return DomainView{}, err
 	}
 	hostname = normalizeHostname(hostname)
@@ -807,6 +839,9 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	// in checkAndPromoteClaim.
 	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
+		return DomainView{}, err
+	}
+	if hostname, err = s.domainHost(ctx, app, hostname); err != nil {
 		return DomainView{}, err
 	}
 	hostname, err = canonicalHostname(hostname)
@@ -1583,6 +1618,9 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 			s.RecordDomainEffect(ctx, app, core.AuditVerbDeleteDomain)
 		}
 	}()
+	if hostname, err = s.domainHost(ctx, app, hostname); err != nil {
+		return err
+	}
 	hostname, err = canonicalHostname(hostname)
 	if err != nil {
 		return err
@@ -1698,7 +1736,7 @@ type customDomainWithCursor struct {
 func toRenderCustomDomain(d DomainView) renderCustomDomain {
 	suffix, _ := publicsuffix.PublicSuffix(d.Name)
 	return renderCustomDomain{
-		ID:                 d.Name,
+		ID:                 d.ID,
 		Name:               d.Name,
 		DomainType:         d.DomainType,
 		PublicSuffix:       suffix,

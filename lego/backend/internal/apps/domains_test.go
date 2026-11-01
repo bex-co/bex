@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -2616,5 +2617,43 @@ func TestEdgeAddressesForApexFallback(t *testing.T) {
 	svc.DomainResolver = fakeDomainResolver{err: errors.New("dns down")}
 	if got := svc.edgeAddressesFor(ctx, "apex", "web.onbex.co"); got != nil {
 		t.Errorf("failed resolution = %v, want nil", got)
+	}
+}
+
+// Render's {customDomainIdOrName}: a managed domain reports its minted cdm- id,
+// and get/verify/delete resolve either that id or the hostname (w4/389).
+func TestManagedDomainResolvesByIDOrName(t *testing.T) {
+	ctx := context.Background()
+	claims := newMemoryDomainClaimStore()
+	svc, cl := newService(claims, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(ctx, "web", "app.example.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	claim := claims.claims["app.example.com"]
+	claim.ID = id.New(id.Domain)
+	claims.claims["app.example.com"] = claim
+
+	byID, err := svc.GetDomain(ctx, "web", claim.ID)
+	if err != nil {
+		t.Fatalf("GetDomain by id: %v", err)
+	}
+	if byID.ID != claim.ID || byID.Name != "app.example.com" {
+		t.Fatalf("by id = %+v, want id %s name app.example.com", byID, claim.ID)
+	}
+	if got := toRenderCustomDomain(byID).ID; got != claim.ID {
+		t.Fatalf("customDomain.id = %q, want %s", got, claim.ID)
+	}
+	byName, err := svc.GetDomain(ctx, "web", "app.example.com")
+	if err != nil || byName.ID != claim.ID {
+		t.Fatalf("by name = %+v, %v; want id %s", byName, err, claim.ID)
+	}
+	if _, err := svc.GetDomain(ctx, "web", id.New(id.Domain)); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unknown cdm- id => not found, got %v", err)
+	}
+	if err := svc.DeleteDomain(ctx, "web", claim.ID); err != nil {
+		t.Fatalf("DeleteDomain by id: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Fatalf("spec.hosts after delete by id = %v, want empty", got)
 	}
 }
