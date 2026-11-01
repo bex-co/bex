@@ -291,3 +291,19 @@ func TestPreDeployKeepsZeroRetriesAndNoDisruptionIgnore(t *testing.T) {
 		}
 	}
 }
+
+// w4/453: the pre-deploy pod names its service for egress metering only; it
+// never carries bex.co/app-id, so no Service selects it (w4/m181).
+func TestJobPodNamesItsServiceForEgressOnly(t *testing.T) {
+	j := Job(Options{Name: "api", Namespace: "default", Command: []string{"/bin/sh", "-c", "echo"}, Revision: "gen-1", EgressAppID: "srv-one"})
+	labels := j.Spec.Template.Labels
+	if labels[LabelEgressAppID] != "srv-one" {
+		t.Fatalf("pod %s = %q, want srv-one", LabelEgressAppID, labels[LabelEgressAppID])
+	}
+	if _, ok := labels["bex.co/app-id"]; ok {
+		t.Fatalf("pre-deploy pod carries bex.co/app-id, so a Service would select it: %v", labels)
+	}
+	if bare := Job(Options{Name: "api", Namespace: "default", Command: []string{"/bin/sh", "-c", "echo"}, Revision: "gen-1"}); bare.Spec.Template.Labels[LabelEgressAppID] != "" {
+		t.Fatal("no EgressAppID must stamp no egress label")
+	}
+}

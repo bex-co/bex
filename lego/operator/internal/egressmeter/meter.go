@@ -20,6 +20,7 @@ limitations under the License.
 package egressmeter
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -45,6 +46,10 @@ import (
 const (
 	PodLabelApp   = "app.bex.co/app"
 	PodLabelAppID = "bex.co/app-id"
+	// PodLabelEgressAppID attributes a pod that must not carry PodLabelAppID
+	// (a pre-deploy Job runs the service's own command but is never a Service
+	// backend) to its service's egress (w4/453).
+	PodLabelEgressAppID = "app.bex.co/egress-app-id"
 
 	// Run after the raw table but before conntrack, mangle, and source NAT.
 	// Pod policy has already run at Cilium's host-facing veth ingress hook.
@@ -414,20 +419,20 @@ func desiredPodResources(pods []corev1.Pod) (map[[4]byte]ResourceKey, map[[16]by
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
-		// The platform's Job pods (pre-deploy, static publish, purge, disk
-		// backup) carry the App label without its id, so no Service selects them
-		// (w4/m181). They are not App serving pods: skip them rather than fail
-		// the node's whole attribution, which marked the meter unhealthy and
-		// skipped every app's direct egress on the node for as long as one ran
-		// (w4/452).
-		if pod.Labels[PodLabelAppID] == "" {
+		// Job pods carry the App label without its id, so no Service selects
+		// them (w4/m181). A pre-deploy pod names its service for egress alone
+		// (w4/453); platform Jobs (static publish, purge, disk backup) name
+		// none and are skipped, never failing the node's whole attribution,
+		// which marked the meter unhealthy for every app on it (w4/452).
+		appID := cmp.Or(pod.Labels[PodLabelAppID], pod.Labels[PodLabelEgressAppID])
+		if appID == "" {
 			continue
 		}
 		if pod.UID == "" {
 			return nil, nil, 0, fmt.Errorf("pod %s has no immutable UID", pod.Name)
 		}
 		expected++
-		key, err := NewResourceKey(pod.Namespace, pod.Labels[PodLabelAppID])
+		key, err := NewResourceKey(pod.Namespace, appID)
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("pod %s: %w", pod.Name, err)
 		}
