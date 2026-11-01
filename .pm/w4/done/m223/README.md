@@ -1,6 +1,6 @@
 # w4 · m223 — Make first Postgres availability include vector
 
-**Worker:** worker4 **Goal:** the first Available status on a newly provisioned database means its supported vector migration can run immediately. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** the first Available status on a newly provisioned database means its supported vector migration can run immediately. **Status:** done (2026-11-01: first Available already has vector at 1440 and 390; migration and distance succeed immediately)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE** | 20m | w4/m223/t002 |
 | t004 | Simplify — **DONE** | 15m | w4/m223/t003 |
 | t005 | Test coverage — **DONE** | 45m | w4/m223/t003 |
-| t006 | Closeout | 20m | w4/m223/t004, w4/m223/t005 |
+| t006 | Closeout — **DONE** | 20m | w4/m223/t004, w4/m223/t005 |
 
 Six tasks, 175m total (2h55m). Major functional readiness failure. Implemented 2026-10-17; awaiting the deployed-build replay (t006).
 
