@@ -1,6 +1,6 @@
 # w4 · m229 — Attribute Blueprint changes without repeating source switches
 
-**Worker:** worker4 **Goal:** a source-migration preview names actual configuration differences instead of blaming unchanged fields. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** a source-migration preview names actual configuration differences instead of blaming unchanged fields. **Status:** done (2026-11-01: source-switch review lists only the real source/command fields at 1440 and 390; controls pass)
 
 ## Tasks (in order)
 
