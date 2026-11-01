@@ -1,6 +1,6 @@
 # w2 · m162 — One GitHub account, many workspaces: the N:N connection model
 
-**Worker:** worker2 **Goal:** the same GitHub account can back more than one workspace, and every GitHub-connect path that used to dead-end now completes or says exactly why **Status:** todo — t001–t009 done; t010 resumed 2026-10-31: the fan-out fix `c780382d6` is live, re-walk with no user step
+**Worker:** worker2 **Goal:** the same GitHub account can back more than one workspace, and every GitHub-connect path that used to dead-end now completes or says exactly why **Status:** done — every task done; production re-walk passed 2026-11-01
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity check across REST/GraphQL/MCP/dashboard                                      | 30m | w2/m162/t003, w2/m162/t006 | — **DONE**  |
 | t008 | Simplify the code this milestone changed                                                   | 30m | w2/m162/t007               | — **DONE**  |
 | t009 | Test coverage for N:N, fan-out, and claim selection                                        | 1h  | w2/m162/t007               | — **DONE**  |
-| t010 | Closeout                                                                                   | 20m | w2/m162/t009               | open        |
+| t010 | Closeout                                                                                   | 20m | w2/m162/t009               | — **DONE** |
 
 ## Definition of done
 
@@ -33,8 +33,8 @@ A live production walk (two real workspaces, one real installation) is the final
 
 ## Source + Goal linkage
 
-- **Source:** live user report 2026-09-16 — "github account connect 和绑定好像有问题，无法多个 workspace 绑定同一个 github account，从而永远无法绑定". Code triage confirmed three independent dead ends (install URL strips `state`; the claim filter discarded bound-elsewhere installations and reported "install the App first"; direct github.com installs are a no-op). Design decision: [`docs/ADR078-github-workspace-connections.md`](../../../docs/ADR078-github-workspace-connections.md) §2 (cardinality reversed N:1 → N:N), §3a (claim candidate rule + deferred selection), §4a (fan-out fail-closed restatement), revised 2026-09-16; [`ADR026`](../../../docs/ADR026-github-integration.md) §4 and [`ADR018`](../../../docs/ADR018-render-parity.md) synced in the same change.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillars 3–4 — "which of my repos can you deploy?" and "a later git push redeploys" must hold for private repos with no per-repo setup. Neither holds for a user whose one GitHub account has to serve more than one workspace, which is the ordinary shape for anyone with a personal workspace and a team workspace.
+- **Source:** live user report 2026-09-16 — "github account connect 和绑定好像有问题，无法多个 workspace 绑定同一个 github account，从而永远无法绑定". Code triage confirmed three independent dead ends (install URL strips `state`; the claim filter discarded bound-elsewhere installations and reported "install the App first"; direct github.com installs are a no-op). Design decision: [`docs/ADR078-github-workspace-connections.md`](../../../../docs/ADR078-github-workspace-connections.md) §2 (cardinality reversed N:1 → N:N), §3a (claim candidate rule + deferred selection), §4a (fan-out fail-closed restatement), revised 2026-09-16; [`ADR026`](../../../../docs/ADR026-github-integration.md) §4 and [`ADR018`](../../../../docs/ADR018-render-parity.md) synced in the same change.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillars 3–4 — "which of my repos can you deploy?" and "a later git push redeploys" must hold for private repos with no per-repo setup. Neither holds for a user whose one GitHub account has to serve more than one workspace, which is the ordinary shape for anyone with a personal workspace and a team workspace.
 - **Expected outcome:** the last *observable* Render behaviour bex lacked is closed — Render reaches it by never binding an installation, bex by proving each binding independently. The mechanism divergence (workspace-owned, not per-user credentials) stays deliberate and is now argued in ADR078 §1 rather than merely asserted.
 - **Why now:** it is a reported, reproducible, total block — the affected user has no workaround short of disconnecting the other workspace, and the product's own error copy sends them the wrong way ("install the App first" when the App is installed). It also has to land as one change: the schema step only relaxes a constraint, so splitting it buys no safety, and a phased version would ship an `installation_claimed_elsewhere` error state that the same milestone then deletes.
 - **Render parity task included** because this changes REST, GraphQL, MCP and the dashboard (claim selector, quota codes, callback copy).
@@ -92,3 +92,12 @@ Prepared on production: QA session, `bex-canary` selected, **Settings → Integr
 - **Render basis:** unchanged (one GitHub account serves any number of workspaces on Render).
 - **Remaining gates:** none. No user step: the bindings exist, so no GitHub sign-in is needed.
 - **Worker next steps:** run the five resume steps in `## Blocked 2026-10-31`. Acceptance: one push → one `new_commit` deploy in `tian-personal` and in `bex`, and two `git_webhook_replays` rows; after disconnecting `bex`, a second push deploys only in `tian-personal` and `bex` keeps `bex-co`. Then disconnect `bex-canary`, clean up, record, and finish t010 steps 3–5.
+
+## Re-walk 2026-11-01 — PASS on production; closed
+
+Production on `d147703d7657` (contains the fan-out fix `c780382d6`). Fixture repo `puncsky/bex-m162-rewalk-11010025` added to installation `154851602`; free docker web services `srv-dbjeja9mkpvc73fi3900` (`tian-personal`) and `srv-dbjejepmkpvc73fi392g` (`bex`), both first deploys `live`. (Creating a service from the private repo right after adding it to the installation returned `forbidden` once and succeeded a few seconds later: GitHub access propagation, not a bex defect.)
+
+- **DoD 1 (one account, several workspaces) + 3 (fan-out):** one push `f2fceea` (07:30:05Z) → `new_commit` deploys in **both** (`dep-dbjekvn0o57c739hph30` tian-personal, `dep-dbjekvv0o57c739hph3g` bex), and `git_webhook_replays` gained two rows, `workspace:tea-da2isimlm39c739m4ofg` and `workspace:tea-d98210cbbpdc73dcrkvg`.
+- **DoD 1 (disconnect leaves the other intact):** `DELETE /v1/git/connections/154851602?ownerId=tea-d98210cbbpdc73dcrkvg` → 204; `bex` kept `bex-co` (`90623475`), `tian-personal` kept `puncsky`. A second push `cd437ab` deployed only in `tian-personal` (`dep-dbjelrpmkpvc73fi393g`); `bex` got nothing.
+- **DoD 2** proven on 2026-10-31 (account picker, no dead end); **DoD 4–7** by the 2026-09-16 evidence above and the `c780382d6` tests; ADR078 §2/§3a/§4a match what shipped (§4a corrected in `c780382d6`), and the deploy/un-deploy ordering is in ADR078's consequences.
+- **Cleanup:** `bex-canary`'s extra binding disconnected (204); installation `154851602` is back to `tian-personal` only. Both services and the repo deleted; QA session logged out.
