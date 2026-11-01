@@ -766,7 +766,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **218** — [`services create --from` drops an image service's Docker Command (pinned Render CLI)](blocked/218.md) — **BLOCKED (upstream `render-oss/cli` must clone `dockerCommand` for image/docker runtimes, then a pin bump; bex does not fork the CLI per DO_NOT_DO)**. Split from w4/209 on 2026-10-08; the bex read side shipped with w4/209.
 
-- [ ] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](181.md) — **TODO（2026-10-31 解除阻塞：50m exporter 已在生产；worker 只读观测 24h 指标后关闭）** Exporter budget 10m → 50m (Guaranteed QoS kept), collectors trimmed to INFO, drift-guard tests done 2026-10-03.
+- [x] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](done/181.md) — **DONE 2026-11-01** (24 h read-only: production stores up 1440/1440, max scrape 0.50 s, throttling 22–42%; backup pods no longer scraped as Valkey targets) Exporter budget 10m → 50m (Guaranteed QoS kept), collectors trimmed to INFO, drift-guard tests done 2026-10-03.
 
 - [x] **180** — [Application logs loses duplicated pre-deploy output](done/180.md) — **DONE 2026-10-29** (closed on the 2026-10-19 hosted probe (pin `456090929`, fix included): the DoD journey passed at desktop and mobile). Source-membership merge, bucket predicate and an integrated real-merge panel test done 2026-10-04.
 
