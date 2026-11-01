@@ -393,6 +393,19 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(regions(container)).not.toContain("application-metrics");
   });
 
+  // w4/446: each service chart section reserves the ready event lane above a
+  // plot at the chart's own ratio, not a fixed 180px bar.
+  it("previews each service chart's event lane and ratio-sized plot", () => {
+    const { container } = render(<ServiceMetricsSkeleton />);
+    const plots = [
+      ...container.querySelectorAll('[data-slot="skeleton"]'),
+    ].filter((el) => (el as HTMLElement).style.aspectRatio !== "");
+    expect(plots).toHaveLength(6);
+    for (const plot of plots) {
+      expect(plot.previousElementSibling).toHaveClass("h-6");
+    }
+  });
+
   it.each([
     ["/services/new", "plan-picker", "build-filters"],
     ["/services/new?type=static_site", "build-filters", "plan-picker"],

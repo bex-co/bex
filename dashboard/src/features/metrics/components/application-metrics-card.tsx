@@ -126,9 +126,8 @@ export function ApplicationMetricsCard({
   // window or discovery gaps — the selection is explicit state, never pruned
   // into all-instances mode (w5/m91). An empty/error discovery read therefore
   // never removes the active INSTANCE filter.
-  const inventorySeries = shareInventoryWithAbsolute
-    ? cpuAbsolute.series
-    : inventory.series;
+  const inventoryRead = shareInventoryWithAbsolute ? cpuAbsolute : inventory;
+  const inventorySeries = inventoryRead.series;
   const availableInstances = useMemo(() => {
     const fromSeries = new Set<string>();
     for (const s of inventorySeries) {
@@ -204,6 +203,15 @@ export function ApplicationMetricsCard({
                 </button>
               ) : null}
             </span>
+          ) : runsInstances && inventoryRead.loading ? (
+            // The instance filter's box while its choices load: on a narrow
+            // header it wraps onto its own row, which must not appear late
+            // and push every chart down (w4/446).
+            <span
+              data-instance-filter-slot
+              aria-hidden="true"
+              className="invisible h-9 min-w-[9rem] rounded-md border"
+            />
           ) : null}
           <Tabs
             value={aggregateMethod || "raw"}
@@ -270,6 +278,7 @@ export function ApplicationMetricsCard({
           hasSelection={hasSelection}
         />
         <MetricSection
+          eventLane
           title={t("metrics.totalInstances")}
           result={instances}
           headerExtra={
@@ -417,6 +426,7 @@ function ResourceSection({
 
   return (
     <MetricSection
+      eventLane
       title={title}
       result={
         percentage && absolute.loading ? { ...result, loading: true } : result

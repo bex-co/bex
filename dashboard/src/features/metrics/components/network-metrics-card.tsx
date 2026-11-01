@@ -294,6 +294,7 @@ export function NetworkMetricsCard({
       </CardHeader>
       <CardContent className="space-y-6">
         <MetricSection
+          eventLane
           title={t("metrics.totalRequests")}
           result={requests}
           headerExtra={
@@ -352,6 +353,7 @@ export function NetworkMetricsCard({
           <ChartLegend entries={requestSeries} />
         </MetricSection>
         <MetricSection
+          eventLane
           title={t("metrics.responseTimes")}
           result={latency}
           planFeature={{
@@ -392,6 +394,7 @@ export function NetworkMetricsCard({
           <ChartLegend entries={latencySeries} />
         </MetricSection>
         <MetricSection
+          eventLane
           title={t("metrics.outboundBandwidth")}
           result={bandwidth}
           // A real query error is not "No data in range" — the w1/m50 masking
