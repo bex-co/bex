@@ -1,5 +1,6 @@
 """Own only ephemeral common-image qualification resources and evidence."""
 import argparse
+import base64
 import datetime
 import gzip
 import hashlib
@@ -736,6 +737,14 @@ def bootstrap(root):
             attempt["cancel_signal"] = cancellation["signal"]
             receipt["attempts"].append(attempt)
             dump(receipt_path, receipt)
+            # Keep the exact quiet-command diagnostics if artifact upload fails.
+            # Never emit the environment or the isolated Docker config contents.
+            print("BEX_BUILDKIT_PULL_ATTEMPT " + json.dumps({
+                "owner": owner, "image": image, "command": command,
+                "policy_sha256": receipt["policy_sha256"], "attempt": attempt,
+                "stdout_base64": base64.b64encode(stdout).decode("ascii"),
+                "stderr_base64": base64.b64encode(stderr).decode("ascii"),
+            }), flush=True)
             if cancellation["signal"] is not None:
                 break
             if (type(attempt["exit_code"]) is int and attempt["exit_code"] == 0
@@ -839,6 +848,17 @@ def cleanup(root):
         # No default builder selection, wildcard removal, foreign cache,
         # shared certificate deletion or global prune.
         dump(root / "cleanup.json", {"owner": owner, "operations": results})
+        # These fixed owned builder/list/remove results contain no credentials.
+        # Logout remains quiet; expose only its status, never auth paths/content.
+        print("BEX_NATIVE_CLEANUP_RESULT " + json.dumps({
+            "owner": owner,
+            "operations": [
+                {key: value for key, value in row.items()
+                 if row["resource"] != "docker-auth" or key in
+                 ("resource", "exit_code", "logout_exit_code", "removed", "removal_error")}
+                for row in results
+            ],
+        }), flush=True)
     if any(row["exit_code"] for row in results):
         raise RuntimeError("owned resource cleanup failed; exact results retained")
 
