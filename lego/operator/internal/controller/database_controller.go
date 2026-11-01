@@ -1530,7 +1530,8 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	restarting := r.restartPending(ctx, db, cluster, desiredInstances)
+	restarting := r.restartPending(ctx, db, cluster, desiredInstances) ||
+		r.resourcesPending(ctx, db, cluster, desiredInstances)
 	healthy := clusterState.ready >= desiredInstances && !restarting
 	// Before any extensions hold, which still records the new version.
 	if healthy && backupEnabled {
@@ -1632,6 +1633,77 @@ func (r *DatabaseReconciler) restartPending(ctx context.Context, db *appv1alpha1
 		}
 	}
 	return restarted < desiredInstances
+}
+
+// resourcesPending reports whether a plan or resource change written to the
+// Cluster has not yet rolled through every instance (w4/450). CNPG restarts
+// each instance Pod to apply new resources, but until it starts, the old Pods
+// are still ready at full strength, so the pass that patched the Cluster
+// published the new generation Ready: `available` before the restart that
+// followed. An instance counts once it is ready with the Cluster's requests and
+// limits on its postgres container. Pods are only listed when the Cluster
+// carries resources, and a list error or an empty list never holds Ready.
+func (r *DatabaseReconciler) resourcesPending(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, desiredInstances int64) bool {
+	want, ok := clusterResources(cluster)
+	if !ok || desiredInstances <= 0 {
+		return false
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(cluster.GetNamespace()), client.MatchingLabels{
+		cnpgClusterLabel: cluster.GetName(), cnpgPodRoleLabel: cnpgPodRoleInstance,
+	}); err != nil {
+		logf.FromContext(ctx).Error(err, "list CloudNativePG instances for resources", "name", db.Name)
+		return false
+	}
+	if len(pods.Items) == 0 {
+		// No instance to judge: readyInstances alone decides, as before.
+		return false
+	}
+	var applied int64
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp == nil && podReady(pod) && postgresResourcesMatch(pod, want) {
+			applied++
+		}
+	}
+	return applied < desiredInstances
+}
+
+// clusterResources reads the Cluster's spec.resources as Kubernetes
+// requirements; ok is false when it carries none or they do not parse.
+func clusterResources(cluster *unstructured.Unstructured) (corev1.ResourceRequirements, bool) {
+	raw, found, err := unstructured.NestedMap(cluster.Object, "spec", "resources")
+	if err != nil || !found {
+		return corev1.ResourceRequirements{}, false
+	}
+	var out corev1.ResourceRequirements
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(raw, &out); err != nil {
+		return corev1.ResourceRequirements{}, false
+	}
+	return out, len(out.Requests) > 0 || len(out.Limits) > 0
+}
+
+// postgresResourcesMatch reports whether pod's postgres container carries
+// want's requests and limits (by quantity, so "1Gi" equals "1024Mi"). Only the
+// Cluster's own keys are compared: a live instance also carries an
+// ephemeral-storage request and limit the Cluster never sets.
+func postgresResourcesMatch(pod *corev1.Pod, want corev1.ResourceRequirements) bool {
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "postgres" {
+			return sameQuantities(c.Resources.Requests, want.Requests) && sameQuantities(c.Resources.Limits, want.Limits)
+		}
+	}
+	return false
+}
+
+func sameQuantities(have, want corev1.ResourceList) bool {
+	for name, q := range want {
+		got, ok := have[name]
+		if !ok || got.Cmp(q) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func soonerRequeue(current, candidate time.Duration) time.Duration {
