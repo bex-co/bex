@@ -137,7 +137,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m84** — [Make packaged pgvector usable in managed Postgres](done/m84/README.md) (6 tasks)（原记录：） t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently [sweep378](evidence/postgres-native-cursors-sweep378/README.md). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified. — **DONE 2026-10-29** (pre-fix parents backfilled, read-only verified on production)
 
-- [ ] **m83** — [Supply automatic compression for web responses](m83/README.md) (6 tasks) — **IN PROGRESS（2026-10-31：t001–t005 done — gzip-only Traefik `compress` on every exposed web route, ADR018 signed differences; next: t006 live closeout after deploy, Free web-service window after 2026-11-01 00:00 UTC）**
+- [ ] **m83** — [Supply automatic compression for web responses](blocked/m83/README.md) (6 tasks) — **BLOCKED (platform pipeline must roll out qualified a154 compression source; worker then collects fresh signed operator/API Ready and legal Free acceptance)** — t001–t005 done; final57-control runner reviewed, t006 live criteria open. No user decision.
 
 - [x] **m82** — [Supply FFmpeg in native Python builds and runtime](done/m82/README.md) (6 tasks) — **DONE 2026-10-16:** sweep382 accepts both first original MP3 builds and real runtime/probe/exact decode, live x86_64 plus local pinned aarch64, six shared reads and exact two-parent/child cleanup.
 
