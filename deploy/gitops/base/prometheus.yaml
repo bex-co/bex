@@ -815,6 +815,16 @@ spec:
                       [__meta_kubernetes_pod_label_app_bex_co_keyvalue]
                     action: keep
                     regex: .+
+                  # Only the store's own exporter port on a Running pod. The
+                  # backup CronJob's pods carry the same keyvalue label; once
+                  # Completed they stayed discovered and scraped as down
+                  # 10 s timeouts (w4/181, 2026-11-01).
+                  - source_labels: [__meta_kubernetes_pod_container_port_name]
+                    action: keep
+                    regex: metrics
+                  - source_labels: [__meta_kubernetes_pod_phase]
+                    action: keep
+                    regex: Running
                   - source_labels: [__meta_kubernetes_pod_ip]
                     target_label: __address__
                     replacement: ${1}:9121
