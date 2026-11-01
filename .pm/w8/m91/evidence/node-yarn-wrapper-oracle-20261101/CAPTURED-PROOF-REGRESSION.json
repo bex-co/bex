@@ -1,0 +1,22 @@
+{
+  "actual_versions": {
+    "npm": "6.14.18",
+    "yarn": "1.22.22",
+    "pnpm": "10.34.7"
+  },
+  "actual_identity": "/opt/yarn-v1.22.22/bin/yarn",
+  "before": "REFUSAL",
+  "after": "PASS",
+  "nine_positive_manifest_bytes_unchanged": {
+    "14.21.3/npm": "cad72aed61d01b1936a6dea05cf2ea662932e890e167fb5c9fe19b0e1b50646c",
+    "14.21.3/yarn": "fb7ae3e356f7ddb4909b0b7355a9369df276f484ec4d64d9da998c5965eaa6aa",
+    "14.21.3/pnpm": "6b4b32887175a4dcc56f91d5bf07c72da12b957880694bc27583318d8187c2da",
+    "16.20.2/npm": "ec1f5608f7d2196ab6c1877fbb25a391bbabeda1cf6f3c3ab50be4ecec9b633f",
+    "16.20.2/yarn": "37ac57c056b3866d1860351341057530165d73b56f0696f1f84a55f743769104",
+    "16.20.2/pnpm": "bb092c360d4162dd646c32a5265c8b0297ab3e4d8a61e3826ff7b34966b9304b",
+    "26.2.0/npm": "f30a84c84fd07a574dc069e5ab62b1bea11282067a42e4f2ffead2591864f36e",
+    "26.2.0/yarn": "2c75619be12a7aafc6d5206a1038ec100ccb9fcfa6e5358db78937f207db19e2",
+    "26.2.0/pnpm": "4741210986559462046f2db5bf7c5a7d0f04da45c6dfc8f71ec02f706c727fa9"
+  },
+  "only_driver_function_changed": "validate_tools"
+}

@@ -1,0 +1,62 @@
+{
+  "CHECKS.json": {
+    "bytes": 1922,
+    "sha256": "1238dcfd509087b459699aa43c15f336d222edb7c28de2bd971b2f837cf3d277"
+  },
+  "ORACLE.stderr": {
+    "bytes": 1535,
+    "sha256": "49d07bfa7117cbc45442ea3ff5ae0b1287922fe8c6816ab88799d95c34392787"
+  },
+  "ORACLE.stdout": {
+    "bytes": 163,
+    "sha256": "c60c7e9bb21a8ee51c08239bb752402c906ae4538c10d34d6570fcb247015895"
+  },
+  "PLUGIN.stderr": {
+    "bytes": 394,
+    "sha256": "4da82b94b1c5999d21c14bc420a2f280ffff1ee01fcb4884b1d478d18796d502"
+  },
+  "PLUGIN.stdout": {
+    "bytes": 197,
+    "sha256": "dfd720a659b314ceb8d4a78573851548c50828878977d251fb07e362132ea6f6"
+  },
+  "REVIEW.json": {
+    "bytes": 5530,
+    "sha256": "3d1bde4eb926b04e7684cf84f1077c5c77e83142f330fede603461a980b809b3"
+  },
+  "check.py": {
+    "bytes": 8009,
+    "sha256": "3bcce8471e3d204e586eddb3c7f33716eb9c50119091be9915843711b45e1720"
+  },
+  "check.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "check.stdout": {
+    "bytes": 177,
+    "sha256": "8fe169be11a0f51d84b39d5e84fb316eab87e29a9a57618ac612f15e3db27eec"
+  },
+  "context/oracle/check.py": {
+    "bytes": 13293,
+    "sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748"
+  },
+  "context/oracle/check_test.py": {
+    "bytes": 12755,
+    "sha256": "a265df54f4b26e44d2b922af0865e5fd69db4aa687f198fdac010cb84c1872fa"
+  },
+  "context/plugin/PLAN.json": {
+    "bytes": 4083,
+    "sha256": "bee6576bfb1bdf2337b2d47177551a8023c8b91a9795e9bea506fbd365d959dc"
+  },
+  "context/plugin/pilot.sh": {
+    "bytes": 2010,
+    "sha256": "97274b433581d9b0ce2c94b0ad478c1f3661810061ef8da8de17ff3ef70b1004"
+  },
+  "context/plugin/run_pilot.py": {
+    "bytes": 22064,
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "context/plugin/test_plugin.py": {
+    "bytes": 2972,
+    "sha256": "3e36540b7268c2051927de32a270e2f6b4a394c662460fe39d2c9d36d19d4ce8"
+  }
+}

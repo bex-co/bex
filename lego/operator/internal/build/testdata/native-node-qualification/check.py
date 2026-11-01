@@ -40,7 +40,7 @@ def validate_tools(proof, versions, expected):
     assert proof["npm_cli"] == "/usr/local/lib/node_modules/npm/bin/npm-cli.js"
     assert proof["yarn_package"]["name"] == "yarn"
     assert proof["yarn_package"]["version"] == versions["yarn"] == expected["yarn"]
-    assert proof["yarn_cli"].endswith("/yarn-v" + expected["yarn"] + "/bin/yarn.js")
+    assert proof["yarn_cli"] == "/opt/yarn-v" + expected["yarn"] + "/bin/yarn"
     assert proof["pnpm_package"]["name"] == "pnpm"
     if "standalone" in proof["pnpm_package"]:
         # pnpm 10's package refuses Node < 18.12; Node 14/16 run its standalone (w8/226).

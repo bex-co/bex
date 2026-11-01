@@ -1,0 +1,26 @@
+--- before/lego/operator/internal/build/testdata/native-node-qualification/check_test.py
++++ after/lego/operator/internal/build/testdata/native-node-qualification/check_test.py
+@@ -29,7 +29,7 @@
+         self.tools = {"npm_package": {"name": "npm", "version": "6.14.17"},
+             "npm_package_sha256": "a" * 64, "npm_cli": "/usr/local/lib/node_modules/npm/bin/npm-cli.js",
+             "yarn_package": {"name": "yarn", "version": "1.22.22"},
+-            "yarn_cli": "/opt/yarn-v1.22.22/bin/yarn.js",
++            "yarn_cli": "/opt/yarn-v1.22.22/bin/yarn",
+             "pnpm_package": {"name": "pnpm", "version": "10.34.7"}}
+ 
+     def test_selected_runtime_headers_and_env_are_required(self):
+@@ -70,6 +70,14 @@
+         for manager in ("yarn", "pnpm"):
+             with self.subTest(manager=manager), self.assertRaises(AssertionError):
+                 validate_tools(self.tools, dict(self.versions, **{manager: "0.0.0"}), self.expected)
++
++    def test_yarn_uses_the_canonical_archive_wrapper(self):
++        # Captured tools-build identity from the actual Node14 donor pilot.
++        validate_tools(self.tools, self.versions, self.expected)
++        for cli in ("/opt/yarn-v1.22.22/bin/yarn.js", "/other/yarn-v1.22.22/bin/yarn",
++                    "/opt/yarn-v1.22.21/bin/yarn", "/usr/local/bin/yarn"):
++            with self.subTest(cli=cli), self.assertRaises(AssertionError):
++                validate_tools(dict(self.tools, yarn_cli=cli), self.versions, self.expected)
+ 
+ 
+     def test_timeout_and_failure_outputs_survive_before_refusal(self):
