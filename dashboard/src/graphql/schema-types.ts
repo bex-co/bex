@@ -499,6 +499,7 @@ export type Database = {
   expiresAt: Maybe<Scalars['String']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   highAvailabilityEnabled: Maybe<Scalars['Boolean']['output']>;
+  highAvailabilityReady: Maybe<Scalars['Boolean']['output']>;
   highAvailabilityRequested: Maybe<Scalars['Boolean']['output']>;
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;

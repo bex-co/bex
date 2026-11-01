@@ -49,10 +49,12 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),
 		"diskAutoscalingEnabled":  gqlutil.BoolField(func(v PostgresView) any { return v.DiskAutoscalingEnabled }),
 		"highAvailabilityEnabled": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityEnabled }),
-		// highAvailabilityRequested is spec intent (bex extension, w2/m171):
-		// highAvailabilityEnabled reports the observed standby, so the
-		// dashboard's HA switch reads this to show a request still converging.
+		// highAvailabilityRequested (bex extension, w2/m171) now equals
+		// highAvailabilityEnabled; kept for older dashboard builds.
 		"highAvailabilityRequested": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityRequested }),
+		// highAvailabilityReady (bex extension, w2/059) is the observed standby:
+		// HA on and two instances ready.
+		"highAvailabilityReady": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityReady }),
 		"readReplicas":              gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
 		"suspended":                 gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
 		"suspenders":                gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),

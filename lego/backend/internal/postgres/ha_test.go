@@ -56,6 +56,43 @@ func testHACreate(t *testing.T, plan string) {
 	if !cr.Spec.HighAvailability || cr.Spec.Plan != tiers.Postgres.CanonicalID(plan) {
 		t.Errorf("spec = plan %q HA %v, want plan %q with HA", cr.Spec.Plan, cr.Spec.HighAvailability, tiers.Postgres.CanonicalID(plan))
 	}
+	// As on Render, the create response already reports the configured HA
+	// while no standby exists yet (w2/059).
+	if !view.HighAvailabilityEnabled {
+		t.Errorf("create response highAvailabilityEnabled = false, want the requested true")
+	}
+}
+
+// TestHighAvailabilityViewIsConfiguredNotObserved pins w2/059: the wire field
+// is the configured value in every lifecycle state, as on Render (its create
+// response says true while `creating`), and the observed standby is a separate
+// bex field the dashboard and metrics read.
+func TestHighAvailabilityViewIsConfiguredNotObserved(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		spec, observed     bool
+		wantEnabled, ready bool
+	}{
+		{"enabling, standby not ready yet", true, false, true, false},
+		{"enabled and ready", true, true, true, true},
+		{"disabling, standby still running", false, true, false, true},
+		{"off", false, false, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: "ha-db", Namespace: "default"},
+				Spec:       appv1alpha1.DatabaseSpec{Plan: "1c-2g", HighAvailability: tc.spec},
+				Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseProvisioning, HighAvailabilityEnabled: tc.observed},
+			}
+			v := pgView(db)
+			if v.HighAvailabilityEnabled != tc.wantEnabled || v.HighAvailabilityRequested != tc.wantEnabled {
+				t.Errorf("enabled/requested = %v/%v, want %v (configured)", v.HighAvailabilityEnabled, v.HighAvailabilityRequested, tc.wantEnabled)
+			}
+			if v.HighAvailabilityReady != tc.ready {
+				t.Errorf("ready = %v, want %v (observed)", v.HighAvailabilityReady, tc.ready)
+			}
+		})
+	}
 }
 
 // TestHARefusedBelowOneCPU pins Render's plan rule on every service write path
@@ -217,8 +254,7 @@ func TestHACreateWithReadReplicas(t *testing.T) {
 
 func TestReadReplicaView(t *testing.T) {
 	// pgView lists the configured replicas (spec) with the hosts the operator
-	// reports for them (status, w5/m138). HighAvailabilityEnabled comes from
-	// operator status.
+	// reports for them (status, w5/m138).
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "rr-db", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true,
