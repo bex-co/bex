@@ -1,0 +1,4 @@
+BEGIN;
+CREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);
+INSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);
+COMMIT;

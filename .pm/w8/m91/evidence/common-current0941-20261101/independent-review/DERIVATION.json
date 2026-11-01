@@ -1,0 +1,6 @@
+{
+  "prior_review_audit": "/private/tmp/bex-w8-common-actual-result-independent-20261101-c40xkbwt/audit.py",
+  "sha256": "baa302f25fa7bb4b56090a5a2fac26361f407382ec10143cb7abd0a20a1e3a54",
+  "reused": "Descriptor/platform/anonymous complete receipt and full signed bundle/predicate/SPDX/Trivy binding logic, with current byte total1522239193, current count6920 and current scope timestamp names. No old candidate proof is read at audit runtime.",
+  "new": "Current source/plan/CI pins, actual Linux outer/inner commands, raw container/process/cleanup/TUF custody and serial intervals."
+}

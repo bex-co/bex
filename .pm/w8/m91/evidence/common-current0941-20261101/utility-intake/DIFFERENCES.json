@@ -1,0 +1,666 @@
+{
+  "amd64": {
+    "manifest_member_files": 356,
+    "prior_member_files": 346,
+    "normalized_added_paths": [
+      "generated/COHORT/missing-jq/resolved-choices.json",
+      "generated/COHORT/missing-python-headers/resolved-choices.json",
+      "generated/COHORT/missing-python-metadata/resolved-choices.json",
+      "generated/COHORT/missing-python-pip/resolved-choices.json",
+      "generated/COHORT/missing-rsync/resolved-choices.json",
+      "generated/COHORT/node-compute/resolved-choices.json",
+      "generated/COHORT/node-static/resolved-choices.json",
+      "generated/COHORT/python313-original/prepared-wheels/anyio-4.16.0-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/platformdirs-4.14.3-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/sqlparse-0.6.1-py3-none-any.whl",
+      "generated/COHORT/python313-original/resolved-choices.json",
+      "generated/COHORT/python3148-default/prepared-wheels/anyio-4.16.0-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/platformdirs-4.14.3-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/sqlparse-0.6.1-py3-none-any.whl",
+      "generated/COHORT/python3148-default/resolved-choices.json",
+      "generated/COHORT/supplier-removed/resolved-choices.json"
+    ],
+    "normalized_removed_paths": [
+      "generated/COHORT/python313-original/prepared-wheels/anyio-4.15.1-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/platformdirs-4.14.2-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/sqlparse-0.6.0-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/anyio-4.15.1-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/platformdirs-4.14.2-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/sqlparse-0.6.0-py3-none-any.whl"
+    ],
+    "source_path_changes": {
+      ".github/scripts/native-common-qualify.py": {
+        "before": {
+          "sha256": "67dc0bb93d34daa8b11aab0088ea17eedc1fb3b47ab62c3315e0bf8250aa2325",
+          "bytes": 60136,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+          "bytes": 60360,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/scripts/test_native_oci_common_qualification.py": {
+        "before": {
+          "sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b",
+          "bytes": 121973,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "362bb9a9b9e31e6db4d4907f5eb61460c90b5257ac80ef70d35cbc4be8034caa",
+          "bytes": 123083,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/workflows/native-base-image.yml": {
+        "before": {
+          "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+          "bytes": 18178,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+          "bytes": 18402,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/workflows/native-common-image.yml": {
+        "before": {
+          "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f",
+          "bytes": 19821,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+          "bytes": 19834,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "deploy/native-base/node-brotli/patch.sh": {
+        "before": {
+          "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8",
+          "bytes": 5358,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63",
+          "bytes": 5560,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+        "before": {
+          "sha256": "292bbd5d0102f56eee96a4ce8a52f8801768f003d1ea3a6f07b0bfb31d2f152d",
+          "bytes": 7204,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+          "bytes": 13945,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+        "before": {
+          "sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+          "bytes": 9456,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+          "bytes": 12787,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativeutility_integration_test.go": {
+        "before": {
+          "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+          "bytes": 16556,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+          "bytes": 18913,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativeutility_qualification_test.go": {
+        "before": {
+          "sha256": "eac03bd5f5791706a97acc3a82eae708e64976931249b6883344d28f5b4f8cd2",
+          "bytes": 16129,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+          "bytes": 18823,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      }
+    },
+    "transitive_wheel_changes": {
+      "python313-original": {
+        "current_files": 49,
+        "prior_files": 49,
+        "added": [
+          "anyio-4.16.0-py3-none-any.whl",
+          "platformdirs-4.14.3-py3-none-any.whl",
+          "sqlparse-0.6.1-py3-none-any.whl"
+        ],
+        "removed": [
+          "anyio-4.15.1-py3-none-any.whl",
+          "platformdirs-4.14.2-py3-none-any.whl",
+          "sqlparse-0.6.0-py3-none-any.whl"
+        ]
+      },
+      "python3148-default": {
+        "current_files": 49,
+        "prior_files": 49,
+        "added": [
+          "anyio-4.16.0-py3-none-any.whl",
+          "platformdirs-4.14.3-py3-none-any.whl",
+          "sqlparse-0.6.1-py3-none-any.whl"
+        ],
+        "removed": [
+          "anyio-4.15.1-py3-none-any.whl",
+          "platformdirs-4.14.2-py3-none-any.whl",
+          "sqlparse-0.6.0-py3-none-any.whl"
+        ]
+      }
+    },
+    "actual_resolved_runtime_metadata": {
+      "node-compute": {
+        "choices": [
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": "NODE_VERSION=24"
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "node-static": {
+        "choices": [
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": "NODE_VERSION=24"
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "python313-original": {
+        "choices": [
+          {
+            "image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+            "label": "Python",
+            "line": "3.13",
+            "narration": "==> Using Python 3.13 (from PYTHON_VERSION=3.13)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "PYTHON_VERSION=3.13.18"
+            ],
+            "source": "PYTHON_VERSION=3.13"
+          },
+          {
+            "image": "",
+            "label": "Poetry",
+            "line": "2.1.3",
+            "narration": "==> Using Poetry 2.1.3 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [],
+            "source": ""
+          },
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": ""
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "python3148-default": {
+        "choices": [
+          {
+            "image": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+            "label": "Python",
+            "line": "3.14.8",
+            "narration": "==> Using Python 3.14.8 (default)",
+            "primary_image": "",
+            "requested_exact": "3.14.8",
+            "runtime_environment": [
+              "PYTHON_VERSION=3.14.8"
+            ],
+            "source": ""
+          },
+          {
+            "image": "",
+            "label": "Poetry",
+            "line": "2.1.3",
+            "narration": "==> Using Poetry 2.1.3 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [],
+            "source": ""
+          },
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": ""
+          }
+        ],
+        "exact_default_precondition_applicable": true,
+        "expected_python_version": "3.14.8",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      }
+    }
+  },
+  "arm64": {
+    "manifest_member_files": 356,
+    "prior_member_files": 346,
+    "normalized_added_paths": [
+      "generated/COHORT/missing-jq/resolved-choices.json",
+      "generated/COHORT/missing-python-headers/resolved-choices.json",
+      "generated/COHORT/missing-python-metadata/resolved-choices.json",
+      "generated/COHORT/missing-python-pip/resolved-choices.json",
+      "generated/COHORT/missing-rsync/resolved-choices.json",
+      "generated/COHORT/node-compute/resolved-choices.json",
+      "generated/COHORT/node-static/resolved-choices.json",
+      "generated/COHORT/python313-original/prepared-wheels/anyio-4.16.0-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/platformdirs-4.14.3-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/sqlparse-0.6.1-py3-none-any.whl",
+      "generated/COHORT/python313-original/resolved-choices.json",
+      "generated/COHORT/python3148-default/prepared-wheels/anyio-4.16.0-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/platformdirs-4.14.3-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/sqlparse-0.6.1-py3-none-any.whl",
+      "generated/COHORT/python3148-default/resolved-choices.json",
+      "generated/COHORT/supplier-removed/resolved-choices.json"
+    ],
+    "normalized_removed_paths": [
+      "generated/COHORT/python313-original/prepared-wheels/anyio-4.15.1-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/platformdirs-4.14.2-py3-none-any.whl",
+      "generated/COHORT/python313-original/prepared-wheels/sqlparse-0.6.0-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/anyio-4.15.1-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/platformdirs-4.14.2-py3-none-any.whl",
+      "generated/COHORT/python3148-default/prepared-wheels/sqlparse-0.6.0-py3-none-any.whl"
+    ],
+    "source_path_changes": {
+      ".github/scripts/native-common-qualify.py": {
+        "before": {
+          "sha256": "67dc0bb93d34daa8b11aab0088ea17eedc1fb3b47ab62c3315e0bf8250aa2325",
+          "bytes": 60136,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+          "bytes": 60360,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/scripts/test_native_oci_common_qualification.py": {
+        "before": {
+          "sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b",
+          "bytes": 121973,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "362bb9a9b9e31e6db4d4907f5eb61460c90b5257ac80ef70d35cbc4be8034caa",
+          "bytes": 123083,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/workflows/native-base-image.yml": {
+        "before": {
+          "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+          "bytes": 18178,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+          "bytes": 18402,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      ".github/workflows/native-common-image.yml": {
+        "before": {
+          "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f",
+          "bytes": 19821,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+          "bytes": 19834,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "deploy/native-base/node-brotli/patch.sh": {
+        "before": {
+          "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8",
+          "bytes": 5358,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63",
+          "bytes": 5560,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+        "before": {
+          "sha256": "292bbd5d0102f56eee96a4ce8a52f8801768f003d1ea3a6f07b0bfb31d2f152d",
+          "bytes": 7204,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+          "bytes": 13945,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+        "before": {
+          "sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+          "bytes": 9456,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+          "bytes": 12787,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativeutility_integration_test.go": {
+        "before": {
+          "sha256": "7854020f6c2c5a71ac784ab1e8f7b4df0aac890ab860ed689a7211326b6896b5",
+          "bytes": 16556,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+          "bytes": 18913,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      },
+      "lego/operator/internal/build/nativeutility_qualification_test.go": {
+        "before": {
+          "sha256": "eac03bd5f5791706a97acc3a82eae708e64976931249b6883344d28f5b4f8cd2",
+          "bytes": 16129,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        },
+        "after": {
+          "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+          "bytes": 18823,
+          "mode": "100644",
+          "type": "regular",
+          "permissions": 420
+        }
+      }
+    },
+    "transitive_wheel_changes": {
+      "python313-original": {
+        "current_files": 49,
+        "prior_files": 49,
+        "added": [
+          "anyio-4.16.0-py3-none-any.whl",
+          "platformdirs-4.14.3-py3-none-any.whl",
+          "sqlparse-0.6.1-py3-none-any.whl"
+        ],
+        "removed": [
+          "anyio-4.15.1-py3-none-any.whl",
+          "platformdirs-4.14.2-py3-none-any.whl",
+          "sqlparse-0.6.0-py3-none-any.whl"
+        ]
+      },
+      "python3148-default": {
+        "current_files": 49,
+        "prior_files": 49,
+        "added": [
+          "anyio-4.16.0-py3-none-any.whl",
+          "platformdirs-4.14.3-py3-none-any.whl",
+          "sqlparse-0.6.1-py3-none-any.whl"
+        ],
+        "removed": [
+          "anyio-4.15.1-py3-none-any.whl",
+          "platformdirs-4.14.2-py3-none-any.whl",
+          "sqlparse-0.6.0-py3-none-any.whl"
+        ]
+      }
+    },
+    "actual_resolved_runtime_metadata": {
+      "node-compute": {
+        "choices": [
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": "NODE_VERSION=24"
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "node-static": {
+        "choices": [
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": "NODE_VERSION=24"
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "python313-original": {
+        "choices": [
+          {
+            "image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+            "label": "Python",
+            "line": "3.13",
+            "narration": "==> Using Python 3.13 (from PYTHON_VERSION=3.13)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "PYTHON_VERSION=3.13.18"
+            ],
+            "source": "PYTHON_VERSION=3.13"
+          },
+          {
+            "image": "",
+            "label": "Poetry",
+            "line": "2.1.3",
+            "narration": "==> Using Poetry 2.1.3 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [],
+            "source": ""
+          },
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": ""
+          }
+        ],
+        "exact_default_precondition_applicable": false,
+        "expected_python_version": "",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      },
+      "python3148-default": {
+        "choices": [
+          {
+            "image": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+            "label": "Python",
+            "line": "3.14.8",
+            "narration": "==> Using Python 3.14.8 (default)",
+            "primary_image": "",
+            "requested_exact": "3.14.8",
+            "runtime_environment": [
+              "PYTHON_VERSION=3.14.8"
+            ],
+            "source": ""
+          },
+          {
+            "image": "",
+            "label": "Poetry",
+            "line": "2.1.3",
+            "narration": "==> Using Poetry 2.1.3 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [],
+            "source": ""
+          },
+          {
+            "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+            "label": "Node",
+            "line": "24",
+            "narration": "==> Using Node 24 (default)",
+            "primary_image": "",
+            "requested_exact": "",
+            "runtime_environment": [
+              "NODE_VERSION=24.22.1"
+            ],
+            "source": ""
+          }
+        ],
+        "exact_default_precondition_applicable": true,
+        "expected_python_version": "3.14.8",
+        "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+        "selection_precondition_passed": true
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+Package: libssl1.1 libffi7
+Pin: release n=bullseye*
+Pin-Priority: 100
+
+Package: *
+Pin: release n=bullseye*
+Pin-Priority: -1

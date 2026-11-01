@@ -1,0 +1,7 @@
+LICENSE
+qa_native_ext.c
+setup.py
+qa_native_helper.egg-info/PKG-INFO
+qa_native_helper.egg-info/SOURCES.txt
+qa_native_helper.egg-info/dependency_links.txt
+qa_native_helper.egg-info/top_level.txt

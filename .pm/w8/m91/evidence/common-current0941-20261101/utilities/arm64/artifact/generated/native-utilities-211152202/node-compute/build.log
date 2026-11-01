@@ -1,0 +1,294 @@
+#0 building with "bex-nq-8214df4313b94e72a8f298a6" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.00kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#5 DONE 0.0s
+
+#6 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#6 DONE 2.5s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [stage-0  9/16] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#8 DONE 0.0s
+
+#9 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#9 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 done
+#9 DONE 0.0s
+
+#10 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#10 resolve docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea 0.0s done
+#10 CACHED
+
+#11 [internal] load build context
+#11 transferring context: 202.95kB done
+#11 DONE 0.0s
+
+#12 [internal] preparing inline document
+#12 CACHED
+
+#13 [stage-0  1/16] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#13 resolve ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 0.0s done
+#13 DONE 0.1s
+
+#14 [stage-0  2/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#14 DONE 0.0s
+
+#13 [stage-0  1/16] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#13 sha256:b325c0b2e9ad5911c736c822846b8099afea7ccbf824daff7cd0311c3be64a7d 0B / 1.40kB 0.2s
+#13 sha256:b325c0b2e9ad5911c736c822846b8099afea7ccbf824daff7cd0311c3be64a7d 1.40kB / 1.40kB 0.2s done
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 0B / 61.85MB 0.3s
+#13 sha256:69876d6f898ee1e4987e6260317a02b644b25e29e8753499de3938103cb77ffd 0B / 1.42kB 0.2s
+#13 sha256:79bef90d98bb022c0ea73232084748d8b217dc8685a67e3a178e0bf55535dd39 0B / 3.24kB 0.2s
+#13 sha256:3d85d5c94cb3f1ded2e4fc4e2e45ba3615da74d99fb2c58a1d341b7fd43dd686 0B / 359B 0.2s
+#13 sha256:69876d6f898ee1e4987e6260317a02b644b25e29e8753499de3938103cb77ffd 1.42kB / 1.42kB 0.6s done
+#13 sha256:79bef90d98bb022c0ea73232084748d8b217dc8685a67e3a178e0bf55535dd39 3.24kB / 3.24kB 0.6s done
+#13 sha256:3d85d5c94cb3f1ded2e4fc4e2e45ba3615da74d99fb2c58a1d341b7fd43dd686 359B / 359B 0.6s done
+#13 sha256:49621c0f0d02c552d208f92a63d6f48d1088ffaaa0638b4546ea4b0536d85857 0B / 1.05kB 0.2s
+#13 sha256:7adf295ccbc3e0636253f99a96b8befab7c43d797526770f9b2fb29debafa1e2 0B / 407B 0.2s
+#13 sha256:49621c0f0d02c552d208f92a63d6f48d1088ffaaa0638b4546ea4b0536d85857 1.05kB / 1.05kB 0.4s done
+#13 sha256:29c69153e60440e16119baf19dd6af52d6d128a5f1bb7dc15e92dd2cee2659ca 0B / 264B 0.2s
+#13 sha256:7adf295ccbc3e0636253f99a96b8befab7c43d797526770f9b2fb29debafa1e2 407B / 407B 0.5s done
+#13 sha256:29c69153e60440e16119baf19dd6af52d6d128a5f1bb7dc15e92dd2cee2659ca 264B / 264B 0.4s done
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 0B / 356.96MB 0.2s
+#13 sha256:774d4bcd55bef622c9dc3e0c3ab69d66c5d9d526ab24875b13a3ab5bc57f4553 0B / 1.30kB 0.2s
+#13 sha256:66d953ffef13f6f686c925d06125e384150ce0516a27d0cbe716e128c1ecfd33 0B / 917B 0.2s
+#13 sha256:774d4bcd55bef622c9dc3e0c3ab69d66c5d9d526ab24875b13a3ab5bc57f4553 1.30kB / 1.30kB 0.3s done
+#13 sha256:66d953ffef13f6f686c925d06125e384150ce0516a27d0cbe716e128c1ecfd33 917B / 917B 0.3s done
+#13 sha256:d4c27d42b35d44a9540313d185499a9d0e6f8d288385234ed73db18234d7744d 0B / 1.50kB 0.2s
+#13 sha256:da2f3dc79b67a799ad264885aa3e331245ae0cb6c5ab2dbdfed2ea6313214a8a 0B / 2.59kB 0.2s
+#13 sha256:d4c27d42b35d44a9540313d185499a9d0e6f8d288385234ed73db18234d7744d 1.50kB / 1.50kB 0.5s done
+#13 sha256:da2f3dc79b67a799ad264885aa3e331245ae0cb6c5ab2dbdfed2ea6313214a8a 2.59kB / 2.59kB 0.4s done
+#13 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 0B / 32B 0.2s
+#13 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 0.2s done
+#13 sha256:956d022ad6095ede4863b3aa25ff80289f313ac17daebfd5c078ed34468f5f3f 0B / 262B 0.3s
+#13 sha256:956d022ad6095ede4863b3aa25ff80289f313ac17daebfd5c078ed34468f5f3f 262B / 262B 0.3s done
+#13 sha256:0c56cea06fd68614a2967010e2d9331fe2aa1dbe509b83dd508c7a7493c7c3aa 0B / 1.40kB 0.2s
+#13 sha256:0c56cea06fd68614a2967010e2d9331fe2aa1dbe509b83dd508c7a7493c7c3aa 1.40kB / 1.40kB 0.3s done
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 3.15MB / 61.85MB 2.6s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 6.29MB / 61.85MB 3.0s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 9.44MB / 61.85MB 3.5s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 12.58MB / 61.85MB 3.9s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 18.87MB / 356.96MB 3.0s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 15.73MB / 61.85MB 4.4s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 18.87MB / 61.85MB 4.7s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 23.07MB / 61.85MB 5.1s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 37.75MB / 356.96MB 4.4s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 26.21MB / 61.85MB 5.4s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 29.36MB / 61.85MB 5.7s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 32.51MB / 61.85MB 6.0s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 35.65MB / 61.85MB 6.3s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 38.80MB / 61.85MB 6.6s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 57.67MB / 356.96MB 5.7s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 41.94MB / 61.85MB 6.9s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 46.14MB / 61.85MB 7.2s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 49.28MB / 61.85MB 7.5s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 77.59MB / 356.96MB 6.9s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 53.48MB / 61.85MB 8.0s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 56.62MB / 61.85MB 8.2s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 59.77MB / 61.85MB 8.6s
+#13 sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 61.85MB / 61.85MB 8.7s done
+#13 ...
+
+#14 [stage-0  2/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#14 extracting sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca
+#14 extracting sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca 1.1s done
+#14 extracting sha256:49621c0f0d02c552d208f92a63d6f48d1088ffaaa0638b4546ea4b0536d85857 0.0s done
+#14 extracting sha256:956d022ad6095ede4863b3aa25ff80289f313ac17daebfd5c078ed34468f5f3f
+#14 extracting sha256:956d022ad6095ede4863b3aa25ff80289f313ac17daebfd5c078ed34468f5f3f 0.0s done
+#14 extracting sha256:79bef90d98bb022c0ea73232084748d8b217dc8685a67e3a178e0bf55535dd39 0.0s done
+#14 extracting sha256:3d85d5c94cb3f1ded2e4fc4e2e45ba3615da74d99fb2c58a1d341b7fd43dd686 done
+#14 extracting sha256:69876d6f898ee1e4987e6260317a02b644b25e29e8753499de3938103cb77ffd done
+#14 extracting sha256:0c56cea06fd68614a2967010e2d9331fe2aa1dbe509b83dd508c7a7493c7c3aa done
+#14 extracting sha256:7adf295ccbc3e0636253f99a96b8befab7c43d797526770f9b2fb29debafa1e2 done
+#14 extracting sha256:29c69153e60440e16119baf19dd6af52d6d128a5f1bb7dc15e92dd2cee2659ca done
+#14 DONE 1.2s
+
+#13 [stage-0  1/16] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 120.59MB / 356.96MB 9.0s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 140.51MB / 356.96MB 9.9s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 159.38MB / 356.96MB 11.3s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 181.40MB / 356.96MB 12.6s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 200.28MB / 356.96MB 13.7s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 221.25MB / 356.96MB 14.9s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 241.17MB / 356.96MB 16.2s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 262.14MB / 356.96MB 17.3s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 281.02MB / 356.96MB 18.2s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 300.94MB / 356.96MB 19.2s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 319.82MB / 356.96MB 20.1s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 338.69MB / 356.96MB 21.5s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 356.96MB / 356.96MB 23.1s
+#13 sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 356.96MB / 356.96MB 23.1s done
+#13 DONE 24.2s
+
+#14 [stage-0  2/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#14 extracting sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03
+#14 extracting sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03 5.7s done
+#14 DONE 6.9s
+
+#14 [stage-0  2/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#14 extracting sha256:b325c0b2e9ad5911c736c822846b8099afea7ccbf824daff7cd0311c3be64a7d done
+#14 extracting sha256:774d4bcd55bef622c9dc3e0c3ab69d66c5d9d526ab24875b13a3ab5bc57f4553 done
+#14 extracting sha256:66d953ffef13f6f686c925d06125e384150ce0516a27d0cbe716e128c1ecfd33 done
+#14 extracting sha256:d4c27d42b35d44a9540313d185499a9d0e6f8d288385234ed73db18234d7744d done
+#14 extracting sha256:da2f3dc79b67a799ad264885aa3e331245ae0cb6c5ab2dbdfed2ea6313214a8a done
+#14 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+#14 merging done
+#14 DONE 6.9s
+
+#15 [stage-0  3/16] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#15 DONE 0.3s
+
+#16 [stage-0  4/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/ /usr/local/
+#16 merging 0.5s done
+#16 DONE 1.1s
+
+#17 [stage-0  5/16] RUN --network=none /sbin/ldconfig
+#17 DONE 0.1s
+
+#18 [stage-0  6/16] RUN --network=none [ "$(/usr/local/bin/node -p 'process.versions.node')" = 24.22.1 ]
+#18 DONE 0.1s
+
+#19 [stage-0  7/16] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#19 merging 0.5s done
+#19 DONE 0.5s
+
+#20 [stage-0  8/16] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#20 DONE 0.1s
+
+#21 [stage-0  9/16] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#21 merging 0.5s done
+#21 DONE 0.5s
+
+#22 [stage-0 10/16] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#22 DONE 0.4s
+
+#23 [stage-0 11/16] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#23 merging 0.6s done
+#23 DONE 0.6s
+
+#24 [stage-0 12/16] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#24 DONE 0.1s
+
+#25 [stage-0 13/16] WORKDIR /opt/render/project/src
+#25 DONE 0.0s
+
+#26 [stage-0 14/16] COPY . .
+#26 DONE 0.0s
+
+#27 [stage-0 15/16] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#27 DONE 0.0s
+
+#28 [stage-0 16/16] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/bin/python3 utility-check.py build && /usr/bin/python3 original-cases.py build node"]
+#28 1.920 {"phase": "build", "checks": ["genuine PG18 archive exact three rows, PG18client programs and malformed archive", "SQLite readonly CLI JSON and independent Python library exact same-file rows", "libvips headers/pkg-config/C-link/pixels and invalid-image", "Django original plurals + GNU extraction/merge/unique/catalog-format failure", "original owned PDF + Helvetica/color PDF exact independent RGB and render failure", "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure", "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure", "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics", "SWIG runtime typemap/wrapper/C import + invalid interface failure", "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure", "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"], "pass": true}
+#28 3.772 {"phase": "build", "mode": "node", "python": "3.11.2", "original_cases": [{"mid": 91, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 93, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 98, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 99, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 101, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 103, "original_authored_build": true, "source_and_data_proof": true}, {"mid": 107, "original_authored_build": true, "source_and_data_proof": true}], "pass": true}
+#28 DONE 3.9s
+
+#29 exporting to docker image format
+#29 exporting layers
+#29 exporting layers 4.5s done
+#29 exporting manifest sha256:89544463c0a83c279fc533ae02b35a3647c33e9eb1f2cf2cf9cde3a670993a5d done
+#29 exporting config sha256:f8703fcb5657044eabe9725d77a04901355605032a63e19f9b8d0ce00362f4d1 done
+#29 sending tarball
+#29 ...
+
+#30 importing to docker
+#30 loading layer 64527348293e 491.52kB / 48.41MB
+#30 loading layer 00b4b9cc764f 262.14kB / 23.44MB
+#30 loading layer 2eb0780af133 557.06kB / 64.53MB
+#30 loading layer 2eb0780af133 61.28MB / 64.53MB 2.0s
+#30 loading layer 74a9cd0a5d4e 557.06kB / 203.34MB
+#30 loading layer 74a9cd0a5d4e 60.72MB / 203.34MB 2.1s
+#30 loading layer 74a9cd0a5d4e 148.73MB / 203.34MB 4.9s
+#30 loading layer 74a9cd0a5d4e 186.61MB / 203.34MB 6.9s
+#30 loading layer 3eaac4704558 557.06kB / 61.85MB
+#30 loading layer 3eaac4704558 58.49MB / 61.85MB 2.0s
+#30 loading layer bbc42ccb0b05 1.05kB / 1.05kB
+#30 loading layer e8ab624dd31b 262B / 262B
+#30 loading layer d37068425423 3.24kB / 3.24kB
+#30 loading layer cf2f779f33a3 359B / 359B
+#30 loading layer cc3ee8656277 1.42kB / 1.42kB
+#30 loading layer e381b679d9db 1.40kB / 1.40kB
+#30 loading layer 4e6448e43716 407B / 407B
+#30 loading layer e1167d64968d 264B / 264B
+#30 loading layer b231137c8aa5 557.06kB / 356.96MB
+#30 loading layer b231137c8aa5 61.83MB / 356.96MB 2.1s
+#30 loading layer b231137c8aa5 154.86MB / 356.96MB 4.1s
+#30 loading layer b231137c8aa5 249.00MB / 356.96MB 6.2s
+#30 loading layer b231137c8aa5 300.81MB / 356.96MB 8.3s
+#30 loading layer b231137c8aa5 333.68MB / 356.96MB 10.4s
+#30 loading layer e55fca9befa2 1.40kB / 1.40kB
+#30 loading layer 2719652c3e33 1.30kB / 1.30kB
+#30 loading layer e09797aaf3d4 917B / 917B
+#30 loading layer 3ba47c93efb0 1.50kB / 1.50kB
+#30 loading layer 6603899a148b 2.59kB / 2.59kB
+#30 loading layer 5f70bf18a086 32B / 32B
+#30 loading layer 8d5a2fba994f 303B / 303B
+#30 loading layer 0b564df6a246 300B / 300B
+#30 loading layer e63c33cbc465 557.06kB / 60.02MB
+#30 loading layer e63c33cbc465 59.05MB / 60.02MB 2.1s
+#30 loading layer ee5c76c857fe 21.24kB / 21.24kB
+#30 loading layer 8641819d7b8e 32.77kB / 1.25MB
+#30 loading layer 4ca56054d995 197B / 197B
+#30 loading layer 248ffdef2195 65.54kB / 4.89MB
+#30 loading layer 295e35b43f13 65.54kB / 5.01MB
+#30 loading layer adc57543fe8c 557.06kB / 110.64MB
+#30 loading layer f5fe1540bb43 187B / 187B
+#30 loading layer ba5a1ac57738 150B / 150B
+#30 loading layer 107016526570 32.77kB / 78.82kB
+#30 loading layer 00be78a1bfc4 462B / 462B
+#30 loading layer e704f17129ad 32.77kB / 1.02MB
+#30 loading layer d37068425423 3.24kB / 3.24kB 17.1s done
+#30 loading layer 64527348293e 48.41MB / 48.41MB 32.7s done
+#30 loading layer 00b4b9cc764f 23.44MB / 23.44MB 30.7s done
+#30 loading layer 2eb0780af133 64.53MB / 64.53MB 30.1s done
+#30 loading layer 74a9cd0a5d4e 203.34MB / 203.34MB 27.7s done
+#30 loading layer 3eaac4704558 61.85MB / 61.85MB 19.6s done
+#30 loading layer bbc42ccb0b05 1.05kB / 1.05kB 17.1s done
+#30 loading layer e8ab624dd31b 262B / 262B 17.1s done
+#30 loading layer cf2f779f33a3 359B / 359B 17.1s done
+#30 loading layer cc3ee8656277 1.42kB / 1.42kB 17.1s done
+#30 loading layer e381b679d9db 1.40kB / 1.40kB 17.1s done
+#30 loading layer 4e6448e43716 407B / 407B 17.0s done
+#30 loading layer e1167d64968d 264B / 264B 17.0s done
+#30 loading layer b231137c8aa5 356.96MB / 356.96MB 16.9s done
+#30 loading layer e55fca9befa2 1.40kB / 1.40kB 5.0s done
+#30 loading layer 2719652c3e33 1.30kB / 1.30kB 5.0s done
+#30 loading layer e09797aaf3d4 917B / 917B 5.0s done
+#30 loading layer 3ba47c93efb0 1.50kB / 1.50kB 5.0s done
+#30 loading layer 6603899a148b 2.59kB / 2.59kB 5.0s done
+#30 loading layer 5f70bf18a086 32B / 32B 5.0s done
+#30 loading layer 8d5a2fba994f 303B / 303B 5.0s done
+#30 loading layer 0b564df6a246 300B / 300B 5.0s done
+#30 loading layer e63c33cbc465 60.02MB / 60.02MB 5.0s done
+#30 loading layer ee5c76c857fe 21.24kB / 21.24kB 2.6s done
+#30 loading layer 8641819d7b8e 1.25MB / 1.25MB 2.5s done
+#30 loading layer 4ca56054d995 197B / 197B 2.4s done
+#30 loading layer 248ffdef2195 4.89MB / 4.89MB 2.4s done
+#30 loading layer 295e35b43f13 5.01MB / 5.01MB 2.4s done
+#30 loading layer adc57543fe8c 110.64MB / 110.64MB 1.9s done
+#30 loading layer f5fe1540bb43 187B / 187B 0.2s done
+#30 loading layer ba5a1ac57738 150B / 150B 0.2s done
+#30 loading layer 107016526570 78.82kB / 78.82kB 0.2s done
+#30 loading layer 00be78a1bfc4 462B / 462B 0.2s done
+#30 loading layer e704f17129ad 1.02MB / 1.02MB 0.2s done
+#30 DONE 32.7s
+
+#29 exporting to docker image format
+#29 sending tarball 36.0s done
+#29 DONE 40.5s

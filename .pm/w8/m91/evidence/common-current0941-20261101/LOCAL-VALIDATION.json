@@ -1,0 +1,68 @@
+{
+  "image_candidate": "PASS",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "baseline_status": "image-only-requalification",
+  "full_current_source_and_both_original_utilities": "PASS_CONTROL_ONLY",
+  "nullbaseline_full_family": "EXPECTED_REFUSAL",
+  "nullbaseline_error": "family reuse requires a complete utility baseline source",
+  "source": {
+    "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "manifest": {
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/qualification-source.json",
+      "sha256": "367614dfe0806cbd99efa4145150960c0b2453bccba764d54e7a7fb9557f2a4d",
+      "bytes": 75098
+    }
+  },
+  "utilities": {
+    "amd64": {
+      "run_id": 41341287851,
+      "run_attempt": 1,
+      "job_id": 124958175523,
+      "artifact_id": 13098498438,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/amd64-artifact.json",
+        "sha256": "e493ab10fbc44c171621dfc7853c860fb41bd6167f3ceffb417f02e9a38fc2d7",
+        "bytes": 747
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
+      },
+      "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/MANIFEST.json",
+        "sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+        "bytes": 79609
+      }
+    },
+    "arm64": {
+      "run_id": 41341287851,
+      "run_attempt": 1,
+      "job_id": 124958175538,
+      "artifact_id": 13098737409,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/arm64-artifact.json",
+        "sha256": "525e9725e5b181d0f948bb7b94e5b0f1987f03c7789340710d50faf987f7af49",
+        "bytes": 747
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
+      },
+      "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact/MANIFEST.json",
+        "sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+        "bytes": 79299
+      }
+    }
+  },
+  "validator_source": "/Users/tianpan/projects/bex7/.github/scripts/native-common-qualify.py",
+  "validator_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+  "controlled_GITHUB_SHA": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "repository_HEAD": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "command": "Existing image/full-current-baseline validators on exact300 isolated context; subprocess and workflow writes trapped; nullbaseline refusal checked separately",
+  "not_CI": "UNIT CONTROL ONLY; GITHUB_SHA=f071 is a local parameter, not a CI run or newly executed utility/source/family acceptance. Actual utility evidence stays source1feba/run41341287851."
+}

@@ -1,0 +1,14 @@
+{
+  "builder": "bex-nq-d8f4fbf80979495dbc84a18b",
+  "case": "python313-original",
+  "common_base": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "container_id": "e84ac6ee6fb94848cd1a58044edd829483d13ae4f875a50e581f37787af7e207",
+  "image_config_id": "sha256:2a437e8ea8ba3d39133b4bf3a789a47cf8a10aeac914e870179b24e3ea4fb761",
+  "image_platform": "linux/amd64",
+  "network": "none",
+  "owner": "bex-nq-d8f4fbf80979495dbc84a18b",
+  "runtime_command_executed": true,
+  "scope": "local generated image; recorded test-only wheel overlay and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": false,
+  "test_prerequisite_overlay": true
+}

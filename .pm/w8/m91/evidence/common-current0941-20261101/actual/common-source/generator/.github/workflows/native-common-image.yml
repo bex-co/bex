@@ -1,0 +1,439 @@
+name: common Bookworm native image (build + verify)
+
+# One tools/system image, followed by independently selected runtime artifacts.
+# Publication never fills the production common-base pin or adopts C images.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/native-common/**"
+      - "deploy/native-base/**"
+      - ".github/workflows/native-common-image.yml"
+      - ".github/workflows/native-base-image.yml"
+      - ".github/scripts/native-oci-stage.py"
+      - ".github/scripts/native-oci-mirror.py"
+      - ".github/scripts/test_native_oci_*.py"
+      - ".github/scripts/native-common-qualify.py"
+      - "lego/operator/internal/build/native*.go"
+      - "lego/operator/internal/build/testdata/native-utilities/**"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Fresh publication, or the checked-in reviewed TEST-ONLY candidate
+        type: choice
+        default: fresh
+        options: [fresh, reviewed-candidate]
+      profile:
+        description: Single-case measurement after both original utility cohorts
+        type: choice
+        default: utilities
+        options: [utilities, node-addon, node, node-donors, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
+      case:
+        description: Exact allowlisted Go case, or pilot for the first case; no family-wide run
+        type: string
+        default: pilot
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    # Full-repository checkout has taken over seven minutes on these runners.
+    # Keep the planning job bounded while allowing setup before validation.
+    timeout-minutes: 15
+    outputs:
+      baseline_status: ${{ steps.selection.outputs.baseline_status }}
+      source: ${{ steps.selection.outputs.source }}
+      ref: ${{ steps.selection.outputs.ref }}
+      producer: ${{ steps.selection.outputs.producer }}
+      verification: ${{ steps.selection.outputs.verification }}
+      receipt_sha256: ${{ steps.selection.outputs.receipt_sha256 }}
+      profile: ${{ steps.selection.outputs.profile }}
+      case: ${{ steps.selection.outputs.case }}
+      job_minutes: ${{ steps.selection.outputs.job_minutes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
+      - id: selection
+        name: validate the fixed profile and case before publication resources
+        env:
+          REQUESTED_SOURCE: ${{ inputs.source || 'fresh' }}
+          REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}
+          REQUESTED_CASE: ${{ inputs.case || 'pilot' }}
+        run: python3 .github/scripts/native-common-qualify.py plan
+
+  publish:
+    needs: plan
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/native-base-image.yml
+    with:
+      runtime: common-bookworm
+
+  qualify:
+    needs: [plan, publish]
+    # Requalify the SAME approved image after a generator fix; image approval
+    # does not require the utility baseline this complete job is about to run.
+    if: >-
+      ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.plan.result == 'success' &&
+          ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' && needs.publish.outputs.ref != '') ||
+           (github.event_name == 'workflow_dispatch' && needs.plan.outputs.source == 'reviewed-candidate' &&
+            needs.plan.outputs.profile == 'utilities' && needs.plan.outputs.baseline_status == 'image-only-requalification' &&
+            needs.publish.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
+    permissions:
+      contents: read
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      GOWORK: "off"
+      GOMAXPROCS: "2"
+      GODEBUG: http2client=0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache: false
+      - id: owned
+        name: record gated inputs and assign ownership before creating resources
+        env:
+          COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.producer || needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.verification || needs.publish.outputs.verification }}
+          QUALIFICATION_PROFILE: utilities
+          QUALIFICATION_CASE: all
+          QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}
+          CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
+          TARGET_PLATFORM: linux/${{ matrix.arch }}
+        run: python3 .github/scripts/native-common-qualify.py init
+      - id: buildkit
+        name: pre-pull the pinned BuildKit image with bounded retries
+        timeout-minutes: 11
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        timeout-minutes: 5
+        with:
+          name: ${{ steps.owned.outputs.owner }}
+          driver-opts: image=${{ steps.buildkit.outputs.image }}
+          use: false
+          keep-state: false
+          # The action's post cleanup also removes shared certificate files.
+          # Our always step removes only the exact assigned builder instead.
+          cleanup: false
+      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          syft-version: v1.55.0
+      - name: actual generated offline builds, original replays and exact-default SPDX
+        working-directory: lego/operator
+        env:
+          BEX_BUILDKIT_INTEGRATION: "1"
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
+          BEX_NATIVE_TEST_PREPARE_WHEELS: "1"
+          BEX_NATIVE_TEST_SYFT: syft
+          BEX_NATIVE_TEST_OUTPUT: ${{ steps.owned.outputs.root }}/generated
+        run: |
+          set -o pipefail
+          go test -p 1 -count=1 -timeout 150m ./internal/build \
+            -run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$' -v \
+            2>&1 | tee "${{ steps.owned.outputs.root }}/qualification.log"
+      - name: record capacity observations before owned cleanup
+        timeout-minutes: 1
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests
+      - name: remove only this job's labeled resources, exact builder and credentials
+        if: always() && steps.owned.outputs.root != ''
+        timeout-minutes: 5
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
+      - name: hash retained successes and failures
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py manifest "$QUALIFICATION_ROOT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.owned.outputs.root != ''
+        with:
+          name: common-generated-${{ github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: ${{ steps.owned.outputs.root }}
+          if-no-files-found: error
+          # Only this fresh owned evidence root; render-env secrets stay in
+          # Go's separate temporary fixture tree. Preserve the full manifest.
+          include-hidden-files: true
+          retention-days: 30
+
+  qualify-profile:
+    needs: [plan, publish, qualify]
+    # A failed fresh run cannot fall back to a prior candidate. Reuse skips both
+    # fresh jobs only for a fully current family baseline; utility requalification
+    # runs the complete qualify job above and cannot start a family case.
+    if: >-
+      ${{ always() && !cancelled() && github.ref == 'refs/heads/main' &&
+          github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' &&
+          needs.plan.outputs.profile != 'utilities' &&
+          ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' &&
+            needs.qualify.result == 'success' && needs.publish.outputs.ref != '') ||
+           (needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.baseline_status == 'current-complete' && needs.publish.result == 'skipped' &&
+            needs.qualify.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
+    permissions:
+      contents: read
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      GOWORK: "off"
+      GOMAXPROCS: "2"
+      GODEBUG: http2client=0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache: false
+      - name: export only the validated single-case profile environment
+        env:
+          QUALIFICATION_PROFILE: ${{ needs.plan.outputs.profile }}
+          QUALIFICATION_CASE: ${{ needs.plan.outputs.case }}
+        run: python3 .github/scripts/native-common-qualify.py profile-env
+      - id: owned
+        name: record gated inputs and assign ownership before creating resources
+        env:
+          COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.producer || needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.verification || needs.publish.outputs.verification }}
+          QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}
+          CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
+          TARGET_PLATFORM: linux/${{ matrix.arch }}
+        run: python3 .github/scripts/native-common-qualify.py init
+      - id: buildkit
+        name: pre-pull the pinned BuildKit image with bounded retries
+        timeout-minutes: 11
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        timeout-minutes: 5
+        with:
+          name: ${{ steps.owned.outputs.owner }}
+          driver-opts: image=${{ steps.buildkit.outputs.image }}
+          use: false
+          keep-state: false
+          # The action's post cleanup also removes shared certificate files.
+          # Our always step removes only the exact assigned builder instead.
+          cleanup: false
+      - name: measure the selected family case without claiming full-family acceptance
+        working-directory: lego/operator
+        env:
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
+          BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
+          BEX_NATIVE_TEST_OUTPUT: ${{ steps.owned.outputs.root }}/generated
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: |
+          set -o pipefail
+          go test -p 1 -count=1 -timeout "$QUALIFICATION_GO_TIMEOUT" ./internal/build \
+            -run "$QUALIFICATION_SELECTOR" -v \
+            2>&1 | tee "$QUALIFICATION_ROOT/qualification.log"
+      - name: record capacity observations before owned cleanup
+        timeout-minutes: 1
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests
+      - name: remove only this job's labeled resources, exact builder and credentials
+        if: always() && steps.owned.outputs.root != ''
+        timeout-minutes: 5
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
+      - name: hash retained successes and failures
+        if: always() && steps.owned.outputs.root != ''
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py manifest "$QUALIFICATION_ROOT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.owned.outputs.root != ''
+        with:
+          name: common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-${{ needs.plan.outputs.source }}-${{ needs.plan.outputs.receipt_sha256 || github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: ${{ steps.owned.outputs.root }}
+          if-no-files-found: error
+          # Only this fresh owned evidence root; render-env secrets stay in
+          # Go's separate temporary fixture tree. Preserve the full manifest.
+          include-hidden-files: true
+          retention-days: 30

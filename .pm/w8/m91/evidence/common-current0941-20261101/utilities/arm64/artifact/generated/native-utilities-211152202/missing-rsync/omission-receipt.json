@@ -1,0 +1,10 @@
+{
+  "case": "missing-rsync",
+  "common_base": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "expected_failure": "rsync: command not found",
+  "fresh_stdout_probe": "missing-rsync-1793563607903404637",
+  "healthy_independent_prerequisites_observed": true,
+  "original_command_expected_failure_observed": true,
+  "removed_supplier": "rsync",
+  "scope": "test-only removal layer; no runtime or hosted acceptance"
+}

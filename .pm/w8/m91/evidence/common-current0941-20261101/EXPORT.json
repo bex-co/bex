@@ -1,0 +1,470 @@
+{
+  "schema": "bex.native-common-image-and-utility-export/v1",
+  "actual_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "actual_producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "actual_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "actual_review_generator": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "repository_head_at_export": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "local_control_GITHUB_SHA": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "source_baseline": {
+    "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "manifest": {
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/qualification-source.json",
+      "sha256": "367614dfe0806cbd99efa4145150960c0b2453bccba764d54e7a7fb9557f2a4d",
+      "bytes": 75098
+    }
+  },
+  "utilities": {
+    "amd64": {
+      "run_id": 41341287851,
+      "run_attempt": 1,
+      "job_id": 124958175523,
+      "artifact_id": 13098498438,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/amd64-artifact.json",
+        "sha256": "e493ab10fbc44c171621dfc7853c860fb41bd6167f3ceffb417f02e9a38fc2d7",
+        "bytes": 747
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
+      },
+      "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/MANIFEST.json",
+        "sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+        "bytes": 79609
+      }
+    },
+    "arm64": {
+      "run_id": 41341287851,
+      "run_attempt": 1,
+      "job_id": 124958175538,
+      "artifact_id": 13098737409,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/arm64-artifact.json",
+        "sha256": "525e9725e5b181d0f948bb7b94e5b0f1987f03c7789340710d50faf987f7af49",
+        "bytes": 747
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
+      },
+      "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact/MANIFEST.json",
+        "sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+        "bytes": 79299
+      }
+    }
+  },
+  "target_evidence": ".pm/w8/m91/evidence/common-current0941-20261101",
+  "record_path": ".github/native-common-test-candidate.json",
+  "actual_outer_result": {
+    "path": ".pm/w8/m91/evidence/common-current0941-20261101/outer/RESULT.json",
+    "sha256": "5885c8cb079bc3fc8c430a1a561bd256c2eec6e0fea72dda104a15a0eeaada45",
+    "bytes": 1960
+  },
+  "actual_independent_audit": "/private/tmp/bex-w8-common0941-actual-independent-20261101-avslmVlO",
+  "reviewed_at": "2026-11-01T21:16:32.705560+00:00",
+  "full_5_signed_reports_retained": true,
+  "both_platforms": true,
+  "all_41_blob_bytes_hashed": {
+    "all_unique_config_and_layer_bytes_fully_hashed": true,
+    "unique_blob_count": 41,
+    "bytes_hashed_this_finalization": 1522239193,
+    "bytes_reused_from_prior_verified_full_read": 0,
+    "prior_receipts_also_rechecked_by_anonymous_head": true,
+    "blob_receipts": [
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:7107d56675797aa659f0cf2af932704dac349bc5140a35ea25e584e3fdc179b4",
+        "bytes_hashed": 14347,
+        "anonymous_full_get_at": "2026-11-01T21:14:47.623493+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506",
+        "bytes_hashed": 48524552,
+        "anonymous_full_get_at": "2026-11-01T21:14:52.598374+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395",
+        "bytes_hashed": 23873246,
+        "anonymous_full_get_at": "2026-11-01T21:14:55.667880+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038",
+        "bytes_hashed": 64432590,
+        "anonymous_full_get_at": "2026-11-01T21:14:59.112082+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe",
+        "bytes_hashed": 211820637,
+        "anonymous_full_get_at": "2026-11-01T21:15:09.935046+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce",
+        "bytes_hashed": 62632477,
+        "anonymous_full_get_at": "2026-11-01T21:15:15.248193+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:2e969d93998abdbce83607beb15cbaff40568dffb6aefb6c61c8285ed15cf9f3",
+        "bytes_hashed": 1054,
+        "anonymous_full_get_at": "2026-11-01T21:15:15.887399+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:2bf30fd0932846f53e2874b0227350e9b274af8cbde60022e69b029cce885144",
+        "bytes_hashed": 263,
+        "anonymous_full_get_at": "2026-11-01T21:15:16.498641+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:35e8a39389b0dba9fd03e035f28a26e521fa43b2bf998109f0d2ac2b5f3f5013",
+        "bytes_hashed": 3244,
+        "anonymous_full_get_at": "2026-11-01T21:15:17.741226+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:9b94dbbb7447773d37a9e0a0ea84c95562583c28f4e6a790236afc99e6926d4d",
+        "bytes_hashed": 359,
+        "anonymous_full_get_at": "2026-11-01T21:15:18.368100+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:469c7b84220c2d929fdabf387498f46641a1cf1c8eb91e53ef9274ab607fd9f8",
+        "bytes_hashed": 1425,
+        "anonymous_full_get_at": "2026-11-01T21:15:19.011176+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3e60963474a962cd684d37632e3a7d46838ca9b952144d9faa8adc41f23a8f72",
+        "bytes_hashed": 1395,
+        "anonymous_full_get_at": "2026-11-01T21:15:19.649253+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:684b81beca4e9190a8d2d23006853a8c6b1f11cc7292289dd59cc0b8b42e6b6c",
+        "bytes_hashed": 408,
+        "anonymous_full_get_at": "2026-11-01T21:15:20.313237+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:da338be950ed063c81ac638d9a4aeabeed67e11476895d54dacbeaec4c4056b8",
+        "bytes_hashed": 263,
+        "anonymous_full_get_at": "2026-11-01T21:15:20.937321+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e",
+        "bytes_hashed": 352368225,
+        "anonymous_full_get_at": "2026-11-01T21:15:39.628765+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:02589dd0e52f4f051a6eb8662355038da5850d7b172f58f02ec93876ca962dd9",
+        "bytes_hashed": 1402,
+        "anonymous_full_get_at": "2026-11-01T21:15:40.284569+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:432edba67d4e4fb37341aea3157c2c2e9c2b6ef21d324ec89a74e969f79b234e",
+        "bytes_hashed": 1294,
+        "anonymous_full_get_at": "2026-11-01T21:15:41.113750+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:6a5c6cd12731a280ab02ef9bde9891b5b8e9a8fc89e482826676ce33b2fa15c9",
+        "bytes_hashed": 913,
+        "anonymous_full_get_at": "2026-11-01T21:15:41.680412+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:62122c7c60374712a515c86a84f9b636e9d653455a839485c5928623c8ff4447",
+        "bytes_hashed": 1497,
+        "anonymous_full_get_at": "2026-11-01T21:15:42.238236+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:8131424c631aa0bf019000ccab71756c7ef061604d64df1be568536f67bc88d9",
+        "bytes_hashed": 2586,
+        "anonymous_full_get_at": "2026-11-01T21:15:42.805080+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "bytes_hashed": 32,
+        "anonymous_full_get_at": "2026-11-01T21:15:43.295229+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:f81cfc5901179b9f34b1f994dbfd122274df39215b7bc54bf498805a48955452",
+        "bytes_hashed": 14355,
+        "anonymous_full_get_at": "2026-11-01T21:15:43.879437+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:9e2782a4701b518d11b63dd3dedcfe1338e448f72cbf5353e854f2501ffd5e62",
+        "bytes_hashed": 48405170,
+        "anonymous_full_get_at": "2026-11-01T21:15:46.419533+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:5a8782a51b4859547b9e75033fe9ea76035a0145a516f9599564fbb0a9b01212",
+        "bytes_hashed": 23439758,
+        "anonymous_full_get_at": "2026-11-01T21:15:48.652914+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:7d9f3d35258fc5018f37db87b726c6d8be6533cd7f9a10f219d805efa5969df3",
+        "bytes_hashed": 64528622,
+        "anonymous_full_get_at": "2026-11-01T21:15:52.109705+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3b260f387eb11bbf6997b93d3e3cff4926bf492025b84c4ca24dbd282b68eafc",
+        "bytes_hashed": 203339786,
+        "anonymous_full_get_at": "2026-11-01T21:16:00.918448+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3fdeece31572d8d656e20f70db67172bad5b8646bb349ea08a5fe9ecf38f85ca",
+        "bytes_hashed": 61850657,
+        "anonymous_full_get_at": "2026-11-01T21:16:04.008710+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:49621c0f0d02c552d208f92a63d6f48d1088ffaaa0638b4546ea4b0536d85857",
+        "bytes_hashed": 1051,
+        "anonymous_full_get_at": "2026-11-01T21:16:04.906519+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:956d022ad6095ede4863b3aa25ff80289f313ac17daebfd5c078ed34468f5f3f",
+        "bytes_hashed": 262,
+        "anonymous_full_get_at": "2026-11-01T21:16:05.495833+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:79bef90d98bb022c0ea73232084748d8b217dc8685a67e3a178e0bf55535dd39",
+        "bytes_hashed": 3242,
+        "anonymous_full_get_at": "2026-11-01T21:16:06.047721+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:3d85d5c94cb3f1ded2e4fc4e2e45ba3615da74d99fb2c58a1d341b7fd43dd686",
+        "bytes_hashed": 359,
+        "anonymous_full_get_at": "2026-11-01T21:16:06.619422+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:69876d6f898ee1e4987e6260317a02b644b25e29e8753499de3938103cb77ffd",
+        "bytes_hashed": 1423,
+        "anonymous_full_get_at": "2026-11-01T21:16:07.222392+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:0c56cea06fd68614a2967010e2d9331fe2aa1dbe509b83dd508c7a7493c7c3aa",
+        "bytes_hashed": 1395,
+        "anonymous_full_get_at": "2026-11-01T21:16:08.007267+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:7adf295ccbc3e0636253f99a96b8befab7c43d797526770f9b2fb29debafa1e2",
+        "bytes_hashed": 407,
+        "anonymous_full_get_at": "2026-11-01T21:16:09.128763+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:29c69153e60440e16119baf19dd6af52d6d128a5f1bb7dc15e92dd2cee2659ca",
+        "bytes_hashed": 264,
+        "anonymous_full_get_at": "2026-11-01T21:16:10.279185+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:15647fd603c7ab4b6e5fc11c0a81f36e2040c656a9b288a76da4f5fc6ed48e03",
+        "bytes_hashed": 356962528,
+        "anonymous_full_get_at": "2026-11-01T21:16:26.819611+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:b325c0b2e9ad5911c736c822846b8099afea7ccbf824daff7cd0311c3be64a7d",
+        "bytes_hashed": 1404,
+        "anonymous_full_get_at": "2026-11-01T21:16:27.417738+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:774d4bcd55bef622c9dc3e0c3ab69d66c5d9d526ab24875b13a3ab5bc57f4553",
+        "bytes_hashed": 1298,
+        "anonymous_full_get_at": "2026-11-01T21:16:28.042755+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:66d953ffef13f6f686c925d06125e384150ce0516a27d0cbe716e128c1ecfd33",
+        "bytes_hashed": 917,
+        "anonymous_full_get_at": "2026-11-01T21:16:28.752443+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:d4c27d42b35d44a9540313d185499a9d0e6f8d288385234ed73db18234d7744d",
+        "bytes_hashed": 1500,
+        "anonymous_full_get_at": "2026-11-01T21:16:30.345202+00:00",
+        "reused_prior_full_read": false
+      },
+      {
+        "schema": "bex.native-anonymous-blob-pull/v2",
+        "registry_repository": "ghcr.io/bex-co/bex-cnb-run",
+        "digest": "sha256:da2f3dc79b67a799ad264885aa3e331245ae0cb6c5ab2dbdfed2ea6313214a8a",
+        "bytes_hashed": 2586,
+        "anonymous_full_get_at": "2026-11-01T21:16:30.902322+00:00",
+        "reused_prior_full_read": false
+      }
+    ]
+  },
+  "trivy_summaries_unfiltered": {
+    "arm64": [
+      {
+        "architecture": "arm64",
+        "config_digest": "sha256:f81cfc5901179b9f34b1f994dbfd122274df39215b7bc54bf498805a48955452",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-11-01T19:42:04.186170714Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 3,
+        "vulnerability_count": 6920,
+        "severity_counts": {
+          "LOW": 3092,
+          "HIGH": 1026,
+          "MEDIUM": 2602,
+          "UNKNOWN": 127,
+          "CRITICAL": 73
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ],
+    "amd64": [
+      {
+        "architecture": "amd64",
+        "config_digest": "sha256:7107d56675797aa659f0cf2af932704dac349bc5140a35ea25e584e3fdc179b4",
+        "artifact_name": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+        "schema_version": 2,
+        "trivy_version": "0.70.0",
+        "created_at": "2026-11-01T19:39:23.104436292Z",
+        "os": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "result_count": 3,
+        "vulnerability_count": 6920,
+        "severity_counts": {
+          "LOW": 3092,
+          "HIGH": 1026,
+          "MEDIUM": 2602,
+          "UNKNOWN": 127,
+          "CRITICAL": 73
+        },
+        "brotli_findings": [],
+        "policy": "Every reported finding is retained. A vulnerability report is not a runtime probe or a zero-CVE claim."
+      }
+    ]
+  },
+  "findings_policy": "Complete original Trivy vulnerability reports and counts retained; no zero-findings or production/all-family/predeploy/native-init/hosted claim. Actual first-cohort generated utility evidence is documented separately.",
+  "apply_only": [
+    ".pm/w8/m91/evidence/common-current0941-20261101",
+    ".github/native-common-test-candidate.json"
+  ],
+  "private_only_context300": "Staging exact300 current tracked files for UNIT source/image validators; do not apply them as changes. Two historical ignored working-tree pycs stay untouched; no physical-workspace qualification claim.",
+  "scope": "Export of completed actual current0941 review and actual both original utility artifacts; no crypto/network/CI/Go/Docker/QA/production write or production/adoption authority."
+}

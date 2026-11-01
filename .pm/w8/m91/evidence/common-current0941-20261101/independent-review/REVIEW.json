@@ -1,0 +1,67 @@
+{
+  "verdict": "CLEAN_CURRENT0941_ACTUAL_SUPPLIER_TEST_CANDIDATE_ONLY",
+  "at_utc": "2026-11-01T21:21:24.364506+00:00",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "actual_root": "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942",
+  "actual_receipt_sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263",
+  "actual_RESULT_sha256": "5885c8cb079bc3fc8c430a1a561bd256c2eec6e0fea72dda104a15a0eeaada45",
+  "source_manifest_sha256": "bc43ca57b0ffd3e73f9669fb57bfade9f03a88b2b1d7b6d96263880d8e3b6d1b",
+  "plan_sha256": "e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81",
+  "actual_result": {
+    "exit": 0,
+    "candidate_approved": true,
+    "stop": null,
+    "errors": [],
+    "minimum_free": 52972687360,
+    "peak_owned_bytes": 236463289,
+    "seconds": 140.60743158403784,
+    "container_absent": true,
+    "process_group_reaped_absent": true
+  },
+  "verified": [
+    "All41 fresh anonymous complete-read receipts match exact current manifests/configs/digests/sizes:1,522,239,193B,0bytes reused; retained ranged receipts complete. No independent layer-body rehash claimed.",
+    "Both platforms bind actual immutable index/child manifests/configs and officialBookworm diffID prefixes. SPDX roots directly match their actual registry child roots and package architecture.",
+    "All5full current raw signed bundles SHA+size match immutable attachment descriptors; existing bundle gzip decompresses byte-exactly; full predicate gzip matches canonical signed DSSE predicate SHA+bytes; same current subject/source and actual Rekor hashedrekord0.0.2 plus RFC3161 timestamp material retained.",
+    "All7actual Linux commands preserve exact strict inner source/subject/identity/issuer/TSA args and outer readonly mount/user/noCaps/512MiB/1CPU/64pids/cached immutable image policy with verified exact officialLinuxCosign3.1.4 SHA. Five positivesexit0/VerifiedOK; wrong-source and wrong-subject negativesexit1 with exact expected diagnostics. Original raw process/container/log/TUF evidence bound; no Darwin-process relabel.",
+    "All7unique own containers execute sequentially, each inspected/exited/removed and absence proved; final lifecycle pendingfalse and final outer own-container absence and reaped group agree. No retries/cleanup uncertainty ignored.",
+    "Retained actualCI run41341287851/job124954099391 completed successful source1feba; producer/verifier1feba and generatorf071 remain separate. Reviewed sourcebc43/plane86/tool pins and allretained22-file source inventories unchanged; prior20factory/33image-critical closure review bound.",
+    "All245observed retained inputs rehashed unchanged after audit. No old56/499artifact evidence borrowed."
+  ],
+  "findings_per_architecture": {
+    "arm64": {
+      "count": 6920,
+      "severity_counts": {
+        "LOW": 3092,
+        "HIGH": 1026,
+        "MEDIUM": 2602,
+        "UNKNOWN": 127,
+        "CRITICAL": 73
+      },
+      "all_records_remain_in_full_signed_predicate": true
+    },
+    "amd64": {
+      "count": 6920,
+      "severity_counts": {
+        "LOW": 3092,
+        "HIGH": 1026,
+        "MEDIUM": 2602,
+        "UNKNOWN": 127,
+        "CRITICAL": 73
+      },
+      "all_records_remain_in_full_signed_predicate": true
+    }
+  },
+  "limitations": [
+    "Supplier TEST candidate artifact identity/report evidence only; no production/common pin/adoption/generated/family/default-runtime/hosted acceptance.",
+    "All6,920Trivy findings per architecture remain fully retained, including73CRITICAL/1026HIGH/2602MEDIUM/3092LOW/127UNKNOWN. This result does not claim zero findings.",
+    "Original verifier streamed/discarded full layer bodies; independent audit verifies retained actual full-read receipts and source guards rather than downloading or rehashing unavailable bodies.",
+    "Read-only in-place retained evidence inspection; no network/crypto/Docker/Go/auth/API/CI/repo/product/resource actions repeated. No original result/source bytes changed or copied into this small review."
+  ],
+  "details": {
+    "audit": "AUDIT.json",
+    "input_custody": "INPUT-CUSTODY.json",
+    "final_consistency": "FINAL-CONSISTENCY.json",
+    "source_derivation": "DERIVATION.json"
+  },
+  "findings": []
+}

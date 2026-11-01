@@ -1,0 +1,13 @@
+{
+  "artifact_id": 13098737409,
+  "arch": "arm64",
+  "expected_bytes": 79098564,
+  "expected_sha256": "42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+  "complete": true,
+  "scope": "approved connector file reference; one verified-TLS stream; signed URL never retained",
+  "started_at": "2026-11-01T21:05:50.268004+00:00",
+  "observed_bytes": 79098564,
+  "observed_sha256": "42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+  "minimum_free": 54413631488,
+  "seconds": 3.9874725830741227
+}

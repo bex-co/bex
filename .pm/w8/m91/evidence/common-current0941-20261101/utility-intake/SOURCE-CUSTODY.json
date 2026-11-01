@@ -1,0 +1,2109 @@
+{
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "comparison_origin_main": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "names": {
+    ".github/scripts/native-common-qualify.py": {
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "bytes": 60360,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    ".github/scripts/native-oci-mirror.py": {
+      "sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "bytes": 15940,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    ".github/scripts/native-oci-stage.py": {
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "bytes": 18041,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    ".github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "362bb9a9b9e31e6db4d4907f5eb61460c90b5257ac80ef70d35cbc4be8034caa",
+      "bytes": 123083,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    ".github/workflows/native-base-image.yml": {
+      "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+      "bytes": 18402,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    ".github/workflows/native-common-image.yml": {
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "bytes": 19834,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/bex-native-python-tools": {
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "bytes": 301,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/check-brotli.py": {
+      "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "bytes": 4029,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/check-primary-python.py": {
+      "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "bytes": 5485,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/check-tools.py": {
+      "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "bytes": 5099,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/check.Dockerfile": {
+      "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "bytes": 2210,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "bytes": 2686,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "bytes": 2281,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/install.sh": {
+      "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "bytes": 2516,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/node-brotli/check.js": {
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "bytes": 1705,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/node-brotli/patch.sh": {
+      "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63",
+      "bytes": 5560,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/package-lock.json": {
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "bytes": 57293,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/package.json": {
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "bytes": 162,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/patch-system-brotli.sh": {
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "bytes": 2355,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/python-tools.json": {
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "bytes": 4110,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/testdata/archive.dump.b64": {
+      "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "bytes": 2679,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/testdata/archive.sql": {
+      "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "bytes": 161,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/testdata/rows.txt": {
+      "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "bytes": 33,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/tsc": {
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "bytes": 111,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-base/webpack": {
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "bytes": 115,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/Dockerfile": {
+      "sha256": "b2241bca632cd565d0fb22e6abedb6cb1bfaaeaa87e3562701019edfea1cd0e6",
+      "bytes": 2886,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/Dockerfile.dockerignore": {
+      "sha256": "06e4a655846e6992d952c3af42b518612af72a0c824e8e7a8291cb90772ea9d9",
+      "bytes": 647,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/build-otp": {
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b",
+      "bytes": 1983,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/check-common.py": {
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "bytes": 2668,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/check-runtime.py": {
+      "sha256": "7913748f1b9a52b57653efb4ac3efe6974c8151427a9145fa9544ec3c01c000f",
+      "bytes": 1946,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/legacy-libs.preferences": {
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e",
+      "bytes": 124,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/legacy-libs.sources": {
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1",
+      "bytes": 433,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/matrix.py": {
+      "sha256": "0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c",
+      "bytes": 644,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/otp-features.py": {
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+      "bytes": 1853,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/prepare-node14-tools.py": {
+      "sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+      "bytes": 2870,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "deploy/native-common/upstream.json": {
+      "sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "bytes": 511,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/.dockerignore": {
+      "sha256": "49b98df0050c8919689300e39d7716b6fc103859c293a667f331168fb4d4794f",
+      "bytes": 1936,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/Dockerfile": {
+      "sha256": "8f321cf44077d59c0250680a157f3310d8cc3c65cc6fb779a216bb6817cd1e9b",
+      "bytes": 5681,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/cmd/native-init/main.go": {
+      "sha256": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+      "bytes": 4775,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/cmd/native-init/main_test.go": {
+      "sha256": "4dc65be110ab503ae431c3d6b7dd2cd6ca48b78614f01dc53b3d4a0988dace59",
+      "bytes": 7585,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/cmd/native-init/subreaper_linux.go": {
+      "sha256": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564",
+      "bytes": 786,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/cmd/native-init/subreaper_other.go": {
+      "sha256": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002",
+      "bytes": 734,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/go.mod": {
+      "sha256": "076d70eb1ea867c59a5d392c82b8da813faf1a9752cf0cce79283ac6f3f55754",
+      "bytes": 8376,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/go.sum": {
+      "sha256": "334ce02a18708ec1b6204c72f34d94030cc9ba22c01c457eb26d8ba553a98eb5",
+      "bytes": 56204,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/artifacts.go": {
+      "sha256": "ae7a9f2b5d3f682310a48c495492184174b3cc76bd58693db08973e5dd9fbdd4",
+      "bytes": 11969,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/artifacts_test.go": {
+      "sha256": "8381bb76be56adacf4d5e3f72d9b371a19196a652c8d55f5294fcfea5b4148f1",
+      "bytes": 4995,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/build.go": {
+      "sha256": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061",
+      "bytes": 82371,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/build_cache_test.go": {
+      "sha256": "5ee3af73fbb89bfb7deca536104abf17db60e4c3e168266a084ebe6712cda6c0",
+      "bytes": 22108,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/build_test.go": {
+      "sha256": "101ed470f96e13712b025d6d72d4476bba384660a7d2d025d8c38fe8574e0d0e",
+      "bytes": 71570,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/census.go": {
+      "sha256": "5feffcaae40d851dac99245f0906f409d896cc348fc3af8abf2335b6867ef084",
+      "bytes": 6849,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/census_test.go": {
+      "sha256": "f1fa02f12d38f4398617233911af3485dad4c3d3cd4c20a2c6e093781cf938be",
+      "bytes": 8528,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/clone_submodule_test.go": {
+      "sha256": "aaba171ce72272b080783d984cab2558a7d918c88621e7003d84f2ab3756d698",
+      "bytes": 13381,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/dockerhub.go": {
+      "sha256": "e13cc111374c6e69f78eb6891c2206b86ddd0655461280f40424dbe3a298d90b",
+      "bytes": 11671,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "sha256": "bbe41298a43a774b61d00ace30d861228b2b727681ae8aea30c7fdf4eaa0af18",
+      "bytes": 1810,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/dockerinputs.go": {
+      "sha256": "1c0a517d411b1b80762533d2a271175248f4dce1504088cc437300c1511939a6",
+      "bytes": 5711,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/dockerinputs_test.go": {
+      "sha256": "f21a34fd98d2bda265151ef65ac4b5367dc87af3f71db3226605f20e297c1ce7",
+      "bytes": 9252,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/freshness.go": {
+      "sha256": "bf41ce1f76d06a304ea468f8153f35705176f6d9d8717044528ff4c5c6d7d775",
+      "bytes": 5452,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/freshness_test.go": {
+      "sha256": "fdc21a5d7d3c807e95417b48c323a49a6fce5b61fdf528ed891522dccb52af71",
+      "bytes": 4780,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/jobname_contract_test.go": {
+      "sha256": "8b64c48fde2e1a1999db810c569b8e4c4bd5190ca4ede2f715c35018bf1ebf31",
+      "bytes": 3348,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/kpack.go": {
+      "sha256": "f01b2d3bd256b35bacdfbabffeeca97d28902189c48e833bd42d5494cefc899e",
+      "bytes": 19025,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/kpack_prune_test.go": {
+      "sha256": "902c6bfed530cbb89a42639ffef6d7d448a04263ea6fc62c0b07db5f1251ab9d",
+      "bytes": 5985,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/kubernetes_literal_test.go": {
+      "sha256": "29456a41cbc5f3101e51191cf4103042aa08138e56372a799d16ec61bfe9f368",
+      "bytes": 7940,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/native.go": {
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "bytes": 25979,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/native_test.go": {
+      "sha256": "f91fc04b4fa7c8bb39dc4491394c0ab483992439bfa898612f38acee5c201378",
+      "bytes": 52736,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativebackport_python_test.go": {
+      "sha256": "98837a71294d5e21e94e5a97b2b46de566f72b8f223cc767bded90f6ac52ecd0",
+      "bytes": 3463,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativebackport_ruby_test.go": {
+      "sha256": "1235fd131b4a8baca769846aaaae6beb0202047bb1a42e15615b2d5cf5d7234c",
+      "bytes": 3448,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativebackport_test.go": {
+      "sha256": "dbcd3a8de4cf3c7019fcaae1dd18870b911bab983e372e040a038e7df4a27834",
+      "bytes": 3663,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativebases.go": {
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "bytes": 10006,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+      "bytes": 22731,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon.go": {
+      "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd",
+      "bytes": 8351,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+      "sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+      "bytes": 10725,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_erlang.go": {
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a",
+      "bytes": 6162,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_erlang_test.go": {
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c",
+      "bytes": 7354,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_gorust_test.go": {
+      "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+      "bytes": 12042,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_node14_test.go": {
+      "sha256": "a81b5198e8952250dc37379740ba6a82d1d35e6ea2a0383700ed1e9377c931ba",
+      "bytes": 7399,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+      "bytes": 13945,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+      "bytes": 12787,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": {
+      "sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+      "bytes": 12466,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_ruby_test.go": {
+      "sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+      "bytes": 16847,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "bytes": 17816,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeerlang.go": {
+      "sha256": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+      "bytes": 6268,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeerlang_test.go": {
+      "sha256": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+      "bytes": 10266,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeexact_test.go": {
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b",
+      "bytes": 14100,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeffmpeg.go": {
+      "sha256": "5e2a25677c4cbd6f70d63206d80a8761b2a101ec03e1c7dba52af4289e77c72b",
+      "bytes": 2098,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeffmpeg_test.go": {
+      "sha256": "7f4480467067d1cb61139ff70efdae7f6d8ecdceeb19025f538dbe75d909cffb",
+      "bytes": 7944,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativehugo.go": {
+      "sha256": "4bace38cdf6801220f82b94dd6d94ec138807cd5beb63a6be45b9754cc54672b",
+      "bytes": 3117,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativehugo_test.go": {
+      "sha256": "4be0c93beff5e3c8aebfb5ffe2234dc5691e115d4e762d8d5e7b6503fd916333",
+      "bytes": 7039,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeinit.go": {
+      "sha256": "c6e0015f340bbc482a3922a6c5ee16f9c7531e3e5cadde09f0d0efdd6b3452a4",
+      "bytes": 3182,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeinit_test.go": {
+      "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+      "bytes": 12243,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativelegacy_python_controls_test.go": {
+      "sha256": "692a916c8eac5360d2de5044af9d974698e67fd4f19898f5c417cb7dbfa4a148",
+      "bytes": 5518,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativelegacy_python_test.go": {
+      "sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+      "bytes": 6537,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativemodern_python_controls_test.go": {
+      "sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b",
+      "bytes": 9519,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativemodern_python_test.go": {
+      "sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+      "bytes": 7506,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativenodepython.go": {
+      "sha256": "f829e4de967b4ac47249142553fefd6e402fc64b987d3d0f041c8e63c27dff1c",
+      "bytes": 1978,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativenodepython.py": {
+      "sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+      "bytes": 2870,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativenodepython_test.go": {
+      "sha256": "04bdf95385004ff20634440449c7272c5028de98154707bf8217385f4dcb2b3e",
+      "bytes": 7571,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativepnpm.go": {
+      "sha256": "0a99ba7093130554708da2a3b5a376b58c17697049cf0d4fd3d516a127ccb86d",
+      "bytes": 7181,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativepnpm_test.go": {
+      "sha256": "edff15f2e02af899efe8ec4cde23baacb1c45d72bca0d7eaa924a7ab79715ee6",
+      "bytes": 2892,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativepoetry_test.go": {
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9",
+      "bytes": 7970,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativepython_qualification_test.go": {
+      "sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d",
+      "bytes": 4911,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativequalification_init_test.go": {
+      "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+      "bytes": 33494,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeresolve.go": {
+      "sha256": "48fb455fba8bf07a4e62f95def7912dfc448e2e487f30ccf5690ff241ae78c06",
+      "bytes": 20417,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeruby_test.go": {
+      "sha256": "4afabb1e1fd86e1df66feb14ab9f42505e06c9530ea117f08da26dabdae89db3",
+      "bytes": 3004,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeruntimeenv_test.go": {
+      "sha256": "158ed32e14e2db61987bfd10e920ec013a4d023782759c40345fce9d143b9604",
+      "bytes": 23301,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativestaticdeps.go": {
+      "sha256": "2ec3c3cc70262a89825629154c93b8a18c84d892a76b5e8498c266ac59988d05",
+      "bytes": 6413,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativestaticdeps_test.go": {
+      "sha256": "9acd2be65070dfc13bb4c07ae2e1dc1a2b06af9c28937fbac1767dc221657be4",
+      "bytes": 25652,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeutility_integration_test.go": {
+      "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+      "bytes": 18913,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeutility_qualification_test.go": {
+      "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+      "bytes": 18823,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeuv_test.go": {
+      "sha256": "4707c1ac91e115cff27f08c0039e28bc4aedd9df0e957c6f2af70591efc18f30",
+      "bytes": 12825,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeversion.go": {
+      "sha256": "8466dd2cea67f24df1882c594bf62593ba9a8164f6045c2b50be04734d376873",
+      "bytes": 28936,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/nativeversion_test.go": {
+      "sha256": "5bad8de510c19738d2a47285914e9752fb68e0322d9f5dacbbfe01666899a8bd",
+      "bytes": 34272,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/signals.go": {
+      "sha256": "91dd13b4dc924843751796d3114de65e0cf3b4d75d53f93ee435bb35ecd765c3",
+      "bytes": 9545,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/signals_test.go": {
+      "sha256": "627f431f779f35fe1e70f2d80572b7592a36a02579b3bf0fd2dfee010fcd047a",
+      "bytes": 8127,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/source_paths_test.go": {
+      "sha256": "20e39b57669a116591c1a92276c0b6248443e166356ba1a91e111d94ca80482a",
+      "bytes": 3726,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/Cargo.lock": {
+      "sha256": "96ca666ab8d15918a206816f5bc3a2a7682311a3032e2cc10d336d7932a406d3",
+      "bytes": 128,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/Cargo.toml": {
+      "sha256": "80d6e628e7ee92e1823e024186dad074878f3080dd3a43da67409ed5d24b60b1",
+      "bytes": 66,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/check.py": {
+      "sha256": "0101a87529a21ec2beb52071e98b7b21f6e8de29d05e02217e55a74fe927a977",
+      "bytes": 8934,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/check_test.py": {
+      "sha256": "7dc71ea5fd8b016a08220814629dc87ff83712628ee8a558374f7fb66063a81e",
+      "bytes": 4312,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go-cgo/main.go": {
+      "sha256": "5fef1b1a809a990ca84c3da2ada7d8f08a80bdc1887db7bd08e68085996b6e9e",
+      "bytes": 1128,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go-pure/main.go": {
+      "sha256": "30589e0fbdd2b2f977c29ee5de265bd89c48b4b878850c0adab9d3d6adab7126",
+      "bytes": 781,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go.mod": {
+      "sha256": "76b6873605f846720707abd038b459a16040bf647d3f261b7e96a833830c11fa",
+      "bytes": 57,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/Cargo.toml": {
+      "sha256": "f5e3a9cf61a8e4157de528adc50d44bdb60dcfdd96c41c0bcaf4011398b83193",
+      "bytes": 92,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/build.rs": {
+      "sha256": "a853711ab72de9137d9b4073f8f047a5895342e3788463416ee73b9afb94f6f6",
+      "bytes": 728,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/probe.c": {
+      "sha256": "f1ea3aab549172e52df827fcde46db02f7736088c8d9cf5a08712b5f9ec8e0ce",
+      "bytes": 374,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/src/main.rs": {
+      "sha256": "32c3cef2265c229b9de11e5c5dd7c855811a767b421608a7b13bb888e2a95f92",
+      "bytes": 657,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/Cargo.toml": {
+      "sha256": "da7cd83a9fa7f8bf6dff461b5dba2d8d45c8cf20c2c5cb65abe120ede188c9cf",
+      "bytes": 71,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/src/main.rs": {
+      "sha256": "9b8d1f5af916052c78559fa38ef7d199994c3fa16eb3c8645ac1fb0a28d76e82",
+      "bytes": 234,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/.node-version": {
+      "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+      "bytes": 3,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/build.js": {
+      "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+      "bytes": 315,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+      "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+      "bytes": 367,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/identity.js": {
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+      "bytes": 2232,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/package.json": {
+      "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+      "bytes": 144,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-common-init/server.js": {
+      "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+      "bytes": 1550,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/bex_nif.c": {
+      "sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "bytes": 1419,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check.py": {
+      "sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "bytes": 4364,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check_test.py": {
+      "sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "bytes": 811,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/lib/bex_mix.ex": {
+      "sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "bytes": 61,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs": {
+      "sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "bytes": 208,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/rebar.config": {
+      "sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "bytes": 58,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_nif.erl": {
+      "sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "bytes": 215,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.app.src": {
+      "sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "bytes": 220,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.erl": {
+      "sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "bytes": 377,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check-tool.py": {
+      "sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+      "bytes": 1025,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check.py": {
+      "sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+      "bytes": 5960,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check_test.py": {
+      "sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345",
+      "bytes": 4201,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c": {
+      "sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+      "bytes": 548,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml": {
+      "sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c",
+      "bytes": 259,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/setup.py": {
+      "sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e",
+      "bytes": 165,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-modern-python/check-tool.py": {
+      "sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac",
+      "bytes": 1757,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py": {
+      "sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f",
+      "bytes": 4655,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check.js": {
+      "sha256": "5fc86c2def067543f01189ab9e46aa6e72575b24fe3c08c1394c1d9809cdbcc1",
+      "bytes": 1132,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check.py": {
+      "sha256": "98f23e2a4b9a86b39920644b140f65c944345907d5f430ad8e2d49bbcc386cba",
+      "bytes": 16634,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py": {
+      "sha256": "0d495f1f6bb579325e9dfa500d8396b958af933507b8d0b620e3829d7c6224c4",
+      "bytes": 15916,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/addon.c": {
+      "sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "bytes": 1231,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.js": {
+      "sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "bytes": 3401,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.py": {
+      "sha256": "25e8aa2a394f51177f9b0e2fc65cae07a8f56799c4246a6b9a373c7e02488024",
+      "bytes": 13299,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check_test.py": {
+      "sha256": "c29641b16e918740ec946c71091f28d4a4a47e4ee1191106570d8f97cfd97187",
+      "bytes": 12226,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/package.json": {
+      "sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "bytes": 74,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/addon.c": {
+      "sha256": "f5a64ddf893528ef6560d80c9c3967294a58f4cb14ade393de1fe263c56d0ed5",
+      "bytes": 588,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/binding.gyp": {
+      "sha256": "875af09b39571267156015c97590b0cf2a47203de771908719b0ee7d008dedf5",
+      "bytes": 64,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/check-build.py": {
+      "sha256": "305ae15aecdd106e912d7bd905d96f0740df92a55223ec27d7ed2077647e8ff0",
+      "bytes": 1787,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/check.js": {
+      "sha256": "c45e315fcb9daf50a104d7e703f5f7cb2d46cb1eea0f22a2d307d5026b115f7c",
+      "bytes": 526,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/package.json": {
+      "sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e",
+      "bytes": 92,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile": {
+      "sha256": "64e0245498491c9ca88b40d21fc207f04d5ecf34dacc056805ef87a20acde743",
+      "bytes": 71,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile.lock": {
+      "sha256": "47721c7d0cc398e770ae3dd99ff29afdc642046da031e4068ebeb6fb875fa93b",
+      "bytes": 45,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/build.rb": {
+      "sha256": "0fd903e4b57077a71abd42f8773dafdbc21c9211fb34a69317bea38fde6b653c",
+      "bytes": 884,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+      "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+      "bytes": 3871,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/ext/bex_ruby_probe.c": {
+      "sha256": "de7fd17cc64fbf66a14865e8a8d4065e2a9f08a8bd4e0d3d8941932318816b2a",
+      "bytes": 727,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/ext/extconf.rb": {
+      "sha256": "7e5dcc2662c3491eaa9077fbb9a97729f76420baa462896860d4b7169ebdcfc6",
+      "bytes": 150,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/static.js": {
+      "sha256": "a92f110bde5a96bbe1acc29fc6bd40fdc6fe2c881b54abc292ce314362ada241",
+      "bytes": 1082,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py": {
+      "sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+      "bytes": 1301,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py": {
+      "sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+      "bytes": 784,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py": {
+      "sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+      "bytes": 1224,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py": {
+      "sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "bytes": 794,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py": {
+      "sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+      "bytes": 1782,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py": {
+      "sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+      "bytes": 846,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py": {
+      "sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+      "bytes": 1346,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py": {
+      "sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "bytes": 1007,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py": {
+      "sha256": "f659f8a44cd73db33da8902ab4e3dbad4f5713ca91677a67a48a5696b34db06d",
+      "bytes": 2704,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py": {
+      "sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+      "bytes": 444,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py": {
+      "sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+      "bytes": 760,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64": {
+      "sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+      "bytes": 2297,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py": {
+      "sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+      "bytes": 868,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py": {
+      "sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+      "bytes": 1490,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py": {
+      "sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+      "bytes": 918,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py": {
+      "sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "bytes": 903,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py": {
+      "sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+      "bytes": 823,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py": {
+      "sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+      "bytes": 1513,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py": {
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+      "bytes": 950,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py": {
+      "sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+      "bytes": 729,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py": {
+      "sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+      "bytes": 1769,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py": {
+      "sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+      "bytes": 951,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py": {
+      "sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+      "bytes": 1901,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py": {
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+      "bytes": 950,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py": {
+      "sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+      "bytes": 537,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py": {
+      "sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+      "bytes": 1179,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py": {
+      "sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "bytes": 1132,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py": {
+      "sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+      "bytes": 1188,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py": {
+      "sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "bytes": 708,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/gettext-reference.json": {
+      "sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb",
+      "bytes": 777,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/messages.po": {
+      "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+      "bytes": 508,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases.json": {
+      "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+      "bytes": 83949,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases.py": {
+      "sha256": "554dea2d7a3d1a4c23d2dc45b43e67517142f7b9ea4ab50e6f5bcd9d33c7a010",
+      "bytes": 6384,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases_test.py": {
+      "sha256": "c4c7b427631902294ad9f935fdf63b099a58272d187038ce665d071edd58f11c",
+      "bytes": 9401,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/png-decoder.py": {
+      "sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e",
+      "bytes": 1933,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/provenance.json": {
+      "sha256": "48a9fb0691b00879f07b200ffb560dc338b8bb4e2f9a8cd3e875df5fbb9d782d",
+      "bytes": 21602,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz": {
+      "sha256": "5510f0dfe1fa2838cdc7213dc94a631c93056bb08c10b48481e6617f62b3564e",
+      "bytes": 12008,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG": {
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+      "bytes": 18,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE": {
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+      "bytes": 1072,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/native-utilities/utility-check.py": {
+      "sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb",
+      "bytes": 11577,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/.ruby-version": {
+      "sha256": "649819783a78ba424b97fcf4d29fb809866b0b3659f901c0c0dac285ad9cca78",
+      "bytes": 6,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/404.html": {
+      "sha256": "6e4c2c947e9d48243abc4207c99606f41c9531a106c0db4b06bce12f9cca77c6",
+      "bytes": 398,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/Gemfile": {
+      "sha256": "46bd29e6de1dffff356e789e463cf5af452c65d159aa87940f9d3083f2e948cf",
+      "bytes": 1007,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/Gemfile.lock": {
+      "sha256": "6e5cabe8fa6c9fa0faf38a81d067020afa6b4bb360420296d79df30c2a99e5a8",
+      "bytes": 2014,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/LICENSE": {
+      "sha256": "53dc8377b5fa8b72eb5096ca3f833a19f489c2646196e1ce24368c7133410677",
+      "bytes": 1085,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/SOURCE.txt": {
+      "sha256": "a4a6513af49c26867f3b6a40fff7bd65348ac28e5382a143cc3c97ab44dc0d93",
+      "bytes": 269,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/_config.yml": {
+      "sha256": "8ca83b6c5e52a9630db83adedd0c7c31fdbd45c5a9fe9e5ab90152f6e0c0399d",
+      "bytes": 1786,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/_posts/2019-01-04-welcome-to-jekyll.markdown": {
+      "sha256": "f649e1e7f402281abeb62e999bf49b5827144057e33d6d8cc6017735c3e69260",
+      "bytes": 1207,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/about.md": {
+      "sha256": "f9d5fc87ba00e6639215aa830b91a435fb576102930651370eba2438ba4fc196",
+      "bytes": 539,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/index.md": {
+      "sha256": "a5383927fa36f1317893fd2c3823a5c7a45e0ef1a33b1f9071b67b8751af95e0",
+      "bytes": 175,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/toolchain-freshness.json": {
+      "sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc",
+      "bytes": 27224,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/build/unschedulable_test.go": {
+      "sha256": "3115756b750eaaee233805a010ccf4cf904d2a95003846db237c3fcea5e334bf",
+      "bytes": 1603,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/artifacts.go": {
+      "sha256": "b33769c1ae5d9eed250dacf71ff784fecb33d632cd8af91d364e039dded2dff4",
+      "bytes": 1860,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/ensure_owned_job_test.go": {
+      "sha256": "a001b99820620b35ed975af1e4f9e9e1cf5d3421a6076727605d5de4678456f0",
+      "bytes": 6359,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/executiontest/expand.go": {
+      "sha256": "c42544aa8686d4ec6741097119cf247111f2d86279792e2a5d98c03e8dd4552e",
+      "bytes": 1871,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/executiontest/expand_test.go": {
+      "sha256": "261336592ddb3fd8e4ab2ccadb19fa47c932a7d9b5d05014cb165d49fcd60a22",
+      "bytes": 1424,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/gitcredential.go": {
+      "sha256": "ba3388bc68677764b5f261228b171592b34a155e46cef30d7e3f1a18b52ddf94",
+      "bytes": 2849,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/gitcredential_guard_test.go": {
+      "sha256": "9a95ec7a4ba77b72740cdd7d3657480a02169587dcce809a2247f4a02428ef35",
+      "bytes": 5342,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/gitsubmodule.go": {
+      "sha256": "986a224dab731db8b03b3d67d29c554e99129f69c7aaccb06948ddd10554c0c0",
+      "bytes": 2739,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/job.go": {
+      "sha256": "517b2bb45573266b4c0a73b568c58f16b3fe55983e195086e99b3e505e9e5a72",
+      "bytes": 6235,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/job_test.go": {
+      "sha256": "8690d1918daf16448abef649979e43ddd5960f79b9394c35ccdbfe8c44de7b09",
+      "bytes": 7543,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/literal.go": {
+      "sha256": "ea69cbdf5322143d8fa0f590ba412e7e43921a6a1f12a777635ac3416096a6cf",
+      "bytes": 915,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/literal_test.go": {
+      "sha256": "29c51087f8fb904d2d93c1f90289fd88eeded5121cc0b6abf6d5bf93ffc268ab",
+      "bytes": 1240,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/execution/security.go": {
+      "sha256": "52051249d74093d426e0054b1e5ad7a0acd77c3e86f6930ea228b79cb728a04c",
+      "bytes": 5430,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/httpclient/httpclient.go": {
+      "sha256": "9dfe856ac0885bdd150c50d1625bf24b0fafc82fd7072011ab3ad3e63ed760ac",
+      "bytes": 3086,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/httpclient/httpclient_test.go": {
+      "sha256": "f1006844063be212593bcbecbb1a00543a2be7573976008e4f26d01a67ada7b1",
+      "bytes": 3184,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/identity/identity.go": {
+      "sha256": "00fac572480e4817b8efa82cfd8ea08024a84d2c122124e176d1f27fc5711580",
+      "bytes": 8577,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/identity/identity_test.go": {
+      "sha256": "c1d1b84701549fd72a2b07a83bff83ada38d5bf9fe69ea75f1d4b90339747a3b",
+      "bytes": 5698,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/publish/clone_submodule_test.go": {
+      "sha256": "2520a7d370e2d03a8427fd1c3dc7d16bd33089018c60afba47906c92104e9f76",
+      "bytes": 4943,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/publish/publish.go": {
+      "sha256": "18d2919ea3d318510e27dc13727e2c9d8fd8d3962625f5a72c66c338a879734b",
+      "bytes": 33250,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/publish/publish_test.go": {
+      "sha256": "c7b9d359f1e116d27667090d5a8288a27133975daf3918a88f4e92a4d02977bd",
+      "bytes": 28859,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/publish/retained_test.go": {
+      "sha256": "64f7d7c98e24084ab02092f7c90314ec3b2e1bcaac1f04c0841a0240bf4e9ed0",
+      "bytes": 7906,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/bearer_test.go": {
+      "sha256": "ed5d93fd51e4ce4f245c08e8f66dfd84ad7a25a0128442f96bc16662914262f9",
+      "bytes": 2636,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/cache_repo_test.go": {
+      "sha256": "47133d08ade033f3358e71f5f1df37b9d1b923a23a9cdfa326319483f15c7819",
+      "bytes": 12191,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/creds.go": {
+      "sha256": "a4c813d8126e8100fa1989f6a459bac788a7748cd052befd2da9740c96a42c6e",
+      "bytes": 25573,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/creds_test.go": {
+      "sha256": "29e39f15645170449794459e54b62d170183152d1b59b9ee6120dbbae630670b",
+      "bytes": 43790,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/digest.go": {
+      "sha256": "0e7523e2c9bd684b68705cc2454f9b2f651c199505f4431aebf4f2636e093e08",
+      "bytes": 9296,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/digest_test.go": {
+      "sha256": "3ff148045e252a37289a6018b2f1edfb478a1e4d7b55f2715d3796d83d88f4f6",
+      "bytes": 4955,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/gc_invariant_test.go": {
+      "sha256": "f8ebbe578cd75f1dd663d16c2568a93fd818c60b546d5de7a2eedbab95e9ced7",
+      "bytes": 1465,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/htpasswd.go": {
+      "sha256": "5e89a3b22fe57de12d09d3490e5fbb5a4d25ce342a3ef8c5b1252bed1de06a84",
+      "bytes": 4395,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/image_config.go": {
+      "sha256": "a6932d931322f32cc13e845208e42e74e550d6ade62cc2265312570a60905d98",
+      "bytes": 16264,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/image_config_test.go": {
+      "sha256": "a17c0a82403d6d3c4cfecb964038a701b882b0fd46ea9ba9315e7f480235ab0a",
+      "bytes": 14580,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/livetag.go": {
+      "sha256": "0ed7896911de1778a79a3f575bbe54c464827355922a7caccd8c3c985a936aad",
+      "bytes": 2888,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/secretwrite.go": {
+      "sha256": "64e90a1f75c5e416252aa0addaa3f3619e12be55a508ebb01888d087c70015dc",
+      "bytes": 3695,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/snapshot_creds.go": {
+      "sha256": "b5b9a88ecba687ca14d48be6e8b764dac6a4323865bd20f9f7b271ca12afddf5",
+      "bytes": 5097,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/snapshot_creds_test.go": {
+      "sha256": "93d897b31129ebb17ff746c83f6d6c1e9c2fcd94469164ba205c78489f4e6629",
+      "bytes": 11456,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/transport_test.go": {
+      "sha256": "72e532199b0351078e9519fadccbe22b030aaf2b62680a69d54d069a146e8fa0",
+      "bytes": 5294,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/verify.go": {
+      "sha256": "53e933b3095e98f17dabb8f8b043ecc684998e256d4ae40ce0d672c6f57bdc07",
+      "bytes": 10223,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/verify_test.go": {
+      "sha256": "c9484cc00b5e9fdeeefa4c3e694963a54fdf6db876d501d076aa51565defd612",
+      "bytes": 10234,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/operator/internal/registry/zotconfig.go": {
+      "sha256": "b270ca9b5bea94f324b1b141817ebb4e5eceb45e616b28356e79150f1e6cd1a2",
+      "bytes": 17338,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/go.mod": {
+      "sha256": "cba2bf22d538d7ce02f95d553dfef4c821d62ac1155b720ba57a9204c2af3bcb",
+      "bytes": 965,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/go.sum": {
+      "sha256": "0c84289bdb8ce67987ba21a59adadddc4d770e5c01ec7a8179533c23a48a6d67",
+      "bytes": 5225,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/k8sname/k8sname.go": {
+      "sha256": "8aa724533403289521d1159c2925e87d9d468eb88e5e9890dc91cf554c9a67ed",
+      "bytes": 2476,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/k8sname/k8sname_test.go": {
+      "sha256": "82186371eadf480533bf691b139f5298473a863b2b1729ecca4d540a8ac04e13",
+      "bytes": 4195,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/netutil/ssrf.go": {
+      "sha256": "0288b564aa66bce3c70259019c6657da7245c468eb48a3d4543bc30856e41eac",
+      "bytes": 5872,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/netutil/ssrf_test.go": {
+      "sha256": "2790f971238e267a6319baabdfc5cc0d8e1fc67cf8bb55c205e538870fef089c",
+      "bytes": 7416,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/app_hosts_test.go": {
+      "sha256": "0d032f53dbf3e537cf388ecf487160075e3643f56d8bc8812dcb686f237f0312",
+      "bytes": 1822,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/app_identity.go": {
+      "sha256": "6bd8b8002edef29e56d5b33a785881b66a13264cf9e9c143b0f33b8bd2cbe568",
+      "bytes": 7556,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/app_types.go": {
+      "sha256": "1b78314109c3837864943100802ca37dc79c21edd50522c5d4b48e6dc6045752",
+      "bytes": 95401,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/container_policy.go": {
+      "sha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+      "bytes": 2271,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/cron.go": {
+      "sha256": "f79118c89b16f8b1aa8b0423072b68283647b8a1173a6e47e753ed2f4a109bc7",
+      "bytes": 1612,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/database_identifiers_test.go": {
+      "sha256": "b0187ef88fc83fd10764e7ca54dab7430561e4df0d6917e61fb8561a8500cb6b",
+      "bytes": 3321,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/database_types.go": {
+      "sha256": "d35765cf4bd1bf91b96417bdf4237ade657c64bbf1dced6c5586ae05d5e602cc",
+      "bytes": 31164,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/datastore_priority.go": {
+      "sha256": "431d9046d9deb2cfce059c01b2b937f8d72a00ff559d2a7df50bcbf4db1cc56a",
+      "bytes": 1629,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/diskbackup.go": {
+      "sha256": "1d76225daefd8d081cada777b33b302608c599e2221d81daad3d94b33472aa80",
+      "bytes": 2437,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/disknames.go": {
+      "sha256": "77e3837a5b1239b9064343e47b94691887d1fbf6c875ad4e352d703102e87ea2",
+      "bytes": 3312,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/groupversion_info.go": {
+      "sha256": "c93dafcb3caa5cc17f17b5c263ef2023e156c9752971f077b2ad773ea83dcb29",
+      "bytes": 2083,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/image_network.go": {
+      "sha256": "3e82b0947b1deb613cf7bff55a575c019453001d6893c5e28f380f2434dfdbfb",
+      "bytes": 8101,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/image_network_test.go": {
+      "sha256": "94be426e90d7bf6cad6b71d0850f908fdb3a34bfdda7df6ee9eee5d87b44db0e",
+      "bytes": 6432,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/ipallowlist_types.go": {
+      "sha256": "37ce01469aeecb0f64243190236d6969159e88c787500a144a9990efc7bae6af",
+      "bytes": 3183,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/ipallowlist_types_test.go": {
+      "sha256": "58f39e47f26890d98b57978fc8bcf664f357e9b34ce22065e0798cc324919ea0",
+      "bytes": 4850,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/jobnames.go": {
+      "sha256": "6c4b98fe25e973b692877fc22ab701274ef50bca49b1675c258f50e13cd21bdd",
+      "bytes": 2912,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/jobnames_test.go": {
+      "sha256": "462695e39750675b4bbbf685141a1981c3bbfcc9538c0867c8909d2c0695a791",
+      "bytes": 2996,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/keyvalue_types.go": {
+      "sha256": "2efb6c98c148a799fdd177686c4fe5373a99084ac8f9dba424cb840874e1828b",
+      "bytes": 14782,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/maintenance_mode_test.go": {
+      "sha256": "6e43668eeec5427b4e213fb66f3e60b310a65f35ee28596ff1bf1535dfc8eb4e",
+      "bytes": 2159,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/notification_policy.go": {
+      "sha256": "ac6960f34aa1955efd078844d3c176d69dbbd8bfe663ff6dfac157a5ca2e3ae5",
+      "bytes": 1645,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/release_config_test.go": {
+      "sha256": "ab1a59b6a5d803cccb4f606fcc749805a5c20fdd727d5a013c2faff2975eb9a7",
+      "bytes": 1467,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/releasesnapshots.go": {
+      "sha256": "29bc27e64080b503800b703d4ef6e7ed9178b87d31a84b0c414c0cf6a3095da4",
+      "bytes": 9752,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/releasesnapshots_test.go": {
+      "sha256": "bfe45cf6b0b8819c708a11790881811c1dedc5ce77cc1ef7021d6fab2ec3028d",
+      "bytes": 2543,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/repourl.go": {
+      "sha256": "29f6fa50b4dbde56378539f1e3324b7e18e88af001907517e406f9fd4b786428",
+      "bytes": 1539,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/resourcename.go": {
+      "sha256": "1baf31170e34966cd933fc752ea6afc95aac0b6e3d22fecdf4e3dc0bad231385",
+      "bytes": 1390,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/resourcename_test.go": {
+      "sha256": "8582d539e3066f210c7fbc06e7ff258757065503815822eb1096c7a5fe8c229d",
+      "bytes": 1507,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/secretnames.go": {
+      "sha256": "7fd98e32fe6ab87d1a9b075135687bdd617d765b20bed37e3d2dbd5348697590",
+      "bytes": 3444,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/secretnames_test.go": {
+      "sha256": "2e5b0694f71f0d4422b29726a783c92e17d2f6789800197993df442c94e7e73d",
+      "bytes": 4629,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/serving_condition.go": {
+      "sha256": "c36b9d100e31d32989c27807f241f62094720526987b990022223a5a787f1751",
+      "bytes": 1263,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/stall_message.go": {
+      "sha256": "87fac82f0b9a5c439b83e7cb653caabebc8c94eb75a406fc0ae066c6c652f5db",
+      "bytes": 2034,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/stall_message_test.go": {
+      "sha256": "748828aaa20bfd6739d07645f7928122be1d5a5b053fa500f4d0a87a557fe8a3",
+      "bytes": 1187,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/static_headers.go": {
+      "sha256": "753fe48e13cd264c7e6dfaa1069b6eff98cb5eee22af60c16a09803b20a1c43d",
+      "bytes": 1351,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "lego/types/v1alpha1/zz_generated.deepcopy.go": {
+      "sha256": "03441c1849bf99adb4112635355318db520a0362abfccde23d4852021b77d85d",
+      "bytes": 31285,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    },
+    "scripts/lib/toolchain-freshness.py": {
+      "sha256": "4031b8338c1c1bf7771c93cb46917cb6404379b2dabe58cd4d8f61d05bf70490",
+      "bytes": 19339,
+      "mode": "100644",
+      "type": "regular",
+      "permissions": 420
+    }
+  },
+  "source_delta_against_origin": [],
+  "helper_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+  "working_tree_used": false
+}

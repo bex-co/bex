@@ -1,0 +1,28 @@
+{
+  "owner": "bex-nq-d8f4fbf80979495dbc84a18b",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "platform": "linux/amd64",
+  "generator_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "selection": {
+    "profile": "utilities",
+    "case": "all",
+    "flag": "",
+    "selector": "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$",
+    "go_timeout": "150m",
+    "job_minutes": "180",
+    "scope": "complete original utility cohort; no hosted or adoption claim"
+  },
+  "image_source": "fresh",
+  "candidate_receipt_sha256": null,
+  "baseline_status": "fresh-execution",
+  "image_approval_inputs_sha256": null,
+  "utility_baseline_source": null,
+  "utility_jobs": null,
+  "previous_baseline_state": null,
+  "docker_config": "/home/docker/actions-runner/_work/_temp/bex-nq-d8f4fbf80979495dbc84a18b-docker-config",
+  "run_id": "41341287851",
+  "run_attempt": "1",
+  "scope": "ephemeral generated-image qualification; no catalog adoption or hosted claim"
+}

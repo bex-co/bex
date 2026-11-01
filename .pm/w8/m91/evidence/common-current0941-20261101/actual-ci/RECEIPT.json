@@ -1,0 +1,75 @@
+{
+  "at": "2026-11-01T21:03:26.430372+00:00",
+  "state": "CURRENT_COMMON_CI_SUCCESS_METADATA_AND_WHOLE_LOGS_INTAKE",
+  "repo": "bex-co/bex",
+  "run_id": 41341287851,
+  "source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "event": "push",
+  "branch": "main",
+  "attempt": 1,
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "run_updated_at": "2026-11-01T20:07:26Z",
+  "immutable_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "jobs": {
+    "publisher": 124954099391,
+    "amd64": 124958175523,
+    "arm64": 124958175538
+  },
+  "artifacts": {
+    "amd64": {
+      "id": 13098498438,
+      "name": "common-generated-1feba939b4697894e800ed0abb4f25a0bf415641-amd64-1",
+      "size_in_bytes": 83732933,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098498438",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098498438/zip",
+      "expired": false,
+      "created_at": "2026-11-01T19:57:39Z",
+      "expires_at": "2026-12-01T19:57:33Z",
+      "updated_at": "2026-11-01T19:57:39Z",
+      "digest": "sha256:c2322acc3f7127a3bfbe09b9b6b70dfc3e6ab103e96b63d5deaf519572d233b6",
+      "workflow_run": {
+        "id": 41341287851,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641"
+      }
+    },
+    "arm64": {
+      "id": 13098737409,
+      "name": "common-generated-1feba939b4697894e800ed0abb4f25a0bf415641-arm64-1",
+      "size_in_bytes": 79098564,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098737409",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098737409/zip",
+      "expired": false,
+      "created_at": "2026-11-01T20:07:22Z",
+      "expires_at": "2026-12-01T20:07:16Z",
+      "updated_at": "2026-11-01T20:07:22Z",
+      "digest": "sha256:42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+      "workflow_run": {
+        "id": 41341287851,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641"
+      }
+    }
+  },
+  "artifact_body_downloads_by_this_agent": 0,
+  "logs": "All three completed job logs retained whole, UTF-8 decoded connector response bytes, no truncation; SHA/size in CI-GATES.json.",
+  "queries": [
+    "GET actions/runs/41341287851",
+    "GET actions/runs/41341287851/jobs?per_page=100",
+    "GET artifacts wrapper for41341287851",
+    "GET completed job logs124954099391/124958175523/124958175538",
+    "GET actions/runs?head_sha=1feba939b4697894e800ed0abb4f25a0bf415641&per_page=30"
+  ],
+  "donor_status": "No exact-source native-base run among8 completed linked runs; currentw1 document still records Node14.21.2 manual dispatch pending. Later-source dedupe not claimed.",
+  "boundaries": [
+    "No image approval, strictV11 execution, OCI/body reads, generated-image source/adoption/hosted acceptance from metadata alone.",
+    "No CI mutation, rerun, cancellation, dispatch, credentials or product resources.",
+    "New0941 candidate is distinct from historical499/26b; old499 approval work not resumed.",
+    "Worktree source remains at dbd5a93fcdb3ce86b1fadee4f5574ab8186fd318; origin reference read only f071830616b2f55aa8636bb856454f4a218a9174; no fetch/pull/repo mutation."
+  ]
+}
