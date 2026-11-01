@@ -1,0 +1,7 @@
+# Original28 retained-report locations — 2026-11-01
+
+[The standalone retained_reports map](map-source/RETAINED-REPORTS.json.gz) binds all ten original actual common-review gzip lookup keys to the existing canonical absolute private files, exact compressed sizes and SHA values required by the unchanged V3 codec. It is the map itself, suitable for the eventual entry field; it is not an adoption or qualification contract. All45,430,100 compressed bytes were freshly hashed in place. The original receipt records compressed hashes; predicate compressed sizes are measured because that receipt has no corresponding size field.
+
+[Source/interface custody](map-source/CUSTODY.json.gz) retains producer99, verifier99 and review-generator8ae as separate roles. [Root review](root-review/REVIEW.json.gz) checks the exact actual receipt, all ten original keys, descriptors, canonical regular-file stats and five unchanged source-interface identities. No report was copied, recompressed, decompressed or subjected to another cryptographic review. Full portable report bodies remain in the existing common-artifact review capsule. These private locations are component preparation; later actual admission still checks them through the original codec.
+
+Adoption, source/family/utility acceptance, Ready, Free and live authority remain unset. No hosted module import, login, network, CI, Go, Docker, Kubernetes or production action occurred. [Raw metadata custody](RAW-CUSTODY.json) preserves the complete preparation records losslessly.

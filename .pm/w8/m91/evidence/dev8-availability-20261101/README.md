@@ -1,0 +1,5 @@
+# Initial dev-8 availability — 2026-11-01
+
+[Six read-only projected checks](read-only-snapshot/RESULT.json.gz), observed05:29:18–19UTC through the sanctioned opaque dev-8 kubeconfig path, succeed. The existing namespace, default service account and public root CA are present; no ResourceQuota or LimitRange objects are returned. One tenant node reports arm64/Ready, total allocatable14 CPUs and16424100Ki memory. The public CA body is hashed only in memory and is not retained or printed.
+
+These totals do not establish remaining scheduling headroom or reserve resources. Actual phase execution remains pending both successful utility architectures, a fresh namespace/UID/source/child-image check and current resource/ownership budget. No full-stack status, authentication, secret body, Docker, exec, port-forward, context change, repair or resource mutation occurred. No extra API/CNPG/OpenFGA/CNI requirement is introduced. [Raw projected metadata and custody](RAW-CUSTODY.json) are retained losslessly.
