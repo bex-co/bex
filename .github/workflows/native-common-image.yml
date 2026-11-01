@@ -139,7 +139,6 @@ jobs:
             needs.publish.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read
-      packages: read
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
     timeout-minutes: 180
     strategy:
@@ -226,13 +225,6 @@ jobs:
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
-      - name: log in to GHCR using this qualification's isolated credentials
-        timeout-minutes: 2
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          printf '%s' "$GHCR_TOKEN" | timeout --kill-after=10s 60s \
-            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         timeout-minutes: 5
         with:
@@ -305,7 +297,6 @@ jobs:
             needs.qualify.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read
-      packages: read
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
     timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}
     strategy:
@@ -395,13 +386,6 @@ jobs:
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
-      - name: log in to GHCR using this qualification's isolated credentials
-        timeout-minutes: 2
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          printf '%s' "$GHCR_TOKEN" | timeout --kill-after=10s 60s \
-            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         timeout-minutes: 5
         with:

@@ -67,17 +67,16 @@ class QualificationControls(unittest.TestCase):
         inputs = json.loads((root / "inputs.json").read_text())
         return root, inputs, Path(inputs["docker_config"])
 
-    def test_scoped_login_uses_package_read_token_stdin_and_owned_config_outside_evidence(self):
-        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
-        qualify = workflow.split("  qualify:\n", 1)[1]
-        self.assertIn("    permissions:\n      contents: read\n      packages: read\n", qualify)
-        marker = "      - name: log in to GHCR using this qualification's isolated credentials\n"
-        self.assertLess(qualify.index("id: owned"), qualify.index(marker))
-        self.assertLess(qualify.index(marker), qualify.index("uses: docker/setup-buildx-action@"))
-        login = qualify.split(marker, 1)[1].split("      - uses:", 1)[0]
-        self.assertIn("GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}", login)
-        self.assertIn("timeout-minutes: 2", login)
-        shell = "\n".join(line[10:] for line in login.split("        run: |\n", 1)[1].splitlines())
+    def test_public_qualification_is_secretless_and_uses_its_owned_empty_config(self):
+        jobs = ProfileRoutingControls.jobs()
+        for name in ("qualify", "qualify-profile"):
+            job = jobs[name]
+            self.assertIn("runs-on: [self-hosted, Linux, ARM64, bex-ci]", job)
+            self.assertIn("    permissions:\n      contents: read\n", job)
+            self.assertNotIn("packages:", job)
+            self.assertNotIn("${{ secrets.", job)
+            self.assertNotIn("docker login", job)
+            self.assertLess(job.index("id: owned"), job.index("uses: docker/setup-buildx-action@"))
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory).resolve()
             root, inputs, config = self.initialize_owned(temporary)
@@ -88,35 +87,9 @@ class QualificationControls(unittest.TestCase):
                              {"owner": inputs["owner"], "evidence_root": str(root)})
             exported = dict(line.split("=", 1) for line in (temporary / "environment").read_text().splitlines())
             self.assertEqual(exported, {"DOCKER_CONFIG": str(config)})
-            binary = temporary / "bin"
-            binary.mkdir()
-            stub = r'''import json,os,pathlib,sys
-if pathlib.Path(sys.argv[0]).name == 'timeout':
- assert sys.argv[1:3] == ['--kill-after=10s', '60s']
- os.execvpe(sys.argv[3], sys.argv[3:], os.environ)
-assert sys.argv[1:] == ['login','ghcr.io','--username','controlled-actor','--password-stdin']
-assert sys.stdin.read() == 'CONTROL-ONLY-FAKE-TOKEN'
-config=pathlib.Path(os.environ['DOCKER_CONFIG'])
-assert config == pathlib.Path(os.environ['EXPECTED_CONFIG'])
-assert (config/'.qualification-owner.json').is_file()
-(config/'config.json').write_text(json.dumps({'auths':{'ghcr.io':{'auth':'CONTROL-ONLY-FAKE-TOKEN'}}}))
-print('controlled login succeeded')
-'''
-            for name in ("docker", "timeout"):
-                executable = binary / name
-                executable.write_text("#!" + sys.executable + "\n" + stub)
-                executable.chmod(0o755)
-            env = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ["PATH"],
-                       GHCR_TOKEN="CONTROL-ONLY-FAKE-TOKEN", GITHUB_ACTOR="controlled-actor",
-                       EXPECTED_CONFIG=str(config), **exported)
-            process = subprocess.run(["bash", "-euo", "pipefail", "-c", shell], env=env,
-                                     capture_output=True, text=True, timeout=10)
-            self.assertEqual(process.returncode, 0, process.stderr)
-            self.assertNotIn(env["GHCR_TOKEN"], process.stdout + process.stderr)
-            self.assertTrue((config / "config.json").is_file())
-            self.assertFalse(any(env["GHCR_TOKEN"] in path.read_text() for path in root.rglob("*") if path.is_file()))
+            self.assertFalse((config / "config.json").exists())
             qualification.manifest(root)
-            self.assertNotIn("config.json", (root / "MANIFEST.json").read_text())
+            self.assertNotIn(str(config), (root / "MANIFEST.json").read_text())
 
     def test_initialization_failure_keeps_exact_owner_scope_for_always_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -807,15 +780,15 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
         self.assertIn('/lego/operator/internal/build/**', patterns)
         self.assertIn('/.pm/w8/m91/evidence/**', patterns)
 
-    def test_both_bootstrap_stanzas_use_only_successful_output_and_preserve_auth_order(self):
+    def test_both_bootstrap_stanzas_use_only_successful_output_before_owned_builder(self):
         jobs = ProfileRoutingControls.jobs()
         for name in ("qualify", "qualify-profile"):
             body = jobs[name]
-            prepull = body.split("      - id: buildkit\n", 1)[1].split("      - name: log in to GHCR", 1)[0]
+            prepull = body.split("      - id: buildkit\n", 1)[1].split("      - uses: docker/setup-buildx-action@", 1)[0]
             self.assertIn("timeout-minutes: 11", prepull)
             self.assertIn('native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"', prepull)
             self.assertLess(body.index("id: owned"), body.index("id: buildkit"))
-            self.assertLess(body.index("id: buildkit"), body.index("name: log in to GHCR"))
+            self.assertLess(body.index("id: buildkit"), body.index("uses: docker/setup-buildx-action@"))
             buildx = body.split("      - uses: docker/setup-buildx-action@", 1)[1].split("      - ", 1)[0]
             self.assertIn("timeout-minutes: 5", buildx)
             self.assertIn("driver-opts: image=${{ steps.buildkit.outputs.image }}", buildx)
@@ -1135,7 +1108,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}", pilot)
         for job in (original, pilot):
             for unchanged in ("max-parallel: 1", "arch: [amd64, arm64]", "use: false", "cleanup: false",
-                              "packages: read"):
+                              "contents: read"):
                 self.assertIn(unchanged, job)
             for retained in ("capacity", "cleanup", "manifest"):
                 self.assertIn("native-common-qualify.py " + retained, job)
@@ -1145,10 +1118,10 @@ class ProfileRoutingControls(unittest.TestCase):
             self.assertIn("needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs." + key + " || needs.publish.outputs." + key, pilot)
         self.assertIn("QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}", pilot)
         self.assertIn("CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}", pilot)
-        # Credential handling stays the same in both resource-bearing jobs.
-        marker = "      - name: log in to GHCR using this qualification's isolated credentials\n"
-        login = lambda job: job.split(marker, 1)[1].split("      - uses:", 1)[0]
-        self.assertEqual(login(original), login(pilot))
+        # Both jobs pull public artifacts without importing runner credentials.
+        for job in (original, pilot):
+            self.assertNotIn("${{ secrets.", job)
+            self.assertNotIn("docker login", job)
         self.assertIn("common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-", pilot)
         self.assertNotIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", pilot)
         self.assertNotIn("BEX_NATIVE_TEST_SYFT:", pilot)
