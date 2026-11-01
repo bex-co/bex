@@ -1,0 +1,9 @@
+# Full utility baseline on the same reviewed image
+
+Explicit manual `reviewed-candidate` plus `utilities` can now run the complete original two-architecture utility cohort against an already reviewed immutable image, without publishing a new index. Default fresh publication remains. A failed fresh run cannot fall back to a prior candidate. The full original Go selector, commands, timeouts, two serial architectures, credential scope and cleanup/report steps are unchanged.
+
+The image-only validator requires the real complete V11 approval, all signed statements/reports and tool/plan custody, exact producer/verifier and33 image-critical inputs from the actual verifier source. These inputs are separate from the executing generator's full source capture. An absent or stale utility baseline can only enter the complete utility requalification path. Every family route still requires the current captured generator source and both actual utility architecture results on the same index. Initialization repeats admission before credentials or resources.
+
+Independent review and repository verification pass all63 host controls and Actionlint. Eight additional independent cases prove the image-only/full-baseline boundary and init revalidation. The complete Go build package and scoped lint pass on the applied repository source, with no resource stop or source drift; peak owned temporary data is30,518,260B and its directory is removed. All35 selectors and37 original program/data/JSON inputs remain unchanged.
+
+This code slice leaves the checked-in candidate null. The separate actual common-image review has now completed its strict artifact gates; exporting and binding that real evidence into an image-only receipt is the next step. Actual current utility/family and hosted acceptance remain open, and no production pin changes here. [CUSTODY.json](CUSTODY.json) retains the complete source, controls, independent probes and local verification bytes losslessly.
