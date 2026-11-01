@@ -95,10 +95,12 @@ func TestQuotaBoundsEphemeralStorage(t *testing.T) {
 			}
 		}
 	}
+	// Hobby's ephemeral ceiling follows its compute ceiling, which is the paid
+	// one (w2/061); a lower Hobby value would be a hidden compute cap.
 	free := quotaForPlan(PlanHobby)[corev1.ResourceRequestsEphemeralStorage]
 	paid := quotaForPlan("starter")[corev1.ResourceRequestsEphemeralStorage]
-	if free.Cmp(paid) >= 0 {
-		t.Errorf("free ephemeral-storage cap %s is not below the paid cap %s", free.String(), paid.String())
+	if free.Cmp(paid) != 0 {
+		t.Errorf("Hobby ephemeral-storage cap %s differs from the paid cap %s", free.String(), paid.String())
 	}
 	lr := baseLimitRange("ns")
 	item := lr.Spec.Limits[0]
@@ -142,8 +144,8 @@ func TestQuotaCarriesRollingUpdateSurgeHeadroom(t *testing.T) {
 		plans                       []string
 		baseCPU, baseMem, surgeTier string
 	}{
-		{[]string{PlanHobby, "free", ""}, "2", "4Gi", "standard"},
-		{[]string{"starter", PlanPro, PlanScale}, "50", "100Gi", "pro-ultra"},
+		// Hobby shares the paid ceiling (w2/061): Render has no Hobby compute cap.
+		{[]string{PlanHobby, "free", "", "starter", PlanPro, PlanScale}, "50", "100Gi", "pro-ultra"},
 	} {
 		surgeCPU, surgeMem := surgeOf(tc.surgeTier)
 		wantReqCPU := resource.MustParse(tc.baseCPU)
@@ -166,5 +168,26 @@ func TestQuotaCarriesRollingUpdateSurgeHeadroom(t *testing.T) {
 				t.Errorf("plan %q limits.memory = %s < requests.memory %s — a Guaranteed-QoS surge would be refused", plan, got.String(), wantReqMem.String())
 			}
 		}
+	}
+}
+
+// TestHobbyComputeMatchesPaid pins w2/061: as on Render, a Hobby workspace has
+// no plan-based compute cap, so its services quota (CPU, memory, pods) equals
+// the paid ceiling, while its services count cap stays Hobby's.
+func TestHobbyComputeMatchesPaid(t *testing.T) {
+	hobby, _ := splitComputeQuota(quotaForPlan(PlanHobby))
+	paid, _ := splitComputeQuota(quotaForPlan(PlanPro))
+	if len(hobby) != len(paid) {
+		t.Fatalf("compute keys hobby %v, paid %v", hobby, paid)
+	}
+	for key, want := range paid {
+		if got := hobby[key]; got.Cmp(want) != 0 {
+			t.Errorf("hobby %s = %s, want the paid %s", key, got.String(), want.String())
+		}
+	}
+	// The single plan-based bound Render documents for Hobby remains.
+	hobbyServices := quotaForPlan(PlanHobby)[AppsQuotaCountKey]
+	if want := *resource.NewQuantity(QuotaCapsForPlan(PlanHobby).Services, resource.DecimalSI); hobbyServices.Cmp(want) != 0 {
+		t.Errorf("hobby services cap = %s, want %s", hobbyServices.String(), want.String())
 	}
 }
